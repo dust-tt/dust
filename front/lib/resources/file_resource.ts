@@ -53,6 +53,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { copyContent } from "@app/lib/utils/files";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -133,6 +134,7 @@ const FRAME_CONTENT_TYPES = new Set([
 
 const BATCH_DESTROY_SIZE = 10_000;
 const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
+export const FRAME_SHARE_NOTIFICATION_CONCURRENCY = 8;
 
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
@@ -2422,43 +2424,50 @@ export class FileResource extends BaseResource<FileModel> {
       const frameUrl = shareInfo.shareUrl;
       const shareToken = frameUrl.split("/").at(-1) ?? "";
 
-      await Promise.all(
-        createdEmails.map((email) =>
-          sendFrameSharedEmail({
-            to: email,
-            sharedByName,
-            frameUrl,
-            shareToken,
-          }).catch(() => {
+      await concurrentExecutor(
+        createdEmails,
+        async (email) => {
+          try {
+            await sendFrameSharedEmail({
+              to: email,
+              sharedByName,
+              frameUrl,
+              shareToken,
+            });
+          } catch (error) {
             // Email delivery is best effort and must not affect grant creation.
             logger.info(
               {
                 email,
+                error: normalizeError(error),
                 fileId: this.sId,
                 workspaceId: this.workspaceId,
               },
               "Failed to send sharing notification email"
             );
-          })
-        )
+          }
+        },
+        { concurrency: FRAME_SHARE_NOTIFICATION_CONCURRENCY }
       );
     };
 
+    const scheduleNotifications = () => {
+      void sendNotifications().catch((error) => {
+        logger.error(
+          {
+            error: normalizeError(error),
+            fileId: this.sId,
+            workspaceId: this.workspaceId,
+          },
+          "Failed to send Frame sharing notifications"
+        );
+      });
+    };
+
     if (transaction) {
-      transaction.afterCommit(() =>
-        sendNotifications().catch((error) => {
-          logger.error(
-            {
-              error: normalizeError(error),
-              fileId: this.sId,
-              workspaceId: this.workspaceId,
-            },
-            "Failed to send Frame sharing notifications after commit"
-          );
-        })
-      );
+      transaction.afterCommit(scheduleNotifications);
     } else {
-      void sendNotifications();
+      scheduleNotifications();
     }
 
     return createdEmails;

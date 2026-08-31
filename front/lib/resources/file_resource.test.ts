@@ -3,7 +3,10 @@ import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
+import {
+  FileResource,
+  FRAME_SHARE_NOTIFICATION_CONCURRENCY,
+} from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import {
   AuthorizedFileAccessModel,
@@ -29,11 +32,22 @@ import {
   frameContentType,
   frameV2ContentType,
   isUnverifiableFrameFileRefsShareError,
+  MAX_EMAILS_PER_INVITE,
   sandboxFunctionContentType,
 } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockSendFrameSharedEmail } = vi.hoisted(() => ({
+  mockSendFrameSharedEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/api/share/frame_sharing", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/share/frame_sharing")>();
+  return { ...actual, sendFrameSharedEmail: mockSendFrameSharedEmail };
+});
 
 async function createFrameWithFunction(
   auth: Authenticator,
@@ -81,6 +95,50 @@ vi.mock("@app/lib/utils/files", () => ({
 describe("FileResource", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSendFrameSharedEmail.mockResolvedValue(undefined);
+  });
+
+  describe("sharing notifications", () => {
+    it("schedules bounded email delivery without waiting for it", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+      const emails = Array.from(
+        { length: MAX_EMAILS_PER_INVITE },
+        (_, index) => `viewer-${index}@example.com`
+      );
+      let releaseDeliveries: () => void = () => undefined;
+      const deliveryGate = new Promise<void>((resolve) => {
+        releaseDeliveries = resolve;
+      });
+      mockSendFrameSharedEmail.mockImplementation(() => deliveryGate);
+
+      const grants = await frameFile.addSharingGrants(auth, { emails });
+
+      expect(grants).toHaveLength(emails.length);
+      await vi.waitFor(() => {
+        expect(mockSendFrameSharedEmail).toHaveBeenCalledTimes(
+          FRAME_SHARE_NOTIFICATION_CONCURRENCY
+        );
+      });
+
+      releaseDeliveries();
+      await vi.waitFor(() => {
+        expect(mockSendFrameSharedEmail).toHaveBeenCalledTimes(emails.length);
+      });
+    });
   });
 
   describe("fetchByShareTokenWithContent", () => {
