@@ -421,10 +421,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return new Ok(deletedCount);
   }
 
-  /**
-   * Full cleanup under the lifecycle lock: best-effort destroy at the provider,
-   * then delete the owner link and DB row.
-   */
   // Runs an owner scope transition (e.g. a conversation move) under the
   // lifecycle lock, in three phases without releasing it:
   //
@@ -521,16 +517,26 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
   }
 
+  /**
+   * Full cleanup under the lifecycle lock: best-effort destroy at the provider,
+   * then delete the owner link and DB row. The optional callback extends that
+   * lock through owner deletion, including when no sandbox exists.
+   */
   static async deleteByOwner(
     auth: Authenticator,
-    owner: SandboxDeleteOwner
-  ): Promise<Result<void, Error>> {
+    owner: SandboxDeleteOwner,
+    {
+      afterSandboxCleanup,
+    }: {
+      afterSandboxCleanup?: () => Promise<Result<undefined, Error>>;
+    } = {}
+  ): Promise<Result<undefined, Error>> {
     return this.withLifecycleLockWithOptionalProvider(
       owner.lockKey,
       async (provider) => {
         const sandbox = await owner.fetchSandbox();
         if (!sandbox) {
-          return new Ok(undefined);
+          return afterSandboxCleanup?.() ?? new Ok(undefined);
         }
         if (!provider) {
           return new Err(new Error("Sandbox provider not configured."));
@@ -566,7 +572,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           });
         });
 
-        return new Ok(undefined);
+        return afterSandboxCleanup?.() ?? new Ok(undefined);
       }
     );
   }

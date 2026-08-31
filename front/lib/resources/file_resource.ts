@@ -630,18 +630,11 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  private async deleteWithoutLock(
+  private async deleteAfterSandboxCleanup(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
     try {
       if (this.isFrameV2) {
-        const sandboxResult = await FrameSandboxAdapter.deleteSandbox(
-          auth,
-          this
-        );
-        if (sandboxResult.isErr()) {
-          throw sandboxResult.error;
-        }
         await this.deleteFrameFunctions(auth);
       }
 
@@ -707,12 +700,14 @@ export class FileResource extends BaseResource<FileModel> {
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     if (!this.isFrameV2) {
-      return this.deleteWithoutLock(auth);
+      return this.deleteAfterSandboxCleanup(auth);
     }
 
     try {
       return await withFramePublishLock(this.sId, () =>
-        this.deleteWithoutLock(auth)
+        FrameSandboxAdapter.deleteSandbox(auth, this, {
+          afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
+        })
       );
     } catch (error) {
       return new Err(normalizeError(error));

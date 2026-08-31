@@ -33,9 +33,15 @@ vi.mock("@app/lib/lock", () => ({
 }));
 
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
+import {
+  FrameGoneError,
+  FrameSandboxAdapter,
+} from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -43,11 +49,44 @@ import { frameV2ContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 
+function createDeferred() {
+  let resolvePromise: (() => void) | undefined;
+  const promise = new Promise<void>((resolve) => {
+    resolvePromise = resolve;
+  });
+  if (!resolvePromise) {
+    throw new Error("Deferred promise resolver was not initialized.");
+  }
+
+  return { promise, resolve: resolvePromise };
+}
+
 describe("FrameSandboxAdapter", () => {
+  const lockTails = new Map<string, Promise<void>>();
+
   beforeEach(() => {
     vi.clearAllMocks();
+    lockTails.clear();
     mockExecuteWithLock.mockImplementation(
-      async (_key: string, fn: () => Promise<unknown>) => fn()
+      async (key: string, fn: () => Promise<unknown>) => {
+        const previous = lockTails.get(key) ?? Promise.resolve();
+        let release: (() => void) | undefined;
+        const current = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        const tail = previous.then(() => current);
+        lockTails.set(key, tail);
+
+        await previous;
+        try {
+          return await fn();
+        } finally {
+          release?.();
+          if (lockTails.get(key) === tail) {
+            lockTails.delete(key);
+          }
+        }
+      }
     );
     mockGetSandboxImage.mockReturnValue(
       new Ok({
@@ -154,6 +193,109 @@ describe("FrameSandboxAdapter", () => {
     expect(
       await SandboxResource.fetchByModelIdForWorkspace(auth, sandboxModelId)
     ).toBeNull();
+  });
+
+  it("keeps sandbox creation blocked until Frame deletion completes", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+    });
+    const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
+      auth,
+      frame
+    );
+    if (sandboxResult.isErr()) {
+      throw sandboxResult.error;
+    }
+    await withTransaction((transaction) =>
+      SandboxFunctionResource.createForFramePublication(
+        auth,
+        {
+          frame,
+          publicationId: "frame-delete-race",
+          functions: [
+            {
+              name: "delete-task",
+              description: "Delete a task.",
+              userIdentity: "workspace_user_required",
+              executionMode: "durable",
+              defaultStake: "low",
+              bundleCode: "export default async function run() {}",
+              inputSchema: { type: "object" },
+              outputSchema: { type: "object" },
+            },
+          ],
+        },
+        transaction
+      )
+    );
+
+    const deletionReachedFunctionCleanup = createDeferred();
+    const releaseFunctionCleanup = createDeferred();
+    const deleteInvocations =
+      SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds.bind(
+        SandboxFunctionInvocationResource
+      );
+    const deleteInvocationsSpy = vi
+      .spyOn(
+        SandboxFunctionInvocationResource,
+        "deleteAllForSandboxFunctionModelIds"
+      )
+      .mockImplementation(async (...args) => {
+        deletionReachedFunctionCleanup.resolve();
+        await releaseFunctionCleanup.promise;
+        return deleteInvocations(...args);
+      });
+
+    try {
+      mockExecuteWithLock.mockClear();
+      const deletionPromise = frame.delete(auth);
+      await deletionReachedFunctionCleanup.promise;
+      expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).toBeNull();
+
+      const ensurePromise = FrameSandboxAdapter.ensureSandboxActive(
+        auth,
+        frame
+      );
+      const lifecycleLockKey = `sandbox:lifecycle:${frame.sId}`;
+      await vi.waitFor(() => {
+        expect(
+          mockExecuteWithLock.mock.calls.filter(
+            ([key]) => key === lifecycleLockKey
+          )
+        ).toHaveLength(2);
+      });
+      expect(mockProviderCreate).toHaveBeenCalledTimes(1);
+
+      releaseFunctionCleanup.resolve();
+      const [deletionResult, ensureResult] = await Promise.all([
+        deletionPromise,
+        ensurePromise,
+      ]);
+
+      expect(
+        deletionResult.isOk(),
+        deletionResult.isErr() ? deletionResult.error.message : ""
+      ).toBe(true);
+      expect(ensureResult.isErr()).toBe(true);
+      if (ensureResult.isErr()) {
+        expect(ensureResult.error).toBeInstanceOf(FrameGoneError);
+      }
+      expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
+      expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).toBeNull();
+      expect(mockProviderCreate).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseFunctionCleanup.resolve();
+      deleteInvocationsSpy.mockRestore();
+    }
   });
 
   it("deletes Frame sandboxes during a workspace scrub", async () => {

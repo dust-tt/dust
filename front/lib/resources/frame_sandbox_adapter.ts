@@ -221,11 +221,17 @@ export class FrameSandboxAdapter {
 
   static async deleteSandbox(
     auth: Authenticator,
-    frame: FrameSandboxOwner
-  ): Promise<Result<void, Error>> {
+    frame: FrameSandboxOwner,
+    {
+      afterSandboxCleanup,
+    }: {
+      afterSandboxCleanup?: () => Promise<Result<undefined, Error>>;
+    } = {}
+  ): Promise<Result<undefined, Error>> {
     return SandboxResource.deleteByOwner(
       auth,
-      this.toSandboxDeleteOwner(auth, frame)
+      this.toSandboxDeleteOwner(auth, frame),
+      { afterSandboxCleanup }
     );
   }
 
