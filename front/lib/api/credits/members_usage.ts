@@ -913,8 +913,15 @@ export async function sumActiveMembersPoolConsumedCredits({
         : member.sId;
     const totalConsumedCredits =
       usageByMetronomeUserId.get(metronomeUserId) ?? 0;
+    // Only trust a free-seat starting balance for members currently on a
+    // free seat: `freeStartingByUserId` can still carry a stale/unrevoked
+    // entry for a member who has since upgraded.
+    const freeStartingBalanceAwu =
+      member.seatType === "free"
+        ? (freeStartingByUserId.get(member.sId) ?? null)
+        : null;
     const effectiveAllocationAwu =
-      freeStartingByUserId.get(member.sId) ??
+      freeStartingBalanceAwu ??
       seatDataByUserId.get(member.sId)?.awuAllocation ??
       0;
     const consumedFromAllowanceAwuCredits = Math.min(
