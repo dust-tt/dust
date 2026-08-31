@@ -211,4 +211,35 @@ describe("reconcileFramePublicationDatabases", () => {
 
     expect(result.isErr() && result.error.message).toBe("cleanup failed");
   });
+
+  it.each([
+    { operation: "creation", failedCall: 1 },
+    { operation: "hardening", failedCall: 2 },
+    { operation: "cleanup", failedCall: 3 },
+  ])("rejects a nonzero root $operation command", async ({ failedCall }) => {
+    const { auth, frame, sandbox } = await setup();
+    vi.mocked(sandbox.execRoot).mockImplementation(async () => {
+      const call = vi.mocked(sandbox.execRoot).mock.calls.length;
+      return new Ok({
+        exitCode: call === failedCall ? 1 : 0,
+        stdout: "",
+        stderr: call === failedCall ? "root command failed" : "",
+      });
+    });
+
+    const result = await reconcileFramePublicationDatabases(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(result.isErr() && result.error.message).toContain(
+      "root command failed"
+    );
+    if (failedCall === 3) {
+      expect(reconcileDatabaseOnReadySandbox).toHaveBeenCalledOnce();
+    } else {
+      expect(reconcileDatabaseOnReadySandbox).not.toHaveBeenCalled();
+    }
+  });
 });

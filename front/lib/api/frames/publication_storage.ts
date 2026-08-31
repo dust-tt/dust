@@ -5,7 +5,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  getFramePublishLockName,
+  withFramePublishLock,
+} from "@app/lib/api/frames/operation_lock";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
@@ -619,7 +622,10 @@ export async function publishFramePublication(
       return publication;
     });
   } catch (error) {
-    if (error instanceof LockAcquisitionTimeoutError) {
+    if (
+      error instanceof LockAcquisitionTimeoutError &&
+      error.lockName === getFramePublishLockName(frame.sId)
+    ) {
       return new Err(
         new SandboxFunctionError(
           "publish_conflict",

@@ -52,7 +52,7 @@ export async function distributedUnlock(
 const DEFAULT_RETRY_INTERVAL_MS = 100;
 
 export class LockAcquisitionTimeoutError extends Error {
-  constructor(lockName: string) {
+  constructor(readonly lockName: string) {
     super(`Lock acquisition timed out for ${lockName}`);
     this.name = "LockAcquisitionTimeoutError";
   }

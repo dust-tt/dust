@@ -7,9 +7,11 @@ import {
   publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
+import { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import {
   computeSandboxFunctionBundleSha256,
@@ -837,7 +839,8 @@ describe("publishFramePublication", () => {
   it("returns a typed conflict when another publication holds the lock", async () => {
     const { auth, frame } = await setupFrame();
     const lockKey = `lock:${getFramePublishLockName(frame.sId)}`;
-    await redisMock.streamClient.set(lockKey, "held-by-test", {
+    const redisClient = await getRedisStreamClient({ origin: "lock" });
+    await redisClient.set(lockKey, "held-by-test", {
       NX: true,
       PX: 60_000,
     });
@@ -859,8 +862,28 @@ describe("publishFramePublication", () => {
       );
     } finally {
       vi.useRealTimers();
-      await redisMock.streamClient.del(lockKey);
+      await redisClient.del(lockKey);
     }
+  });
+
+  it("does not relabel a nested lock timeout as a publication conflict", async () => {
+    const { auth, frame } = await setupFrame();
+    vi.mocked(reconcileFramePublicationDatabases).mockRejectedValueOnce(
+      new LockAcquisitionTimeoutError(`sandbox:lifecycle:frame:${frame.sId}`)
+    );
+
+    await expect(
+      publishFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      })
+    ).rejects.toMatchObject({
+      name: "LockAcquisitionTimeoutError",
+      lockName: `sandbox:lifecycle:frame:${frame.sId}`,
+    });
   });
 
   it("stores and activates a publication", async () => {

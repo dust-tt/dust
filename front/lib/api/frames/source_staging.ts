@@ -16,6 +16,25 @@ const FRAME_SOURCE_STAGING_CONCURRENCY = 8;
 
 type FrameSourceFile = { relativePath: string; content: Buffer };
 
+type RootExecResult = Awaited<ReturnType<SandboxResource["execRoot"]>>;
+
+function rootCommandFailure(
+  result: RootExecResult,
+  operation: string
+): SandboxFunctionError | undefined {
+  if (result.isErr()) {
+    return new SandboxFunctionError("internal", result.error.message);
+  }
+  if (result.value.exitCode !== 0) {
+    const detail = result.value.stderr.trim() || result.value.stdout.trim();
+    return new SandboxFunctionError(
+      "internal",
+      `${operation} failed with exit code ${result.value.exitCode}${detail ? `: ${detail}` : "."}`
+    );
+  }
+  return undefined;
+}
+
 /** Stage one captured Frame source tree for a sandbox operation, then always remove it. */
 export async function withStagedFrameSource<T, E>(
   auth: Authenticator,
@@ -48,103 +67,107 @@ export async function withStagedFrameSource<T, E>(
     FRAME_SOURCE_STAGING_ROOT,
     randomUUID()
   );
-  const createResult = await sandbox.execRoot(
-    auth,
-    rootCommand.and([
-      rootCommand.exec("/usr/bin/install", [
-        "-d",
-        "-m",
-        "0711",
-        "-o",
-        "root",
-        "-g",
-        "root",
-        FRAME_SOURCE_STAGING_ROOT,
-      ]),
-      rootCommand.exec("/usr/bin/install", [
-        "-d",
-        "-m",
-        "0755",
-        "-o",
-        "root",
-        "-g",
-        "root",
-        stagingDirectory,
-      ]),
-    ])
-  );
-  if (createResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("internal", createResult.error.message)
-    );
-  }
-
   let result: Result<T, E | SandboxFunctionError>;
-  let cleanupResult: Awaited<ReturnType<SandboxResource["execRoot"]>>;
+  let cleanupResult: RootExecResult;
   try {
-    const stagingResults = await concurrentExecutor(
-      sourceFiles,
-      (sourceFile) =>
-        sandbox.writeFile(
-          auth,
-          path.posix.join(stagingDirectory, sourceFile.relativePath),
-          Uint8Array.from(sourceFile.content).buffer
-        ),
-      { concurrency: FRAME_SOURCE_STAGING_CONCURRENCY }
+    const createResult = await sandbox.execRoot(
+      auth,
+      rootCommand.and([
+        rootCommand.exec("/usr/bin/install", [
+          "-d",
+          "-m",
+          "0711",
+          "-o",
+          "root",
+          "-g",
+          "root",
+          FRAME_SOURCE_STAGING_ROOT,
+        ]),
+        rootCommand.exec("/usr/bin/install", [
+          "-d",
+          "-m",
+          "0755",
+          "-o",
+          "root",
+          "-g",
+          "root",
+          stagingDirectory,
+        ]),
+      ])
     );
-    const stagingError = stagingResults.find((result) => result.isErr());
-    if (stagingError?.isErr()) {
-      result = new Err(
-        new SandboxFunctionError("internal", stagingError.error.message)
-      );
+    const createFailure = rootCommandFailure(
+      createResult,
+      "Frame source staging creation"
+    );
+    if (createFailure) {
+      result = new Err(createFailure);
     } else {
-      const hardenResult = await sandbox.execRoot(
-        auth,
-        rootCommand.unsafeShell(
-          [
-            `/usr/bin/chown -R root:root -- ${shellEscape(stagingDirectory)}`,
-            `/usr/bin/find ${shellEscape(stagingDirectory)} -type d -exec /usr/bin/chmod 0555 -- {} +`,
-            `/usr/bin/find ${shellEscape(stagingDirectory)} -type f -exec /usr/bin/chmod 0444 -- {} +`,
-            `test -z "$(/usr/bin/find ${shellEscape(stagingDirectory)} ! -type d ! -type f -print -quit)"`,
-          ].join(" && "),
-          "Harden and validate captured Frame source before workload execution."
-        )
+      const stagingResults = await concurrentExecutor(
+        sourceFiles,
+        (sourceFile) =>
+          sandbox.writeFile(
+            auth,
+            path.posix.join(stagingDirectory, sourceFile.relativePath),
+            Uint8Array.from(sourceFile.content).buffer
+          ),
+        { concurrency: FRAME_SOURCE_STAGING_CONCURRENCY }
       );
-      if (hardenResult.isErr()) {
+      const stagingError = stagingResults.find((item) => item.isErr());
+      if (stagingError?.isErr()) {
         result = new Err(
-          new SandboxFunctionError("internal", hardenResult.error.message)
+          new SandboxFunctionError("internal", stagingError.error.message)
         );
       } else {
-        const verificationResults = await concurrentExecutor(
-          sourceFiles,
-          async (sourceFile) => {
-            const stagedPath = path.posix.join(
-              stagingDirectory,
-              sourceFile.relativePath
-            );
-            const readResult = await sandbox.readFile(auth, stagedPath);
-            if (readResult.isErr()) {
-              return new Err(readResult.error);
-            }
-            return Buffer.compare(readResult.value, sourceFile.content) === 0
-              ? new Ok(undefined)
-              : new Err(
-                  new Error(`Staged Frame source changed: ${stagedPath}`)
-                );
-          },
-          { concurrency: FRAME_SOURCE_STAGING_CONCURRENCY }
+        const hardenResult = await sandbox.execRoot(
+          auth,
+          rootCommand.unsafeShell(
+            [
+              `/usr/bin/chown -R root:root -- ${shellEscape(stagingDirectory)}`,
+              `/usr/bin/find ${shellEscape(stagingDirectory)} -type d -exec /usr/bin/chmod 0555 -- {} +`,
+              `/usr/bin/find ${shellEscape(stagingDirectory)} -type f -exec /usr/bin/chmod 0444 -- {} +`,
+              `test -z "$(/usr/bin/find ${shellEscape(stagingDirectory)} ! -type d ! -type f -print -quit)"`,
+            ].join(" && "),
+            "Harden and validate captured Frame source before workload execution."
+          )
         );
-        const verificationError = verificationResults.find((item) =>
-          item.isErr()
+        const hardenFailure = rootCommandFailure(
+          hardenResult,
+          "Frame source staging hardening"
         );
-        result = verificationError?.isErr()
-          ? new Err(
-              new SandboxFunctionError(
-                "internal",
-                verificationError.error.message
+        if (hardenFailure) {
+          result = new Err(hardenFailure);
+        } else {
+          const verificationResults = await concurrentExecutor(
+            sourceFiles,
+            async (sourceFile) => {
+              const stagedPath = path.posix.join(
+                stagingDirectory,
+                sourceFile.relativePath
+              );
+              const readResult = await sandbox.readFile(auth, stagedPath);
+              if (readResult.isErr()) {
+                return new Err(readResult.error);
+              }
+              return Buffer.compare(readResult.value, sourceFile.content) === 0
+                ? new Ok(undefined)
+                : new Err(
+                    new Error(`Staged Frame source changed: ${stagedPath}`)
+                  );
+            },
+            { concurrency: FRAME_SOURCE_STAGING_CONCURRENCY }
+          );
+          const verificationError = verificationResults.find((item) =>
+            item.isErr()
+          );
+          result = verificationError?.isErr()
+            ? new Err(
+                new SandboxFunctionError(
+                  "internal",
+                  verificationError.error.message
+                )
               )
-            )
-          : await callback(stagingDirectory);
+            : await callback(stagingDirectory);
+        }
       }
     }
   } finally {
@@ -153,10 +176,12 @@ export async function withStagedFrameSource<T, E>(
       rootCommand.exec("/usr/bin/rm", ["-rf", "--", stagingDirectory])
     );
   }
-  if (cleanupResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("internal", cleanupResult.error.message)
-    );
+  const cleanupFailure = rootCommandFailure(
+    cleanupResult,
+    "Frame source staging cleanup"
+  );
+  if (cleanupFailure) {
+    return new Err(cleanupFailure);
   }
   return result;
 }
