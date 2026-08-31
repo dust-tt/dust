@@ -22,6 +22,7 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
+  Button,
   ChevronDown,
   ChevronRight,
   DropdownMenuContent,
@@ -31,13 +32,9 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
-  // Vetoes the interaction-outside dismissal that a model/effort pick triggers,
-  // so the menu stays reachable after a pick.
-  shouldBlockDismiss: () => boolean;
   selection: ModelPickerSelectionModel;
   lockPremiumEfforts: boolean;
   ignoreTierRestrictions: boolean;
@@ -53,12 +50,17 @@ interface ModelPickerContentProps {
     model: ModelConfigurationType,
     effort: ReasoningEffort
   ) => void;
-  footer?: ReactNode;
+  // The action closing a menu that only stages a selection (the bulk "Set
+  // model" dropdown); menus that apply their picks immediately pass none.
+  confirm?: {
+    label: string;
+    disabled?: boolean;
+    onClick: () => void;
+  };
 }
 
 export function ModelPickerContent({
   side,
-  shouldBlockDismiss,
   selection,
   lockPremiumEfforts,
   ignoreTierRestrictions,
@@ -71,28 +73,13 @@ export function ModelPickerContent({
   onSelectTier,
   onSelectModel,
   onChangeEffort,
-  footer,
+  confirm,
 }: ModelPickerContentProps) {
   return (
     <DropdownMenuContent
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
       align="start"
       side={side}
-      onFocusOutside={(e) => {
-        if (shouldBlockDismiss()) {
-          e.preventDefault();
-        }
-      }}
-      onPointerDownOutside={(e) => {
-        if (shouldBlockDismiss()) {
-          e.preventDefault();
-        }
-      }}
-      onInteractOutside={(e) => {
-        if (shouldBlockDismiss()) {
-          e.preventDefault();
-        }
-      }}
     >
       {tiers.length > 0 && (
         <DropdownMenuLabel label="Recommendations" className="text-sm" />
@@ -173,7 +160,21 @@ export function ModelPickerContent({
         />
       )}
 
-      {footer}
+      {confirm && (
+        <>
+          <DropdownMenuSeparator />
+          <div className="p-1">
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full"
+              label={confirm.label}
+              disabled={confirm.disabled}
+              onClick={confirm.onClick}
+            />
+          </div>
+        </>
+      )}
     </DropdownMenuContent>
   );
 }

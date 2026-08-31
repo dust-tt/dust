@@ -8,7 +8,8 @@ import {
   getModelTier,
   getTierIdForMetaModelId,
 } from "@app/components/model_picker/modelPickerUtils";
-import { useModelPickerMenu } from "@app/components/model_picker/useModelPickerMenu";
+import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
+import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -44,13 +45,12 @@ export function ModelsFilterMenu({
 }: ModelsFilterMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const {
-    menuProps,
-    allModels,
-    shouldBlockDismiss,
-    noteModelInteraction,
-    resetMenu,
-  } = useModelPickerMenu({ owner, mode: "filter", modelIds });
+  const { modelProps, allModels } = useModelPickerModels({
+    owner,
+    mode: "filter",
+    modelIds,
+  });
+  const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const selected = selectedModels.flatMap<SelectedEntry>((filter) => {
     const tierId = getTierIdForMetaModelId(filter.modelId);
@@ -80,7 +80,6 @@ export function ModelsFilterMenu({
   };
 
   const onSelectModel = (model: ModelConfigurationType) => {
-    noteModelInteraction();
     toggleFilter({ modelId: model.modelId, displayName: model.displayName });
   };
 
@@ -88,9 +87,6 @@ export function ModelsFilterMenu({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open && shouldBlockDismiss()) {
-          return;
-        }
         if (open) {
           resetMenu();
         }
@@ -108,7 +104,8 @@ export function ModelsFilterMenu({
         />
       </DropdownMenuTrigger>
       <ModelPickerContent
-        {...menuProps}
+        {...modelProps}
+        {...menuStateProps}
         side="bottom"
         selection={selection}
         onSelectTier={onSelectTier}

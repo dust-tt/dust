@@ -8,7 +8,8 @@ import {
   getModelTier,
   getModelWithReasoningEffortLabel,
 } from "@app/components/model_picker/modelPickerUtils";
-import { useModelPickerMenu } from "@app/components/model_picker/useModelPickerMenu";
+import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
+import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
 import {
   useAgentConfigurations,
   useBatchUpdateAgentModel,
@@ -30,7 +31,6 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -52,14 +52,9 @@ export function SetModelAssistantsDialog({
   const [pending, setPending] = useState<SelectionDisplay | null>(null);
   const [confirming, setConfirming] = useState<SelectionDisplay | null>(null);
 
-  const {
-    menuProps,
-    isModelsLoading,
-    lockPremiumEfforts,
-    shouldBlockDismiss,
-    noteModelInteraction,
-    resetMenu,
-  } = useModelPickerMenu({ owner, disabled: !isOpen });
+  const { modelProps, isModelsLoading, lockPremiumEfforts } =
+    useModelPickerModels({ owner, disabled: !isOpen });
+  const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -99,7 +94,6 @@ export function SetModelAssistantsDialog({
   };
 
   const onSelectModel = (model: ModelConfigurationType) => {
-    noteModelInteraction();
     setPending({
       kind: "model",
       model,
@@ -111,7 +105,6 @@ export function SetModelAssistantsDialog({
     model: ModelConfigurationType,
     effort: ReasoningEffort
   ) => {
-    noteModelInteraction();
     setPending({ kind: "model", model, effort });
   };
 
@@ -120,9 +113,6 @@ export function SetModelAssistantsDialog({
       <DropdownMenu
         open={isOpen}
         onOpenChange={(open) => {
-          if (!open && shouldBlockDismiss()) {
-            return;
-          }
           if (open) {
             resetMenu();
             setPending(null);
@@ -147,7 +137,8 @@ export function SetModelAssistantsDialog({
           </DropdownMenuContent>
         ) : (
           <ModelPickerContent
-            {...menuProps}
+            {...modelProps}
+            {...menuStateProps}
             side="bottom"
             selection={{
               selected: pending ? [pending] : [],
@@ -156,24 +147,14 @@ export function SetModelAssistantsDialog({
             onSelectTier={onSelectTier}
             onSelectModel={onSelectModel}
             onChangeEffort={onChangeEffort}
-            footer={
-              <>
-                <DropdownMenuSeparator />
-                <div className="p-1">
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    label="Set model"
-                    className="w-full"
-                    disabled={!pending}
-                    onClick={() => {
-                      setIsOpen(false);
-                      setConfirming(pending);
-                    }}
-                  />
-                </div>
-              </>
-            }
+            confirm={{
+              label: "Set model",
+              disabled: !pending,
+              onClick: () => {
+                setIsOpen(false);
+                setConfirming(pending);
+              },
+            }}
           />
         )}
       </DropdownMenu>

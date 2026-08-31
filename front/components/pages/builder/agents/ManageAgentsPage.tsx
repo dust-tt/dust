@@ -153,23 +153,25 @@ export function ManageAgentsPage() {
     const selectedModelIds = new Set(
       selectedModels.map((model) => model.modelId)
     );
+    const matchesFilters = (a: LightAgentConfigurationType) => {
+      if (
+        selectedTagIds.size > 0 &&
+        !a.tags.some((t) => selectedTagIds.has(t.sId))
+      ) {
+        return false;
+      }
+      if (selectedModelIds.size > 0 && !selectedModelIds.has(a.model.modelId)) {
+        return false;
+      }
+      return true;
+    };
+    const byName = (
+      a: LightAgentConfigurationType,
+      b: LightAgentConfigurationType
+    ) => a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
-      .filter((a) => {
-        if (
-          selectedTagIds.size > 0 &&
-          !a.tags.some((t) => selectedTagIds.has(t.sId))
-        ) {
-          return false;
-        }
-        if (
-          selectedModelIds.size > 0 &&
-          !selectedModelIds.has(a.model.modelId)
-        ) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      .filter(matchesFilters)
+      .sort(byName);
 
     const searchLower = assistantSearch.toLowerCase();
     const filteredList = (agents: LightAgentConfigurationType[]) => {
@@ -192,9 +194,7 @@ export function ManageAgentsPage() {
       editable_by_me: filteredList(allAgents.filter((a) => a.canEdit)),
       global: filteredList(allAgents.filter((a) => a.scope === "global")),
       archived: filteredList(
-        archivedAgentConfigurations.sort((a, b) =>
-          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-        )
+        archivedAgentConfigurations.filter(matchesFilters).sort(byName)
       ),
     };
   }, [
@@ -206,23 +206,27 @@ export function ManageAgentsPage() {
     isSearchActive,
   ]);
 
+  // Archived agents are filtered like the others, so both filters must offer
+  // what they are on too.
+  const listedAgents = useMemo(
+    () => [...agentConfigurations, ...archivedAgentConfigurations],
+    [agentConfigurations, archivedAgentConfigurations]
+  );
+
   const usedModelIds = useMemo(
-    () =>
-      Array.from(
-        new Set(agentConfigurations.map((a) => a.model.modelId))
-      ).sort(),
-    [agentConfigurations]
+    () => Array.from(new Set(listedAgents.map((a) => a.model.modelId))).sort(),
+    [listedAgents]
   );
 
   const { uniqueTags } = useMemo(() => {
-    const tags = agentConfigurations.flatMap((a) => a.tags);
+    const tags = listedAgents.flatMap((a) => a.tags);
     // Remove duplicate tags by unique sId
     const uniqueTags = Array.from(
       new Map(tags.map((tag) => [tag.sId, tag])).values()
     ).sort((a, b) => a.name.localeCompare(b.name));
 
     return { uniqueTags };
-  }, [agentConfigurations]);
+  }, [listedAgents]);
 
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
 

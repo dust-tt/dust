@@ -53,7 +53,6 @@ export function ModelPickerModelRow({
         endComponent={
           <Icon visual={Lock01} size="sm" className="text-muted-foreground" />
         }
-        onSelect={(e) => e.preventDefault()}
       />
     );
   }
@@ -79,6 +78,7 @@ export function ModelPickerModelRow({
         onClick={() => {
           onSelectModel(model);
         }}
+        onSelect={(e) => e.preventDefault()}
       />
       {isSelected &&
         effortStops.length > 0 &&

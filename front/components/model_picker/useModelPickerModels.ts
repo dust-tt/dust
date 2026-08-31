@@ -11,17 +11,16 @@ import type {
 } from "@app/types/assistant/models/types";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 
-// The transient menu state and derived model lists shared by every surface
-// rendering `ModelPickerContent`: the input bar, the manage-agents model filter
-// and the bulk "Set model" dropdown.
 // "select" picks a model to run; "filter" only names one. A filter must reach
 // every model an agent can already sit on, so it drops the member's tier and
 // plan restrictions instead of padlocking the rows they exclude.
 type ModelPickerMenuMode = "select" | "filter";
 
-export function useModelPickerMenu({
+// The model lists every surface rendering `ModelPickerContent` offers, and what
+// the member is allowed to pick from them.
+export function useModelPickerModels({
   owner,
   disabled,
   mode = "select",
@@ -44,8 +43,6 @@ export function useModelPickerMenu({
   const lockPremiumEfforts = !canSelectPremiumModels;
 
   const { models, streams, isModelsLoading } = useModels({ owner, disabled });
-
-  const [isMakersExpanded, setIsMakersExpanded] = useState(false);
 
   // Concrete models (meta-models are surfaced as tiers instead).
   const allModels = useMemo<ModelConfigurationType[]>(() => {
@@ -108,43 +105,20 @@ export function useModelPickerMenu({
     }));
   }, [allModels]);
 
-  // Picking a concrete model (or nudging its effort slider) must keep the menu
-  // and its open submenus visible so the effort can still be adjusted. The
-  // click briefly moves focus/pointer in a way Radix treats as an
-  // interaction-outside and dismisses the (sub)menu; we record the pick time
-  // and veto the close that immediately follows it.
-  const lastModelInteractionAtMsRef = useRef(0);
-  const shouldBlockDismiss = () =>
-    Date.now() - lastModelInteractionAtMsRef.current < 300;
-  const noteModelInteraction = () => {
-    lastModelInteractionAtMsRef.current = Date.now();
-  };
-
-  const resetMenu = () => {
-    setIsMakersExpanded(false);
-  };
-
-  const menuProps = {
-    shouldBlockDismiss,
-    lockPremiumEfforts,
-    ignoreTierRestrictions: isFilterMode,
-    tiers,
-    makerGroups,
-    streamModels,
-    streams,
-    isMakersExpanded,
-    onToggleMakers: () => setIsMakersExpanded((v) => !v),
-  };
-
   return {
-    menuProps,
+    modelProps: {
+      lockPremiumEfforts,
+      ignoreTierRestrictions: isFilterMode,
+      tiers,
+      makerGroups,
+      allModels,
+      streamModels,
+      streams,
+    },
     models,
     allModels,
     streamModels,
     isModelsLoading,
     lockPremiumEfforts,
-    shouldBlockDismiss,
-    noteModelInteraction,
-    resetMenu,
   };
 }

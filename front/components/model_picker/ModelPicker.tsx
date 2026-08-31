@@ -24,7 +24,8 @@ import {
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
-import { useModelPickerMenu } from "@app/components/model_picker/useModelPickerMenu";
+import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
+import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useClientType } from "@app/lib/context/clientType";
@@ -99,15 +100,9 @@ export function ModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const {
-    menuProps,
-    models,
-    streamModels,
-    lockPremiumEfforts,
-    shouldBlockDismiss,
-    noteModelInteraction,
-    resetMenu,
-  } = useModelPickerMenu({ owner });
+  const { modelProps, models, streamModels, lockPremiumEfforts } =
+    useModelPickerModels({ owner });
+  const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const { shown: baseSelection, agentDefault } = useMemo(
     () =>
@@ -209,7 +204,6 @@ export function ModelPicker({
     if (isPremiumModel(model, { lockPremiumEfforts })) {
       return;
     }
-    noteModelInteraction();
     const effort = getInitialEffort(model, { lockPremiumEfforts });
     commit(
       {
@@ -224,7 +218,6 @@ export function ModelPicker({
     if (shown.display.kind !== "model") {
       return;
     }
-    noteModelInteraction();
     const { model } = shown.display;
     if (
       lockPremiumEfforts &&
@@ -276,12 +269,6 @@ export function ModelPicker({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        // Ignore the dismissal that a model/effort pick triggers, so the menu
-        // stays open. The window is short enough not to swallow a genuine
-        // click-outside a moment later.
-        if (!open && shouldBlockDismiss()) {
-          return;
-        }
         if (open) {
           openMenu();
         } else {
@@ -301,7 +288,8 @@ export function ModelPicker({
         />
       </DropdownMenuTrigger>
       <ModelPickerContent
-        {...menuProps}
+        {...modelProps}
+        {...menuStateProps}
         side={side}
         selection={selection}
         onSelectTier={onSelectTier}
