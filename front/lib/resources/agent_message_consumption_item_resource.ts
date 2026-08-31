@@ -70,6 +70,31 @@ export type CompletedAgentMessageConsumptionItem =
   | CompletedRunOutputConsumptionItem
   | CompletedToolConsumptionItem;
 
+type ConsumptionModelRowBase = {
+  runUsageModelId: ModelId;
+  inputTokensCount: number | null;
+  outputTokensCount: number | null;
+  grossAttributedCreditAmountMicro: number;
+  reconciledCreditAmountMicro: number;
+};
+
+export type ConsumptionModelRow = ConsumptionModelRowBase & {
+  itemType: "input" | "output" | "reasoning";
+};
+
+export type ConsumptionPendingToolRow = {
+  agentMCPActionModelId: ModelId;
+  runUsageModelId: ModelId;
+  outputTokensCount: number;
+  grossAttributedCreditAmountMicro: number;
+  reconciledCreditAmountMicro: number;
+};
+
+export type InsertedConsumptionRow = {
+  consumptionItemId: ModelId;
+  itemKey: string;
+};
+
 type ConsumptionItemEvidenceAttributes = Pick<
   Attributes<AgentMessageConsumptionItemModel>,
   | "inputTokensCount"
@@ -544,6 +569,178 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         );
       }
     }, transaction);
+  }
+
+  static async insertConsumptionRows(
+    auth: Authenticator,
+    {
+      conversationModelId,
+      agentMessageModelId,
+      runKey,
+      modelRows,
+      pendingToolRows,
+      transaction,
+    }: {
+      conversationModelId: ModelId;
+      agentMessageModelId: ModelId;
+      runKey: string;
+      modelRows: ConsumptionModelRow[];
+      pendingToolRows: ConsumptionPendingToolRow[];
+      transaction?: Transaction;
+    }
+  ): Promise<InsertedConsumptionRow[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const now = new Date();
+
+    const rows: ConsumptionItemCreationAttributes[] = [
+      ...modelRows.map((row) => ({
+        workspaceId,
+        conversationId: conversationModelId,
+        agentMessageId: agentMessageModelId,
+        runUsageId: row.runUsageModelId,
+        agentMCPActionId: null,
+        itemKey: `run-usage:${row.runUsageModelId}:${row.itemType}`,
+        itemType: row.itemType,
+        runKey,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        inputTokensCount: row.inputTokensCount,
+        outputTokensCount: row.outputTokensCount,
+        grossAttributedCreditAmountMicro: row.grossAttributedCreditAmountMicro,
+        reconciledCreditAmountMicro: row.reconciledCreditAmountMicro,
+        directCreditAmountMicro: null,
+        completedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })),
+      ...pendingToolRows.map((row) => ({
+        workspaceId,
+        conversationId: conversationModelId,
+        agentMessageId: agentMessageModelId,
+        runUsageId: row.runUsageModelId,
+        agentMCPActionId: row.agentMCPActionModelId,
+        itemKey: `tool-action:${row.agentMCPActionModelId}`,
+        itemType: "tool" as const,
+        runKey,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        inputTokensCount: null,
+        outputTokensCount: row.outputTokensCount,
+        grossAttributedCreditAmountMicro: row.grossAttributedCreditAmountMicro,
+        reconciledCreditAmountMicro: row.reconciledCreditAmountMicro,
+        directCreditAmountMicro: null,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    ];
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const insertedRows = await this.model.bulkCreate(rows, {
+      ignoreDuplicates: true,
+      returning: ["id", "itemKey"],
+      transaction,
+      validate: true,
+    });
+
+    return insertedRows
+      .filter((row) => Boolean(row.id))
+      .map((row) => ({ consumptionItemId: row.id, itemKey: row.itemKey }));
+  }
+
+  static async addReconciledCreditAmounts(
+    auth: Authenticator,
+    {
+      creditAmountMicroDeltaByConsumptionItemId,
+      transaction,
+    }: {
+      creditAmountMicroDeltaByConsumptionItemId: ReadonlyMap<ModelId, number>;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    const deltas = [...creditAmountMicroDeltaByConsumptionItemId].filter(
+      ([, creditAmountMicroDelta]) => creditAmountMicroDelta !== 0
+    );
+    if (deltas.length === 0) {
+      return;
+    }
+
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot bulk-update each row with a distinct value.
+    await frontSequelize.query(
+      `
+        UPDATE agent_message_consumption_items AS item
+        SET
+          "reconciledCreditAmountMicro" =
+            COALESCE(item."reconciledCreditAmountMicro", 0) + delta.credit_amount_micro,
+          "updatedAt" = $updatedAt
+        FROM unnest(
+          $consumptionItemIds::bigint[],
+          $creditAmountsMicro::bigint[]
+        ) AS delta(consumption_item_id, credit_amount_micro)
+        WHERE item.id = delta.consumption_item_id
+          AND item."workspaceId" = $workspaceModelId
+      `,
+      {
+        bind: {
+          consumptionItemIds: deltas.map(
+            ([consumptionItemId]) => consumptionItemId
+          ),
+          creditAmountsMicro: deltas.map(
+            ([, creditAmountMicroDelta]) => creditAmountMicroDelta
+          ),
+          updatedAt: new Date(),
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+        type: QueryTypes.UPDATE,
+      }
+    );
+  }
+
+  static async listConsumptionToolResultsPendingConsumption(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      transaction,
+    }: {
+      agentMessageModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageToolConsumptionItemResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const previousModelRowCreatedAt = await this.model.max<
+      Date,
+      AgentMessageConsumptionItemModel
+    >("createdAt", {
+      where: {
+        workspaceId,
+        agentMessageId: agentMessageModelId,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        itemType: { [Op.in]: ["input", "output", "reasoning"] },
+      },
+      transaction,
+    });
+
+    const toolRows = await this.model.findAll({
+      where: {
+        workspaceId,
+        agentMessageId: agentMessageModelId,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        itemType: "tool",
+        inputTokensCount: { [Op.gt]: 0 },
+        completedAt: previousModelRowCreatedAt
+          ? { [Op.gt]: previousModelRowCreatedAt }
+          : { [Op.ne]: null },
+      },
+      order: [["id", "ASC"]],
+      transaction,
+    });
+
+    return toolRows.flatMap((row) => {
+      const item = new this(this.model, row.get());
+      return item.isToolItem() ? [item] : [];
+    });
   }
 
   static async setReconciledCreditAmounts(

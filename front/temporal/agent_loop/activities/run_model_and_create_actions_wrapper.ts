@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { recordModelCallConsumption } from "@app/lib/api/assistant/consumption/model_call_writer";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -6,6 +7,7 @@ import { DurationRecorder } from "@app/lib/duration_recorder";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -31,6 +33,7 @@ import type {
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
 import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -295,6 +298,14 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
+    await recordModelCallConsumptionItems(auth, {
+      featureFlags,
+      runAgentArgs,
+      runAgentData,
+      runId,
+      emittedActionModelIds: [],
+    });
+
     return { runId, actionBlobs: [], retryWithoutTools };
   }
 
@@ -319,6 +330,16 @@ async function _runModelAndCreateActionsActivity({
     })
   );
 
+  await recordModelCallConsumptionItems(auth, {
+    featureFlags,
+    runAgentArgs,
+    runAgentData,
+    runId,
+    emittedActionModelIds: createResult.actionBlobs.map(
+      (actionBlob) => actionBlob.actionId
+    ),
+  });
+
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
     await ConversationResource.markAsActionRequired(auth, {
@@ -336,6 +357,49 @@ async function _runModelAndCreateActionsActivity({
     runId,
     actionBlobs: createResult.actionBlobs,
   };
+}
+
+async function recordModelCallConsumptionItems(
+  auth: Authenticator,
+  {
+    emittedActionModelIds,
+    featureFlags,
+    runAgentArgs,
+    runAgentData,
+    runId,
+  }: {
+    emittedActionModelIds: ModelId[];
+    featureFlags: WhitelistableFeature[];
+    runAgentArgs: AgentLoopArgsWithTiming;
+    runAgentData: AgentLoopRuntimeData;
+    runId: string | null;
+  }
+): Promise<void> {
+  const { rootAgentMessageId, runKey } = runAgentArgs;
+  if (
+    !featureFlags.includes("agent_message_consumption_writes") ||
+    runId === null ||
+    !runKey ||
+    !rootAgentMessageId
+  ) {
+    return;
+  }
+
+  const emittedActions = await AgentMCPActionResource.fetchByModelIds(
+    auth,
+    emittedActionModelIds
+  );
+
+  await recordModelCallConsumption(auth, {
+    context: {
+      agentMessageModelId: runAgentData.agentMessage.agentMessageId,
+      conversationModelId: runAgentData.conversation.id,
+      rootAgentMessageId,
+      runKey,
+    },
+    dustRunId: runId,
+    emittedActions,
+  });
 }
 
 async function publishAgentLoopGuardrailExceededError(

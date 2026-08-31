@@ -2,6 +2,7 @@ import { getEnabledSkillInputTextByActionId } from "@app/lib/api/assistant/agent
 import type { ToolCallFootprintInput } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import {
   measureToolCallFootprints,
+  measureToolCallOutputFootprints,
   toolCallFootprintTexts,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -172,7 +173,7 @@ describe("toolCallFootprintTexts", () => {
   });
 });
 
-describe("measureToolCallFootprints", () => {
+describe("tool footprint measurements", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getLlmCredentials).mockResolvedValue({} as never);
@@ -180,6 +181,24 @@ describe("measureToolCallFootprints", () => {
     vi.mocked(tokenCountForTexts).mockImplementation(
       async (texts) => new Ok(texts.map((text) => text.length))
     );
+  });
+
+  it("measures an emitted call without loading result attribution", async () => {
+    const res = await measureToolCallOutputFootprints(auth, {
+      modelId: GPT_4_1_MODEL_CONFIG.modelId,
+      toolCalls: [
+        {
+          functionCallName: "search",
+          functionCallArguments: '{"query":"hello"}',
+        },
+      ],
+    });
+
+    expect(res.isOk() && res.value).toEqual([
+      'search\n{"query":"hello"}'.length,
+    ]);
+    expect(getEnabledSkillInputTextByActionId).not.toHaveBeenCalled();
+    expect(tokenCountForTexts).toHaveBeenCalledOnce();
   });
 
   it("omits deferred enabled-skill definitions for an Anthropic tool-search model", async () => {
