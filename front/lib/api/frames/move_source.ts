@@ -274,10 +274,12 @@ async function deleteCopiedSourceObjects(
 async function copyFrameSourceAsNew({
   allowMatchingDestinationObjects,
   destinationMountPrefix,
+  sourceManifestPath,
   sourceMountPrefix,
 }: {
   allowMatchingDestinationObjects: boolean;
   destinationMountPrefix: string;
+  sourceManifestPath: string;
   sourceMountPrefix: string;
 }): Promise<Result<FrameSourceCopy, FrameSourceCopyFailure>> {
   const bucket = getPrivateUploadBucket();
@@ -297,6 +299,16 @@ async function copyFrameSourceAsNew({
       error: new FrameSourceMoveError(
         "invalid_source",
         "Frame source folder is empty or no longer exists."
+      ),
+      hasPreexistingDestinationObjects: destinationFiles.length > 0,
+    });
+  }
+  if (!sourceFiles.some((file) => file.name === sourceManifestPath)) {
+    return new Err({
+      destinationObjects: [],
+      error: new FrameSourceMoveError(
+        "invalid_source",
+        "Frame source manifest is missing."
       ),
       hasPreexistingDestinationObjects: destinationFiles.length > 0,
     });
@@ -324,6 +336,24 @@ async function copyFrameSourceAsNew({
       error: new FrameSourceMoveError(
         "conflict",
         "Frame destination exceeds the move file count limit."
+      ),
+      hasPreexistingDestinationObjects: true,
+    });
+  }
+
+  const sourceRelativePaths = new Set(
+    sourceFiles.map((file) => file.name.slice(sourceMountPrefix.length))
+  );
+  const unexpectedDestination = destinationFiles.find(
+    (file) =>
+      !sourceRelativePaths.has(file.name.slice(destinationMountPrefix.length))
+  );
+  if (unexpectedDestination) {
+    return new Err({
+      destinationObjects: [],
+      error: new FrameSourceMoveError(
+        "conflict",
+        `Destination file already exists: ${unexpectedDestination.name.slice(destinationMountPrefix.length)}`
       ),
       hasPreexistingDestinationObjects: true,
     });
@@ -683,6 +713,7 @@ export async function moveFrameV2Source(
     const copyResult = await copyFrameSourceAsNew({
       allowMatchingDestinationObjects: isRecovery,
       destinationMountPrefix,
+      sourceManifestPath: sourceMountPath,
       sourceMountPrefix,
     });
     if (copyResult.isErr()) {

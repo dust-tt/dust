@@ -158,6 +158,43 @@ describe("moveFrameV2Source", () => {
     await expect(reloaded?.getShareInfo()).resolves.toEqual(beforeShare);
   });
 
+  it("does not move a registered Frame whose source manifest is missing", async () => {
+    const context = await setup();
+    const sourceUiPath = `${context.sourceGcsDirectoryPath}/index.tsx`;
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === `${context.sourceGcsDirectoryPath}/`
+        ? [
+            {
+              name: sourceUiPath,
+              metadata: {
+                contentType: "text/typescript",
+                generation: "2",
+                md5Hash: "ui",
+                size: "1",
+              },
+            },
+          ]
+        : null
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath: `conversation-${context.conversation.sId}/MissingManifest`,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({
+      code: "invalid_source",
+    });
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(
+      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+  });
+
   it("requires write access to the destination scope", async () => {
     const context = await setup();
     const destinationPod = await SpaceFactory.project(context.workspace);
@@ -367,6 +404,78 @@ describe("moveFrameV2Source", () => {
     expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
     expect(fileStorageMock.deleteCalls).not.toContainEqual(
       expect.objectContaining({ filePath: destinationManifestPath })
+    );
+  });
+
+  it("does not move over a destination-only object created during the move", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/UnexpectedCollision`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}UnexpectedCollision`;
+    const destinationExtraPath = `${destinationGcsDirectoryPath}/extra.ts`;
+    const sourceManifestPath = `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const sourceUiPath = `${context.sourceGcsDirectoryPath}/index.tsx`;
+    let destinationListings = 0;
+    fileStorageMock.setFilesByPrefix((prefix) => {
+      if (prefix === `${context.sourceGcsDirectoryPath}/`) {
+        return [
+          {
+            name: sourceManifestPath,
+            metadata: {
+              contentType: frameV2ContentType,
+              generation: "1",
+              md5Hash: "manifest",
+              size: String(Buffer.byteLength(manifest)),
+            },
+          },
+          {
+            name: sourceUiPath,
+            metadata: {
+              contentType: "text/typescript",
+              generation: "2",
+              md5Hash: "ui",
+              size: "1",
+            },
+          },
+        ];
+      }
+      if (prefix === `${destinationGcsDirectoryPath}/`) {
+        destinationListings++;
+        return destinationListings === 1
+          ? []
+          : [
+              {
+                name: destinationExtraPath,
+                metadata: {
+                  contentType: "text/typescript",
+                  generation: "3",
+                  md5Hash: "extra",
+                  size: "1",
+                },
+              },
+            ];
+      }
+      return null;
+    });
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "conflict" });
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(
+      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(fileStorageMock.deleteCalls).not.toContainEqual(
+      expect.objectContaining({ filePath: destinationExtraPath })
     );
   });
 
