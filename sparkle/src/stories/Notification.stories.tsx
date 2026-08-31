@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { fn } from "storybook/test";
 
+import type { NotificationType } from "@sparkle/components/Notification";
 import {
   NotificationContent,
   useSendNotification,
@@ -22,7 +23,8 @@ const meta: Meta<typeof Notification> = {
 **Guidelines**
 - Mount a single **Notification.Area** high in the tree, then call **useSendNotification** wherever an action resolves.
 - Match \`type\` to the outcome and keep \`title\`/\`description\` concise — long copy is line-clamped.
-- For persistent, inline status attached to a region, use a **ContentMessage** instead.`,
+- For persistent, inline status attached to a region, use a **ContentMessage** instead.
+- Up to three toasts are shown at once; beyond the front one they collapse into a stack that expands on hover.`,
       },
     },
   },
@@ -124,6 +126,52 @@ export const SendNotificationHook: StoryObj = {
       <NotificationTriggers />
     </Notification.Area>
   ),
+};
+
+/**
+ * Toasts collapse into a stack: only the front one shows its content while the
+ * queued ones peek behind it. Hovering the stack expands it back to a list.
+ * @summary Collapsed stack of queued toasts, expanding on hover.
+ */
+export const StackedToasts: StoryObj = {
+  render: () => (
+    <Notification.Area>
+      <StackTrigger />
+    </Notification.Area>
+  ),
+};
+
+const STACKED_NOTIFICATIONS: NotificationType[] = [
+  {
+    type: "success",
+    title: "Workspace saved",
+    description: "All changes were applied",
+  },
+  {
+    type: "info",
+    title: "Sync started",
+    description: "Indexing 4 data sources",
+  },
+  {
+    type: "warning",
+    title: "Storage nearly full",
+    description: "94% of your quota used",
+  },
+];
+
+const StackTrigger = () => {
+  const sendNotification = useSendNotification();
+
+  return (
+    <Button
+      label="Show a stack of toasts"
+      onClick={() =>
+        STACKED_NOTIFICATIONS.forEach((notification) =>
+          sendNotification(notification)
+        )
+      }
+    />
+  );
 };
 
 const NotificationTriggers = () => {

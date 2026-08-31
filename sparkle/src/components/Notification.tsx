@@ -16,6 +16,10 @@ import { Icon } from "./Icon";
 
 const NOTIFICATION_DELAY_MS = 5000;
 
+const VISIBLE_NOTIFICATIONS = 3;
+
+const NOTIFICATION_GAP_PX = 14;
+
 export type NotificationType = {
   /** Optional action button shown under the message; clicking it also dismisses the toast. */
   action?: {
@@ -56,11 +60,11 @@ function resolveIconColor(type: NotificationType["type"]): string {
     case "error":
       return "text-warning-500";
     case "info":
-      return "text-info-700";
+      return "text-primary-400";
     case "warning":
-      return "text-amber-500";
+      return "text-info-500";
     case "hello":
-      return "text-primary-500";
+      return "text-primary-400";
     default:
       return assertNever(type);
   }
@@ -87,61 +91,65 @@ export function NotificationContent({
     <div
       className={cn(
         "pointer-events-auto relative flex w-[246px] flex-col overflow-clip",
-        "rounded-xl border border-border bg-background p-2",
-        "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),0px_1px_1px_0px_rgba(0,0,0,0.06),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]",
-        "dark:shadow-[0px_2px_8px_0px_rgba(0,0,0,0.45),inset_0px_-1px_0px_0px_rgba(255,255,255,0.08)]",
-        "dark:border-stone-800/60",
+        "rounded-xl bg-primary p-2",
+        "shadow-[inset_0px_1px_4px_0px_rgba(255,255,255,0.10)]",
+        "dark:shadow-[inset_0px_1px_4px_0px_rgba(0,0,0,0.06)]",
         "animate-in fade-in-0 zoom-in-95 duration-200 ease-emphasized",
         "origin-bottom-right motion-reduce:animate-none"
       )}
     >
-      <div className="flex items-start justify-between gap-1">
-        <div className="flex min-w-0 flex-1 items-start gap-1">
-          <div className="mt-[2px] shrink-0">
-            <Icon
-              visual={icon}
+      <div
+        className={cn(
+          "flex flex-col gap-1",
+          "transition-opacity duration-[400ms] motion-reduce:transition-none",
+          "[[data-expanded=false][data-front=false]_&]:opacity-0"
+        )}
+      >
+        <div className="flex items-start justify-between gap-1">
+          <div className="flex min-w-0 flex-1 items-start gap-1">
+            <div className="mt-[2px] shrink-0">
+              <Icon
+                visual={icon}
+                size="xs"
+                className={iconColor}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="flex min-w-0 flex-col">
+              {title && (
+                <span className="label-sm text-primary-50">{title}</span>
+              )}
+              {description && (
+                <span className="copy-xs text-primary-400">{description}</span>
+              )}
+            </div>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="mt-[2px] shrink-0 cursor-pointer text-primary-200 transition-colors hover:text-primary-50"
+              aria-label="Dismiss notification"
+            >
+              <Icon visual={XClose} size="xs" />
+            </button>
+          )}
+        </div>
+        {action && (
+          <div className="pl-5">
+            <Button
               size="xs"
-              className={iconColor}
-              aria-hidden="true"
+              variant="ghost"
+              label={action.label}
+              className="text-primary-50 hover:bg-white/10 active:bg-white/10 dark:hover:bg-black/[0.06] dark:active:bg-black/[0.06]"
+              onClick={() => {
+                action.onClick();
+                onDismiss?.();
+              }}
             />
           </div>
-          <div className="flex min-w-0 flex-col">
-            {title && (
-              <span className="text-sm font-medium leading-5 tracking-[-0.02em] text-foreground">
-                {title}
-              </span>
-            )}
-            {description && (
-              <span className="text-xs leading-4 text-muted-foreground">
-                {description}
-              </span>
-            )}
-          </div>
-        </div>
-        {onDismiss && (
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="mt-[2px] shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Dismiss notification"
-          >
-            <Icon visual={XClose} size="xs" />
-          </button>
         )}
       </div>
-      {action && (
-        <div className="mt-1 pl-5">
-          <Button
-            size="xs"
-            variant="ghost"
-            label={action.label}
-            onClick={() => {
-              action.onClick();
-              onDismiss?.();
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -182,7 +190,8 @@ export const Notification = {
         <Toaster
           className="flex flex-col items-end"
           duration={NOTIFICATION_DELAY_MS}
-          visibleToasts={5}
+          visibleToasts={VISIBLE_NOTIFICATIONS}
+          gap={NOTIFICATION_GAP_PX}
           closeButton={false}
           expand={false}
           invert={false}
