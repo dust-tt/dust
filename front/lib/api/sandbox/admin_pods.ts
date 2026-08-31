@@ -12,10 +12,13 @@ import {
 } from "@app/lib/api/sandbox/egress_policy";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ScopeMutationResult } from "@app/types/api/sandbox/egress_policy";
 import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy";
+import type { PodSandboxEnvVarBulkResult } from "@app/types/api/sandbox/env_vars";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
+import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -109,6 +112,64 @@ export async function resolveSandboxAdminPods(
 
   const spaces = await SpaceResource.fetchByIds(auth, selection.podIds);
   return spaces.filter((space) => space.isProject());
+}
+
+// Applies one validated env var independently to each pod: one pod-scoped
+// row per pod, each encrypted under its own pod key (existing upsert path,
+// which also emits the per-row audit events). Sequential on purpose — the
+// route schema bounds podIds at 100 and parallel upserts would only pressure
+// the connection pool.
+export async function upsertSandboxEnvVarForPods(
+  auth: Authenticator,
+  {
+    podIds,
+    name,
+    value,
+    kind,
+    allowedDomains,
+    context,
+  }: {
+    podIds: string[];
+    name: string;
+    value: string;
+    kind: SandboxEnvVarKind;
+    allowedDomains?: string[] | null;
+    context?: AuditLogContext;
+  }
+): Promise<PodSandboxEnvVarBulkResult[]> {
+  const spaces = await SpaceResource.fetchByIds(auth, podIds);
+  const spacesById = new Map(spaces.map((space) => [space.sId, space]));
+
+  const results: PodSandboxEnvVarBulkResult[] = [];
+  for (const podId of podIds) {
+    const pod = spacesById.get(podId);
+    if (!pod || !pod.isProject()) {
+      results.push({
+        podId,
+        success: false,
+        errorMessage: "Pod not found.",
+      });
+      continue;
+    }
+
+    const result = await SandboxEnvVarResource.upsert(
+      auth,
+      { kind: "pod", pod },
+      { name, value, kind, allowedDomains, context }
+    );
+    if (result.isErr()) {
+      results.push({
+        podId,
+        success: false,
+        errorMessage: result.error.message,
+      });
+      continue;
+    }
+
+    results.push({ podId, success: true, created: result.value.created });
+  }
+
+  return results;
 }
 
 // One egress-domain add/remove applied across the workspace policy and/or a
@@ -295,6 +356,92 @@ export async function bulkUpdateEgressDomain(
         context,
       });
     }
+  }
+
+  return results;
+}
+
+// Deletes one env var (by suffix, the stored `name` column) from the selected
+// scopes: the workspace row and/or each pod's row. A scope that does not
+// define the name is a no-op success (idempotent removal). The resource's
+// delete emits the per-row sandbox_env_var.deleted event. Sequential for the
+// same reasons as the other bulk helpers.
+export async function deleteSandboxEnvVarForScopes(
+  auth: Authenticator,
+  {
+    name,
+    includeWorkspace,
+    podIds,
+    context,
+  }: {
+    name: string;
+    includeWorkspace: boolean;
+    podIds: string[];
+    context?: AuditLogContext;
+  }
+): Promise<ScopeMutationResult[]> {
+  const results: ScopeMutationResult[] = [];
+
+  if (includeWorkspace) {
+    const envVar = await SandboxEnvVarResource.fetchByName(
+      auth,
+      { kind: "workspace", workspace: auth.getNonNullableWorkspace() },
+      name
+    );
+    if (!envVar) {
+      results.push({ scopeId: SANDBOX_WORKSPACE_SCOPE_ID, success: true });
+    } else {
+      const deleted = await envVar.delete(auth, { context });
+      results.push(
+        deleted.isErr()
+          ? {
+              scopeId: SANDBOX_WORKSPACE_SCOPE_ID,
+              success: false,
+              errorMessage: deleted.error.message,
+            }
+          : { scopeId: SANDBOX_WORKSPACE_SCOPE_ID, success: true }
+      );
+    }
+  }
+
+  const spaces = await SpaceResource.fetchByIds(auth, podIds);
+  const podsById = new Map(
+    spaces.filter((space) => space.isProject()).map((pod) => [pod.sId, pod])
+  );
+  // One read for the name across every valid pod, then destroy per row (the
+  // resource emits the per-row audit event on delete).
+  const envVarByPodId = await SandboxEnvVarResource.fetchByNameForPods(
+    auth,
+    [...podsById.values()],
+    name
+  );
+
+  for (const podId of podIds) {
+    if (!podsById.has(podId)) {
+      results.push({
+        scopeId: podId,
+        success: false,
+        errorMessage: "Pod not found.",
+      });
+      continue;
+    }
+
+    const envVar = envVarByPodId.get(podId);
+    if (!envVar) {
+      results.push({ scopeId: podId, success: true });
+      continue;
+    }
+
+    const deleted = await envVar.delete(auth, { context });
+    results.push(
+      deleted.isErr()
+        ? {
+            scopeId: podId,
+            success: false,
+            errorMessage: deleted.error.message,
+          }
+        : { scopeId: podId, success: true }
+    );
   }
 
   return results;

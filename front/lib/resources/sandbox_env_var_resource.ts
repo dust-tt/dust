@@ -298,6 +298,38 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     return rows.map((row) => this.fromRow(row));
   }
 
+  // One query for a single name across the given pods, keyed by pod id for the
+  // caller. Backs the multi-pod bulk delete without an N+1 fetch per pod.
+  static async fetchByNameForPods(
+    auth: Authenticator,
+    pods: SpaceResource[],
+    name: string
+  ): Promise<Map<string, SandboxEnvVarResource>> {
+    if (pods.length === 0) {
+      return new Map();
+    }
+    for (const pod of pods) {
+      this.assertScope(auth, { kind: "pod", pod });
+    }
+
+    const rows = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceId: { [Op.in]: pods.map((pod) => pod.id) },
+        name,
+      },
+    });
+
+    const podIdByModelId = new Map(pods.map((pod) => [pod.id, pod.sId]));
+    return new Map(
+      rows.flatMap((row) => {
+        const podId =
+          row.spaceId !== null ? podIdByModelId.get(row.spaceId) : undefined;
+        return podId ? [[podId, this.fromRow(row)] as const] : [];
+      })
+    );
+  }
+
   static async fetchByName(
     auth: Authenticator,
     scope: SandboxEnvVarScope,
