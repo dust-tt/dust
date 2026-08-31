@@ -63,16 +63,22 @@ type PoolLedgerEntry = {
   timestampMs: number;
 };
 
-async function getPoolLedgerEntries({
+type PoolLedgerData = {
+  poolCommitIds: Set<string>;
+  ledgerEntries: PoolLedgerEntry[];
+};
+
+// Single full-history balance listing (with embedded ledgers) covers both the
+// pool commit ids and their ledger entries, avoiding a second near-duplicate
+// paginated Metronome call.
+async function getPoolLedgerData({
   metronomeCustomerId,
-  poolCommitIds,
 }: {
   metronomeCustomerId: string;
-  poolCommitIds: Set<string>;
-}): Promise<Result<PoolLedgerEntry[], Error>> {
+}): Promise<Result<PoolLedgerData, Error>> {
   const balancesResult = await listMetronomeBalances(metronomeCustomerId, {
     coveringDate: null,
-    onlyPoolCredits: false,
+    onlyPoolCredits: true,
     includeArchived: true,
     includeLedgers: true,
   });
@@ -80,11 +86,10 @@ async function getPoolLedgerEntries({
     return new Err(balancesResult.error);
   }
 
-  const entries: PoolLedgerEntry[] = [];
+  const poolCommitIds = new Set<string>();
+  const ledgerEntries: PoolLedgerEntry[] = [];
   for (const source of balancesResult.value) {
-    if (!poolCommitIds.has(source.id)) {
-      continue;
-    }
+    poolCommitIds.add(source.id);
     for (const item of source.ledger ?? []) {
       if (
         !AUTOMATED_INVOICE_DEDUCTION_LEDGER_TYPES.has(item.type) ||
@@ -92,7 +97,7 @@ async function getPoolLedgerEntries({
       ) {
         continue;
       }
-      entries.push({
+      ledgerEntries.push({
         sourceId: source.id,
         invoiceId: item.invoice_id,
         amountCredits: item.amount,
@@ -100,7 +105,7 @@ async function getPoolLedgerEntries({
       });
     }
   }
-  return new Ok(entries);
+  return new Ok({ poolCommitIds, ledgerEntries });
 }
 
 function sumPoolLedgerEntriesForInvoice(
@@ -110,22 +115,6 @@ function sumPoolLedgerEntriesForInvoice(
   return ledgerEntries
     .filter((entry) => entry.invoiceId === invoiceId)
     .reduce((sum, entry) => sum + Math.abs(entry.amountCredits), 0);
-}
-
-async function getPoolCommitIds({
-  metronomeCustomerId,
-}: {
-  metronomeCustomerId: string;
-}): Promise<Result<Set<string>, Error>> {
-  const poolBalancesResult = await listMetronomeBalances(metronomeCustomerId, {
-    coveringDate: null,
-    onlyPoolCredits: true,
-    includeArchived: true,
-  });
-  if (poolBalancesResult.isErr()) {
-    return new Err(poolBalancesResult.error);
-  }
-  return new Ok(new Set(poolBalancesResult.value.map((entry) => entry.id)));
 }
 
 function computeCycleBreakdown({
@@ -370,13 +359,13 @@ async function getAwuPoolSummaryUncached(
   const [
     balancesResult,
     invoicesResult,
-    poolCommitIdsResult,
+    poolLedgerDataResult,
     finalizedInvoicesResult,
     membersPoolConsumedCredits,
   ] = await Promise.all([
     listMetronomeBalances(metronomeCustomerId),
     listMetronomeDraftInvoices(metronomeCustomerId),
-    getPoolCommitIds({ metronomeCustomerId }),
+    getPoolLedgerData({ metronomeCustomerId }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
       limit: cycleHistoryLimit,
     }),
@@ -402,13 +391,13 @@ async function getAwuPoolSummaryUncached(
   // `null` means the ledger couldn't be read (fetch failure)
   let ledgerEntries: PoolLedgerEntry[] | null = null;
   let cycleBreakdown: AwuPoolCycleBreakdown[] = [];
-  if (poolCommitIdsResult.isErr() || finalizedInvoicesResult.isErr()) {
+  if (poolLedgerDataResult.isErr() || finalizedInvoicesResult.isErr()) {
     logger.error(
       {
         metronomeCustomerId,
         metronomeContractId,
-        poolCommitIdsError: poolCommitIdsResult.isErr()
-          ? poolCommitIdsResult.error
+        poolLedgerDataError: poolLedgerDataResult.isErr()
+          ? poolLedgerDataResult.error
           : null,
         invoicesError: finalizedInvoicesResult.isErr()
           ? finalizedInvoicesResult.error
@@ -417,28 +406,13 @@ async function getAwuPoolSummaryUncached(
       "[AwuPoolSummary] Failed to compute cycle breakdown"
     );
   } else {
-    poolCommitIds = poolCommitIdsResult.value;
-    const ledgerEntriesResult = await getPoolLedgerEntries({
-      metronomeCustomerId,
-      poolCommitIds,
+    poolCommitIds = poolLedgerDataResult.value.poolCommitIds;
+    ledgerEntries = poolLedgerDataResult.value.ledgerEntries;
+    cycleBreakdown = computeCycleBreakdown({
+      finalizedInvoices: finalizedInvoicesResult.value,
+      ledgerEntries,
+      cycleHistoryLimit,
     });
-    if (ledgerEntriesResult.isErr()) {
-      logger.error(
-        {
-          metronomeCustomerId,
-          metronomeContractId,
-          error: ledgerEntriesResult.error,
-        },
-        "[AwuPoolSummary] Failed to fetch pool commit/credit ledgers"
-      );
-    } else {
-      ledgerEntries = ledgerEntriesResult.value;
-      cycleBreakdown = computeCycleBreakdown({
-        finalizedInvoices: finalizedInvoicesResult.value,
-        ledgerEntries,
-        cycleHistoryLimit,
-      });
-    }
   }
 
   const excessCycleBreakdown = finalizedInvoicesResult.isErr()
@@ -550,7 +524,7 @@ async function getAwuPoolSummaryUncached(
         })
       : null;
 
-  const programmaticConsumedCredits = poolCommitIdsResult.isErr()
+  const programmaticConsumedCredits = poolLedgerDataResult.isErr()
     ? null
     : sumProgrammaticPoolConsumedFromInvoice({
         invoice: currentInvoice,
