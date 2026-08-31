@@ -6,7 +6,6 @@ import {
 } from "@app/components/navigation/NavigationSidebar";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -110,7 +109,13 @@ export function Navigation({
               isNavigationBarOpen ? "w-80" : "w-0"
             )}
           >
-            <div className="flex-1 bg-app-background inset-y-0 z-0 flex w-80 flex-col">
+            <div
+              className={cn(
+                "flex-1 bg-app-background inset-y-0 z-0 flex w-80 flex-col",
+                "transition-opacity duration-150 ease-out motion-reduce:transition-none",
+                !isNavigationBarOpen && "opacity-0"
+              )}
+            >
               <NavigationSidebar
                 owner={owner}
                 subscription={subscription}
@@ -123,11 +128,8 @@ export function Navigation({
           </div>
 
           <div
-            // center handle vertically (top at 50% + translate half the handle height)
-            className={classNames(
-              "fixed z-40 hidden lg:top-1/2 lg:flex lg:-translate-y-1/2",
-              isNavigationBarOpen ? "lg:ml-80" : ""
-            )}
+            // aligned with the sidebar collapse button (pt-2 + h-8 row)
+            className="fixed left-0 top-[var(--banner-height)] z-40 hidden px-0.5 pt-2 lg:flex"
           >
             <ToggleNavigationSidebarButton
               isNavigationBarOpened={isNavigationBarOpen}
