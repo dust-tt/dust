@@ -43,6 +43,7 @@ export const KIMI_K3 = "kimi-k3" as const;
 export const MINIMAX_M2P5 = "minimax-m2p5" as const;
 export const GLM_5 = "glm-5" as const;
 export const GLM_5P2 = "glm-5p2" as const;
+export const GLM_5P3_FLASH = "glm-5p3-flash" as const;
 export const INKLING = "inkling" as const;
 
 export const GROK_4_5 = "grok-4.5" as const;
@@ -95,6 +96,7 @@ export const MODELS = [
   MINIMAX_M2P5,
   GLM_5,
   GLM_5P2,
+  GLM_5P3_FLASH,
   INKLING,
   GROK_4_5,
   GROK_4_6,

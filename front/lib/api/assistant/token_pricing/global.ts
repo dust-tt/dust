@@ -453,6 +453,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 4.4,
     cache_read_input_tokens: 0.26,
   },
+  // Verified 2026-08-31: https://fireworks.ai/models/fireworks/glm-5p3-flash
+  "accounts/fireworks/models/glm-5p3-flash": {
+    input: 0.15,
+    output: 0.5,
+    cache_read_input_tokens: 0.029,
+  },
   // Verified 2026-08-14: https://fireworks.ai/models/fireworks/inkling
   "accounts/fireworks/models/inkling": {
     input: 1.0,

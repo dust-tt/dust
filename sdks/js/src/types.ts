@@ -101,6 +101,7 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
   | "accounts/fireworks/models/glm-5p2" // fireworks
+  | "accounts/fireworks/models/glm-5p3-flash" // fireworks
   | "accounts/fireworks/models/inkling" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI

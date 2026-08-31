@@ -64,6 +64,7 @@ import { OpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/model_con
 import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
+import { ZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { ZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
 
 export const STREAM_ENDPOINTS = {
@@ -113,6 +114,8 @@ export const STREAM_ENDPOINTS = {
     DeepSeekDeepSeekV4Flash0731GlobalFireworksStream,
   [ZAiGlmFiveDotTwoGlobalFireworksStream.id]:
     ZAiGlmFiveDotTwoGlobalFireworksStream,
+  [ZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:
+    ZAiGlmFiveDotThreeFlashGlobalFireworksStream,
   [MoonshotAiKimiK2Dot5GlobalFireworksStream.id]:
     MoonshotAiKimiK2Dot5GlobalFireworksStream,
   [MoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
