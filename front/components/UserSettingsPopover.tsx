@@ -24,6 +24,7 @@ import {
   useUserMemory,
 } from "@app/lib/swr/user";
 import { useAuthContext } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
@@ -428,9 +429,15 @@ function CustomizationSection() {
           action={
             <SliderToggle
               selected={localAgentsSectionVisible}
-              onClick={() =>
-                setLocalAgentsSectionVisible(!localAgentsSectionVisible)
-              }
+              onClick={() => {
+                const nextValue = !localAgentsSectionVisible;
+                setLocalAgentsSectionVisible(nextValue);
+                trackEvent({
+                  area: TRACKING_AREAS.SETTINGS,
+                  object: "chat_with_toggle",
+                  extra: { enabled: nextValue },
+                });
+              }}
             />
           }
         />
@@ -737,6 +744,15 @@ export function UserSettingsPopover({
     }
   }, [open, mutateAuthContext]);
 
+  const handleSectionChange = (section: SettingsSection) => {
+    setActiveSection(section);
+    trackEvent({
+      area: TRACKING_AREAS.SETTINGS,
+      object: "settings_tab",
+      extra: { section },
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -757,7 +773,7 @@ export function UserSettingsPopover({
               onValueChange={(value) => {
                 const item = navItems.find((i) => i.section === value);
                 if (item) {
-                  setActiveSection(item.section);
+                  handleSectionChange(item.section);
                 }
               }}
               className="px-2"
@@ -789,7 +805,7 @@ export function UserSettingsPopover({
                   icon={icon}
                   label={label}
                   selected={activeSection === section}
-                  onClick={() => setActiveSection(section)}
+                  onClick={() => handleSectionChange(section)}
                 />
               ))}
             </NavigationList>
