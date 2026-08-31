@@ -1,4 +1,4 @@
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { filterAndSortAgents } from "@app/lib/utils";
@@ -116,7 +116,7 @@ export function AgentPicker({
               }}
               button={
                 showFooterButtons && (
-                  <CreateDropdown owner={owner} dataGtmLocation="homepage" />
+                  <CreateAgentDropdown owner={owner} dataGtmLocation="homepage" />
                 )
               }
             />

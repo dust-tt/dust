@@ -2,6 +2,7 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
+import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
 import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
@@ -38,7 +39,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
-import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
@@ -70,7 +70,6 @@ import type { PodListItemType, PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowRight,
-  Brackets,
   Button,
   Checkbox,
   CheckDone01,
@@ -86,12 +85,10 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  File02,
   FolderOpen,
   Icon,
   Label,
   Lightbulb04,
-  MagicWand02,
   MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -551,9 +548,6 @@ export function AgentSidebarMenu({
     enabled: titleFilter.trim().length > 0,
   });
 
-  const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
-    owner,
-  });
   const sendNotification = useSendNotification();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -917,47 +911,14 @@ export function AgentSidebarMenu({
                         }}
                       />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent
+                    <CreateAgentDropdownContent
+                      owner={owner}
+                      dataGtmLocation="sidebarMenu"
+                      onNavigate={() => setSidebarOpen(false)}
                       side="bottom"
                       align="center"
                       onClick={(e) => e.stopPropagation()}
-                    >
-                      <DropdownMenuLabel label="New agent" />
-                      <DropdownMenuItem
-                        href={getAgentBuilderRoute(owner.sId, "new")}
-                        icon={File02}
-                        label="From scratch"
-                        data-gtm-label="assistantCreationButton"
-                        data-gtm-location="sidebarMenu"
-                        onClick={withTracking(
-                          TRACKING_AREAS.BUILDER,
-                          "create_from_scratch",
-                          () => setSidebarOpen(false)
-                        )}
-                      />
-                      <DropdownMenuItem
-                        href={getAgentBuilderRoute(owner.sId, "create")}
-                        icon={MagicWand02}
-                        label="From template"
-                        data-gtm-label="assistantCreationButton"
-                        data-gtm-location="sidebarMenu"
-                        onClick={withTracking(
-                          TRACKING_AREAS.BUILDER,
-                          "create_from_template",
-                          () => setSidebarOpen(false)
-                        )}
-                      />
-                      <DropdownMenuItem
-                        icon={
-                          isUploadingYAML ? <Spinner size="xs" /> : Brackets
-                        }
-                        label={isUploadingYAML ? "Uploading..." : "From YAML"}
-                        disabled={isUploadingYAML}
-                        onClick={triggerYAMLUpload}
-                        data-gtm-label="yamlUploadButton"
-                        data-gtm-location="sidebarMenu"
-                      />
-                    </DropdownMenuContent>
+                    />
                   </DropdownMenu>
                 </div>
               ) : undefined

@@ -1,4 +1,4 @@
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
@@ -320,7 +320,7 @@ export function ManageAgentsPage() {
                 isCompact={isMobile}
               />
               {canCreateAgent && (
-                <CreateDropdown
+                <CreateAgentDropdown
                   owner={owner}
                   dataGtmLocation="assistantsWorkspace"
                   isCompact={isMobile}
@@ -433,7 +433,7 @@ export function ManageAgentsPage() {
                 <div className="pt-2">
                   <EmptyCTA
                     action={
-                      <CreateDropdown
+                      <CreateAgentDropdown
                         owner={owner}
                         dataGtmLocation="assistantsWorkspace"
                       />

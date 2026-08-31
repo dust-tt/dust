@@ -1,4 +1,4 @@
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useAppRouter } from "@app/lib/platform";
@@ -98,7 +98,7 @@ export function WebAgentBrowser({
           <div className="flex gap-2">
             {canCreate && (
               <div ref={createAgentButtonRef}>
-                <CreateDropdown owner={owner} dataGtmLocation="homepage" />
+                <CreateAgentDropdown owner={owner} dataGtmLocation="homepage" />
               </div>
             )}
             <ManageDropdownMenu owner={owner} />
