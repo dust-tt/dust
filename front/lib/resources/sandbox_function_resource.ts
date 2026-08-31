@@ -56,6 +56,17 @@ import type { Attributes, Transaction } from "sequelize";
 export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
 
+export interface FramePublicationFunctionDefinition {
+  name: string;
+  description: string;
+  userIdentity: SandboxFunctionUserIdentityPolicy;
+  executionMode: SandboxFunctionExecutionMode;
+  defaultStake: SandboxFunctionStake;
+  bundleCode: string;
+  inputSchema: JSONSchema;
+  outputSchema: JSONSchema;
+}
+
 export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
 
 /**
@@ -112,18 +123,29 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static model: ModelStaticWorkspaceAware<SandboxFunctionModel> =
     SandboxFunctionModel;
 
-  readonly space: SpaceResource;
+  private readonly ownerSpace: SpaceResource | null;
   file: FileResource;
 
   constructor(
     model: ModelStaticWorkspaceAware<SandboxFunctionModel>,
     blob: Attributes<SandboxFunctionModel>,
-    space: SpaceResource,
+    space: SpaceResource | null,
     file: FileResource
   ) {
     super(model, blob);
-    this.space = space;
+    this.ownerSpace = space;
     this.file = file;
+  }
+
+  get space(): SpaceResource {
+    assert(this.ownerSpace, "Frame functions do not belong to a Pod space.");
+    return this.ownerSpace;
+  }
+
+  get frame(): FileResource | null {
+    return this.publicationId !== null && this.file.isFrameV2
+      ? this.file
+      : null;
   }
 
   get sId(): string {
@@ -214,6 +236,45 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
 
     return new this(this.model, sandboxFunction.get(), space, file);
+  }
+
+  static async createForFramePublication(
+    auth: Authenticator,
+    {
+      frame,
+      functions,
+      publicationId,
+    }: {
+      frame: FileResource;
+      functions: FramePublicationFunctionDefinition[];
+      publicationId: string;
+    },
+    transaction: Transaction
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
+    assert(
+      frame.workspaceId === owner.id,
+      "The Frame must belong to the authenticated workspace."
+    );
+
+    await this.model.bulkCreate(
+      functions.map((fn) => ({
+        workspaceId: owner.id,
+        spaceId: null,
+        fileId: frame.id,
+        publicationId,
+        slug: fn.name,
+        description: fn.description,
+        userIdentity: fn.userIdentity,
+        executionMode: fn.executionMode,
+        defaultStake: fn.defaultStake,
+        bundleSha256: computeSandboxFunctionBundleSha256(fn.bundleCode),
+        inputSchema: fn.inputSchema,
+        outputSchema: fn.outputSchema,
+      })),
+      { transaction, validate: true }
+    );
   }
 
   /**
@@ -324,10 +385,12 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     {
       includeDeletedSpace,
+      includeFrameFunctions = false,
       dangerouslyBypassSpacePermissionFilter = false,
       ...options
     }: ResourceFindOptions<SandboxFunctionModel> & {
       includeDeletedSpace?: boolean;
+      includeFrameFunctions?: boolean;
       // Reserved for resolution paths whose authorization is established before the fetch:
       // fetchByIdForExecution and the tool workflow (an invocation row), and fetchInAppFolder
       // (a validated frame share capability, enforced by its own query constraints).
@@ -382,7 +445,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const blob = sandboxFunction.get();
       if (blob.spaceId === null) {
-        return [];
+        const file = filesById.get(blob.fileId);
+        if (
+          !includeFrameFunctions ||
+          blob.publicationId === null ||
+          !file?.isFrameV2
+        ) {
+          return [];
+        }
+
+        return [new this(this.model, blob, null, file)];
       }
 
       const space =
@@ -501,6 +573,40 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
 
     return this.baseFetch(auth, { where: { spaceId: space.id } });
+  }
+
+  static async listByFramePublication(
+    auth: Authenticator,
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
+  ): Promise<SandboxFunctionResource[]> {
+    if (!frame.isFrameV2) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: { fileId: frame.id, publicationId },
+      includeFrameFunctions: true,
+    });
+  }
+
+  static async fetchByFramePublicationAndSlug(
+    auth: Authenticator,
+    {
+      frame,
+      publicationId,
+      slug,
+    }: { frame: FileResource; publicationId: string; slug: string }
+  ): Promise<SandboxFunctionResource | null> {
+    if (!frame.isFrameV2 || !isValidSandboxFunctionSlug(slug)) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { fileId: frame.id, publicationId, slug },
+      includeFrameFunctions: true,
+    });
+
+    return sandboxFunction ?? null;
   }
 
   static async fetchBySpaceAndSlug(
