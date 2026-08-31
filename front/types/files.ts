@@ -10,6 +10,7 @@ const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
 export const TABLE_PREFIX = "TABLE:";
 export const DUST_FILE_ID_HEADER = "X-Dust-File-Id";
+export const DUST_FILE_CONTENT_TYPE_HEADER = "X-Dust-File-Content-Type";
 
 export type FileStatus = "created" | "failed" | "ready";
 

@@ -56,6 +56,11 @@ export function PublicInteractiveContentContainer({
         return (
           <PublicFrameRenderer
             fileId={frameMetadata.sId}
+            frameId={
+              frameMetadata.contentType === frameV2ContentType
+                ? frameMetadata.sId
+                : undefined
+            }
             fileName={frameMetadata.fileName}
             shareToken={shareToken}
             workspaceId={workspaceId}

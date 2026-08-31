@@ -18,7 +18,7 @@ export function PodFrameTabContent({
   tab,
 }: PodFrameTabContentProps) {
   const { vizUrl } = useAuth();
-  const { fileId, fileContent, isLoading, isNotFound } =
+  const { fileId, fileContent, functionReferenceKind, isLoading, isNotFound } =
     usePodFrameRenderableContent({
       owner,
       framePath: tab.path,
@@ -32,7 +32,13 @@ export function PodFrameTabContent({
     );
   }
 
-  if (isNotFound || !fileId || !fileContent || !vizUrl) {
+  if (
+    isNotFound ||
+    !fileId ||
+    !fileContent ||
+    !functionReferenceKind ||
+    !vizUrl
+  ) {
     return (
       <div className="flex h-full w-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
         This frame is no longer available in the Pod files.
@@ -49,6 +55,7 @@ export function PodFrameTabContent({
           fileContent={fileContent}
           vizUrl={vizUrl}
           identifier={`viz-frame-tab-${fileId}`}
+          frameId={functionReferenceKind === "v2" ? fileId : undefined}
           isPodEditor={podInfo.isEditor}
           isPodMember={podInfo.isMember}
           framePath={tab.path}
