@@ -32,6 +32,7 @@ import type {
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { isNumber } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
@@ -67,17 +68,25 @@ type PoolLedgerData = {
   ledgerEntries: PoolLedgerEntry[];
 };
 
-// Single full-history balance listing
+const APPROX_CYCLE_LENGTH_DAYS = 31;
+
+// Balance listing bounded to the history the caller can actually surface
 async function getPoolLedgerData({
   metronomeCustomerId,
+  cycleHistoryLimit,
 }: {
   metronomeCustomerId: string;
+  cycleHistoryLimit: number;
 }): Promise<Result<PoolLedgerData, Error>> {
+  const startingAt = new Date(
+    Date.now() - cycleHistoryLimit * APPROX_CYCLE_LENGTH_DAYS * ONE_DAY_MS
+  );
   const balancesResult = await listMetronomeBalances(metronomeCustomerId, {
     coveringDate: null,
     onlyPoolCredits: true,
     includeArchived: true,
     includeLedgers: true,
+    startingAt,
   });
   if (balancesResult.isErr()) {
     return new Err(balancesResult.error);
@@ -348,7 +357,7 @@ async function getAwuPoolSummaryUncached(
   ] = await Promise.all([
     listMetronomeBalances(metronomeCustomerId),
     listMetronomeDraftInvoices(metronomeCustomerId),
-    getPoolLedgerData({ metronomeCustomerId }),
+    getPoolLedgerData({ metronomeCustomerId, cycleHistoryLimit }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
       limit: cycleHistoryLimit,
     }),

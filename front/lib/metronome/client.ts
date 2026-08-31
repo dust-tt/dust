@@ -2315,6 +2315,7 @@ export async function listMetronomeBalances(
     includeArchived = false,
     coveringDate = new Date(),
     effectiveBefore,
+    startingAt,
     onlyPoolCredits = true,
     includeLedgers = false,
   }: {
@@ -2324,6 +2325,7 @@ export async function listMetronomeBalances(
     // Restrict to balances with any access before this date — used to hide
     // future-dated balances while still returning expired ones.
     effectiveBefore?: Date;
+    startingAt?: Date;
     includeArchived?: boolean;
     // Restrict to balances related to pool credits
     onlyPoolCredits?: boolean;
@@ -2348,6 +2350,9 @@ export async function listMetronomeBalances(
         : {}),
       ...(effectiveBefore !== undefined
         ? { effective_before: effectiveBefore.toISOString() }
+        : {}),
+      ...(startingAt !== undefined
+        ? { starting_at: startingAt.toISOString() }
         : {}),
       ...(includeArchived ? { include_archived: true } : {}),
       ...(includeLedgers ? { include_ledgers: true } : {}),
