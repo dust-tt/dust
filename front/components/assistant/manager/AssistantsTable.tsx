@@ -25,6 +25,7 @@ import type {
   AgentUsageType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -50,6 +51,7 @@ import {
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext, HeaderContext } from "@tanstack/react-table";
+import capitalize from "lodash/capitalize";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -348,10 +350,20 @@ const getTableColumns = ({
         const { modelIcon, modelConfig, modelReasoningEffort } =
           info.row.original;
 
+        // Surface the reasoning effort the tier resolves at: two agents on the
+        // same model can be on different tiers because of it.
+        const reasoningEffort = modelConfig
+          ? getTieredReasoningEffort(modelConfig, modelReasoningEffort)
+          : null;
+        const tooltipLabel =
+          reasoningEffort && reasoningEffort !== "none"
+            ? `${modelName} ${capitalize(reasoningEffort)}`
+            : modelName;
+
         return (
           <Tooltip
             tooltipTriggerAsChild
-            label={modelName}
+            label={tooltipLabel}
             trigger={
               <div className="inline-flex">
                 <DataTable.CellContent

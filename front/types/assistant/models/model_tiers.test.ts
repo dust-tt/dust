@@ -5,6 +5,7 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import {
+  getTieredReasoningEffort,
   getTierForModel,
   getTierForModelConfiguration,
   getTierForSelection,
@@ -169,6 +170,25 @@ describe("model_tiers", () => {
       // previous model must resolve to the stream's own tier, not to no tier.
       expect(getTierForModelConfiguration(AUTO_MODEL_CONFIG, "medium")).toBe(
         "balanced"
+      );
+    });
+  });
+
+  describe("getTieredReasoningEffort", () => {
+    it("keeps a mapped effort and replaces a stale one", () => {
+      const sonnet = SUPPORTED_MODEL_CONFIGS.find(
+        (c) => c.modelId === CLAUDE_SONNET_5_MODEL_ID
+      );
+      if (!sonnet) {
+        throw new Error("No supported model config for sonnet");
+      }
+
+      expect(getTieredReasoningEffort(sonnet, "high")).toBe("high");
+      expect(getTieredReasoningEffort(sonnet)).toBe(
+        sonnet.defaultReasoningEffort
+      );
+      expect(getTieredReasoningEffort(AUTO_MODEL_CONFIG, "medium")).toBe(
+        "none"
       );
     });
   });

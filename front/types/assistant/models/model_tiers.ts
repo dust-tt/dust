@@ -491,17 +491,24 @@ export function getTierForModel(
 
 // A stored selection can carry a reasoning effort its model maps to no tier
 // (e.g. an effort kept from a previous model after switching to a stream);
-// fall back to the model's default effort rather than resolving no tier.
+// fall back to the model's default effort rather than resolving no effort.
+export function getTieredReasoningEffort(
+  model: ModelConfigurationType,
+  reasoningEffort?: ReasoningEffort
+): ReasoningEffort {
+  if (reasoningEffort && getTierForModel(model.modelId, reasoningEffort)) {
+    return reasoningEffort;
+  }
+
+  return model.defaultReasoningEffort;
+}
+
 export function getTierForModelConfiguration(
   model: ModelConfigurationType,
   reasoningEffort?: ReasoningEffort
 ): ModelsTierName | null {
-  if (reasoningEffort) {
-    const tier = getTierForModel(model.modelId, reasoningEffort);
-    if (tier) {
-      return tier;
-    }
-  }
-
-  return getTierForModel(model.modelId, model.defaultReasoningEffort);
+  return getTierForModel(
+    model.modelId,
+    getTieredReasoningEffort(model, reasoningEffort)
+  );
 }
