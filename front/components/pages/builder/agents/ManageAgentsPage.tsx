@@ -432,6 +432,7 @@ export function ManageAgentsPage() {
               canCreateAgent && (
                 <div className="pt-2">
                   <EmptyCTA
+                    message="No agents yet."
                     action={
                       <CreateAgentDropdown
                         owner={owner}

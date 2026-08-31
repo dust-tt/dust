@@ -47,8 +47,10 @@ export function CreateAgentDropdownContent({
         label="From scratch"
         data-gtm-label="assistantCreationButton"
         data-gtm-location={dataGtmLocation}
-        onClick={withTracking(TRACKING_AREAS.BUILDER, "create_from_scratch", () =>
-          onNavigate?.()
+        onClick={withTracking(
+          TRACKING_AREAS.BUILDER,
+          "create_from_scratch",
+          () => onNavigate?.()
         )}
       />
       <DropdownMenuItem
@@ -57,8 +59,10 @@ export function CreateAgentDropdownContent({
         label="From template"
         data-gtm-label="assistantCreationButton"
         data-gtm-location={dataGtmLocation}
-        onClick={withTracking(TRACKING_AREAS.BUILDER, "create_from_template", () =>
-          onNavigate?.()
+        onClick={withTracking(
+          TRACKING_AREAS.BUILDER,
+          "create_from_template",
+          () => onNavigate?.()
         )}
       />
       <DropdownMenuItem

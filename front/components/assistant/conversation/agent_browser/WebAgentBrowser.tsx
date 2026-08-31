@@ -50,8 +50,7 @@ export function WebAgentBrowser({
   const { createAgentButtonRef } = useWelcomeTourGuide();
   const { hasPermission } = useWorkspacePermissions();
 
-  const canCreate =
-    hasPermission("create", "agent") || hasPermission("create", "skill");
+  const canCreate = hasPermission("create", "agent");
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {

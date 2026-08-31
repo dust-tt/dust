@@ -116,7 +116,10 @@ export function AgentPicker({
               }}
               button={
                 showFooterButtons && (
-                  <CreateAgentDropdown owner={owner} dataGtmLocation="homepage" />
+                  <CreateAgentDropdown
+                    owner={owner}
+                    dataGtmLocation="homepage"
+                  />
                 )
               }
             />
