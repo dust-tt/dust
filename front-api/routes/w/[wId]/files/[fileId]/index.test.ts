@@ -106,6 +106,7 @@ describe("GET /api/w/:wId/files/:fileId", () => {
       instructions: skill.instructions,
       mcpServerViews: [],
       name: skill.name,
+      manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
       requestedSpaceIds: skill.requestedSpaceIds,
       userFacingDescription: skill.userFacingDescription,
     });
@@ -442,6 +443,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
       attachedKnowledge: [],
       icon: skill.icon,
       instructions: skill.instructions,
+      manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
       mcpServerViews: [],
       name: skill.name,
       requestedSpaceIds: skill.requestedSpaceIds,

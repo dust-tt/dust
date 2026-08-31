@@ -697,6 +697,7 @@ describe("SkillResource", () => {
         availability: "users_and_agents",
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -718,6 +719,7 @@ describe("SkillResource", () => {
         availability: "workspace_users",
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -761,6 +763,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -806,6 +809,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -856,6 +860,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [space1.id],
       });
 
@@ -912,6 +917,7 @@ describe("SkillResource", () => {
         icon: skill1.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [skill1OnlySpace.id],
       });
 
@@ -978,6 +984,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -1031,6 +1038,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -1060,6 +1068,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -1085,6 +1094,8 @@ describe("SkillResource", () => {
         icon: updatedParentSkill!.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds:
+          updatedParentSkill!.manuallyRequestedSpaceIds,
         requestedSpaceIds: updatedParentSkill!.requestedSpaceIds,
       });
 
@@ -1112,6 +1123,7 @@ describe("SkillResource", () => {
         icon: skill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
         requestedSpaceIds: skill.requestedSpaceIds,
       });
 
@@ -1143,6 +1155,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -1164,6 +1177,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -1197,6 +1211,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
         status: "archived",
       });
@@ -1218,6 +1233,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
         status: "active",
       });
@@ -1252,6 +1268,7 @@ describe("SkillResource", () => {
         icon: newIcon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
       });
 
@@ -1381,6 +1398,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -1473,6 +1491,7 @@ describe("SkillResource", () => {
           availability: "users_and_agents",
           mcpServerViews: [],
           attachedKnowledge: [],
+          manuallyRequestedSpaceIds: [],
           requestedSpaceIds: [],
         })
       ).rejects.toThrow(
@@ -1725,6 +1744,8 @@ describe("SkillResource", () => {
         icon: archivedParentSkill!.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds:
+          archivedParentSkill!.manuallyRequestedSpaceIds,
         requestedSpaceIds: archivedParentSkill!.requestedSpaceIds,
       });
 

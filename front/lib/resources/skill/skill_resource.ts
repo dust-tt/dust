@@ -914,17 +914,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
-    { withTools = true }: { withTools?: boolean } = {}
+    {
+      dangerouslySkipPermissionFiltering,
+      withTools = true,
+    }: {
+      dangerouslySkipPermissionFiltering?: boolean;
+      withTools?: boolean;
+    } = {}
   ): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        id: {
-          [Op.in]: ids,
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: {
+            [Op.in]: ids,
+          },
         },
+        onlyCustom: true,
+        withTools,
       },
-      onlyCustom: true,
-      withTools,
-    });
+      { dangerouslySkipPermissionFiltering }
+    );
   }
 
   static async fetchFileSkills(
@@ -2135,6 +2145,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         instructionsHtml: null,
         name: def.name,
         requestedSpaceIds: requestedSpaceModelIds,
+        manuallyRequestedSpaceIds: [],
         status: "active",
         updatedAt: new Date(),
         workspaceId,
@@ -2499,6 +2510,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           instructionsHtml: versionModel.instructionsHtml,
           icon: versionModel.icon,
           requestedSpaceIds: versionModel.requestedSpaceIds,
+          manuallyRequestedSpaceIds: versionModel.manuallyRequestedSpaceIds,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
           availability: versionModel.availability,
@@ -3159,6 +3171,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions,
       instructionsHtml,
       mcpServerViews,
+      manuallyRequestedSpaceIds,
       name,
       reinforcement,
       requestedSpaceIds,
@@ -3174,6 +3187,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon: string | null;
       instructions: string;
       instructionsHtml?: string | null;
+      // The spaces a person picked by hand: the subset of `requestedSpaceIds` that stays when
+      // nothing in the skill requires it any more.
+      manuallyRequestedSpaceIds: ModelId[];
       mcpServerViews: MCPServerViewResource[];
       name: string;
       reinforcement?: SkillReinforcementMode;
@@ -3240,6 +3256,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(instructionsHtml !== undefined ? { instructionsHtml } : {}),
           icon,
           requestedSpaceIds,
+          manuallyRequestedSpaceIds,
           editedBy,
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
@@ -4565,6 +4582,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         instructions: skill.instructions,
         instructionsHtml: skill.instructionsHtml,
         requestedSpaceIds: skill.requestedSpaceIds,
+        manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
         editedBy: skill.editedBy,
         mcpServerViewIds: (mcpServerConfigsBySkillId[skill.id] ?? []).map(
           (config) => config.mcpServerViewId
