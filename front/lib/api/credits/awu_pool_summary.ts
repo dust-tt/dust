@@ -558,9 +558,6 @@ async function getAwuPoolSummaryUncached(
         awuCreditTypeId,
       });
 
-  // Whatever is left of the cycle total once programmatic and per-member pool
-  // draw are subtracted — mainly usage the invoice tags as member usage
-  // (`usage_type: "user"`) for someone with no active membership anymore.
   const otherConsumedCredits =
     currentCycleConsumedCredits !== null &&
     programmaticConsumedCredits !== null &&
