@@ -38,6 +38,7 @@ import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
@@ -197,6 +198,25 @@ export class FileResource extends BaseResource<FileModel> {
     return blobs.map((blob) => new this(this.model, blob.get()));
   }
 
+  /** Cross-workspace lookup for the sandbox reaper only. */
+  static async dangerouslyFetchFrameV2ByModelIds(
+    ids: ModelId[]
+  ): Promise<FileResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const frames = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified: the sandbox reaper operates across workspaces and the ids come from workspace-scoped owner links.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        contentType: frameV2ContentType,
+        id: { [Op.in]: ids },
+      },
+    });
+    return frames.map((frame) => new this(this.model, frame.get()));
+  }
+
   static override async fetchByModelId(
     _id: ModelId,
 
@@ -234,6 +254,12 @@ export class FileResource extends BaseResource<FileModel> {
     const [file] = await this.fetchByModelIdsWithAuth(auth, [id], transaction);
 
     return file ?? null;
+  }
+
+  /** Re-fetch this stable identity and keep only a Frames v2 resource. */
+  async fetchFreshFrameV2(auth: Authenticator): Promise<FileResource | null> {
+    const fresh = await FileResource.fetchByModelIdWithAuth(auth, this.id);
+    return fresh?.isFrameV2 ? fresh : null;
   }
 
   static async fetchByShareTokenWithContent(token: string): Promise<{
@@ -440,6 +466,7 @@ export class FileResource extends BaseResource<FileModel> {
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
+    await FrameSandboxAdapter.deleteAllForWorkspace(auth);
     await this.deleteAllFrameFunctionsForWorkspace(workspaceId);
 
     await AuthorizedFileAccessModel.destroy({
@@ -603,7 +630,7 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  private async deleteWithoutLock(
+  private async deleteAfterSandboxCleanup(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
     try {
@@ -673,12 +700,14 @@ export class FileResource extends BaseResource<FileModel> {
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     if (!this.isFrameV2) {
-      return this.deleteWithoutLock(auth);
+      return this.deleteAfterSandboxCleanup(auth);
     }
 
     try {
       return await withFramePublishLock(this.sId, () =>
-        this.deleteWithoutLock(auth)
+        FrameSandboxAdapter.deleteSandbox(auth, this, {
+          afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
+        })
       );
     } catch (error) {
       return new Err(normalizeError(error));

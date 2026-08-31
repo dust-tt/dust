@@ -149,6 +149,31 @@ describe("sandbox environment manifest", () => {
     ]);
   });
 
+  it("identifies Frame sandbox manifests with FRAME_ID", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const manifestResult = await buildSandboxEnvManifest(authenticator, {
+      kind: "frame",
+      frameId: "frame-id",
+      spaceId: null,
+    });
+
+    expect(manifestResult.isOk()).toBe(true);
+    if (manifestResult.isErr()) {
+      throw manifestResult.error;
+    }
+    expect(manifestResult.value.system).toEqual([
+      {
+        name: "FRAME_ID",
+        description: "current Frame sId",
+      },
+      {
+        name: "WORKSPACE_ID",
+        description: "current workspace sId",
+      },
+    ]);
+  });
+
   it("lists pod vars (pod wins on collision) for sandboxes running in a pod", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",

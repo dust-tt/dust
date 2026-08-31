@@ -1111,6 +1111,7 @@ describe("SandboxResource.ensureActive", () => {
           imageId: { imageName: "test-image", tag: "0.0.1" },
           envVars: {
             DST_API_TOKEN: "image-token",
+            FRAME_ID: "image-frame-id",
             SPACE_ID: "image-space-id",
             WORKSPACE_ID: "image-workspace-id",
           },
@@ -1230,6 +1231,9 @@ describe("SandboxResource.ensureActive", () => {
     );
     expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
       "SPACE_ID"
+    );
+    expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
+      "FRAME_ID"
     );
     expect(mockProviderExec).not.toHaveBeenCalled();
   });
