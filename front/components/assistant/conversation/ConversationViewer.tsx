@@ -111,7 +111,6 @@ import { mutate } from "swr";
 
 const DEFAULT_PAGE_LIMIT = 50;
 const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 4;
-const TOUCH_SCROLL_UP_THRESHOLD_PX = 4;
 // SSE is the fast path; poll slowly in case the completion event is missed before subscription.
 const FORK_PREPARATION_POLL_INTERVAL_MS = 60_000;
 
@@ -267,12 +266,10 @@ export const ConversationViewer = ({
     >(null);
   const isMobile = useIsMobile();
   const isAutoScrollEnabledRef = useRef(true);
-  const touchStartYRef = useRef<number | null>(null);
+  const lastTouchYRef = useRef<number | null>(null);
   const detachFromAutoScroll = useCallback(() => {
-    if (isAutoScrollEnabledRef.current) {
-      isAutoScrollEnabledRef.current = false;
-      virtuosoMessageListRef.current?.cancelSmoothScroll();
-    }
+    isAutoScrollEnabledRef.current = false;
+    virtuosoMessageListRef.current?.cancelSmoothScroll();
   }, []);
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
@@ -1396,25 +1393,26 @@ export const ConversationViewer = ({
   );
 
   const onTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
-    touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    lastTouchYRef.current = event.touches[0]?.clientY ?? null;
   }, []);
 
   const onTouchMove = useCallback(
     (event: TouchEvent<HTMLDivElement>) => {
       const touchY = event.touches[0]?.clientY;
-      if (
-        touchY !== undefined &&
-        touchStartYRef.current !== null &&
-        touchY - touchStartYRef.current >= TOUCH_SCROLL_UP_THRESHOLD_PX
-      ) {
+      if (touchY === undefined) {
+        return;
+      }
+
+      if (lastTouchYRef.current !== null && touchY > lastTouchYRef.current) {
         detachFromAutoScroll();
       }
+      lastTouchYRef.current = touchY;
     },
     [detachFromAutoScroll]
   );
 
   const onTouchEnd = useCallback(() => {
-    touchStartYRef.current = null;
+    lastTouchYRef.current = null;
   }, []);
 
   const computeItemKey = useCallback(
