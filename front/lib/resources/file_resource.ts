@@ -12,6 +12,7 @@ import {
   getProcessedContentType,
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
+import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import {
   getDefaultFrameShareScope,
@@ -602,7 +603,9 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+  private async deleteWithoutLock(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
     try {
       if (this.isFrameV2) {
         await this.deleteFrameFunctions(auth);
@@ -663,6 +666,20 @@ export class FileResource extends BaseResource<FileModel> {
       });
 
       return new Ok(undefined);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
+  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (!this.isFrameV2) {
+      return this.deleteWithoutLock(auth);
+    }
+
+    try {
+      return await withFramePublishLock(this.sId, () =>
+        this.deleteWithoutLock(auth)
+      );
     } catch (error) {
       return new Err(normalizeError(error));
     }

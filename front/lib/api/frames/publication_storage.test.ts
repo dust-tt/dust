@@ -1,3 +1,4 @@
+import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
   activateFramePublication,
@@ -17,6 +18,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { redisMock } from "@app/tests/utils/mocks/redis";
 import { getNamespace } from "@app/tests/utils/test_cls";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
 import {
@@ -34,7 +36,11 @@ import {
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-async function setupFrame(): Promise<{
+async function setupFrame({
+  ready = false,
+}: {
+  ready?: boolean;
+} = {}): Promise<{
   frame: FileResource;
   workspaceId: string;
   auth: Authenticator;
@@ -44,7 +50,7 @@ async function setupFrame(): Promise<{
     contentType: frameV2ContentType,
     fileName: "manifest.json",
     fileSize: 0,
-    status: "created",
+    status: ready ? "ready" : "created",
     useCase: "project_context",
   });
 
@@ -118,6 +124,18 @@ const functionArtifacts = [
     },
   },
 ] satisfies FramePublicationFunctionArtifact[];
+
+function createDeferred() {
+  let resolvePromise: (() => void) | undefined;
+  const promise = new Promise<void>((resolve) => {
+    resolvePromise = resolve;
+  });
+  if (!resolvePromise) {
+    throw new Error("Deferred promise resolver was not initialized.");
+  }
+
+  return { promise, resolve: resolvePromise };
+}
 
 beforeEach(() => {
   fileStorageMock.reset();
@@ -806,5 +824,65 @@ describe("publishFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       activePublicationId
     );
+  });
+
+  it("finishes an in-flight publication before deleting its Frame", async () => {
+    const { auth, frame } = await setupFrame({ ready: true });
+    const activationStarted = createDeferred();
+    const releaseActivation = createDeferred();
+    vi.spyOn(frame, "computeAuthorizedFileAccess").mockImplementation(
+      async (_auth, { frameContent }) => {
+        activationStarted.resolve();
+        await releaseActivation.promise;
+        return {
+          generatedByUserId: auth.getNonNullableUser().id,
+          frameContentHash: computeFrameContentHash(frameContent),
+          refs: [],
+        };
+      }
+    );
+
+    const publicationPromise = publishFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+    await activationStarted.promise;
+
+    const deletionPromise = frame.delete(auth);
+    const redisSet = vi.mocked(
+      redisMock.streamClient.set as (
+        key: string,
+        value: string,
+        options: { NX?: boolean; PX?: number }
+      ) => Promise<string | null>
+    );
+    const lockKey = `lock:${getFramePublishLockName(frame.sId)}`;
+    try {
+      await vi.waitFor(() => {
+        expect(
+          redisSet.mock.calls.filter(([key]) => key === lockKey).length
+        ).toBeGreaterThanOrEqual(2);
+      });
+      await expect(
+        FileResource.fetchById(auth, frame.sId)
+      ).resolves.not.toBeNull();
+    } finally {
+      releaseActivation.resolve();
+    }
+
+    const publication = await publicationPromise;
+    expect(
+      publication.isOk(),
+      publication.isErr() ? publication.error.message : undefined
+    ).toBe(true);
+    const deletion = await deletionPromise;
+    expect(
+      deletion.isOk(),
+      deletion.isErr() ? deletion.error.message : undefined
+    ).toBe(true);
+    await expect(FileResource.fetchById(auth, frame.sId)).resolves.toBeNull();
   });
 });
