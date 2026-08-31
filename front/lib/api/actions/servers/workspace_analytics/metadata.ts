@@ -128,6 +128,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "most active. Admin-only.",
     schema: getTopAgentsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving top agents",
       done: "Retrieved top agents",
@@ -145,6 +146,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "are, rank members by usage, or find your top contributors. Admin-only.",
     schema: getTopUsersSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving top users",
       done: "Retrieved top users",
@@ -165,6 +167,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "based on historical message data and may not reflect current agent tags. Admin-only.",
     schema: getTopAgentTagsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving top agent tags",
       done: "Retrieved top agent tags",
@@ -185,6 +188,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "models may appear. Admin-only.",
     schema: getTopModelsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving top models",
       done: "Retrieved top models",
@@ -201,6 +205,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "does. Admin-only.",
     schema: getAgentDetailsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving agent details",
       done: "Retrieved agent details",
@@ -217,6 +222,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "to answer which skills are used most. Admin-only.",
     schema: getTopSkillsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving top skills",
       done: "Retrieved top skills",
@@ -235,6 +241,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "rely on. Admin-only.",
     schema: getTopToolsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving top tools",
       done: "Retrieved top tools",
@@ -257,6 +264,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "tag, or model. Admin-only.",
     schema: getSourceBreakdownSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving source breakdown",
       done: "Retrieved source breakdown",
@@ -279,6 +287,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "drive spend. Admin-only.",
     schema: getCreditUsageSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Estimating credit usage",
       done: "Estimated credit usage",
@@ -302,6 +311,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "agent, user, tag, or model. Admin-only.",
     schema: getCreditTimeseriesSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Estimating credit trend",
       done: "Estimated credit trend",
@@ -319,6 +329,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "day. Combine with filters to narrow. Chart the result. Admin-only.",
     schema: getUsageTimeseriesSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving usage time series",
       done: "Retrieved usage time series",

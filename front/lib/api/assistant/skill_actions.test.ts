@@ -3,6 +3,7 @@ import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { _getAnalystGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/analyst";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -100,6 +101,79 @@ describe("resolveSkillMCPServers", () => {
         }),
       ])
     );
+  });
+
+  it("eagerly exposes workspace analytics tools to Analyst", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+
+    const agentConfiguration = _getAnalystGlobalAgent({
+      auth: authenticator,
+    });
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [],
+    });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      authenticator,
+      {
+        workspace,
+        conversation,
+        agentConfig: agentConfiguration,
+      }
+    );
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth: authenticator,
+      workspace,
+      conversation,
+      content: "Which agents are used most?",
+      // The agent message factory sits at rank 0.
+      rank: 1,
+    });
+
+    const skillBuckets = await SkillResource.listForAgentLoop(authenticator, {
+      agentConfiguration,
+      conversation,
+    });
+    expect(
+      skillBuckets.systemSkills.some(
+        (skill) => skill.sId === "workspace-analytics"
+      )
+    ).toBe(true);
+
+    const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
+      authenticator,
+      {
+        agentConfiguration,
+        conversation,
+      }
+    );
+    const serverToolsAndInstructions = await tryListMCPTools(
+      authenticator,
+      {
+        agentConfiguration,
+        agentMessage,
+        userMessage,
+        clientSideActionConfigurations: [],
+        conversation,
+      },
+      {
+        jitServers: [],
+        skillServers,
+        systemSkillServers,
+      }
+    );
+
+    const workspaceAnalyticsTools = serverToolsAndInstructions
+      .filter(({ serverName }) =>
+        ["workspace_analytics", "workspace_management"].includes(serverName)
+      )
+      .flatMap(({ tools }) => tools);
+
+    expect(workspaceAnalyticsTools.length).toBeGreaterThan(0);
+    expect(workspaceAnalyticsTools.every((tool) => tool.eager)).toBe(true);
   });
 
   it("exposes one set of company data tools when Discover Knowledge and Go Deep are enabled", async () => {
