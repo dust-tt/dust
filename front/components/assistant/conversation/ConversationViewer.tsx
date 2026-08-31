@@ -266,9 +266,11 @@ export const ConversationViewer = ({
     >(null);
   const isMobile = useIsMobile();
   const isAutoScrollEnabledRef = useRef(true);
+  const hasLeftBottomSinceDetachRef = useRef(false);
   const lastTouchYRef = useRef<number | null>(null);
   const detachFromAutoScroll = useCallback(() => {
     isAutoScrollEnabledRef.current = false;
+    hasLeftBottomSinceDetachRef.current = false;
     virtuosoMessageListRef.current?.cancelSmoothScroll();
   }, []);
   const sendNotification = useSendNotification();
@@ -1185,6 +1187,7 @@ export const ConversationViewer = ({
 
         if (!hasRunningAgent) {
           isAutoScrollEnabledRef.current = true;
+          hasLeftBottomSinceDetachRef.current = false;
         }
 
         if (hasRunningAgent && conversationId) {
@@ -1357,8 +1360,13 @@ export const ConversationViewer = ({
 
   const onScroll = useCallback(
     (location: ListScrollLocation) => {
-      if (location.bottomOffset <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX) {
-        isAutoScrollEnabledRef.current = true;
+      if (!isAutoScrollEnabledRef.current) {
+        if (location.bottomOffset > AUTO_SCROLL_BOTTOM_THRESHOLD_PX) {
+          hasLeftBottomSinceDetachRef.current = true;
+        } else if (hasLeftBottomSinceDetachRef.current) {
+          isAutoScrollEnabledRef.current = true;
+          hasLeftBottomSinceDetachRef.current = false;
+        }
       }
 
       const isLoadingData =

@@ -34,25 +34,15 @@ type VirtuosoMethods = VirtuosoMessageListMethods<
 function createAutoScrollToBottomBehavior(
   isAutoScrollEnabledRef: MutableRefObject<boolean>
 ) {
-  return ({
-    scrollLocation,
-    scrollInProgress,
-  }: {
-    scrollLocation: { bottomOffset: number };
-    scrollInProgress: boolean;
-  }) => {
+  return ({ scrollInProgress }: { scrollInProgress: boolean }) => {
     if (!isAutoScrollEnabledRef.current || scrollInProgress) {
-      return false;
-    }
-
-    if (scrollLocation.bottomOffset < 0) {
       return false;
     }
 
     return {
       index: "LAST" as const,
       align: "end" as const,
-      behavior: "smooth" as const,
+      behavior: "instant" as const,
     };
   };
 }

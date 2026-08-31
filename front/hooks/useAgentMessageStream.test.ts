@@ -20,12 +20,16 @@ const mockMutateContextUsage = vi.fn();
 const mockUseVirtuosoMethods = vi.fn();
 const mockIsAutoScrollEnabledRef = { current: true };
 
-function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
+function makeVirtuosoMethodsMock<T>(
+  map: (updater: (message: T) => T) => T[],
+  onBatch?: (scrollToBottom: unknown) => void
+) {
   return {
     data: {
       map,
-      batch: (callback: () => void) => {
+      batch: (callback: () => void, scrollToBottom?: unknown) => {
         callback();
+        onBatch?.(scrollToBottom);
       },
     },
   };
@@ -296,6 +300,9 @@ describe("useAgentMessageStream", () => {
       makeLightAgentMessage({ content: null, chainOfThought: null })
     );
     let onEventCallback: ((event: string) => void) | null = null;
+    let autoScrollToBottom:
+      | ((params: { scrollInProgress: boolean }) => unknown)
+      | null = null;
 
     mockUseVirtuosoMethods.mockReturnValue(
       makeVirtuosoMethodsMock(
@@ -304,6 +311,11 @@ describe("useAgentMessageStream", () => {
         ) => {
           currentMessage = updater(currentMessage);
           return [currentMessage];
+        },
+        (scrollToBottom) => {
+          if (typeof scrollToBottom === "function") {
+            autoScrollToBottom = scrollToBottom as typeof autoScrollToBottom;
+          }
         }
       )
     );
@@ -344,6 +356,13 @@ describe("useAgentMessageStream", () => {
       );
     });
 
+    expect(autoScrollToBottom).not.toBeNull();
+    expect(autoScrollToBottom!({ scrollInProgress: false })).toEqual({
+      index: "LAST",
+      align: "end",
+      behavior: "instant",
+    });
+
     mockIsAutoScrollEnabledRef.current = false;
 
     act(() => {
@@ -363,6 +382,7 @@ describe("useAgentMessageStream", () => {
     });
 
     expect(mockIsAutoScrollEnabledRef.current).toBe(false);
+    expect(autoScrollToBottom!({ scrollInProgress: false })).toBe(false);
   });
 
   it("clears stale database content before replaying fresh-mount tokens", () => {
