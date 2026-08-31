@@ -1,6 +1,8 @@
 // @vitest-environment node
 
+import { DustThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
+import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { describe, expect, it } from "vitest";
 
 const TOOLS = [
@@ -138,6 +140,67 @@ describe("FireworksResponsesStream", () => {
       expect.objectContaining({ type: "function", name: "calculator" }),
       expect.objectContaining({ type: "function", name: "get_weather" }),
     ]);
+  });
+
+  it("preserves optional tool parameters without strict mode", () => {
+    const endpoint = new MoonshotAiKimiK3GlobalFireworksStream({
+      FIREWORKS_API_KEY: "test",
+    });
+    const inputSchema = {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        nextPageCursor: { type: "string" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    };
+    const payload = endpoint.buildRequestPayload(
+      { conversation: { system: [], messages: [] } },
+      MoonshotAiKimiK3GlobalFireworksStream.configSchema.parse({
+        tools: [
+          {
+            name: "search",
+            description: "Search documents",
+            inputSchema,
+          },
+        ],
+      })
+    );
+
+    expect(payload.tools).toEqual([
+      {
+        type: "function",
+        name: "search",
+        description: "Search documents",
+        strict: false,
+        parameters: inputSchema,
+      },
+    ]);
+  });
+
+  it("lets Inkling choose a completion limit within its context budget", () => {
+    const endpoint = new ThinkingMachinesInklingGlobalFireworksStream({
+      FIREWORKS_API_KEY: "test",
+    });
+    const payload = endpoint.buildRequestPayload(
+      { conversation: { system: [], messages: [] } },
+      ThinkingMachinesInklingGlobalFireworksStream.configSchema.parse({})
+    );
+
+    expect(payload).not.toHaveProperty("max_output_tokens");
+  });
+
+  it("keeps Dust's lower Inkling completion limit", () => {
+    const endpoint = new DustThinkingMachinesInklingGlobalFireworksStream({
+      FIREWORKS_API_KEY: "test",
+    });
+    const payload = endpoint.buildRequestPayload(
+      { conversation: { system: [], messages: [] } },
+      DustThinkingMachinesInklingGlobalFireworksStream.configSchema.parse({})
+    );
+
+    expect(payload.max_output_tokens).toBe(64_000);
   });
 
   it("rejects OpenAI hosted tool search", () => {
