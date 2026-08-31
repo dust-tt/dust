@@ -40,12 +40,24 @@ function formatEffortsLabel(
   return inTierEfforts.join(" · ");
 }
 
-export function getModelTierExplainer(): ModelTierExplainerTier[] {
+/**
+ * Describes what each model tier contains, restricted to the models this
+ * workspace can actually reach (`availableModelIds`, from `useModels`).
+ *
+ * Reasoning efforts are read from the static configs on purpose: the viewer's
+ * own tier cap must not narrow them here. This powers the "How model tiers
+ * work" modal, which explains the whole catalog the workspace can reach rather
+ * than what the viewer is allowed to select.
+ */
+export function getModelTierExplainer(
+  availableModelIds: Set<string>
+): ModelTierExplainerTier[] {
   return MODELS_TIERS.map((tier) => {
     const models: ModelTierExplainerEntry[] = [];
 
     for (const config of USED_MODEL_CONFIGS) {
       if (
+        !availableModelIds.has(config.modelId) ||
         HIDDEN_PROVIDER_IDS.has(config.providerId) ||
         isModelStreamId(config.modelId) ||
         !isStaticModelId(config.modelId)
