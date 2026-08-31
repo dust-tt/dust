@@ -123,7 +123,6 @@ export function getFramePublicationFunctionsMountPoint({
  * replica is durable, under the stable Frame identity in GCS.
  */
 export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/pod-state/replica";
-export const SANDBOX_STATE_DATABASES_DIR = "/pod-state/databases";
 
 /**
  * Absolute in-sandbox path of the owner's live SQLite databases (`{name}.db` files opened by
@@ -132,6 +131,7 @@ export const SANDBOX_STATE_DATABASES_DIR = "/pod-state/databases";
  * passed per exec to `dsbx function run` as `DUST_POD_DATABASES_DIR`, dsbx forwards it to
  * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
  */
+export const SANDBOX_STATE_DATABASES_DIR = "/pod-state/databases";
 
 /**
  * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like

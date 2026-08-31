@@ -2,14 +2,14 @@ import { runCachedBunBuild } from "@app/lib/api/sandbox/image/bun_build";
 import fs from "fs";
 import path from "path";
 
-// @dust/pod is the pod-state runtime package exposed to sandbox function
-// code: db(name) returns a handle on one of the pod's SQLite databases
+// @dust/pod is the sandbox-state runtime package exposed to sandbox function
+// code: db(name) returns a handle on one of the owner's SQLite databases
 // (bun:sqlite). The @dust scope is never published to npm, so the package is
 // vendored at image build time: bun-bundle the entrypoint (dependencies stay
 // external and resolve through NODE_PATH, like zod) and copy a flat
 // {package.json, index.js} into the image's global node_modules.
 export const POD_PACKAGE_NAME = "@dust/pod";
-export const POD_PACKAGE_VERSION = "0.3.0";
+export const POD_PACKAGE_VERSION = "0.3.1";
 export const POD_PACKAGE_IMAGE_DIR = `/opt/npm-global/lib/node_modules/${POD_PACKAGE_NAME}`;
 
 let podPackageSrcDir: string | undefined;

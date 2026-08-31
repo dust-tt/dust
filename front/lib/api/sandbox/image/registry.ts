@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.99";
+const DUST_BASE_IMAGE_VERSION = "0.8.100";
 const DSBX_CLI_VERSION = "0.1.52";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -53,7 +53,7 @@ const SNOWFLAKE_CLI_DEB_SHA256 =
 // machine and not another. This assumes an Ubuntu base and build-time egress to
 // launchpad.net; if PPAs are blocked, install the TDF .deb bundle instead.
 const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
-// Litestream (Apache-2.0) replicates the pod-state SQLite databases to the
+// Litestream (Apache-2.0) replicates the sandbox-state SQLite databases to the
 // GCS replica mount.
 const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
@@ -557,7 +557,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       "chown root:root /opt/bin/litestream && chmod 755 /opt/bin/litestream",
     { user: "root" }
   )
-  // Litestream unit + STATIC config (all paths are pod-state contract
+  // Litestream unit + STATIC config (all paths are sandbox-state contract
   // constants), both baked at build. The unit is deliberately NOT enabled:
   // front starts it at runtime AFTER the replica gcsfuse mount and the
   // cold-start restore — at boot the daemon would write to the unmounted
@@ -583,7 +583,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     name: POD_PACKAGE_NAME,
     version: POD_PACKAGE_VERSION,
     description:
-      "Pod database access: db(name) returns a drizzle instance over the pod's SQLite database",
+      "Frame and Pod database access: db(name) returns a Drizzle instance over the sandbox owner's SQLite database",
     runtime: "node",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })

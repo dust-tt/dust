@@ -7,9 +7,9 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { podEnv } from "./context.ts";
 
 /**
- * Pod state databases.
+ * Frame and Pod state databases.
  *
- * `db(name)` returns a cached Drizzle instance over the pod's live SQLite
+ * `db(name)` returns a cached Drizzle instance over the sandbox owner's live SQLite
  * database at `${DUST_POD_DATABASES_DIR}/{prefix}{name}.db`. Databases are
  * created by `dsbx db reconcile` (the db_reconcile tool), never here: the file
  * is opened must-exist so a typo'd name errors clearly instead of minting an
@@ -22,10 +22,10 @@ import { podEnv } from "./context.ts";
  * therefore resolves `db("chat")` to its own database. See
  * {@link resolveDatabasePath} for the resolution order.
  *
- * Disk guardrails — pod state must not fill the sandbox disk by accident:
+ * Disk guardrails — sandbox state must not fill the sandbox disk by accident:
  *
  * - `db()` cannot create database files (must-exist open), so the set of
- *   databases is fixed by what reconcile has created. Total pod-state
+ *   databases is fixed by what reconcile has created. Total sandbox-state
  *   footprint is the number of databases times the per-database cap;
  *   bounding the count is the reconcile path's job.
  * - Each database is capped via `PRAGMA max_page_count` at the byte quota
@@ -39,8 +39,8 @@ import { podEnv } from "./context.ts";
  * The cap turns runaway state growth into an actionable error well before the
  * disk is full, instead of unrecoverable ENOSPC everywhere. It is not a
  * security boundary — workload code can write to the filesystem directly; the
- * sandbox's own disk is the hard limit, and filling it breaks only this pod's
- * sandbox.
+ * sandbox's own disk is the hard limit, and filling it breaks only this
+ * owner's sandbox.
  */
 
 /**
@@ -52,11 +52,12 @@ import { podEnv } from "./context.ts";
 export const POD_DATABASES_DIR_ENV = "DUST_POD_DATABASES_DIR";
 
 /**
- * Sandbox-global env var carrying the pod sId — set at sandbox creation for
- * pod-owned sandboxes only. Its absence means this is not a pod sandbox
- * (e.g. a conversation sandbox), where pod databases do not exist.
+ * Sandbox-global env var carrying the Pod sId for Pod-owned sandboxes.
  */
 export const POD_SPACE_ID_ENV = "SPACE_ID";
+
+/** Sandbox-global env var carrying the Frame sId for Frame-owned sandboxes. */
+export const FRAME_ID_ENV = "FRAME_ID";
 
 /**
  * Env var carrying the per-database size quota in bytes, required. Like the
@@ -113,10 +114,10 @@ export class PodDatabaseInvalidNameError extends PodDatabaseError {
 export class PodDatabasesUnavailableError extends PodDatabaseError {
   constructor() {
     super(
-      `Pod databases are not available in this sandbox: ${POD_SPACE_ID_ENV} ` +
-        `is not set, which means this sandbox does not belong to a pod ` +
-        `(conversation sandboxes have no pod databases). db() only works in ` +
-        `functions running in a pod sandbox.`
+      `Databases are not available in this sandbox: neither ${POD_SPACE_ID_ENV} ` +
+        `nor ${FRAME_ID_ENV} is set, which means this sandbox does not belong ` +
+        `to a Pod or Frame. db() only works in functions running in a Pod or ` +
+        `Frame sandbox.`
     );
     this.name = "PodDatabasesUnavailableError";
   }
@@ -369,13 +370,13 @@ function applyPragmas(sqlite: PodSqliteDatabase, maxSizeBytes: number): void {
 const instances = new Map<string, PodDatabase>();
 
 /**
- * Get the pod's Drizzle handle for database `name`, where `name` is the app's
- * own name for it (`db("chat")`) and the app prefix is applied by
+ * Get the sandbox owner's Drizzle handle for database `name`, where `name` is
+ * the app's own name for it (`db("chat")`) and the app prefix is applied by
  * {@link resolveDatabasePath} from the environment.
  *
  * @throws PodDatabaseInvalidNameError when `name` does not match the contract.
- * @throws PodDatabasesUnavailableError when SPACE_ID is absent — this sandbox
- *   is not pod-owned (conversation sandboxes have no pod databases).
+ * @throws PodDatabasesUnavailableError when both SPACE_ID and FRAME_ID are
+ *   absent — this sandbox is owned by neither a Pod nor a Frame.
  * @throws PodDatabaseError when DUST_POD_DATABASES_DIR or
  *   DUST_POD_DATABASE_MAX_SIZE_BYTES is absent or invalid — db() only works
  *   in functions launched by `dsbx function run`.
@@ -388,7 +389,11 @@ export function db(name: string): PodDatabase {
     throw new PodDatabaseInvalidNameError(name);
   }
   const spaceId = podEnv(POD_SPACE_ID_ENV);
-  if (spaceId === undefined || spaceId.length === 0) {
+  const frameId = podEnv(FRAME_ID_ENV);
+  if (
+    (spaceId === undefined || spaceId.length === 0) &&
+    (frameId === undefined || frameId.length === 0)
+  ) {
     throw new PodDatabasesUnavailableError();
   }
   const path = resolveDatabasePath(podDatabasesDir(), name);

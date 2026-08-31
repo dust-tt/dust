@@ -470,36 +470,36 @@ export class FileResource extends BaseResource<FileModel> {
 
   static async deleteAllForWorkspace(auth: Authenticator) {
     const owner = auth.getNonNullableWorkspace();
-    const workspaceId = owner.id;
+    const workspaceModelId = owner.id;
 
     await FrameSandboxAdapter.deleteAllForWorkspace(auth);
-    await this.deleteAllFrameFunctionsForWorkspace(workspaceId);
+    await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
     await getPrivateUploadBucket().deleteByPrefix(
       getFramesBasePath({ workspaceId: owner.sId })
     );
 
     await AuthorizedFileAccessModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete external viewer sessions before shareable files (FK constraint).
     await ExternalViewerSessionModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete sharing grants before shareable files (FK constraint).
     await SharingGrantModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete authorized file accesses before shareable files (FK constraint).
     await this.authorizedFileAccessModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     return this.batchDestroyAllForWorkspace(auth);

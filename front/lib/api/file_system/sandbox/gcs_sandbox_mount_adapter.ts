@@ -80,7 +80,7 @@ function tokenUrl(index: number): string {
  *   `allow_other`, restrictive modes, and NO kernel list caching: litestream
  *   restore must never see a stale LTX listing. Needs the dust-state user and
  *   /pod-state layout in the image; targets with this profile are only ever
- *   constructed when a pod sandbox (the sandbox-functions computer) boots.
+ *   constructed for stateful Pod or Frame sandboxes.
  */
 export type GCSMountProfile =
   | "frame_publications"
