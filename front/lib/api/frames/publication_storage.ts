@@ -5,10 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import {
-  getFramePublishLockName,
-  withFramePublishLock,
-} from "@app/lib/api/frames/operation_lock";
+import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
@@ -589,43 +586,43 @@ export async function publishFramePublication(
     FramePublicationError | SandboxFunctionError
   >
 > {
-  try {
-    return await withFramePublishLock(frame.sId, async () => {
-      const publication = await storeFramePublication(auth, {
-        frame,
-        functionArtifacts,
-        manifest,
-        sourceFiles,
-        uiBundleCode,
-      });
-      if (publication.isErr()) {
-        return publication;
-      }
-
-      const reconciliation = await reconcileFramePublicationDatabases(auth, {
-        frame,
-        manifest,
-        sourceFiles,
-      });
-      if (reconciliation.isErr()) {
-        return reconciliation;
-      }
-
-      const activation = await activateFramePublication(auth, {
-        frame,
-        publicationId: publication.value.publicationId,
-      });
-      if (activation.isErr()) {
-        return activation;
-      }
-
-      return publication;
+  const publication = await withFramePublishLock<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >(frame.sId, async () => {
+    const storedPublication = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest,
+      sourceFiles,
+      uiBundleCode,
     });
-  } catch (error) {
-    if (
-      error instanceof LockAcquisitionTimeoutError &&
-      error.lockName === getFramePublishLockName(frame.sId)
-    ) {
+    if (storedPublication.isErr()) {
+      return storedPublication;
+    }
+
+    const reconciliation = await reconcileFramePublicationDatabases(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+    if (reconciliation.isErr()) {
+      return reconciliation;
+    }
+
+    const activation = await activateFramePublication(auth, {
+      frame,
+      publicationId: storedPublication.value.publicationId,
+    });
+    if (activation.isErr()) {
+      return activation;
+    }
+
+    return storedPublication;
+  });
+  if (publication.isErr()) {
+    const error = publication.error;
+    if (error instanceof LockAcquisitionTimeoutError) {
       return new Err(
         new SandboxFunctionError(
           "publish_conflict",
@@ -633,6 +630,8 @@ export async function publishFramePublication(
         )
       );
     }
-    throw error;
+    return new Err(error);
   }
+
+  return publication;
 }
