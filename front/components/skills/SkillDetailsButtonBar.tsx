@@ -2,6 +2,7 @@ import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
 import config from "@app/lib/api/config";
 import {
+  getConversationRoute,
   getManageSkillsRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
@@ -17,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Edit04,
+  MessagePlusCircle,
   Trash01,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -64,6 +66,13 @@ export function SkillDetailsButtonBar({
             }
           />
         )}
+        <Button
+          size="sm"
+          tooltip="Try skill"
+          href={getConversationRoute(owner.sId, "new", `skill=${skill.sId}`)}
+          variant="outline"
+          icon={MessagePlusCircle}
+        />
         {skill.canAdministrate && (
           <Button
             size="sm"
