@@ -1,6 +1,6 @@
 import {
-  getAutoScrollEnabled,
   getGroupConversationsByUnreadAndActionRequired,
+  getNextAutoScrollState,
 } from "@app/components/assistant/conversation/utils";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { describe, expect, it } from "vitest";
@@ -82,44 +82,53 @@ describe("getGroupConversationsByUnreadAndActionRequired", () => {
   });
 });
 
-describe("getAutoScrollEnabled", () => {
-  it("keeps following streamed content when the viewport does not move", () => {
+describe("getNextAutoScrollState", () => {
+  it("stays attached when streamed content moves the bottom away", () => {
     expect(
-      getAutoScrollEnabled({
-        isAutoScrollEnabled: true,
-        previousLocation: { bottomOffset: 0, listOffset: -600 },
-        location: { bottomOffset: 120, listOffset: -600 },
-      })
-    ).toBe(true);
+      getNextAutoScrollState(
+        { isEnabled: true, hasLeftBottom: false },
+        { type: "scroll", bottomOffset: 120 }
+      )
+    ).toEqual({ isEnabled: true, hasLeftBottom: false });
   });
 
-  it("detaches when the reader scrolls up while content grows", () => {
+  it("detaches immediately when the reader scrolls up", () => {
     expect(
-      getAutoScrollEnabled({
-        isAutoScrollEnabled: true,
-        previousLocation: { bottomOffset: 0, listOffset: -600 },
-        location: { bottomOffset: 200, listOffset: -520 },
-      })
-    ).toBe(false);
+      getNextAutoScrollState(
+        { isEnabled: true, hasLeftBottom: false },
+        { type: "user_scrolled_up" }
+      )
+    ).toEqual({ isEnabled: false, hasLeftBottom: false });
   });
 
-  it("stays detached while the reader scrolls down before the bottom", () => {
+  it("does not re-attach to a stale bottom event after detaching", () => {
     expect(
-      getAutoScrollEnabled({
-        isAutoScrollEnabled: false,
-        previousLocation: { bottomOffset: 200, listOffset: -520 },
-        location: { bottomOffset: 140, listOffset: -580 },
-      })
-    ).toBe(false);
+      getNextAutoScrollState(
+        { isEnabled: false, hasLeftBottom: false },
+        { type: "scroll", bottomOffset: 0 }
+      )
+    ).toEqual({ isEnabled: false, hasLeftBottom: false });
   });
 
-  it("re-attaches at the bottom while content grows", () => {
+  it("preserves the evidence that the reader left the bottom", () => {
+    const awayFromBottom = getNextAutoScrollState(
+      { isEnabled: false, hasLeftBottom: false },
+      { type: "scroll", bottomOffset: 100 }
+    );
+
     expect(
-      getAutoScrollEnabled({
-        isAutoScrollEnabled: false,
-        previousLocation: { bottomOffset: 200, listOffset: -520 },
-        location: { bottomOffset: 0, listOffset: -720 },
+      getNextAutoScrollState(awayFromBottom, {
+        type: "user_scrolled_up",
       })
-    ).toBe(true);
+    ).toEqual({ isEnabled: false, hasLeftBottom: true });
+  });
+
+  it("re-attaches after the reader returns to the bottom", () => {
+    expect(
+      getNextAutoScrollState(
+        { isEnabled: false, hasLeftBottom: true },
+        { type: "scroll", bottomOffset: 0.5 }
+      )
+    ).toEqual({ isEnabled: true, hasLeftBottom: false });
   });
 });

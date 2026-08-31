@@ -142,6 +142,7 @@ beforeEach(() => {
   mockUseEventSource.mockReset();
   mockMutateContextUsage.mockReset();
   mockUseVirtuosoMethods.mockReset();
+  mockIsAutoScrollEnabledRef.current = true;
 });
 
 afterEach(() => {
@@ -290,6 +291,80 @@ describe("appendThinkingStep", () => {
 });
 
 describe("useAgentMessageStream", () => {
+  it("does not re-attach when generation switches from thinking to content", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    act(() => {
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "1-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "Thinking",
+            classification: "chain_of_thought",
+          },
+        })
+      );
+    });
+
+    mockIsAutoScrollEnabledRef.current = false;
+
+    act(() => {
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "2-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "Answer",
+            classification: "tokens",
+          },
+        })
+      );
+    });
+
+    expect(mockIsAutoScrollEnabledRef.current).toBe(false);
+  });
+
   it("clears stale database content before replaying fresh-mount tokens", () => {
     let currentMessage = makeInitialMessageStreamState(makeLightAgentMessage());
     const snapshots: Array<{

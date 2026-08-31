@@ -84,13 +84,6 @@ function createUpdateMessageThrottled(
     }) => {
       batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, (m) => {
         if (isAgentMessageWithStreaming(m) && m.sId === sId) {
-          // Enable auto scroll if we are starting to receive content or chain of thought.
-          if (
-            (!m.content && content) ||
-            (!m.chainOfThought && chainOfThought)
-          ) {
-            isAutoScrollEnabledRef.current = true;
-          }
           return {
             ...m,
             content,

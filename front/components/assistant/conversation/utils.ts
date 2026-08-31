@@ -18,6 +18,7 @@ import {
   isReinforcedSkillNotificationMetadata,
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { PodListItemType } from "@app/types/space";
 import moment from "moment";
@@ -25,33 +26,50 @@ import moment from "moment";
 const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
 const UNNAMED_PARENT_CONVERSATION_TITLE = "Unnamed parent conversation";
 
-interface AutoScrollLocation {
-  bottomOffset: number;
-  listOffset: number;
+const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 4;
+
+export interface AutoScrollState {
+  isEnabled: boolean;
+  hasLeftBottom: boolean;
 }
 
-export function getAutoScrollEnabled({
-  isAutoScrollEnabled,
-  location,
-  previousLocation,
-}: {
-  isAutoScrollEnabled: boolean;
-  location: AutoScrollLocation;
-  previousLocation: AutoScrollLocation;
-}): boolean {
-  // Re-attach as soon as the reader reaches the bottom, including while the
-  // streamed message is still growing.
-  if (location.bottomOffset === 0) {
-    return true;
-  }
+export type AutoScrollEvent =
+  | { type: "attach" }
+  | { type: "user_scrolled_up" }
+  | { type: "scroll"; bottomOffset: number };
 
-  // Growing content can increase bottomOffset without user scrolling, but it
-  // cannot increase listOffset. An increase means that the viewport moved up.
-  if (location.listOffset > previousLocation.listOffset) {
-    return false;
-  }
+export function getNextAutoScrollState(
+  state: AutoScrollState,
+  event: AutoScrollEvent
+): AutoScrollState {
+  switch (event.type) {
+    case "attach":
+      return { isEnabled: true, hasLeftBottom: false };
+    case "user_scrolled_up":
+      // Keep the evidence that the reader has already left the bottom when more
+      // upward gestures arrive while detached.
+      return state.isEnabled
+        ? { isEnabled: false, hasLeftBottom: false }
+        : state;
+    case "scroll": {
+      if (state.isEnabled) {
+        return state;
+      }
 
-  return isAutoScrollEnabled;
+      const isAtBottom = event.bottomOffset <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX;
+      if (!isAtBottom) {
+        return state.hasLeftBottom ? state : { ...state, hasLeftBottom: true };
+      }
+
+      // A smooth scroll can still report the bottom while it is being cancelled.
+      // Only re-attach after the detached viewport was observed away from it.
+      return state.hasLeftBottom
+        ? { isEnabled: true, hasLeftBottom: false }
+        : state;
+    }
+    default:
+      return assertNever(event);
+  }
 }
 
 function isReinforcedSkillConversation(

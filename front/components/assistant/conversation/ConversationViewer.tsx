@@ -34,9 +34,10 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import type { AutoScrollEvent } from "@app/components/assistant/conversation/utils";
 import {
   findFirstUnreadMessageIndex,
-  getAutoScrollEnabled,
+  getNextAutoScrollState,
 } from "@app/components/assistant/conversation/utils";
 import {
   requestConversationMarkAsRead,
@@ -99,6 +100,7 @@ import {
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
 } from "@virtuoso.dev/message-list";
+import type { TouchEvent, WheelEvent } from "react";
 import {
   useCallback,
   useContext,
@@ -112,6 +114,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
 
 const DEFAULT_PAGE_LIMIT = 50;
+const TOUCH_SCROLL_UP_THRESHOLD_PX = 4;
 // SSE is the fast path; poll slowly in case the completion event is missed before subscription.
 const FORK_PREPARATION_POLL_INTERVAL_MS = 60_000;
 
@@ -267,10 +270,25 @@ export const ConversationViewer = ({
     >(null);
   const isMobile = useIsMobile();
   const isAutoScrollEnabledRef = useRef(true);
-  const prevScrollLocationRef = useRef({
-    bottomOffset: 0,
-    listOffset: 0,
-  });
+  const hasLeftBottomSinceDetachRef = useRef(false);
+  const touchStartYRef = useRef<number | null>(null);
+  const updateAutoScrollState = useCallback((event: AutoScrollEvent) => {
+    const wasAutoScrollEnabled = isAutoScrollEnabledRef.current;
+    const nextState = getNextAutoScrollState(
+      {
+        isEnabled: wasAutoScrollEnabled,
+        hasLeftBottom: hasLeftBottomSinceDetachRef.current,
+      },
+      event
+    );
+
+    isAutoScrollEnabledRef.current = nextState.isEnabled;
+    hasLeftBottomSinceDetachRef.current = nextState.hasLeftBottom;
+
+    if (wasAutoScrollEnabled && !nextState.isEnabled) {
+      virtuosoMessageListRef.current?.cancelSmoothScroll();
+    }
+  }, []);
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
@@ -1183,6 +1201,10 @@ export const ConversationViewer = ({
               !isPlaceholderMessage(m)
           );
 
+        if (!hasRunningAgent) {
+          updateAutoScrollState({ type: "attach" });
+        }
+
         if (hasRunningAgent && conversationId) {
           incrementPendingSteeringCount(conversationId);
         }
@@ -1348,25 +1370,16 @@ export const ConversationViewer = ({
       submitMessage,
       user,
       incrementPendingSteeringCount,
+      updateAutoScrollState,
     ]
   );
 
   const onScroll = useCallback(
     (location: ListScrollLocation) => {
-      const wasAutoScrollEnabled = isAutoScrollEnabledRef.current;
-      isAutoScrollEnabledRef.current = getAutoScrollEnabled({
-        isAutoScrollEnabled: wasAutoScrollEnabled,
-        location,
-        previousLocation: prevScrollLocationRef.current,
-      });
-      prevScrollLocationRef.current = {
+      updateAutoScrollState({
+        type: "scroll",
         bottomOffset: location.bottomOffset,
-        listOffset: location.listOffset,
-      };
-
-      if (wasAutoScrollEnabled && !isAutoScrollEnabledRef.current) {
-        virtuosoMessageListRef.current?.cancelSmoothScroll();
-      }
+      });
 
       const isLoadingData =
         isLoadingInitialData || isMessagesLoading || isValidating;
@@ -1387,8 +1400,40 @@ export const ConversationViewer = ({
       setSize,
       size,
       messages,
+      updateAutoScrollState,
     ]
   );
+
+  const onWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (!event.ctrlKey && event.deltaY < 0) {
+        updateAutoScrollState({ type: "user_scrolled_up" });
+      }
+    },
+    [updateAutoScrollState]
+  );
+
+  const onTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
+    touchStartYRef.current = event.touches[0]?.clientY ?? null;
+  }, []);
+
+  const onTouchMove = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => {
+      const touchY = event.touches[0]?.clientY;
+      if (
+        touchY !== undefined &&
+        touchStartYRef.current !== null &&
+        touchY - touchStartYRef.current >= TOUCH_SCROLL_UP_THRESHOLD_PX
+      ) {
+        updateAutoScrollState({ type: "user_scrolled_up" });
+      }
+    },
+    [updateAutoScrollState]
+  );
+
+  const onTouchEnd = useCallback(() => {
+    touchStartYRef.current = null;
+  }, []);
 
   const computeItemKey = useCallback(
     ({
@@ -1521,6 +1566,11 @@ export const ConversationViewer = ({
           shortSizeAlign="top"
           computeItemKey={computeItemKey}
           onScroll={onScroll}
+          onWheel={onWheel}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
           context={context}
           itemIdentity={itemIdentity}
           EmptyPlaceholder={ConversationViewerEmptyState}
