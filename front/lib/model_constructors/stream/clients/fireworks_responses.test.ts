@@ -3,6 +3,7 @@
 import { DustThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
+import { APIConnectionError, APIError } from "openai";
 import { describe, expect, it } from "vitest";
 
 const TOOLS = [
@@ -201,6 +202,42 @@ describe("FireworksResponsesStream", () => {
     );
 
     expect(payload.max_output_tokens).toBe(64_000);
+  });
+
+  it.each([
+    {
+      error: new APIError(401, {}, "invalid key", undefined),
+      type: "authentication_error",
+      message: "Authentication failed for Fireworks",
+    },
+    {
+      error: new APIError(429, {}, "slow down", undefined),
+      type: "rate_limit_error",
+      message: "Rate limit exceeded for Fireworks",
+    },
+    {
+      error: new APIError(500, {}, "provider failure", undefined),
+      type: "server_error",
+      message: "Server error from Fireworks",
+    },
+    {
+      error: new APIConnectionError({ message: "connection reset" }),
+      type: "network_error",
+      message: "Network error connecting to Fireworks",
+    },
+  ])("attributes $type errors to Fireworks", ({ error, type, message }) => {
+    const endpoint = new MoonshotAiKimiK3GlobalFireworksStream({
+      FIREWORKS_API_KEY: "test",
+    });
+
+    expect(
+      endpoint.streamErrorToErrorEvent(endpoint.metadata(), error)
+    ).toMatchObject({
+      content: {
+        type,
+        message: expect.stringContaining(message),
+      },
+    });
   });
 
   it("rejects OpenAI hosted tool search", () => {
