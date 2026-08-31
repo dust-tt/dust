@@ -39,7 +39,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { randomBytes } from "crypto";
 import type { Attributes, Includeable, Transaction } from "sequelize";
-import { UniqueConstraintError } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 
 export type PatchSandboxEnvVarResponseBody = {
   envVar: SandboxEnvVarType;
@@ -270,6 +270,37 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     scope: SandboxEnvVarScope
   ): Promise<SandboxEnvVarResource[]> {
     return this.baseFetch(auth, scope);
+  }
+
+  // Multi-pod read for the admin comparison view: one query across the given
+  // pods' scopes instead of one per pod. Values stay encrypted and are never
+  // exposed on this path, so no scope key is involved.
+  static async listForPods(
+    auth: Authenticator,
+    pods: SpaceResource[]
+  ): Promise<SandboxEnvVarResource[]> {
+    if (pods.length === 0) {
+      return [];
+    }
+    for (const pod of pods) {
+      this.assertScope(auth, { kind: "pod", pod });
+    }
+
+    const rows = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceId: { [Op.in]: pods.map((pod) => pod.id) },
+      },
+      include: USER_JOIN_INCLUDES,
+      // Secondary spaceId sort pins the row order of same-name vars across
+      // pods for the comparison view.
+      order: [
+        ["name", "ASC"],
+        ["spaceId", "ASC"],
+      ],
+    });
+
+    return rows.map((row) => this.fromRow(row));
   }
 
   static async fetchByName(

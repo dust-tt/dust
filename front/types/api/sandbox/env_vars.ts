@@ -8,3 +8,8 @@ export type PostSandboxEnvVarsResponseBody = {
   envVar: SandboxEnvVarType;
   created: boolean;
 };
+
+// Flat across the requested pods; each row carries its pod via `spaceId`.
+export type GetSandboxEnvVarsBulkResponseBody = {
+  envVars: SandboxEnvVarType[];
+};
