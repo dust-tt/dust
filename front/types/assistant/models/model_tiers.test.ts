@@ -140,9 +140,7 @@ describe("model_tiers", () => {
 
   describe("getTierForModelConfiguration", () => {
     const getConfig = (modelId: ModelIdType) => {
-      const config = SUPPORTED_MODEL_CONFIGS.find(
-        (c) => c.modelId === modelId
-      );
+      const config = SUPPORTED_MODEL_CONFIGS.find((c) => c.modelId === modelId);
       if (!config) {
         throw new Error(`No supported model config for ${modelId}`);
       }
