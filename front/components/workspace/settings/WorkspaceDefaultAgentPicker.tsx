@@ -58,7 +58,7 @@ function DefaultAgentRow({ owner }: WorkspaceDefaultAgentPickerProps) {
       const confirmed = await confirm({
         title: "Warning",
         message:
-          "Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the workspace default anyway?",
+          "@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the workspace default anyway?",
         validateVariant: "warning",
         validateLabel: "Yes",
         cancelLabel: "No",
@@ -98,7 +98,7 @@ function DefaultAgentRow({ owner }: WorkspaceDefaultAgentPickerProps) {
                     )
                   : Robot
               }
-              label={displayedDefaultAgent?.name ?? "Dust"}
+              label={displayedDefaultAgent?.name ?? "@dust"}
             />
           }
         />
