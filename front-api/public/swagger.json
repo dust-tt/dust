@@ -9407,6 +9407,61 @@
         }
       }
     },
+    "/api/w/{wId}/frames/{frameId}/invocations/{invocationId}/events": {
+      "get": {
+        "summary": "Stream Frames v2 function invocation events",
+        "description": "Authorizes through the stable Frame identity and redirects to the SSE service. The invocation's own publication is used, so a republish cannot break an existing stream.",
+        "tags": [
+          "Private Frames"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "frameId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invocationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-Sent Event stream.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationEvent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Frame use right or Frame-owned invocation not found."
+          }
+        }
+      }
+    },
     "/api/w/{wId}/sandbox-functions/{functionId}/invocations/{invocationId}/events": {
       "get": {
         "summary": "Stream sandbox function invocation events",
@@ -13443,6 +13498,12 @@
           },
           {
             "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationErrorEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateSandboxFunctionToolApproveExecutionEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateSandboxFunctionToolPersonalAuthRequiredEvent"
           }
         ]
       },
@@ -13566,6 +13627,140 @@
               }
             },
             "description": "A structured error describing why the invocation failed."
+          }
+        }
+      },
+      "PrivateSandboxFunctionToolApproveExecutionEvent": {
+        "type": "object",
+        "description": "Sent when a tool called by a sandbox function requires user approval.",
+        "required": [
+          "type",
+          "created",
+          "sandboxFunctionId",
+          "invocationId",
+          "actionId",
+          "inputs",
+          "metadata"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_approve_execution"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "sandboxFunctionId": {
+            "type": "string"
+          },
+          "invocationId": {
+            "type": "string"
+          },
+          "actionId": {
+            "type": "string"
+          },
+          "inputs": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "stake": {
+            "type": "string"
+          },
+          "isLastBlockingEventForStep": {
+            "type": "boolean"
+          },
+          "argumentsRequiringApproval": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "approvalArgsLabel": {
+            "type": "string"
+          }
+        }
+      },
+      "PrivateSandboxFunctionToolPersonalAuthRequiredEvent": {
+        "type": "object",
+        "description": "Sent when a tool called by a sandbox function requires personal OAuth authentication.",
+        "required": [
+          "type",
+          "created",
+          "sandboxFunctionId",
+          "invocationId",
+          "actionId",
+          "inputs",
+          "metadata",
+          "authError"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_personal_auth_required"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "sandboxFunctionId": {
+            "type": "string"
+          },
+          "invocationId": {
+            "type": "string"
+          },
+          "actionId": {
+            "type": "string"
+          },
+          "inputs": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "stake": {
+            "type": "string"
+          },
+          "isLastBlockingEventForStep": {
+            "type": "boolean"
+          },
+          "authError": {
+            "type": "object",
+            "required": [
+              "mcpServerId",
+              "provider",
+              "toolName",
+              "message"
+            ],
+            "properties": {
+              "mcpServerId": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
           }
         }
       },

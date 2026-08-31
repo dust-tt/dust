@@ -1724,6 +1724,8 @@
  *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationCreatedEvent'
  *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationResultEvent'
  *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationErrorEvent'
+ *         - $ref: '#/components/schemas/PrivateSandboxFunctionToolApproveExecutionEvent'
+ *         - $ref: '#/components/schemas/PrivateSandboxFunctionToolPersonalAuthRequiredEvent'
  *     PrivateSandboxFunctionInvocationCreatedEvent:
  *       type: object
  *       required: [type, created, invocation]
@@ -1787,6 +1789,80 @@
  *             status:
  *               type: integer
  *           description: A structured error describing why the invocation failed.
+ *     PrivateSandboxFunctionToolApproveExecutionEvent:
+ *       type: object
+ *       description: Sent when a tool called by a sandbox function requires user approval.
+ *       required: [type, created, sandboxFunctionId, invocationId, actionId, inputs, metadata]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [tool_approve_execution]
+ *         created:
+ *           type: integer
+ *         sandboxFunctionId:
+ *           type: string
+ *         invocationId:
+ *           type: string
+ *         actionId:
+ *           type: string
+ *         inputs:
+ *           type: object
+ *           additionalProperties: true
+ *         metadata:
+ *           type: object
+ *         userId:
+ *           type: string
+ *         stake:
+ *           type: string
+ *         isLastBlockingEventForStep:
+ *           type: boolean
+ *         argumentsRequiringApproval:
+ *           type: array
+ *           items:
+ *             type: string
+ *         approvalArgsLabel:
+ *           type: string
+ *     PrivateSandboxFunctionToolPersonalAuthRequiredEvent:
+ *       type: object
+ *       description: Sent when a tool called by a sandbox function requires personal OAuth authentication.
+ *       required: [type, created, sandboxFunctionId, invocationId, actionId, inputs, metadata, authError]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [tool_personal_auth_required]
+ *         created:
+ *           type: integer
+ *         sandboxFunctionId:
+ *           type: string
+ *         invocationId:
+ *           type: string
+ *         actionId:
+ *           type: string
+ *         inputs:
+ *           type: object
+ *           additionalProperties: true
+ *         metadata:
+ *           type: object
+ *         userId:
+ *           type: string
+ *         stake:
+ *           type: string
+ *         isLastBlockingEventForStep:
+ *           type: boolean
+ *         authError:
+ *           type: object
+ *           required: [mcpServerId, provider, toolName, message]
+ *           properties:
+ *             mcpServerId:
+ *               type: string
+ *             provider:
+ *               type: string
+ *             scope:
+ *               type: string
+ *             toolName:
+ *               type: string
+ *             message:
+ *               type: string
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.
