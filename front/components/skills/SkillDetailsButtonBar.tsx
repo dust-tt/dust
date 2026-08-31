@@ -57,6 +57,13 @@ export function SkillDetailsButtonBar({
         }}
       />
       <div className="flex flex-row items-center gap-2 px-1.5">
+        <Button
+          size="sm"
+          tooltip="Try skill"
+          href={getConversationRoute(owner.sId, "new", `skill=${skill.sId}`)}
+          variant="outline"
+          icon={MessagePlusCircle}
+        />
         {onFavoriteChange && (
           <SkillFavoriteButton
             isFavorite={skill.isFavorite ?? false}
@@ -66,13 +73,6 @@ export function SkillDetailsButtonBar({
             }
           />
         )}
-        <Button
-          size="sm"
-          tooltip="Try skill"
-          href={getConversationRoute(owner.sId, "new", `skill=${skill.sId}`)}
-          variant="outline"
-          icon={MessagePlusCircle}
-        />
         {skill.canAdministrate && (
           <Button
             size="sm"
