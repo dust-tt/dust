@@ -12,6 +12,8 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { frameV2ContentType } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("removeFileFromProject", () => {
@@ -115,6 +117,138 @@ describe("removeFileFromProject", () => {
     expect(frAfter).toBeTruthy();
     expect(frAfter!.spaceId).toBeNull();
     expect(frAfter!.expiredReason).toBe("file_deleted");
+  });
+
+  it("preserves orphaned and referenced Frame fragments on source failure and cleans them on retry", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "user",
+    });
+    const project = await SpaceFactory.project(workspace, user.id);
+    const file = await ProjectFileFactory.create(auth, user, project, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 123,
+      status: "ready",
+    });
+    const referenced = await ContentFragmentModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        spaceId: project.id,
+        fileId: file.id,
+      },
+    });
+    expect(referenced).toBeTruthy();
+    const orphan = await ContentFragmentModel.create({
+      workspaceId: workspace.id,
+      spaceId: project.id,
+      fileId: file.id,
+      title: "Old Frame fragment",
+      contentType: "text/plain",
+      sourceUrl: null,
+      textBytes: null,
+      userId: user.id,
+      userContextUsername: null,
+      userContextFullName: null,
+      userContextEmail: null,
+      userContextProfilePictureUrl: null,
+      nodeId: null,
+      nodeDataSourceViewId: null,
+      nodeType: null,
+      version: "superseded",
+      expiredReason: null,
+      sId: generateRandomModelSId(),
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank: 999,
+      conversationId: conversation.id,
+      parentId: null,
+      contentFragmentId: referenced!.id,
+      workspaceId: workspace.id,
+    });
+
+    const failed = await removeFileFromProject(auth, {
+      space: project,
+      fileId: file.sId,
+      deleteFrameSource: async () => new Err(new Error("source unavailable")),
+    });
+    expect(failed.isErr()).toBe(true);
+    await expect(
+      FileModel.findOne({ where: { id: file.id, workspaceId: workspace.id } })
+    ).resolves.not.toBeNull();
+    await expect(
+      ContentFragmentModel.findOne({
+        where: { id: orphan.id, workspaceId: workspace.id },
+      })
+    ).resolves.not.toBeNull();
+    await expect(
+      ContentFragmentModel.findOne({
+        where: { id: referenced!.id, workspaceId: workspace.id },
+      })
+    ).resolves.not.toBeNull();
+
+    const retried = await removeFileFromProject(auth, {
+      space: project,
+      fileId: file.sId,
+      deleteFrameSource: async () => new Ok(undefined),
+    });
+    expect(retried.isOk()).toBe(true);
+    await expect(
+      FileModel.findOne({ where: { id: file.id, workspaceId: workspace.id } })
+    ).resolves.toBeNull();
+    await expect(
+      ContentFragmentModel.findOne({
+        where: { id: orphan.id, workspaceId: workspace.id },
+      })
+    ).resolves.toBeNull();
+    const referencedAfter = await ContentFragmentModel.findOne({
+      where: { id: referenced!.id, workspaceId: workspace.id },
+    });
+    expect(referencedAfter?.spaceId).toBeNull();
+    expect(referencedAfter?.expiredReason).toBe("file_deleted");
+  });
+
+  it("rejects Frames v2 before mutating project fragments without package deletion", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "user",
+    });
+    const project = await SpaceFactory.project(workspace, user.id);
+    const file = await ProjectFileFactory.create(auth, user, project, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 123,
+      status: "ready",
+    });
+    const fragment = await ContentFragmentModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        spaceId: project.id,
+        fileId: file.id,
+      },
+    });
+    expect(fragment).toBeTruthy();
+
+    const result = await removeFileFromProject(auth, {
+      space: project,
+      fileId: file.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    await expect(
+      FileModel.findOne({ where: { id: file.id, workspaceId: workspace.id } })
+    ).resolves.not.toBeNull();
+    await expect(
+      ContentFragmentModel.findOne({
+        where: { id: fragment!.id, workspaceId: workspace.id },
+      })
+    ).resolves.not.toBeNull();
   });
 });
 

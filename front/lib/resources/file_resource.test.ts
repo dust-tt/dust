@@ -31,6 +31,7 @@ import {
   isUnverifiableFrameFileRefsShareError,
   sandboxFunctionContentType,
 } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -1780,7 +1781,15 @@ describe("FileResource", () => {
       })
     ).toHaveLength(1);
 
-    const result = await frame.delete(auth);
+    const direct = await frame.delete(auth);
+    expect(direct.isErr() && direct.error.message).toBe(
+      "Frames v2 must be deleted through the package-aware Frame deletion flow."
+    );
+    expect(await FileResource.fetchById(auth, frame.sId)).not.toBeNull();
+
+    const result = await frame.delete(auth, {
+      deleteFrameSource: async () => new Ok(undefined),
+    });
 
     expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
       true

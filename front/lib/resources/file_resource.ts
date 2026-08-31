@@ -124,6 +124,8 @@ import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_mod
 
 export type FileVersion = "processed" | "original" | "public";
 
+export type FrameV2SourceDeletion = () => Promise<Result<void, Error>>;
+
 const FRAME_CONTENT_TYPES = new Set([
   frameContentType,
   frameSlideshowContentType,
@@ -468,6 +470,35 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  static async fetchFrameV2Descendants(
+    auth: Authenticator,
+    parent: FileResource
+  ): Promise<FileResource[]> {
+    if (!parent.mountFilePath) {
+      return [];
+    }
+    const owner = auth.getNonNullableWorkspace();
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        contentType: frameV2ContentType,
+        status: "ready",
+      },
+    });
+    const directoryPrefix = parent.mountFilePath.slice(
+      0,
+      parent.mountFilePath.lastIndexOf("/") + 1
+    );
+
+    return files
+      .map((file) => new this(this.model, file.get()))
+      .filter(
+        (file) =>
+          file.id !== parent.id &&
+          file.mountFilePath?.startsWith(directoryPrefix) === true
+      );
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const owner = auth.getNonNullableWorkspace();
     const workspaceModelId = owner.id;
@@ -659,18 +690,23 @@ export class FileResource extends BaseResource<FileModel> {
         // Delete mount file copies if set.
         await this.deleteMountFileCopies();
 
-        await this.getBucketForVersion("original")
-          .file(this.getCloudStoragePath(auth, "original"))
-          .delete();
+        // Frames v2 are contentless identities: their source lives at mountFilePath and their
+        // published/runtime data lives under the Frame prefix deleted above. They never own the
+        // canonical original/processed/public FileResource objects.
+        if (!this.isFrameV2) {
+          await this.getBucketForVersion("original")
+            .file(this.getCloudStoragePath(auth, "original"))
+            .delete();
 
-        // Delete the processed file if it exists.
-        await this.getBucketForVersion("processed")
-          .file(this.getCloudStoragePath(auth, "processed"))
-          .delete({ ignoreNotFound: true });
-        // Delete the public file if it exists.
-        await this.getBucketForVersion("public")
-          .file(this.getCloudStoragePath(auth, "public"))
-          .delete({ ignoreNotFound: true });
+          // Delete the processed file if it exists.
+          await this.getBucketForVersion("processed")
+            .file(this.getCloudStoragePath(auth, "processed"))
+            .delete({ ignoreNotFound: true });
+          // Delete the public file if it exists.
+          await this.getBucketForVersion("public")
+            .file(this.getCloudStoragePath(auth, "public"))
+            .delete({ ignoreNotFound: true });
+        }
 
         // Delete sharing grants and access snapshots before shareable file (FK constraint).
         const shareableFile = await FileResource.shareableFileModel.findOne({
@@ -713,16 +749,36 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+  async delete(
+    auth: Authenticator,
+    {
+      deleteFrameSource,
+    }: {
+      transaction?: Transaction;
+      deleteFrameSource?: FrameV2SourceDeletion;
+    } = {}
+  ): Promise<Result<undefined, Error>> {
     if (!this.isFrameV2) {
       return this.deleteAfterSandboxCleanup(auth);
     }
 
-    return withFramePublishLock(this.sId, () =>
-      FrameSandboxAdapter.deleteSandbox(auth, this, {
+    if (!deleteFrameSource) {
+      return new Err(
+        new Error(
+          "Frames v2 must be deleted through the package-aware Frame deletion flow."
+        )
+      );
+    }
+
+    return withFramePublishLock(this.sId, async () => {
+      const sourceResult = await deleteFrameSource();
+      if (sourceResult.isErr()) {
+        return sourceResult;
+      }
+      return FrameSandboxAdapter.deleteSandbox(auth, this, {
         afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
-      })
-    );
+      });
+    });
   }
 
   get sId(): string {

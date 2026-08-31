@@ -1,4 +1,5 @@
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { deleteFrameV2FromFile } from "@app/lib/api/frames/delete_from_source";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -164,7 +165,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *         description: File not found
  *   delete:
  *     summary: Delete a file
- *     description: Delete a file from the workspace. Files referenced by a skill or its version history cannot be deleted.
+ *     description: Delete a file from the workspace. Frames v2 are deleted with their source package and owned runtime data. Files referenced by a skill or its version history cannot be deleted.
  *     tags:
  *       - Private Files
  *     parameters:
@@ -327,7 +328,9 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const deleteRes = await file.delete(auth);
+  const deleteRes = file.isFrameV2
+    ? await deleteFrameV2FromFile(auth, { frame: file })
+    : await file.delete(auth);
   if (deleteRes.isErr()) {
     return apiError(ctx, {
       status_code: 400,

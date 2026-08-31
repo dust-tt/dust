@@ -9199,7 +9199,7 @@
       },
       "delete": {
         "summary": "Delete a file",
-        "description": "Delete a file from the workspace. Files referenced by a skill or its version history cannot be deleted.",
+        "description": "Delete a file from the workspace. Frames v2 are deleted with their source package and owned runtime data. Files referenced by a skill or its version history cannot be deleted.",
         "tags": [
           "Private Files"
         ],
