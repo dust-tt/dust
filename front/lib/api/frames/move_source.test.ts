@@ -2,12 +2,22 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { emitGCSMountFileMovedAuditLogMock, lockLeaseCheckMock } = vi.hoisted(
-  () => ({
+const {
+  emitGCSMountFileMovedAuditLogMock,
+  lockLeaseCheckMock,
+  sandboxLifecycleAfterCallbackMock,
+  sandboxLifecycleBeforeCallbackMock,
+  sandboxLifecycleLockTails,
+} = vi.hoisted(() => {
+  const sandboxLifecycleLockTails = new Map<string, Promise<void>>();
+  return {
     emitGCSMountFileMovedAuditLogMock: vi.fn(),
     lockLeaseCheckMock: vi.fn(),
-  })
-);
+    sandboxLifecycleAfterCallbackMock: vi.fn(),
+    sandboxLifecycleBeforeCallbackMock: vi.fn(),
+    sandboxLifecycleLockTails,
+  };
+});
 
 vi.mock("@app/lib/api/files/gcs_mount/files", async (importActual) => {
   const actual =
@@ -21,9 +31,33 @@ vi.mock("@app/lib/api/files/gcs_mount/files", async (importActual) => {
 vi.mock("@app/lib/lock", async (importActual) => {
   const actual = await importActual<typeof import("@app/lib/lock")>();
   const executeImmediately = async <T>(
-    _key: string,
+    key: string,
     callback: () => Promise<T>
-  ) => callback();
+  ) => {
+    if (!key.startsWith("sandbox:lifecycle:")) {
+      return callback();
+    }
+
+    const previous = sandboxLifecycleLockTails.get(key) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => current);
+    sandboxLifecycleLockTails.set(key, tail);
+    await previous;
+    try {
+      await sandboxLifecycleBeforeCallbackMock(key);
+      const result = await callback();
+      await sandboxLifecycleAfterCallbackMock(key);
+      return result;
+    } finally {
+      release();
+      if (sandboxLifecycleLockTails.get(key) === tail) {
+        sandboxLifecycleLockTails.delete(key);
+      }
+    }
+  };
   const executeRenewingImmediately = async <T>(
     _key: string,
     callback: (lease: {
@@ -46,6 +80,7 @@ vi.mock("@app/lib/lock", async (importActual) => {
 import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import { Authenticator } from "@app/lib/auth";
 import { LockLeaseLostError } from "@app/lib/lock";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -181,6 +216,11 @@ async function setup({
 
 beforeEach(() => {
   fileStorageMock.reset();
+  sandboxLifecycleLockTails.clear();
+  sandboxLifecycleBeforeCallbackMock.mockReset();
+  sandboxLifecycleBeforeCallbackMock.mockResolvedValue(undefined);
+  sandboxLifecycleAfterCallbackMock.mockReset();
+  sandboxLifecycleAfterCallbackMock.mockResolvedValue(undefined);
   emitGCSMountFileMovedAuditLogMock.mockClear();
   vi.restoreAllMocks();
   leaseCheckCount = 0;
@@ -380,6 +420,103 @@ describe("moveFrameV2Source", () => {
       context.auth,
       { useCase: "pod", podId: context.runtimeSpace.sId },
       { parentRelativePath: "", relativeFilePath: "Status" }
+    );
+  });
+
+  it("serializes conversation scope changes with final eligibility and update", async () => {
+    const context = await setup({ withRuntimePod: true });
+    assert(context.runtimeSpace);
+    const nextRuntimeSpace = await SpaceFactory.project(
+      context.workspace,
+      context.user.id
+    );
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      context.user.sId,
+      context.workspace.sId
+    );
+    assert(auth);
+    const destinationDirectoryPath = `pod-${context.runtimeSpace.sId}/Status`;
+    const destinationGcsDirectoryPath = `${getPodFilesBasePath({
+      workspaceId: context.workspace.sId,
+      podId: context.runtimeSpace.sId,
+    })}Status`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+
+    let releaseTransition: () => void = () => undefined;
+    const allowTransition = new Promise<void>((resolve) => {
+      releaseTransition = resolve;
+    });
+    let markTransitionEntered: () => void = () => undefined;
+    const transitionEntered = new Promise<void>((resolve) => {
+      markTransitionEntered = resolve;
+    });
+    const transition = ConversationSandboxAdapter.withScopeTransition(
+      auth,
+      context.conversation,
+      {
+        prepare: async () => {
+          markTransitionEntered();
+          await allowTransition;
+          return new Ok(undefined);
+        },
+        commit: async (freshConversation) => {
+          await freshConversation.updateSpaceId(auth, nextRuntimeSpace);
+          return new Ok(undefined);
+        },
+      }
+    );
+    await transitionEntered;
+
+    let markCopyCompleted: () => void = () => undefined;
+    const copyCompleted = new Promise<void>((resolve) => {
+      markCopyCompleted = resolve;
+    });
+    fileStorageMock.setAfterCopyFile((_sourcePath, destinationPath) => {
+      if (destinationPath === destinationManifestPath) {
+        markCopyCompleted();
+      }
+    });
+    const move = moveFrameV2Source(auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    await copyCompleted;
+    releaseTransition();
+    const transitionResult = await transition;
+    assert(
+      transitionResult.isOk(),
+      transitionResult.isErr() ? transitionResult.error.message : undefined
+    );
+
+    const moved = await move;
+    expect(moved.isErr() && moved.error).toMatchObject({
+      code: "conflict",
+      message:
+        "The Frame runtime scope changed while its source was being moved.",
+    });
+    const reloaded = await FileResource.fetchById(auth, context.frame.sId);
+    expect(reloaded?.mountFilePath).toBe(
+      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(reloaded?.useCaseMetadata).toEqual({
+      activePublicationId: "publication-1",
+      conversationId: context.conversation.sId,
+    });
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBeUndefined();
+    expect(
+      fileStorageMock.getObject(`${destinationGcsDirectoryPath}/index.tsx`)
+    ).toBeUndefined();
+    expect(fileStorageMock.deleteCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filePath: destinationManifestPath,
+          options: expect.objectContaining({
+            ifGenerationMatch: expect.any(String),
+          }),
+        }),
+      ])
     );
   });
 
@@ -1242,6 +1379,64 @@ describe("moveFrameV2Source", () => {
     );
     expect(reloaded?.mountFilePath).toBe(destinationManifestPath);
     expect(reloaded?.useCaseMetadata?.pendingFrameSourceMove).toBeUndefined();
+  });
+
+  it("reconciles a lifecycle unlock failure after the Frame update commits", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/UnlockLost`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}UnlockLost`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    sandboxLifecycleAfterCallbackMock.mockRejectedValueOnce(
+      new Error("Simulated lifecycle unlock failure")
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(destinationManifestPath);
+    expect(reloaded?.useCaseMetadata?.pendingFrameSourceMove).toBeUndefined();
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+  });
+
+  it("cleans up after a lifecycle lock acquisition failure", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/LockTimeout`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}LockTimeout`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    sandboxLifecycleBeforeCallbackMock.mockRejectedValueOnce(
+      new Error("Simulated lifecycle lock timeout")
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "internal" });
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(
+      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(reloaded?.useCaseMetadata?.pendingFrameSourceMove).toBeUndefined();
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBeUndefined();
   });
 
   it("keeps the recovery reservation when exact-generation cleanup fails", async () => {

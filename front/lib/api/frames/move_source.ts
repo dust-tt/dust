@@ -19,8 +19,10 @@ import {
   isGCSNotFoundError,
   isGCSPreconditionFailedError,
 } from "@app/lib/file_storage/types";
-import type { LockLeaseGuard } from "@app/lib/lock";
+import type { LockLeaseGuard, LockLeaseLostError } from "@app/lib/lock";
+import { isLockLeaseLostError } from "@app/lib/lock";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FrameGoneError } from "@app/lib/resources/frame_sandbox_adapter";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -124,6 +126,33 @@ async function resolveRuntimeSpaceId(
     return invalidSource(`Conversation ${conversationId} not found.`);
   }
   return new Ok(conversation.spaceSId);
+}
+
+async function withConversationOwnerLifecycleLocks<T>(
+  owners: FrameSourceOwner[],
+  fn: () => Promise<T>
+): Promise<T> {
+  const conversationIds = [
+    ...new Set(
+      owners.flatMap(({ useCase, useCaseMetadata }) =>
+        useCase === "conversation" && useCaseMetadata.conversationId
+          ? [useCaseMetadata.conversationId]
+          : []
+      )
+    ),
+  ].sort();
+
+  const acquireNext = (index: number): Promise<T> => {
+    const conversationId = conversationIds[index];
+    return conversationId
+      ? ConversationSandboxAdapter.withLifecycleLock(
+          { sId: conversationId },
+          () => acquireNext(index + 1)
+        )
+      : fn();
+  };
+
+  return acquireNext(0);
 }
 
 function frameMetadataAtDestination(
@@ -766,7 +795,11 @@ export async function moveFrameV2Source(
   }
 
   let committedMove: FrameSourceMove | null = null;
-  const runLockedMove = async (lease: LockLeaseGuard) => {
+  const runLockedMove = async (
+    lease: LockLeaseGuard
+  ): Promise<
+    Result<FrameSourceMove, MoveFrameV2SourceError | LockLeaseLostError>
+  > => {
     const freshFrame = await frame.fetchFreshFrameV2(auth);
     if (!freshFrame) {
       return new Err(new FrameGoneError(`Frame ${frame.sId} not found.`));
@@ -928,14 +961,13 @@ export async function moveFrameV2Source(
           );
     }
 
+    type DestinationUpdateError = {
+      error: FrameSourceMoveError;
+      preserveDestinationObjects: boolean;
+    };
     const updateFrame = async (
       currentFrame: FileResource
-    ): Promise<
-      Result<
-        void,
-        { error: FrameSourceMoveError; preserveDestinationObjects: boolean }
-      >
-    > => {
+    ): Promise<Result<void, DestinationUpdateError>> => {
       const currentReservation = getMatchingPendingMove(currentFrame, {
         destinationMountFilePath: destinationMountPath,
         sourceMountFilePath: sourceMountPath,
@@ -961,57 +993,111 @@ export async function moveFrameV2Source(
         });
         return new Ok(undefined);
       } catch (error) {
-        const updateError = new FrameSourceMoveError(
-          "internal",
-          `Failed to update the Frame source location: ${normalizeError(error).message}`
-        );
-        let reconciledFrame: FileResource | null = null;
-        try {
-          reconciledFrame = await currentFrame.fetchFreshFrameV2(auth);
-        } catch (reconciliationError) {
-          logger.error(
-            {
-              error: normalizeError(reconciliationError),
-              frameId: currentFrame.sId,
-            },
-            "Failed to reconcile a Frame destination update"
-          );
-        }
-        if (
-          reconciledFrame?.mountFilePath === destinationMountPath &&
-          !reconciledFrame.useCaseMetadata?.pendingFrameSourceMove
-        ) {
-          return new Ok(undefined);
-        }
-        const reconciledReservation = reconciledFrame
-          ? getMatchingPendingMove(reconciledFrame, {
-              destinationMountFilePath: destinationMountPath,
-              sourceMountFilePath: sourceMountPath,
-            })
-          : null;
-        if (reconciledReservation?.operationId === operationId) {
-          return new Err({
-            error: updateError,
-            preserveDestinationObjects: false,
-          });
-        }
-        return new Err({
-          error: new FrameSourceMoveError(
+        return reconcileDestinationUpdate(
+          new FrameSourceMoveError(
             "internal",
-            "The Frame destination update could not be reconciled; retry the move."
-          ),
-          preserveDestinationObjects: true,
-        });
+            `Failed to update the Frame source location: ${normalizeError(error).message}`
+          )
+        );
       }
     };
 
-    const heldBeforeUpdate = lease.check();
-    if (heldBeforeUpdate.isErr()) {
-      return heldBeforeUpdate;
+    const reconcileDestinationUpdate = async (
+      updateError: FrameSourceMoveError
+    ): Promise<Result<void, DestinationUpdateError>> => {
+      let reconciledFrame: FileResource | null = null;
+      try {
+        reconciledFrame = await freshFrame.fetchFreshFrameV2(auth);
+      } catch (reconciliationError) {
+        logger.error(
+          {
+            error: normalizeError(reconciliationError),
+            frameId: freshFrame.sId,
+          },
+          "Failed to reconcile a Frame destination update"
+        );
+      }
+      if (
+        reconciledFrame?.mountFilePath === destinationMountPath &&
+        !reconciledFrame.useCaseMetadata?.pendingFrameSourceMove
+      ) {
+        return new Ok(undefined);
+      }
+      const reconciledReservation = reconciledFrame
+        ? getMatchingPendingMove(reconciledFrame, {
+            destinationMountFilePath: destinationMountPath,
+            sourceMountFilePath: sourceMountPath,
+          })
+        : null;
+      if (reconciledReservation?.operationId === operationId) {
+        return new Err({
+          error: updateError,
+          preserveDestinationObjects: false,
+        });
+      }
+      return new Err({
+        error: new FrameSourceMoveError(
+          "internal",
+          "The Frame destination update could not be reconciled; retry the move."
+        ),
+        preserveDestinationObjects: true,
+      });
+    };
+
+    let updateResult: Result<void, DestinationUpdateError | LockLeaseLostError>;
+    try {
+      updateResult = await withConversationOwnerLifecycleLocks(
+        [sourceOwner, destinationOwner],
+        async () => {
+          const [freshSourceRuntimeSpace, freshDestinationRuntimeSpace] =
+            await Promise.all([
+              resolveRuntimeSpaceId(auth, sourceOwner),
+              resolveRuntimeSpaceId(auth, destinationOwner),
+            ]);
+          if (freshSourceRuntimeSpace.isErr()) {
+            return new Err({
+              error: freshSourceRuntimeSpace.error,
+              preserveDestinationObjects: false,
+            });
+          }
+          if (freshDestinationRuntimeSpace.isErr()) {
+            return new Err({
+              error: freshDestinationRuntimeSpace.error,
+              preserveDestinationObjects: false,
+            });
+          }
+          if (
+            freshSourceRuntimeSpace.value !== freshDestinationRuntimeSpace.value
+          ) {
+            return new Err({
+              error: new FrameSourceMoveError(
+                "conflict",
+                "The Frame runtime scope changed while its source was being moved."
+              ),
+              preserveDestinationObjects: false,
+            });
+          }
+
+          const heldBeforeUpdate = lease.check();
+          if (heldBeforeUpdate.isErr()) {
+            return heldBeforeUpdate;
+          }
+          return updateFrame(freshFrame);
+        }
+      );
+    } catch (error) {
+      updateResult = await reconcileDestinationUpdate(
+        new FrameSourceMoveError(
+          "internal",
+          `Failed to serialize the Frame destination update: ${normalizeError(error).message}`
+        )
+      );
     }
-    const updateResult = await updateFrame(freshFrame);
 
     if (updateResult.isErr()) {
+      if (isLockLeaseLostError(updateResult.error)) {
+        return new Err(updateResult.error);
+      }
       if (updateResult.error.preserveDestinationObjects) {
         return new Err(updateResult.error.error);
       }

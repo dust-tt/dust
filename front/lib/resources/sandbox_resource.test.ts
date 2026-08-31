@@ -170,6 +170,38 @@ describe("SandboxResource.updateStatus", () => {
   });
 });
 
+describe("ConversationSandboxAdapter.withLifecycleLock", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockExecuteWithLock.mockImplementation(
+      async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+  });
+
+  it("uses the conversation lifecycle key without touching its sandbox", async () => {
+    const callback = vi.fn().mockResolvedValue("done");
+
+    const result = await ConversationSandboxAdapter.withLifecycleLock(
+      { sId: "conversation_123" },
+      callback
+    );
+
+    expect(result).toBe("done");
+    expect(mockExecuteWithLock).toHaveBeenCalledWith(
+      "sandbox:lifecycle:conversation_123",
+      expect.any(Function),
+      undefined,
+      {
+        lockTtlMs: 5 * 60 * 1000,
+        retryIntervalMs: 25,
+        traceAcquireResource: "sandbox:lifecycle",
+      }
+    );
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+  });
+});
+
 describe("ConversationSandboxAdapter.withScopeTransition", () => {
   let authenticator: Authenticator;
   let conversationResource: ConversationResource;

@@ -682,20 +682,25 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     lockKey: string,
     fn: (provider: SandboxProvider | null) => Promise<Result<T, Error>>
   ): Promise<Result<T, Error>> {
-    return executeWithLock(
-      `sandbox:lifecycle:${lockKey}`,
-      () => fn(getSandboxProvider() ?? null),
-      undefined,
-      {
-        traceAcquireResource: "sandbox:lifecycle",
-        lockTtlMs: SANDBOX_LIFECYCLE_LOCK_TTL_MS,
-        // Contended by concurrent invocations of the same pod: transitions
-        // hold this lock from milliseconds (status checks) to seconds
-        // (wake/create), and waiters on the fast side of that range should
-        // not lose in 100ms quanta.
-        retryIntervalMs: 25,
-      }
+    return this.withLifecycleLockOnly(lockKey, () =>
+      fn(getSandboxProvider() ?? null)
     );
+  }
+
+  /** Serialize a lock-only owner operation with sandbox lifecycle transitions. */
+  static async withLifecycleLockOnly<T>(
+    lockKey: string,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    return executeWithLock(`sandbox:lifecycle:${lockKey}`, fn, undefined, {
+      traceAcquireResource: "sandbox:lifecycle",
+      lockTtlMs: SANDBOX_LIFECYCLE_LOCK_TTL_MS,
+      // Contended by concurrent invocations of the same pod: transitions
+      // hold this lock from milliseconds (status checks) to seconds
+      // (wake/create), and waiters on the fast side of that range should
+      // not lose in 100ms quanta.
+      retryIntervalMs: 25,
+    });
   }
 
   // Owner env vars come either as a plain record or as a factory for owners

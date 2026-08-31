@@ -150,6 +150,13 @@ export class ConversationSandboxAdapter {
     return this.fetchSandboxByConversation(auth, conversation);
   }
 
+  static async withLifecycleLock<T>(
+    conversation: Pick<ConversationSandboxOwner, "sId">,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    return SandboxResource.withLifecycleLockOnly(conversation.sId, fn);
+  }
+
   static async ensureSandboxActive(
     auth: Authenticator,
     conversation: ConversationSandboxOwner
