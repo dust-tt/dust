@@ -4,6 +4,7 @@ import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { validatePublicModelSelection } from "@front-api/lib/api/assistant/conversation/model_selection";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -44,6 +45,15 @@ const app = workspaceApp();
  *         description: ID of the message
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               modelSelection:
+ *                 $ref: '#/components/schemas/ModelSelection'
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -169,9 +179,23 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     return ctx.json({ message });
   }
 
+  // Clients that predate the model-selection body POST with a JSON content type
+  // and no body, which `validate("json", ...)` rejects; read the body manually.
+  const body: unknown = await ctx.req.json().catch(() => null);
+  const modelSelectionRes = await validatePublicModelSelection(
+    auth,
+    body && typeof body === "object" && "modelSelection" in body
+      ? body.modelSelection
+      : undefined
+  );
+  if (modelSelectionRes.isErr()) {
+    return apiError(ctx, modelSelectionRes.error);
+  }
+
   const retriedMessageRes = await retryAgentMessage(auth, {
     conversationResource,
     message,
+    modelSelection: modelSelectionRes.value,
   });
   if (retriedMessageRes.isErr()) {
     return apiError(ctx, retriedMessageRes.error);

@@ -11,6 +11,7 @@ import {
   AUTO_MODEL_ID,
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   getTierForModel,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
@@ -77,6 +78,24 @@ const TIER_BY_META_MODEL_ID: Record<ModelStreamIdType, ModelTierId> = {
   [AUTO_MODEL_ID]: "standard",
   [AUTO_COMPLEX_MODEL_ID]: "complex",
 };
+
+// Streams are tiered as the tier they are named after, so a model's billing
+// tier names the stream that runs at a comparable capability and cost.
+const TIER_ID_BY_MODELS_TIER_NAME: Record<ModelsTierName, ModelTierId> = {
+  cost_efficient: "fast",
+  balanced: "standard",
+  premium: "complex",
+};
+
+// The tier a concrete model belongs to. Depends on the reasoning effort too:
+// e.g. Sonnet 4.6 is Basic at `light`, Standard at `medium`, Premium at `high`.
+export function getTierIdForModel(
+  modelId: ModelIdType,
+  reasoningEffort: ReasoningEffort
+): ModelTierId | null {
+  const tierName = getTierForModel(modelId, reasoningEffort);
+  return tierName ? TIER_ID_BY_MODELS_TIER_NAME[tierName] : null;
+}
 
 export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
   // MODEL_TIERS is exhaustive over ModelTierId, so a match is guaranteed; the

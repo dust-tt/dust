@@ -24,9 +24,9 @@ import {
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
+import { useCanSelectPremiumModels } from "@app/components/model_picker/useCanSelectPremiumModels";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
@@ -39,7 +39,6 @@ import type {
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
@@ -95,14 +94,8 @@ export function ModelPicker({
   openApiRef,
   trackingSurface,
 }: ModelPickerProps) {
-  const { hasFeature } = useFeatureFlags();
   const clientType = useClientType();
-  const { subscription } = useAuth();
-  const canSelectPremiumModels =
-    isCreditPricedPlan(subscription.plan) ||
-    subscription.plan.hasAdvancedModelAccess ||
-    hasFeature("claude_4_5_opus_feature");
-  const lockPremiumEfforts = !canSelectPremiumModels;
+  const lockPremiumEfforts = !useCanSelectPremiumModels();
 
   const { isDark } = useTheme();
 

@@ -3,6 +3,7 @@ import {
   getEffortStops,
   getEffortStopTooltip,
   getInitialEffort,
+  getTierIdForModel,
   getTierLockReason,
   isPremiumModel,
   PREMIUM_MODEL_LOCKED_TOOLTIP,
@@ -11,6 +12,7 @@ import type { EnabledModelConfigurationType } from "@app/types/api/assistant/mod
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_MODEL_ID,
+  CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
@@ -212,6 +214,21 @@ describe("modelPickerUtils premium gating", () => {
         "standard"
       );
       expect(getDefaultTierId([])).toBe("standard");
+    });
+  });
+
+  describe("getTierIdForModel", () => {
+    it("follows the reasoning effort, not just the model", () => {
+      expect(getTierIdForModel(CLAUDE_SONNET_4_6_MODEL_ID, "light")).toBe(
+        "fast"
+      );
+      expect(getTierIdForModel(CLAUDE_SONNET_4_6_MODEL_ID, "high")).toBe(
+        "complex"
+      );
+    });
+
+    it("returns null for an effort the model has no tier for", () => {
+      expect(getTierIdForModel(CLAUDE_SONNET_4_6_MODEL_ID, "none")).toBeNull();
     });
   });
 

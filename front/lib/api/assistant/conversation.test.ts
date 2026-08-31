@@ -62,6 +62,8 @@ import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { AUTO_COMPLEX_MODEL_ID } from "@app/types/assistant/models/auto";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -344,6 +346,36 @@ describe("retryAgentMessage", () => {
     }
     expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
+  });
+
+  it("should run the retry on an explicit model selection instead of the pinned model", async () => {
+    const result = await retryAgentMessage(auth, {
+      conversationResource,
+      message: {
+        ...agentMessage,
+        resolvedModel: {
+          providerId: "anthropic",
+          modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+          reasoningEffort: "medium",
+        },
+        modelResolutionMethod: "user",
+      },
+      modelSelection: {
+        providerId: AUTO_COMPLEX_MODEL_ID,
+        modelId: AUTO_COMPLEX_MODEL_ID,
+        reasoningEffort: "none",
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // The stream is expanded to one of its concrete candidates, so the
+      // sentinel is never stored as the model that ran.
+      expect(result.value.modelResolutionMethod).toBe(AUTO_COMPLEX_MODEL_ID);
+      expect(result.value.resolvedModel?.modelId).not.toBe(
+        AUTO_COMPLEX_MODEL_ID
+      );
+    }
   });
 
   it("should preserve agent message properties in the retry", async () => {

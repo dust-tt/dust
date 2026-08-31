@@ -1,6 +1,7 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { getWorkspaceLimitFromApiErrorType } from "@app/components/app/ReachedLimitPopup";
 import { clientFetch } from "@app/lib/egress/client";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -13,10 +14,14 @@ export function useRetryMessage({ owner }: { owner: LightWorkspaceType }) {
       conversationId,
       messageId,
       blockedOnly = false,
+      modelSelection,
     }: {
       conversationId: string;
       messageId: string;
       blockedOnly?: boolean;
+      // When set, the retry runs on this model instead of the one the message
+      // originally ran on.
+      modelSelection?: ModelSelectionType;
     }): Promise<Result<void, WorkspaceLimit>> => {
       const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
@@ -25,6 +30,7 @@ export function useRetryMessage({ owner }: { owner: LightWorkspaceType }) {
           headers: {
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({ modelSelection }),
         }
       );
       if (!res.ok) {
