@@ -135,7 +135,7 @@ describe("recordModelCallConsumption", () => {
     ).resolves.toBe(true);
   });
 
-  it("writes a pending tool row carrying the emitted footprint", async () => {
+  it("writes an immutable tool-call posting for the emitted footprint", async () => {
     const { auth, context, conversation, run, workspace, agentMessageModelId } =
       await setupExecution();
     const { action } = await AgentMCPActionFactory.create(auth, {
@@ -152,10 +152,10 @@ describe("recordModelCallConsumption", () => {
     });
 
     const items = await listConsumptionItems(auth, agentMessageModelId);
-    const toolItem = items.find((item) => item.itemType === "tool");
+    const toolItem = items.find((item) => item.itemType === "tool_call");
     expect(toolItem).toMatchObject({
       agentMCPActionId: action.id,
-      completedAt: null,
+      completedAt: expect.any(Date),
       directCreditAmountMicro: null,
       inputTokensCount: null,
       outputTokensCount: TOKENS_PER_FOOTPRINT,

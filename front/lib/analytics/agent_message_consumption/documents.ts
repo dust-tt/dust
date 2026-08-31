@@ -31,6 +31,7 @@ export function buildAgentMessageConsumptionAnalyticsDocuments(
     items: input.items,
     runs: input.runs,
     usages: input.usages,
+    useStoredReconciledCredits: input.usesStoredReconciledCredits ?? false,
   });
   if (!allocation) {
     return null;

@@ -1,6 +1,6 @@
 import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
-import { creditsForInputTokens } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import { appendConsumptionEvent } from "@app/lib/api/assistant/consumption/events";
 import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
@@ -52,103 +52,89 @@ export async function recordToolCompletionConsumption(
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  const toolRow =
-    await AgentMessageConsumptionItemResource.fetchConsumptionToolRow(auth, {
-      agentMCPActionModelId: action.id,
-    });
-  if (!toolRow) {
+  const ownToolCallRow =
+    await AgentMessageConsumptionItemResource.fetchConsumptionToolCallRow(
+      auth,
+      {
+        agentMCPActionModelId: action.id,
+      }
+    );
+  const sandboxChildInfo = action.stepContext.sandboxChildActionInfo;
+  const parentAction = isSandboxChildActionInfo(sandboxChildInfo)
+    ? await AgentMCPActionResource.fetchById(
+        auth,
+        sandboxChildInfo.parentActionId
+      )
+    : null;
+  const toolCallRow =
+    ownToolCallRow ??
+    (parentAction
+      ? await AgentMessageConsumptionItemResource.fetchConsumptionToolCallRow(
+          auth,
+          {
+            agentMCPActionModelId: parentAction.id,
+          }
+        )
+      : null);
+  if (!toolCallRow) {
     return;
   }
 
-  const [emittingUsage] = await RunResource.listRunUsagesByModelIds(auth, {
-    runUsageModelIds: [toolRow.runUsageId],
-  });
-  if (!emittingUsage) {
-    logger.warn(
-      { workspaceId, actionId: action.sId },
-      "[Consumption] Tool row has no emitting run usage."
+  const existingDirectRow =
+    await AgentMessageConsumptionItemResource.fetchConsumptionToolDirectRow(
+      auth,
+      {
+        agentMCPActionModelId: action.id,
+      }
+    );
+  if (existingDirectRow) {
+    await signalAffectedExecutions(
+      auth,
+      new Set([existingDirectRow.runKey ?? context.runKey])
     );
     return;
   }
-  if (!toolRow.runKey) {
-    throw new Error(`Consumption tool row ${toolRow.id} has no execution key`);
+
+  let resultTokensCount = 0;
+  if (!parentAction) {
+    const [emittingUsage] = await RunResource.listRunUsagesByModelIds(auth, {
+      runUsageModelIds: [toolCallRow.runUsageId],
+    });
+    if (!emittingUsage) {
+      logger.warn(
+        { workspaceId, actionId: action.sId },
+        "[Consumption] Tool row has no emitting run usage."
+      );
+      return;
+    }
+    resultTokensCount = await measureResultFootprint(auth, {
+      action,
+      conversationModelId: toolCallRow.conversationId,
+      usage: emittingUsage,
+    });
   }
-  const emittingRunKey = toolRow.runKey;
-
-  const affectedRunKeys = new Set([context.runKey]);
-  affectedRunKeys.add(emittingRunKey);
-
-  if (toolRow.completedAt !== null) {
-    await signalAffectedExecutions(auth, affectedRunKeys);
-    return;
-  }
-
-  const resultTokensCount = await measureResultFootprint(auth, {
-    action,
-    conversationModelId: toolRow.conversationId,
-    usage: emittingUsage,
-  });
-  const resultCreditAmountMicro = creditsForInputTokens({
-    usage: emittingUsage,
-    tokensCount: resultTokensCount,
-  });
   const chargeMicro = await rateToolCharge(auth, {
     action,
     agentMessageId: context.agentMessageId,
     agentMessageModelId: context.agentMessageModelId,
   });
   const settlement = await withTransaction(async (transaction) => {
-    const returnedCallCreditAmountMicro =
-      emittingRunKey === context.runKey
-        ? 0
-        : (toolRow.reconciledCreditAmountMicro ?? 0);
-
-    const settled =
-      await AgentMessageConsumptionItemResource.completeConsumptionToolRow(
+    const insertedRow =
+      await AgentMessageConsumptionItemResource.insertConsumptionToolDirectRow(
         auth,
         {
-          consumptionItemId: toolRow.id,
-          runKey: context.runKey,
+          agentMCPActionModelId: action.id,
+          agentMessageModelId: context.agentMessageModelId,
+          chargeAmountMicro: chargeMicro,
+          conversationModelId: toolCallRow.conversationId,
           inputTokensCount: resultTokensCount,
-          grossCreditAmountMicroDelta: resultCreditAmountMicro + chargeMicro,
-          reconciledCreditAmountMicroDelta:
-            chargeMicro - returnedCallCreditAmountMicro,
-          directCreditAmountMicro: chargeMicro,
+          runKey: context.runKey,
+          runUsageModelId: toolCallRow.runUsageId,
           transaction,
         }
       );
-    if (!settled) {
+    if (!insertedRow) {
       return null;
-    }
-
-    const movedExecutions = emittingRunKey !== context.runKey;
-    const emittingItemModelIds = [toolRow.id];
-
-    if (returnedCallCreditAmountMicro > 0) {
-      const emittingOutputRow =
-        await AgentMessageConsumptionItemResource.fetchConsumptionModelRow(
-          auth,
-          {
-            runUsageModelId: toolRow.runUsageId,
-            itemType: "output",
-            transaction,
-          }
-        );
-      if (!emittingOutputRow) {
-        throw new Error(
-          `Cannot return tool call credit without output row for run usage ${toolRow.runUsageId}`
-        );
-      }
-      await AgentMessageConsumptionItemResource.addReconciledCreditAmounts(
-        auth,
-        {
-          creditAmountMicroDeltaByConsumptionItemId: new Map([
-            [emittingOutputRow.id, returnedCallCreditAmountMicro],
-          ]),
-          transaction,
-        }
-      );
-      emittingItemModelIds.push(emittingOutputRow.id);
     }
 
     await appendConsumptionEvent(
@@ -159,30 +145,14 @@ export async function recordToolCompletionConsumption(
         runKey: context.runKey,
         rootAgentMessageId: context.rootAgentMessageId,
         agentMessageModelId: context.agentMessageModelId,
-        consumptionItemIds: [toolRow.id],
+        consumptionItemIds: [insertedRow.consumptionItemId],
       },
       { transaction }
     );
-
-    if (movedExecutions) {
-      await appendConsumptionEvent(
-        auth,
-        {
-          kind: "items_changed",
-          idempotencyKey: `tool-compensation:${action.id}:${emittingRunKey}`,
-          runKey: emittingRunKey,
-          rootAgentMessageId: context.rootAgentMessageId,
-          agentMessageModelId: context.agentMessageModelId,
-          consumptionItemIds: emittingItemModelIds,
-        },
-        { transaction }
-      );
-    }
-
-    return { chargeMicro, returnedCallCreditAmountMicro };
+    return { chargeMicro };
   });
 
-  await signalAffectedExecutions(auth, affectedRunKeys);
+  await signalAffectedExecutions(auth, new Set([context.runKey]));
 
   if (settlement) {
     logger.info(
@@ -191,10 +161,9 @@ export async function recordToolCompletionConsumption(
         actionId: action.sId,
         runKey: context.runKey,
         chargeMicro: settlement.chargeMicro,
-        returnedCallCreditAmountMicro: settlement.returnedCallCreditAmountMicro,
         resultTokensCount,
       },
-      "[Consumption] Settled a tool row."
+      "[Consumption] Recorded a tool completion posting."
     );
   }
 }

@@ -10,7 +10,11 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
+import type {
+  AgentMessageConsumptionItemType,
+  AgentMessageConsumptionToolItemType,
+} from "@app/types/assistant/agent_message_consumption";
+import { isAgentMessageConsumptionToolItemType } from "@app/types/assistant/agent_message_consumption";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -79,13 +83,21 @@ type ConsumptionModelRowBase = {
 };
 
 export type ConsumptionModelRow = ConsumptionModelRowBase & {
-  itemType: "input" | "output" | "reasoning";
+  itemType: "input" | "output" | "reasoning" | "rounding";
 };
 
-export type ConsumptionPendingToolRow = {
+export type ConsumptionToolCallRow = {
   agentMCPActionModelId: ModelId;
   runUsageModelId: ModelId;
   outputTokensCount: number;
+  grossAttributedCreditAmountMicro: number;
+  reconciledCreditAmountMicro: number;
+};
+
+export type ConsumptionToolResultRow = {
+  agentMCPActionModelId: ModelId;
+  runUsageModelId: ModelId;
+  inputTokensCount: number;
   grossAttributedCreditAmountMicro: number;
   reconciledCreditAmountMicro: number;
 };
@@ -114,7 +126,7 @@ export interface AgentMessageModelConsumptionItemResource
   extends AgentMessageConsumptionItemResource {
   readonly itemType: Exclude<
     AgentMessageConsumptionItemType,
-    "tool" | "rounding"
+    AgentMessageConsumptionToolItemType | "rounding"
   >;
   readonly agentMCPActionId: null;
   readonly directCreditAmountMicro: null;
@@ -123,7 +135,7 @@ export interface AgentMessageModelConsumptionItemResource
 
 export interface AgentMessageToolConsumptionItemResource
   extends AgentMessageConsumptionItemResource {
-  readonly itemType: "tool";
+  readonly itemType: AgentMessageConsumptionToolItemType;
   readonly agentMCPActionId: ModelId;
 }
 
@@ -155,6 +167,10 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
       case "rounding":
       case "tool":
+      case "tool_call":
+      case "tool_direct":
+      case "tool_result":
+      case "tool_adjustment":
         return false;
 
       default:
@@ -163,7 +179,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   isToolItem(): this is AgentMessageToolConsumptionItemResource {
-    if (this.itemType !== "tool") {
+    if (!isAgentMessageConsumptionToolItemType(this.itemType)) {
       return false;
     }
 
@@ -578,14 +594,16 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       agentMessageModelId,
       runKey,
       modelRows,
-      pendingToolRows,
+      toolCallRows,
+      toolResultRows,
       transaction,
     }: {
       conversationModelId: ModelId;
       agentMessageModelId: ModelId;
       runKey: string;
       modelRows: ConsumptionModelRow[];
-      pendingToolRows: ConsumptionPendingToolRow[];
+      toolCallRows: ConsumptionToolCallRow[];
+      toolResultRows: ConsumptionToolResultRow[];
       transaction?: Transaction;
     }
   ): Promise<InsertedConsumptionRow[]> {
@@ -599,7 +617,10 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         agentMessageId: agentMessageModelId,
         runUsageId: row.runUsageModelId,
         agentMCPActionId: null,
-        itemKey: `run-usage:${row.runUsageModelId}:${row.itemType}`,
+        itemKey:
+          row.itemType === "rounding"
+            ? `rounding:${runKey}`
+            : `run-usage:${row.runUsageModelId}:${row.itemType}`,
         itemType: row.itemType,
         runKey,
         attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
@@ -612,14 +633,14 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         createdAt: now,
         updatedAt: now,
       })),
-      ...pendingToolRows.map((row) => ({
+      ...toolCallRows.map((row) => ({
         workspaceId,
         conversationId: conversationModelId,
         agentMessageId: agentMessageModelId,
         runUsageId: row.runUsageModelId,
         agentMCPActionId: row.agentMCPActionModelId,
-        itemKey: `tool-action:${row.agentMCPActionModelId}`,
-        itemType: "tool" as const,
+        itemKey: `tool-action:${row.agentMCPActionModelId}:call`,
+        itemType: "tool_call" as const,
         runKey,
         attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
         inputTokensCount: null,
@@ -627,7 +648,26 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         grossAttributedCreditAmountMicro: row.grossAttributedCreditAmountMicro,
         reconciledCreditAmountMicro: row.reconciledCreditAmountMicro,
         directCreditAmountMicro: null,
-        completedAt: null,
+        completedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })),
+      ...toolResultRows.map((row) => ({
+        workspaceId,
+        conversationId: conversationModelId,
+        agentMessageId: agentMessageModelId,
+        runUsageId: row.runUsageModelId,
+        agentMCPActionId: row.agentMCPActionModelId,
+        itemKey: `tool-action:${row.agentMCPActionModelId}:result`,
+        itemType: "tool_result" as const,
+        runKey,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        inputTokensCount: row.inputTokensCount,
+        outputTokensCount: null,
+        grossAttributedCreditAmountMicro: row.grossAttributedCreditAmountMicro,
+        reconciledCreditAmountMicro: row.reconciledCreditAmountMicro,
+        directCreditAmountMicro: null,
+        completedAt: now,
         createdAt: now,
         updatedAt: now,
       })),
@@ -697,7 +737,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     );
   }
 
-  static async fetchConsumptionToolRow(
+  static async fetchConsumptionToolCallRow(
     auth: Authenticator,
     {
       agentMCPActionModelId,
@@ -712,7 +752,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         workspaceId: auth.getNonNullableWorkspace().id,
         attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
         agentMCPActionId: agentMCPActionModelId,
-        itemType: "tool",
+        itemType: "tool_call",
       },
       transaction,
     });
@@ -724,30 +764,208 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     return item.isToolItem() ? item : null;
   }
 
-  static async fetchConsumptionModelRow(
+  static async listConsumptionRowsByRunKey(
     auth: Authenticator,
     {
-      runUsageModelId,
-      itemType,
+      runKey,
       transaction,
     }: {
-      runUsageModelId: ModelId;
-      itemType: "input" | "output" | "reasoning";
+      runKey: string;
       transaction?: Transaction;
     }
-  ): Promise<AgentMessageConsumptionItemResource | null> {
-    const row = await this.model.findOne({
+  ): Promise<AgentMessageConsumptionItemResource[]> {
+    const rows = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
-        runUsageId: runUsageModelId,
-        itemType,
-        agentMCPActionId: null,
+        runKey,
       },
+      order: [["id", "ASC"]],
       transaction,
     });
 
-    return row ? new this(this.model, row.get()) : null;
+    return rows.map((row) => new this(this.model, row.get()));
+  }
+
+  static async listConsumptionRowsByAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      lockForUpdate = false,
+      transaction,
+    }: {
+      agentMessageModelId: ModelId;
+      lockForUpdate?: boolean;
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageConsumptionItemResource[]> {
+    const rows = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        agentMessageId: agentMessageModelId,
+      },
+      order: [["id", "ASC"]],
+      ...(lockForUpdate && transaction
+        ? { lock: transaction.LOCK.UPDATE }
+        : {}),
+      transaction,
+    });
+
+    return rows.map((row) => new this(this.model, row.get()));
+  }
+
+  static async sumConsumptionBilledCreditAmountMicro(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      transaction,
+    }: {
+      agentMessageModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<number> {
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot express a grouped HAVING over a filter.
+    const rows = await frontSequelize.query<{ total: string | null }>(
+      `
+        SELECT COALESCE(SUM(execution.total), 0) AS total
+        FROM (
+          SELECT SUM("reconciledCreditAmountMicro") AS total
+          FROM agent_message_consumption_items
+          WHERE "workspaceId" = $workspaceModelId
+            AND "agentMessageId" = $agentMessageModelId
+            AND "attributionVersion" = $attributionVersion
+            AND "runKey" IS NOT NULL
+          GROUP BY "runKey"
+          HAVING COUNT(*) FILTER (WHERE "itemType" = 'rounding') > 0
+        ) AS execution
+      `,
+      {
+        bind: {
+          agentMessageModelId,
+          attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    return Number(rows[0]?.total ?? 0);
+  }
+
+  static async insertConsumptionToolDirectRow(
+    auth: Authenticator,
+    {
+      agentMCPActionModelId,
+      agentMessageModelId,
+      chargeAmountMicro,
+      conversationModelId,
+      inputTokensCount,
+      runKey,
+      runUsageModelId,
+      transaction,
+    }: {
+      agentMCPActionModelId: ModelId;
+      agentMessageModelId: ModelId;
+      chargeAmountMicro: number;
+      conversationModelId: ModelId;
+      inputTokensCount: number;
+      runKey: string;
+      runUsageModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<InsertedConsumptionRow | null> {
+    const now = new Date();
+    const [row] = await this.model.bulkCreate(
+      [
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversationModelId,
+          agentMessageId: agentMessageModelId,
+          runUsageId: runUsageModelId,
+          agentMCPActionId: agentMCPActionModelId,
+          itemKey: `tool-action:${agentMCPActionModelId}:direct`,
+          itemType: "tool_direct",
+          runKey,
+          attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+          inputTokensCount,
+          outputTokensCount: null,
+          grossAttributedCreditAmountMicro: chargeAmountMicro,
+          reconciledCreditAmountMicro: chargeAmountMicro,
+          directCreditAmountMicro: chargeAmountMicro,
+          completedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      {
+        ignoreDuplicates: true,
+        returning: ["id", "itemKey"],
+        transaction,
+        validate: true,
+      }
+    );
+
+    return row?.id ? { consumptionItemId: row.id, itemKey: row.itemKey } : null;
+  }
+
+  static async insertConsumptionToolAdjustmentRows(
+    auth: Authenticator,
+    {
+      adjustments,
+      transaction,
+    }: {
+      adjustments: {
+        agentMCPActionModelId: ModelId;
+        agentMessageModelId: ModelId;
+        amountMicro: number;
+        conversationModelId: ModelId;
+        runKey: string;
+        runUsageModelId: ModelId;
+      }[];
+      transaction?: Transaction;
+    }
+  ): Promise<InsertedConsumptionRow[]> {
+    const nonZeroAdjustments = adjustments.filter(
+      (adjustment) => adjustment.amountMicro !== 0
+    );
+    if (nonZeroAdjustments.length === 0) {
+      return [];
+    }
+
+    const now = new Date();
+    const rows = await this.model.bulkCreate(
+      nonZeroAdjustments.map((adjustment) => ({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: adjustment.conversationModelId,
+        agentMessageId: adjustment.agentMessageModelId,
+        runUsageId: adjustment.runUsageModelId,
+        agentMCPActionId: adjustment.agentMCPActionModelId,
+        itemKey: `tool-action:${adjustment.agentMCPActionModelId}:adjustment`,
+        itemType: "tool_adjustment" as const,
+        runKey: adjustment.runKey,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        inputTokensCount: null,
+        outputTokensCount: null,
+        grossAttributedCreditAmountMicro: 0,
+        reconciledCreditAmountMicro: adjustment.amountMicro,
+        directCreditAmountMicro: adjustment.amountMicro,
+        completedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })),
+      {
+        ignoreDuplicates: true,
+        returning: ["id", "itemKey"],
+        transaction,
+        validate: true,
+      }
+    );
+
+    return rows
+      .filter((row) => Boolean(row.id))
+      .map((row) => ({ consumptionItemId: row.id, itemKey: row.itemKey }));
   }
 
   static async listConsumptionChargedToolRows(
@@ -765,7 +983,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         workspaceId: auth.getNonNullableWorkspace().id,
         agentMessageId: agentMessageModelId,
         attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
-        itemType: "tool",
+        itemType: "tool_direct",
         directCreditAmountMicro: { [Op.gt]: 0 },
       },
       order: [["completedAt", "ASC"]],
@@ -778,61 +996,31 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     });
   }
 
-  static async completeConsumptionToolRow(
+  static async fetchConsumptionToolDirectRow(
     auth: Authenticator,
     {
-      consumptionItemId,
-      runKey,
-      inputTokensCount,
-      grossCreditAmountMicroDelta,
-      reconciledCreditAmountMicroDelta,
-      directCreditAmountMicro,
+      agentMCPActionModelId,
       transaction,
     }: {
-      consumptionItemId: ModelId;
-      runKey: string;
-      inputTokensCount: number;
-      grossCreditAmountMicroDelta: number;
-      reconciledCreditAmountMicroDelta: number;
-      directCreditAmountMicro: number;
+      agentMCPActionModelId: ModelId;
       transaction?: Transaction;
     }
-  ): Promise<boolean> {
-    // biome-ignore lint/plugin/noRawSql: the row's own amounts are the base of the update.
-    const [, affectedCount] = await frontSequelize.query(
-      `
-        UPDATE agent_message_consumption_items
-        SET
-          "completedAt" = $now,
-          "updatedAt" = $now,
-          "runKey" = $runKey,
-          "inputTokensCount" = $inputTokensCount,
-          "directCreditAmountMicro" = $directCreditAmountMicro,
-          "grossAttributedCreditAmountMicro" =
-            "grossAttributedCreditAmountMicro" + $grossCreditAmountMicroDelta,
-          "reconciledCreditAmountMicro" =
-            COALESCE("reconciledCreditAmountMicro", 0) + $reconciledCreditAmountMicroDelta
-        WHERE id = $consumptionItemId
-          AND "workspaceId" = $workspaceModelId
-          AND "completedAt" IS NULL
-      `,
-      {
-        bind: {
-          directCreditAmountMicro,
-          grossCreditAmountMicroDelta,
-          inputTokensCount,
-          consumptionItemId,
-          now: new Date(),
-          reconciledCreditAmountMicroDelta,
-          runKey,
-          workspaceModelId: auth.getNonNullableWorkspace().id,
-        },
-        transaction,
-        type: QueryTypes.UPDATE,
-      }
-    );
+  ): Promise<AgentMessageToolConsumptionItemResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        agentMCPActionId: agentMCPActionModelId,
+        itemType: "tool_direct",
+      },
+      transaction,
+    });
+    if (!row) {
+      return null;
+    }
 
-    return affectedCount === 1;
+    const item = new this(this.model, row.get());
+    return item.isToolItem() ? item : null;
   }
 
   static async listConsumptionToolResultsPendingConsumption(
@@ -842,40 +1030,53 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       transaction,
     }: {
       agentMessageModelId: ModelId;
-      transaction?: Transaction;
+      transaction: Transaction;
     }
   ): Promise<AgentMessageToolConsumptionItemResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const previousModelRowCreatedAt = await this.model.max<
-      Date,
-      AgentMessageConsumptionItemModel
-    >("createdAt", {
-      where: {
-        workspaceId,
-        agentMessageId: agentMessageModelId,
-        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
-        itemType: { [Op.in]: ["input", "output", "reasoning"] },
-      },
-      transaction,
-    });
 
     const toolRows = await this.model.findAll({
       where: {
         workspaceId,
         agentMessageId: agentMessageModelId,
         attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
-        itemType: "tool",
+        itemType: "tool_direct",
         inputTokensCount: { [Op.gt]: 0 },
-        completedAt: previousModelRowCreatedAt
-          ? { [Op.gt]: previousModelRowCreatedAt }
-          : { [Op.ne]: null },
       },
+      lock: transaction.LOCK.UPDATE,
       order: [["id", "ASC"]],
       transaction,
     });
+    if (toolRows.length === 0) {
+      return [];
+    }
+
+    const actionModelIds = toolRows.flatMap((row) =>
+      row.agentMCPActionId === null ? [] : [row.agentMCPActionId]
+    );
+    const resultRows = await this.model.findAll({
+      attributes: ["agentMCPActionId"],
+      where: {
+        workspaceId,
+        agentMessageId: agentMessageModelId,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        itemType: "tool_result",
+        agentMCPActionId: { [Op.in]: actionModelIds },
+      },
+      transaction,
+    });
+    const consumedActionModelIds = resultRows.flatMap((row) =>
+      row.agentMCPActionId === null ? [] : [row.agentMCPActionId]
+    );
+    const consumedActionModelIdSet = new Set(consumedActionModelIds);
 
     return toolRows.flatMap((row) => {
+      if (
+        row.agentMCPActionId === null ||
+        consumedActionModelIdSet.has(row.agentMCPActionId)
+      ) {
+        return [];
+      }
       const item = new this(this.model, row.get());
       return item.isToolItem() ? [item] : [];
     });
@@ -911,15 +1112,15 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           "reconciledCreditAmountMicro" = allocation.reconciled_credit_amount_micro,
           "updatedAt" = $updatedAt
         FROM unnest(
-          $itemModelIds::bigint[],
+          $consumptionItemIds::bigint[],
           $reconciledCreditAmountsMicro::bigint[]
-        ) AS allocation(item_model_id, reconciled_credit_amount_micro)
-        WHERE item.id = allocation.item_model_id
+        ) AS allocation(consumption_item_id, reconciled_credit_amount_micro)
+        WHERE item.id = allocation.consumption_item_id
           AND item."workspaceId" = $workspaceModelId
       `,
       {
         bind: {
-          itemModelIds: changedAllocations.map(([item]) => item.id),
+          consumptionItemIds: changedAllocations.map(([item]) => item.id),
           reconciledCreditAmountsMicro: changedAllocations.map(
             ([, reconciledCreditAmountMicro]) => reconciledCreditAmountMicro
           ),

@@ -184,7 +184,7 @@ describe("Metronome billing event adapters", () => {
   });
 });
 
-describe("Aggregated usage event (shadow) and legacy cost parity", () => {
+describe("Aggregated usage event and legacy cost parity", () => {
   const aggregatedInput = { ...commonEventInput, isByok: false };
 
   it("aggregates LLM and tool cost into a single llm_usage_v3 event", () => {
@@ -211,6 +211,35 @@ describe("Aggregated usage event (shadow) and legacy cost parity", () => {
       cost_awu: 2,
       usage_type: "user",
     });
+  });
+
+  it("uses the authoritative consumption amount without changing the event shape", () => {
+    const [event] = buildUsageEvents({
+      ...aggregatedInput,
+      runUsages: [usage({ costMicroUsd: 1 })],
+      actions: [],
+      billedCredits: 7,
+      rootAgentMessageId: "root-message",
+    });
+
+    expect(event?.event_type).toBe("llm_usage_v3");
+    expect(event?.properties).toMatchObject({
+      provider_id: "aggregate",
+      model_id: "aggregate",
+      cost_awu: 7,
+      root_agent_message_id: "root-message",
+    });
+  });
+
+  it("rejects an invalid authoritative consumption amount", () => {
+    expect(() =>
+      buildUsageEvents({
+        ...aggregatedInput,
+        runUsages: [usage({ costMicroUsd: 1 })],
+        actions: [],
+        billedCredits: Number.NaN,
+      })
+    ).toThrow("billedCredits must be a finite non-negative number");
   });
 
   it("matches the legacy events' billed cost on a mixed message", () => {

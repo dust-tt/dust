@@ -6,13 +6,15 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
   ConsumptionModelRow,
-  ConsumptionPendingToolRow,
+  ConsumptionToolCallRow,
+  ConsumptionToolResultRow,
 } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { signalConsumptionEventsAppended } from "@app/temporal/consumption/client";
 import type { ModelId } from "@app/types/shared/model_id";
 
 type ModelCallConsumptionContext = {
@@ -33,7 +35,7 @@ export async function recordModelCallConsumption(
     dustRunId: string;
     emittedActions: AgentMCPActionResource[];
   }
-): Promise<string[]> {
+): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const [run] = await RunResource.listByDustRunIds(auth, {
@@ -44,7 +46,7 @@ export async function recordModelCallConsumption(
       { workspaceId, dustRunId },
       "[Consumption] Reported model call has no run."
     );
-    return [];
+    return;
   }
 
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs: [run] });
@@ -55,7 +57,14 @@ export async function recordModelCallConsumption(
       usage,
     });
   }
-  return usages.length > 0 ? [context.runKey] : [];
+  if (usages.length > 0) {
+    const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
+      runKey: context.runKey,
+    });
+    if (signalRes.isErr()) {
+      throw signalRes.error;
+    }
+  }
 }
 
 async function recordRunUsageConsumption(
@@ -136,13 +145,21 @@ async function recordRunUsageConsumption(
           ]
         : []),
     ];
-    const pendingToolRows: ConsumptionPendingToolRow[] =
+    const toolCallRows: ConsumptionToolCallRow[] =
       consumption.emittedToolCalls.map((toolCall) => ({
         agentMCPActionModelId: toolCall.tool.id,
         runUsageModelId: usage.runUsageModelId,
         outputTokensCount: toolCall.outputTokensCount,
         grossAttributedCreditAmountMicro: toolCall.grossCreditAmountMicro,
         reconciledCreditAmountMicro: toolCall.reconciledCreditAmountMicro,
+      }));
+    const toolResultRows: ConsumptionToolResultRow[] =
+      consumption.consumedToolResults.map((result) => ({
+        agentMCPActionModelId: result.tool.agentMCPActionId,
+        runUsageModelId: usage.runUsageModelId,
+        inputTokensCount: result.inputTokensCount,
+        grossAttributedCreditAmountMicro: result.grossCreditAmountMicro,
+        reconciledCreditAmountMicro: result.reconciledCreditAmountMicro,
       }));
 
     const insertedRows =
@@ -151,24 +168,13 @@ async function recordRunUsageConsumption(
         agentMessageModelId: context.agentMessageModelId,
         runKey: context.runKey,
         modelRows,
-        pendingToolRows,
+        toolCallRows,
+        toolResultRows,
         transaction,
       });
     if (insertedRows.length === 0) {
       return;
     }
-
-    const resultCreditAmountMicroByConsumptionItemId = new Map(
-      consumption.consumedToolResults.map((result) => [
-        result.tool.id,
-        result.reconciledCreditAmountMicro,
-      ])
-    );
-    await AgentMessageConsumptionItemResource.addReconciledCreditAmounts(auth, {
-      creditAmountMicroDeltaByConsumptionItemId:
-        resultCreditAmountMicroByConsumptionItemId,
-      transaction,
-    });
 
     await appendConsumptionEvent(
       auth,
@@ -178,12 +184,7 @@ async function recordRunUsageConsumption(
         runKey: context.runKey,
         rootAgentMessageId: context.rootAgentMessageId,
         agentMessageModelId: context.agentMessageModelId,
-        consumptionItemIds: [
-          ...new Set([
-            ...insertedRows.map((row) => row.consumptionItemId),
-            ...consumption.consumedToolResults.map((result) => result.tool.id),
-          ]),
-        ],
+        consumptionItemIds: insertedRows.map((row) => row.consumptionItemId),
       },
       { transaction }
     );

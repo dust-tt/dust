@@ -116,6 +116,50 @@ function reconcileInputCredits({
   };
 }
 
+function reconcileStoredConsumptionCredits({
+  items,
+  billedCredits,
+}: {
+  items: AgentMessageConsumptionItemResource[];
+  billedCredits: number;
+}): ReconciledCreditAmounts | null {
+  const documentItems = items.filter((item) => item.itemType !== "rounding");
+  const byItem = new Map<AgentMessageConsumptionItemResource, number>();
+  for (const item of documentItems) {
+    if (item.reconciledCreditAmountMicro === null) {
+      return null;
+    }
+    byItem.set(item, item.reconciledCreditAmountMicro);
+  }
+
+  for (const roundingItem of items.filter(
+    (item) => item.itemType === "rounding"
+  )) {
+    const roundingAmount = roundingItem.reconciledCreditAmountMicro;
+    if (roundingAmount === null) {
+      return null;
+    }
+    if (roundingAmount === 0) {
+      continue;
+    }
+    const targetInput = documentItems.find(
+      (item) => item.runKey === roundingItem.runKey && item.itemType === "input"
+    );
+    if (!targetInput) {
+      return null;
+    }
+    byItem.set(targetInput, (byItem.get(targetInput) ?? 0) + roundingAmount);
+  }
+
+  const allocatedAmountMicro = [...byItem.values()].reduce(
+    (total, amount) => total + amount,
+    0
+  );
+  return allocatedAmountMicro === roundCreditsToMicroCredits(billedCredits)
+    ? { byItem }
+    : null;
+}
+
 function hasCompleteModelAttribution(
   items: AgentMessageConsumptionItemResource[],
   usages: RunUsageWithRunKeyType[]
@@ -123,7 +167,7 @@ function hasCompleteModelAttribution(
   const itemTypesByRunUsageModelId = new Map<ModelId, Set<string>>();
 
   for (const item of items) {
-    if (item.itemType === "tool" || item.runUsageId === null) {
+    if (item.isToolItem() || item.runUsageId === null) {
       continue;
     }
 
@@ -152,18 +196,21 @@ function hasCompleteToolAttribution({
   items: AgentMessageConsumptionItemResource[];
   dustRunIdsWithUsage: Set<string>;
 }): boolean {
-  const toolItemByActionModelId = new Map<
+  const toolItemsByActionModelId = new Map<
     ModelId,
-    AgentMessageConsumptionItemResource
+    AgentMessageConsumptionItemResource[]
   >();
   for (const item of items) {
-    if (item.itemType === "tool" && item.agentMCPActionId !== null) {
-      toolItemByActionModelId.set(item.agentMCPActionId, item);
+    if (item.isToolItem()) {
+      const actionItems =
+        toolItemsByActionModelId.get(item.agentMCPActionId) ?? [];
+      actionItems.push(item);
+      toolItemsByActionModelId.set(item.agentMCPActionId, actionItems);
     }
   }
   const actionModelIds = new Set(actions.map((action) => action.id));
 
-  for (const actionModelId of toolItemByActionModelId.keys()) {
+  for (const actionModelId of toolItemsByActionModelId.keys()) {
     if (!actionModelIds.has(actionModelId)) {
       return false;
     }
@@ -175,13 +222,13 @@ function hasCompleteToolAttribution({
       continue;
     }
 
-    const item = toolItemByActionModelId.get(action.id);
-    if (!item) {
+    const actionItems = toolItemsByActionModelId.get(action.id);
+    if (!actionItems) {
       return false;
     }
     if (
       isToolExecutionStatusFinal(action.status) &&
-      item.completedAt === null
+      actionItems.some((item) => item.completedAt === null)
     ) {
       return false;
     }
@@ -200,6 +247,7 @@ function buildMessageConsumptionAllocationForVersion<
   items,
   runs,
   usages,
+  useStoredReconciledCredits,
 }: {
   actions: AgentMCPActionResource[];
   attributionVersion: number;
@@ -208,6 +256,7 @@ function buildMessageConsumptionAllocationForVersion<
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
+  useStoredReconciledCredits: boolean;
 }): MessageConsumptionAllocation<TUsage> | null {
   if (items.length === 0 || dustRunIds.length === 0) {
     return null;
@@ -246,10 +295,9 @@ function buildMessageConsumptionAllocationForVersion<
     return null;
   }
 
-  const reconciledCreditAmounts = reconcileInputCredits({
-    items,
-    billedCredits,
-  });
+  const reconciledCreditAmounts = useStoredReconciledCredits
+    ? reconcileStoredConsumptionCredits({ items, billedCredits })
+    : reconcileInputCredits({ items, billedCredits });
   if (!reconciledCreditAmounts) {
     return null;
   }
@@ -272,6 +320,7 @@ export function buildLatestMessageConsumptionAllocation<
   items,
   runs,
   usages,
+  useStoredReconciledCredits = false,
 }: {
   actions: AgentMCPActionResource[];
   billedCredits: number | null;
@@ -279,6 +328,7 @@ export function buildLatestMessageConsumptionAllocation<
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
+  useStoredReconciledCredits?: boolean;
 }): MessageConsumptionAllocation<TUsage> | null {
   if (billedCredits === null) {
     return null;
@@ -307,6 +357,7 @@ export function buildLatestMessageConsumptionAllocation<
       items: itemsByAttributionVersion.get(attributionVersion) ?? [],
       runs,
       usages,
+      useStoredReconciledCredits,
     });
     if (allocation) {
       return allocation;

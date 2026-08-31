@@ -18,6 +18,8 @@ type AgentMessageConsumptionAnalyticsDocumentMetadata = Pick<
   AgentMessageConsumptionAnalyticsData,
   | "agent"
   | "agent_message_id"
+  | "parent_agent_message_id"
+  | "root_agent_message_id"
   | "api_key_name"
   | "attribution_version"
   | "completed_at"
@@ -69,6 +71,8 @@ export function makeBaseDocument(
   return {
     agent: metadata.agent,
     agent_message_id: metadata.agentMessageId,
+    parent_agent_message_id: metadata.parentAgentMessageId,
+    root_agent_message_id: metadata.rootAgentMessageId,
     api_key_name: metadata.apiKeyName,
     attribution_version: attributionVersion,
     completed_at: metadata.completedAt.toISOString(),

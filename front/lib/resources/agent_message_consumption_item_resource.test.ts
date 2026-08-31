@@ -214,7 +214,7 @@ describe("AgentMessageConsumptionItemResource", () => {
     });
 
     await expect(item.validate()).rejects.toThrow(
-      "Only tool attribution items may be pending"
+      "Only legacy tool attribution items may be pending"
     );
 
     const pendingToolWithResult = AgentMessageConsumptionItemModel.build({
