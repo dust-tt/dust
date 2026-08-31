@@ -2,7 +2,6 @@ import {
   getEsConsumedAwuCreditsForWorkspace,
   sumActiveMembersPoolConsumedCredits,
 } from "@app/lib/api/credits/members_usage";
-import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
@@ -24,7 +23,7 @@ import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
-import { buildCacheWithRedisKey, cacheWithRedis } from "@app/lib/utils/cache";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type {
   AwuPoolCycleBreakdown,
@@ -307,19 +306,6 @@ const getCachedAwuPoolSummaryOutcome = cacheWithRedis(
     ttlMs: AWU_POOL_SUMMARY_CACHE_TTL_MS,
   }
 );
-
-export async function invalidateAwuPoolSummaryCache(
-  workspaceId: string,
-  cycleHistoryLimit: number = DEFAULT_CYCLE_HISTORY_LIMIT
-): Promise<void> {
-  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
-  await redisCli.del(
-    buildCacheWithRedisKey(
-      AWU_POOL_SUMMARY_CACHE_ID,
-      awuPoolSummaryCacheResolverKey(workspaceId, cycleHistoryLimit)
-    )
-  );
-}
 
 export async function getAwuPoolSummary(
   auth: Authenticator,
