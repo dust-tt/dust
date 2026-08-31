@@ -3,7 +3,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { listKeyScopableGroups } from "@app/lib/api/keys/scopable_groups";
 import {
   MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS,
   MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS,
@@ -37,11 +36,7 @@ type CreateApiKeyErrorCode =
  */
 async function resolveApiKeyGroups(
   auth: Authenticator,
-  {
-    spaceIds,
-    groupIds,
-    role,
-  }: { spaceIds: string[]; groupIds: string[]; role: "user" | "admin" }
+  { spaceIds, role }: { spaceIds: string[]; role: "user" | "admin" }
 ): Promise<Result<GroupResource[], DustError<CreateApiKeyErrorCode>>> {
   const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
   if (globalGroupRes.isErr()) {
@@ -84,30 +79,6 @@ async function resolveApiKeyGroups(
     );
   }
 
-  const additionalGroupIds = groupIds.filter((gId) => gId !== globalGroup.sId);
-  if (additionalGroupIds.length > 0) {
-    const scopableGroupIds = new Set(
-      (await listKeyScopableGroups(auth)).map((group) => group.sId)
-    );
-    const invalidGroupIds = additionalGroupIds.filter(
-      (gId) => !scopableGroupIds.has(gId)
-    );
-    if (invalidGroupIds.length > 0) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "An API key can only be scoped to groups of restricted spaces or pods."
-        )
-      );
-    }
-
-    const groupsRes = await GroupResource.fetchByIds(auth, additionalGroupIds);
-    if (groupsRes.isErr()) {
-      return new Err(new DustError("group_not_found", "Invalid group"));
-    }
-    resolvedGroups.push(...groupsRes.value);
-  }
-
   return new Ok(resolvedGroups);
 }
 
@@ -121,14 +92,12 @@ export async function createApiKey(
   {
     name,
     spaceIds,
-    groupIds,
     monthlyCapMicroUsd,
     monthlyCapAwuCredits,
     role,
   }: {
     name: string;
     spaceIds: string[];
-    groupIds: string[];
     monthlyCapMicroUsd: number | null;
     // Per-key credit cap in AWU credits (credit-priced plans only). null = unlimited.
     monthlyCapAwuCredits: number | null;
@@ -196,7 +165,6 @@ export async function createApiKey(
 
   const groupsRes = await resolveApiKeyGroups(auth, {
     spaceIds,
-    groupIds,
     role,
   });
   if (groupsRes.isErr()) {

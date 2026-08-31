@@ -18,8 +18,6 @@ import keySpaces from "./spaces";
 const CreateKeyPostBodySchema = z.object({
   name: z.string(),
   space_ids: z.array(z.string()).optional(),
-  group_ids: z.array(z.string()).optional(),
-  group_id: z.string().optional(),
   monthly_cap_micro_usd: z.number().nullish(),
   // Per-key credit cap in AWU credits (credit-priced plans only). null/omitted
   // = unlimited.
@@ -58,8 +56,6 @@ app.post(
     const {
       name,
       space_ids,
-      group_ids,
-      group_id,
       monthly_cap_micro_usd,
       monthly_cap_awu_credits,
       role,
@@ -68,7 +64,6 @@ app.post(
     const keyRes = await createApiKey(auth, {
       name,
       spaceIds: space_ids ?? [],
-      groupIds: group_ids ?? (group_id ? [group_id] : []),
       monthlyCapMicroUsd: monthly_cap_micro_usd ?? null,
       monthlyCapAwuCredits: monthly_cap_awu_credits ?? null,
       role: role ?? "user",
