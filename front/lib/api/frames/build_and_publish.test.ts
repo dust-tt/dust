@@ -270,6 +270,80 @@ describe("buildAndPublishFramePublication", () => {
     );
   });
 
+  it("publishes only after staged function source cleanup succeeds", async () => {
+    const { auth, conversation, frame, sandbox } = await setup();
+    vi.mocked(buildSandboxFunctionOnReadySandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export const built = true;",
+        userIdentity: "optional",
+        inputSchema: { type: "object" },
+        outputSchema: { type: "object" },
+      })
+    );
+
+    const pathSetSha256 = computeFrameSourcePathSetSha256(
+      sourceFiles.map((sourceFile) => sourceFile.relativePath)
+    );
+    const execRoot = vi.mocked(sandbox.execRoot);
+    execRoot.mockImplementation(async () => {
+      const call = execRoot.mock.calls.length;
+      if (call === 3) {
+        return new Err(new Error("cleanup failed"));
+      }
+      return new Ok({
+        exitCode: 0,
+        stdout: call === 2 ? `${pathSetSha256}  -\n` : "",
+        stderr: "",
+      });
+    });
+
+    const failed = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(failed.isErr() && failed.error).toMatchObject({
+      code: "internal",
+      message: "cleanup failed",
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBeUndefined();
+
+    execRoot.mockClear();
+    execRoot.mockImplementation(async () => {
+      const call = execRoot.mock.calls.length;
+      return new Ok({
+        exitCode: 0,
+        stdout: call === 2 ? `${pathSetSha256}  -\n` : "",
+        stderr: "",
+      });
+    });
+
+    const published = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(published.isOk()).toBe(true);
+    expect(execRoot).toHaveBeenCalledTimes(3);
+    expect(
+      fileStorageMock.saveFileCalls.filter(({ filePath }) =>
+        filePath.endsWith("/publication.json")
+      )
+    ).toHaveLength(1);
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBe(published.isOk() ? published.value.publicationId : undefined);
+  });
+
   it("does not write a publication when a function build fails", async () => {
     const { auth, conversation, frame } = await setup();
     vi.mocked(buildSandboxFunctionOnReadySandbox).mockResolvedValue(

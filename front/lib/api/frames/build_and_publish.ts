@@ -122,7 +122,7 @@ export async function buildAndPublishFramePublication(
     );
   }
   const sandbox = ensureResult.value.sandbox;
-  return withStagedFrameSource(
+  const functionArtifactResult = await withStagedFrameSource(
     auth,
     { sandbox, sourceFiles },
     async (stagingDirectory) => {
@@ -144,13 +144,18 @@ export async function buildAndPublishFramePublication(
         functionArtifacts.push({ name: fn.name, ...buildResult.value });
       }
 
-      return publishFramePublication(auth, {
-        frame,
-        functionArtifacts,
-        manifest,
-        sourceFiles,
-        uiBundleCode: uiBundle.value,
-      });
+      return new Ok(functionArtifacts);
     }
   );
+  if (functionArtifactResult.isErr()) {
+    return functionArtifactResult;
+  }
+
+  return publishFramePublication(auth, {
+    frame,
+    functionArtifacts: functionArtifactResult.value,
+    manifest,
+    sourceFiles,
+    uiBundleCode: uiBundle.value,
+  });
 }
