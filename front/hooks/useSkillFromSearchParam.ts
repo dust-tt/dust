@@ -24,11 +24,11 @@ export function useSkillFromSearchParam(workspaceId: string) {
     }
 
     setPendingInputText(
-      `Use the skill ${serializeSkillTag({
+      `Use ${serializeSkillTag({
         id: skill.sId,
         name: skill.name,
         icon: skill.icon,
-      })}`,
+      })} for this request:`,
       { replace: true }
     );
 
