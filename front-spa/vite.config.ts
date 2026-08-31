@@ -279,7 +279,11 @@ export default defineConfig(({ mode }) => {
     : "treemap";
 
   return {
-    cacheDir: path.resolve(__dirname, ".vite"),
+    // Scoped per app: `dev:app` and `dev:poke` run concurrently from this same
+    // config. A shared cache dir makes each server treat the other's metadata
+    // as stale and re-optimize over it, which 504s the other's in-flight dep
+    // chunks and forces a full page reload.
+    cacheDir: path.resolve(__dirname, `.vite/${appName}`),
     base: basePath,
     root: path.resolve(__dirname, "."),
     publicDir: path.resolve(__dirname, "../front/public"),

@@ -4,11 +4,13 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import {
+  createTemporalWorker,
+  getWorkflowConfig,
+} from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/remote_tools/activities";
 import { QUEUE_NAME } from "@app/temporal/remote_tools/config";
 import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 // Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
@@ -16,7 +18,7 @@ const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
 
 export async function runRemoteToolsSyncWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
-  const worker = await Worker.create({
+  const worker = await createTemporalWorker({
     ...getWorkflowConfig({
       workerName: "remote_tools_sync",
       getWorkflowsPath: () => require.resolve("./workflows"),

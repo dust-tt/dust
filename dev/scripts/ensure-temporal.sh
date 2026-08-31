@@ -25,12 +25,12 @@ temporal_port_open() {
 }
 
 start_temporal_dev_server() {
-  mkdir -p /opt/temporal "${DUST_INFRA_LOG_DIR}"
+  mkdir -p "$(dirname "$DUST_TEMPORAL_DB_FILE")" "${DUST_INFRA_LOG_DIR}"
   log "Starting Temporal dev server on ${LOCAL_TEMPORAL_ADDRESS} (${TEMPORAL_BIN})..."
   nohup "$TEMPORAL_BIN" server start-dev \
     --ip 0.0.0.0 \
     --port "${TEMPORAL_PORT}" \
-    --db-filename /opt/temporal/dev.db \
+    --db-filename "$DUST_TEMPORAL_DB_FILE" \
     >>"${DUST_INFRA_LOG_DIR}/temporal.log" 2>&1 &
 }
 

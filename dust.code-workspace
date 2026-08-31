@@ -1,158 +1,73 @@
 {
   "folders": [
     {
-      "name": "sdks",
-      "path": "sdks/js",
-      "settings": {
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "editor.defaultFormatter": "biomejs.biome",
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true
-        }
-      }
-    },
-    {
-      "name": "front",
-      "path": "front",
-      "settings": {
-        "typescript.preferences.useLabelDetailsInCompletion": true,
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "editor.defaultFormatter": "biomejs.biome",
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true,
-          "**/.next": true,
-          "**/workers-build": true
-        }
-      }
-    },
-    {
-      "name": "front-api",
-      "path": "front-api",
-      "settings": {
-        "typescript.preferences.useLabelDetailsInCompletion": true,
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "editor.defaultFormatter": "biomejs.biome",
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true
-        }
-      }
-    },
-    {
-      "name": "front-spa",
-      "path": "front-spa",
-      "settings": {
-        "typescript.preferences.useLabelDetailsInCompletion": true,
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "editor.defaultFormatter": "biomejs.biome",
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true,
-          "**/.next": true,
-          "**/workers-build": true
-        }
-      }
-    },
-    {
-      "name": "connectors",
-      "path": "connectors",
-      "settings": {
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "editor.defaultFormatter": "biomejs.biome",
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true
-        }
-      }
-    },
-    {
-      "name": "extension",
-      "path": "extension",
-      "settings": {
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "editor.defaultFormatter": "biomejs.biome",
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true
-        }
-      }
-    },
-    {
-      "name": "firebase-functions",
-      "path": "firebase-functions",
-      "settings": {
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "editor.defaultFormatter": "biomejs.biome",
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true
-        }
-      }
-    },
-    {
-      "name": "sparkle",
-      "path": "sparkle",
-      "settings": {
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "editor.defaultFormatter": "biomejs.biome",
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true
-        }
-      }
-    },
-    {
-      "name": "viz",
-      "path": "viz",
-      "settings": {
-        "typescript.preferences.includePackageJsonAutoImports": "off",
-        "typescript.experimental.useTsgo": true,
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/.next": true,
-          "**/dist": true
-        }
-      }
+      "path": "."
     }
   ],
   "settings": {
     // TypeScript Native (tsgo) settings
     // Enable TypeScript Native - requires "TypeScript (Native Preview)" extension
     "typescript.experimental.useTsgo": true,
-
     // TypeScript preferences (work with both tsserver and tsgo)
     "typescript.preferences.useAliasesForRenames": true,
     "typescript.preferences.includePackageJsonAutoImports": "off",
+    "typescript.preferences.useLabelDetailsInCompletion": true,
     "typescript.disableAutomaticTypeAcquisition": true,
-
-    // File exclusions for better performance
-    "search.exclude": {
-      "**/node_modules": true,
-      "**/dist": true,
-      "**/build": true,
-      "**/out": true,
-      "**/target": true
-    },
+    // Hide build artifacts + rarely-opened packages (formerly omitted from multi-root)
     "files.exclude": {
       "**/node_modules": true,
       "**/dist": true,
       "**/build": true,
       "**/out": true,
-      "**/target": true
+      "**/target": true,
+      "**/.next": true,
+      "**/workers-build": true,
+      "**/storybook-static": true,
+      "dev/docker-volumes": true,
+      "cli": true,
+      "core": true,
+      "design_docs": true,
+      "dockerfiles": true,
+      "egress-proxy": true,
+      "marketing": true,
+      "preview-proxy": true,
+      "prodbox": true,
+      "sandbox": true,
+      "scripts": true,
+      "temporal": true,
+      "tools": true,
+      "x": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/out": true,
+      "**/target": true,
+      "**/.next": true,
+      "**/workers-build": true,
+      "**/storybook-static": true,
+      "dev/docker-volumes": true
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/dist/**": true,
+      "**/build/**": true,
+      "**/out/**": true,
+      "**/target/**": true,
+      "**/.next/**": true,
+      "**/workers-build/**": true,
+      "**/storybook-static/**": true,
+      "**/dev/docker-volumes/**": true,
+      "**/.git/objects/**": true,
+      "**/.git/subtree-cache/**": true
     },
     "files.autoSave": "onFocusChange",
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "biomejs.biome",
+    // Single-root layout: the Biome extension resolves the config against "/"
+    // instead of the workspace folder, so point it at the file explicitly.
+    "biome.configurationPath": "biome.editor.json",
     "editor.codeActionsOnSave": {
       "source.fixAll.biome": "explicit",
       "source.organizeImports.biome": "explicit"
