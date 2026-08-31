@@ -10,7 +10,11 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import type { EnsureSandboxReadyResult } from "@app/lib/api/sandbox/lifecycle";
+import {
+  ensureFrameSandboxReady,
+  ensurePodSandboxReady,
+} from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
@@ -19,6 +23,7 @@ import {
   parseStdoutResultEnvelope,
   resolveSpilledResult,
 } from "@app/lib/api/sandbox_functions/result_delivery";
+import type { SandboxFunctionAuthorization } from "@app/lib/api/sandbox_functions/workspace_user";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
@@ -26,6 +31,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -56,6 +62,7 @@ import type {
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import {
+  getFramePublicationFunctionsMountPoint,
   getPodSandboxFunctionsMountPoint,
   podDatabaseExecEnvVars,
 } from "@app/types/mount_path";
@@ -236,7 +243,7 @@ function getSandboxFunctionUserIdentity(
   auth: Authenticator,
   user: UserResource | null,
   invocation: SandboxFunctionInvocationResource,
-  space: SpaceResource
+  pod: SpaceResource | null
 ) {
   const workspace = auth.getNonNullableWorkspace();
   if (
@@ -251,10 +258,10 @@ function getSandboxFunctionUserIdentity(
     workspaceId: workspace.sId,
     // Same predicate as the `isEditor` the pod UI serializes: pod editor group members plus
     // workspace admins via role.
-    isPodEditor: space.canAdministrate(auth),
+    isPodEditor: pod?.canAdministrate(auth) ?? false,
     // Same predicate as the pod UI's `isMember` and the `pod_member_required` policy: users in
     // any of the pod's groups. Workspace admins outside them are not members.
-    isPodMember: space.isMember(auth),
+    isPodMember: pod?.isMember(auth) ?? false,
     user: {
       sId: user.sId,
       firstName: user.firstName,
@@ -346,6 +353,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   private buildGcsPath(auth: Authenticator): string {
+    const frame = this.sandboxFunction.frame;
+    if (frame) {
+      return `w/${auth.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${this.sId}`;
+    }
     return `w/${auth.getNonNullableWorkspace().sId}/sandbox_functions/${this.sandboxFunction.sId}/invocations/${this.sId}`;
   }
 
@@ -438,7 +449,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               claimedStatus: claimed,
               err: writeResult.error,
             },
-            "Write-behind terminal Pod function invocation persistence failed"
+            "Write-behind terminal sandbox function invocation persistence failed"
           );
         }
       })();
@@ -467,7 +478,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           invocationId: this.sId,
           fromStatus: from,
         },
-        "Failed to release Pod function terminal claim after blob write failure"
+        "Failed to release sandbox function terminal claim after blob write failure"
       );
     }
   }
@@ -493,7 +504,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           attemptedStatus: "errored",
           attemptedError: callError,
         },
-        "Skipping terminal transition for an already-terminal Pod function invocation"
+        "Skipping terminal transition for an already-terminal sandbox function invocation"
       );
       return false;
     }
@@ -542,7 +553,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS
           ),
         },
-        "Skipping terminal transition for an already-terminal Pod function invocation"
+        "Skipping terminal transition for an already-terminal sandbox function invocation"
       );
       return false;
     }
@@ -571,7 +582,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return true;
   }
   /**
-   * Run the invocation on the pod sandbox and record its outcome.
+   * Run the invocation on its owner's sandbox and record its outcome.
    *
    * `inline` marks an invocation running inside the request that created it, which constrains it
    * twice. The sandbox is used only if it is already running, never created, woken, or recreated,
@@ -592,17 +603,20 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           invocationId: this.sId,
           invocationStatus: this.status,
         },
-        "Skipping execution of a terminal Pod function invocation"
+        "Skipping execution of a terminal sandbox function invocation"
       );
       return new Ok(undefined);
     }
 
     try {
       const { sandboxFunction } = this;
+      const frame = sandboxFunction.frame;
+      const publicationId = sandboxFunction.publicationId;
+      const functionKind = frame ? "Frame function" : "Pod Function";
       if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
         return new Err(
           new SandboxFunctionInvocationError(
-            "This Pod Function belongs to another workspace."
+            `This ${functionKind} belongs to another workspace.`
           )
         );
       }
@@ -611,7 +625,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // (requireRunning) readiness is a read with no side effect, so the two chains overlap to
       // take the slower one off the critical path. On the durable path readiness may create or
       // wake a sandbox, a paid side effect that stays gated behind the checks.
-      const runFunctionCheck = async () => {
+      const runFunctionCheck = async (): Promise<{
+        persistedFunction: SandboxFunctionModel;
+        podAuthorization: SandboxFunctionAuthorization | null;
+        errorMessage: string | null;
+      } | null> => {
         const persistedFunction = await SandboxFunctionModel.findOne({
           where: {
             id: this.sandboxFunctionId,
@@ -621,19 +639,40 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!persistedFunction) {
           return null;
         }
+        if (frame) {
+          // Frame invocations always require a workspace member. This scope-independent check
+          // gates the paid wakeup; Pod membership and token scope are evaluated below from the
+          // lifecycle-locked scope, after a concurrent move can no longer change it.
+          const user = await getAuthenticatedWorkspaceUser(auth);
+          return {
+            persistedFunction,
+            podAuthorization: null,
+            errorMessage: user
+              ? null
+              : "This Frame function requires a logged-in user from its workspace.",
+          };
+        }
         const authorization = await authorizeSandboxFunctionInvocation(auth, {
           userIdentity: persistedFunction.userIdentity,
           origin: this.origin ?? "delegated",
-          // The space is fixed at creation, so the in-memory copy is safe to reuse alongside
-          // the re-fetched row.
-          space: sandboxFunction.space,
+          owner: { kind: "pod", space: sandboxFunction.space },
         });
-        return { persistedFunction, authorization };
+        return {
+          persistedFunction,
+          podAuthorization: authorization,
+          errorMessage: authorization.authorized
+            ? null
+            : authorization.errorMessage,
+        };
       };
-      const runEnsure = () =>
-        ensurePodSandboxReady(auth, sandboxFunction.space, {
-          requireRunning: inline,
-        });
+      const runEnsure = async (): Promise<
+        Result<EnsureSandboxReadyResult & { scope?: FrameSandboxScope }, Error>
+      > =>
+        frame
+          ? ensureFrameSandboxReady(auth, frame, { requireRunning: inline })
+          : ensurePodSandboxReady(auth, sandboxFunction.space, {
+              requireRunning: inline,
+            });
 
       let functionCheck;
       let ensureResult;
@@ -644,27 +683,60 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         ]);
       } else {
         functionCheck = await runFunctionCheck();
-        if (functionCheck === null || !functionCheck.authorization.authorized) {
+        if (functionCheck === null || functionCheck.errorMessage !== null) {
           ensureResult = null;
         } else {
           ensureResult = await runEnsure();
         }
       }
       if (!functionCheck) {
-        return new Err(new Error("The Pod Function no longer exists."));
+        return new Err(new Error(`The ${functionKind} no longer exists.`));
       }
-      const { persistedFunction, authorization } = functionCheck;
-      if (!authorization.authorized) {
+      const { persistedFunction } = functionCheck;
+      if (functionCheck.errorMessage !== null) {
         return new Err(
-          new SandboxFunctionInvocationError(authorization.errorMessage)
+          new SandboxFunctionInvocationError(functionCheck.errorMessage)
         );
       }
       if (!ensureResult) {
         // Unreachable: ensureResult is only null when a check above already returned.
-        return new Err(new Error("The Pod sandbox could not be prepared."));
+        return new Err(
+          new Error(
+            `The ${frame ? "Frame" : "Pod"} sandbox could not be prepared.`
+          )
+        );
       }
       if (ensureResult.isErr()) {
         return ensureResult;
+      }
+
+      let authorization: SandboxFunctionAuthorization | null;
+      if (frame) {
+        const { scope } = ensureResult.value;
+        if (!scope) {
+          return new Err(new Error("The Frame runtime scope is missing."));
+        }
+        authorization = await authorizeSandboxFunctionInvocation(auth, {
+          userIdentity: persistedFunction.userIdentity,
+          origin: this.origin ?? "delegated",
+          owner: {
+            kind: "frame",
+            frame,
+            scope,
+          },
+        });
+      } else {
+        authorization = functionCheck.podAuthorization;
+      }
+      if (!authorization) {
+        return new Err(
+          new Error(`The ${functionKind} authorization is missing.`)
+        );
+      }
+      if (!authorization.authorized) {
+        return new Err(
+          new SandboxFunctionInvocationError(authorization.errorMessage)
+        );
       }
 
       // No updateLastActivityAt here: ensurePodSandboxReady's ensureActive just wrote it.
@@ -682,6 +754,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox,
         sandboxFunction,
+        owner: frame
+          ? {
+              kind: "frame",
+              frameId: frame.sId,
+              spaceId: authorization.runtimeSpaceId,
+            }
+          : { kind: "pod", spaceId: authorization.runtimeSpaceId },
         invocationId: this.sId,
         execId,
         noTools,
@@ -712,22 +791,40 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         auth,
         authorization.user,
         this,
-        sandboxFunction.space
+        authorization.pod
       );
+
+      let functionsDirectory: string;
+      if (frame) {
+        if (!publicationId) {
+          return new Err(
+            new Error("The Frame function has no publication identity.")
+          );
+        }
+        functionsDirectory = getFramePublicationFunctionsMountPoint({
+          frameId: frame.sId,
+          publicationId,
+        });
+      } else {
+        functionsDirectory = getPodSandboxFunctionsMountPoint(
+          sandboxFunction.space.sId
+        );
+      }
+      const databaseEnvVars = frame
+        ? {}
+        : podDatabaseExecEnvVars({
+            databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
+          });
 
       const execStartedAtMs = Date.now();
       const execResult = await sandbox.exec(auth, command, {
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
         envVars: {
           DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
-          DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(
-            sandboxFunction.space.sId
-          ),
+          DUST_FUNCTIONS_DIR: functionsDirectory,
           // The app prefix comes from the slug, so `db("chat")` in the bundle resolves to this
           // app's own database without the source naming the app.
-          ...podDatabaseExecEnvVars({
-            databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
-          }),
+          ...databaseEnvVars,
           DUST_SANDBOX_TOKEN: token,
           // Durable functions may still spawn tool clients that inherit the function process's
           // native environment. Keep them cold until all tool calls read the invocation context;
@@ -771,7 +868,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               timeoutMs: SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS,
               error: execResult.error.message,
             },
-            "Inline Pod function execution failed"
+            "Inline sandbox function execution failed"
           );
         }
         return execResult;
@@ -793,7 +890,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             ? {}
             : { spilledResultBytes: parsed.spill.resultBytes }),
         },
-        "Pod function stdout result delivery"
+        "Sandbox function stdout result delivery"
       );
       // An oversized result was spilled to a sandbox-local file: read it back
       // through the provider and normalize it exactly like an inline outcome.
@@ -813,7 +910,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: sandboxFunction.space.sId,
+            ...(frame
+              ? { frameId: frame.sId }
+              : { spaceId: sandboxFunction.space.sId }),
             sandboxFunctionId: sandboxFunction.sId,
             slug: sandboxFunction.slug,
             invocationId: this.sId,
@@ -968,7 +1067,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
                 invocationId: resource.sId,
                 err: result.error,
               },
-              "Deferred Pod function invocation blob write failed"
+              "Deferred sandbox function invocation blob write failed"
             );
           }
         });
@@ -1041,7 +1140,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               invocationId: invocation.sId,
               err: normalizeError(error),
             },
-            "Deferred Pod function invocation created-event publish failed"
+            "Deferred sandbox function invocation created-event publish failed"
           );
         }),
       ]).then(() => undefined);
@@ -1069,7 +1168,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           invocationId: invocation.sId,
           reason: "sandbox_not_running",
         },
-        "Escalating a fast Pod function invocation to the invocation workflow"
+        "Escalating a fast sandbox function invocation to the invocation workflow"
       );
     }
 
@@ -1110,7 +1209,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           attemptedStatus: "errored",
           attemptedError: error,
         },
-        "Skipping terminal transition for an already-terminal Pod function invocation"
+        "Skipping terminal transition for an already-terminal sandbox function invocation"
       );
       return false;
     }
@@ -1153,9 +1252,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!viewer) {
           return [];
         }
-        viewerModelId = sandboxFunction.space.canAdministrate(auth)
-          ? undefined
-          : viewer.id;
+        viewerModelId = sandboxFunction.frame
+          ? viewer.id
+          : sandboxFunction.space.canAdministrate(auth)
+            ? undefined
+            : viewer.id;
         break;
       }
       case "system":

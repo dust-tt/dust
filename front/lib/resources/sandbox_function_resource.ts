@@ -510,6 +510,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: sandboxFunctionModelId },
+      includeFrameFunctions: true,
       dangerouslyBypassSpacePermissionFilter: true,
     });
     if (!sandboxFunction) {
@@ -548,6 +549,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     // cannot be reconstructed from the serialized auth.
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: invocation.sandboxFunctionId },
+      includeFrameFunctions: true,
       dangerouslyBypassSpacePermissionFilter: true,
     });
     if (!sandboxFunction) {
@@ -798,14 +800,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
         new SandboxFunctionInvocationError(
-          "This Pod Function belongs to another workspace."
+          `This ${this.frame ? "Frame function" : "Pod Function"} belongs to another workspace.`
         )
       );
     }
+    const frame = this.frame;
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
       origin,
-      space: this.space,
+      owner: frame
+        ? { kind: "frame", frame }
+        : { kind: "pod", space: this.space },
     });
     if (!authorization.authorized) {
       return new Err(

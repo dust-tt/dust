@@ -1,6 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
+import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   SandboxFunctionInvocationOrigin,
@@ -8,8 +10,13 @@ import type {
 } from "@app/types/api/sandbox_functions";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
-type SandboxFunctionAuthorization =
-  | { authorized: true; user: UserResource | null }
+export type SandboxFunctionAuthorization =
+  | {
+      authorized: true;
+      user: UserResource | null;
+      runtimeSpaceId: string;
+      pod: SpaceResource | null;
+    }
   | { authorized: false; errorMessage: string };
 
 export async function getAuthenticatedWorkspaceUser(
@@ -33,26 +40,67 @@ export async function authorizeSandboxFunctionInvocation(
   {
     userIdentity,
     origin,
-    space,
+    owner,
   }: {
     userIdentity: SandboxFunctionUserIdentityPolicy | null;
     origin: SandboxFunctionInvocationOrigin;
-    // The pod the function belongs to, for policies scoped to the caller's standing in it.
-    space: SpaceResource;
+    owner:
+      | { kind: "pod"; space: SpaceResource }
+      | {
+          kind: "frame";
+          frame: FileResource;
+          scope?: FrameSandboxScope;
+        };
   }
 ): Promise<SandboxFunctionAuthorization> {
   const user = await getAuthenticatedWorkspaceUser(auth);
+  const frame = owner.kind === "frame" ? owner.frame : null;
+  let runtimeSpaceId: string;
+  let pod: SpaceResource | null;
+  if (owner.kind === "frame") {
+    const { frame } = owner;
+    // Frames are always workspace-member execution, even when a declaration's identity policy is
+    // optional. Public and guest rendering may still work, but invocation fails before wakeup.
+    if (!user) {
+      return {
+        authorized: false,
+        errorMessage:
+          "This Frame function requires a logged-in user from its workspace.",
+      };
+    }
+    const scope =
+      owner.scope ?? (await frame.resolveFrameScopedPathContext(auth));
+    if (!scope.spaceId) {
+      return {
+        authorized: false,
+        errorMessage: "This Frame has no valid runtime scope.",
+      };
+    }
+    const runtimeSpace = await SpaceResource.fetchById(auth, scope.spaceId);
+    if (!runtimeSpace) {
+      return {
+        authorized: false,
+        errorMessage: "This Frame's runtime scope no longer exists.",
+      };
+    }
+    runtimeSpaceId = runtimeSpace.sId;
+    pod = runtimeSpace.isProject() ? runtimeSpace : null;
+  } else {
+    pod = owner.space;
+    runtimeSpaceId = pod.sId;
+  }
+
+  const functionKind = frame ? "Frame function" : "Pod Function";
   const policy = userIdentity ?? "optional";
   switch (policy) {
     case "optional":
-      return { authorized: true, user };
+      return { authorized: true, user, runtimeSpaceId, pod };
     case "workspace_user_required":
       return user
-        ? { authorized: true, user }
+        ? { authorized: true, user, runtimeSpaceId, pod }
         : {
             authorized: false,
-            errorMessage:
-              "This Pod Function requires a logged-in user from its workspace.",
+            errorMessage: `This ${functionKind} requires a logged-in user from its workspace.`,
           };
     case "interactive_workspace_user_required": {
       const authorized =
@@ -60,11 +108,10 @@ export async function authorizeSandboxFunctionInvocation(
         origin === "interactive_session" &&
         auth.authMethod() === "session";
       return authorized
-        ? { authorized: true, user }
+        ? { authorized: true, user, runtimeSpaceId, pod }
         : {
             authorized: false,
-            errorMessage:
-              "This Pod Function requires a logged-in workspace member in a live Dust session.",
+            errorMessage: `This ${functionKind} requires a logged-in workspace member in a live Dust session.`,
           };
     }
     case "pod_member_required": {
@@ -73,12 +120,12 @@ export async function authorizeSandboxFunctionInvocation(
       // admins outside those groups cannot write to the pod, so they are deliberately not
       // authorized. `canRead` would not do either: open pods grant read to the whole workspace, so
       // it cannot separate members from bystanders.
-      const authorized = user !== null && space.isMember(auth);
+      const authorized = user !== null && pod?.isMember(auth) === true;
       return authorized
-        ? { authorized: true, user }
+        ? { authorized: true, user, runtimeSpaceId, pod }
         : {
             authorized: false,
-            errorMessage: "This Pod Function requires a member of its Pod.",
+            errorMessage: `This ${functionKind} requires a member of its Pod.`,
           };
     }
     default:
@@ -92,8 +139,7 @@ export async function authorizeSandboxFunctionInvocation(
       assertNeverAndIgnore(policy);
       return {
         authorized: false,
-        errorMessage:
-          "This Pod Function uses an unsupported user identity policy.",
+        errorMessage: `This ${functionKind} uses an unsupported user identity policy.`,
       };
   }
 }
