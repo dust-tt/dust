@@ -45,6 +45,7 @@ import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messag
 import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchToolUsageMetrics } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -238,19 +239,16 @@ async function renderRanking(
   return new Ok([{ type: "text" as const, text }]);
 }
 
-function dayOf(timestampMs: number): string {
-  return new Date(timestampMs).toISOString().slice(0, 10);
-}
-
 function formatCreditLine(
   point: ConsumptionTimeseriesPoint,
-  groups: ConsumptionTimeseriesGroup[]
+  groups: ConsumptionTimeseriesGroup[],
+  tz: string
 ): string {
   const parts = groups.map(
     ({ groupKey, name }) =>
       `${name}: ${(point.values[groupKey] ?? 0).toFixed(2)}`
   );
-  return `${dayOf(point.timestamp)} — ${parts.join(", ")}`;
+  return `${formatDateFromMillis(point.timestamp, tz)} — ${parts.join(", ")}`;
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
@@ -413,7 +411,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
-    const lines = active.map((point) => formatCreditLine(point, groups));
+    const lines = active.map((point) => formatCreditLine(point, groups, tz));
 
     return new Ok([
       {
