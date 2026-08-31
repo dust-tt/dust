@@ -333,9 +333,6 @@ function CustomizationSection() {
     }
     if (localAgentsSectionVisible !== isAgentsSectionVisible) {
       setAgentsSectionVisible(localAgentsSectionVisible);
-      // Person property (not a click event) so we can query, per user, the
-      // actual resting preference for the home "Chat with..." section
-      // rather than counting toggle clicks that may never get saved.
       posthog.setPersonProperties({
         chat_with_section_enabled: localAgentsSectionVisible,
       });
