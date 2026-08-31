@@ -29,6 +29,7 @@ import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -59,6 +60,18 @@ type SandboxReadyConfig<TScope> = {
     egressPolicyPodId?: string;
   };
 };
+
+function sandboxOwnerHasPersistentState(owner: SandboxRuntimeOwner): boolean {
+  switch (owner.kind) {
+    case "conversation":
+      return false;
+    case "frame":
+    case "pod":
+      return true;
+    default:
+      assertNever(owner);
+  }
+}
 
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
 // the owner adapter directly, otherwise the GCS FUSE mount and egress forwarder bring-up will be
@@ -181,7 +194,7 @@ async function ensureOwnerSandboxReady<TScope>(
       // through the replica mount) and is awaited: `invoke` awaits
       // the owner-specific ready helper, which guarantees no function runs
       // before restore and daemon startup complete. Conversation sandboxes do not own state.
-      if (freshlyCreated && runtimeOwner.kind !== "conversation") {
+      if (freshlyCreated && sandboxOwnerHasPersistentState(runtimeOwner)) {
         const stateResult = await setupSandboxStateOnColdStart(auth, sandbox);
         if (stateResult.isErr()) {
           // status=running was already committed by ensureActive, and this
