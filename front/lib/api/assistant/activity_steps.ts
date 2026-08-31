@@ -143,7 +143,14 @@ export async function renderAgentMessageContentView(
     messageId
   );
 
-  return { content, chainOfThought, activitySteps };
+  return {
+    content,
+    chainOfThought,
+    activitySteps: activitySteps.filter(
+      (step) =>
+        step.type !== "content" || step.content.trim() !== content?.trim()
+    ),
+  };
 }
 
 // Body = the last text fragment (final answer); chain of thought = native

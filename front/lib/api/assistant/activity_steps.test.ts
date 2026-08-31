@@ -88,6 +88,50 @@ describe("renderAgentMessageContentView", () => {
     });
   });
 
+  it("does not repeat the final answer in the activity steps", async () => {
+    expect(
+      await render([
+        {
+          step: 0,
+          content: {
+            type: "reasoning",
+            value: {
+              reasoning: "I need the user to confirm the application",
+              metadata: "",
+              tokens: 0,
+              provider: "anthropic",
+            },
+          },
+        },
+        {
+          step: 0,
+          content: {
+            type: "text_content",
+            value: "Please confirm which application this is for.",
+          },
+        },
+        {
+          step: 1,
+          content: {
+            type: "text_content",
+            value: "Please confirm which application this is for.",
+          },
+        },
+      ])
+    ).toEqual({
+      content: "Please confirm which application this is for.",
+      chainOfThought: "I need the user to confirm the application",
+      activitySteps: [
+        {
+          type: "thinking",
+          content: "I need the user to confirm the application",
+          id: "reasoning-0-0",
+          step: 0,
+        },
+      ],
+    });
+  });
+
   it("extracts CoT from <thinking> delimiters when there is no native reasoning", async () => {
     expect(
       await render([
