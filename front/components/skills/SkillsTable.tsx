@@ -350,11 +350,22 @@ const lastEditedColumn = {
   meta: { className: "hidden @sm:w-32 @sm:table-cell" },
 };
 
+function SkillActionsMenuButton({ menuItems }: { menuItems: MenuItem[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <DataTable.MoreButton
+      menuItems={menuItems}
+      dropdownMenuProps={{ open: isOpen, onOpenChange: setIsOpen }}
+    />
+  );
+}
+
 const menuColumn = {
   header: "",
   accessorKey: "menuItems",
   cell: (info: CellContext<RowData, MenuItem[]>) => {
-    return <DataTable.MoreButton menuItems={info.getValue()} />;
+    return <SkillActionsMenuButton menuItems={info.getValue()} />;
   },
   meta: {
     className: "w-14",

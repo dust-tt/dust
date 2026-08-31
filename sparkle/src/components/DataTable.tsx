@@ -1062,9 +1062,7 @@ const renderRegularItem = (
       onClick={(event) => {
         event.stopPropagation();
         itemProps.onClick?.(event);
-        if (!event.defaultPrevented) {
-          onItemClick?.();
-        }
+        onItemClick?.();
       }}
     />
   );
