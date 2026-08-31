@@ -170,7 +170,7 @@ export function CommandPaletteSearchPhase({
 
   return (
     <div className="flex flex-col">
-      <div className="px-1.5 py-3">
+      <div className="px-1.5 py-1.5">
         <SearchInput
           ref={searchInputRef}
           className={cn(

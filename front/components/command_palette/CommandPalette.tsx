@@ -11,6 +11,7 @@ import { CommandPaletteSearchPhase } from "@app/components/command_palette/Comma
 import {
   buildCommandPaletteCommands,
   filterCommands,
+  takePerGroup,
 } from "@app/components/command_palette/commandPaletteCommands";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
@@ -153,15 +154,16 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const MAX_DISPLAYED_AGENTS = 5;
   const MAX_DISPLAYED_PODS = 5;
   const MAX_DISPLAYED_SKILLS = 5;
-  // With no query the palette leads with a short, stable set of commands so the
-  // entity results stay visible; a query lifts the cap and lets them all show.
-  const MAX_DISPLAYED_COMMANDS_WITHOUT_QUERY = 5;
+  // With no query the palette shows the first couple of commands of each group,
+  // so every group stays visible without burying the entity results; a query
+  // lifts the cap and lets them all show.
+  const MAX_COMMANDS_PER_GROUP_WITHOUT_QUERY = 2;
 
   const filteredCommands = useMemo(() => {
     const matching = filterCommands(commands, debouncedQuery);
     return debouncedQuery
       ? matching
-      : matching.slice(0, MAX_DISPLAYED_COMMANDS_WITHOUT_QUERY);
+      : takePerGroup(matching, MAX_COMMANDS_PER_GROUP_WITHOUT_QUERY);
   }, [commands, debouncedQuery]);
 
   const allFilteredAgents = useMemo(

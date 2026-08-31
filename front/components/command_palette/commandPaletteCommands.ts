@@ -302,7 +302,13 @@ function buildWorkspaceCommands(
     });
   }
 
-  return commands;
+  // Workspace settings lead the group. The sidebar orders by section, but
+  // "settings" is what people come to the palette looking for, and only the
+  // first entries of a group survive the empty-state trim.
+  return [
+    ...commands.filter((command) => command.id === "workspace.governance"),
+    ...commands.filter((command) => command.id !== "workspace.governance"),
+  ];
 }
 
 function buildAppearanceCommands({
@@ -361,6 +367,25 @@ export function buildCommandPaletteCommands(
     ...buildWorkspaceCommands(deps),
     ...buildAccountCommands(deps),
   ];
+}
+
+// Keeps the first `perGroup` commands of each group, in order. With no query
+// the palette trims this way rather than slicing the flat list, so every group
+// stays represented instead of the first one filling the whole allowance.
+export function takePerGroup(
+  commands: CommandPaletteCommand[],
+  perGroup: number
+): CommandPaletteCommand[] {
+  const takenPerGroup = new Map<CommandGroup, number>();
+
+  return commands.filter((command) => {
+    const taken = takenPerGroup.get(command.group) ?? 0;
+    if (taken >= perGroup) {
+      return false;
+    }
+    takenPerGroup.set(command.group, taken + 1);
+    return true;
+  });
 }
 
 export function filterCommands(
