@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
@@ -18,6 +18,22 @@ type FrameSourceFile = { relativePath: string; content: Buffer };
 
 type RootExecResult = Awaited<ReturnType<SandboxResource["execRoot"]>>;
 
+export function computeFrameSourcePathSetSha256(
+  relativePaths: ReadonlyArray<string>
+): string {
+  const hash = createHash("sha256");
+  const encodedPaths = relativePaths
+    .map((relativePath) => Buffer.from(relativePath, "utf8"))
+    .sort((left, right) => Buffer.compare(left, right));
+
+  for (const encodedPath of encodedPaths) {
+    hash.update(encodedPath);
+    hash.update("\0");
+  }
+
+  return hash.digest("hex");
+}
+
 function rootCommandFailure(
   result: RootExecResult,
   operation: string
@@ -32,6 +48,31 @@ function rootCommandFailure(
       `${operation} failed with exit code ${result.value.exitCode}${detail ? `: ${detail}` : "."}`
     );
   }
+  return undefined;
+}
+
+function stagedSourcePathSetFailure(
+  result: RootExecResult,
+  expectedSha256: string
+): SandboxFunctionError | undefined {
+  if (result.isErr()) {
+    return new SandboxFunctionError("internal", result.error.message);
+  }
+
+  const match = /^([0-9a-f]{64}) {2}-$/.exec(result.value.stdout.trim());
+  if (!match) {
+    return new SandboxFunctionError(
+      "internal",
+      "Frame source staging did not produce a valid path-set hash."
+    );
+  }
+  if (match[1] !== expectedSha256) {
+    return new SandboxFunctionError(
+      "internal",
+      "Staged Frame source file set differs from the captured source."
+    );
+  }
+
   return undefined;
 }
 
@@ -66,6 +107,9 @@ export async function withStagedFrameSource<T, E>(
   const stagingDirectory = path.posix.join(
     FRAME_SOURCE_STAGING_ROOT,
     randomUUID()
+  );
+  const expectedPathSetSha256 = computeFrameSourcePathSetSha256(
+    sourceFiles.map((sourceFile) => sourceFile.relativePath)
   );
   let result: Result<T, E | SandboxFunctionError>;
   let cleanupResult: RootExecResult;
@@ -126,14 +170,14 @@ export async function withStagedFrameSource<T, E>(
               `/usr/bin/find ${shellEscape(stagingDirectory)} -type d -exec /usr/bin/chmod 0555 -- {} +`,
               `/usr/bin/find ${shellEscape(stagingDirectory)} -type f -exec /usr/bin/chmod 0444 -- {} +`,
               `test -z "$(/usr/bin/find ${shellEscape(stagingDirectory)} ! -type d ! -type f -print -quit)"`,
+              `/usr/bin/find ${shellEscape(stagingDirectory)} -type f -printf '%P\\0' | LC_ALL=C /usr/bin/sort -z | /usr/bin/sha256sum`,
             ].join(" && "),
             "Harden and validate captured Frame source before workload execution."
           )
         );
-        const hardenFailure = rootCommandFailure(
-          hardenResult,
-          "Frame source staging hardening"
-        );
+        const hardenFailure =
+          rootCommandFailure(hardenResult, "Frame source staging hardening") ??
+          stagedSourcePathSetFailure(hardenResult, expectedPathSetSha256);
         if (hardenFailure) {
           result = new Err(hardenFailure);
         } else {

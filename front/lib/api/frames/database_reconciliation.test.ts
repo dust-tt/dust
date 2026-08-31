@@ -1,7 +1,10 @@
 // @vitest-environment node
 
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { FRAME_SOURCE_STAGING_ROOT } from "@app/lib/api/frames/source_staging";
+import {
+  computeFrameSourcePathSetSha256,
+  FRAME_SOURCE_STAGING_ROOT,
+} from "@app/lib/api/frames/source_staging";
 import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { reconcileDatabaseOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
@@ -53,6 +56,10 @@ const sourceFiles = [
   },
 ];
 
+function pathSetHashStdout(relativePaths: ReadonlyArray<string>): string {
+  return `${computeFrameSourcePathSetSha256(relativePaths)}  -\n`;
+}
+
 async function setup() {
   const { authenticator } = await createResourceTest({ role: "admin" });
   const frame = await FileFactory.create(authenticator, null, {
@@ -69,9 +76,19 @@ async function setup() {
     version: "0.0.0-test",
   });
   vi.spyOn(sandbox, "writeFile").mockResolvedValue(new Ok(undefined));
-  vi.spyOn(sandbox, "execRoot").mockResolvedValue(
-    new Ok({ exitCode: 0, stdout: "", stderr: "" })
-  );
+  vi.spyOn(sandbox, "execRoot").mockImplementation(async () => {
+    const call = vi.mocked(sandbox.execRoot).mock.calls.length;
+    return new Ok({
+      exitCode: 0,
+      stdout:
+        call === 2
+          ? pathSetHashStdout(
+              sourceFiles.map((sourceFile) => sourceFile.relativePath)
+            )
+          : "",
+      stderr: "",
+    });
+  });
   vi.spyOn(sandbox, "readFile").mockImplementation(async (_auth, filePath) => {
     const sourceFile = sourceFiles.find(({ relativePath }) =>
       filePath.endsWith(`/${relativePath}`)
@@ -191,13 +208,50 @@ describe("reconcileFramePublicationDatabases", () => {
     expect(sandbox.execRoot).toHaveBeenCalledTimes(3);
   });
 
+  it("refuses to reconcile when staging contains an extra regular file", async () => {
+    const { auth, frame, sandbox } = await setup();
+    vi.mocked(sandbox.execRoot).mockResolvedValueOnce(
+      new Ok({ exitCode: 0, stdout: "", stderr: "" })
+    );
+    vi.mocked(sandbox.execRoot).mockResolvedValueOnce(
+      new Ok({
+        exitCode: 0,
+        stdout: pathSetHashStdout([
+          ...sourceFiles.map((sourceFile) => sourceFile.relativePath),
+          "databases/injected.ts",
+        ]),
+        stderr: "",
+      })
+    );
+
+    const result = await reconcileFramePublicationDatabases(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "internal",
+      message: "Staged Frame source file set differs from the captured source.",
+    });
+    expect(sandbox.readFile).not.toHaveBeenCalled();
+    expect(reconcileDatabaseOnReadySandbox).not.toHaveBeenCalled();
+    expect(sandbox.execRoot).toHaveBeenCalledTimes(3);
+  });
+
   it("fails the operation when staged source cleanup fails", async () => {
     const { auth, frame, sandbox } = await setup();
     vi.mocked(sandbox.execRoot).mockResolvedValueOnce(
       new Ok({ exitCode: 0, stdout: "", stderr: "" })
     );
     vi.mocked(sandbox.execRoot).mockResolvedValueOnce(
-      new Ok({ exitCode: 0, stdout: "", stderr: "" })
+      new Ok({
+        exitCode: 0,
+        stdout: pathSetHashStdout(
+          sourceFiles.map((sourceFile) => sourceFile.relativePath)
+        ),
+        stderr: "",
+      })
     );
     vi.mocked(sandbox.execRoot).mockResolvedValueOnce(
       new Err(new Error("cleanup failed"))
@@ -222,7 +276,12 @@ describe("reconcileFramePublicationDatabases", () => {
       const call = vi.mocked(sandbox.execRoot).mock.calls.length;
       return new Ok({
         exitCode: call === failedCall ? 1 : 0,
-        stdout: "",
+        stdout:
+          call === 2 && failedCall !== 2
+            ? pathSetHashStdout(
+                sourceFiles.map((sourceFile) => sourceFile.relativePath)
+              )
+            : "",
         stderr: call === failedCall ? "root command failed" : "",
       });
     });

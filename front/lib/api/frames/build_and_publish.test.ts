@@ -1,7 +1,10 @@
 // @vitest-environment node
 
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
-import { FRAME_SOURCE_STAGING_ROOT } from "@app/lib/api/frames/source_staging";
+import {
+  computeFrameSourcePathSetSha256,
+  FRAME_SOURCE_STAGING_ROOT,
+} from "@app/lib/api/frames/source_staging";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
@@ -119,9 +122,17 @@ async function setup(): Promise<{
     version: "0.0.0-test",
   });
   vi.spyOn(sandbox, "writeFile").mockResolvedValue(new Ok(undefined));
-  vi.spyOn(sandbox, "execRoot").mockResolvedValue(
-    new Ok({ exitCode: 0, stdout: "", stderr: "" })
-  );
+  vi.spyOn(sandbox, "execRoot").mockImplementation(async () => {
+    const call = vi.mocked(sandbox.execRoot).mock.calls.length;
+    const pathSetSha256 = computeFrameSourcePathSetSha256(
+      sourceFiles.map((sourceFile) => sourceFile.relativePath)
+    );
+    return new Ok({
+      exitCode: 0,
+      stdout: call === 2 ? `${pathSetSha256}  -\n` : "",
+      stderr: "",
+    });
+  });
   vi.spyOn(sandbox, "readFile").mockImplementation(async (_auth, filePath) => {
     const sourceFile = sourceFiles.find(({ relativePath }) =>
       filePath.endsWith(`/${relativePath}`)
