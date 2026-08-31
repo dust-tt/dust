@@ -22,8 +22,13 @@ import {
 import type {
   ConsumptionTopDimension,
   ConsumptionTopRankBy,
+  ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_TOP_DIMENSION_UNIT } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionTopGroup,
+  ResolvedConsumptionGroup,
+} from "@app/lib/api/analytics/consumption/top";
 import {
   fetchConsumptionTopGroups,
   resolveConsumptionGroupLabels,
@@ -112,6 +117,67 @@ function renderExecutionSeries<
   ]);
 }
 
+function excludeSkillManagement(
+  dimension: ConsumptionTopDimension,
+  groups: ConsumptionTopGroup[]
+): { groups: ConsumptionTopGroup[]; skillManagementCredits: number } {
+  if (dimension !== "tool") {
+    return { groups, skillManagementCredits: 0 };
+  }
+  const skillManagementGroup = groups.find(
+    (group) => group.key === SKILL_MANAGEMENT_SERVER_NAME
+  );
+  return {
+    groups: groups.filter((group) => group !== skillManagementGroup),
+    skillManagementCredits: skillManagementGroup?.credits ?? 0,
+  };
+}
+
+function formatRankingText({
+  dimension,
+  label,
+  tz,
+  rankBy,
+  unit,
+  rows,
+  totalCredits,
+}: {
+  dimension: ConsumptionTopDimension;
+  label: string;
+  tz: string;
+  rankBy: ConsumptionTopRankBy;
+  unit: ConsumptionTopUnit;
+  rows: ResolvedConsumptionGroup[];
+  totalCredits: number;
+}): string {
+  const metricLabel = rankBy === "credits" ? "credits" : `${unit}s`;
+
+  if (rows.length === 0) {
+    return `No ${dimension} ${metricLabel} recorded for ${label} (${tz}).`;
+  }
+
+  const lines = rows.map(
+    (row, index) =>
+      `${index + 1}. ${row.name} [${row.key}] — ` +
+      `${row.credits.toFixed(2)} credits, ` +
+      `${row.count} ${unit}${pluralize(row.count)} ` +
+      `(${row.avgCredits.toFixed(2)} per ${unit})`
+  );
+
+  // e.g.:
+  // Top agents for July 2026 (UTC), by credits, highest first:
+  // 1. Support Bot [agentXYZ] — 152.30 credits, 42 messages (3.62 per message)
+  // 2. Sales Bot [agentABC] — 98.10 credits, 12 messages (8.18 per message)
+  //
+  // Credits over the whole window, every row included: 250.40.
+  return (
+    `Top ${dimension}s for ${label} (${tz}), by ${metricLabel}, highest first:\n` +
+    `${lines.join("\n")}\n\n` +
+    `Credits over the whole window, every row included: ` +
+    `${totalCredits.toFixed(2)}.`
+  );
+}
+
 async function renderRanking(
   auth: Authenticator,
   {
@@ -151,52 +217,24 @@ async function renderRanking(
     );
   }
 
-  const { label, timezone: tz } = window.value;
-  const { totalCredits } = result.value;
-  const groups =
-    dimension === "tool"
-      ? result.value.groups.filter(
-          (group) => group.key !== SKILL_MANAGEMENT_SERVER_NAME
-        )
-      : result.value.groups;
-  const skillManagementCredits =
-    dimension === "tool"
-      ? (result.value.groups.find(
-          (group) => group.key === SKILL_MANAGEMENT_SERVER_NAME
-        )?.credits ?? 0)
-      : 0;
-
-  if (groups.length === 0) {
-    const noun = rankBy === "credits" ? "consumption" : "activity";
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `No ${dimension} ${noun} recorded for ${label} (${tz}).`,
-      },
-    ]);
-  }
-
-  const rows = await resolveConsumptionGroupLabels(auth, dimension, groups);
-  const unit = CONSUMPTION_TOP_DIMENSION_UNIT[dimension];
-  const lines = rows.map(
-    (row, index) =>
-      `${index + 1}. ${row.name} [${row.key}] — ` +
-      `${row.credits.toFixed(2)} credits, ` +
-      `${row.count} ${unit}${pluralize(row.count)} ` +
-      `(${row.avgCredits.toFixed(4)} per ${unit})`
+  const { groups, skillManagementCredits } = excludeSkillManagement(
+    dimension,
+    result.value.groups
   );
+  const rows = await resolveConsumptionGroupLabels(auth, dimension, groups);
 
-  return new Ok([
-    {
-      type: "text" as const,
-      text:
-        `Top ${dimension} for ${label} (${tz}), ` +
-        `${rankBy === "credits" ? "most expensive" : `most ${unit}s`} first:\n` +
-        `${lines.join("\n")}\n\n` +
-        `Credits over the whole window, every row included: ` +
-        `${(totalCredits - skillManagementCredits).toFixed(2)}.`,
-    },
-  ]);
+  const { label, timezone: tz } = window.value;
+  const text = formatRankingText({
+    dimension,
+    label,
+    tz,
+    rankBy,
+    unit: CONSUMPTION_TOP_DIMENSION_UNIT[dimension],
+    rows,
+    totalCredits: result.value.totalCredits - skillManagementCredits,
+  });
+
+  return new Ok([{ type: "text" as const, text }]);
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
@@ -578,9 +616,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     { dimension, limit, ...input },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
     return renderRanking(auth, { dimension, rankBy: "count", limit, input });
   },
@@ -589,9 +627,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     { dimension, limit, ...input },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
     return renderRanking(auth, { dimension, rankBy: "count", limit, input });
   },

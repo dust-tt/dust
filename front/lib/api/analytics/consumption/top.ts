@@ -34,7 +34,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 import chunk from "lodash/chunk";
 
-type ConsumptionTopGroup = {
+export type ConsumptionTopGroup = {
   key: string;
   credits: number;
   // Distinct messages, or tool invocations, per the ranking's unit.

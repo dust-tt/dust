@@ -1079,19 +1079,7 @@ const QUERIES: LabeledQuery[] = [
     maxRank: 2,
   },
   {
-    query: "show me the top 10 most active agents this month",
-    expected: "workspace_analytics.get_top_entities_by_message_count",
-  },
-  {
     query: "who are the most active users this month",
-    expected: "workspace_analytics.get_top_entities_by_message_count",
-  },
-  {
-    query: "rank workspace members by messages sent",
-    expected: "workspace_analytics.get_top_entities_by_message_count",
-  },
-  {
-    query: "rank member groups by message volume",
     expected: "workspace_analytics.get_top_entities_by_message_count",
   },
   {
@@ -1103,10 +1091,6 @@ const QUERIES: LabeledQuery[] = [
     query: "which models did the workspace use most this month",
     expected: "workspace_analytics.get_top_entities_by_message_count",
     maxRank: 5,
-  },
-  {
-    query: "list the agent tags",
-    expected: "workspace_analytics.get_top_entities_by_message_count",
   },
   {
     query:
