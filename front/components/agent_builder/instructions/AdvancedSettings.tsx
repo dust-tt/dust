@@ -153,21 +153,22 @@ export function AdvancedSettings() {
     name: "generationSettings",
   });
 
-  const agentModel: AgentModelConfigurationType | null = generationSettingsField
-    .value.modelSettings
-    ? {
-        ...generationSettingsField.value.modelSettings,
-        temperature: generationSettingsField.value.temperature,
-        reasoningEffort:
-          generationSettingsField.value.reasoningEffort ?? undefined,
-      }
-    : null;
+  const generationSettings = generationSettingsField.value;
+  const agentModel = React.useMemo<AgentModelConfigurationType | null>(() => {
+    if (!generationSettings.modelSettings) {
+      return null;
+    }
+
+    return {
+      ...generationSettings.modelSettings,
+      temperature: generationSettings.temperature,
+      reasoningEffort: generationSettings.reasoningEffort ?? undefined,
+    };
+  }, [generationSettings]);
 
   const supportsResponseFormat =
-    generationSettingsField.value.modelSettings &&
-    isSupportingResponseFormat(
-      generationSettingsField.value.modelSettings.modelId
-    );
+    generationSettings.modelSettings &&
+    isSupportingResponseFormat(generationSettings.modelSettings.modelId);
 
   return (
     <>
@@ -187,7 +188,7 @@ export function AdvancedSettings() {
         disabled={false}
         onSelectionChange={(newModelSelection) => {
           generationSettingsField.onChange({
-            ...generationSettingsField.value,
+            ...generationSettings,
             reasoningEffort: newModelSelection?.reasoningEffort,
             modelSettings: {
               modelId: newModelSelection?.modelId,
