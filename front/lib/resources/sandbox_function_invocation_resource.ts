@@ -449,7 +449,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               claimedStatus: claimed,
               err: writeResult.error,
             },
-            "Write-behind terminal Pod function invocation persistence failed"
+            "Write-behind terminal sandbox function invocation persistence failed"
           );
         }
       })();
@@ -478,7 +478,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           invocationId: this.sId,
           fromStatus: from,
         },
-        "Failed to release Pod function terminal claim after blob write failure"
+        "Failed to release sandbox function terminal claim after blob write failure"
       );
     }
   }
@@ -504,7 +504,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           attemptedStatus: "errored",
           attemptedError: callError,
         },
-        "Skipping terminal transition for an already-terminal Pod function invocation"
+        "Skipping terminal transition for an already-terminal sandbox function invocation"
       );
       return false;
     }
@@ -553,7 +553,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS
           ),
         },
-        "Skipping terminal transition for an already-terminal Pod function invocation"
+        "Skipping terminal transition for an already-terminal sandbox function invocation"
       );
       return false;
     }
@@ -582,7 +582,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return true;
   }
   /**
-   * Run the invocation on the pod sandbox and record its outcome.
+   * Run the invocation on its owner's sandbox and record its outcome.
    *
    * `inline` marks an invocation running inside the request that created it, which constrains it
    * twice. The sandbox is used only if it is already running, never created, woken, or recreated,
@@ -603,7 +603,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           invocationId: this.sId,
           invocationStatus: this.status,
         },
-        "Skipping execution of a terminal Pod function invocation"
+        "Skipping execution of a terminal sandbox function invocation"
       );
       return new Ok(undefined);
     }
@@ -612,10 +612,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const { sandboxFunction } = this;
       const frame = sandboxFunction.frame;
       const publicationId = sandboxFunction.publicationId;
+      const functionKind = frame ? "Frame function" : "Pod Function";
       if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
         return new Err(
           new SandboxFunctionInvocationError(
-            `This ${frame ? "Frame function" : "Pod Function"} belongs to another workspace.`
+            `This ${functionKind} belongs to another workspace.`
           )
         );
       }
@@ -689,7 +690,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         }
       }
       if (!functionCheck) {
-        return new Err(new Error("The Pod Function no longer exists."));
+        return new Err(new Error(`The ${functionKind} no longer exists.`));
       }
       const { persistedFunction } = functionCheck;
       if (functionCheck.errorMessage !== null) {
@@ -699,7 +700,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
       if (!ensureResult) {
         // Unreachable: ensureResult is only null when a check above already returned.
-        return new Err(new Error("The Pod sandbox could not be prepared."));
+        return new Err(
+          new Error(
+            `The ${frame ? "Frame" : "Pod"} sandbox could not be prepared.`
+          )
+        );
       }
       if (ensureResult.isErr()) {
         return ensureResult;
@@ -724,7 +729,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         authorization = functionCheck.podAuthorization;
       }
       if (!authorization) {
-        return new Err(new Error("The Pod function authorization is missing."));
+        return new Err(
+          new Error(`The ${functionKind} authorization is missing.`)
+        );
       }
       if (!authorization.authorized) {
         return new Err(
@@ -861,7 +868,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               timeoutMs: SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS,
               error: execResult.error.message,
             },
-            "Inline Pod function execution failed"
+            "Inline sandbox function execution failed"
           );
         }
         return execResult;
@@ -883,7 +890,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             ? {}
             : { spilledResultBytes: parsed.spill.resultBytes }),
         },
-        "Pod function stdout result delivery"
+        "Sandbox function stdout result delivery"
       );
       // An oversized result was spilled to a sandbox-local file: read it back
       // through the provider and normalize it exactly like an inline outcome.
@@ -1060,7 +1067,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
                 invocationId: resource.sId,
                 err: result.error,
               },
-              "Deferred Pod function invocation blob write failed"
+              "Deferred sandbox function invocation blob write failed"
             );
           }
         });
@@ -1133,7 +1140,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               invocationId: invocation.sId,
               err: normalizeError(error),
             },
-            "Deferred Pod function invocation created-event publish failed"
+            "Deferred sandbox function invocation created-event publish failed"
           );
         }),
       ]).then(() => undefined);
@@ -1161,7 +1168,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           invocationId: invocation.sId,
           reason: "sandbox_not_running",
         },
-        "Escalating a fast Pod function invocation to the invocation workflow"
+        "Escalating a fast sandbox function invocation to the invocation workflow"
       );
     }
 
@@ -1202,7 +1209,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           attemptedStatus: "errored",
           attemptedError: error,
         },
-        "Skipping terminal transition for an already-terminal Pod function invocation"
+        "Skipping terminal transition for an already-terminal sandbox function invocation"
       );
       return false;
     }

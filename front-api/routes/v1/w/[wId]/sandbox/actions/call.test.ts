@@ -3,7 +3,10 @@ import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_fun
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import {
+  createPersistedFrameFunctionInvocationTokenTestContext,
+  createPersistedSandboxFunctionInvocationTokenTestContext,
+} from "@app/tests/utils/SandboxTokenFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -49,18 +52,9 @@ function callSandboxTool(
   });
 }
 
-async function setupWithView({
-  noTools = false,
-  tokenOwnerKind = "pod",
-}: {
-  noTools?: boolean;
-  tokenOwnerKind?: "pod" | "frame";
-} = {}) {
+async function setupWithView({ noTools = false }: { noTools?: boolean } = {}) {
   const context =
-    await createPersistedSandboxFunctionInvocationTokenTestContext({
-      noTools,
-      tokenOwnerKind,
-    });
+    await createPersistedSandboxFunctionInvocationTokenTestContext({ noTools });
   const commonUtilities = await InternalMCPServerInMemoryResource.makeNew(
     context.auth,
     { name: "common_utilities", useCase: null }
@@ -69,6 +63,26 @@ async function setupWithView({
     context.workspace,
     commonUtilities.id,
     context.globalSpace
+  );
+  return { ...context, view };
+}
+
+async function setupFrameWithView({
+  noTools = false,
+}: {
+  noTools?: boolean;
+} = {}) {
+  const context = await createPersistedFrameFunctionInvocationTokenTestContext({
+    noTools,
+  });
+  const commonUtilities = await InternalMCPServerInMemoryResource.makeNew(
+    context.auth,
+    { name: "common_utilities", useCase: null }
+  );
+  const view = await MCPServerViewFactory.create(
+    context.workspace,
+    commonUtilities.id,
+    context.runtimeSpace
   );
   return { ...context, view };
 }
@@ -156,8 +170,15 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
   });
 
   it("keeps an immutable Frame publication fast after refusing its tool call", async () => {
-    const { auth, token, workspace, view, sandboxFunction } =
-      await setupWithView({ noTools: true, tokenOwnerKind: "frame" });
+    const {
+      auth,
+      frame,
+      publicationId,
+      token,
+      workspace,
+      view,
+      sandboxFunction,
+    } = await setupFrameWithView({ noTools: true });
 
     const response = await callSandboxTool(workspace, token, {
       serverViewId: view.sId,
@@ -169,11 +190,37 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     const body = await response.json();
     expect(body.error.type).toBe("fast_function_called_tools");
     expect(body.error.message).toContain("Republish the Frame");
-    const refetched = await SandboxFunctionResource.fetchById(
-      auth,
-      sandboxFunction.sId
-    );
+    const refetched =
+      await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
+        frame,
+        publicationId,
+        slug: sandboxFunction.slug,
+      });
     expect(refetched?.executionMode).toBe("fast");
+  });
+
+  it("resolves a durable Frame function in its runtime scope", async () => {
+    const { auth, token, workspace, view, invocation, sandboxFunction } =
+      await setupFrameWithView();
+
+    const response = await callSandboxTool(workspace, token, {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+    });
+
+    expect(response.status).toBe(202);
+    const body = await response.json();
+    const action = await SandboxFunctionMCPActionResource.fetchById(
+      auth,
+      body.actionId
+    );
+    expect(sandboxFunction.frame).not.toBeNull();
+    expect(action).toMatchObject({
+      sandboxFunctionInvocationId: invocation.id,
+      status: "running",
+      toolName: "generate_random_number",
+    });
   });
 
   it("leaves a durable function's mode alone when its tool call succeeds", async () => {

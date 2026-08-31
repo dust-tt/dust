@@ -8,6 +8,7 @@ import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_m
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -21,7 +22,10 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentMCPActionType } from "@app/types/actions";
-import { sandboxFunctionContentType } from "@app/types/files";
+import {
+  frameV2ContentType,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 
 process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
@@ -178,11 +182,8 @@ export async function createSandboxFunctionInvocationTokenTestContext({
 // them back (calling MCP tools from a function invocation).
 export async function createPersistedSandboxFunctionInvocationTokenTestContext({
   noTools = false,
-  tokenOwnerKind = "pod",
 }: {
   noTools?: boolean;
-  // The persisted function stays Pod-owned. Frame-claim route tests return before resolving it.
-  tokenOwnerKind?: "pod" | "frame";
 } = {}) {
   const context = await createSandboxTokenTestContext();
   const { workspace } = context;
@@ -233,10 +234,7 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext({
     sandboxFunction: {
       sId: sandboxFunction.sId,
     },
-    owner:
-      tokenOwnerKind === "frame"
-        ? { kind: "frame", frameId: file.sId, spaceId: podSpace.sId }
-        : { kind: "pod", spaceId: podSpace.sId },
+    owner: { kind: "pod", spaceId: podSpace.sId },
     invocationId: invocation.sId,
     execId: `test-function-exec-${context.sandbox.sId}`,
     noTools,
@@ -248,6 +246,99 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext({
     podSpace,
     sandboxFunction,
     invocation,
+    token,
+  };
+}
+
+export async function createPersistedFrameFunctionInvocationTokenTestContext({
+  noTools = false,
+}: {
+  noTools?: boolean;
+} = {}) {
+  const context = await createSandboxTokenTestContext();
+  const { workspace } = context;
+  const user = context.auth.getNonNullableUser();
+  const runtimeSpace = await SpaceFactory.project(workspace, user.id);
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+  const publicationId = "test-publication";
+  const frame = await FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: "greeting.frame.json",
+    fileSize: 100,
+    status: "ready",
+    useCase: "conversation",
+    useCaseMetadata: {
+      spaceId: runtimeSpace.sId,
+      activePublicationId: publicationId,
+    },
+  });
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      auth,
+      {
+        frame,
+        publicationId,
+        functions: [
+          {
+            name: "greet",
+            description: "Greet someone.",
+            userIdentity: "optional",
+            executionMode: noTools ? "fast" : "durable",
+            defaultStake: "low",
+            bundleCode: "export default () => 'hello';",
+            inputSchema: {
+              type: "object",
+              properties: { message: { type: "string" } },
+              required: ["message"],
+            },
+            outputSchema: {
+              type: "object",
+              properties: { greeting: { type: "string" } },
+              required: ["greeting"],
+            },
+          },
+        ],
+      },
+      transaction
+    )
+  );
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
+      frame,
+      publicationId,
+      slug: "greet",
+    });
+  if (!sandboxFunction) {
+    throw new Error("Expected the Frame function to exist.");
+  }
+  const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+    sandboxFunction,
+    input: undefined,
+  });
+  const token = await generateSandboxFunctionInvocationToken(auth, {
+    sandbox: context.sandbox,
+    sandboxFunction: { sId: sandboxFunction.sId },
+    owner: {
+      kind: "frame",
+      frameId: frame.sId,
+      spaceId: runtimeSpace.sId,
+    },
+    invocationId: invocation.sId,
+    execId: `test-function-exec-${context.sandbox.sId}`,
+    noTools,
+  });
+
+  return {
+    ...context,
+    auth,
+    frame,
+    invocation,
+    publicationId,
+    runtimeSpace,
+    sandboxFunction,
     token,
   };
 }
