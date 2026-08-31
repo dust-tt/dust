@@ -449,6 +449,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
+    // TODO(governance): gate on a type-level `group` "create" capability
+    // (ROLE_REGISTRY entry) instead of the role, in a follow-up PR.
     if (!auth.isManager()) {
       return new Err(
         new DustError(
@@ -997,7 +999,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (group) {
       const groupResource = new this(this.model, group.get());
-      await groupResource.updateName(auth, directoryGroup.name);
+      await groupResource.dangerouslyUpdateName(directoryGroup.name);
       return groupResource;
     }
 
@@ -2242,6 +2244,25 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  // Renames a group whose name is owned by an external system of record: a
+  // regular_auto group (its space/agent) or a provisioned group (its SCIM
+  // directory). The caller is that system of record, so no permission check
+  // applies here — user-facing renames must go through `updateName`.
+  async dangerouslyUpdateName(
+    newName: string
+  ): Promise<Result<undefined, Error>> {
+    if (!this.isRegularAuto() && !this.isProvisioned()) {
+      return new Err(
+        new Error(
+          "dangerouslyUpdateName is only valid for regular_auto and provisioned groups."
+        )
+      );
+    }
+
+    await this.update({ name: newName });
+    return new Ok(undefined);
+  }
+
   async updateRegularManualGroup(
     auth: Authenticator,
     { name, memberIds }: { name?: string; memberIds?: string[] }
@@ -2260,17 +2281,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.isManager()) {
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
+
+    // Editing a regular_manual group (name/members) requires `write` on it
+    // (workspace admins and managers).
+    if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
           "unauthorized",
           `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
       );
-    }
-
-    if (!this.isRegularManual()) {
-      return new Err(new DustError("group_not_found", "Group not found."));
     }
 
     if (name !== undefined) {
@@ -2339,17 +2362,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.isManager()) {
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
+
+    // Editing a regular_manual group (name/members) requires `write` on it
+    // (workspace admins and managers).
+    if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
           "unauthorized",
           `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
       );
-    }
-
-    if (!this.isRegularManual()) {
-      return new Err(new DustError("group_not_found", "Group not found."));
     }
 
     // Both sides are fetched at once, then split back by id.
@@ -2404,17 +2429,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       DustError<"unauthorized" | "group_not_found" | "internal_error">
     >
   > {
-    if (!auth.isManager()) {
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
+
+    // Deleting a regular_manual group requires `admin` on it (workspace admins
+    // and managers).
+    if (!this.canAdministrate(auth)) {
       return new Err(
         new DustError(
           "unauthorized",
           `Only workspace admins and ${MANAGER_ROLE_NAME}s can delete groups.`
         )
       );
-    }
-
-    if (!this.isRegularManual()) {
-      return new Err(new DustError("group_not_found", "Group not found."));
     }
 
     const deleteRes = await this.delete(auth);
@@ -2427,16 +2454,12 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // Pass null to clear the cap.
+  // Authorization is handled the same way as user and workspace spend limits:
+  // by the route (`ensureIsManager`), and `setGroupSpendLimit` validates the
+  // group kind. This is a plain setter, mirroring `updatePoolCapOverride`.
   async updatePoolCap(
-    auth: Authenticator,
     poolCapAwuCredits: number | null
   ): Promise<Result<undefined, Error>> {
-    if (!auth.isManager()) {
-      return new Err(
-        new Error("Only admins and managers can update group spend limits.")
-      );
-    }
-
     await this.update({ poolCapAwuCredits });
     return new Ok(undefined);
   }
@@ -2554,6 +2577,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
+    // TODO(governance) remove this case once agent_editors are gone away
     if (this.kind === "agent_editors") {
       return [
         {
@@ -2583,53 +2607,42 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
+    // regular_manual: admins and managers manage the group; everyone can read.
     if (this.isRegularManual()) {
       return [
         {
-          groups: [
-            {
-              id: this.id,
-              permissions: ["read"],
-            },
-          ],
           roles: [
             { role: "admin", permissions: ["read", "write", "admin"] },
             { role: "manager", permissions: ["read", "write", "admin"] },
+            { role: "user", permissions: ["read"] },
+            { role: "builder", permissions: ["read"] },
           ],
           workspaceId: this.workspaceId,
         },
       ];
     }
 
-    // provisioned (SCIM-synced) and regular_auto: admin manages, manager reads,
-    // members read via the self-grant. #31360 switches these to pure roles.
-    if (this.isProvisioned() || this.isRegularAuto()) {
+    // global, provisioned, regular_auto: read-only for every workspace member.
+    // Write/admin are gated through the associated resource (space/agent).
+    if (this.isGlobal() || this.isProvisioned() || this.isRegularAuto()) {
       return [
         {
-          groups: [
-            {
-              id: this.id,
-              permissions: ["read"],
-            },
-          ],
           roles: [
-            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "admin", permissions: ["read"] },
             { role: "manager", permissions: ["read"] },
+            { role: "user", permissions: ["read"] },
+            { role: "builder", permissions: ["read"] },
           ],
           workspaceId: this.workspaceId,
         },
       ];
     }
 
+    // system: internal group — no one can read or write. The single empty grant
+    // denies every verb (an empty ACL array would instead vacuously allow).
     return [
       {
-        groups: [
-          {
-            id: this.id,
-            permissions: ["read"],
-          },
-        ],
-        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
+        roles: [],
         workspaceId: this.workspaceId,
       },
     ];
