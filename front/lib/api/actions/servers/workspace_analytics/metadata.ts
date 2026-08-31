@@ -155,8 +155,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     stake: "never_ask",
     eager: true,
     displayLabels: {
-      running: "Retrieving top by message count",
-      done: "Retrieved top by message count",
+      running: "Retrieving top entities by message count",
+      done: "Retrieved top entities by message count",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -176,8 +176,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     stake: "never_ask",
     eager: true,
     displayLabels: {
-      running: "Retrieving top by execution count",
-      done: "Retrieved top by execution count",
+      running: "Retrieving top entities by execution count",
+      done: "Retrieved top entities by execution count",
     },
     toolCostCategory: "basic",
     freeUsage: true,
