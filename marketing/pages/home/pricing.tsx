@@ -166,7 +166,7 @@ const PLANS: Plan[] = [
       "Unlimited connectors & MCP servers",
       "Workspace-pooled credits & volume pricing",
       "SCIM, audit logs & custom data retention",
-      "US data residency & single-tenant deployment",
+      "US & EU data residency & single-tenant deployment",
       "Dedicated CSM, priority support & SLA",
       "Custom legal terms (MSA, DPA)",
     ],
