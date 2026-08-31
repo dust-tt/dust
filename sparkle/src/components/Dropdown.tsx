@@ -417,9 +417,9 @@ const DropdownMenuContent = React.forwardRef<
     const itemElementsRef = useRef(new Map<string, HTMLElement>());
 
     React.useLayoutEffect(() => {
-      const popperWrapper = viewportRef.current
-        ?.closest<HTMLElement>("[data-radix-menu-content]")
-        ?.parentElement;
+      const popperWrapper = viewportRef.current?.closest<HTMLElement>(
+        "[data-radix-menu-content]"
+      )?.parentElement;
       if (repositionKey !== undefined && popperWrapper) {
         // Let Radix measure the full new content before applying the next cap.
         popperWrapper.style.removeProperty("--radix-popper-available-height");
