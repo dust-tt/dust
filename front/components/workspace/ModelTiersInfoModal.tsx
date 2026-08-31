@@ -1,5 +1,7 @@
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ModelTierExplainerTier } from "@app/lib/client/model_tiers_explainer";
 import { getModelTierExplainer } from "@app/lib/client/model_tiers_explainer";
+import { useModels } from "@app/lib/swr/models";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   Button,
@@ -14,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { ReactNode } from "react";
@@ -99,17 +102,23 @@ function TierCard({ tier }: TierCardProps) {
                 Reasoning effort
               </span>
             </div>
-            {tier.models.map((model) => (
-              <div
-                key={model.displayName}
-                className="flex items-center justify-between gap-3 border-t border-border py-3 dark:border-border-dark"
-              >
-                <span className="text-sm text-foreground dark:text-foreground-night">
-                  {model.displayName}
-                </span>
-                <Chip size="xs" color="primary" label={model.effortsLabel} />
+            {tier.models.length === 0 ? (
+              <div className="border-t border-border py-3 text-sm text-muted-foreground dark:border-border-dark dark:text-muted-foreground-night">
+                No model in this tier is available in this workspace.
               </div>
-            ))}
+            ) : (
+              tier.models.map((model) => (
+                <div
+                  key={model.displayName}
+                  className="flex items-center justify-between gap-3 border-t border-border py-3 dark:border-border-dark"
+                >
+                  <span className="text-sm text-foreground dark:text-foreground-night">
+                    {model.displayName}
+                  </span>
+                  <Chip size="xs" color="primary" label={model.effortsLabel} />
+                </div>
+              ))
+            )}
           </div>
         </CollapsibleContent>
       </div>
@@ -123,7 +132,12 @@ interface ModelTiersInfoDialogProps {
 }
 
 function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
-  const tiers = useMemo(() => getModelTierExplainer(), []);
+  const owner = useWorkspace();
+  const { models, isModelsLoading } = useModels({ owner, disabled: !isOpen });
+  const tiers = useMemo(
+    () => getModelTierExplainer(new Set(models.map((model) => model.modelId))),
+    [models]
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -161,11 +175,17 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
               Select a tier to see the models and reasoning efforts it includes.
             </InfoSection>
           </div>
-          <div className="flex flex-col gap-2">
-            {tiers.map((tier) => (
-              <TierCard key={tier.name} tier={tier} />
-            ))}
-          </div>
+          {isModelsLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner size="md" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {tiers.map((tier) => (
+                <TierCard key={tier.name} tier={tier} />
+              ))}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
