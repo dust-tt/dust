@@ -472,14 +472,14 @@ export function getTier(name: ModelsTierName): ModelsTierDefinition | null {
 }
 
 export function getTierForSelection(
-  selection: ModelTierSelection,
+  selection: ModelTierSelection
 ): ModelsTierName | null {
   return getTierForModel(selection.modelId, selection.reasoningEffort);
 }
 
 export function getTierForModel(
   modelId: ModelTierSelection["modelId"],
-  reasoningEffort: ModelTierSelection["reasoningEffort"],
+  reasoningEffort: ModelTierSelection["reasoningEffort"]
 ): ModelsTierName | null {
   // includes models added at runtime on GCP (EAPs)
   if (!isStaticModelId(modelId)) {
