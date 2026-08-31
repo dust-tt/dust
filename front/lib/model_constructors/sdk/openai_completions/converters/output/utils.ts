@@ -8,11 +8,15 @@ import type {
   ToolCallEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { StreamErrorSdkClass } from "@app/lib/model_constructors/utils/classify_stream_error";
+import { classifyStreamError as classifyUnhandledStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { isNumber, isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { APIError } from "openai";
+import { APIConnectionError, APIError, APIUserAbortError } from "openai";
 import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 
 // Parses tool-call arguments into an object, falling back to `{}` for malformed
@@ -65,81 +69,172 @@ function usageToTokenUsageEvent(
   };
 }
 
+function isApiConnectionError(err: unknown): err is APIConnectionError {
+  return err instanceof APIConnectionError;
+}
+
+function isApiError(err: unknown): err is APIError {
+  return err instanceof APIError;
+}
+
+function isApiUserAbortError(err: unknown): err is APIUserAbortError {
+  return err instanceof APIUserAbortError;
+}
+
+// Specialized errors are checked before `APIError` since they extend it.
+type ClassifiedStreamError =
+  | { kind: "connection"; error: APIConnectionError }
+  | { kind: "abort"; error: APIUserAbortError }
+  | { kind: "api"; error: APIError }
+  | { kind: "unknown" };
+
+function classifyStreamError(error: unknown): ClassifiedStreamError {
+  if (isApiConnectionError(error)) {
+    return { kind: "connection", error };
+  }
+  if (isApiUserAbortError(error)) {
+    return { kind: "abort", error };
+  }
+  if (isApiError(error)) {
+    return { kind: "api", error };
+  }
+  return { kind: "unknown" };
+}
+
+// Known 5xx/in-band failures are provider. Known 4xx are Dust. An HTTP status
+// we do not recognize is not enough to blame either side.
+function apiErrorToErrorEvent(
+  metadata: EndpointMetadata,
+  error: APIError
+): ErrorEvent {
+  const status = error.status;
+  switch (status) {
+    case 400:
+    case 422:
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "invalid_request_error",
+        message: `Invalid request to Fireworks: ${error.message}`,
+        originalError: error,
+      });
+    case 401:
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "authentication_error",
+        message: `Authentication failed for Fireworks: ${error.message}`,
+        originalError: error,
+      });
+    case 403:
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "permission_error",
+        message: `Permission denied for Fireworks: ${error.message}`,
+        originalError: error,
+      });
+    case 404:
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "not_found_error",
+        message: `Resource not found for Fireworks: ${error.message}`,
+        originalError: error,
+      });
+    case 429:
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "rate_limit_error",
+        message: `Rate limit exceeded for Fireworks/${metadata.model}: ${error.message}`,
+        originalError: error,
+      });
+    case 503:
+      return buildErrorEvent({
+        errorSource: "provider",
+        metadata,
+        type: "overloaded_error",
+        message: `Fireworks is overloaded: ${error.message}`,
+        originalError: error,
+      });
+    case undefined:
+      // The OpenAI SDK creates a statusless APIError when an SSE payload
+      // contains `error` or is itself an `error` event. Unlike a transport
+      // exception, this is an explicit provider-side failure.
+      return buildErrorEvent({
+        errorSource: "provider",
+        metadata,
+        type: "server_error",
+        message: `Server error from Fireworks: ${error.message}`,
+        originalError: error,
+      });
+    default:
+      if (isNumber(status) && status >= 500 && status < 600) {
+        return buildErrorEvent({
+          errorSource: "provider",
+          metadata,
+          type: "server_error",
+          message: `Server error from Fireworks (${status}): ${error.message}`,
+          originalError: error,
+        });
+      }
+      return buildErrorEvent({
+        errorSource: "unknown",
+        metadata,
+        type: "unknown_error",
+        message: isNumber(status)
+          ? `Error from Fireworks (${status}): ${error.message}`
+          : `Error from Fireworks: ${error.message}`,
+        originalError: error,
+      });
+  }
+}
+
+function untypedStreamErrorToErrorEvent(
+  metadata: EndpointMetadata,
+  error: unknown,
+  sdkClass?: StreamErrorSdkClass
+): ErrorEvent {
+  const classification = classifyUnhandledStreamError({
+    error,
+    providerName: "Fireworks",
+    sdkClass,
+  });
+  return buildErrorEvent({
+    ...classification,
+    metadata,
+    originalError: error,
+  });
+}
+
 // Maps any error thrown while streaming into a unified `ErrorEvent`, so
 // everything leaving the endpoint is an event, not an exception.
 export function streamErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: unknown
 ): ErrorEvent {
-  if (error instanceof APIError) {
-    const status = error.status;
-    switch (status) {
-      case 400:
-        return buildErrorEvent({
-          errorSource: "dust",
-          metadata,
-          type: "invalid_request_error",
-          message: `Invalid request to Fireworks: ${error.message}`,
-          originalError: error,
-        });
-      case 401:
-        return buildErrorEvent({
-          errorSource: "dust",
-          metadata,
-          type: "authentication_error",
-          message: `Authentication failed for Fireworks: ${error.message}`,
-          originalError: error,
-        });
-      case 403:
-        return buildErrorEvent({
-          errorSource: "dust",
-          metadata,
-          type: "permission_error",
-          message: `Permission denied for Fireworks: ${error.message}`,
-          originalError: error,
-        });
-      case 404:
-        return buildErrorEvent({
-          errorSource: "dust",
-          metadata,
-          type: "not_found_error",
-          message: `Resource not found for Fireworks: ${error.message}`,
-          originalError: error,
-        });
-      case 429:
-        return buildErrorEvent({
-          errorSource: "dust",
-          metadata,
-          type: "rate_limit_error",
-          message: `Rate limit exceeded for Fireworks/${metadata.model}: ${error.message}`,
-          originalError: error,
-        });
-      default:
-        if (isNumber(status) && status >= 500 && status < 600) {
-          return buildErrorEvent({
-            errorSource: "provider",
-            metadata,
-            type: "server_error",
-            message: `Server error from Fireworks (${status}): ${error.message}`,
-            originalError: error,
-          });
-        }
-        return buildErrorEvent({
-          errorSource: "provider",
-          metadata,
-          type: "unknown_error",
-          message: `Error from Fireworks (${status}): ${error.message}`,
-          originalError: error,
-        });
-    }
+  const classified = classifyStreamError(error);
+  switch (classified.kind) {
+    case "connection":
+      return untypedStreamErrorToErrorEvent(
+        metadata,
+        classified.error,
+        "connection"
+      );
+    case "abort":
+      return untypedStreamErrorToErrorEvent(
+        metadata,
+        classified.error,
+        "abort"
+      );
+    case "api":
+      return apiErrorToErrorEvent(metadata, classified.error);
+    case "unknown":
+      return untypedStreamErrorToErrorEvent(metadata, error);
+    default:
+      assertNever(classified);
   }
-  return buildErrorEvent({
-    errorSource: "provider",
-    metadata,
-    type: "unknown_error",
-    message: `Unknown error from Fireworks: ${normalizeError(error).message}`,
-    originalError: error,
-  });
 }
 
 type Accumulator = { textParts: string; reasoningParts: string };

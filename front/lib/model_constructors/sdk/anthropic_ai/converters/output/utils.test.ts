@@ -2,6 +2,7 @@ import {
   AnthropicError,
   APIConnectionError,
   APIError,
+  APIUserAbortError,
 } from "@anthropic-ai/sdk";
 import type { BetaMessageBatchResult } from "@anthropic-ai/sdk/resources/beta/messages/batches";
 import type {
@@ -514,7 +515,17 @@ describe("streamErrorToErrorEvent", () => {
     const err = new APIConnectionError({ message: "connection reset" });
     const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("network_error");
+    expect(result.content.errorSource).toBe("unknown");
     expect(result.content.originalError).toBe(err);
+  });
+
+  it("does not attribute a client abort to the provider", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new APIUserAbortError({ message: "Request was aborted." })
+    );
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 
   it("maps file download failures to server_error", () => {
@@ -561,11 +572,11 @@ describe("streamErrorToErrorEvent", () => {
     expect(result.content.errorSource).toBe("provider");
   });
 
-  it("maps an unrecognized status to unknown_error", () => {
+  it("maps an unrecognized status to unknown_error without blaming either side", () => {
     const err = new APIError(418, {}, "teapot", undefined, null);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      "unknown_error"
-    );
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 
   // An `APIError` raised mid-stream from an SSE `error` event carries no HTTP
@@ -584,25 +595,25 @@ describe("streamErrorToErrorEvent", () => {
     );
   });
 
-  // The SDK rewraps any non-APIError stream-body failure (connection drop, SSE
-  // parse failure, stream-invariant violation) into a bare `AnthropicError`.
-  // The old router substring-matched these to keep transient failures retryable;
-  // we replicate that classification (see `bareStreamErrorToErrorEvent`).
-  it.each([
-    ["terminated", "network_error", "provider"],
-    ["other side closed", "network_error", "provider"],
-    ["socket hang up, connection reset", "network_error", "provider"],
-    ["ECONNREFUSED", "network_error", "provider"],
-    ["too many requests", "rate_limit_error", "dust"],
-    ["Overloaded", "overloaded_error", "provider"],
-    ["request timed out", "timeout_error", "provider"],
-    ["stream interrupted", "stream_error", "provider"],
-    ["internal server error", "server_error", "provider"],
-  ] as const)("classifies bare AnthropicError %j as %s from %s (old-router parity)", (message, expectedType, errorSource) => {
-    const err = new AnthropicError(message);
+  it("maps a bare AnthropicError with an undici socket code to network_error", () => {
+    const err = new AnthropicError("terminated");
+    Object.assign(err, {
+      cause: Object.assign(new Error("other side closed"), {
+        code: "UND_ERR_SOCKET",
+      }),
+    });
     const result = streamErrorToErrorEvent(metadata, err);
-    expect(result.content.type).toBe(expectedType);
-    expect(result.content.errorSource).toBe(errorSource);
+    expect(result.content.type).toBe("network_error");
+    expect(result.content.errorSource).toBe("unknown");
+  });
+
+  it("does not classify a bare AnthropicError on message text", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new AnthropicError("Overloaded")
+    );
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 
   it("maps an unclassifiable bare error to unknown_error", () => {

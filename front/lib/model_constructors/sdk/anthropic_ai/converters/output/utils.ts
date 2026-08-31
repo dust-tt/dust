@@ -2,6 +2,7 @@ import {
   AnthropicError,
   APIConnectionError,
   APIError,
+  APIUserAbortError,
 } from "@anthropic-ai/sdk";
 import type { BetaMessageBatchResult } from "@anthropic-ai/sdk/resources/beta/messages/batches";
 import type {
@@ -25,8 +26,6 @@ import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoin
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import type {
   ErrorEvent,
-  ErrorSource,
-  ErrorType,
   ModelResponseEvent,
   NonDeltaResponseEvent,
   ProviderPassthroughEvent,
@@ -41,12 +40,13 @@ import type {
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import type { StreamErrorSdkClass } from "@app/lib/model_constructors/utils/classify_stream_error";
+import { classifyStreamError as classifyUnhandledStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
 import logger from "@app/logger/logger";
 import {
   assertNever,
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
@@ -414,11 +414,15 @@ function isApiError(err: unknown): err is APIError {
   return err instanceof APIError;
 }
 
-// A stream error classified into the categories we surface. `APIConnectionError`
-// is checked before `APIError` since the former extends the latter.
+function isApiUserAbortError(err: unknown): err is APIUserAbortError {
+  return err instanceof APIUserAbortError;
+}
+
+// Specialized errors are checked before `APIError` since they extend it.
 type ClassifiedStreamError =
   | { kind: "invalid_tool_json" }
   | { kind: "connection"; error: APIConnectionError }
+  | { kind: "abort"; error: APIUserAbortError }
   | { kind: "api"; error: APIError }
   | { kind: "unknown" };
 
@@ -428,6 +432,9 @@ function classifyStreamError(error: unknown): ClassifiedStreamError {
   }
   if (isApiConnectionError(error)) {
     return { kind: "connection", error };
+  }
+  if (isApiUserAbortError(error)) {
+    return { kind: "abort", error };
   }
   if (isApiError(error)) {
     return { kind: "api", error };
@@ -516,7 +523,7 @@ function apiErrorToErrorEvent(
       }
 
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "unknown",
         metadata,
         type: "unknown_error",
         message: `Error from Anthropic (${status}): ${error.message}`,
@@ -545,157 +552,40 @@ export function streamErrorToErrorEvent(
         originalError: error,
       });
     case "connection":
-      return buildErrorEvent({
-        errorSource: "provider",
+      return untypedStreamErrorToErrorEvent(
         metadata,
-        type: "network_error",
-        message: `Network error connecting to Anthropic: ${classified.error.message}`,
-        originalError: error,
-      });
+        classified.error,
+        "connection"
+      );
+    case "abort":
+      return untypedStreamErrorToErrorEvent(
+        metadata,
+        classified.error,
+        "abort"
+      );
     case "api":
       return apiErrorToErrorEvent(metadata, classified.error);
     case "unknown":
-      return bareStreamErrorToErrorEvent(metadata, error);
+      return untypedStreamErrorToErrorEvent(metadata, error);
     default:
       assertNever(classified);
   }
 }
 
-// Errors that are neither an `APIError` nor an `APIConnectionError` reach here —
-// most commonly a mid-stream connection drop the SDK rewraps as a bare
-// `AnthropicError`. The old router classified these by substring-matching the
-// message (its `categorizeLLMError`), which kept transient failures retryable
-// instead of collapsing them into a terminal unknown_error. We replicate that
-// here verbatim for migration parity (see CODING_RULES GEN1); revisit once the
-// old router is fully retired. The new `ErrorType` union has no
-// `terminated_error`/`context_length_exceeded`, so those map to the closest
-// retryability-equivalent type (network_error / invalid_request_error).
-function bareStreamErrorToErrorEvent(
+function untypedStreamErrorToErrorEvent(
   metadata: EndpointMetadata,
-  error: unknown
+  error: unknown,
+  sdkClass?: StreamErrorSdkClass
 ): ErrorEvent {
-  const message = normalizeError(error).message;
-  const lower = message.toLowerCase();
-
-  const build = (
-    type: ErrorType,
-    text: string,
-    errorSource: ErrorSource = "provider"
-  ): ErrorEvent =>
-    buildErrorEvent({
-      errorSource,
-      metadata,
-      type,
-      message: text,
-      originalError: error,
-    });
-
-  if (lower.includes("terminated") || lower.includes("other side closed")) {
-    return build(
-      "network_error",
-      `Connection to Anthropic terminated: ${message}`
-    );
-  }
-  if (
-    lower.includes("rate limit") ||
-    lower.includes("quota exceeded") ||
-    lower.includes("too many requests")
-  ) {
-    return build(
-      "rate_limit_error",
-      `Rate limit exceeded for Anthropic/${metadata.model}: ${message}`,
-      "dust"
-    );
-  }
-  if (
-    lower.includes("overloaded") ||
-    lower.includes("capacity") ||
-    lower.includes("service unavailable")
-  ) {
-    return build("overloaded_error", `Anthropic is overloaded: ${message}`);
-  }
-  if (
-    lower.includes("context") ||
-    lower.includes("token limit") ||
-    lower.includes("context window") ||
-    lower.includes("too large")
-  ) {
-    return build(
-      "invalid_request_error",
-      `Context length exceeded for Anthropic/${metadata.model}: ${message}`,
-      "dust"
-    );
-  }
-  if (
-    lower.includes("unauthorized") ||
-    lower.includes("authentication") ||
-    lower.includes("api key")
-  ) {
-    return build(
-      "authentication_error",
-      `Authentication failed for Anthropic: ${message}`,
-      "dust"
-    );
-  }
-  if (lower.includes("forbidden") || lower.includes("permission")) {
-    return build(
-      "permission_error",
-      `Permission denied for Anthropic: ${message}`,
-      "dust"
-    );
-  }
-  if (lower.includes("not found")) {
-    return build(
-      "not_found_error",
-      `Resource not found for Anthropic: ${message}`,
-      "dust"
-    );
-  }
-  if (
-    lower.includes("invalid request") ||
-    lower.includes("bad request") ||
-    lower.includes("validation error")
-  ) {
-    return build(
-      "invalid_request_error",
-      `Invalid request to Anthropic: ${message}`,
-      "dust"
-    );
-  }
-  if (
-    lower.includes("network") ||
-    lower.includes("connection") ||
-    lower.includes("econnrefused") ||
-    lower.includes("enotfound") ||
-    lower.includes("etimedout")
-  ) {
-    return build(
-      "network_error",
-      `Network error connecting to Anthropic: ${message}`
-    );
-  }
-  if (lower.includes("timeout") || lower.includes("timed out")) {
-    return build("timeout_error", `Request to Anthropic timed out: ${message}`);
-  }
-  if (
-    lower.includes("stream") ||
-    lower.includes("streaming") ||
-    lower.includes("interrupted")
-  ) {
-    return build("stream_error", `Stream error from Anthropic: ${message}`);
-  }
-  if (
-    lower.includes("internal server error") ||
-    lower.includes("server error")
-  ) {
-    return build("server_error", `Server error from Anthropic: ${message}`);
-  }
-
-  return build(
-    "unknown_error",
-    `Unknown error from Anthropic: ${message}`,
-    "unknown"
-  );
+  return buildErrorEvent({
+    ...classifyUnhandledStreamError({
+      error,
+      providerName: "Anthropic",
+      sdkClass,
+    }),
+    metadata,
+    originalError: error,
+  });
 }
 
 // -- Composite state machine: depends on the leaf converters --

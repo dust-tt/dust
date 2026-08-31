@@ -13,7 +13,8 @@ import type {
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { classifyStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
+import { isNumber } from "@app/types/shared/utils/general";
 import type {
   GenerateContentResponse,
   GenerateContentResponseUsageMetadata,
@@ -219,6 +220,8 @@ export function finishReasonToErrorEvent(
     // is surfaced as an unknown error.
     default:
       return buildErrorEvent({
+        // This is an in-band finish reason returned by Google, not an
+        // ambiguous transport failure.
         errorSource: "provider",
         metadata,
         type: "unknown_error",
@@ -298,10 +301,12 @@ function apiErrorToErrorEvent(
         });
       }
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "unknown",
         metadata,
         type: "unknown_error",
-        message: `Error from Google (${status}): ${error.message}`,
+        message: isNumber(status)
+          ? `Error from Google (${status}): ${error.message}`
+          : `Error from Google: ${error.message}`,
         originalError: error,
       });
   }
@@ -316,11 +321,13 @@ export function streamErrorToErrorEvent(
   if (error instanceof ApiError) {
     return apiErrorToErrorEvent(metadata, error);
   }
+  const classification = classifyStreamError({
+    error,
+    providerName: "Google",
+  });
   return buildErrorEvent({
-    errorSource: "provider",
+    ...classification,
     metadata,
-    type: "unknown_error",
-    message: `Unknown error from Google: ${normalizeError(error).message}`,
     originalError: error,
   });
 }

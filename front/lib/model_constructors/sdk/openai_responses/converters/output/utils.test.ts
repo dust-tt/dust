@@ -3,8 +3,10 @@ import * as converters from "@app/lib/model_constructors/sdk/openai_responses/co
 import {
   outputItemToEvents,
   rawOutputToEvents,
+  streamErrorToErrorEvent,
   usageToTokenUsageEvent,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
+import { APIConnectionError, APIError, APIUserAbortError } from "openai";
 import type {
   Response,
   ResponseOutputItem,
@@ -159,6 +161,80 @@ function completedResponse(
 }
 
 describe("rawOutputToEvents", () => {
+  it("attributes an in-band error event to the provider", async () => {
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator([
+        {
+          type: "error",
+          code: "server_error",
+          message: "generation failed",
+          param: null,
+          sequence_number: 0,
+        },
+      ]),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        content: expect.objectContaining({
+          type: "stream_error",
+          errorSource: "provider",
+        }),
+      }),
+    ]);
+  });
+
+  it.each([
+    ["server_error", "server_error", "provider"],
+    ["rate_limit_exceeded", "rate_limit_error", "dust"],
+    ["invalid_prompt", "invalid_request_error", "dust"],
+    ["bio_policy", "refusal_error", "dust"],
+  ] as const)("maps response.failed code %s to %s from %s", async (code, expectedType, errorSource) => {
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator([
+        {
+          type: "response.failed",
+          sequence_number: 0,
+          response: {
+            ...completedResponse(null, {
+              input_tokens: 0,
+              input_tokens_details: {
+                cached_tokens: 0,
+                cache_write_tokens: 0,
+              },
+              output_tokens: 0,
+              output_tokens_details: { reasoning_tokens: 0 },
+              total_tokens: 0,
+            }),
+            status: "failed",
+            error: { code, message: "generation failed" },
+          },
+        },
+      ]),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        content: expect.objectContaining({
+          type: expectedType,
+          errorSource,
+        }),
+      }),
+    ]);
+  });
+
   // The tier the response was served on is what OpenAI bills, and it can differ
   // from the one we asked for: a refused flex request is replayed on standard
   // processing. OpenAI's own tier names collapse into the two provider-agnostic
@@ -384,5 +460,88 @@ describe("rawOutputToEvents", () => {
         ],
       },
     });
+  });
+});
+
+describe("streamErrorToErrorEvent", () => {
+  it("maps a statusless SSE APIError to server_error from the provider", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new APIError(
+        undefined,
+        { message: "generation failed" },
+        "generation failed",
+        undefined
+      )
+    );
+    expect(result.content.type).toBe("server_error");
+    expect(result.content.errorSource).toBe("provider");
+  });
+
+  it("maps an unrecognized status to unknown_error without blaming either side", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new APIError(418, {}, "teapot", undefined)
+    );
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
+  });
+
+  it("maps APIConnectionError to a network_error without blaming the provider", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new APIConnectionError({ message: "connection reset" })
+    );
+    expect(result.content.type).toBe("network_error");
+    expect(result.content.errorSource).toBe("unknown");
+  });
+
+  it("does not attribute a client abort to the provider", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new APIUserAbortError({ message: "cancelled" })
+    );
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
+  });
+
+  it("maps an undici socket termination to a network_error without blaming the provider", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new TypeError("terminated", {
+        cause: Object.assign(new Error("other side closed"), {
+          code: "UND_ERR_SOCKET",
+        }),
+      })
+    );
+    expect(result.content.type).toBe("network_error");
+    expect(result.content.errorSource).toBe("unknown");
+    expect(result.content.message).toContain("UND_ERR_SOCKET");
+  });
+
+  it.each([
+    ["fireworks", "Fireworks"],
+    ["xai", "xAI"],
+  ] as const)("keeps network classification when reused by %s", (host, providerName) => {
+    const result = streamErrorToErrorEvent(
+      { ...metadata, host },
+      new TypeError("terminated", {
+        cause: Object.assign(new Error("other side closed"), {
+          code: "UND_ERR_SOCKET",
+        }),
+      })
+    );
+    expect(result.content.type).toBe("network_error");
+    expect(result.content.errorSource).toBe("unknown");
+    expect(result.content.message).toContain(providerName);
+  });
+
+  it("does not attribute an arbitrary exception to the provider", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new SyntaxError("unexpected token")
+    );
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 });

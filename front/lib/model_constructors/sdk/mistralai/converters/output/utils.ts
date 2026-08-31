@@ -9,8 +9,8 @@ import type {
   ToolCallEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isRecord, isString } from "@app/types/shared/utils/general";
+import { classifyStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
+import { isNumber, isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type {
   ChatCompletionResponse,
@@ -111,8 +111,16 @@ export function streamErrorToErrorEvent(
           message: `Rate limit exceeded for Mistral/${metadata.model}: ${error.message}`,
           originalError: error,
         });
+      case 503:
+        return buildErrorEvent({
+          errorSource: "provider",
+          metadata,
+          type: "overloaded_error",
+          message: `Mistral is overloaded: ${error.message}`,
+          originalError: error,
+        });
       default:
-        if (status >= 500 && status < 600) {
+        if (isNumber(status) && status >= 500 && status < 600) {
           return buildErrorEvent({
             errorSource: "provider",
             metadata,
@@ -122,19 +130,24 @@ export function streamErrorToErrorEvent(
           });
         }
         return buildErrorEvent({
-          errorSource: "provider",
+          errorSource: "unknown",
           metadata,
           type: "unknown_error",
-          message: `Error from Mistral (${status}): ${error.message}`,
+          message: isNumber(status)
+            ? `Error from Mistral (${status}): ${error.message}`
+            : `Error from Mistral: ${error.message}`,
           originalError: error,
         });
     }
   }
+
+  const classification = classifyStreamError({
+    error,
+    providerName: "Mistral",
+  });
   return buildErrorEvent({
-    errorSource: "provider",
+    ...classification,
     metadata,
-    type: "unknown_error",
-    message: `Unknown error from Mistral: ${normalizeError(error).message}`,
     originalError: error,
   });
 }

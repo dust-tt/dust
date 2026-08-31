@@ -18,17 +18,20 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import type { StreamErrorSdkClass } from "@app/lib/model_constructors/utils/classify_stream_error";
+import { classifyStreamError as classifyUnhandledStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
 import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import {
   assertNever,
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
-import { isRecord } from "@app/types/shared/utils/general";
+import { isNumber, isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { APIConnectionError, APIError } from "openai";
+import { APIConnectionError, APIError, APIUserAbortError } from "openai";
 import type {
   Response as OpenAIResponse,
   ResponseCreatedEvent,
+  ResponseError,
   ResponseOutputItem,
   ResponseStreamEvent,
   ResponseUsage,
@@ -287,16 +290,24 @@ function isApiError(err: unknown): err is APIError {
   return err instanceof APIError;
 }
 
+function isApiUserAbortError(err: unknown): err is APIUserAbortError {
+  return err instanceof APIUserAbortError;
+}
+
 // A stream error classified into the categories we surface. `APIConnectionError`
-// is checked before `APIError` since the former extends the latter.
+// and `APIUserAbortError` are checked before `APIError` since they extend it.
 type ClassifiedStreamError =
   | { kind: "connection"; error: APIConnectionError }
+  | { kind: "abort"; error: APIUserAbortError }
   | { kind: "api"; error: APIError }
   | { kind: "unknown" };
 
 function classifyStreamError(error: unknown): ClassifiedStreamError {
   if (isApiConnectionError(error)) {
     return { kind: "connection", error };
+  }
+  if (isApiUserAbortError(error)) {
+    return { kind: "abort", error };
   }
   if (isApiError(error)) {
     return { kind: "api", error };
@@ -353,6 +364,25 @@ function apiErrorToErrorEvent(
         message: `Rate limit exceeded for OpenAI/${metadata.model}: ${error.message}`,
         originalError: error,
       });
+    case 503:
+      return buildErrorEvent({
+        errorSource: "provider",
+        metadata,
+        type: "overloaded_error",
+        message: `OpenAI is overloaded: ${error.message}`,
+        originalError: error,
+      });
+    case undefined:
+      // The OpenAI SDK creates a statusless APIError when an SSE payload
+      // contains `error` or is itself an `error` event. Unlike a transport
+      // exception, this is an explicit provider-side failure.
+      return buildErrorEvent({
+        errorSource: "provider",
+        metadata,
+        type: "server_error",
+        message: `Server error from OpenAI: ${error.message}`,
+        originalError: error,
+      });
     default:
       if (status !== undefined && status >= 500 && status < 600) {
         return buildErrorEvent({
@@ -364,10 +394,117 @@ function apiErrorToErrorEvent(
         });
       }
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "unknown",
         metadata,
         type: "unknown_error",
-        message: `Error from OpenAI (${status}): ${error.message}`,
+        message: isNumber(status)
+          ? `Error from OpenAI (${status}): ${error.message}`
+          : `Error from OpenAI: ${error.message}`,
+        originalError: error,
+      });
+  }
+}
+
+function untypedStreamErrorToErrorEvent(
+  metadata: EndpointMetadata,
+  error: unknown,
+  sdkClass?: StreamErrorSdkClass
+): ErrorEvent {
+  let providerName = "OpenAI";
+  if (metadata.host === "fireworks") {
+    providerName = "Fireworks";
+  } else if (metadata.host === "xai") {
+    providerName = "xAI";
+  }
+  const classification = classifyUnhandledStreamError({
+    error,
+    providerName,
+    sdkClass,
+  });
+  return buildErrorEvent({
+    ...classification,
+    metadata,
+    originalError: error,
+  });
+}
+
+// A failed Response is an in-band result, not a thrown transport error.
+// The event comes from the provider; `error.code` says who caused it.
+function responseErrorToErrorEvent(
+  metadata: EndpointMetadata,
+  error: ResponseError | null
+): ErrorEvent {
+  if (error === null) {
+    return buildErrorEvent({
+      errorSource: "unknown",
+      metadata,
+      type: "unknown_error",
+      message: "OpenAI reported a failed response without error details.",
+    });
+  }
+
+  switch (error.code) {
+    case "server_error":
+      return buildErrorEvent({
+        errorSource: "provider",
+        metadata,
+        type: "server_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "vector_store_timeout":
+      return buildErrorEvent({
+        errorSource: "provider",
+        metadata,
+        type: "timeout_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "rate_limit_exceeded":
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "rate_limit_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "bio_policy":
+    case "image_content_policy_violation":
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "refusal_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "invalid_prompt":
+    case "invalid_image":
+    case "invalid_image_format":
+    case "invalid_base64_image":
+    case "invalid_image_url":
+    case "image_too_large":
+    case "image_too_small":
+    case "image_parse_error":
+    case "invalid_image_mode":
+    case "image_file_too_large":
+    case "unsupported_image_media_type":
+    case "empty_image_file":
+    case "failed_to_download_image":
+    case "image_file_not_found":
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "invalid_request_error",
+        message: error.message,
+        originalError: error,
+      });
+    default:
+      assertNeverAndIgnore(error.code);
+      return buildErrorEvent({
+        errorSource: "unknown",
+        metadata,
+        type: "unknown_error",
+        message: error.message,
         originalError: error,
       });
   }
@@ -382,23 +519,21 @@ export function streamErrorToErrorEvent(
   const classified = classifyStreamError(error);
   switch (classified.kind) {
     case "connection":
-      return buildErrorEvent({
-        errorSource: "provider",
+      return untypedStreamErrorToErrorEvent(
         metadata,
-        type: "network_error",
-        message: `Network error connecting to OpenAI: ${classified.error.message}`,
-        originalError: error,
-      });
+        classified.error,
+        "connection"
+      );
+    case "abort":
+      return untypedStreamErrorToErrorEvent(
+        metadata,
+        classified.error,
+        "abort"
+      );
     case "api":
       return apiErrorToErrorEvent(metadata, classified.error);
     case "unknown":
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "unknown_error",
-        message: `Unknown error from OpenAI`,
-        originalError: error,
-      });
+      return untypedStreamErrorToErrorEvent(metadata, error);
     default:
       assertNever(classified);
   }
@@ -590,10 +725,7 @@ export async function* rawOutputToEvents(
         stopReason = event.response.status ?? null;
         break;
       case "response.failed":
-        yield converters.streamErrorToErrorEvent(
-          metadata,
-          event.response.error
-        );
+        yield responseErrorToErrorEvent(metadata, event.response.error);
         return;
       case "response.incomplete":
         yield buildErrorEvent({
@@ -711,7 +843,7 @@ export function responseToEvents(
 ): NonDeltaResponseEvent[] {
   // Terminal failure states surface as a single error event.
   if (response.status === "failed") {
-    return [converters.streamErrorToErrorEvent(metadata, response.error)];
+    return [responseErrorToErrorEvent(metadata, response.error)];
   }
   if (response.status === "incomplete") {
     return [
