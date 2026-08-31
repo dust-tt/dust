@@ -49,20 +49,17 @@ export const MODELS_TIERS: readonly ModelsTierDefinition[] = [
   {
     id: 1,
     name: "cost_efficient",
-    description:
-      "Basic, cost efficient models sacrificing on performance to cut on price while remaining acceptable to use Dust with.",
+    description: "Lower-cost models for routine tasks.",
   },
   {
     id: 2,
     name: "balanced",
-    description:
-      "Standard, everyday workhorse models with a good quality for everyday tasks",
+    description: "Balanced models for most tasks.",
   },
   {
     id: 3,
     name: "premium",
-    description:
-      "Higher-cost model combinations for demanding work that needs stronger capabilities.",
+    description: "More capable models for complex or demanding work.",
   },
 ] as const;
 
@@ -475,14 +472,14 @@ export function getTier(name: ModelsTierName): ModelsTierDefinition | null {
 }
 
 export function getTierForSelection(
-  selection: ModelTierSelection
+  selection: ModelTierSelection,
 ): ModelsTierName | null {
   return getTierForModel(selection.modelId, selection.reasoningEffort);
 }
 
 export function getTierForModel(
   modelId: ModelTierSelection["modelId"],
-  reasoningEffort: ModelTierSelection["reasoningEffort"]
+  reasoningEffort: ModelTierSelection["reasoningEffort"],
 ): ModelsTierName | null {
   // includes models added at runtime on GCP (EAPs)
   if (!isStaticModelId(modelId)) {

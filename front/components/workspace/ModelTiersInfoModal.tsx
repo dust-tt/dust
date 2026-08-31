@@ -16,30 +16,55 @@ import {
   Icon,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-const TIER_PRESENTATION: Record<ModelsTierName, { priceClassName: string }> = {
-  cost_efficient: { priceClassName: "text-emerald-500" },
-  balanced: { priceClassName: "text-blue-500" },
-  premium: { priceClassName: "text-amber-500" },
+const TIER_PRESENTATION: Record<
+  ModelsTierName,
+  { priceClassName: string; costLabel: string }
+> = {
+  cost_efficient: {
+    priceClassName: "text-emerald-500",
+    costLabel: "lowest cost",
+  },
+  balanced: { priceClassName: "text-blue-500", costLabel: "medium cost" },
+  premium: { priceClassName: "text-amber-500", costLabel: "highest cost" },
 };
+
+interface InfoSectionProps {
+  title: string;
+  children: ReactNode;
+}
+
+function InfoSection({ title, children }: InfoSectionProps) {
+  return (
+    <div className="flex flex-col gap-1">
+      <h3 className="heading-sm text-foreground dark:text-foreground-night">
+        {title}
+      </h3>
+      <p>{children}</p>
+    </div>
+  );
+}
 
 interface TierCardProps {
   tier: ModelTierExplainerTier;
 }
 
 function TierCard({ tier }: TierCardProps) {
-  const { priceClassName } = TIER_PRESENTATION[tier.name];
+  const { priceClassName, costLabel } = TIER_PRESENTATION[tier.name];
 
   return (
     <Collapsible>
       <div className="rounded-2xl border border-border bg-muted-background dark:border-border-dark dark:bg-muted-background-night">
         <CollapsibleTrigger
           hideChevron
+          aria-label={`Open ${tier.displayName} tier (${costLabel})`}
           className="w-full rounded-2xl p-4 text-left"
         >
           <div className="flex w-full items-center gap-3">
             <span
+              aria-hidden="true"
               className={`w-8 shrink-0 text-sm font-semibold ${priceClassName}`}
             >
               {"$".repeat(tier.priceLevel)}
@@ -110,30 +135,32 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
             so it scrolls once it hits the dialog's max-height, while staying
             compact (no empty space) when the tiers are collapsed. */}
         <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 py-4">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            <b>What each tier includes</b>
-            <br />
-            Each tier groups <b>model + reasoning-effort</b> options by cost.
-            <br />
-            <br />
-            <b>How pricing tier is calculated</b>
-            <br />
-            Dust benchmarks each model and reasoning-effort combination at the
-            task level, rather than relying only on the model's price per token.
-            Reasoning effort can significantly affect the final price.
-            Increasing reasoning effort by one level typically increases the
-            price by about 30%.
-            <br />
-            <br />
-            <b>How tier limits work</b>
-            <br />A member capped at a tier can use that tier and every cheaper
-            one: “up to Standard” means Standard and Basic.
-            <br />
-            <br />
-            <b>Explore a tier</b>
-            <br />
-            Open a tier to see what's inside.
-          </p>
+          <div className="flex flex-col gap-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p>
+              Model tiers group models and reasoning efforts by typical usage
+              cost. Higher tiers include more capable, more expensive
+              combinations.
+            </p>
+            <InfoSection title="What each tier includes">
+              Each tier includes a range of models and reasoning efforts with
+              similar usage costs. Reasoning effort is how much work a model
+              does before it answers: a higher effort can give better results on
+              complex tasks, but usually costs more.
+            </InfoSection>
+            <InfoSection title="Why costs differ">
+              Usage cost depends on both the model and its reasoning effort. We
+              compare each combination on representative tasks rather than on
+              the model's token price alone. Raising the reasoning effort by one
+              step usually increases the cost by about 30%.
+            </InfoSection>
+            <InfoSection title="How access limits work">
+              A member can use the tier they are assigned and every lower-cost
+              tier: access to Standard also includes Basic.
+            </InfoSection>
+            <InfoSection title="See what's included">
+              Select a tier to see the models and reasoning efforts it includes.
+            </InfoSection>
+          </div>
           <div className="flex flex-col gap-2">
             {tiers.map((tier) => (
               <TierCard key={tier.name} tier={tier} />
