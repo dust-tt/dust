@@ -1,3 +1,4 @@
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import {
   getModelsTierDisplayName,
   getTierForModelConfiguration,
@@ -14,6 +15,11 @@ interface ModelTierChipProps {
 }
 
 export function ModelTierChip({ model, reasoningEffort }: ModelTierChipProps) {
+  // Streams are named after their tier: the chip would repeat the model name.
+  if (isModelStreamId(model.modelId)) {
+    return null;
+  }
+
   const tier = getTierForModelConfiguration(model, reasoningEffort);
   if (!tier) {
     return null;
