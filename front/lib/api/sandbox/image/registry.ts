@@ -237,7 +237,7 @@ function getPodStateSetupCommand(): string {
   // /pod-state/databases holds the live SQLite files: both agent-proxied
   // function code (group agent) and the litestream daemon (user dust-state)
   // need rw, so it gets the same setgid + default-ACL treatment as /files.
-  // /pod-state/replica is the gcsfuse mount point for the litestream replica
+  // /sandbox-state/replica is the gcsfuse mount point for the litestream replica
   // — the durable copy of pod state. Untrusted workload code must never read
   // or tamper with it, so the directory is dust-state-only: 0700 here, no
   // allow_other on the runtime mount.
@@ -246,7 +246,8 @@ function getPodStateSetupCommand(): string {
     "install -d -o dust-state -g agent -m 2770 /pod-state/databases",
     "setfacl -R -d -m g::rwx /pod-state/databases",
     "setfacl -R -m g::rwx /pod-state/databases",
-    "install -d -o dust-state -g dust-state -m 700 /pod-state/replica",
+    "install -d -o root -g root -m 755 /sandbox-state",
+    "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica",
   ].join(" && ");
 }
 

@@ -26,13 +26,13 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 /**
  * Pod state runtime plumbing: SQLite databases under /pod-state/databases,
  * continuously replicated by a litestream daemon (running as dust-state) to a
- * gcsfuse-mounted GCS prefix at /pod-state/replica.
+ * gcsfuse-mounted GCS prefix at /sandbox-state/replica.
  *
  * The daemon runs litestream's directory watcher over /pod-state/databases
  * (static /etc/litestream.yml baked at image build): databases created at any
  * point — including publish-time `dsbx db reconcile` — are discovered and
  * replicated automatically within seconds. Replica subdirectories are named
- * by database FILENAME: /pod-state/replica/{db}.db/ltx/...
+ * by database FILENAME: /sandbox-state/replica/{db}.db/ltx/...
  *
  * Lifecycle:
  *  - Cold start (`setupPodStateOnColdStart`, after the gcsfuse mounts): restore
@@ -69,6 +69,12 @@ const RM_BIN = "/usr/bin/rm";
 const CHMOD_BIN = "/usr/bin/chmod";
 const HEAD_BIN = "/usr/bin/head";
 const TEST_BIN = "/usr/bin/test";
+
+// Old sandboxes keep their original image and mount layout until they are
+// recycled after deployment. Only the pre-sleep liveness probe needs this
+// bridge; new cold starts, restores, and mounts always use the canonical path.
+const LEGACY_POD_STATE_REPLICA_MOUNT_POINT = "/pod-state/replica";
+const SANDBOX_STATE_ROOT_DIR = "/sandbox-state";
 
 // Database name shape. Doubles as an allowlist: enumeration outputs are
 // workload-influenced, so anything not matching (dotfiles, litestream sidecar
@@ -603,22 +609,57 @@ export async function ensurePodStateHealthOnSleep(
 
 export const ensureSandboxStateHealthOnSleep = ensurePodStateHealthOnSleep;
 
-async function checkReplicaMountLiveness(
+export async function checkReplicaMountLiveness(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
   // As dust-state: without allow_other the FUSE layer denies every other uid,
   // including root. `stat -f -c %t` prints the statfs filesystem magic.
-  const result = await sandbox.execRoot(
+  const result = await statReplicaMount(
     auth,
-    asPodStateUser(STAT_BIN, [
-      "-f",
-      "-c",
-      "%t",
-      SANDBOX_STATE_REPLICA_MOUNT_POINT,
-    ]),
+    sandbox,
+    SANDBOX_STATE_REPLICA_MOUNT_POINT
+  );
+  if (result.isErr() || result.value.exitCode === 0) {
+    return validateReplicaMountStat(result);
+  }
+
+  // Sandboxes booted from the previous image do not have /sandbox-state at
+  // all. They keep running during the deployment drain, so allow their old
+  // replica mount to flush before sleep. If the new root exists, fail closed:
+  // the canonical mount is broken rather than legacy.
+  const rootMissingResult = await sandbox.execRoot(
+    auth,
+    rootCommand.exec(TEST_BIN, ["!", "-d", SANDBOX_STATE_ROOT_DIR]),
     { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
   );
+  if (rootMissingResult.isErr()) {
+    return rootMissingResult;
+  }
+  if (rootMissingResult.value.exitCode !== 0) {
+    return validateReplicaMountStat(result);
+  }
+
+  return validateReplicaMountStat(
+    await statReplicaMount(auth, sandbox, LEGACY_POD_STATE_REPLICA_MOUNT_POINT)
+  );
+}
+
+async function statReplicaMount(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  mountPoint: string
+) {
+  return sandbox.execRoot(
+    auth,
+    asPodStateUser(STAT_BIN, ["-f", "-c", "%t", mountPoint]),
+    { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
+  );
+}
+
+function validateReplicaMountStat(
+  result: Awaited<ReturnType<typeof statReplicaMount>>
+): Result<void, Error> {
   if (result.isErr()) {
     return result;
   }

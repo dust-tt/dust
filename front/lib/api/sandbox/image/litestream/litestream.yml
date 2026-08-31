@@ -19,11 +19,11 @@ socket:
 # start — e.g. by a publish-time `dsbx db reconcile` — are discovered and
 # replicated within seconds. Non-SQLite files matching the pattern are
 # ignored by the watcher (header validation). Replica subdirectories are
-# named by database FILENAME: /pod-state/replica/{db}.db/ltx/...
+# named by database FILENAME: /sandbox-state/replica/{db}.db/ltx/...
 dbs:
   - dir: /pod-state/databases
     pattern: "*.db"
     watch: true
     replica:
       type: file
-      path: /pod-state/replica
+      path: /sandbox-state/replica

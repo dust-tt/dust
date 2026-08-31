@@ -480,7 +480,7 @@ describe("ensureConversationSandboxReady", () => {
         {
           kind: "pod_state",
           podId: pod.sId,
-          sandboxMountPoint: "/pod-state/replica",
+          sandboxMountPoint: "/sandbox-state/replica",
           readOnly: false,
         },
       ],
@@ -546,7 +546,7 @@ describe("ensureConversationSandboxReady", () => {
         {
           kind: "frame_state",
           frameId: frame.sId,
-          sandboxMountPoint: "/pod-state/replica",
+          sandboxMountPoint: "/sandbox-state/replica",
           readOnly: false,
         },
       ],

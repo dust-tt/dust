@@ -176,7 +176,7 @@ describe("buildMountCommand", () => {
         bucket: "bucket-x",
         target: {
           gcsPrefix: "w/ws1/pods/spc1/state",
-          sandboxMountPoint: "/pod-state/replica",
+          sandboxMountPoint: "/sandbox-state/replica",
           legacySandboxMountPoint: null,
           readOnly: false,
           mountProfile: "sandbox_state_replica",
@@ -198,7 +198,7 @@ describe("buildMountCommand", () => {
     expect(command).toContain("--dir-mode=700");
     expect(command).toContain("--only-dir w/ws1/pods/spc1/state");
     expect(command).toContain("--enable-hns=false");
-    expect(command).toContain("bucket-x /pod-state/replica");
+    expect(command).toContain("bucket-x /sandbox-state/replica");
   });
 });
 

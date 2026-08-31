@@ -13,7 +13,7 @@ describe("frameSandboxOnlyMounts", () => {
       {
         kind: "frame_state",
         frameId: "fil_frame",
-        sandboxMountPoint: "/pod-state/replica",
+        sandboxMountPoint: "/sandbox-state/replica",
         readOnly: false,
       },
     ]);

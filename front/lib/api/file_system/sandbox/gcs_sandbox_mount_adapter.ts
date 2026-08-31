@@ -79,7 +79,7 @@ function tokenUrl(index: number): string {
  *   every other uid, including the untrusted workload uid 1003 and root. No
  *   `allow_other`, restrictive modes, and NO kernel list caching: litestream
  *   restore must never see a stale LTX listing. Needs the dust-state user and
- *   /pod-state layout in the image; targets with this profile are only ever
+ *   sandbox state layout in the image; targets with this profile are only ever
  *   constructed for stateful Pod or Frame sandboxes.
  */
 export type GCSMountProfile =

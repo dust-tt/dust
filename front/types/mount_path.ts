@@ -122,7 +122,7 @@ export function getFramePublicationFunctionsMountPoint({
  * its own sandbox, so the live files cannot overlap another Frame or a Pod; only its Litestream
  * replica is durable, under the stable Frame identity in GCS.
  */
-export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/pod-state/replica";
+export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/sandbox-state/replica";
 
 /**
  * Absolute in-sandbox path of the owner's live SQLite databases (`{name}.db` files opened by
@@ -173,7 +173,7 @@ export function sandboxDatabaseExecEnvVars({
 /**
  * Prefix for the pod's Litestream state replica (LTX chains for the pod's SQLite databases). The
  * sandbox's litestream daemon is the only writer, through the dust-state-only gcsfuse mount at
- * /pod-state/replica. Never mounted under /files, never a FileResource: cleanup is a wholesale
+ * /sandbox-state/replica. Never mounted under /files, never a FileResource: cleanup is a wholesale
  * prefix delete at pod deletion (see deletePodStatePrefix).
  */
 export function getPodStateBasePath({

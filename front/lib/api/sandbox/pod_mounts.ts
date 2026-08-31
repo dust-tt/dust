@@ -28,7 +28,7 @@ function podSandboxFunctionsMount(pod: PodRef): SandboxOnlyMount {
 }
 
 // The pod's litestream replica prefix, mounted dust-state-only (no
-// allow_other) at /pod-state/replica. rw: the in-sandbox litestream daemon is
+// allow_other) at /sandbox-state/replica. rw: the in-sandbox litestream daemon is
 // the writer.
 function podStateReplicaMount(pod: PodRef): SandboxOnlyMount {
   return {
