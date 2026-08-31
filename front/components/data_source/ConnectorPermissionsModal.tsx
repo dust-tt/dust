@@ -56,6 +56,7 @@ import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
+  Chip,
   CloudArrowLeftRight,
   Collapsible,
   CollapsibleContent,
@@ -171,6 +172,11 @@ async function handleUpdatePermissions(
     description: "The connection was successfully updated.",
   });
 }
+
+// Chip label shown on nodes whose sync is partially skipped (ContentNode.skipReason).
+const SKIP_REASON_CHIP_LABELS: Partial<Record<ConnectorProvider, string>> = {
+  github: "Code not synced",
+};
 
 export async function updateConnectorConnectionId(
   newConnectionId: string,
@@ -1084,6 +1090,21 @@ export function ConnectorPermissionsModal({
                           canUpdatePermissions
                         }
                         isRoundedBackground={true}
+                        additionalActionsForContentNode={(node) =>
+                          node.skipReason ? (
+                            <Chip
+                              color="warning"
+                              size="xs"
+                              label={
+                                (dataSource.connectorProvider &&
+                                  SKIP_REASON_CHIP_LABELS[
+                                    dataSource.connectorProvider
+                                  ]) ||
+                                "Not fully synced"
+                              }
+                            />
+                          ) : null
+                        }
                         useResourcesHook={useResourcesHook}
                         selectedNodes={
                           canUpdatePermissions ? selectedNodes : undefined

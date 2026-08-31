@@ -35,6 +35,7 @@ import {
 } from "@connectors/lib/models/github";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
+import { Op } from "sequelize";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   ConnectorPermission,
@@ -284,6 +285,21 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       if (!parentInternalId) {
         // No parentInternalId: we return the repositories.
 
+        // Repositories whose code sync is skipped (e.g. too large), surfaced on the node.
+        const skippedRepos = await GithubCodeRepositoryModel.findAll({
+          attributes: ["repoId", "skipReason"],
+          where: {
+            connectorId: c.id,
+            skipReason: { [Op.ne]: null },
+          },
+        });
+        const skipReasonByInternalId = new Map(
+          skippedRepos.map((repo) => [
+            getRepositoryInternalId(parseInt(repo.repoId, 10)),
+            repo.skipReason,
+          ])
+        );
+
         let nodes: ContentNode[] = [];
         let pageNumber = 1; // 1-indexed
         for (;;) {
@@ -319,6 +335,10 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               permission: "read",
               lastUpdatedAt: null,
               mimeType: INTERNAL_MIME_TYPES.GITHUB.REPOSITORY,
+              skipReason:
+                skipReasonByInternalId.get(
+                  getRepositoryInternalId(repo.id)
+                ) ?? undefined,
             }))
           );
         }

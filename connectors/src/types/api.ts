@@ -142,6 +142,9 @@ export interface ContentNode {
   permission: ConnectorPermission;
   preventSelection?: boolean;
   providerVisibility?: ProviderVisibility;
+  // Set when the provider skips syncing part of this node (e.g. GitHub code sync
+  // disabled because the repository is too large).
+  skipReason?: string;
   sourceUrl: string | null;
   title: string;
   type: ContentNodeType;
