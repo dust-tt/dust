@@ -366,10 +366,7 @@ const getTableColumns = ({
             label={tooltipLabel}
             trigger={
               <div className="inline-flex">
-                <DataTable.CellContent
-                  icon={modelIcon}
-                  iconClassName="mr-0 @xl:mr-2"
-                >
+                <DataTable.CellContent icon={modelIcon} iconClassName="mr-2">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="hidden min-w-0 truncate @xl:inline">
                       {modelName}
