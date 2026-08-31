@@ -394,7 +394,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "hidden @sm:w-28 @sm:table-cell @xl:w-72",
+        className: "hidden @sm:w-28 @sm:table-cell @xl:w-60",
       },
     },
     {
