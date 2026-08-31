@@ -3,8 +3,8 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { ModelPicker } from "@app/components/model_picker/ModelPicker";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import {
   Button,
@@ -18,7 +18,7 @@ import {
   DialogTitle,
   File04,
 } from "@dust-tt/sparkle";
-import React, { useEffect } from "react";
+import React from "react";
 import { useController } from "react-hook-form";
 
 function getResponseFormatError(value: string): string | null {
@@ -153,36 +153,15 @@ export function AdvancedSettings() {
     name: "generationSettings",
   });
 
-  const [modelSelection, setModelSelection] = React.useState<
-    ModelSelectionType | undefined
-  >(undefined);
-
-  useEffect(() => {
-    const modelId = generationSettingsField.value.modelSettings?.modelId;
-    const providerId = generationSettingsField.value.modelSettings?.providerId;
-    const reasoningEffort =
-      generationSettingsField.value.reasoningEffort ?? undefined;
-    if (!modelId || !providerId) {
-      setModelSelection(undefined);
-    } else if (
-      modelId !== modelSelection?.modelId ||
-      providerId !== modelSelection?.providerId ||
-      reasoningEffort !== modelSelection?.reasoningEffort
-    ) {
-      setModelSelection({
-        modelId,
-        providerId,
-        reasoningEffort,
-      });
-    }
-  }, [
-    generationSettingsField.value.modelSettings?.modelId,
-    generationSettingsField.value.modelSettings?.providerId,
-    generationSettingsField.value.reasoningEffort,
-    modelSelection?.modelId,
-    modelSelection?.providerId,
-    modelSelection?.reasoningEffort,
-  ]);
+  const agentModel: AgentModelConfigurationType | null = generationSettingsField
+    .value.modelSettings
+    ? {
+        ...generationSettingsField.value.modelSettings,
+        temperature: generationSettingsField.value.temperature,
+        reasoningEffort:
+          generationSettingsField.value.reasoningEffort ?? undefined,
+      }
+    : null;
 
   const supportsResponseFormat =
     generationSettingsField.value.modelSettings &&
@@ -197,11 +176,9 @@ export function AdvancedSettings() {
         onOpenChange={setIsResponseFormatDialogOpen}
       />
       <ModelPicker
-        // Set these 2 as we are in the context of the agent builder, not a conversation
         agentId={null}
-        agentModel={null}
-        // Use what is in the agent builder form
-        lastRequestedModel={modelSelection ?? null}
+        agentModel={agentModel}
+        lastRequestedModel={null}
         owner={owner}
         buttonSize="sm"
         buttonVariant="outline"
@@ -209,8 +186,6 @@ export function AdvancedSettings() {
         side="top"
         disabled={false}
         onSelectionChange={(newModelSelection) => {
-          // Keep both in sync to avoid extra re-renders
-          setModelSelection(newModelSelection);
           generationSettingsField.onChange({
             ...generationSettingsField.value,
             reasoningEffort: newModelSelection?.reasoningEffort,
