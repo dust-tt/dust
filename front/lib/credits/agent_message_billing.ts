@@ -163,7 +163,7 @@ export function getToolBillingInfo(
   };
 }
 
-function getMCPServerBillingKey(
+export function getMCPServerBillingKey(
   action: AgentMessageBillingAction
 ): string | null {
   if (action.internalMCPServerName !== null) {

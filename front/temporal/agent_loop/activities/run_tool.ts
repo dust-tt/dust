@@ -1,14 +1,16 @@
 import { isAgentLoopToolEvent } from "@app/lib/actions/mcp";
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { recordToolCompletionConsumption } from "@app/lib/api/assistant/consumption/tool_completion_writer";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -28,6 +30,7 @@ import {
   getFullAgentLoopDataWithAuth,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
@@ -207,7 +210,7 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  return startActiveObservation(
+  const executionResult = await startActiveObservation(
     `${action.toolConfiguration.mcpServerName}/${action.toolConfiguration.name}`,
     () => {
       updateActiveObservation(
@@ -235,6 +238,51 @@ export async function runToolActivity(
     },
     { asType: "tool" }
   );
+
+  await recordToolCompletionConsumptionItem(auth, {
+    action,
+    agentMessage,
+    runAgentArgs,
+  });
+
+  return executionResult;
+}
+
+async function recordToolCompletionConsumptionItem(
+  auth: Authenticator,
+  {
+    action,
+    agentMessage,
+    runAgentArgs,
+  }: {
+    action: AgentMCPActionResource;
+    agentMessage: AgentMessageType;
+    runAgentArgs: AgentLoopArgsWithTiming;
+  }
+): Promise<void> {
+  const { rootAgentMessageId, runKey } = runAgentArgs;
+  if (
+    !isToolExecutionStatusFinal(action.status) ||
+    !runKey ||
+    !rootAgentMessageId
+  ) {
+    return;
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+  if (!featureFlags.includes("agent_message_consumption_writes")) {
+    return;
+  }
+
+  await recordToolCompletionConsumption(auth, {
+    action,
+    context: {
+      agentMessageId: agentMessage.sId,
+      agentMessageModelId: agentMessage.agentMessageId,
+      rootAgentMessageId,
+      runKey,
+    },
+  });
 }
 
 async function executeToolStreaming(
