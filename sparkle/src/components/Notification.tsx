@@ -93,15 +93,13 @@ export function NotificationContent({
         "pointer-events-auto relative flex w-[246px] flex-col overflow-clip",
         "rounded-xl bg-primary p-2",
         "shadow-[inset_0px_1px_4px_0px_rgba(255,255,255,0.10)]",
-        "dark:shadow-[inset_0px_1px_4px_0px_rgba(0,0,0,0.06)]",
-        "animate-in fade-in-0 zoom-in-95 duration-200 ease-emphasized",
-        "origin-bottom-right motion-reduce:animate-none"
+        "dark:shadow-[inset_0px_1px_4px_0px_rgba(0,0,0,0.06)]"
       )}
     >
       <div
         className={cn(
           "flex flex-col gap-1",
-          "transition-opacity duration-[400ms] motion-reduce:transition-none",
+          "transition-opacity duration-[400ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]",
           "[[data-expanded=false][data-front=false]_&]:opacity-0"
         )}
       >
