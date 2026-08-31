@@ -48,6 +48,7 @@ import {
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
+import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -76,7 +77,10 @@ import {
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -1006,7 +1010,42 @@ const InputBarContainer = ({
     });
   }, [attachedNodes]);
 
-  const activeVoiceService = useVoiceLiveTranscriberService({
+  const isLiveStt = hasFeature("live_speech_to_text");
+
+  const voiceTranscriberService = useVoiceTranscriberService({
+    owner,
+    fileUploaderService,
+    onTranscribeComplete: (transcript) => {
+      for (const message of transcript) {
+        switch (message.type) {
+          case "text":
+            editorService.insertText(message.text);
+            break;
+          case "mention": {
+            const agent = agentsById.get(message.id);
+            if (agent) {
+              handleSingleAgentSelect(toRichAgentMentionType(agent));
+            }
+            break;
+          }
+          default:
+            assertNever(message);
+        }
+      }
+      if (isCompactRef.current) {
+        void submitCompactVoiceMessageRef.current?.();
+      }
+    },
+    onError: (error) => {
+      sendNotification({
+        type: "error",
+        title: "Failed to transcribe voice",
+        description: normalizeError(error).message,
+      });
+    },
+  });
+
+  const voiceLiveTranscriberService = useVoiceLiveTranscriberService({
     owner,
     onPartialTranscript: (text) => {
       editorService.setVoicePartialText(text);
@@ -1028,6 +1067,10 @@ const InputBarContainer = ({
       });
     },
   });
+
+  const activeVoiceService = isLiveStt
+    ? voiceLiveTranscriberService
+    : voiceTranscriberService;
 
   // Keep the editor non-editable while the input is fully disabled (e.g. a
   // non-owner viewing a conversation with an active wake-up). The placeholder
