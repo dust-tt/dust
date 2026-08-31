@@ -2127,6 +2127,34 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("fetchByModelIds", () => {
+    it("returns active skills only unless a status is given", async () => {
+      const activeSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Active Skill",
+      });
+      const archivedSkill = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Archived Skill", status: "archived" }
+      );
+      const modelIds = [activeSkill.id, archivedSkill.id];
+
+      const defaultFetch = await SkillResource.fetchByModelIds(
+        testContext.authenticator,
+        modelIds
+      );
+      expect(defaultFetch.map((skill) => skill.id)).toEqual([activeSkill.id]);
+
+      const withArchived = await SkillResource.fetchByModelIds(
+        testContext.authenticator,
+        modelIds,
+        { status: ["active", "archived"] }
+      );
+      expect(withArchived.map((skill) => skill.id).sort()).toEqual(
+        [...modelIds].sort()
+      );
+    });
+  });
+
   describe("fetchByIds", () => {
     it("skips heavy hydration when it is not requested", async () => {
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
