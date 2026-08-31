@@ -12,14 +12,14 @@ import { Op, QueryTypes } from "sequelize";
 
 const DEFAULT_BATCH_SIZE = 1_000;
 
-const SELECT_BATCH_SQL = `
-  SELECT DISTINCT "sId"
+// Applying the null check after grouping makes PostgreSQL scan one workspace once instead of
+// walking a global index to find matching configurations for every batch.
+const SELECT_MISSING_AGENT_IDS_SQL = `
+  SELECT "sId"
   FROM agent_configurations
   WHERE "workspaceId" = :workspaceId
-    AND "agentId" IS NULL
-    AND "sId" > :lastAgentId
-  ORDER BY "sId" ASC
-  LIMIT :batchSize
+  GROUP BY "sId"
+  HAVING BOOL_OR("agentId" IS NULL)
 `;
 
 const UPDATE_BATCH_SQL = `
@@ -123,21 +123,20 @@ export async function backfillAgentIdentities({
 
   await validateIdentityLinks(workspace);
   const stats = await getBackfillStats(workspace);
+  const rows = await frontSequelize.query<{ sId: string }>(
+    SELECT_MISSING_AGENT_IDS_SQL,
+    {
+      replacements: { workspaceId: workspace.id },
+      type: QueryTypes.SELECT,
+    }
+  );
 
   let batch = 0;
-  let lastAgentId = "";
   let totalUpdated = 0;
-  for (;;) {
-    const rows = await frontSequelize.query<{ sId: string }>(SELECT_BATCH_SQL, {
-      replacements: { workspaceId: workspace.id, lastAgentId, batchSize },
-      type: QueryTypes.SELECT,
-    });
-    if (rows.length === 0) {
-      break;
-    }
-
-    const agentIds = rows.map(({ sId }) => sId);
-    lastAgentId = agentIds[agentIds.length - 1];
+  for (let offset = 0; offset < rows.length; offset += batchSize) {
+    const agentIds = rows
+      .slice(offset, offset + batchSize)
+      .map(({ sId }) => sId);
     const existingIdentities = await AgentModel.findAll({
       where: {
         workspaceId: workspace.id,
