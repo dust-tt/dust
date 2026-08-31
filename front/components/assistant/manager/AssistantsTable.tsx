@@ -365,8 +365,14 @@ const getTableColumns = ({
             tooltipTriggerAsChild
             label={tooltipLabel}
             trigger={
-              <div className="inline-flex">
-                <DataTable.CellContent icon={modelIcon} iconClassName="mr-2">
+              // Full width so the cell constrains the flex chain: the name
+              // truncates instead of the chip being clipped at the cell edge.
+              <div className="inline-flex w-full min-w-0">
+                <DataTable.CellContent
+                  className="w-full min-w-0"
+                  icon={modelIcon}
+                  iconClassName="mr-2"
+                >
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="hidden min-w-0 truncate @xl:inline">
                       {modelName}
@@ -388,7 +394,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "hidden @sm:w-28 @sm:table-cell @xl:w-60",
+        className: "hidden @sm:w-28 @sm:table-cell @xl:w-72",
       },
     },
     {
