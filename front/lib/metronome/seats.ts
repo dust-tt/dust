@@ -40,7 +40,10 @@ import {
   PRO_SEAT_CREDIT_NAME,
   USAGE_TAG,
 } from "@app/lib/metronome/setup_common";
-import type { BillingFrequency } from "@app/lib/metronome/types";
+import type {
+  BillingFrequency,
+  MetronomeSeatBalance,
+} from "@app/lib/metronome/types";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -2472,4 +2475,43 @@ const invalidateCachedSeatDataByUserId = bestEffortInvalidateCacheWithRedis(
   fetchSeatDataRecord,
   seatDataCacheResolver,
   "members-usage seat data"
+);
+
+const SEAT_BALANCES_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const seatBalancesCacheResolver = ({
+  metronomeCustomerId,
+  metronomeContractId,
+  seatIds,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  seatIds: string[];
+}) =>
+  `${metronomeCustomerId}-${metronomeContractId}-${[...seatIds].sort().join(",")}`;
+
+async function fetchSeatBalances(args: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  seatIds: string[];
+}): Promise<MetronomeSeatBalance[]> {
+  const balancesResult = await listMetronomeSeatBalances(args);
+  // Throw at the cache boundary so a transient fetch failure is not cached.
+  if (balancesResult.isErr()) {
+    throw balancesResult.error;
+  }
+  return balancesResult.value;
+}
+
+// Same fleet-wide single-flight rationale as `getCachedSeatDataByUserId`: concurrent
+// misses on other processes get null (callers degrade) instead of each firing their
+// own Metronome seat-balances fan-out for the same page of members.
+export const getCachedSeatBalances = cacheWithRedis(
+  fetchSeatBalances,
+  seatBalancesCacheResolver,
+  {
+    ttlMs: SEAT_BALANCES_CACHE_TTL_MS,
+    useDistributedLock: true,
+    skipIfLocked: true,
+  }
 );
