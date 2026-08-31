@@ -123,18 +123,6 @@ export function useConversationAutoScroll({
       previousScrollTop = scrollTop;
     };
 
-    const onWheel = (event: WheelEvent) => {
-      if (event.ctrlKey) {
-        return;
-      }
-
-      if (event.deltaY < 0) {
-        detachFromAutoScroll();
-      } else if (!isAutoScrollEnabledRef.current) {
-        captureScrollPosition();
-      }
-    };
-
     const onTouchStart = (event: TouchEvent) => {
       lastTouchY = event.touches[0]?.clientY ?? null;
     };
@@ -156,7 +144,6 @@ export function useConversationAutoScroll({
     scrollTarget.addEventListener("scroll", preserveDetachedScrollPosition, {
       passive: true,
     });
-    scrollElement.addEventListener("wheel", onWheel, { passive: true });
     scrollElement.addEventListener("touchstart", onTouchStart, {
       passive: true,
     });
@@ -167,7 +154,6 @@ export function useConversationAutoScroll({
         "scroll",
         preserveDetachedScrollPosition
       );
-      scrollElement.removeEventListener("wheel", onWheel);
       scrollElement.removeEventListener("touchstart", onTouchStart);
       scrollElement.removeEventListener("touchmove", onTouchMove);
     };
