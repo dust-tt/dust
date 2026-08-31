@@ -601,7 +601,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       MembershipResource.roleCacheKeyResolver(params)
   );
 
-  static invalidateRoleCache = async (params: {
+  private static invalidateRoleCache = async (params: {
     userModelId: ModelId;
     workspaceModelId: ModelId;
   }) => {
