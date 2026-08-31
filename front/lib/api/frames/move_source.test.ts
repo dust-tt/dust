@@ -44,15 +44,20 @@ vi.mock("@app/lib/lock", async (importActual) => {
 });
 
 import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
+import { Authenticator } from "@app/lib/auth";
 import { LockLeaseLostError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
-import { getConversationFilesBasePath } from "@app/types/mount_path";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+} from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 
@@ -65,40 +70,79 @@ const moveIdMetadataKey = "dust_frame_source_move_id";
 let leaseCheckCount = 0;
 let loseLeaseAtCheck = Number.POSITIVE_INFINITY;
 
-async function setup() {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
-  });
+async function setup({
+  sourceMount = "conversation",
+  withRuntimePod = false,
+}: {
+  sourceMount?: "conversation" | "pod";
+  withRuntimePod?: boolean;
+} = {}) {
+  const {
+    authenticator: initialAuth,
+    globalGroup,
+    user,
+    workspace,
+  } = await createResourceTest({ role: "admin" });
+  const runtimeSpace =
+    withRuntimePod || sourceMount === "pod"
+      ? await SpaceFactory.project(workspace, user.id)
+      : null;
+  const auth = runtimeSpace
+    ? await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId)
+    : initialAuth;
+  assert(auth);
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: "test-agent",
     messagesCreatedAt: [],
+    spaceId: runtimeSpace?.id,
   });
-  const sourceDirectoryPath = `conversation-${conversation.sId}/Status`;
-  const sourceGcsDirectoryPath = `${getConversationFilesBasePath({
-    workspaceId: workspace.sId,
-    conversationId: conversation.sId,
-  })}Status`;
+  const source =
+    sourceMount === "conversation"
+      ? {
+          directoryPath: `conversation-${conversation.sId}/Status`,
+          gcsDirectoryPath: `${getConversationFilesBasePath({
+            workspaceId: workspace.sId,
+            conversationId: conversation.sId,
+          })}Status`,
+          useCase: "conversation" as const,
+          useCaseMetadata: {
+            activePublicationId: "publication-1",
+            conversationId: conversation.sId,
+          },
+        }
+      : (() => {
+          assert(runtimeSpace);
+          return {
+            directoryPath: `pod-${runtimeSpace.sId}/Status`,
+            gcsDirectoryPath: `${getPodFilesBasePath({
+              workspaceId: workspace.sId,
+              podId: runtimeSpace.sId,
+            })}Status`,
+            useCase: "project_context" as const,
+            useCaseMetadata: {
+              activePublicationId: "publication-1",
+              spaceId: runtimeSpace.sId,
+            },
+          };
+        })();
   const frame = await FileFactory.create(auth, null, {
     contentType: frameV2ContentType,
     fileName: FRAME_MANIFEST_FILE,
     fileSize: Buffer.byteLength(manifest),
     status: "created",
-    useCase: "conversation",
-    useCaseMetadata: {
-      activePublicationId: "publication-1",
-      conversationId: conversation.sId,
-    },
-    mountFilePath: `${sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    useCase: source.useCase,
+    useCaseMetadata: source.useCaseMetadata,
+    mountFilePath: `${source.gcsDirectoryPath}/${FRAME_MANIFEST_FILE}`,
   });
   await frame.markFrameV2AsReadyFromMount(auth);
 
-  const sourceManifestPath = `${sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
-  const sourceUiPath = `${sourceGcsDirectoryPath}/index.tsx`;
+  const sourceManifestPath = `${source.gcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+  const sourceUiPath = `${source.gcsDirectoryPath}/index.tsx`;
   fileStorageMock.setObject(sourceManifestPath, manifest);
   fileStorageMock.setObject(sourceUiPath, "ui source");
   fileStorageMock.setFileExists(() => false);
   fileStorageMock.setFilesByPrefix((prefix) =>
-    prefix === `${sourceGcsDirectoryPath}/`
+    prefix === `${source.gcsDirectoryPath}/`
       ? [
           {
             name: sourceManifestPath,
@@ -126,8 +170,11 @@ async function setup() {
     auth,
     conversation,
     frame,
-    sourceDirectoryPath,
-    sourceGcsDirectoryPath,
+    globalGroup,
+    runtimeSpace,
+    sourceDirectoryPath: source.directoryPath,
+    sourceGcsDirectoryPath: source.gcsDirectoryPath,
+    user,
     workspace,
   };
 }
@@ -299,6 +346,74 @@ describe("moveFrameV2Source", () => {
     expect(fileStorageMock.deleteCalls).toEqual([]);
   });
 
+  it("moves from a conversation mount to its runtime Pod", async () => {
+    const context = await setup({ withRuntimePod: true });
+    assert(context.runtimeSpace);
+    const destinationDirectoryPath = `pod-${context.runtimeSpace.sId}/Status`;
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded).toMatchObject({
+      sId: context.frame.sId,
+      useCase: "project_context",
+    });
+    expect(reloaded?.mountFilePath).toBe(
+      `${getPodFilesBasePath({
+        workspaceId: context.workspace.sId,
+        podId: context.runtimeSpace.sId,
+      })}Status/${FRAME_MANIFEST_FILE}`
+    );
+    expect(reloaded?.useCaseMetadata).toEqual({
+      activePublicationId: "publication-1",
+      spaceId: context.runtimeSpace.sId,
+    });
+    expect(emitGCSMountFileMovedAuditLogMock).toHaveBeenCalledWith(
+      context.auth,
+      { useCase: "pod", podId: context.runtimeSpace.sId },
+      { parentRelativePath: "", relativeFilePath: "Status" }
+    );
+  });
+
+  it("moves from a Pod mount to a conversation in that runtime", async () => {
+    const context = await setup({ sourceMount: "pod" });
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/Status`;
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded).toMatchObject({
+      sId: context.frame.sId,
+      useCase: "conversation",
+    });
+    expect(reloaded?.mountFilePath).toBe(
+      `${getConversationFilesBasePath({
+        workspaceId: context.workspace.sId,
+        conversationId: context.conversation.sId,
+      })}Status/${FRAME_MANIFEST_FILE}`
+    );
+    expect(reloaded?.useCaseMetadata).toEqual({
+      activePublicationId: "publication-1",
+      conversationId: context.conversation.sId,
+    });
+  });
+
   it("does not move a registered Frame whose source manifest is missing", async () => {
     const context = await setup();
     const sourceUiPath = `${context.sourceGcsDirectoryPath}/index.tsx`;
@@ -336,20 +451,37 @@ describe("moveFrameV2Source", () => {
     );
   });
 
-  it("rejects cross-mount moves before looking up a Frame", async () => {
+  it("rejects moves to a different runtime before any mutation", async () => {
     const context = await setup();
+    const destinationPod = await SpaceFactory.project(
+      context.workspace,
+      context.user.id
+    );
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      context.user.sId,
+      context.workspace.sId
+    );
+    assert(auth);
     const fetchFrames = vi.spyOn(FileResource, "fetchByMountFilePaths");
+    const updateMount = vi.spyOn(FileResource.prototype, "updateMount");
+    const copyFile = vi.fn();
+    fileStorageMock.setAfterCopyFile(copyFile);
 
-    const moved = await moveFrameV2Source(context.auth, {
+    const moved = await moveFrameV2Source(auth, {
       conversation: context.conversation,
-      destinationDirectoryPath: "pod-pod_123/Status",
+      destinationDirectoryPath: `pod-${destinationPod.sId}/Status`,
       sourceDirectoryPath: context.sourceDirectoryPath,
     });
 
     expect(moved.isErr() && moved.error).toMatchObject({
       code: "invalid_source",
+      message:
+        "Frame source and destination must resolve to the same runtime space.",
     });
     expect(fetchFrames).not.toHaveBeenCalled();
+    expect(updateMount).not.toHaveBeenCalled();
+    expect(copyFile).not.toHaveBeenCalled();
+    expect(fileStorageMock.deleteCalls).toEqual([]);
     const reloaded = await FileResource.fetchById(
       context.auth,
       context.frame.sId
@@ -420,6 +552,40 @@ describe("moveFrameV2Source", () => {
       frameId: otherFrame.sId,
     });
   });
+
+  it("requires destination write access before any mutation", async () => {
+    const context = await setup();
+    const destinationPod = await SpaceFactory.project(context.workspace);
+    await SpaceFactory.attachGroup(
+      destinationPod,
+      context.globalGroup,
+      "project_viewer"
+    );
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      context.user.sId,
+      context.workspace.sId
+    );
+    assert(auth);
+    const fetchFrames = vi.spyOn(FileResource, "fetchByMountFilePaths");
+    const updateMount = vi.spyOn(FileResource.prototype, "updateMount");
+    const copyFile = vi.fn();
+    fileStorageMock.setAfterCopyFile(copyFile);
+
+    const moved = await moveFrameV2Source(auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath: `pod-${destinationPod.sId}/Status`,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({
+      code: "unauthorized",
+    });
+    expect(fetchFrames).not.toHaveBeenCalled();
+    expect(updateMount).not.toHaveBeenCalled();
+    expect(copyFile).not.toHaveBeenCalled();
+    expect(fileStorageMock.deleteCalls).toEqual([]);
+  });
+
   it("does not overwrite a destination object created during the move", async () => {
     const context = await setup();
     const destinationDirectoryPath = `conversation-${context.conversation.sId}/Collision`;

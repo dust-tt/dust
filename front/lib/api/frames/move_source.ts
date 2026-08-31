@@ -20,6 +20,7 @@ import {
   isGCSPreconditionFailedError,
 } from "@app/lib/file_storage/types";
 import type { LockLeaseGuard } from "@app/lib/lock";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FrameGoneError } from "@app/lib/resources/frame_sandbox_adapter";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -101,6 +102,44 @@ function sourceOwnerFromPath(
     default:
       return assertNever(parsed);
   }
+}
+
+async function resolveRuntimeSpaceId(
+  auth: Authenticator,
+  sourceOwner: FrameSourceOwner
+): Promise<Result<string | null, FrameSourceMoveError>> {
+  const { conversationId, spaceId } = sourceOwner.useCaseMetadata;
+  if (spaceId) {
+    return new Ok(spaceId);
+  }
+  if (!conversationId) {
+    return invalidSource("Frame source has no conversation or Pod scope.");
+  }
+
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return invalidSource(`Conversation ${conversationId} not found.`);
+  }
+  return new Ok(conversation.spaceSId);
+}
+
+function frameMetadataAtDestination(
+  frame: FileResource,
+  destinationOwner: FrameSourceOwner
+): FileUseCaseMetadata {
+  const {
+    conversationId: _conversationId,
+    pendingFrameSourceMove: _pendingFrameSourceMove,
+    spaceId: _spaceId,
+    ...stableMetadata
+  } = frame.useCaseMetadata ?? {};
+  return {
+    ...stableMetadata,
+    ...destinationOwner.useCaseMetadata,
+  };
 }
 
 function metadataWithoutPendingMove(
@@ -651,18 +690,6 @@ export async function moveFrameV2Source(
       "Frame source and destination must be folders in a conversation or Pod mount."
     );
   }
-  if (
-    sourceOwner.useCase !== destinationOwner.useCase ||
-    sourceOwner.useCaseMetadata.conversationId !==
-      destinationOwner.useCaseMetadata.conversationId ||
-    sourceOwner.useCaseMetadata.spaceId !==
-      destinationOwner.useCaseMetadata.spaceId
-  ) {
-    return invalidSource(
-      "Frame source and destination must use the same conversation or Pod mount."
-    );
-  }
-
   // The conversation is the sandbox invocation context. Explicitly requested
   // mounts are still resolved through the authenticated agent-loop filesystem.
   const fsResult = await DustFileSystem.forAgentLoop(auth, {
@@ -685,6 +712,22 @@ export async function moveFrameV2Source(
   const destinationWriteAccess = dustFs.checkWriteAccess(destination);
   if (destinationWriteAccess.isErr()) {
     return destinationWriteAccess;
+  }
+
+  const [sourceRuntimeSpace, destinationRuntimeSpace] = await Promise.all([
+    resolveRuntimeSpaceId(auth, sourceOwner),
+    resolveRuntimeSpaceId(auth, destinationOwner),
+  ]);
+  if (sourceRuntimeSpace.isErr()) {
+    return sourceRuntimeSpace;
+  }
+  if (destinationRuntimeSpace.isErr()) {
+    return destinationRuntimeSpace;
+  }
+  if (sourceRuntimeSpace.value !== destinationRuntimeSpace.value) {
+    return invalidSource(
+      "Frame source and destination must resolve to the same runtime space."
+    );
   }
 
   const sourceManifestPath = path.posix.join(source, FRAME_MANIFEST_FILE);
@@ -910,9 +953,10 @@ export async function moveFrameV2Source(
         await currentFrame.updateMount({
           destFileName: FRAME_MANIFEST_FILE,
           destMountFilePath: destinationMountPath,
-          destUseCase: originalUseCase,
-          destUseCaseMetadata: metadataWithoutPendingMove(
-            currentFrame.useCaseMetadata
+          destUseCase: destinationOwner.useCase,
+          destUseCaseMetadata: frameMetadataAtDestination(
+            currentFrame,
+            destinationOwner
           ),
         });
         return new Ok(undefined);
@@ -1039,15 +1083,17 @@ export async function moveFrameV2Source(
             useCase: "pod",
             podId: destinationOwner.useCaseMetadata.spaceId ?? "",
           };
-    const scopedPrefix =
-      sourceOwner.useCase === "conversation"
-        ? `conversation-${sourceOwner.useCaseMetadata.conversationId}`
-        : `pod-${sourceOwner.useCaseMetadata.spaceId}`;
-    const sourceRelativePath = path.posix.relative(scopedPrefix, source);
+    const destinationScopedPrefix =
+      destinationOwner.useCase === "conversation"
+        ? `conversation-${destinationOwner.useCaseMetadata.conversationId}`
+        : `pod-${destinationOwner.useCaseMetadata.spaceId}`;
     const destinationRelativePath = path.posix.relative(
-      scopedPrefix,
+      destinationScopedPrefix,
       destination
     );
+    const sourceRelativePath = source.startsWith(`${destinationScopedPrefix}/`)
+      ? path.posix.relative(destinationScopedPrefix, source)
+      : destinationRelativePath;
     const parentRelativePath = path.posix.dirname(destinationRelativePath);
     void emitGCSMountFileMovedAuditLog(auth, destinationScope, {
       relativeFilePath: sourceRelativePath,
