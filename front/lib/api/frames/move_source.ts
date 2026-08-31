@@ -209,11 +209,13 @@ function isSameGCSObject(source: File, destination: File): boolean {
 type GCSObjectGeneration = { filePath: string; generation: string };
 type FrameSourceCopy = {
   destinationObjects: GCSObjectGeneration[];
+  hasPreexistingDestinationObjects: boolean;
   sourceObjects: GCSObjectGeneration[];
 };
 type FrameSourceCopyFailure = {
   destinationObjects: GCSObjectGeneration[];
   error: FrameSourceMoveError;
+  hasPreexistingDestinationObjects: boolean;
 };
 
 async function cleanupDestinationObjects(
@@ -296,6 +298,7 @@ async function copyFrameSourceAsNew({
         "invalid_source",
         "Frame source folder is empty or no longer exists."
       ),
+      hasPreexistingDestinationObjects: destinationFiles.length > 0,
     });
   }
   const totalSourceSize = sourceFiles.reduce(
@@ -312,6 +315,7 @@ async function copyFrameSourceAsNew({
         "invalid_source",
         "Frame source exceeds the move size limit."
       ),
+      hasPreexistingDestinationObjects: destinationFiles.length > 0,
     });
   }
   if (destinationFiles.length > MAX_FRAME_SOURCE_FILE_COUNT) {
@@ -321,6 +325,7 @@ async function copyFrameSourceAsNew({
         "conflict",
         "Frame destination exceeds the move file count limit."
       ),
+      hasPreexistingDestinationObjects: true,
     });
   }
 
@@ -333,6 +338,7 @@ async function copyFrameSourceAsNew({
   const copyResults = await concurrentExecutor(
     sourceFiles,
     async (sourceFile) => {
+      let hasPreexistingDestinationObject = false;
       try {
         const relativePath = sourceFile.name.slice(sourceMountPrefix.length);
         const destinationPath = `${destinationMountPrefix}${relativePath}`;
@@ -348,6 +354,7 @@ async function copyFrameSourceAsNew({
         }
         let destinationFile = destinationByRelativePath.get(relativePath);
         let ownedDestinationObject: GCSObjectGeneration | null = null;
+        hasPreexistingDestinationObject = Boolean(destinationFile);
 
         if (!destinationFile) {
           try {
@@ -376,6 +383,7 @@ async function copyFrameSourceAsNew({
                 `Destination file already exists: ${relativePath}`
               );
             }
+            hasPreexistingDestinationObject = true;
             destinationFile = bucket.file(destinationPath);
             const [metadata] = await destinationFile.getMetadata();
             destinationFile.metadata = metadata;
@@ -395,23 +403,27 @@ async function copyFrameSourceAsNew({
 
         return new Ok<{
           destination: GCSObjectGeneration | null;
+          hasPreexistingDestinationObject: boolean;
           source: GCSObjectGeneration;
         }>({
           destination: ownedDestinationObject,
+          hasPreexistingDestinationObject,
           source: {
             filePath: sourceFile.name,
             generation: sourceGeneration,
           },
         });
       } catch (error) {
-        return new Err(
-          error instanceof FrameSourceMoveError
-            ? error
-            : new FrameSourceMoveError(
-                "internal",
-                `Failed to copy the Frame source: ${normalizeError(error).message}`
-              )
-        );
+        return new Err({
+          error:
+            error instanceof FrameSourceMoveError
+              ? error
+              : new FrameSourceMoveError(
+                  "internal",
+                  `Failed to copy the Frame source: ${normalizeError(error).message}`
+                ),
+          hasPreexistingDestinationObject,
+        });
       }
     },
     { concurrency: FRAME_SOURCE_MOVE_COPY_CONCURRENCY }
@@ -422,15 +434,24 @@ async function copyFrameSourceAsNew({
   const destinationObjects = copiedObjects.flatMap(({ destination }) =>
     destination ? [destination] : []
   );
+  const hasPreexistingDestinationObjects =
+    destinationFiles.length > 0 ||
+    copyResults.some((result) =>
+      result.isOk()
+        ? result.value.hasPreexistingDestinationObject
+        : result.error.hasPreexistingDestinationObject
+    );
   const failedCopy = copyResults.find((result) => result.isErr());
   if (failedCopy?.isErr()) {
     return new Err({
       destinationObjects,
-      error: failedCopy.error,
+      error: failedCopy.error.error,
+      hasPreexistingDestinationObjects,
     });
   }
   return new Ok({
     destinationObjects,
+    hasPreexistingDestinationObjects,
     sourceObjects: copiedObjects.map(({ source }) => source),
   });
 }
@@ -676,6 +697,9 @@ export async function moveFrameV2Source(
           )
         );
       }
+      if (isRecovery && copyResult.error.hasPreexistingDestinationObjects) {
+        return new Err(copyResult.error.error);
+      }
       const restored = await restoreSourceReservation();
       return restored
         ? new Err(copyResult.error.error)
@@ -748,7 +772,11 @@ export async function moveFrameV2Source(
       const cleaned = await cleanupDestinationObjects(
         copyResult.value.destinationObjects
       );
-      const restored = cleaned ? await restoreSourceReservation() : false;
+      const restored =
+        cleaned &&
+        (!isRecovery || !copyResult.value.hasPreexistingDestinationObjects)
+          ? await restoreSourceReservation()
+          : false;
       if (!restored) {
         logger.error(
           {

@@ -525,7 +525,7 @@ describe("moveFrameV2Source", () => {
     );
   });
 
-  it("does not delete a matching recovery object that this attempt did not copy", async () => {
+  it("keeps matching recovery objects reserved until a retry succeeds", async () => {
     const context = await setup();
     const destinationDirectoryPath = `conversation-${context.conversation.sId}/RecoveryRollback`;
     const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
@@ -570,7 +570,7 @@ describe("moveFrameV2Source", () => {
               size: "1",
             },
           },
-        ];
+        ].filter(({ name }) => fileStorageMock.getObject(name) !== undefined);
       }
       if (prefix === `${destinationGcsDirectoryPath}/`) {
         return [
@@ -612,6 +612,31 @@ describe("moveFrameV2Source", () => {
     expect(fileStorageMock.deleteCalls).not.toContainEqual(
       expect.objectContaining({ filePath: destinationManifestPath })
     );
+
+    const reserved = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reserved?.mountFilePath).toBe(destinationMountFilePath);
+    expect(reserved?.useCaseMetadata?.pendingFrameSourceMove).toEqual({
+      destinationMountFilePath,
+      sourceMountFilePath,
+    });
+
+    const retried = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(retried.isOk(), retried.isErr() ? retried.error.message : undefined);
+    expect(retried.value.sourceDeletionFailed).toBe(false);
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(destinationMountFilePath);
+    expect(reloaded?.useCaseMetadata?.pendingFrameSourceMove).toBeUndefined();
   });
 
   it("resumes an interrupted move from its destination reservation", async () => {
