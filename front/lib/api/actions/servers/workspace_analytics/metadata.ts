@@ -1,5 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  consumptionFilterSchema,
   DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
   MAX_CREDIT_GROUPS,
@@ -7,7 +8,11 @@ import {
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { CONSUMPTION_TOP_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
+
+export const GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME =
+  "get_top_entities_by_credits" as const;
 
 const topListSchema = (entityPlural: string) => ({
   ...timeWindowSchemaShape,
@@ -117,6 +122,24 @@ const getUsageTimeseriesSchema = {
     ),
 };
 
+const getTopEntitiesByCreditsSchema = {
+  dimension: z
+    .enum(CONSUMPTION_TOP_DIMENSIONS)
+    .describe("What to group results by."),
+  ...timeWindowSchemaShape,
+  ...consumptionFilterSchema,
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_RESULTS)
+    .optional()
+    .describe(
+      `Maximum number of rows to return ` +
+        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
+    ),
+};
+
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: "get_top_agents",
@@ -214,7 +237,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "Return the workspace's most-used skills over a time window (defaults " +
       "to the current calendar month), ranked by execution count. Optionally " +
       "filter by source (context_origin), agent, user, tag, or model. Use this " +
-      "to answer which skills are used most. Admin-only.",
+      "to answer which skills are executed or used most. Admin-only.",
     schema: getTopSkillsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -322,6 +345,23 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving usage time series",
       done: "Retrieved usage time series",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME,
+    description:
+      "Rank the workspace's credit consumption by entity " +
+      "over a time window (defaults to the current calendar month). Use " +
+      "this to answer 'which agent is most expensive', or to attribute " +
+      "credit spend by API key, tag, or model. Figures are billed " +
+      "credits. Rows may overlap, so don't sum them for a workspace total.",
+    schema: getTopEntitiesByCreditsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top consumers",
+      done: "Retrieved top consumers",
     },
     toolCostCategory: "basic",
     freeUsage: true,

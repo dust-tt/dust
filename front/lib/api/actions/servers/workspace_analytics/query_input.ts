@@ -1,3 +1,5 @@
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { isValidTimezone, timezoneSchema } from "@app/lib/api/timezone";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -94,6 +96,94 @@ export const usageFilterSchema = {
         "model id (e.g. 'claude-sonnet-4-5'), as returned by get_top_models."
     ),
 };
+
+// Filters for the consumption-index tools. Every key narrows the same scope the
+// workspace Analytics page filters on. The legacy `usageFilterSchema` above stays
+// until the tools still reading the old index are gone.
+export const consumptionFilterSchema = {
+  sources: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to these message origins (e.g. 'web', 'slack', 'api')."
+    ),
+  agentIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to these agent sIds."),
+  userIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to these user sIds."),
+  agentTagIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to agents carrying any of these agent tag sIds."),
+  modelIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to these models, identified by their model id (e.g. " +
+        "'claude-sonnet-4-5')."
+    ),
+  apiKeyNames: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to these API key names."),
+  groupIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to members of these group sIds."),
+  toolNames: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to these MCP server names."),
+  skillIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to these skill sIds."),
+};
+
+const consumptionFilterInputSchema = z.object(consumptionFilterSchema);
+
+export type ConsumptionFilterInput = z.input<
+  typeof consumptionFilterInputSchema
+>;
+
+export type ConsumptionScope = {
+  filter: ConsumptionScopeFilter;
+  agentTagIds: string[];
+};
+
+export function toConsumptionScope(
+  input: ConsumptionFilterInput
+): ConsumptionScope {
+  return {
+    filter: {
+      sources: input.sources,
+      agents: input.agentIds,
+      users: input.userIds,
+      models: input.modelIds,
+      api_keys: input.apiKeyNames,
+      groups: input.groupIds,
+      tools: input.toolNames,
+      skills: input.skillIds,
+    },
+    agentTagIds: input.agentTagIds ?? [],
+  };
+}
+
+// `resolveTimeWindow` reports an inclusive end instant, because the legacy index
+// is queried with `lte`. The consumption index uses a half-open range, so its
+// bound is the following millisecond. Goes away with the last legacy tool.
+export function toConsumptionPeriod(
+  window: ResolvedTimeWindow
+): ConsumptionPeriod {
+  return {
+    startDate: window.startDate,
+    endDate: new Date(new Date(window.endDate).getTime() + 1).toISOString(),
+  };
+}
 
 type TimeWindowInput = z.input<typeof timeWindowInputSchema>;
 

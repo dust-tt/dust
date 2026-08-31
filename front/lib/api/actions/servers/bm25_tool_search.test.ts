@@ -1130,6 +1130,18 @@ const QUERIES: LabeledQuery[] = [
     expected: "workspace_analytics.get_credit_usage",
   },
   {
+    query: "which agents cost the most credits this month",
+    expected: "workspace_analytics.get_top_entities_by_credits",
+  },
+  {
+    query: "which conversations were the most expensive",
+    expected: "workspace_analytics.get_top_entities_by_credits",
+  },
+  {
+    query: "attribute credit spend to our API keys",
+    expected: "workspace_analytics.get_top_entities_by_credits",
+  },
+  {
     query: "show the credit spending trend over the last 30 days",
     expected: "workspace_analytics.get_credit_timeseries",
   },

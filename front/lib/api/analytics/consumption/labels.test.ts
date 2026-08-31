@@ -3,16 +3,19 @@ import {
   resolveDimensionDisplayNames,
   resolveDimensionLabels,
 } from "@app/lib/api/analytics/consumption/labels";
+import { resolveConsumptionGroupLabels } from "@app/lib/api/analytics/consumption/top";
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
@@ -95,6 +98,33 @@ describe("resolveDimensionDisplayNames", () => {
     expect(await resolveDimensionDisplayNames(auth, "agent", [])).toEqual(
       new Map()
     );
+  });
+
+  it("names agent tags from their tag names", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+    const tag = await TagFactory.create(workspace, { name: "Support" });
+
+    const names = await resolveDimensionDisplayNames(auth, "tag", [tag.sId]);
+
+    expect(names.get(tag.sId)).toBe("Support");
+  });
+
+  it("falls back to the key for an unresolvable tag", async () => {
+    const tags = await resolveDimensionDisplayNames(auth, "tag", [
+      "deleted_tag",
+    ]);
+
+    expect(tags.get("deleted_tag")).toBe("deleted_tag");
+  });
+
+  it("drops a conversation it cannot resolve, rather than falling back to the key", async () => {
+    const conversations = await resolveDimensionDisplayNames(
+      auth,
+      "conversation",
+      ["deleted_conversation"]
+    );
+
+    expect(conversations.has("deleted_conversation")).toBe(false);
   });
 });
 
@@ -253,5 +283,60 @@ describe("resolveDimensionLabels", () => {
       description: null,
       icon: server.icon,
     });
+  });
+});
+
+describe("resolveConsumptionGroupLabels and private conversations", () => {
+  it("omits a private conversation's id and credits from a workspace-manager ranking", async () => {
+    const { authenticator: ownerAuth, workspace } = await createResourceTest({
+      role: "user",
+    });
+
+    const manager = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, manager, { role: "manager" });
+    const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      manager.sId,
+      workspace.sId
+    );
+
+    const privateSpace = await SpaceFactory.regular(workspace);
+    const privateConversation = await ConversationFactory.create(ownerAuth, {
+      agentConfigurationId: "unused",
+      messagesCreatedAt: [],
+    });
+    await ConversationFactory.setRequestedSpaceIdsForTest(
+      privateConversation.id,
+      workspace.id,
+      [privateSpace.id]
+    );
+
+    const readableConversation = await ConversationFactory.create(ownerAuth, {
+      agentConfigurationId: "unused",
+      messagesCreatedAt: [],
+    });
+
+    const rows = await resolveConsumptionGroupLabels(
+      managerAuth,
+      "conversation",
+      [
+        {
+          key: privateConversation.sId,
+          credits: 12,
+          count: 3,
+          previousCredits: null,
+        },
+        {
+          key: readableConversation.sId,
+          credits: 4,
+          count: 1,
+          previousCredits: null,
+        },
+      ]
+    );
+
+    expect(rows.map((row) => row.key)).toEqual([readableConversation.sId]);
+    expect(rows.some((row) => row.name === privateConversation.sId)).toBe(
+      false
+    );
   });
 });

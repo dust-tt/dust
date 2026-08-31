@@ -1,6 +1,10 @@
 import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import {
+  fetchConsumptionTopGroups as fetchConsumptionTopGroupBuckets,
+  resolveConsumptionGroupLabels,
+} from "@app/lib/api/analytics/consumption/top";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
 import { fetchConsumptionTopConversations } from "@app/lib/api/analytics/consumption/top_conversations";
@@ -871,5 +875,84 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       order: { credit_micro: "asc" },
     });
+  });
+});
+
+// The two options the analytics tools rely on and the page never sets.
+describe("fetchConsumptionTopGroups options", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("skips the previous-period search when the caller opts out", async () => {
+    const { auth } = await setup();
+    mockAggs({
+      buckets: [{ key: "a", credit_micro: { value: 1 } }],
+      totalMicro: 1,
+    });
+
+    await fetchConsumptionTopGroupBuckets(auth, {
+      dimension: "agent",
+      period: PERIOD,
+      limit: 5,
+      includePreviousCredits: false,
+    });
+
+    expect(vi.mocked(searchConsumptionAnalytics)).toHaveBeenCalledTimes(1);
+  });
+
+  it("scopes on agentTagIds, which no filter key covers", async () => {
+    const { auth } = await setup();
+    mockAggs({ buckets: [], totalMicro: 0 });
+
+    await fetchConsumptionTopGroupBuckets(auth, {
+      dimension: "agent",
+      period: PERIOD,
+      limit: 5,
+      agentTagIds: ["tag_1"],
+      includePreviousCredits: false,
+    });
+
+    const [query] = lastSearchCall();
+    expect(query.bool?.filter).toContainEqual({
+      term: { "agent.tag_ids": "tag_1" },
+    });
+  });
+});
+
+describe("resolveConsumptionGroupLabels", () => {
+  it("drops a conversation row resolveDimensionLabels omitted, rather than falling back to its id", async () => {
+    const { auth } = await setup();
+    mockLabels({ readable_conversation: "Readable" });
+
+    const rows = await resolveConsumptionGroupLabels(auth, "conversation", [
+      {
+        key: "private_conversation",
+        credits: 12,
+        count: 3,
+        previousCredits: null,
+      },
+      {
+        key: "readable_conversation",
+        credits: 4,
+        count: 1,
+        previousCredits: null,
+      },
+    ]);
+
+    expect(rows.map((row) => row.key)).toEqual(["readable_conversation"]);
+  });
+
+  it("falls back to the raw key for every other dimension", async () => {
+    const { auth } = await setup();
+    mockLabels({});
+
+    const rows = await resolveConsumptionGroupLabels(auth, "model", [
+      { key: "deleted-model", credits: 4, count: 1, previousCredits: null },
+    ]);
+
+    expect(rows).toEqual([
+      expect.objectContaining({ key: "deleted-model", name: "deleted-model" }),
+    ]);
   });
 });
