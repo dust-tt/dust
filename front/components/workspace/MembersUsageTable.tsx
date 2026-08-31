@@ -19,6 +19,7 @@ import {
   toUserModelTierSelection,
 } from "@app/lib/client/model_tier_options";
 import {
+  formatModelTiersSummary,
   formatUserModelTierInheritLabel,
   resolveModelTiersForUser,
 } from "@app/lib/client/model_tiers";
@@ -33,10 +34,15 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Clock,
+  CoinsStacked01,
+  cn,
   createSelectionColumn,
   DataTable,
   Icon,
@@ -85,6 +91,7 @@ type RowData = {
   consumedFromPoolAwuCredits: number;
   spendLimitAwuCredits: number | null;
   spendLimitSource: EffectiveSpendLimitSource;
+  spendLimitGroupName: string | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
@@ -172,26 +179,37 @@ interface AwuUsageBarProps {
   // instead of period spend.
   seatBalanceAwu?: number | null;
   // The fully-resolved spend cap from `spendLimitAwuCredits` (member override,
-  // group cap or workspace default, all including seat allowance). Always
-  // non-null for seated users — workspace default pool cap treats null as 0
-  // (seat-only). Pass `?? 0` as a TypeScript guard only.
-  effectiveLimit: number;
+  // group cap or workspace default, all including seat allowance). `null`
+  // means uncapped
+  effectiveLimit: number | null;
   // Where `effectiveLimit` comes from — shown as a tooltip on the limit figure.
   spendLimitSource: EffectiveSpendLimitSource;
+  // Name of the group behind `effectiveLimit` when `spendLimitSource` is
+  // `"group"`. Null for every other source.
+  spendLimitGroupName: string | null;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
+  // Shows only the workspace-pool portion of usage (pool consumed / pool
+  // remaining + overage), hiding the seat-allowance section entirely. The
+  // limit figure above the bar becomes the pool limit instead of the
+  // combined (seat + pool) effective limit. Used by the redesigned usage
+  // page, which surfaces seat allowance separately in its own column.
+  poolOnly?: boolean;
 }
 
 // Human-readable origin of the effective spend limit, or null when there is
 // nothing worth explaining (no limit configured).
 function spendLimitSourceLabel(
-  source: EffectiveSpendLimitSource
+  source: EffectiveSpendLimitSource,
+  groupName: string | null
 ): string | null {
   switch (source) {
     case "override":
       return "Limit set specifically for this member";
     case "group":
-      return "Limit from a group";
+      return groupName
+        ? `Limit inherited from the "${groupName}" group`
+        : "Limit from a group";
     case "default":
       return "Workspace default limit";
     case "none":
@@ -210,12 +228,17 @@ export function AwuUsageBar({
   seatBalanceAwu,
   effectiveLimit,
   spendLimitSource,
+  spendLimitGroupName,
   seatType,
   isTotalAllowedUsagePending: isPending,
+  poolOnly = false,
 }: AwuUsageBarProps) {
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
-  const sourceLabel = spendLimitSourceLabel(spendLimitSource);
+  const sourceLabel = spendLimitSourceLabel(
+    spendLimitSource,
+    spendLimitGroupName
+  );
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
   const isFreeWithBalance =
@@ -252,20 +275,59 @@ export function AwuUsageBar({
   const overage =
     poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
 
+  if (poolOnly && poolLimit !== null && poolLimit <= 0) {
+    // No pool access, but credits were still consumed from it (e.g. legacy
+    // overage predating the seat's current limit). Surface the actual
+    // amount instead of hiding it behind "--".
+    const hasUnexpectedPoolConsumption = consumedFromPool > 0;
+    return (
+      <div className="flex w-full flex-col gap-1">
+        <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
+          <span>
+            {hasUnexpectedPoolConsumption
+              ? formatCredits(consumedFromPool)
+              : "--"}
+          </span>
+          {isPending ? <Spinner size="xs" /> : <span>--</span>}
+        </div>
+        <div className="flex h-3 w-full items-center">
+          <ProgressBar
+            aria-label="Member credit usage"
+            aria-valuenow={hasUnexpectedPoolConsumption ? 100 : 0}
+            aria-valuetext={
+              hasUnexpectedPoolConsumption
+                ? `${formatCredits(consumedFromPool)} credits used from the workspace pool with no pool access`
+                : "No pool access"
+            }
+            className="h-1 w-full gap-px bg-transparent"
+            values={[
+              {
+                value: 1,
+                className: hasUnexpectedPoolConsumption
+                  ? OVERAGE_BAR_CLASSES.fill
+                  : MUTED_BAR_CLASSES.track,
+              },
+            ]}
+          />
+        </div>
+      </div>
+    );
+  }
+
   const sections: Array<{
     value: number;
     className: string;
     label: string;
   }> = [];
   const creditLabel = isFreeWithBalance ? "lifetime credits" : "seat allowance";
-  if (seatConsumed > 0) {
+  if (!poolOnly && seatConsumed > 0) {
     sections.push({
       value: seatConsumed,
       className: seatColors.fill,
       label: `${formatCredits(seatConsumed)} of ${formatCredits(allowance)} ${creditLabel} used`,
     });
   }
-  if (seatRemaining > 0) {
+  if (!poolOnly && seatRemaining > 0) {
     sections.push({
       value: seatRemaining,
       className: seatColors.track,
@@ -293,11 +355,15 @@ export function AwuUsageBar({
     total > 0
       ? Math.min(
           100,
-          Math.max(0, ((seatConsumed + poolConsumed) / total) * 100)
+          Math.max(
+            0,
+            ((poolOnly ? poolConsumed : seatConsumed + poolConsumed) / total) *
+              100
+          )
         )
       : 0;
 
-  const hasSeatSections = seatConsumed > 0 || seatRemaining > 0;
+  const hasSeatSections = !poolOnly && (seatConsumed > 0 || seatRemaining > 0);
   // Only surface the pool when there's actually a pool to spend from: a finite
   // positive limit, or uncapped (null). A zero pool limit (free) has no pool.
   const hasPoolSections =
@@ -381,30 +447,35 @@ export function AwuUsageBar({
     </div>
   );
 
+  const headlineConsumed = poolOnly
+    ? poolConsumed
+    : isFreeWithBalance
+      ? Math.min(lifetimeConsumed! + overage, allowance)
+      : effectiveLimit !== null
+        ? Math.min(consumed, effectiveLimit)
+        : consumed;
+  // null means uncapped
+  const headlineLimit = poolOnly
+    ? poolLimit
+    : isFreeWithBalance
+      ? allowance
+      : effectiveLimit;
+  const headlineLimitLabel =
+    headlineLimit === null ? "Unlimited" : formatCredits(headlineLimit);
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground">
-        <span>
-          {isFreeWithBalance
-            ? formatCredits(Math.min(lifetimeConsumed! + overage, allowance))
-            : formatCredits(
-                effectiveLimit !== null
-                  ? Math.min(consumed, effectiveLimit)
-                  : consumed
-              )}
-        </span>
+        <span>{formatCredits(headlineConsumed)}</span>
         {isPending ? (
           <Spinner size="xs" />
-        ) : isFreeWithBalance ? (
-          <span>{formatCredits(allowance)}</span>
-        ) : sourceLabel !== null ? (
+        ) : !isFreeWithBalance && sourceLabel !== null ? (
           <Tooltip
             tooltipTriggerAsChild
             label={sourceLabel}
-            trigger={<span>{formatCredits(effectiveLimit)}</span>}
+            trigger={<span>{headlineLimitLabel}</span>}
           />
         ) : (
-          <span>{formatCredits(effectiveLimit)}</span>
+          <span>{headlineLimitLabel}</span>
         )}
       </div>
       {tooltipContent ? (
@@ -483,14 +554,22 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildConsumedAwuCreditsColumn(
-  creditsResetAt: string | null
+function buildPoolCreditUsageColumn(
+  creditsResetAt: string | null,
+  variant: MembersUsageTableVariant
 ): ColumnDef<RowData, string> {
   return {
-    id: "consumedAwuCredits" as const,
+    id: "consumedFromPoolAwuCredits" as const,
     header: () => (
       <div className="flex flex-col">
-        <span>Credits usage this month</span>
+        <span className="flex items-center gap-1">
+          <Icon
+            visual={CoinsStacked01}
+            size="xs"
+            className="text-muted-foreground"
+          />
+          Pool credit usage
+        </span>
         {creditsResetAt && (
           <span className="text-xs font-normal text-muted-foreground">
             Limits reset on{" "}
@@ -503,7 +582,7 @@ function buildConsumedAwuCreditsColumn(
         )}
       </div>
     ),
-    accessorFn: (row) => row.consumedAwuCredits.toString(),
+    accessorFn: (row) => row.consumedFromPoolAwuCredits.toString(),
     cell: (info: Info) => (
       <div className="w-full pr-3">
         <AwuUsageBar
@@ -514,46 +593,253 @@ function buildConsumedAwuCreditsColumn(
           consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
           memberUsageLimit={info.row.original.memberUsageLimit}
           seatBalanceAwu={info.row.original.seatBalanceAwu}
-          effectiveLimit={info.row.original.spendLimitAwuCredits ?? 0}
+          effectiveLimit={info.row.original.spendLimitAwuCredits}
           spendLimitSource={info.row.original.spendLimitSource}
+          spendLimitGroupName={info.row.original.spendLimitGroupName}
           seatType={info.row.original.seatType}
           isTotalAllowedUsagePending={
             info.row.original.isTotalAllowedUsagePending
           }
+          poolOnly={variant === "compact"}
         />
       </div>
     ),
     enableSorting: true,
+    sortDescFirst: true,
   };
 }
 
-const modelTiersColumn: ColumnDef<RowData, string> = {
-  id: "modelTiers" as const,
-  header: () => (
-    <span className="flex items-center gap-1">
-      Models tier
-      <ModelTiersInfoButton />
-    </span>
-  ),
-  enableSorting: false,
-  accessorFn: (row) => row.modelTiersSummary,
-  cell: (info: Info) => {
-    const summary = info.row.original.modelTiersSummary;
-    const customSuffix = info.row.original.hasUserLevelModelTiersOverride
-      ? " (custom)"
-      : "";
+function buildModelTiersColumn(
+  variant: MembersUsageTableVariant
+): ColumnDef<RowData, string> {
+  return {
+    id: "modelTiers" as const,
+    header: () => (
+      <span className="flex items-center gap-1">
+        {(() => {
+          switch (variant) {
+            case "compact":
+              return "Models";
+            case "legacy":
+              return "Models tier";
+            default:
+              return assertNever(variant);
+          }
+        })()}
+        <ModelTiersInfoButton />
+      </span>
+    ),
+    enableSorting: false,
+    accessorFn: (row) => row.modelTiersSummary,
+    cell: (info: Info) => {
+      const summary = info.row.original.modelTiersSummary;
+      const customSuffix = info.row.original.hasUserLevelModelTiersOverride
+        ? " (custom)"
+        : "";
 
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {summary}
+            {customSuffix}
+          </span>
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "w-48",
+    },
+  };
+}
+
+function computeSeatUsage({
+  seatType,
+  memberUsageLimit,
+  seatBalanceAwu,
+  consumedFromAllowanceAwuCredits,
+}: {
+  seatType: MembershipSeatType | null;
+  memberUsageLimit: number | null;
+  seatBalanceAwu: number | null;
+  consumedFromAllowanceAwuCredits: number;
+}): {
+  percent: number;
+  isOverAllowance: boolean;
+  consumed: number;
+  allowance: number;
+} {
+  const allowance = memberUsageLimit ?? 0;
+  const isFreeWithBalance =
+    seatType === "free" &&
+    typeof seatBalanceAwu === "number" &&
+    typeof memberUsageLimit === "number";
+  const consumed = isFreeWithBalance
+    ? Math.max(0, memberUsageLimit - seatBalanceAwu)
+    : consumedFromAllowanceAwuCredits;
+  if (allowance <= 0) {
+    return {
+      percent: consumed > 0 ? 100 : 0,
+      isOverAllowance: consumed > 0,
+      consumed,
+      allowance,
+    };
+  }
+  return {
+    percent: Math.min(100, (consumed / allowance) * 100),
+    isOverAllowance: consumed > allowance,
+    consumed,
+    allowance,
+  };
+}
+
+interface SeatUsageRingProps {
+  percent: number;
+  colorClassName: string;
+}
+
+function SeatUsageRing({ percent, colorClassName }: SeatUsageRingProps) {
+  const radius = 6;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(100, Math.max(0, percent));
+  const dashOffset = circumference * (1 - clamped / 100);
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" className="-rotate-90">
+      <circle
+        cx="8"
+        cy="8"
+        r={radius}
+        strokeWidth="2"
+        fill="none"
+        stroke="currentColor"
+        className="text-muted-background"
+      />
+      {clamped > 0 && (
+        <circle
+          cx="8"
+          cy="8"
+          r={radius}
+          strokeWidth="2"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          className={colorClassName}
+        />
+      )}
+    </svg>
+  );
+}
+
+const seatsIconColumn: ColumnDef<RowData, string> = {
+  id: "seatsIcon" as const,
+  header: "Seats",
+  enableSorting: false,
+  accessorFn: (row) => row.seatType ?? "",
+  cell: (info: Info) => {
+    if (info.row.original.isSeatChangePending) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <Spinner size="xs" />
+        </DataTable.CellContent>
+      );
+    }
+    const { seatType, scheduledSeatType, scheduledSeatChangeAt } =
+      info.row.original;
+    if (!seatType) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <span className="text-sm text-muted-foreground">--</span>
+        </DataTable.CellContent>
+      );
+    }
+    const tooltipLabel = scheduledSeatType
+      ? getScheduledSeatChangeLabel(
+          seatType,
+          scheduledSeatType,
+          scheduledSeatChangeAt
+        )
+      : `${seatTypeDisplayName(seatType)} seat`;
     return (
-      <DataTable.CellContent>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {summary}
-          {customSuffix}
-        </span>
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={tooltipLabel}
+          trigger={
+            <span className="flex cursor-default items-center justify-center">
+              <SeatTypeIcon seatType={seatType} />
+            </span>
+          }
+        />
       </DataTable.CellContent>
     );
   },
   meta: {
-    className: "w-48",
+    className: "w-16",
+    headerAlign: "center",
+  },
+};
+
+const seatUsageColumn: ColumnDef<RowData, string> = {
+  id: "seatUsage" as const,
+  header: "Seat usage",
+  enableSorting: true,
+  sortDescFirst: true,
+  accessorFn: (row) =>
+    computeSeatUsage({
+      seatType: row.seatType,
+      memberUsageLimit: row.memberUsageLimit,
+      seatBalanceAwu: row.seatBalanceAwu,
+      consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
+    }).percent.toString(),
+  cell: (info: Info) => {
+    const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
+      info.row.original;
+    if (
+      isSeatChangePending ||
+      !seatType ||
+      memberUsageLimit === null ||
+      memberUsageLimit <= 0
+    ) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <span className="text-sm text-muted-foreground">--</span>
+        </DataTable.CellContent>
+      );
+    }
+    const { percent, isOverAllowance, consumed, allowance } = computeSeatUsage({
+      seatType,
+      memberUsageLimit,
+      seatBalanceAwu,
+      consumedFromAllowanceAwuCredits:
+        info.row.original.consumedFromAllowanceAwuCredits,
+    });
+    const colorClassName = isOverAllowance
+      ? "text-warning-700"
+      : getSeatIconColorClass(seatType);
+    return (
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={`${formatCredits(consumed)} / ${formatCredits(allowance)} credits used`}
+          trigger={
+            <div className="flex items-center gap-2">
+              <span className={cn("text-xs font-medium", colorClassName)}>
+                {Math.round(percent)}%
+              </span>
+              <SeatUsageRing
+                percent={percent}
+                colorClassName={colorClassName}
+              />
+            </div>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-24",
+    headerAlign: "center",
   },
 };
 
@@ -580,25 +866,43 @@ function buildColumns({
   showGroupsColumn,
   showModelTiersColumn,
   creditsResetAt,
+  variant,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
   showModelTiersColumn: boolean;
   creditsResetAt: string | null;
+  variant: MembersUsageTableVariant;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
-    ...(showModelTiersColumn ? [modelTiersColumn] : []),
-    seatTypeColumn,
+    ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
+    ...(() => {
+      switch (variant) {
+        case "compact":
+          return [seatsIconColumn, seatUsageColumn];
+        case "legacy":
+          return [seatTypeColumn];
+        default:
+          return assertNever(variant);
+      }
+    })(),
     {
-      ...buildConsumedAwuCreditsColumn(creditsResetAt),
+      ...buildPoolCreditUsageColumn(creditsResetAt, variant),
       meta: { className: "w-64" },
     },
     actionsColumn,
   ];
 }
+
+// "compact" is the redesigned usage page layout: no "Up to " prefix on the
+// Models tier summary, a "Models" header instead of "Models tier", and the
+// combined seat column split into an icon-only Seats column plus a Seat
+// usage ring column. "legacy" keeps the current usage page unchanged.
+// TODO(arthur, 2026-08-28): drop the "legacy" variant and this flag once the flip is complete.
+export type MembersUsageTableVariant = "legacy" | "compact";
 
 interface MembersUsageTableProps {
   members: MemberUsageType[];
@@ -623,6 +927,7 @@ interface MembersUsageTableProps {
     selection: UserModelTierSelection
   ) => void;
   showModelTiersColumn?: boolean;
+  variant?: MembersUsageTableVariant;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
   userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
   groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
@@ -656,6 +961,7 @@ export function MembersUsageTable({
   onEditSpendLimit,
   onSetUserModelTier,
   showModelTiersColumn = false,
+  variant = "legacy",
   userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
   userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
   groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
@@ -700,6 +1006,7 @@ export function MembersUsageTable({
           consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
           spendLimitAwuCredits: m.spendLimitAwuCredits,
           spendLimitSource: m.spendLimitSource,
+          spendLimitGroupName: m.spendLimitGroupName,
           scheduledSeatType: m.scheduledSeatType,
           scheduledSeatChangeAt: m.scheduledSeatChangeAt,
           isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
@@ -708,7 +1015,16 @@ export function MembersUsageTable({
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
-            return maxTierName ? getModelsTierDisplayName(maxTierName) : "--";
+            switch (variant) {
+              case "compact":
+                return maxTierName
+                  ? getModelsTierDisplayName(maxTierName)
+                  : "--";
+              case "legacy":
+                return formatModelTiersSummary(maxTierName);
+              default:
+                return assertNever(variant);
+            }
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
@@ -794,6 +1110,7 @@ export function MembersUsageTable({
       isSeatBased,
       showSpendLimit,
       showModelTiersColumn,
+      variant,
       userModelTierSelectionByUserId,
       userAllowedModelTiersByUserId,
       groupModelTiersByGroupId,
@@ -815,8 +1132,15 @@ export function MembersUsageTable({
         showGroupsColumn,
         showModelTiersColumn,
         creditsResetAt,
+        variant,
       }),
-    [enableSelection, showGroupsColumn, showModelTiersColumn, creditsResetAt]
+    [
+      enableSelection,
+      showGroupsColumn,
+      showModelTiersColumn,
+      creditsResetAt,
+      variant,
+    ]
   );
 
   if (isLoading) {
