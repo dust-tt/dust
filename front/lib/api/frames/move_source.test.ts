@@ -2,9 +2,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { emitGCSMountFileMovedAuditLogMock } = vi.hoisted(() => ({
-  emitGCSMountFileMovedAuditLogMock: vi.fn(),
-}));
+const { emitGCSMountFileMovedAuditLogMock, lockLeaseCheckMock } = vi.hoisted(
+  () => ({
+    emitGCSMountFileMovedAuditLogMock: vi.fn(),
+    lockLeaseCheckMock: vi.fn(),
+  })
+);
 
 vi.mock("@app/lib/api/files/gcs_mount/files", async (importActual) => {
   const actual =
@@ -17,14 +20,31 @@ vi.mock("@app/lib/api/files/gcs_mount/files", async (importActual) => {
 
 vi.mock("@app/lib/lock", async (importActual) => {
   const actual = await importActual<typeof import("@app/lib/lock")>();
+  const executeImmediately = async <T>(
+    _key: string,
+    callback: () => Promise<T>
+  ) => callback();
+  const executeRenewingImmediately = async <T>(
+    _key: string,
+    callback: (lease: {
+      check: () => ReturnType<typeof lockLeaseCheckMock>;
+    }) => Promise<T>
+  ) => {
+    const lease = { check: () => lockLeaseCheckMock() };
+    const result = await callback(lease);
+    const held = lease.check();
+    return held.isErr() ? held : result;
+  };
   return {
     ...actual,
-    executeWithLock: async <T>(_key: string, callback: () => Promise<T>) =>
-      callback(),
+    executeWithLock: executeImmediately,
+    executeWithLockResult: executeImmediately,
+    executeWithRenewingLockResult: executeRenewingImmediately,
   };
 });
 
 import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
+import { LockLeaseLostError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -33,6 +53,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 
 const manifest = JSON.stringify({
@@ -41,6 +62,8 @@ const manifest = JSON.stringify({
   description: "Show the current status.",
 });
 const moveIdMetadataKey = "dust_frame_source_move_id";
+let leaseCheckCount = 0;
+let loseLeaseAtCheck = Number.POSITIVE_INFINITY;
 
 async function setup() {
   const { authenticator: auth, workspace } = await createResourceTest({
@@ -113,6 +136,15 @@ beforeEach(() => {
   fileStorageMock.reset();
   emitGCSMountFileMovedAuditLogMock.mockClear();
   vi.restoreAllMocks();
+  leaseCheckCount = 0;
+  loseLeaseAtCheck = Number.POSITIVE_INFINITY;
+  lockLeaseCheckMock.mockReset();
+  lockLeaseCheckMock.mockImplementation(() => {
+    leaseCheckCount++;
+    return leaseCheckCount >= loseLeaseAtCheck
+      ? new Err(new LockLeaseLostError("frame-test"))
+      : new Ok(undefined);
+  });
 });
 
 describe("moveFrameV2Source", () => {
@@ -163,6 +195,108 @@ describe("moveFrameV2Source", () => {
         relativeFilePath: "Status",
       }
     );
+  });
+
+  it("does not reserve a destination after its composite lease is lost", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/LeaseLostBeforeReservation`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}LeaseLostBeforeReservation`;
+    loseLeaseAtCheck = 1;
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({
+      code: "publish_conflict",
+    });
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(
+      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(
+      fileStorageMock.getObject(
+        `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+      )
+    ).toBeUndefined();
+  });
+
+  it("preserves copied objects and the reservation when its lease is lost before commit", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/LeaseLostBeforeCommit`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}LeaseLostBeforeCommit`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    loseLeaseAtCheck = 3;
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({
+      code: "publish_conflict",
+    });
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+    expect(
+      fileStorageMock.getObject(`${destinationGcsDirectoryPath}/index.tsx`)
+    ).toBe("ui source");
+    expect(
+      fileStorageMock.getObject(
+        `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+      )
+    ).toBe(manifest);
+    const reserved = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reserved?.mountFilePath).toBe(destinationManifestPath);
+    expect(reserved?.useCaseMetadata?.pendingFrameSourceMove).toBeDefined();
+    expect(fileStorageMock.deleteCalls).toEqual([]);
+  });
+
+  it("reports source leftovers when its lease is lost after destination commit", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/LeaseLostAfterCommit`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}LeaseLostAfterCommit`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    loseLeaseAtCheck = 5;
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    expect(moved.value.sourceDeletionFailed).toBe(true);
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+    expect(
+      fileStorageMock.getObject(
+        `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+      )
+    ).toBe(manifest);
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(destinationManifestPath);
+    expect(reloaded?.useCaseMetadata?.pendingFrameSourceMove).toBeUndefined();
+    expect(fileStorageMock.deleteCalls).toEqual([]);
   });
 
   it("does not move a registered Frame whose source manifest is missing", async () => {
@@ -397,6 +531,17 @@ describe("moveFrameV2Source", () => {
         return false;
       }
     );
+    fileStorageMock.setFileMetadata((filePath) =>
+      filePath === destinationManifestPath
+        ? {
+            contentType: frameV2ContentType,
+            generation:
+              fileStorageMock.getObjectGeneration(filePath) ?? "missing",
+            md5Hash: "manifest",
+            size: String(Buffer.byteLength(manifest)),
+          }
+        : null
+    );
 
     const moved = await moveFrameV2Source(context.auth, {
       conversation: context.conversation,
@@ -408,6 +553,297 @@ describe("moveFrameV2Source", () => {
     expect(lostResponse).toBe(true);
     expect(fileStorageMock.metadataCalls).toContain(destinationManifestPath);
     expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+  });
+
+  it("claims a matching committed generation after a final network error", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/NetworkAmbiguous`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}NetworkAmbiguous`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    let lostResponse = false;
+    fileStorageMock.setCopyFileCommitsThenErrors(
+      (_sourcePath, destinationPath) => {
+        if (!lostResponse && destinationPath === destinationManifestPath) {
+          lostResponse = true;
+          return new Error("Simulated final network error after commit");
+        }
+        return null;
+      }
+    );
+    fileStorageMock.setFileMetadata((filePath) =>
+      filePath === destinationManifestPath
+        ? {
+            contentType: frameV2ContentType,
+            generation:
+              fileStorageMock.getObjectGeneration(filePath) ?? "missing",
+            md5Hash: "manifest",
+            size: String(Buffer.byteLength(manifest)),
+          }
+        : null
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    expect(lostResponse).toBe(true);
+    expect(fileStorageMock.metadataCalls).toContain(destinationManifestPath);
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+  });
+
+  it("preserves the initial reservation when copy ownership cannot be determined", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/UnknownCopy`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}UnknownCopy`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const destinationMountFilePath = destinationManifestPath;
+    const sourceManifestPath = `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const sourceUiPath = `${context.sourceGcsDirectoryPath}/index.tsx`;
+    const updateMount = vi.spyOn(FileResource.prototype, "updateMount");
+    fileStorageMock.setCopyFileFails((sourcePath) =>
+      sourcePath.endsWith(`/${FRAME_MANIFEST_FILE}`)
+    );
+    fileStorageMock.setFileMetadataFails(
+      (filePath) => filePath === destinationManifestPath
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "internal" });
+    const reservationMetadata = updateMount.mock.calls
+      .map(([args]) => args.destUseCaseMetadata?.pendingFrameSourceMove)
+      .find((pendingMove) => pendingMove !== undefined);
+    const reserved = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reservationMetadata).toBeDefined();
+    expect(reserved?.mountFilePath).toBe(destinationMountFilePath);
+    expect(reserved?.useCaseMetadata?.pendingFrameSourceMove).toEqual(
+      reservationMetadata
+    );
+    expect(fileStorageMock.getObject(sourceManifestPath)).toBe(manifest);
+    expect(fileStorageMock.getObject(sourceUiPath)).toBe("ui source");
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBeUndefined();
+    expect(
+      fileStorageMock.getObject(`${destinationGcsDirectoryPath}/index.tsx`)
+    ).toBeUndefined();
+  });
+
+  it("does not adopt a stale copy after its pinned source generation changes", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/EditedRecovery`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}EditedRecovery`;
+    const sourceManifestPath = `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const sourceUiPath = `${context.sourceGcsDirectoryPath}/index.tsx`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const operationId = "edited-source-recovery";
+    await context.frame.updateMount({
+      destFileName: FRAME_MANIFEST_FILE,
+      destMountFilePath: destinationManifestPath,
+      destUseCase: "conversation",
+      destUseCaseMetadata: {
+        ...context.frame.useCaseMetadata,
+        pendingFrameSourceMove: {
+          destinationMountFilePath: destinationManifestPath,
+          operationId,
+          sourceMountFilePath: sourceManifestPath,
+        },
+      },
+    });
+    fileStorageMock.setObject(destinationManifestPath, "stale copy", {
+      [moveIdMetadataKey]: operationId,
+    });
+    const destinationGeneration = fileStorageMock.getObjectGeneration(
+      destinationManifestPath
+    );
+    let sourceListed = false;
+    fileStorageMock.setFilesByPrefix((prefix) => {
+      if (prefix === `${context.sourceGcsDirectoryPath}/`) {
+        if (!sourceListed) {
+          sourceListed = true;
+          fileStorageMock.setObject(sourceManifestPath, "edited source");
+        }
+        return [
+          {
+            name: sourceManifestPath,
+            metadata: {
+              contentType: frameV2ContentType,
+              crc32c: "same-crc",
+              generation: "1",
+              size: String(Buffer.byteLength(manifest)),
+            },
+          },
+          {
+            name: sourceUiPath,
+            metadata: {
+              contentType: "text/typescript",
+              generation: "2",
+              md5Hash: "ui",
+              size: "1",
+            },
+          },
+        ];
+      }
+      if (prefix === `${destinationGcsDirectoryPath}/`) {
+        return [
+          {
+            name: destinationManifestPath,
+            metadata: {
+              contentType: frameV2ContentType,
+              crc32c: "same-crc",
+              generation: destinationGeneration,
+              metadata: { [moveIdMetadataKey]: operationId },
+            },
+          },
+        ];
+      }
+      return null;
+    });
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "conflict" });
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(
+      "stale copy"
+    );
+    expect(fileStorageMock.getObject(sourceManifestPath)).toBe("edited source");
+    expect(fileStorageMock.deleteCalls).not.toContainEqual(
+      expect.objectContaining({ filePath: destinationManifestPath })
+    );
+    const reserved = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reserved?.useCaseMetadata?.pendingFrameSourceMove).toMatchObject({
+      operationId,
+    });
+  });
+
+  it("fences delayed cleanup with a fresh destination attempt generation", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/AttemptFence`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}AttemptFence`;
+    const sourceManifestPath = `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const sourceUiPath = `${context.sourceGcsDirectoryPath}/index.tsx`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const destinationUiPath = `${destinationGcsDirectoryPath}/index.tsx`;
+    const updateMount = FileResource.prototype.updateMount;
+    let updateMountCalls = 0;
+    vi.spyOn(FileResource.prototype, "updateMount").mockImplementation(
+      function (this: FileResource, args) {
+        updateMountCalls++;
+        if (updateMountCalls === 2) {
+          return Promise.reject(
+            new Error("Simulated uncommitted final Frame update")
+          );
+        }
+        return updateMount.call(this, args);
+      }
+    );
+    let releaseDelayedDelete: () => void = () => {};
+    let reportDelayedDeleteStarted: () => void = () => {};
+    const delayedDelete = new Promise<void>((resolve) => {
+      releaseDelayedDelete = resolve;
+    });
+    const delayedDeleteStarted = new Promise<void>((resolve) => {
+      reportDelayedDeleteStarted = resolve;
+    });
+    fileStorageMock.setDeleteFails(
+      (filePath) => filePath === destinationManifestPath
+    );
+    fileStorageMock.setBeforeDelete(async (filePath) => {
+      if (filePath === destinationUiPath) {
+        reportDelayedDeleteStarted();
+        await delayedDelete;
+      }
+    });
+
+    let oldMoveSettled = false;
+    const oldMovePromise = moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+    void oldMovePromise.then(() => {
+      oldMoveSettled = true;
+    });
+
+    await delayedDeleteStarted;
+    await Promise.resolve();
+    expect(oldMoveSettled).toBe(false);
+    const oldManifestGeneration = fileStorageMock.getObjectGeneration(
+      destinationManifestPath
+    );
+    const oldUiGeneration =
+      fileStorageMock.getObjectGeneration(destinationUiPath);
+
+    let freshAttemptCopyCount = 0;
+    let reportFreshAttemptCopied: () => void = () => {};
+    const freshAttemptCopied = new Promise<void>((resolve) => {
+      reportFreshAttemptCopied = resolve;
+    });
+    fileStorageMock.setAfterCopyFile((_sourcePath, destinationPath) => {
+      if (
+        destinationPath === destinationManifestPath ||
+        destinationPath === destinationUiPath
+      ) {
+        freshAttemptCopyCount++;
+        if (freshAttemptCopyCount === 2) {
+          reportFreshAttemptCopied();
+        }
+      }
+    });
+    const retriedPromise = moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    await freshAttemptCopied;
+    releaseDelayedDelete();
+    const [retried, oldMove] = await Promise.all([
+      retriedPromise,
+      oldMovePromise,
+    ]);
+
+    assert(retried.isOk(), retried.isErr() ? retried.error.message : undefined);
+    expect(
+      fileStorageMock.getObjectGeneration(destinationManifestPath)
+    ).not.toBe(oldManifestGeneration);
+    expect(fileStorageMock.getObjectGeneration(destinationUiPath)).not.toBe(
+      oldUiGeneration
+    );
+    expect(oldMove.isErr() && oldMove.error).toMatchObject({
+      code: "internal",
+    });
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+    expect(fileStorageMock.getObject(destinationUiPath)).toBe("ui source");
+    expect(fileStorageMock.getObject(sourceManifestPath)).toBeUndefined();
+    expect(fileStorageMock.getObject(sourceUiPath)).toBeUndefined();
   });
 
   it("does not move over a destination-only object created during the move", async () => {
@@ -594,6 +1030,54 @@ describe("moveFrameV2Source", () => {
     );
   });
 
+  it("reconciles a final Frame update whose committed response was lost", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/CommittedUpdate`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}CommittedUpdate`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const destinationUiPath = `${destinationGcsDirectoryPath}/index.tsx`;
+    const sourceManifestPath = `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const sourceUiPath = `${context.sourceGcsDirectoryPath}/index.tsx`;
+    const updateMount = FileResource.prototype.updateMount;
+    let updateMountCalls = 0;
+    vi.spyOn(FileResource.prototype, "updateMount").mockImplementation(
+      async function (this: FileResource, args) {
+        updateMountCalls++;
+        const result = await updateMount.call(this, args);
+        if (updateMountCalls === 2) {
+          throw new Error("Simulated lost final update response");
+        }
+        return result;
+      }
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+    expect(fileStorageMock.getObject(destinationUiPath)).toBe("ui source");
+    expect(fileStorageMock.getObject(sourceManifestPath)).toBeUndefined();
+    expect(fileStorageMock.getObject(sourceUiPath)).toBeUndefined();
+    expect(
+      fileStorageMock.deleteCalls.filter(({ filePath }) =>
+        filePath.startsWith(`${destinationGcsDirectoryPath}/`)
+      )
+    ).toEqual([]);
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(destinationManifestPath);
+    expect(reloaded?.useCaseMetadata?.pendingFrameSourceMove).toBeUndefined();
+  });
+
   it("keeps the recovery reservation when exact-generation cleanup fails", async () => {
     const context = await setup();
     const destinationDirectoryPath = `conversation-${context.conversation.sId}/Retry`;
@@ -665,6 +1149,8 @@ describe("moveFrameV2Source", () => {
     fileStorageMock.setObject(destinationManifestPath, manifest, {
       [moveIdMetadataKey]: "move-recovery",
     });
+    const preexistingDestinationGeneration =
+      fileStorageMock.getObjectGeneration(destinationManifestPath);
     fileStorageMock.setFilesByPrefix((prefix) => {
       if (prefix === `${context.sourceGcsDirectoryPath}/`) {
         return [
@@ -694,7 +1180,7 @@ describe("moveFrameV2Source", () => {
             name: destinationManifestPath,
             metadata: {
               contentType: frameV2ContentType,
-              generation: "3",
+              generation: preexistingDestinationGeneration,
               md5Hash: "manifest",
               metadata: { [moveIdMetadataKey]: "move-recovery" },
               size: String(Buffer.byteLength(manifest)),
@@ -726,11 +1212,15 @@ describe("moveFrameV2Source", () => {
 
     expect(moved.isErr() && moved.error).toMatchObject({ code: "internal" });
     expect(fileStorageMock.getObject(destinationManifestPath)).toBeUndefined();
-    expect(fileStorageMock.deleteCalls).toContainEqual(
-      expect.objectContaining({
-        filePath: destinationManifestPath,
-        options: { ifGenerationMatch: "3", ignoreNotFound: true },
-      })
+    const destinationCleanup = fileStorageMock.deleteCalls.find(
+      ({ filePath }) => filePath === destinationManifestPath
+    );
+    expect(destinationCleanup?.options).toEqual({
+      ifGenerationMatch: expect.any(String),
+      ignoreNotFound: true,
+    });
+    expect(destinationCleanup?.options?.ifGenerationMatch).not.toBe(
+      preexistingDestinationGeneration
     );
 
     const reserved = await FileResource.fetchById(

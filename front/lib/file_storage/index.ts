@@ -17,6 +17,7 @@ import type {
   Bucket,
   CopyOptions,
   File,
+  PreconditionOptions,
   SaveOptions,
 } from "@google-cloud/storage";
 import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
@@ -539,7 +540,7 @@ export class FileStorage {
       destinationMetadata,
       sourceGeneration,
     }: {
-      destinationGenerationMatch?: number;
+      destinationGenerationMatch?: PreconditionOptions["ifGenerationMatch"];
       destinationMetadata?: CopyOptions["metadata"];
       sourceGeneration?: string;
     } = {}

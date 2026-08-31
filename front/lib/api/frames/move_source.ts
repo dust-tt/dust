@@ -15,7 +15,11 @@ import {
   GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
-import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
+import {
+  isGCSNotFoundError,
+  isGCSPreconditionFailedError,
+} from "@app/lib/file_storage/types";
+import type { LockLeaseGuard } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FrameGoneError } from "@app/lib/resources/frame_sandbox_adapter";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -32,6 +36,9 @@ import type { File, FileMetadata } from "@google-cloud/storage";
 import { UniqueConstraintError } from "sequelize";
 
 const FRAME_SOURCE_MOVE_COPY_CONCURRENCY = 4;
+const FRAME_SOURCE_MOVE_COPY_MAX_ATTEMPTS = 3;
+const FRAME_SOURCE_MOVE_ATTEMPT_ID_METADATA_KEY =
+  "dust_frame_source_move_attempt_id";
 const FRAME_SOURCE_MOVE_ID_METADATA_KEY = "dust_frame_source_move_id";
 
 type FrameSourceOwner = {
@@ -154,6 +161,27 @@ function isDestinationOwnedByMove(file: File, operationId: string): boolean {
   );
 }
 
+function isSameGCSObject(source: File, destination: File): boolean {
+  const sourceMd5 = metadataValue(source.metadata, "md5Hash");
+  const destinationMd5 = metadataValue(destination.metadata, "md5Hash");
+  if (sourceMd5 && destinationMd5) {
+    return sourceMd5 === destinationMd5;
+  }
+
+  const sourceCrc32c = metadataValue(source.metadata, "crc32c");
+  const destinationCrc32c = metadataValue(destination.metadata, "crc32c");
+  const sourceSize = metadataValue(source.metadata, "size");
+  const destinationSize = metadataValue(destination.metadata, "size");
+  return Boolean(
+    sourceCrc32c &&
+      destinationCrc32c &&
+      sourceSize &&
+      destinationSize &&
+      sourceCrc32c === destinationCrc32c &&
+      sourceSize === destinationSize
+  );
+}
+
 type GCSObjectGeneration = { filePath: string; generation: string };
 type FrameSourceCopy = {
   destinationObjects: GCSObjectGeneration[];
@@ -164,6 +192,7 @@ type FrameSourceCopyFailure = {
   destinationObjects: GCSObjectGeneration[];
   error: FrameSourceMoveError;
   hasPreexistingDestinationObjects: boolean;
+  preserveReservation: boolean;
 };
 
 async function cleanupDestinationObjects(
@@ -171,16 +200,26 @@ async function cleanupDestinationObjects(
 ): Promise<boolean> {
   const bucket = getPrivateUploadBucket();
   try {
-    await concurrentExecutor(
+    const deletionResults = await concurrentExecutor(
       objects,
-      ({ filePath, generation }) =>
-        bucket.delete(filePath, {
-          ignoreNotFound: true,
-          ifGenerationMatch: generation,
-        }),
+      async ({ filePath, generation }) => {
+        try {
+          await bucket.delete(filePath, {
+            ignoreNotFound: true,
+            ifGenerationMatch: generation,
+          });
+          return true;
+        } catch (error) {
+          logger.error(
+            { error: normalizeError(error), filePath, generation },
+            "Failed to clean up a Frame move destination object"
+          );
+          return false;
+        }
+      },
       { concurrency: FRAME_SOURCE_MOVE_COPY_CONCURRENCY }
     );
-    return true;
+    return deletionResults.every(Boolean);
   } catch (error) {
     logger.error(
       { error: normalizeError(error) },
@@ -196,15 +235,28 @@ async function deleteCopiedSourceObjects(
 ): Promise<boolean> {
   const bucket = getPrivateUploadBucket();
   try {
-    await concurrentExecutor(
+    const deletionResults = await concurrentExecutor(
       objects,
-      ({ filePath, generation }) =>
-        bucket.delete(filePath, {
-          ignoreNotFound: true,
-          ifGenerationMatch: generation,
-        }),
+      async ({ filePath, generation }) => {
+        try {
+          await bucket.delete(filePath, {
+            ignoreNotFound: true,
+            ifGenerationMatch: generation,
+          });
+          return true;
+        } catch (error) {
+          logger.warn(
+            { error: normalizeError(error), filePath, generation },
+            "Failed to delete a copied Frame source object generation"
+          );
+          return false;
+        }
+      },
       { concurrency: FRAME_SOURCE_MOVE_COPY_CONCURRENCY }
     );
+    if (!deletionResults.every(Boolean)) {
+      return false;
+    }
     const remaining = await bucket.getFiles({
       prefix: sourceMountPrefix,
       maxResults: 1,
@@ -220,11 +272,13 @@ async function deleteCopiedSourceObjects(
 }
 
 async function copyFrameSourceAsNew({
+  attemptId,
   destinationMountPrefix,
   operationId,
   sourceManifestPath,
   sourceMountPrefix,
 }: {
+  attemptId: string;
   destinationMountPrefix: string;
   operationId: string;
   sourceManifestPath: string;
@@ -249,6 +303,7 @@ async function copyFrameSourceAsNew({
         "Frame source folder is empty or no longer exists."
       ),
       hasPreexistingDestinationObjects: destinationFiles.length > 0,
+      preserveReservation: false,
     });
   }
   if (!sourceFiles.some((file) => file.name === sourceManifestPath)) {
@@ -259,6 +314,7 @@ async function copyFrameSourceAsNew({
         "Frame source manifest is missing."
       ),
       hasPreexistingDestinationObjects: destinationFiles.length > 0,
+      preserveReservation: false,
     });
   }
   const totalSourceSize = sourceFiles.reduce(
@@ -276,6 +332,7 @@ async function copyFrameSourceAsNew({
         "Frame source exceeds the move size limit."
       ),
       hasPreexistingDestinationObjects: destinationFiles.length > 0,
+      preserveReservation: false,
     });
   }
   if (destinationFiles.length > MAX_FRAME_SOURCE_FILE_COUNT) {
@@ -286,6 +343,7 @@ async function copyFrameSourceAsNew({
         "Frame destination exceeds the move file count limit."
       ),
       hasPreexistingDestinationObjects: true,
+      preserveReservation: false,
     });
   }
 
@@ -304,6 +362,7 @@ async function copyFrameSourceAsNew({
         `Destination file already exists: ${unexpectedDestination.name.slice(destinationMountPrefix.length)}`
       ),
       hasPreexistingDestinationObjects: true,
+      preserveReservation: false,
     });
   }
 
@@ -317,6 +376,8 @@ async function copyFrameSourceAsNew({
     sourceFiles,
     async (sourceFile) => {
       let hasPreexistingDestinationObject = false;
+      let ownedDestinationObject: GCSObjectGeneration | null = null;
+      let preserveReservation = false;
       try {
         const relativePath = sourceFile.name.slice(sourceMountPrefix.length);
         const destinationPath = `${destinationMountPrefix}${relativePath}`;
@@ -331,66 +392,166 @@ async function copyFrameSourceAsNew({
           );
         }
         let destinationFile = destinationByRelativePath.get(relativePath);
-        let ownedDestinationObject: GCSObjectGeneration | null = null;
         hasPreexistingDestinationObject = Boolean(destinationFile);
-
-        if (!destinationFile) {
+        let copyAttempts = 0;
+        let lastCopyError: unknown = null;
+        const refreshDestination = async (): Promise<File | undefined> => {
+          const refreshedDestination = bucket.file(destinationPath);
           try {
-            const copied = await bucket.copyFile(
-              sourceFile.name,
-              destinationPath,
-              undefined,
-              {
-                destinationGenerationMatch:
-                  GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
-                destinationMetadata: {
-                  ...sourceFile.metadata.metadata,
-                  [FRAME_SOURCE_MOVE_ID_METADATA_KEY]: operationId,
-                },
-                sourceGeneration,
-              }
-            );
-            destinationFile = copied.destinationFile;
-            ownedDestinationObject = {
-              filePath: destinationPath,
-              generation: copied.destinationGeneration,
-            };
-          } catch (error) {
-            if (!isGCSPreconditionFailedError(error)) {
-              throw error;
-            }
+            const [metadata] = await refreshedDestination.getMetadata();
+            refreshedDestination.metadata = metadata;
             hasPreexistingDestinationObject = true;
-            destinationFile = bucket.file(destinationPath);
-            const [metadata] = await destinationFile.getMetadata();
-            destinationFile.metadata = metadata;
+            return refreshedDestination;
+          } catch (metadataError) {
+            if (isGCSNotFoundError(metadataError)) {
+              return undefined;
+            }
+            preserveReservation = true;
+            throw new FrameSourceMoveError(
+              "internal",
+              `Failed to determine whether the Frame destination copy succeeded: ${normalizeError(metadataError).message}`
+            );
           }
-        }
+        };
+        const copyMetadata = {
+          ...sourceFile.metadata.metadata,
+          [FRAME_SOURCE_MOVE_ATTEMPT_ID_METADATA_KEY]: attemptId,
+          [FRAME_SOURCE_MOVE_ID_METADATA_KEY]: operationId,
+        };
 
-        if (!ownedDestinationObject) {
+        while (!ownedDestinationObject) {
+          if (!destinationFile) {
+            if (copyAttempts >= FRAME_SOURCE_MOVE_COPY_MAX_ATTEMPTS) {
+              throw (
+                lastCopyError ??
+                new FrameSourceMoveError(
+                  "internal",
+                  `Frame destination copy retry limit reached: ${relativePath}`
+                )
+              );
+            }
+            copyAttempts++;
+            try {
+              const copied = await bucket.copyFile(
+                sourceFile.name,
+                destinationPath,
+                undefined,
+                {
+                  destinationGenerationMatch:
+                    GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+                  destinationMetadata: copyMetadata,
+                  sourceGeneration,
+                }
+              );
+              ownedDestinationObject = {
+                filePath: destinationPath,
+                generation: copied.destinationGeneration,
+              };
+              continue;
+            } catch (error) {
+              lastCopyError = error;
+              destinationFile = await refreshDestination();
+              if (!destinationFile && !isGCSPreconditionFailedError(error)) {
+                throw error;
+              }
+              continue;
+            }
+          }
+
           if (!isDestinationOwnedByMove(destinationFile, operationId)) {
             throw new FrameSourceMoveError(
               "conflict",
               `Destination file already exists: ${relativePath}`
             );
           }
-          const destinationGeneration = metadataValue(
+          const observedDestinationGeneration = metadataValue(
             destinationFile.metadata,
             "generation"
           );
-          if (!destinationGeneration) {
+          if (!observedDestinationGeneration) {
+            preserveReservation = true;
             throw new FrameSourceMoveError(
               "internal",
               `Destination generation is missing: ${relativePath}`
             );
           }
-          ownedDestinationObject = {
-            filePath: destinationPath,
-            generation: destinationGeneration,
-          };
+          const destinationMatchesSource = isSameGCSObject(
+            sourceFile,
+            destinationFile
+          );
+          if (
+            destinationMatchesSource &&
+            destinationFile.metadata.metadata?.[
+              FRAME_SOURCE_MOVE_ATTEMPT_ID_METADATA_KEY
+            ] === attemptId
+          ) {
+            ownedDestinationObject = {
+              filePath: destinationPath,
+              generation: observedDestinationGeneration,
+            };
+            continue;
+          }
+
+          if (!destinationMatchesSource) {
+            try {
+              const liveSource = bucket.file(sourceFile.name);
+              const [liveSourceMetadata] = await liveSource.getMetadata();
+              if (
+                metadataValue(liveSourceMetadata, "generation") !==
+                sourceGeneration
+              ) {
+                preserveReservation = true;
+                throw new FrameSourceMoveError(
+                  "conflict",
+                  `Frame source changed before its stale destination could be refreshed: ${relativePath}`
+                );
+              }
+            } catch (error) {
+              if (error instanceof FrameSourceMoveError) {
+                throw error;
+              }
+              preserveReservation = true;
+              throw new FrameSourceMoveError(
+                "internal",
+                `Failed to verify the current Frame source generation: ${normalizeError(error).message}`
+              );
+            }
+          }
+
+          if (copyAttempts >= FRAME_SOURCE_MOVE_COPY_MAX_ATTEMPTS) {
+            preserveReservation = true;
+            throw new FrameSourceMoveError(
+              "internal",
+              `Frame destination recopy retry limit reached: ${relativePath}`
+            );
+          }
+          copyAttempts++;
+          try {
+            const copied = await bucket.copyFile(
+              sourceFile.name,
+              destinationPath,
+              undefined,
+              {
+                destinationGenerationMatch: observedDestinationGeneration,
+                destinationMetadata: copyMetadata,
+                sourceGeneration,
+              }
+            );
+            ownedDestinationObject = {
+              filePath: destinationPath,
+              generation: copied.destinationGeneration,
+            };
+          } catch (error) {
+            lastCopyError = error;
+            destinationFile = await refreshDestination();
+            if (!destinationFile && !isGCSPreconditionFailedError(error)) {
+              throw error;
+            }
+          }
         }
 
         return new Ok<{
-          destination: GCSObjectGeneration | null;
+          destination: GCSObjectGeneration;
           hasPreexistingDestinationObject: boolean;
           source: GCSObjectGeneration;
         }>({
@@ -411,6 +572,7 @@ async function copyFrameSourceAsNew({
                   `Failed to copy the Frame source: ${normalizeError(error).message}`
                 ),
           hasPreexistingDestinationObject,
+          preserveReservation,
         });
       }
     },
@@ -419,8 +581,8 @@ async function copyFrameSourceAsNew({
   const copiedObjects = copyResults
     .filter((result) => result.isOk())
     .map((result) => result.value);
-  const destinationObjects = copiedObjects.flatMap(({ destination }) =>
-    destination ? [destination] : []
+  const destinationObjects = copiedObjects.map(
+    ({ destination }) => destination
   );
   const hasPreexistingDestinationObjects =
     destinationFiles.length > 0 ||
@@ -435,6 +597,9 @@ async function copyFrameSourceAsNew({
       destinationObjects,
       error: failedCopy.error.error,
       hasPreexistingDestinationObjects,
+      preserveReservation: copyResults.some(
+        (result) => result.isErr() && result.error.preserveReservation
+      ),
     });
   }
   return new Ok({
@@ -443,6 +608,12 @@ async function copyFrameSourceAsNew({
     sourceObjects: copiedObjects.map(({ source }) => source),
   });
 }
+
+type FrameSourceMove = {
+  destinationDirectoryPath: string;
+  frameId: string;
+  sourceDeletionFailed: boolean;
+};
 
 /** Move a registered Frame folder while retaining its stable FileResource identity. */
 export async function moveFrameV2Source(
@@ -456,16 +627,7 @@ export async function moveFrameV2Source(
     destinationDirectoryPath: string;
     sourceDirectoryPath: string;
   }
-): Promise<
-  Result<
-    {
-      destinationDirectoryPath: string;
-      frameId: string;
-      sourceDeletionFailed: boolean;
-    },
-    MoveFrameV2SourceError
-  >
-> {
+): Promise<Result<FrameSourceMove, MoveFrameV2SourceError>> {
   const source = DustFileSystem.normalizeScopedPath(sourceDirectoryPath);
   const destination = DustFileSystem.normalizeScopedPath(
     destinationDirectoryPath
@@ -560,7 +722,8 @@ export async function moveFrameV2Source(
     return invalidSource(`No registered Frame found at ${sourceManifestPath}.`);
   }
 
-  return withFrameSourceAndPublishLock(frame.sId, async () => {
+  let committedMove: FrameSourceMove | null = null;
+  const runLockedMove = async (lease: LockLeaseGuard) => {
     const freshFrame = await frame.fetchFreshFrameV2(auth);
     if (!freshFrame) {
       return new Err(new FrameGoneError(`Frame ${frame.sId} not found.`));
@@ -571,6 +734,7 @@ export async function moveFrameV2Source(
     });
     const isRecovery = reservation !== null;
     const operationId = reservation?.operationId ?? randomUUID();
+    const attemptId = randomUUID();
     if (!isRecovery) {
       const sourceCheck = assertFrameAtSource(
         auth,
@@ -642,6 +806,10 @@ export async function moveFrameV2Source(
       }
     };
 
+    const heldBeforeReservation = lease.check();
+    if (heldBeforeReservation.isErr()) {
+      return heldBeforeReservation;
+    }
     if (!isRecovery) {
       try {
         await freshFrame.updateMount({
@@ -674,12 +842,17 @@ export async function moveFrameV2Source(
       destinationMountPath
     )}/`;
     const copyResult = await copyFrameSourceAsNew({
+      attemptId,
       destinationMountPrefix,
       operationId,
       sourceManifestPath: sourceMountPath,
       sourceMountPrefix,
     });
     if (copyResult.isErr()) {
+      const heldBeforeCleanup = lease.check();
+      if (heldBeforeCleanup.isErr()) {
+        return heldBeforeCleanup;
+      }
       const cleaned = await cleanupDestinationObjects(
         copyResult.error.destinationObjects
       );
@@ -691,8 +864,15 @@ export async function moveFrameV2Source(
           )
         );
       }
-      if (isRecovery && copyResult.error.hasPreexistingDestinationObjects) {
+      if (
+        copyResult.error.preserveReservation ||
+        (isRecovery && copyResult.error.hasPreexistingDestinationObjects)
+      ) {
         return new Err(copyResult.error.error);
+      }
+      const heldBeforeRestore = lease.check();
+      if (heldBeforeRestore.isErr()) {
+        return heldBeforeRestore;
       }
       const restored = await restoreSourceReservation();
       return restored
@@ -707,19 +887,24 @@ export async function moveFrameV2Source(
 
     const updateFrame = async (
       currentFrame: FileResource
-    ): Promise<Result<void, FrameSourceMoveError>> => {
-      if (
-        !getMatchingPendingMove(currentFrame, {
-          destinationMountFilePath: destinationMountPath,
-          sourceMountFilePath: sourceMountPath,
-        })
-      ) {
-        return new Err(
-          new FrameSourceMoveError(
-            "conflict",
-            "The Frame source changed while it was being moved; retry from its current path."
-          )
-        );
+    ): Promise<
+      Result<
+        void,
+        { error: FrameSourceMoveError; preserveDestinationObjects: boolean }
+      >
+    > => {
+      const currentReservation = getMatchingPendingMove(currentFrame, {
+        destinationMountFilePath: destinationMountPath,
+        sourceMountFilePath: sourceMountPath,
+      });
+      if (currentReservation?.operationId !== operationId) {
+        return new Err({
+          error: new FrameSourceMoveError(
+            "internal",
+            "The Frame source changed while its destination update was being committed."
+          ),
+          preserveDestinationObjects: true,
+        });
       }
       try {
         await currentFrame.updateMount({
@@ -732,31 +917,83 @@ export async function moveFrameV2Source(
         });
         return new Ok(undefined);
       } catch (error) {
-        return new Err(
-          new FrameSourceMoveError(
-            "internal",
-            `Failed to update the Frame source location: ${normalizeError(error).message}`
-          )
+        const updateError = new FrameSourceMoveError(
+          "internal",
+          `Failed to update the Frame source location: ${normalizeError(error).message}`
         );
+        let reconciledFrame: FileResource | null = null;
+        try {
+          reconciledFrame = await currentFrame.fetchFreshFrameV2(auth);
+        } catch (reconciliationError) {
+          logger.error(
+            {
+              error: normalizeError(reconciliationError),
+              frameId: currentFrame.sId,
+            },
+            "Failed to reconcile a Frame destination update"
+          );
+        }
+        if (
+          reconciledFrame?.mountFilePath === destinationMountPath &&
+          !reconciledFrame.useCaseMetadata?.pendingFrameSourceMove
+        ) {
+          return new Ok(undefined);
+        }
+        const reconciledReservation = reconciledFrame
+          ? getMatchingPendingMove(reconciledFrame, {
+              destinationMountFilePath: destinationMountPath,
+              sourceMountFilePath: sourceMountPath,
+            })
+          : null;
+        if (reconciledReservation?.operationId === operationId) {
+          return new Err({
+            error: updateError,
+            preserveDestinationObjects: false,
+          });
+        }
+        return new Err({
+          error: new FrameSourceMoveError(
+            "internal",
+            "The Frame destination update could not be reconciled; retry the move."
+          ),
+          preserveDestinationObjects: true,
+        });
       }
     };
 
+    const heldBeforeUpdate = lease.check();
+    if (heldBeforeUpdate.isErr()) {
+      return heldBeforeUpdate;
+    }
     const updateResult = await updateFrame(freshFrame);
 
     if (updateResult.isErr()) {
+      if (updateResult.error.preserveDestinationObjects) {
+        return new Err(updateResult.error.error);
+      }
+      const heldBeforeCleanup = lease.check();
+      if (heldBeforeCleanup.isErr()) {
+        return heldBeforeCleanup;
+      }
       const cleaned = await cleanupDestinationObjects(
         copyResult.value.destinationObjects
       );
-      const restored =
+      let restored = false;
+      if (
         cleaned &&
         (!isRecovery || !copyResult.value.hasPreexistingDestinationObjects)
-          ? await restoreSourceReservation()
-          : false;
+      ) {
+        const heldBeforeRestore = lease.check();
+        if (heldBeforeRestore.isErr()) {
+          return heldBeforeRestore;
+        }
+        restored = await restoreSourceReservation();
+      }
       if (!restored) {
         logger.error(
           {
             destinationDirectoryPath: destination,
-            err: updateResult.error,
+            err: updateResult.error.error,
             frameId: frame.sId,
             sourceDirectoryPath: source,
           },
@@ -769,13 +1006,16 @@ export async function moveFrameV2Source(
           )
         );
       }
-      return updateResult;
+      return new Err(updateResult.error.error);
     }
 
-    const sourceDeleted = await deleteCopiedSourceObjects(
-      copyResult.value.sourceObjects,
-      sourceMountPrefix
-    );
+    const heldBeforeSourceCleanup = lease.check();
+    const sourceDeleted = heldBeforeSourceCleanup.isOk()
+      ? await deleteCopiedSourceObjects(
+          copyResult.value.sourceObjects,
+          sourceMountPrefix
+        )
+      : false;
     const sourceDeletionFailed = !sourceDeleted;
     if (sourceDeletionFailed) {
       logger.warn(
@@ -814,10 +1054,17 @@ export async function moveFrameV2Source(
       parentRelativePath: parentRelativePath === "." ? "" : parentRelativePath,
     });
 
-    return new Ok({
+    committedMove = {
       destinationDirectoryPath: destination,
       frameId: frame.sId,
       sourceDeletionFailed,
-    });
-  });
+    };
+    return new Ok(committedMove);
+  };
+  const lockedMove = await withFrameSourceAndPublishLock(
+    frame.sId,
+    runLockedMove
+  );
+
+  return committedMove ? new Ok(committedMove) : lockedMove;
 }

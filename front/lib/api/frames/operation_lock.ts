@@ -55,10 +55,7 @@ async function withTypedFrameOperationLock<T, E>(
   );
   if (result.isErr()) {
     const error = result.error;
-    if (
-      isLockAcquisitionTimeoutError(error) ||
-      isLockLeaseLostError(error)
-    ) {
+    if (isLockAcquisitionTimeoutError(error) || isLockLeaseLostError(error)) {
       return new Err(
         new SandboxFunctionError(
           "publish_conflict",

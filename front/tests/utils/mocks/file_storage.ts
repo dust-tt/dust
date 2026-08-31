@@ -1,4 +1,5 @@
 import { Ok } from "@app/types/shared/result";
+import type { PreconditionOptions } from "@google-cloud/storage";
 import { PassThrough, Readable } from "stream";
 import { vi } from "vitest";
 
@@ -81,15 +82,17 @@ class FileStorageMock {
   private _saveShouldFail: (filePath: string) => boolean = () => false;
   private _metadataForPath: (filePath: string) => MockFileMetadata | null =
     () => null;
+  private _metadataShouldFail: (filePath: string) => boolean = () => false;
   private _contentForPath: (filePath: string) => string | null = () => null;
   private _sortedFileVersions: (filePath: string) => MockFileVersion[] | null =
     () => null;
   private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
     false;
-  private _copyFileCommitsThenFails: (src: string, dest: string) => boolean =
-    () => false;
+  private _copyFileCommittedError: (src: string, dest: string) => Error | null =
+    () => null;
   private _afterCopyFile: (src: string, dest: string) => void = () => {};
   private _deleteShouldFail: (filePath: string) => boolean = () => false;
+  private _beforeDelete: (filePath: string) => Promise<void> = async () => {};
   private _filesByPrefix: (
     prefix: string
   ) => { name: string; metadata: Record<string, unknown> }[] | null = () =>
@@ -157,6 +160,10 @@ class FileStorageMock {
     this._metadataForPath = fn;
   }
 
+  setFileMetadataFails(predicate: (filePath: string) => boolean): void {
+    this._metadataShouldFail = predicate;
+  }
+
   /**
    * Controls what `file(path).createReadStream()` streams, keyed by the GCS path.
    * Return null to fall back to the default empty stream. Reset between tests via `reset()`.
@@ -189,11 +196,27 @@ class FileStorageMock {
   setCopyFileCommitsThenFails(
     predicate: (src: string, dest: string) => boolean
   ): void {
-    this._copyFileCommitsThenFails = predicate;
+    this._copyFileCommittedError = (src, dest) =>
+      predicate(src, dest)
+        ? new MockGcsError(
+            412,
+            `Copy committed but its response was lost: ${src} -> ${dest}`
+          )
+        : null;
+  }
+
+  setCopyFileCommitsThenErrors(
+    errorForCopy: (src: string, dest: string) => Error | null
+  ): void {
+    this._copyFileCommittedError = errorForCopy;
   }
 
   setDeleteFails(predicate: (filePath: string) => boolean): void {
     this._deleteShouldFail = predicate;
+  }
+
+  setBeforeDelete(callback: (filePath: string) => Promise<void>): void {
+    this._beforeDelete = callback;
   }
 
   /**
@@ -253,6 +276,10 @@ class FileStorageMock {
     return this._objectStore.get(filePath);
   }
 
+  getObjectGeneration(filePath: string): string | undefined {
+    return this._objectGenerations.get(filePath);
+  }
+
   // Seed the in-memory object store directly (no write path).
   setObject(
     filePath: string,
@@ -289,12 +316,14 @@ class FileStorageMock {
     this._existsPredicate = () => true;
     this._saveShouldFail = () => false;
     this._metadataForPath = () => null;
+    this._metadataShouldFail = () => false;
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
     this._copyFileShouldFail = () => false;
-    this._copyFileCommitsThenFails = () => false;
+    this._copyFileCommittedError = () => null;
     this._afterCopyFile = () => {};
     this._deleteShouldFail = () => false;
+    this._beforeDelete = async () => {};
     this._filesByPrefix = () => null;
     this._subdirectoryNames = () => null;
     this._deletedPrefixes.length = 0;
@@ -353,27 +382,25 @@ class FileStorageMock {
           }
           return stream;
         }),
-      delete: vi.fn().mockImplementation((options?: DeleteCall["options"]) => {
-        const path = filePath ?? "unknown";
-        this._deleteCalls.push({ filePath: path, options });
-        if (this._deleteShouldFail(path)) {
-          return Promise.reject(
-            new Error(`Simulated GCS delete failure: ${path}`)
-          );
-        }
-        if (
-          options?.ifGenerationMatch &&
-          this._objectGenerations.get(path) !== options.ifGenerationMatch
-        ) {
-          return Promise.reject(
-            new MockGcsError(412, `Object generation changed: ${path}`)
-          );
-        }
-        this._objectStore.delete(path);
-        this._objectGenerations.delete(path);
-        this._objectCustomMetadata.delete(path);
-        return Promise.resolve(undefined);
-      }),
+      delete: vi
+        .fn()
+        .mockImplementation(async (options?: DeleteCall["options"]) => {
+          const path = filePath ?? "unknown";
+          this._deleteCalls.push({ filePath: path, options });
+          await this._beforeDelete(path);
+          if (this._deleteShouldFail(path)) {
+            throw new Error(`Simulated GCS delete failure: ${path}`);
+          }
+          if (
+            options?.ifGenerationMatch &&
+            this._objectGenerations.get(path) !== options.ifGenerationMatch
+          ) {
+            throw new MockGcsError(412, `Object generation changed: ${path}`);
+          }
+          this._objectStore.delete(path);
+          this._objectGenerations.delete(path);
+          this._objectCustomMetadata.delete(path);
+        }),
       download: vi.fn().mockImplementation(() => {
         const content = this._objectStore.get(filePath ?? "unknown") ?? "";
         return Promise.resolve([Buffer.from(content, "utf-8")]);
@@ -384,6 +411,11 @@ class FileStorageMock {
       getMetadata: vi.fn(() => {
         const path = filePath ?? "";
         this._metadataCalls.push(path);
+        if (this._metadataShouldFail(path)) {
+          return Promise.reject(
+            new Error(`Simulated GCS metadata failure: ${path}`)
+          );
+        }
         const configuredMetadata = this._metadataForPath(path);
         return Promise.resolve([
           configuredMetadata
@@ -532,7 +564,7 @@ class FileStorageMock {
           dest: string,
           _destinationStorage?: unknown,
           options?: {
-            destinationGenerationMatch?: number;
+            destinationGenerationMatch?: PreconditionOptions["ifGenerationMatch"];
             destinationMetadata?: ObjectCustomMetadata;
             sourceGeneration?: string;
           }
@@ -543,6 +575,16 @@ class FileStorageMock {
           ) {
             return Promise.reject(
               new MockGcsError(412, `Object already exists: ${dest}`)
+            );
+          }
+          if (
+            options?.destinationGenerationMatch !== undefined &&
+            options.destinationGenerationMatch !== 0 &&
+            this._objectGenerations.get(dest) !==
+              String(options.destinationGenerationMatch)
+          ) {
+            return Promise.reject(
+              new MockGcsError(412, `Object generation changed: ${dest}`)
             );
           }
           if (this._copyFileShouldFail(src, dest)) {
@@ -571,13 +613,9 @@ class FileStorageMock {
           );
           const copiedGeneration = this._objectGenerations.get(dest);
           this._afterCopyFile(src, dest);
-          if (this._copyFileCommitsThenFails(src, dest)) {
-            return Promise.reject(
-              new MockGcsError(
-                412,
-                `Copy committed but its response was lost: ${src} -> ${dest}`
-              )
-            );
+          const committedError = this._copyFileCommittedError(src, dest);
+          if (committedError) {
+            return Promise.reject(committedError);
           }
           return Promise.resolve({
             destinationFile: this.createMockGCSFile(dest),
@@ -602,26 +640,27 @@ class FileStorageMock {
         });
         return Promise.resolve(undefined);
       }),
-      delete: vi.fn((filePath: string, options?: DeleteCall["options"]) => {
-        this._deleteCalls.push({ filePath, options });
-        if (this._deleteShouldFail(filePath)) {
-          return Promise.reject(
-            new Error(`Simulated GCS delete failure: ${filePath}`)
-          );
+      delete: vi.fn(
+        async (filePath: string, options?: DeleteCall["options"]) => {
+          this._deleteCalls.push({ filePath, options });
+          await this._beforeDelete(filePath);
+          if (this._deleteShouldFail(filePath)) {
+            throw new Error(`Simulated GCS delete failure: ${filePath}`);
+          }
+          if (
+            options?.ifGenerationMatch &&
+            this._objectGenerations.get(filePath) !== options.ifGenerationMatch
+          ) {
+            throw new MockGcsError(
+              412,
+              `Object generation changed: ${filePath}`
+            );
+          }
+          this._objectStore.delete(filePath);
+          this._objectGenerations.delete(filePath);
+          this._objectCustomMetadata.delete(filePath);
         }
-        if (
-          options?.ifGenerationMatch &&
-          this._objectGenerations.get(filePath) !== options.ifGenerationMatch
-        ) {
-          return Promise.reject(
-            new MockGcsError(412, `Object generation changed: ${filePath}`)
-          );
-        }
-        this._objectStore.delete(filePath);
-        this._objectGenerations.delete(filePath);
-        this._objectCustomMetadata.delete(filePath);
-        return Promise.resolve(undefined);
-      }),
+      ),
       deleteByPrefix: vi.fn(async (prefix: string) => {
         this._deletedPrefixes.push(prefix);
         this._onDeleteByPrefix(prefix);
