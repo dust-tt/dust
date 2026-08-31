@@ -91,6 +91,7 @@ type RowData = {
   consumedFromPoolAwuCredits: number;
   spendLimitAwuCredits: number | null;
   spendLimitSource: EffectiveSpendLimitSource;
+  spendLimitGroupName: string | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
@@ -183,6 +184,9 @@ interface AwuUsageBarProps {
   effectiveLimit: number | null;
   // Where `effectiveLimit` comes from — shown as a tooltip on the limit figure.
   spendLimitSource: EffectiveSpendLimitSource;
+  // Name of the group behind `effectiveLimit` when `spendLimitSource` is
+  // `"group"`. Null for every other source.
+  spendLimitGroupName: string | null;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
   // Shows only the workspace-pool portion of usage (pool consumed / pool
@@ -196,13 +200,16 @@ interface AwuUsageBarProps {
 // Human-readable origin of the effective spend limit, or null when there is
 // nothing worth explaining (no limit configured).
 function spendLimitSourceLabel(
-  source: EffectiveSpendLimitSource
+  source: EffectiveSpendLimitSource,
+  groupName: string | null
 ): string | null {
   switch (source) {
     case "override":
       return "Limit set specifically for this member";
     case "group":
-      return "Limit from a group";
+      return groupName
+        ? `Limit inherited from the "${groupName}" group`
+        : "Limit from a group";
     case "default":
       return "Workspace default limit";
     case "none":
@@ -221,13 +228,17 @@ export function AwuUsageBar({
   seatBalanceAwu,
   effectiveLimit,
   spendLimitSource,
+  spendLimitGroupName,
   seatType,
   isTotalAllowedUsagePending: isPending,
   poolOnly = false,
 }: AwuUsageBarProps) {
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
-  const sourceLabel = spendLimitSourceLabel(spendLimitSource);
+  const sourceLabel = spendLimitSourceLabel(
+    spendLimitSource,
+    spendLimitGroupName
+  );
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
   const isFreeWithBalance =
@@ -543,12 +554,12 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildConsumedAwuCreditsColumn(
+function buildPoolCreditUsageColumn(
   creditsResetAt: string | null,
   variant: MembersUsageTableVariant
 ): ColumnDef<RowData, string> {
   return {
-    id: "consumedAwuCredits" as const,
+    id: "consumedFromPoolAwuCredits" as const,
     header: () => (
       <div className="flex flex-col">
         <span className="flex items-center gap-1">
@@ -557,7 +568,7 @@ function buildConsumedAwuCreditsColumn(
             size="xs"
             className="text-muted-foreground"
           />
-          Credits usage
+          Pool credit usage
         </span>
         {creditsResetAt && (
           <span className="text-xs font-normal text-muted-foreground">
@@ -571,7 +582,7 @@ function buildConsumedAwuCreditsColumn(
         )}
       </div>
     ),
-    accessorFn: (row) => row.consumedAwuCredits.toString(),
+    accessorFn: (row) => row.consumedFromPoolAwuCredits.toString(),
     cell: (info: Info) => (
       <div className="w-full pr-3">
         <AwuUsageBar
@@ -584,6 +595,7 @@ function buildConsumedAwuCreditsColumn(
           seatBalanceAwu={info.row.original.seatBalanceAwu}
           effectiveLimit={info.row.original.spendLimitAwuCredits}
           spendLimitSource={info.row.original.spendLimitSource}
+          spendLimitGroupName={info.row.original.spendLimitGroupName}
           seatType={info.row.original.seatType}
           isTotalAllowedUsagePending={
             info.row.original.isTotalAllowedUsagePending
@@ -593,6 +605,7 @@ function buildConsumedAwuCreditsColumn(
       </div>
     ),
     enableSorting: true,
+    sortDescFirst: true,
   };
 }
 
@@ -770,8 +783,15 @@ const seatsIconColumn: ColumnDef<RowData, string> = {
 const seatUsageColumn: ColumnDef<RowData, string> = {
   id: "seatUsage" as const,
   header: "Seat usage",
-  enableSorting: false,
-  accessorFn: (row) => row.seatType ?? "",
+  enableSorting: true,
+  sortDescFirst: true,
+  accessorFn: (row) =>
+    computeSeatUsage({
+      seatType: row.seatType,
+      memberUsageLimit: row.memberUsageLimit,
+      seatBalanceAwu: row.seatBalanceAwu,
+      consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
+    }).percent.toString(),
   cell: (info: Info) => {
     const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
       info.row.original;
@@ -870,7 +890,7 @@ function buildColumns({
       }
     })(),
     {
-      ...buildConsumedAwuCreditsColumn(creditsResetAt, variant),
+      ...buildPoolCreditUsageColumn(creditsResetAt, variant),
       meta: { className: "w-64" },
     },
     actionsColumn,
@@ -986,6 +1006,7 @@ export function MembersUsageTable({
           consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
           spendLimitAwuCredits: m.spendLimitAwuCredits,
           spendLimitSource: m.spendLimitSource,
+          spendLimitGroupName: m.spendLimitGroupName,
           scheduledSeatType: m.scheduledSeatType,
           scheduledSeatChangeAt: m.scheduledSeatChangeAt,
           isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(

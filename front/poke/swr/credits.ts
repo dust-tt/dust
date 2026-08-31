@@ -159,8 +159,29 @@ export function usePokeAwuPoolSummary({
     fetcherFn
   );
 
+  // Defaulted field-by-field (mirroring `useAwuPoolSummary`), not just
+  // whole-object, so a cached response predating a newer field can't leave
+  // that field `undefined` downstream.
+  const awuPoolSummary: AwuPoolSummaryResponseBody | null = data
+    ? {
+        totalRemainingCredits: data.totalRemainingCredits ?? 0,
+        totalActiveCredits: data.totalActiveCredits ?? 0,
+        overageCredits: data.overageCredits ?? null,
+        overageAmountCents: data.overageAmountCents ?? null,
+        overageCurrency: data.overageCurrency ?? null,
+        cycleBreakdown: data.cycleBreakdown ?? [],
+        currentCycleConsumedCredits: data.currentCycleConsumedCredits ?? null,
+        currentCycleStartMs: data.currentCycleStartMs ?? null,
+        currentCycleEndMs: data.currentCycleEndMs ?? null,
+        excessConsumedCredits: data.excessConsumedCredits ?? null,
+        excessCycleBreakdown: data.excessCycleBreakdown ?? [],
+        programmaticConsumedCredits: data.programmaticConsumedCredits ?? null,
+        otherConsumedCredits: data.otherConsumedCredits ?? null,
+      }
+    : null;
+
   return {
-    awuPoolSummary: data ?? null,
+    awuPoolSummary,
     isAwuPoolSummaryLoading: !error && !data && !disabled,
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
@@ -199,6 +220,7 @@ export function usePokeMembersUsage({
   orderDirection,
   seatType,
   creditState,
+  groupId,
 }: PokeConditionalFetchProps & {
   pageIndex: number;
   pageSize: number;
@@ -206,12 +228,14 @@ export function usePokeMembersUsage({
   orderColumn?:
     | "name"
     | "email"
-    | "consumedAwuCredits"
+    | "consumedFromPoolAwuCredits"
     | "seatType"
-    | "creditState";
+    | "creditState"
+    | "seatUsage";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType;
   creditState?: UserCreditState;
+  groupId?: string;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetMembersUsageResponseBody> = fetcher;
@@ -232,6 +256,9 @@ export function usePokeMembersUsage({
   if (creditState) {
     params.set("creditState", creditState);
   }
+  if (groupId) {
+    params.set("groupId", groupId);
+  }
   if (orderDirection) {
     params.set("orderDirection", orderDirection);
   }
@@ -247,6 +274,7 @@ export function usePokeMembersUsage({
   return {
     members: data?.members ?? emptyArray(),
     totalMembers: data?.total ?? 0,
+    creditsResetAt: data?.creditsResetAt ?? null,
     isMembersUsageLoading: !error && !data && !disabled,
     isMembersUsageError: error,
     isMembersUsageValidating: isValidating,

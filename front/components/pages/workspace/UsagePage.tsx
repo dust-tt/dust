@@ -155,6 +155,7 @@ function memberFromUpgradeRequest(
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource: "none",
+    spendLimitGroupName: null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
     freeCreditLowAlert: null,
@@ -273,7 +274,7 @@ function UsagePageLegacy() {
 
   const sort = sorting[0];
   const membersOrderColumn =
-    sort?.id === "email" || sort?.id === "consumedAwuCredits"
+    sort?.id === "email" || sort?.id === "consumedFromPoolAwuCredits"
       ? sort.id
       : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
