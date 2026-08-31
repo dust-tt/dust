@@ -1,13 +1,17 @@
 import type { RedisClientType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
+import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+type LockRedisClient = Pick<RedisClientType, "eval" | "set">;
 
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
 export async function distributedLock(
-  redisCli: RedisClientType,
+  redisCli: LockRedisClient,
   key: string,
   lockTtlMs: number = 5_000
 ): Promise<string | undefined> {
@@ -30,7 +34,7 @@ export async function distributedLock(
 }
 
 export async function distributedUnlock(
-  redisCli: RedisClientType,
+  redisCli: LockRedisClient,
   key: string,
   lockValue: string
 ): Promise<void> {
@@ -51,7 +55,31 @@ export async function distributedUnlock(
   });
 }
 
+export async function distributedRefresh(
+  redisCli: LockRedisClient,
+  key: string,
+  lockValue: string,
+  lockTtlMs: number
+): Promise<boolean> {
+  const lockKey = `lock:${key}`;
+  const luaScript = `
+    if redis.call("get", KEYS[1]) == ARGV[1] then
+      return redis.call("pexpire", KEYS[1], ARGV[2])
+    else
+      return 0
+    end
+  `;
+  const refreshed = await redisCli.eval(luaScript, {
+    keys: [lockKey],
+    arguments: [lockValue, String(lockTtlMs)],
+  });
+
+  return refreshed === 1;
+}
+
 const DEFAULT_RETRY_INTERVAL_MS = 100;
+const RENEWAL_RETRY_INITIAL_DELAY_MS = 250;
+const RENEWAL_RETRY_MAX_DELAY_MS = 30_000;
 
 export class LockAcquisitionTimeoutError extends Error {
   constructor(readonly lockName: string) {
@@ -64,6 +92,23 @@ export function isLockAcquisitionTimeoutError(
   error: unknown
 ): error is LockAcquisitionTimeoutError {
   return error instanceof LockAcquisitionTimeoutError;
+}
+
+export class LockLeaseLostError extends Error {
+  constructor(readonly lockName: string) {
+    super(`Lock lease lost for ${lockName}`);
+    this.name = "LockLeaseLostError";
+  }
+}
+
+export function isLockLeaseLostError(
+  error: unknown
+): error is LockLeaseLostError {
+  return error instanceof LockLeaseLostError;
+}
+
+export interface LockLeaseGuard {
+  check(): Result<void, LockLeaseLostError>;
 }
 
 type ExecuteWithLockOptions = {
@@ -133,6 +178,154 @@ async function runWithAcquiredLock<T>(
   }
 }
 
+function waitForRenewal(
+  delayMs: number,
+  signal: AbortSignal
+): Promise<boolean> {
+  if (signal.aborted) {
+    return Promise.resolve(false);
+  }
+
+  return new Promise((resolve) => {
+    const onAbort = () => {
+      clearTimeout(timeout);
+      resolve(false);
+    };
+    const timeout = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, delayMs);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function createLockLeaseGuard(
+  lockName: string,
+  lockTtlMs: number
+): {
+  guard: LockLeaseGuard;
+  markLost: () => void;
+  markRenewed: (renewedAtMs: number) => void;
+  remainingSafeLifetimeMs: () => number;
+} {
+  const safetyMarginMs = Math.max(1, Math.floor(lockTtlMs / 10));
+  let confirmedUntilMs = Date.now() + lockTtlMs - safetyMarginMs;
+  let lost = false;
+  const markLost = () => {
+    lost = true;
+  };
+
+  return {
+    guard: {
+      check: () => {
+        if (lost || Date.now() >= confirmedUntilMs) {
+          markLost();
+          return new Err(new LockLeaseLostError(lockName));
+        }
+        return new Ok(undefined);
+      },
+    },
+    markLost,
+    markRenewed: (renewedAtMs) => {
+      confirmedUntilMs = renewedAtMs + lockTtlMs - safetyMarginMs;
+    },
+    remainingSafeLifetimeMs: () => confirmedUntilMs - Date.now(),
+  };
+}
+
+async function runWithRenewingLockResult<T, E>(
+  client: RedisClientType,
+  lockName: string,
+  lockValue: string,
+  callback: (
+    lease: LockLeaseGuard
+  ) => Promise<Result<T, E | LockLeaseLostError>>,
+  lockTtlMs: number
+): Promise<Result<T, E | LockLeaseLostError>> {
+  const renewalIntervalMs = Math.max(1, Math.floor(lockTtlMs / 3));
+  const renewalRetryInitialDelayMs = Math.min(
+    RENEWAL_RETRY_INITIAL_DELAY_MS,
+    renewalIntervalMs
+  );
+  const lease = createLockLeaseGuard(lockName, lockTtlMs);
+  const stopController = new AbortController();
+  const renew = async () => {
+    const nextRenewalDelayMs = () =>
+      renewalIntervalMs * (0.8 + Math.random() * 0.2);
+    let waitMs = nextRenewalDelayMs();
+    let retryDelayMs = renewalRetryInitialDelayMs;
+    let lastRefreshError: Error | undefined;
+    while (await waitForRenewal(waitMs, stopController.signal)) {
+      if (lease.guard.check().isErr()) {
+        if (lastRefreshError) {
+          logger.error(
+            { error: lastRefreshError, lockName },
+            "Lost a distributed lock lease after refresh errors"
+          );
+        }
+        return;
+      }
+      try {
+        const refreshStartedAtMs = Date.now();
+        const refreshed = await distributedRefresh(
+          client,
+          lockName,
+          lockValue,
+          lockTtlMs
+        );
+        if (!refreshed) {
+          lease.markLost();
+          logger.warn(
+            { lockName },
+            "Lost a distributed lock lease because its owner changed"
+          );
+          return;
+        }
+        lease.markRenewed(refreshStartedAtMs);
+        if (lastRefreshError) {
+          logger.info({ lockName }, "Recovered distributed lock lease renewal");
+        }
+        lastRefreshError = undefined;
+        retryDelayMs = renewalRetryInitialDelayMs;
+        waitMs = nextRenewalDelayMs();
+      } catch (error) {
+        const refreshError = normalizeError(error);
+        if (!lastRefreshError) {
+          logger.warn(
+            { error: refreshError, lockName },
+            "Failed to refresh a distributed lock lease; retrying"
+          );
+        }
+        lastRefreshError = refreshError;
+        const remainingSafeLifetimeMs = lease.remainingSafeLifetimeMs();
+        if (remainingSafeLifetimeMs <= 0) {
+          lease.markLost();
+          logger.error(
+            { error: refreshError, lockName },
+            "Lost a distributed lock lease after refresh errors"
+          );
+          return;
+        }
+        waitMs = Math.min(retryDelayMs, remainingSafeLifetimeMs);
+        retryDelayMs = Math.min(retryDelayMs * 2, RENEWAL_RETRY_MAX_DELAY_MS);
+      }
+    }
+  };
+  const renewal = renew();
+
+  try {
+    const result = await callback(lease.guard);
+    stopController.abort();
+    await renewal;
+    const held = lease.guard.check();
+    return held.isErr() ? held : result;
+  } finally {
+    stopController.abort();
+    await renewal;
+    await distributedUnlock(client, lockName, lockValue);
+  }
+}
+
 export const executeWithLock = async <T>(
   lockName: string,
   callback: () => Promise<T>,
@@ -161,4 +354,28 @@ export const executeWithLockResult = async <T, E>(
   }
 
   return runWithAcquiredLock(client, lockName, lockValue, callback);
+};
+
+export const executeWithRenewingLockResult = async <T, E>(
+  lockName: string,
+  callback: (
+    lease: LockLeaseGuard
+  ) => Promise<Result<T, E | LockLeaseLostError>>,
+  timeoutMs: number = 30_000,
+  options: ExecuteWithLockOptions = {}
+): Promise<Result<T, E | LockAcquisitionTimeoutError | LockLeaseLostError>> => {
+  const { lockTtlMs = 5_000 } = options;
+  const { client, lockValue } = await acquireLock(lockName, timeoutMs, options);
+
+  if (!lockValue) {
+    return new Err(new LockAcquisitionTimeoutError(lockName));
+  }
+
+  return runWithRenewingLockResult(
+    client,
+    lockName,
+    lockValue,
+    callback,
+    lockTtlMs
+  );
 };
