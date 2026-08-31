@@ -176,6 +176,28 @@ describe("resolveSkillMCPServers", () => {
     expect(workspaceAnalyticsTools.every((tool) => tool.eager)).toBe(true);
   });
 
+  it("does not auto-equip workspace analytics on other agents", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [],
+    });
+
+    const { systemSkills, enabledSkills, equippedSkills } =
+      await SkillResource.listForAgentLoop(authenticator, {
+        agentConfiguration,
+        conversation,
+      });
+    const isWorkspaceAnalytics = (skill: SkillResource) =>
+      skill.sId === "workspace-analytics";
+
+    expect(systemSkills.some(isWorkspaceAnalytics)).toBe(false);
+    expect(enabledSkills.some(isWorkspaceAnalytics)).toBe(false);
+    expect(equippedSkills.some(isWorkspaceAnalytics)).toBe(false);
+  });
+
   it("exposes one set of company data tools when Discover Knowledge and Go Deep are enabled", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",

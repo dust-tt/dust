@@ -75,6 +75,6 @@ export const workspaceAnalyticsSkill = {
     return agentConfiguration.scope === "global" &&
       agentConfiguration.sId === GLOBAL_AGENTS_SID.ANALYST
       ? "enabled"
-      : "equipped";
+      : undefined;
   },
 } as const satisfies GlobalSkillDefinition;
