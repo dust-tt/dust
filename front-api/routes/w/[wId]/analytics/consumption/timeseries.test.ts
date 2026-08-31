@@ -22,6 +22,7 @@ const TIMESERIES: GetConsumptionTimeseriesResponse = {
   granularity: "day",
   mode: "daily",
   metric: "credit_micro",
+  timezone: "UTC",
   breakdownBy: null,
   groups: [{ groupKey: "total", name: "Total" }],
   points: [],
