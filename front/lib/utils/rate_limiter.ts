@@ -211,12 +211,13 @@ export async function addRateLimiterCount({
   }
 
   const redisKey = makeRateLimiterKey(key);
+  const idempotencyRedisKey = makeRateLimiterKey(`${key}:idempotency`);
   const windowMs = timeframeSeconds * 1000;
 
   /**
    * KEYS:
    * - KEYS[1]: Rolling-window sorted-set key.
-   * - KEYS[2]: Rolling-window idempotency hash key.
+   * - KEYS[2]: Rolling-window idempotency sorted-set key.
    *
    * ARGV:
    * - ARGV[1]: Window duration in milliseconds.
@@ -234,7 +235,8 @@ export async function addRateLimiterCount({
     local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
 
     if idempotency_field ~= '' then
-      local first_write = redis.call('HSETNX', KEYS[2], idempotency_field, '1')
+      redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms - window_ms)
+      local first_write = redis.call('ZADD', KEYS[2], 'NX', now_ms, idempotency_field)
       redis.call('PEXPIRE', KEYS[2], window_ms + 60000)
       if first_write == 0 then
         return
@@ -249,9 +251,9 @@ export async function addRateLimiterCount({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const member = `${microCredits}:${uuidv4()}`;
+    const member = `${microCredits}:${idempotencyKey ?? uuidv4()}`;
     await redis.eval(luaScript, {
-      keys: [redisKey, `${redisKey}:idempotency`],
+      keys: [redisKey, idempotencyRedisKey],
       arguments: [windowMs.toString(), member, idempotencyKey ?? ""],
     });
   } catch (e) {

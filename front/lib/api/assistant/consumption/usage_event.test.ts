@@ -19,6 +19,7 @@ vi.mock("@app/lib/resources/conversation_resource", () => ({
 }));
 
 const bill = {
+  billingMarkerItemId: 1,
   eventCreditAmount: 12,
   costCredits: 12,
   userMessageOrigin: "web",
