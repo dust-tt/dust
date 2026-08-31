@@ -4,6 +4,14 @@ import {
   ItemTitle,
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
+import type {
+  CommandGroup,
+  CommandPaletteCommand,
+} from "@app/components/command_palette/commandPaletteCommands";
+import {
+  COMMAND_GROUP_LABELS,
+  COMMAND_GROUP_ORDER,
+} from "@app/components/command_palette/commandPaletteCommands";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -15,11 +23,13 @@ import { useEffect, useMemo, useRef } from "react";
 export type CommandPaletteItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
   | { kind: "pod"; pod: PodType }
-  | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType };
+  | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType }
+  | { kind: "command"; command: CommandPaletteCommand };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  commands: CommandPaletteCommand[];
   agents: LightAgentConfigurationType[];
   pods: PodType[];
   skills: SkillWithoutInstructionsAndToolsType[];
@@ -33,12 +43,38 @@ interface CommandPaletteSearchPhaseProps {
   onClose: () => void;
 }
 
+// Commands are shown grouped, in a fixed group order. Grouping here keeps the
+// render order and the flat keyboard-navigation order in sync.
+function groupCommands(commands: CommandPaletteCommand[]) {
+  const groups: Array<{
+    group: CommandGroup;
+    commands: CommandPaletteCommand[];
+    startIndex: number;
+  }> = [];
+
+  let startIndex = 0;
+  for (const group of COMMAND_GROUP_ORDER) {
+    const groupItems = commands.filter((command) => command.group === group);
+    if (groupItems.length === 0) {
+      continue;
+    }
+    groups.push({ group, commands: groupItems, startIndex });
+    startIndex += groupItems.length;
+  }
+
+  return groups;
+}
+
 function getFlatItems(
+  orderedCommands: CommandPaletteCommand[],
   agents: LightAgentConfigurationType[],
   pods: PodType[],
   skills: SkillWithoutInstructionsAndToolsType[]
 ): CommandPaletteItem[] {
   return [
+    ...orderedCommands.map(
+      (command): CommandPaletteItem => ({ kind: "command", command })
+    ),
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
@@ -48,6 +84,7 @@ function getFlatItems(
 export function CommandPaletteSearchPhase({
   searchQuery,
   onSearchQueryChange,
+  commands,
   agents,
   pods,
   skills,
@@ -60,9 +97,14 @@ export function CommandPaletteSearchPhase({
   onItemSelect,
   onClose,
 }: CommandPaletteSearchPhaseProps) {
+  const commandGroups = useMemo(() => groupCommands(commands), [commands]);
+  const orderedCommands = useMemo(
+    () => commandGroups.flatMap(({ commands: groupCommands }) => groupCommands),
+    [commandGroups]
+  );
   const flatItems = useMemo(
-    () => getFlatItems(agents, pods, skills),
-    [agents, pods, skills]
+    () => getFlatItems(orderedCommands, agents, pods, skills),
+    [orderedCommands, agents, pods, skills]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -85,11 +127,17 @@ export function CommandPaletteSearchPhase({
   }, [selectedIndex, flatItems.length]);
 
   // Reset selection and trim stale refs when the number of results changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: agents.length, pods.length and skills.length are intentional triggers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the result counts are intentional triggers
   useEffect(() => {
     itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
-  }, [agents.length, pods.length, skills.length, onSelectedIndexChange]);
+  }, [
+    orderedCommands.length,
+    agents.length,
+    pods.length,
+    skills.length,
+    onSelectedIndexChange,
+  ]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
@@ -134,7 +182,7 @@ export function CommandPaletteSearchPhase({
             "[&_input]:focus-visible:ring-0"
           )}
           name="command-palette-search"
-          placeholder="Search agents, pods and skills…"
+          placeholder="Search agents, pods, skills or run a command…"
           value={searchQuery}
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
@@ -160,33 +208,59 @@ export function CommandPaletteSearchPhase({
         )}
         {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
           <ItemEmptyState>
-            Type to search agents, pods and skills.
+            Type to search agents, pods and skills, or run a command.
           </ItemEmptyState>
         )}
+
+        {commandGroups.map(({ group, commands: groupCommands, startIndex }) => (
+          <div key={group}>
+            <ItemTitle>{COMMAND_GROUP_LABELS[group]}</ItemTitle>
+            {groupCommands.map((command, i) => {
+              const globalIndex = startIndex + i;
+              return (
+                <ItemRow
+                  key={command.id}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "command", command })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Icon visual={command.icon} size="xs" />
+                  <span className="font-medium">{command.label}</span>
+                </ItemRow>
+              );
+            })}
+          </div>
+        ))}
 
         {agents.length > 0 && (
           <div>
             <ItemTitle>Agents</ItemTitle>
-            {agents.map((agent, i) => (
-              <ItemRow
-                key={agent.sId}
-                ref={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                isSelected={selectedIndex === i}
-                onClick={() => onItemSelect({ kind: "agent", agent })}
-                onMouseMove={() => onSelectedIndexChange(i)}
-              >
-                <Avatar visual={agent.pictureUrl} size="xs" />
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="shrink-0 font-medium">{agent.name}</span>
-                  <span className="shrink-0 text-muted-foreground">-</span>
-                  <span className="min-w-0 truncate text-muted-foreground">
-                    {agent.description}
-                  </span>
-                </div>
-              </ItemRow>
-            ))}
+            {agents.map((agent, i) => {
+              const globalIndex = orderedCommands.length + i;
+              return (
+                <ItemRow
+                  key={agent.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "agent", agent })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Avatar visual={agent.pictureUrl} size="xs" />
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="shrink-0 font-medium">{agent.name}</span>
+                    <span className="shrink-0 text-muted-foreground">-</span>
+                    <span className="min-w-0 truncate text-muted-foreground">
+                      {agent.description}
+                    </span>
+                  </div>
+                </ItemRow>
+              );
+            })}
             {hasMoreAgents && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
                 More agents available. Type to filter.
@@ -199,7 +273,7 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Pods</ItemTitle>
             {pods.map((pod, i) => {
-              const globalIndex = agents.length + i;
+              const globalIndex = orderedCommands.length + agents.length + i;
               return (
                 <ItemRow
                   key={pod.sId}
@@ -239,7 +313,8 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
-              const globalIndex = agents.length + pods.length + i;
+              const globalIndex =
+                orderedCommands.length + agents.length + pods.length + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow

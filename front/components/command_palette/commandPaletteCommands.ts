@@ -1,5 +1,4 @@
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import type { SettingsSection } from "@app/components/UserSettingsPopover";
 import type {
   ConcreteResourceType,
   GrantVerb,
@@ -9,25 +8,20 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Beaker02,
-  Bell01,
   BookOpen01,
-  Brain,
   File02,
   Globe01,
   IntersectDust,
   LogOut01,
   MagicWand02,
-  Mail01,
   MessageCircle01,
   Moon01,
   Planet,
   Plus,
   PuzzlePiece01,
   Robot,
-  Settings01,
   SlackLogo,
   Sun,
-  User01,
   UserPlus01,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
@@ -36,7 +30,6 @@ export type CommandGroup =
   | "navigation"
   | "create"
   | "workspace"
-  | "settings"
   | "appearance"
   | "account";
 
@@ -44,7 +37,6 @@ export type CommandGroup =
 export const COMMAND_GROUP_ORDER: CommandGroup[] = [
   "create",
   "navigation",
-  "settings",
   "appearance",
   "workspace",
   "account",
@@ -54,7 +46,6 @@ export const COMMAND_GROUP_LABELS: Record<CommandGroup, string> = {
   navigation: "Go to",
   create: "Create",
   workspace: "Workspace",
-  settings: "Settings",
   appearance: "Appearance",
   account: "Account",
 };
@@ -64,8 +55,8 @@ export interface CommandPaletteCommand {
   label: string;
   group: CommandGroup;
   icon: ComponentType<{ className?: string }>;
-  // Extra search terms, so that sub-items of a settings section ("edit name",
-  // "profile picture") find the section that hosts them.
+  // Extra search terms, so a command is findable by the words people actually
+  // type for it ("assistant" for agents, "logout" for sign out).
   keywords: string[];
   run: () => void;
 }
@@ -74,15 +65,12 @@ export interface BuildCommandsDeps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   featureFlags: WhitelistableFeature[];
-  hasFeature: (flag: WhitelistableFeature) => boolean;
   hasPermission: (
     verb: GrantVerb,
     resourceType: ConcreteResourceType
   ) => boolean;
-  hasPendingInvitations: boolean;
   currentRoute: string;
   navigate: (href: string) => void;
-  openUserSettings: (section: SettingsSection) => void;
   setTheme: (theme: "light" | "dark" | "system") => void;
   openCreatePod: () => void;
   openCreateSpace: () => void;
@@ -317,106 +305,6 @@ function buildWorkspaceCommands(
   return commands;
 }
 
-function buildSettingsCommands({
-  subscription,
-  hasFeature,
-  hasPendingInvitations,
-  openUserSettings,
-}: BuildCommandsDeps): CommandPaletteCommand[] {
-  if (!subscription.plan.limits.canUseProduct) {
-    return [];
-  }
-
-  const commands: CommandPaletteCommand[] = [
-    {
-      id: "settings.personal",
-      label: "Personal Information",
-      group: "settings",
-      icon: User01,
-      keywords: [
-        "personal settings",
-        "profile",
-        "edit name",
-        "first name",
-        "last name",
-        "profile picture",
-        "avatar",
-        "email",
-      ],
-      run: () => openUserSettings("personal"),
-    },
-    {
-      id: "settings.customization",
-      label: "Customization",
-      group: "settings",
-      icon: Settings01,
-      keywords: [
-        "personal settings",
-        "customization",
-        "theme",
-        "appearance",
-        "send message shortcut",
-        "keyboard shortcut",
-        "agents on home page",
-      ],
-      run: () => openUserSettings("customization"),
-    },
-    {
-      id: "settings.notifications",
-      label: "Notifications",
-      group: "settings",
-      icon: Bell01,
-      keywords: [
-        "personal settings",
-        "notifications",
-        "sound",
-        "inbox",
-        "slack",
-        "for you",
-        "email",
-      ],
-      run: () => openUserSettings("notifications"),
-    },
-  ];
-
-  if (hasFeature("user_memory")) {
-    commands.push({
-      id: "settings.memory",
-      label: "Memory",
-      group: "settings",
-      icon: Brain,
-      keywords: [
-        "personal settings",
-        "memory",
-        "about you",
-        "enable memory",
-        "disable memory",
-      ],
-      run: () => openUserSettings("memory"),
-    });
-  }
-
-  if (hasPendingInvitations) {
-    commands.push({
-      id: "settings.invitations",
-      label: "Invitations",
-      group: "settings",
-      icon: Mail01,
-      keywords: [
-        "personal settings",
-        "invitations",
-        "pending",
-        "accept",
-        "reject",
-        "join workspace",
-      ],
-      run: () => openUserSettings("invitations"),
-    });
-  }
-
-  return commands;
-}
-
 function buildAppearanceCommands({
   setTheme,
 }: BuildCommandsDeps): CommandPaletteCommand[] {
@@ -469,7 +357,6 @@ export function buildCommandPaletteCommands(
   return [
     ...buildCreateCommands(deps),
     ...buildNavigationCommands(deps),
-    ...buildSettingsCommands(deps),
     ...buildAppearanceCommands(deps),
     ...buildWorkspaceCommands(deps),
     ...buildAccountCommands(deps),

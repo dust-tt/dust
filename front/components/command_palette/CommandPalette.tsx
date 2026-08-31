@@ -1,3 +1,4 @@
+import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import type {
   ActionPhaseItem,
@@ -7,9 +8,18 @@ import { CommandPaletteActionPhase } from "@app/components/command_palette/Comma
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import {
+  buildCommandPaletteCommands,
+  filterCommands,
+} from "@app/components/command_palette/commandPaletteCommands";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import config from "@app/lib/api/config";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { filterAndSortAgents, subFilter } from "@app/lib/utils";
@@ -18,10 +28,12 @@ import {
   getConversationRoute,
   getPodRoute,
   getSkillBuilderRoute,
+  getSpaceRoute,
 } from "@app/lib/utils/router";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import { isProjectType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -42,9 +54,11 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     null
   );
 
-  // Detail sheet state (lives outside the dialog lifecycle).
+  // Detail sheet and creation modal state (lives outside the dialog lifecycle).
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
+  const [isCreatePodOpen, setIsCreatePodOpen] = useState(false);
+  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
 
   // Fetch agents and skills only when the palette is open.
   const { agentConfigurations, isAgentConfigurationsLoading } =
@@ -65,9 +79,51 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     kinds: ["project"],
     disabled: !isOpen,
   });
+
+  const { subscription } = useAuth();
+  const { featureFlags } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
+  const { setTheme } = useTheme();
   const memberPods = useMemo(
     () => spaces.filter(isProjectType).filter((p) => p.archivedAt === null),
     [spaces]
+  );
+
+  const signOut = useCallback(() => {
+    window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
+  }, []);
+
+  const navigate = useCallback(
+    (href: string) => {
+      void router.push(href);
+    },
+    [router]
+  );
+
+  const commands = useMemo(
+    () =>
+      buildCommandPaletteCommands({
+        owner,
+        subscription,
+        featureFlags,
+        hasPermission,
+        currentRoute: router.pathname,
+        navigate,
+        setTheme,
+        openCreatePod: () => setIsCreatePodOpen(true),
+        openCreateSpace: () => setIsCreateSpaceOpen(true),
+        signOut,
+      }),
+    [
+      owner,
+      subscription,
+      featureFlags,
+      hasPermission,
+      router.pathname,
+      navigate,
+      setTheme,
+      signOut,
+    ]
   );
 
   // Debounce the search query to avoid expensive fuzzy filtering on every keystroke.
@@ -97,6 +153,16 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const MAX_DISPLAYED_AGENTS = 5;
   const MAX_DISPLAYED_PODS = 5;
   const MAX_DISPLAYED_SKILLS = 5;
+  // With no query the palette leads with a short, stable set of commands so the
+  // entity results stay visible; a query lifts the cap and lets them all show.
+  const MAX_DISPLAYED_COMMANDS_WITHOUT_QUERY = 5;
+
+  const filteredCommands = useMemo(() => {
+    const matching = filterCommands(commands, debouncedQuery);
+    return debouncedQuery
+      ? matching
+      : matching.slice(0, MAX_DISPLAYED_COMMANDS_WITHOUT_QUERY);
+  }, [commands, debouncedQuery]);
 
   const allFilteredAgents = useMemo(
     () =>
@@ -193,6 +259,12 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
+      // Commands and pods act immediately; they have no action phase.
+      if (item.kind === "command") {
+        close();
+        item.command.run();
+        return;
+      }
       if (item.kind === "pod") {
         close();
         void router.push(getPodRoute(owner.sId, item.pod.sId));
@@ -240,6 +312,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             <CommandPaletteSearchPhase
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
+              commands={filteredCommands}
               agents={filteredAgents}
               pods={filteredPods}
               skills={filteredSkills}
@@ -276,6 +349,30 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         skillId={skillDetailsId}
         onClose={() => setSkillDetailsId(null)}
       />
+
+      <CreatePodModal
+        isOpen={isCreatePodOpen}
+        onClose={() => setIsCreatePodOpen(false)}
+        onCreated={(pod) => {
+          setIsCreatePodOpen(false);
+          void router.push(getPodRoute(owner.sId, pod.sId));
+        }}
+        owner={owner}
+      />
+
+      {isCreateSpaceOpen && (
+        <CreateOrEditSpaceModal
+          isAdmin={isAdmin(owner)}
+          isOpen={isCreateSpaceOpen}
+          onClose={() => setIsCreateSpaceOpen(false)}
+          onCreated={(space) => {
+            setIsCreateSpaceOpen(false);
+            void router.push(getSpaceRoute(owner.sId, space.sId));
+          }}
+          owner={owner}
+          plan={subscription.plan}
+        />
+      )}
     </>
   );
 }

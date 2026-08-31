@@ -8,7 +8,6 @@ import type {
   GrantVerb,
 } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it, vi } from "vitest";
 
@@ -27,12 +26,9 @@ function makeDeps(overrides: Partial<BuildCommandsDeps> = {}) {
     owner: OWNER,
     subscription: SUBSCRIPTION,
     featureFlags: [],
-    hasFeature: () => false,
     hasPermission: () => true,
-    hasPendingInvitations: false,
     currentRoute: "/w/w123/conversation/new",
     navigate: vi.fn(),
-    openUserSettings: vi.fn(),
     setTheme: vi.fn(),
     openCreatePod: vi.fn(),
     openCreateSpace: vi.fn(),
@@ -72,29 +68,13 @@ describe("buildCommandPaletteCommands", () => {
     expect(idsOf(makeDeps({ hasPermission }))).not.toContain("create.space");
   });
 
-  it("gates Memory on the user_memory feature flag", () => {
-    expect(idsOf(makeDeps())).not.toContain("settings.memory");
-
-    const hasFeature = (flag: WhitelistableFeature) => flag === "user_memory";
-    expect(idsOf(makeDeps({ hasFeature }))).toContain("settings.memory");
-  });
-
-  it("only offers Invitations when some are pending", () => {
-    expect(idsOf(makeDeps())).not.toContain("settings.invitations");
-    expect(idsOf(makeDeps({ hasPendingInvitations: true }))).toContain(
-      "settings.invitations"
-    );
-  });
-
-  it("drops personal settings and Labs when the plan cannot use the product", () => {
+  it("drops Labs when the plan cannot use the product", () => {
     const subscription = {
       plan: { code: "TEST_PLAN", limits: { canUseProduct: false } },
     } as SubscriptionType;
 
     const ids = idsOf(makeDeps({ subscription }));
 
-    expect(ids).not.toContain("settings.personal");
-    expect(ids).not.toContain("settings.customization");
     expect(ids).not.toContain("nav.labs");
     // Navigation and sign-out remain reachable.
     expect(ids).toContain("nav.conversations");
@@ -124,21 +104,8 @@ describe("buildCommandPaletteCommands", () => {
     expect(setTheme).toHaveBeenCalledWith("dark");
   });
 
-  it("deep-links settings commands to their section", () => {
-    const openUserSettings = vi.fn();
-    const commands = buildCommandPaletteCommands(
-      makeDeps({ openUserSettings, hasPendingInvitations: true })
-    );
-
-    commands.find((c) => c.id === "settings.notifications")?.run();
-    commands.find((c) => c.id === "settings.invitations")?.run();
-
-    expect(openUserSettings).toHaveBeenNthCalledWith(1, "notifications");
-    expect(openUserSettings).toHaveBeenNthCalledWith(2, "invitations");
-  });
-
   it("produces unique command ids", () => {
-    const ids = idsOf(makeDeps({ hasPendingInvitations: true }));
+    const ids = idsOf(makeDeps());
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
@@ -155,14 +122,12 @@ describe("filterCommands", () => {
     expect(ids).toContain("create.agent");
   });
 
-  it("matches on keywords so section sub-items are findable", () => {
-    const ids = filterCommands(commands, "profile picture").map((c) => c.id);
-    expect(ids).toContain("settings.personal");
+  it("matches on keywords, not just the label", () => {
+    const ids = filterCommands(commands, "assistant").map((c) => c.id);
+    expect(ids).toContain("nav.agents");
 
-    const shortcutIds = filterCommands(commands, "keyboard shortcut").map(
-      (c) => c.id
-    );
-    expect(shortcutIds).toContain("settings.customization");
+    const logoutIds = filterCommands(commands, "logout").map((c) => c.id);
+    expect(logoutIds).toContain("account.sign-out");
   });
 
   it("is case-insensitive", () => {
