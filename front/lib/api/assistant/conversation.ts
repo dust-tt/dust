@@ -1734,9 +1734,13 @@ export async function retryAgentMessage(
   {
     conversationResource,
     message,
+    modelSelection,
   }: {
     conversationResource: ConversationResource;
     message: AgentMessageType;
+    // When set, the retry runs on this selection instead of re-pinning the
+    // model that just failed.
+    modelSelection?: ModelSelectionType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
   const conversation: ConversationWithoutContentType =
@@ -1819,14 +1823,18 @@ export async function retryAgentMessage(
     return limitResult;
   }
 
-  let retryModelResolution: AgentMessageModelResolution = message.resolvedModel
-    ? {
-        resolvedModel: message.resolvedModel,
-        modelResolutionMethod: message.modelResolutionMethod ?? "agent",
-      }
-    : await resolveModelForMentionedAgent(auth, {
-        configuration: message.configuration,
-      });
+  // Without an explicit selection we re-pin the model the message ran on; with
+  // one we go through the same path as a picker selection on a new message.
+  let retryModelResolution: AgentMessageModelResolution =
+    !modelSelection && message.resolvedModel
+      ? {
+          resolvedModel: message.resolvedModel,
+          modelResolutionMethod: message.modelResolutionMethod ?? "agent",
+        }
+      : await resolveModelForMentionedAgent(auth, {
+          configuration: message.configuration,
+          selection: modelSelection,
+        });
 
   const user = auth.user();
   if (user) {

@@ -14,6 +14,7 @@ import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { RetryWithAutoTierButton } from "@app/components/assistant/conversation/RetryWithAutoTierButton";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -87,6 +88,7 @@ import {
   isAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
@@ -774,16 +776,19 @@ export function AgentMessage({
       conversationId,
       messageId,
       blockedOnly = false,
+      modelSelection,
     }: {
       conversationId: string;
       messageId: string;
       blockedOnly?: boolean;
+      modelSelection?: ModelSelectionType;
     }) => {
       setIsRetryHandlerProcessing(true);
       const result = await retryMessage({
         conversationId,
         messageId,
         blockedOnly,
+        modelSelection,
       });
       setIsRetryHandlerProcessing(false);
       if (result.isErr()) {
@@ -1210,6 +1215,7 @@ function AgentMessageContent({
     conversationId: string;
     messageId: string;
     blockedOnly?: boolean;
+    modelSelection?: ModelSelectionType;
   }) => Promise<void>;
   reloadMessage: (params: {
     conversationId: string;
@@ -1551,6 +1557,21 @@ function AgentMessageContent({
             }
             retryHandler={async () =>
               retryHandler({ conversationId, messageId: agentMessage.sId })
+            }
+            secondaryAction={
+              <RetryWithAutoTierButton
+                owner={owner}
+                resolvedModel={agentMessage.resolvedModel}
+                modelResolutionMethod={agentMessage.modelResolutionMethod}
+                disabled={isRetryHandlerProcessing}
+                onRetry={(modelSelection) =>
+                  void retryHandler({
+                    conversationId,
+                    messageId: agentMessage.sId,
+                    modelSelection,
+                  })
+                }
+              />
             }
           />
         )}

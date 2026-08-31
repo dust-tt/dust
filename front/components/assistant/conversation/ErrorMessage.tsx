@@ -8,13 +8,20 @@ import {
   InfoCircle,
   RefreshCw02,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 interface ErrorMessageProps {
   error: GenericErrorContent;
   retryHandler: () => void;
+  // Rendered next to Retry, for retries that need more than re-running as-is.
+  secondaryAction?: ReactNode;
 }
 
-export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
+export function ErrorMessage({
+  error,
+  retryHandler,
+  secondaryAction,
+}: ErrorMessageProps) {
   const isContextWindowExceeded =
     isAgentErrorCategory(error.metadata?.category) &&
     error.metadata?.category === "context_window_exceeded";
@@ -62,6 +69,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
           onClick={retry}
           disabled={isRetrying}
         />
+        {secondaryAction}
       </div>
     </ContentMessage>
   );
