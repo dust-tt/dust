@@ -764,6 +764,55 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     return item.isToolItem() ? item : null;
   }
 
+  static async sumConsumptionCreditAmountMicroByRunKeyForAgentMessages(
+    auth: Authenticator,
+    { agentMessageModelIds }: { agentMessageModelIds: ModelId[] }
+  ): Promise<Map<string, number>> {
+    if (agentMessageModelIds.length === 0) {
+      return new Map();
+    }
+
+    // biome-ignore lint/plugin/noRawSql: Sequelize does not safely type a grouped coalesced sum.
+    const rows = await frontSequelize.query<{
+      runKey: string;
+      total: string;
+    }>(
+      `
+        SELECT
+          "runKey",
+          SUM(COALESCE(
+            "reconciledCreditAmountMicro",
+            "grossAttributedCreditAmountMicro"
+          ))::text AS total
+        FROM agent_message_consumption_items
+        WHERE "workspaceId" = $workspaceModelId
+          AND "agentMessageId" = ANY($agentMessageModelIds::bigint[])
+          AND "attributionVersion" = $attributionVersion
+          AND "runKey" IS NOT NULL
+        GROUP BY "runKey"
+      `,
+      {
+        bind: {
+          agentMessageModelIds,
+          attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    return new Map(
+      rows.map((row) => {
+        const total = Number(row.total);
+        assert(
+          Number.isSafeInteger(total) && total >= 0,
+          "Consumption execution total is outside the supported integer range"
+        );
+        return [row.runKey, total];
+      })
+    );
+  }
+
   static async listConsumptionRowsByRunKey(
     auth: Authenticator,
     {
