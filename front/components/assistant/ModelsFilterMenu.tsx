@@ -1,15 +1,23 @@
-import { ModelsMenuContent } from "@app/components/assistant/ModelsMenuContent";
+import { ModelPickerContent } from "@app/components/model_picker/ModelPickerContent";
+import type {
+  ModelPickerSelectionModel,
+  ModelTierId,
+  SelectedEntry,
+} from "@app/components/model_picker/modelPickerUtils";
+import {
+  getModelTier,
+  getTierIdForMetaModelId,
+} from "@app/components/model_picker/modelPickerUtils";
+import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
+import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  Check,
   CpuChip01,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
-  Icon,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
 import { useState } from "react";
 
 export type AgentModelFilterType = {
@@ -18,71 +26,71 @@ export type AgentModelFilterType = {
 };
 
 interface ModelsFilterMenuProps {
-  models: AgentModelFilterType[];
+  owner: LightWorkspaceType;
+  // The models the workspace's agents are actually on. Filtering by anything
+  // else would return nothing, and the workspace catalog omits models an agent
+  // may still sit on (feature-flagged, out-of-region or since-retired ones).
+  modelIds: string[];
   selectedModels: AgentModelFilterType[];
   setSelectedModels: (models: AgentModelFilterType[]) => void;
   isCompact?: boolean;
 }
 
-interface ModelFilterItemProps {
-  model: AgentModelFilterType;
-  icon?: ComponentType;
-  isSelected: boolean;
-  onToggle: (model: AgentModelFilterType) => void;
-}
-
-function ModelFilterItem({
-  model,
-  icon,
-  isSelected,
-  onToggle,
-}: ModelFilterItemProps) {
-  return (
-    <DropdownMenuItem
-      role="menuitemcheckbox"
-      aria-checked={isSelected}
-      label={model.displayName}
-      icon={icon}
-      truncateText
-      endComponent={
-        isSelected ? (
-          <Icon visual={Check} size="sm" className="text-muted-foreground" />
-        ) : undefined
-      }
-      onSelect={(event) => {
-        event.preventDefault();
-        onToggle(model);
-      }}
-    />
-  );
-}
-
 export function ModelsFilterMenu({
-  models,
+  owner,
+  modelIds,
   selectedModels,
   setSelectedModels,
   isCompact = false,
 }: ModelsFilterMenuProps) {
-  const [isDropdownOpen, setDropdownOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const selectedModelIds = new Set(
-    selectedModels.map((model) => model.modelId)
-  );
-  const toggleModel = (model: AgentModelFilterType) => {
+  const { modelProps, allModels } = useModelPickerModels({
+    owner,
+    mode: "filter",
+    modelIds,
+  });
+  const { menuStateProps, resetMenu } = useModelPickerMenuState();
+
+  const selected = selectedModels.flatMap<SelectedEntry>((filter) => {
+    const tierId = getTierIdForMetaModelId(filter.modelId);
+    if (tierId) {
+      return [{ kind: "tier", tierId }];
+    }
+    const model = allModels.find((m) => m.modelId === filter.modelId);
+    return model ? [{ kind: "model", model, effort: null }] : [];
+  });
+
+  const selection: ModelPickerSelectionModel = {
+    selected,
+    agentDefault: null,
+  };
+
+  const toggleFilter = (filter: AgentModelFilterType) => {
     setSelectedModels(
-      selectedModelIds.has(model.modelId)
-        ? selectedModels.filter(
-            (selected) => selected.modelId !== model.modelId
-          )
-        : [...selectedModels, model]
+      selectedModels.some((f) => f.modelId === filter.modelId)
+        ? selectedModels.filter((f) => f.modelId !== filter.modelId)
+        : [...selectedModels, filter]
     );
+  };
+
+  const onSelectTier = (tierId: ModelTierId) => {
+    const { metaModelId, name } = getModelTier(tierId);
+    toggleFilter({ modelId: metaModelId, displayName: name });
+  };
+
+  const onSelectModel = (model: ModelConfigurationType) => {
+    toggleFilter({ modelId: model.modelId, displayName: model.displayName });
   };
 
   return (
     <DropdownMenu
-      open={isDropdownOpen}
+      open={isOpen}
       onOpenChange={(open) => {
-        setDropdownOpen(open);
+        if (open) {
+          resetMenu();
+        }
+        setIsOpen(open);
       }}
     >
       <DropdownMenuTrigger asChild>
@@ -95,23 +103,14 @@ export function ModelsFilterMenu({
           isCounter={selectedModels.length > 0}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="start">
-        <ModelsMenuContent
-          models={models}
-          isOpen={isDropdownOpen}
-          isModelSelected={(model) => selectedModelIds.has(model.modelId)}
-          searchAutoFocus={!isCompact}
-          renderModelItem={(model, icon) => (
-            <ModelFilterItem
-              key={model.modelId}
-              model={model}
-              icon={icon}
-              isSelected={selectedModelIds.has(model.modelId)}
-              onToggle={toggleModel}
-            />
-          )}
-        />
-      </DropdownMenuContent>
+      <ModelPickerContent
+        {...modelProps}
+        {...menuStateProps}
+        side="bottom"
+        selection={selection}
+        onSelectTier={onSelectTier}
+        onSelectModel={onSelectModel}
+      />
     </DropdownMenu>
   );
 }

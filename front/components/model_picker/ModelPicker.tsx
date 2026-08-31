@@ -9,7 +9,7 @@ import {
   trackModelPickerSelect,
 } from "@app/components/model_picker/modelPickerTracking";
 import type {
-  MakerGroup,
+  ModelPickerSelectionModel,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -24,22 +24,19 @@ import {
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
+import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
+import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
-import { useModels } from "@app/lib/swr/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
-  ModelMakerIdType,
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
@@ -95,24 +92,17 @@ export function ModelPicker({
   openApiRef,
   trackingSurface,
 }: ModelPickerProps) {
-  const { hasFeature } = useFeatureFlags();
   const clientType = useClientType();
-  const { subscription } = useAuth();
-  const canSelectPremiumModels =
-    isCreditPricedPlan(subscription.plan) ||
-    subscription.plan.hasAdvancedModelAccess ||
-    hasFeature("claude_4_5_opus_feature");
-  const lockPremiumEfforts = !canSelectPremiumModels;
 
   const { isDark } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [isMakersExpanded, setIsMakersExpanded] = useState(false);
-
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const { models, streams } = useModels({ owner });
+  const { modelProps, models, streamModels, lockPremiumEfforts } =
+    useModelPickerModels({ owner });
+  const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const { shown: baseSelection, agentDefault } = useMemo(
     () =>
@@ -148,41 +138,6 @@ export function ModelPicker({
   }
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
-
-  // Concrete, selectable models (meta-models are surfaced as tiers instead).
-  const allModels = useMemo<ModelConfigurationType[]>(
-    () =>
-      models.filter(
-        (model) => !isModelStreamId(model.modelId) && model.isSelectable
-      ),
-    [models]
-  );
-
-  // Meta-models backing the tier rows: their `isSelectable` tells whether the
-  // member's model-tier cap allows the stream at all.
-  const streamModels = useMemo(
-    () => models.filter((model) => isModelStreamId(model.modelId)),
-    [models]
-  );
-
-  // Group models by maker, preserving first-seen order of both makers and
-  // models within each maker.
-  const makerGroups = useMemo<MakerGroup[]>(() => {
-    const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
-    for (const model of allModels) {
-      const makerId = getModelMaker(model);
-      const existing = groups.get(makerId);
-      if (existing) {
-        existing.push(model);
-      } else {
-        groups.set(makerId, [model]);
-      }
-    }
-    return Array.from(groups.entries()).map(([makerId, makerModels]) => ({
-      makerId,
-      models: makerModels,
-    }));
-  }, [allModels]);
 
   const commit = (
     selection: Selection,
@@ -222,7 +177,7 @@ export function ModelPicker({
   // through here rather than touching `setIsOpen` directly.
   const openMenu = () => {
     setIsOpen(true);
-    setIsMakersExpanded(false);
+    resetMenu();
     if (trackingSurface) {
       trackModelPickerOpen({ surface: trackingSurface, clientType });
     }
@@ -231,16 +186,6 @@ export function ModelPicker({
   if (openApiRef) {
     openApiRef.current = openMenu;
   }
-
-  // Picking a concrete model (or nudging its effort slider) must keep the menu
-  // visible so the effort can still be adjusted. The click briefly moves
-  // focus/pointer in a way Radix treats as an interaction-outside and
-  // dismisses the menu; we record the pick time and veto the close that
-  // immediately follows it (see `onOpenChange` below).
-  const lastModelInteractionAtMsRef = useRef(0);
-
-  const shouldBlockDismiss = () =>
-    Date.now() - lastModelInteractionAtMsRef.current < 300;
 
   const onSelectTier = (tierId: ModelTierId) => {
     if (getTierLockReason(tierId, { lockPremiumEfforts, streamModels })) {
@@ -259,7 +204,6 @@ export function ModelPicker({
     if (isPremiumModel(model, { lockPremiumEfforts })) {
       return;
     }
-    lastModelInteractionAtMsRef.current = Date.now();
     const effort = getInitialEffort(model, { lockPremiumEfforts });
     commit(
       {
@@ -270,15 +214,10 @@ export function ModelPicker({
     );
   };
 
-  const onToggleMakers = () => {
-    setIsMakersExpanded((expanded) => !expanded);
-  };
-
   const onChangeEffort = (effort: ReasoningEffort) => {
     if (shown.display.kind !== "model") {
       return;
     }
-    lastModelInteractionAtMsRef.current = Date.now();
     const { model } = shown.display;
     if (
       lockPremiumEfforts &&
@@ -310,6 +249,12 @@ export function ModelPicker({
     }
   };
 
+  const selection: ModelPickerSelectionModel = {
+    selected: [shown.display],
+    agentDefault: agentDefault.display,
+    onRevert: canRevert ? onRevert : undefined,
+  };
+
   const buttonIcon =
     shown.display.kind === "tier"
       ? MODEL_TIER_ICON[shown.display.tierId]
@@ -324,12 +269,6 @@ export function ModelPicker({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        // Ignore the dismissal that a model/effort pick triggers, so the menu
-        // stays open. The window is short enough not to swallow a genuine
-        // click-outside a moment later.
-        if (!open && shouldBlockDismiss()) {
-          return;
-        }
         if (open) {
           openMenu();
         } else {
@@ -349,21 +288,13 @@ export function ModelPicker({
         />
       </DropdownMenuTrigger>
       <ModelPickerContent
+        {...modelProps}
+        {...menuStateProps}
         side={side}
-        shouldBlockDismiss={shouldBlockDismiss}
-        shown={shown}
-        agentDefault={agentDefault}
-        canRevert={canRevert}
-        lockPremiumEfforts={lockPremiumEfforts}
-        makerGroups={makerGroups}
-        streamModels={streamModels}
-        streams={streams}
-        isMakersExpanded={isMakersExpanded}
-        onToggleMakers={onToggleMakers}
+        selection={selection}
         onSelectTier={onSelectTier}
         onSelectModel={onSelectModel}
-        onChangeEffort={onChangeEffort}
-        onRevert={onRevert}
+        onChangeEffort={(_, effort) => onChangeEffort(effort)}
       />
     </DropdownMenu>
   );

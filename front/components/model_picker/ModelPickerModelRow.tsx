@@ -19,13 +19,12 @@ interface ModelPickerModelRowProps {
   isSelected: boolean;
   isDefault: boolean;
   lockReason: ModelLockReason | null;
-  effort: ReasoningEffort;
+  effort: ReasoningEffort | null;
   effortStops: EffortStop[];
   icon?: ComponentType;
   onSelectModel: (model: ModelConfigurationType) => void;
-  onChangeEffort: (effort: ReasoningEffort) => void;
-  canRevert: boolean;
-  onRevert: () => void;
+  onChangeEffort?: (effort: ReasoningEffort) => void;
+  onRevert?: () => void;
 }
 
 export function ModelPickerModelRow({
@@ -38,7 +37,6 @@ export function ModelPickerModelRow({
   icon,
   onSelectModel,
   onChangeEffort,
-  canRevert,
   onRevert,
 }: ModelPickerModelRowProps) {
   const itemRef = useRef<HTMLDivElement>(null);
@@ -55,7 +53,6 @@ export function ModelPickerModelRow({
         endComponent={
           <Icon visual={Lock01} size="sm" className="text-muted-foreground" />
         }
-        onSelect={(e) => e.preventDefault()}
       />
     );
   }
@@ -70,25 +67,29 @@ export function ModelPickerModelRow({
         endComponent={
           isSelected ? (
             <div className="flex items-center gap-2">
-              <ModelTierChip model={model} reasoningEffort={effort} />
-              <ModelPickerSelectionIndicator
-                canRevert={canRevert}
-                onRevert={onRevert}
+              <ModelTierChip
+                model={model}
+                reasoningEffort={effort ?? undefined}
               />
+              <ModelPickerSelectionIndicator onRevert={onRevert} />
             </div>
           ) : undefined
         }
         onClick={() => {
           onSelectModel(model);
         }}
+        onSelect={(e) => e.preventDefault()}
       />
-      {isSelected && effortStops.length > 0 && (
-        <ReasoningEffortSlider
-          stops={effortStops}
-          value={effort}
-          onChange={onChangeEffort}
-        />
-      )}
+      {isSelected &&
+        effortStops.length > 0 &&
+        effort !== null &&
+        onChangeEffort && (
+          <ReasoningEffortSlider
+            stops={effortStops}
+            value={effort}
+            onChange={onChangeEffort}
+          />
+        )}
     </>
   );
 }

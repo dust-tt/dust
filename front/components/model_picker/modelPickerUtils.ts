@@ -48,7 +48,7 @@ const MODEL_TIER_LOCKED_TOOLTIP =
 //   - "Premium"   -> auto_complex  (curated pool of powerful models)
 export type ModelTierId = "fast" | "standard" | "complex";
 
-interface ModelTierDefinition {
+export interface ModelTierDefinition {
   id: ModelTierId;
   metaModelId: ModelStreamIdType;
   name: string;
@@ -122,6 +122,11 @@ export function getTierLockReason(
 
   return null;
 }
+
+export function getTierIdForMetaModelId(modelId: string): ModelTierId | null {
+  return isModelStreamId(modelId) ? TIER_BY_META_MODEL_ID[modelId] : null;
+}
+
 export function getDefaultTierId(
   streamModels: EnabledModelConfigurationType[]
 ): ModelTierId {
@@ -132,6 +137,15 @@ export function getDefaultTierId(
   return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
+export function formatModelEffortLabel(
+  displayName: string,
+  effort: ReasoningEffort
+): string {
+  return effort === "none"
+    ? displayName
+    : `${displayName} ${capitalize(effort)}`;
+}
+
 export function getTierResolvedModelLabel(
   tierId: ModelTierId,
   streams: ModelStreamResolutionsType | null
@@ -140,9 +154,10 @@ export function getTierResolvedModelLabel(
   if (!resolution) {
     return undefined;
   }
-  return resolution.reasoningEffort === "none"
-    ? resolution.displayName
-    : `${resolution.displayName} ${capitalize(resolution.reasoningEffort)}`;
+  return formatModelEffortLabel(
+    resolution.displayName,
+    resolution.reasoningEffort
+  );
 }
 
 // What the picker is currently showing, decoupled from the payload we send:
@@ -162,6 +177,28 @@ export interface Selection {
 export interface MakerGroup {
   makerId: ModelMakerIdType;
   models: ModelConfigurationType[];
+}
+
+// A `SelectionDisplay` whose effort may be absent: the manage-agents filter
+// names a model without picking an effort for it.
+export type SelectedEntry =
+  | { kind: "tier"; tierId: ModelTierId }
+  | {
+      kind: "model";
+      model: ModelConfigurationType;
+      effort: ReasoningEffort | null;
+    };
+
+export type SelectedModelEntry = Extract<SelectedEntry, { kind: "model" }>;
+
+// What the menu highlights. The conversation picker passes a single display
+// plus the agent default; the manage-agents filter passes one per active
+// filter and no default.
+export interface ModelPickerSelectionModel {
+  selected: SelectedEntry[];
+  agentDefault: SelectionDisplay | null;
+  // Present only when the active selection can be reverted to the default.
+  onRevert?: () => void;
 }
 
 export type EffortLockReason = "unsupported" | "premium" | "model_tier";
@@ -205,7 +242,7 @@ export function getModelKey(providerId: string, modelId: string): string {
 
 export function isModelSelection(
   model: ModelConfigurationType,
-  display: SelectionDisplay
+  display: SelectedEntry
 ): boolean {
   return (
     display.kind === "model" &&
@@ -216,9 +253,34 @@ export function isModelSelection(
 
 export function isTierDisplayed(
   tierId: ModelTierId,
-  display: SelectionDisplay
+  display: SelectedEntry
 ): boolean {
   return display.kind === "tier" && display.tierId === tierId;
+}
+
+export function isTierSelected(
+  tierId: ModelTierId,
+  selection: ModelPickerSelectionModel
+): boolean {
+  return selection.selected.some((display) => isTierDisplayed(tierId, display));
+}
+
+export function findSelectedModelEntry(
+  model: ModelConfigurationType,
+  selection: ModelPickerSelectionModel
+): SelectedModelEntry | undefined {
+  return selection.selected.find(
+    (entry): entry is SelectedModelEntry =>
+      entry.kind === "model" && isModelSelection(model, entry)
+  );
+}
+
+export function getSelectedModelEntries(
+  selection: ModelPickerSelectionModel
+): SelectedModelEntry[] {
+  return selection.selected.filter(
+    (entry): entry is SelectedModelEntry => entry.kind === "model"
+  );
 }
 
 // Display equality ignoring reasoning effort: two model displays for the same
@@ -300,9 +362,9 @@ export function getEffortStops(
 // that is allowed, otherwise the first unlocked stop.
 export function getInitialEffort(
   enabledModel: ModelConfigurationType,
-  { lockPremiumEfforts = false }: LockPremiumOptions = {}
+  options: LockPremiumOptions = {}
 ): ReasoningEffort {
-  const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
+  const stops = getEffortStops(enabledModel, options);
   const preferred = stops.find(
     (stop) =>
       stop.effort === enabledModel.defaultReasoningEffort && !stop.locked
@@ -397,9 +459,7 @@ export function getModelWithReasoningEffortLabel(
       return getModelTier(display.tierId).name;
     case "model": {
       const { model, effort } = display;
-      return effort === "none"
-        ? model.displayName
-        : `${model.displayName} ${capitalize(effort)}`;
+      return formatModelEffortLabel(model.displayName, effort);
     }
     default:
       assertNeverAndIgnore(display);
