@@ -1822,6 +1822,9 @@ async function computeMembersUsageRanking({
   restrictToUserIds: string[] | undefined;
   filterKey: string;
 }): Promise<SerializableMembersUsageRankingOutcome> {
+  const startTimeMs = performance.now();
+  const workspaceId = workspace.sId;
+
   const allUsersResult = await UserResource.searchAllUsers(auth, {
     searchTerm: search,
     restrictToUserIds,
@@ -2056,6 +2059,17 @@ async function computeMembersUsageRanking({
     }
     return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
   });
+
+  logger.info(
+    {
+      workspaceId,
+      orderColumn,
+      orderDirection,
+      matchedUserCount: allUsers.length,
+      durationMs: Math.round(performance.now() - startTimeMs),
+    },
+    "[MembersUsage] Computed members usage ranking"
+  );
 
   return {
     status: "ok",
