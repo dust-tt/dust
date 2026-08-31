@@ -26,6 +26,9 @@ import * as tar from "tar-stream";
 
 // If you change this value, also update the limitation message in lib/connector_providers_ui.ts
 export const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024;
+// codeload streams at ~1MB/s and drops connections on multi-GB archives, which are not
+// resumable. Past this size the download cannot reliably complete within the activity budget.
+export const MAX_TARBALL_SIZE_BYTES = 1024 * 1024 * 1024;
 const MAX_CONCURRENT_GCS_UPLOADS = 400;
 const MAX_TARBALL_SPOOL_RETRIES = 3;
 const MAX_TARBALL_EXTRACTION_RETRIES = 3;
@@ -83,6 +86,16 @@ export class TarballNotFoundError extends Error {
   }
 }
 
+// Marker class to indicate the tarball exceeds the supported download size.
+export class TarballTooLargeError extends Error {
+  constructor(readonly bytesReceived: number, readonly maxBytes: number) {
+    super(
+      `Tarball exceeds maximum supported size: received ${bytesReceived} bytes, limit ${maxBytes} bytes`
+    );
+    this.name = "TarballTooLargeError";
+  }
+}
+
 export interface TarballStreamProvider {
   getStream: () => Promise<
     Result<
@@ -95,6 +108,8 @@ export interface TarballStreamProvider {
 interface TarExtractionOptions {
   repoId: number;
   connectorId: number;
+  // null disables the size cap (connectors whitelisted for large repositories).
+  maxTarballSizeBytes: number | null;
 }
 
 interface TarExtractionResult {
@@ -205,8 +220,11 @@ async function spoolTarballToGCS(
   tarballStreamProvider: TarballStreamProvider,
   gcsManager: GCSRepositoryManager,
   tarballGcsPath: string,
+  maxTarballSizeBytes: number | null,
   childLogger: Logger
-): Promise<Result<{ bytesSpooled: number }, TarballNotFoundError>> {
+): Promise<
+  Result<{ bytesSpooled: number }, TarballNotFoundError | TarballTooLargeError>
+> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt < MAX_TARBALL_SPOOL_RETRIES; attempt++) {
@@ -227,10 +245,22 @@ async function spoolTarballToGCS(
 
       // Track bytes received for content-length validation.
       // Use Buffer.byteLength for strings to handle multi-byte characters correctly.
+      let abortedForSize = false;
       tarballStream.on("data", (chunk: Buffer | string) => {
         bytesReceived += Buffer.isBuffer(chunk)
           ? chunk.length
           : Buffer.byteLength(chunk, "utf8");
+
+        if (
+          maxTarballSizeBytes !== null &&
+          bytesReceived > maxTarballSizeBytes &&
+          !abortedForSize
+        ) {
+          abortedForSize = true;
+          tarballStream.destroy(
+            new TarballTooLargeError(bytesReceived, maxTarballSizeBytes)
+          );
+        }
       });
 
       await gcsManager.uploadTarballStream(tarballGcsPath, tarballStream);
@@ -267,6 +297,14 @@ async function spoolTarballToGCS(
         spoolAttempt: attempt,
       };
 
+      if (error instanceof TarballTooLargeError) {
+        childLogger.error(
+          spoolContext,
+          "Tarball exceeds maximum supported size, aborting spool"
+        );
+        return new Err(error);
+      }
+
       // Check if this is a retryable error.
       if (
         isRetryableStreamError(error) &&
@@ -296,7 +334,7 @@ async function spoolTarballToGCS(
 
 export async function extractGitHubTarballToGCS(
   tarballStreamProvider: TarballStreamProvider,
-  { repoId, connectorId }: TarExtractionOptions,
+  { repoId, connectorId, maxTarballSizeBytes }: TarExtractionOptions,
   logger: Logger
 ): Promise<
   Result<
@@ -304,6 +342,7 @@ export async function extractGitHubTarballToGCS(
     | ExternalOAuthTokenError
     | RepositoryAccessBlockedError
     | TarballNotFoundError
+    | TarballTooLargeError
   >
 > {
   // Initialize GCS manager.
@@ -327,6 +366,7 @@ export async function extractGitHubTarballToGCS(
     tarballStreamProvider,
     gcsManager,
     tarballGcsPath,
+    maxTarballSizeBytes,
     childLogger
   );
 

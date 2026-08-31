@@ -65,6 +65,12 @@ export async function getRepoInfo(
   }
 }
 
+export function isConnectorWhitelistedForLargeRepos(
+  connector: ConnectorResource
+): boolean {
+  return CONNECTORS_WHITELISTED_FOR_LARGE_REPOS.includes(connector.id);
+}
+
 export function isRepoTooLarge(
   repoInfo: RepositoryInfo,
   connector: ConnectorResource
@@ -78,7 +84,7 @@ export function isRepoTooLarge(
 
     // Some connectors are whitelisted to sync large repositories.
     // This is on a connectorId basis to avoid leaking repository names.
-    if (CONNECTORS_WHITELISTED_FOR_LARGE_REPOS.includes(connector.id)) {
+    if (isConnectorWhitelistedForLargeRepos(connector)) {
       return false;
     }
 

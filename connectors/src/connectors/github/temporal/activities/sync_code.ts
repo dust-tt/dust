@@ -5,7 +5,9 @@ import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs
 import type { TarballStreamProvider } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
   extractGitHubTarballToGCS,
+  MAX_TARBALL_SIZE_BYTES,
   TarballNotFoundError,
+  TarballTooLargeError,
 } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
   describeGithubError,
@@ -17,6 +19,7 @@ import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import type { RepositoryInfo } from "@connectors/connectors/github/lib/github_code";
 import {
   getRepoInfo,
+  isConnectorWhitelistedForLargeRepos,
   isRepoTooLarge,
 } from "@connectors/connectors/github/lib/github_code";
 import {
@@ -230,6 +233,9 @@ export async function githubExtractToGcsActivity({
       {
         repoId,
         connectorId,
+        maxTarballSizeBytes: isConnectorWhitelistedForLargeRepos(connector)
+          ? null
+          : MAX_TARBALL_SIZE_BYTES,
       },
       logger
     );
@@ -253,6 +259,14 @@ export async function githubExtractToGcsActivity({
 
     if (isPersistentFailure) {
       await syncFailed(connectorId, "transient_upstream_error");
+
+      // Stop retrying: unlimited 2-hour attempts can occupy a worker slot for weeks.
+      // The next scheduled sync starts a fresh workflow.
+      throw ApplicationFailure.create({
+        message: `Giving up on tarball extraction after ${activityAttempt} attempts`,
+        nonRetryable: true,
+        cause: error instanceof Error ? error : undefined,
+      });
     }
 
     throw error;
@@ -260,6 +274,33 @@ export async function githubExtractToGcsActivity({
 
   if (extractResult.isErr()) {
     if (extractResult.error instanceof TarballNotFoundError) {
+      return null;
+    }
+
+    if (extractResult.error instanceof TarballTooLargeError) {
+      // Same panic log as the repo size gate, see the runbook:
+      // https://www.notion.so/dust-tt/Panic-Log-Github-repository-too-large-to-sync-1bf28599d9418061a396d2378bdd77de?pvs=4
+      logger.error(
+        {
+          repoSizeKb,
+          tarballBytesReceived: extractResult.error.bytesReceived,
+          maxTarballSizeBytes: extractResult.error.maxBytes,
+        },
+        "GitHub repository too large to sync"
+      );
+
+      // Skip the repository so future syncs do not re-download it. Can be reverted
+      // with the unskip-repo CLI command.
+      await GithubCodeRepositoryModel.update(
+        { skipReason: "repository_tarball_too_large" },
+        {
+          where: {
+            connectorId: connector.id,
+            repoId: repoId.toString(),
+          },
+        }
+      );
+
       return null;
     }
 
