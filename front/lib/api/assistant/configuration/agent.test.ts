@@ -602,7 +602,7 @@ describe("create agent capability", () => {
 });
 
 describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
-  it("suspends editor group memberships when archiving and restores them when restoring", async () => {
+  it("keeps editor group memberships active while archiving and restoring", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -613,13 +613,14 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
       authenticator,
       agent
     );
-    expect(editorGroupRes.isOk()).toBe(true);
-    const editorGroup = editorGroupRes.isOk() ? editorGroupRes.value : null;
-    expect(editorGroup).not.toBeNull();
+    if (editorGroupRes.isErr()) {
+      throw editorGroupRes.error;
+    }
+    const editorGroup = editorGroupRes.value;
 
     const membershipsBeforeArchive = await GroupMembershipModel.findAll({
       where: {
-        groupId: editorGroup!.id,
+        groupId: editorGroup.id,
         workspaceId: workspace.id,
       },
     });
@@ -633,13 +634,19 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
 
     const membershipsAfterArchive = await GroupMembershipModel.findAll({
       where: {
-        groupId: editorGroup!.id,
+        groupId: editorGroup.id,
         workspaceId: workspace.id,
       },
     });
-    expect(membershipsAfterArchive.every((m) => m.status === "suspended")).toBe(
+    expect(membershipsAfterArchive.every((m) => m.status === "active")).toBe(
       true
     );
+
+    const editorsAfterArchive =
+      await editorGroup.getActiveMembers(authenticator);
+    expect(editorsAfterArchive.map((editor) => editor.id)).toEqual([
+      authenticator.getNonNullableUser().id,
+    ]);
 
     const restoreResult = await restoreAgentConfiguration(
       authenticator,
@@ -650,7 +657,7 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
 
     const membershipsAfterRestore = await GroupMembershipModel.findAll({
       where: {
-        groupId: editorGroup!.id,
+        groupId: editorGroup.id,
         workspaceId: workspace.id,
       },
     });
