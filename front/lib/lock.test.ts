@@ -55,6 +55,32 @@ describe("renewing locks", () => {
     ).resolves.toBe(false);
   });
 
+  it("measures the initial lease from the start of lock acquisition", async () => {
+    const redisClient = makeRedisClient();
+    let finishAcquisition: (value: string) => void = () => {};
+    const pendingAcquisition = new Promise<string>((resolve) => {
+      finishAcquisition = resolve;
+    });
+    vi.mocked(redisClient.set).mockImplementationOnce(() => pendingAcquisition);
+    getRedisStreamClientMock.mockResolvedValue(redisClient);
+
+    const resultPromise = executeWithRenewingLockResult(
+      "frame:source:123",
+      async (lease) => {
+        const held = lease.check();
+        return held.isErr() ? held : new Ok("unexpectedly-held");
+      },
+      1_000,
+      { lockTtlMs: 90 }
+    );
+
+    await vi.advanceTimersByTimeAsync(90);
+    finishAcquisition("OK");
+    const result = await resultPromise;
+
+    expect(result.isErr() && isLockLeaseLostError(result.error)).toBe(true);
+  });
+
   it("does not overlap renewal requests", async () => {
     const redisClient = makeRedisClient();
     let finishRefresh: (value: number) => void = () => {};
@@ -128,12 +154,8 @@ describe("renewing locks", () => {
 
   it("fails the lease after transient refresh errors exhaust its safe lifetime", async () => {
     const redisClient = makeRedisClient();
-    vi.mocked(redisClient.eval).mockImplementation((...args) =>
-      String(typeof args[0] === "string" ? args[0] : args[1]).includes(
-        "pexpire"
-      )
-        ? Promise.reject(new Error("redis unavailable"))
-        : Promise.resolve(1)
+    vi.mocked(redisClient.eval).mockRejectedValue(
+      new Error("redis unavailable")
     );
     getRedisStreamClientMock.mockResolvedValue(redisClient);
 

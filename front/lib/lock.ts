@@ -133,13 +133,18 @@ async function acquireLock(
     retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS,
     traceAcquireResource,
   }: ExecuteWithLockOptions
-): Promise<{ client: RedisClientType; lockValue: string | undefined }> {
+): Promise<{
+  client: RedisClientType;
+  lockAttemptStartedAtMs: number | undefined;
+  lockValue: string | undefined;
+}> {
   const client = await getRedisStreamClient({ origin: "lock" });
 
   const acquire = async (): Promise<string | undefined> => {
     const startMs = Date.now();
     let acquired: string | undefined;
     while (Date.now() - startMs < timeoutMs) {
+      lockAttemptStartedAtMs = performance.now();
       // Try to acquire the lock
       acquired = await distributedLock(client, lockName, lockTtlMs);
       if (acquired) {
@@ -154,6 +159,8 @@ async function acquireLock(
     return acquired;
   };
 
+  let lockAttemptStartedAtMs: number | undefined;
+
   const lockValue = traceAcquireResource
     ? await tracer.trace(
         "lock.acquire",
@@ -162,7 +169,11 @@ async function acquireLock(
       )
     : await acquire();
 
-  return { client, lockValue };
+  return {
+    client,
+    lockAttemptStartedAtMs: lockValue ? lockAttemptStartedAtMs : undefined,
+    lockValue,
+  };
 }
 
 async function runWithAcquiredLock<T>(
@@ -201,7 +212,8 @@ function waitForRenewal(
 
 function createLockLeaseGuard(
   lockName: string,
-  lockTtlMs: number
+  lockTtlMs: number,
+  lockAttemptStartedAtMs: number
 ): {
   guard: LockLeaseGuard;
   markLost: () => void;
@@ -209,7 +221,7 @@ function createLockLeaseGuard(
   remainingSafeLifetimeMs: () => number;
 } {
   const safetyMarginMs = Math.max(1, Math.floor(lockTtlMs / 10));
-  let confirmedUntilMs = Date.now() + lockTtlMs - safetyMarginMs;
+  let confirmedUntilMs = lockAttemptStartedAtMs + lockTtlMs - safetyMarginMs;
   let lost = false;
   const markLost = () => {
     lost = true;
@@ -218,7 +230,7 @@ function createLockLeaseGuard(
   return {
     guard: {
       check: () => {
-        if (lost || Date.now() >= confirmedUntilMs) {
+        if (lost || performance.now() >= confirmedUntilMs) {
           markLost();
           return new Err(new LockLeaseLostError(lockName));
         }
@@ -229,7 +241,7 @@ function createLockLeaseGuard(
     markRenewed: (renewedAtMs) => {
       confirmedUntilMs = renewedAtMs + lockTtlMs - safetyMarginMs;
     },
-    remainingSafeLifetimeMs: () => confirmedUntilMs - Date.now(),
+    remainingSafeLifetimeMs: () => confirmedUntilMs - performance.now(),
   };
 }
 
@@ -240,14 +252,19 @@ async function runWithRenewingLockResult<T, E>(
   callback: (
     lease: LockLeaseGuard
   ) => Promise<Result<T, E | LockLeaseLostError>>,
-  lockTtlMs: number
+  lockTtlMs: number,
+  lockAttemptStartedAtMs: number
 ): Promise<Result<T, E | LockLeaseLostError>> {
   const renewalIntervalMs = Math.max(1, Math.floor(lockTtlMs / 3));
   const renewalRetryInitialDelayMs = Math.min(
     RENEWAL_RETRY_INITIAL_DELAY_MS,
     renewalIntervalMs
   );
-  const lease = createLockLeaseGuard(lockName, lockTtlMs);
+  const lease = createLockLeaseGuard(
+    lockName,
+    lockTtlMs,
+    lockAttemptStartedAtMs
+  );
   const stopController = new AbortController();
   const renew = async () => {
     const nextRenewalDelayMs = () =>
@@ -266,7 +283,7 @@ async function runWithRenewingLockResult<T, E>(
         return;
       }
       try {
-        const refreshStartedAtMs = Date.now();
+        const refreshStartedAtMs = performance.now();
         const refreshed = await distributedRefresh(
           client,
           lockName,
@@ -322,7 +339,14 @@ async function runWithRenewingLockResult<T, E>(
   } finally {
     stopController.abort();
     await renewal;
-    await distributedUnlock(client, lockName, lockValue);
+    try {
+      await distributedUnlock(client, lockName, lockValue);
+    } catch (error) {
+      logger.error(
+        { error: normalizeError(error), lockName },
+        "Failed to unlock a distributed lock after its callback completed"
+      );
+    }
   }
 }
 
@@ -365,9 +389,13 @@ export const executeWithRenewingLockResult = async <T, E>(
   options: ExecuteWithLockOptions = {}
 ): Promise<Result<T, E | LockAcquisitionTimeoutError | LockLeaseLostError>> => {
   const { lockTtlMs = 5_000 } = options;
-  const { client, lockValue } = await acquireLock(lockName, timeoutMs, options);
+  const { client, lockAttemptStartedAtMs, lockValue } = await acquireLock(
+    lockName,
+    timeoutMs,
+    options
+  );
 
-  if (!lockValue) {
+  if (!lockValue || lockAttemptStartedAtMs === undefined) {
     return new Err(new LockAcquisitionTimeoutError(lockName));
   }
 
@@ -376,6 +404,7 @@ export const executeWithRenewingLockResult = async <T, E>(
     lockName,
     lockValue,
     callback,
-    lockTtlMs
+    lockTtlMs,
+    lockAttemptStartedAtMs
   );
 };

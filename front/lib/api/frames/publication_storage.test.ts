@@ -17,6 +17,7 @@ import {
   LockLeaseLostError,
 } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import {
   computeSandboxFunctionBundleSha256,
   SandboxFunctionResource,
@@ -1153,5 +1154,45 @@ describe("publishFramePublication", () => {
       deletion.isErr() ? deletion.error.message : undefined
     ).toBe(true);
     await expect(FileResource.fetchById(auth, frame.sId)).resolves.toBeNull();
+  });
+
+  it("preserves the Frame when its deletion lease is lost", async () => {
+    const { auth, frame } = await setupFrame({ ready: true });
+    const onDeleteByPrefix = vi.fn();
+    fileStorageMock.setOnDeleteByPrefix(onDeleteByPrefix);
+    const redisEval = vi.mocked(
+      redisMock.streamClient.eval as (...args: unknown[]) => Promise<number>
+    );
+    redisEval.mockResolvedValueOnce(0).mockResolvedValue(1);
+    const deleteSandbox = vi
+      .spyOn(FrameSandboxAdapter, "deleteSandbox")
+      .mockImplementation(
+        async (
+          _auth,
+          _frame,
+          { afterSandboxCleanup, beforeSandboxCleanup } = {}
+        ) => {
+          expect(beforeSandboxCleanup?.().isOk()).toBe(true);
+          await vi.advanceTimersByTimeAsync(200_000);
+          return afterSandboxCleanup?.() ?? new Ok(undefined);
+        }
+      );
+    vi.useFakeTimers();
+
+    try {
+      const deletion = await frame.delete(auth);
+
+      expect(deletion.isErr() && isLockLeaseLostError(deletion.error)).toBe(
+        true
+      );
+      await expect(
+        FileResource.fetchById(auth, frame.sId)
+      ).resolves.not.toBeNull();
+      expect(onDeleteByPrefix).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      deleteSandbox.mockRestore();
+      redisEval.mockResolvedValue(1);
+    }
   });
 });
