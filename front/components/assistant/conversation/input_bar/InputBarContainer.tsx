@@ -51,7 +51,7 @@ import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscrib
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
@@ -335,6 +335,7 @@ const InputBarContainer = ({
     null
   );
   const { subscription } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const isMobile = useIsMobile();
   const clientType = useClientType();
   const {
