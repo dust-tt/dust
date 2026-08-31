@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
 export const workspaceAnalyticsSkill = {
@@ -67,5 +68,11 @@ export const workspaceAnalyticsSkill = {
       return true;
     }
     return !isWorkspaceAnalyticsEnabled(auth.getNonNullableWorkspace());
+  },
+  getAutoEnabledOrEquippedForAgentLoop: ({ agentConfiguration }) => {
+    return agentConfiguration.scope === "global" &&
+      agentConfiguration.sId === GLOBAL_AGENTS_SID.ANALYST
+      ? "enabled"
+      : undefined;
   },
 } as const satisfies GlobalSkillDefinition;
