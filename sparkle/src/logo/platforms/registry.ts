@@ -17,6 +17,7 @@ import CohereLogo from "./Cohere";
 import ConfluenceLogo from "./Confluence";
 import ContentsquareLogo from "./Contentsquare";
 import CostoryLogo from "./Costory";
+import DatabricksLogo from "./Databricks";
 import DatadogLogo from "./Datadog";
 import DeepseekLogo from "./Deepseek";
 import DiscordLogo from "./Discord";
@@ -129,6 +130,7 @@ export const PLATFORM_LOGOS = {
   ConfluenceLogo,
   ContentsquareLogo,
   CostoryLogo,
+  DatabricksLogo,
   DatadogLogo,
   DeepseekLogo,
   DiscordLogo,

@@ -15,6 +15,7 @@ export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
 export { default as ContentsquareLogo } from "./Contentsquare";
 export { default as CostoryLogo } from "./Costory";
+export { default as DatabricksLogo } from "./Databricks";
 export { default as DatadogLogo } from "./Datadog";
 export { default as DeepseekLogo } from "./Deepseek";
 export { default as DiscordLogo } from "./Discord";
