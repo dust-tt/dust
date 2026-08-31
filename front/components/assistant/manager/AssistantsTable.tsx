@@ -25,6 +25,7 @@ import type {
   AgentUsageType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
@@ -360,6 +361,11 @@ const getTableColumns = ({
             ? `${modelName} ${capitalize(reasoningEffort)}`
             : modelName;
 
+        // Streams are named after their tier: the chip alone carries the info.
+        const isStreamModel = modelConfig
+          ? isModelStreamId(modelConfig.modelId)
+          : false;
+
         return (
           <Tooltip
             tooltipTriggerAsChild
@@ -374,9 +380,11 @@ const getTableColumns = ({
                   iconClassName="mr-2"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="hidden min-w-0 truncate @xl:inline">
-                      {modelName}
-                    </span>
+                    {!isStreamModel && (
+                      <span className="hidden min-w-0 truncate @xl:inline">
+                        {modelName}
+                      </span>
+                    )}
                     {!modelIcon && <span className="@xl:hidden">-</span>}
                     {modelConfig && (
                       <div className="shrink-0">
