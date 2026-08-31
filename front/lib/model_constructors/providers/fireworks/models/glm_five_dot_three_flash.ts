@@ -19,9 +19,10 @@ const DEFAULT_REASONING_EFFORT = "maximal";
 // deployment cannot disable reasoning. The gateway also accepts the
 // undocumented medium/xhigh values, but those are not GLM-5.3-Flash efforts,
 // so the schema follows the model author's documented set. Temperature values
-// 0, 0.1, and 1 all succeed. A forced named tool emits the requested call but
-// incorrectly finishes with `stop` instead of `tool_calls`, so expose automatic
-// tool selection only.
+// 0, 0.1, and 1 all succeed. Automatic and disabled (`none`) tool choice both
+// complete normally. A forced named tool emits the requested call but
+// incorrectly finishes with `stop` instead of `tool_calls`, so named forcing
+// is not exposed.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(["low", "high", "maximal"]) })
