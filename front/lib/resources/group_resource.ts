@@ -1363,12 +1363,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     return result;
   }
 
-  // For each user, the cap-eligible (provisioned) group with the highest pool
-  // cap (excluding seat allowance) among the groups they belong to, and the
-  // cap itself. Users with no capped group are absent from the map (the
-  // caller falls back to the workspace default). Used to resolve the
-  // "max(group caps)" term of a user's effective spend limit, and to name the
-  // group behind that term in the UI.
+  // For each user, the cap-eligible group with the highest pool cap among
+  // their groups; users with no capped group are absent.
   static async listMaxPoolCapGroupByUserModelIdInWorkspace({
     workspace,
     userModelIds,
@@ -1429,9 +1425,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     return result;
   }
 
-  // Numeric-only view of `listMaxPoolCapGroupByUserModelIdInWorkspace`, for
-  // callers that only need the cap amount (spend-limit resolution) and not
-  // the group's identity.
   static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
     workspace,
     userModelIds,

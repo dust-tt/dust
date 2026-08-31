@@ -221,6 +221,10 @@ export const MembersUsagePaginationSchema = z.object({
     .enum([
       "name",
       "email",
+      // Legacy usage page only (pre usage_page_redesign): sorts by total
+      // consumed credits. Kept alongside `consumedFromPoolAwuCredits` so the
+      // legacy page's contract doesn't shift under the redesign rollout.
+      "consumedAwuCredits",
       "consumedFromPoolAwuCredits",
       "seatType",
       "creditState",
@@ -899,9 +903,6 @@ export async function sumActiveMembersPoolConsumedCredits({
         : member.sId;
     const totalConsumedCredits =
       usageByMetronomeUserId.get(metronomeUserId) ?? 0;
-    // Only trust a free-seat starting balance for members currently on a
-    // free seat: `freeStartingByUserId` can still carry a stale/unrevoked
-    // entry for a member who has since upgraded.
     const freeStartingBalanceAwu =
       member.seatType === "free"
         ? (freeStartingByUserId.get(member.sId) ?? null)
@@ -1843,6 +1844,22 @@ async function computeMembersUsageRanking({
   const sortKeyByUserId = new Map<string, number | string>();
   const overageLimitByUserId = new Map<string, number>();
   switch (orderColumn) {
+    // Legacy usage page only — see the schema comment on this enum value.
+    case "consumedAwuCredits": {
+      const freeSeatUserIds = allUsers.flatMap((u) =>
+        membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
+      );
+      const creditsByUserId = await fetchConsumedAwuCreditsByUserId({
+        workspace,
+        userIds: allUsers.map((u) => u.sId),
+        freeSeatUserIds,
+        cycle: spendLimitCycleOverrideForAuth(auth),
+      });
+      for (const u of allUsers) {
+        sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
+      }
+      break;
+    }
     case "consumedFromPoolAwuCredits": {
       const freeSeatUserIds = allUsers.flatMap((u) =>
         membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
