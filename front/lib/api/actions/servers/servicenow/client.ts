@@ -88,10 +88,9 @@ function toServiceNowDateTime(iso: string): Result<string, MCPError> {
       )
     );
   }
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const formatted =
-    `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ` +
-    `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+  // toISOString() is always UTC and always "YYYY-MM-DDTHH:mm:ss.sssZ"; slicing off the
+  // milliseconds/Z and swapping the separator gets ServiceNow's expected format directly.
+  const formatted = date.toISOString().slice(0, 19).replace("T", " ");
   return new Ok(formatted);
 }
 
@@ -104,6 +103,16 @@ function buildEncodedQuery(parts: Array<string | undefined>): string {
   return clauses.length > 0
     ? `${clauses.join("^")}^ORDERBYsys_id`
     : "ORDERBYsys_id";
+}
+
+// A caller-supplied `query` can itself contain an ORDERBY/ORDERBYDESC clause (ServiceNow's
+// encoded query syntax allows one anywhere, e.g. "priority=1^ORDERBYpriority"). Cursor
+// pagination's correctness guarantee depends on sys_id being the only sort key
+// (buildEncodedQuery above); a second, caller-supplied sort would combine with it in an
+// unspecified way and could silently skip or duplicate rows across pages. Reject rather than
+// attempt to support arbitrary caller-specified sort orders alongside cursor pagination.
+function containsOrderByClause(query: string): boolean {
+  return query.split("^").some((clause) => /^ORDERBY/i.test(clause.trim()));
 }
 
 function contextPrefixForStatus(status: number): string | undefined {
@@ -142,6 +151,30 @@ async function errorFromResponse(response: Response): Promise<MCPError> {
   });
 }
 
+// Shared low-level fetch wrapper (auth header + body serialization) used both by `request()`
+// (for calls that parse a JSON body against a schema) and `getTotalCount()` (which only needs
+// the raw `Response` to read a header, not `request()`'s schema-parsing behavior).
+function rawFetch({
+  url,
+  accessToken,
+  method,
+  body,
+}: {
+  url: string;
+  accessToken: string;
+  method: "GET" | "POST" | "PATCH";
+  body?: Record<string, unknown>;
+}): Promise<Response> {
+  return untrustedFetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    ...(body && { body: JSON.stringify(body) }),
+  });
+}
+
 async function request<T extends z.ZodTypeAny>(
   {
     url,
@@ -156,14 +189,7 @@ async function request<T extends z.ZodTypeAny>(
   },
   schema: T
 ): Promise<Result<z.infer<T>, MCPError>> {
-  const response = await untrustedFetch(url, {
-    method,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    ...(body && { body: JSON.stringify(body) }),
-  });
+  const response = await rawFetch({ url, accessToken, method, body });
 
   if (!response.ok) {
     return new Err(await errorFromResponse(response));
@@ -262,6 +288,15 @@ class ServiceNowClient {
       );
     }
 
+    if (query && containsOrderByClause(query)) {
+      return new Err(
+        new MCPError(
+          `The query must not include an ORDERBY/ORDERBYDESC clause: "${query}". Results are always sorted by sys_id to keep cursor pagination correct; use the returned cursor to page through results instead of requesting a custom sort order.`,
+          { tracked: false }
+        )
+      );
+    }
+
     const dateFilterClauses: string[] = [];
     for (const filter of dateFilters ?? []) {
       if (filter.after !== undefined) {
@@ -306,9 +341,10 @@ class ServiceNowClient {
       for (const field of projected) {
         if (!FIELD_NAME_REGEX.test(field)) {
           return new Err(
-            new MCPError(`Invalid field name: "${field}".`, {
-              tracked: false,
-            })
+            new MCPError(
+              `Invalid field name: "${field}". Expected a ServiceNow field identifier, e.g. "priority" or "u_custom_field".`,
+              { tracked: false }
+            )
           );
         }
       }
@@ -360,16 +396,11 @@ class ServiceNowClient {
     params.set("sysparm_no_count", "false");
     params.set("sysparm_fields", "sys_id");
 
-    const response = await untrustedFetch(
-      `${this.instanceUrl}/api/now/table/${table}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await rawFetch({
+      url: `${this.instanceUrl}/api/now/table/${table}?${params.toString()}`,
+      accessToken: this.accessToken,
+      method: "GET",
+    });
 
     if (!response.ok) {
       return new Err(await errorFromResponse(response));
@@ -473,9 +504,10 @@ class ServiceNowClient {
       for (const field of projected) {
         if (!FIELD_NAME_REGEX.test(field)) {
           return new Err(
-            new MCPError(`Invalid field name: "${field}".`, {
-              tracked: false,
-            })
+            new MCPError(
+              `Invalid field name: "${field}". Expected a ServiceNow field identifier, e.g. "priority" or "u_custom_field".`,
+              { tracked: false }
+            )
           );
         }
       }
@@ -519,9 +551,20 @@ class ServiceNowClient {
     }
 
     for (const name of Object.keys(fields)) {
-      if (!FIELD_NAME_REGEX.test(name) || isSystemManagedFieldName(name)) {
+      if (!FIELD_NAME_REGEX.test(name)) {
         return new Err(
-          new MCPError(`Invalid field name: "${name}".`, { tracked: false })
+          new MCPError(
+            `Invalid field name: "${name}". Expected a ServiceNow field identifier, e.g. "priority" or "u_custom_field".`,
+            { tracked: false }
+          )
+        );
+      }
+      if (isSystemManagedFieldName(name)) {
+        return new Err(
+          new MCPError(
+            `Invalid field name: "${name}". This field is system-managed and cannot be set.`,
+            { tracked: false }
+          )
         );
       }
     }
@@ -566,9 +609,20 @@ class ServiceNowClient {
     }
 
     for (const name of Object.keys(fields)) {
-      if (!FIELD_NAME_REGEX.test(name) || isSystemManagedFieldName(name)) {
+      if (!FIELD_NAME_REGEX.test(name)) {
         return new Err(
-          new MCPError(`Invalid field name: "${name}".`, { tracked: false })
+          new MCPError(
+            `Invalid field name: "${name}". Expected a ServiceNow field identifier, e.g. "priority" or "u_custom_field".`,
+            { tracked: false }
+          )
+        );
+      }
+      if (isSystemManagedFieldName(name)) {
+        return new Err(
+          new MCPError(
+            `Invalid field name: "${name}". This field is system-managed and cannot be set.`,
+            { tracked: false }
+          )
         );
       }
     }

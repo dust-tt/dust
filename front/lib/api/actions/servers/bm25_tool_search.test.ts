@@ -1716,19 +1716,10 @@ const QUERIES: LabeledQuery[] = [
   },
 
   // --- servicenow ---
-  // list_incidents/get_incident were removed in favor of the fully generic list_records/
-  // get_record/create_record/update_record (no more incident-only convenience tools, and no
-  // more number-based lookup — get_record only takes a sys_id). Fixtures that specifically
-  // probed number-based lookup ("get ServiceNow incident INC0010001", "look up a single
-  // ServiceNow ticket by number") were dropped rather than remapped to get_record, since that
-  // would assert a capability that no longer exists.
   {
     query: "list open incidents in ServiceNow",
     expected: "servicenow.list_records",
-    // list_records/get_record/create_record/update_record share the same TABLE_SCHEMA
-    // boilerplate description text, so BM25 has little to disambiguate on beyond the leading
-    // verb; observed in CI ranking as low as 4th behind create_record ("open").
-    maxRank: 4,
+    maxRank: 4, // create_record/get_record/update_record share boilerplate description text
   },
   {
     query: "show me my ServiceNow tickets",
@@ -1758,9 +1749,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list ServiceNow problem records",
     expected: "servicenow.list_records",
-    // Same shared-boilerplate issue as above; observed in CI ranking as low as 4th behind
-    // get_record.
-    maxRank: 4,
+    maxRank: 4, // same shared-boilerplate issue as above
   },
   {
     query: "list change requests in ServiceNow",

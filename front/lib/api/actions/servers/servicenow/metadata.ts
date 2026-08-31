@@ -16,7 +16,7 @@ const WRITE_FIELDS_SCHEMA = {
       z.union([z.string(), z.number(), z.boolean(), z.null()])
     )
     .describe(
-      "Field values to set, keyed by the raw ServiceNow field name, or a custom 'u_*' field. Flat scalar values only — no nested objects or arrays. Use human-readable choice labels where applicable, e.g. '1 - Critical' for priority. On incident-like tables, common fields include 'short_description', 'description', 'priority', 'urgency', 'impact', 'category', 'assignment_group', 'state' (e.g. 'In Progress', 'Resolved', 'Closed'), 'work_notes' (internal, not customer-visible), 'close_notes' (resolution notes), and 'close_code' (resolution code — required by ServiceNow to move state to 'Resolved' or 'Closed'; if unsure which value your instance accepts, call list_records on an already-resolved record to see one)."
+      "Field values to set, keyed by the raw ServiceNow field name, or a custom 'u_*' field. Flat scalar values only; no nested objects or arrays. Use human-readable choice labels where applicable, e.g. '1 - Critical' for priority. On incident-like tables, common fields include 'short_description', 'description', 'priority', 'urgency', 'impact', 'category', 'assignment_group', 'state' (e.g. 'In Progress', 'Resolved', 'Closed'), 'work_notes' (internal, not customer-visible), 'close_notes' (resolution notes), and 'close_code' (resolution code, required by ServiceNow to move state to 'Resolved' or 'Closed'; if unsure which value your instance accepts, call list_records on an already-resolved record to see one)."
     ),
 };
 
@@ -46,7 +46,7 @@ export const SERVICENOW_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "ServiceNow encoded query (sysparm_query) to filter records, e.g. 'active=true^priority=1'."
+          "ServiceNow encoded query (sysparm_query) to filter records, e.g. 'active=true^priority=1'. Must not include an ORDERBY/ORDERBYDESC clause; results are always sorted by sys_id to keep pagination correct."
         ),
       fields: z
         .array(z.string())

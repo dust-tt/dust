@@ -195,6 +195,26 @@ describe("ServiceNowClient pagination (via listRecords)", () => {
     expect(untrustedFetch).not.toHaveBeenCalled();
   });
 
+  it("rejects a query containing its own ORDERBY clause without making a request", async () => {
+    const client = getClient();
+    const result = await client.listRecords("incident", {
+      query: "active=true^ORDERBYpriority",
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(untrustedFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a query containing its own ORDERBYDESC clause without making a request", async () => {
+    const client = getClient();
+    const result = await client.listRecords("incident", {
+      query: "ORDERBYDESCsys_created_on",
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(untrustedFetch).not.toHaveBeenCalled();
+  });
+
   it("fetches an exact total count only when includeTotalCount is set", async () => {
     vi.mocked(untrustedFetch)
       .mockResolvedValueOnce(jsonResponse({ result: [makeRecord(SYS_ID_A)] }))
