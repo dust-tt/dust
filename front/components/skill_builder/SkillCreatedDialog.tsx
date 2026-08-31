@@ -38,7 +38,7 @@ export function SkillCreatedDialog({
           <DialogTitle>Skill {skillName} created!</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          You can now use {skillName} in conversations. Try it in a chat or keep
+          You can now use {skillName}. Try it in a new conversation or keep
           editing this skill.
         </DialogContainer>
         <DialogFooter
