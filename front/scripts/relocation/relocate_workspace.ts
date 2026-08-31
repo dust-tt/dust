@@ -1,4 +1,6 @@
-import { updateWorkspaceRegionMetadata } from "@app/admin/relocate_users";
+import { updateWorkspaceWorkOSMetadata } from "@app/admin/relocate_users";
+import { config as cellConfig } from "@app/lib/api/cells/config";
+import { invalidateWorkspaceCellCache } from "@app/lib/api/cells/lookup";
 import {
   pauseAllManagedDataSources,
   unpauseAllManagedDataSources,
@@ -7,7 +9,6 @@ import {
   pauseAllLabsWorkflows,
   unpauseAllLabsWorkflows,
 } from "@app/lib/api/labs";
-import { config } from "@app/lib/api/regions/config";
 import { invalidateWorkspaceRegionCache } from "@app/lib/api/regions/lookup";
 import {
   deleteWorkspace,
@@ -22,8 +23,8 @@ import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
-import type { RegionType } from "@app/types/region";
-import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
+import type { CellType } from "@app/types/cell";
+import { isCellType, SUPPORTED_CELLS } from "@app/types/cell";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const RELOCATION_STEPS = [
@@ -36,12 +37,17 @@ const RELOCATION_STEPS = [
 ] as const;
 type RelocationStep = (typeof RELOCATION_STEPS)[number];
 
-function assertCorrectRegion(region: RegionType) {
-  if (config.getCurrentRegion() !== region) {
+function assertCurrentCell(cell: CellType) {
+  if (cellConfig.getCurrentCell().name !== cell) {
     throw new Error(
-      `Relocation must be run from ${region}. Current region is ${config.getCurrentRegion()}.`
+      `Relocation must be run from ${cell}. Current cell is ${cellConfig.getCurrentCell().name}.`
     );
   }
+}
+
+async function invalidateLookupCache(workspaceId: string) {
+  await invalidateWorkspaceRegionCache(workspaceId);
+  await invalidateWorkspaceCellCache(workspaceId);
 }
 
 makeScript(
@@ -51,14 +57,14 @@ makeScript(
       type: "string",
       demandOption: true,
     },
-    sourceRegion: {
+    sourceCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       demandOption: true,
     },
-    destinationRegion: {
+    destinationCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       demandOption: true,
     },
     step: {
@@ -73,16 +79,20 @@ makeScript(
     },
   },
   async (
-    { destinationRegion, sourceRegion, step, workspaceId, execute },
+    { destinationCell, sourceCell, step, workspaceId, execute },
     logger
   ) => {
-    if (!isRegionType(sourceRegion) || !isRegionType(destinationRegion)) {
-      logger.error("Invalid region.");
+    logger.warn(
+      "Note: the relocation script does NOT support moving between cells within the same region."
+    );
+
+    if (!isCellType(sourceCell) || !isCellType(destinationCell)) {
+      logger.error("Invalid cell.");
       return;
     }
 
-    if (sourceRegion === destinationRegion) {
-      logger.error("Source and destination regions must be different.");
+    if (sourceCell === destinationCell) {
+      logger.error("Source and destination cells must be different.");
       return;
     }
 
@@ -96,7 +106,7 @@ makeScript(
 
       switch (s) {
         case "relocate":
-          assertCorrectRegion(sourceRegion);
+          assertCurrentCell(sourceCell);
 
           // 1) Set the workspace as relocating.
           const workspaceRelocatingRes = await setWorkspaceRelocating(owner);
@@ -144,13 +154,13 @@ makeScript(
           // 5) Launch the relocation workflow.
           await launchWorkspaceRelocationWorkflow({
             workspaceId: owner.sId,
-            sourceRegion,
-            destRegion: destinationRegion as RegionType,
+            sourceRegion: cellConfig.getCellInfo(sourceCell).region,
+            destRegion: cellConfig.getCellInfo(destinationCell).region,
           });
           break;
 
         case "cutover":
-          assertCorrectRegion(sourceRegion);
+          assertCurrentCell(sourceCell);
 
           // 1) Set the workspace in the source region as relocated.
           const workspaceRelocatedRes = await setWorkspaceRelocated(owner);
@@ -163,28 +173,28 @@ makeScript(
 
           await removeAllWorkspaceDomains(owner);
 
-          // 2) Invalidate workspace region cache so lookups re-resolve.
-          await invalidateWorkspaceRegionCache(owner.sId);
+          // 2) Invalidate lookup cache so lookups re-resolve.
+          await invalidateLookupCache(owner.sId);
 
-          // 3) Update all users' region metadata.
-          const updateUsersRegionToDestRes =
-            await updateWorkspaceRegionMetadata(auth, logger, {
+          // 3) Update workos metadata.
+          const updateWorkosMetadataToDestRes =
+            await updateWorkspaceWorkOSMetadata(auth, logger, {
               execute,
-              newRegion: destinationRegion,
+              newCell: destinationCell,
             });
-          if (updateUsersRegionToDestRes.isErr()) {
+          if (updateWorkosMetadataToDestRes.isErr()) {
             logger.error(
-              `Failed to update users' region metadata: ${updateUsersRegionToDestRes.error.message}`
+              `Failed to update workos metadata: ${updateWorkosMetadataToDestRes.error.message}`
             );
             return;
           }
           break;
 
         case "resume-in-destination":
-          assertCorrectRegion(destinationRegion);
+          assertCurrentCell(destinationCell);
 
-          // 1) Invalidate workspace region cache so lookups re-resolve.
-          await invalidateWorkspaceRegionCache(owner.sId);
+          // 1) Invalidate lookup cache so lookups re-resolve.
+          await invalidateLookupCache(owner.sId);
 
           // 2) Remove the maintenance metadata.
           const clearDestWorkspaceMetadataRes = await updateWorkspaceMetadata(
@@ -243,7 +253,7 @@ makeScript(
           break;
 
         case "rollback":
-          assertCorrectRegion(sourceRegion);
+          assertCurrentCell(sourceCell);
 
           // 1) Clear workspace maintenance metadata in source region.
           const clearSrcWorkspaceMetadataRes = await updateWorkspaceMetadata(
@@ -299,18 +309,15 @@ makeScript(
             );
           }
 
-          // 5) Update all users' region metadata.
-          const updateUsersRegionToSrcRes = await updateWorkspaceRegionMetadata(
-            auth,
-            logger,
-            {
+          // 5) Update workos metadata.
+          const updateWorkosMetadataToSrcRes =
+            await updateWorkspaceWorkOSMetadata(auth, logger, {
               execute,
-              newRegion: sourceRegion,
-            }
-          );
-          if (updateUsersRegionToSrcRes.isErr()) {
+              newCell: sourceCell,
+            });
+          if (updateWorkosMetadataToSrcRes.isErr()) {
             logger.error(
-              `Failed to update users' region metadata: ${updateUsersRegionToSrcRes.error.message}`
+              `Failed to update workos metadata: ${updateWorkosMetadataToSrcRes.error.message}`
             );
             return;
           }
@@ -318,7 +325,7 @@ makeScript(
           break;
 
         case "purge-in-source":
-          assertCorrectRegion(sourceRegion);
+          assertCurrentCell(sourceCell);
 
           // 1) Ensure workspace is fully relocated.
           if (!isWorkspaceRelocationDone(owner)) {
@@ -351,7 +358,7 @@ makeScript(
           }
 
           logger.info(
-            `Workspace statistics in region ${config.getCurrentRegion()}:\n` +
+            `Workspace statistics in cell ${cellConfig.getCurrentCell().name}:\n` +
               JSON.stringify(statsRes.value, null, 2)
           );
           break;
