@@ -3,11 +3,9 @@ import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
-import {
-  FramePublicationError,
-  withFrameSourceLock,
-} from "@app/lib/api/frames/publication_storage";
+import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import {
   MAX_FRAME_SOURCE_BYTES,
   MAX_FRAME_SOURCE_FILE_COUNT,

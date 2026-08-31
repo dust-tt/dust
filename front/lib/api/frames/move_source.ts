@@ -3,7 +3,7 @@ import path from "node:path";
 import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
 import type { GCSMountPoint } from "@app/lib/api/files/gcs_mount/files";
 import { emitGCSMountFileMovedAuditLog } from "@app/lib/api/files/gcs_mount/files";
-import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/publication_storage";
+import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/operation_lock";
 import {
   MAX_FRAME_SOURCE_BYTES,
   MAX_FRAME_SOURCE_FILE_COUNT,
