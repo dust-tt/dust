@@ -106,6 +106,11 @@ async function getBackfillStats(
   };
 }
 
+/**
+ * Backfills the stable numeric identity shared by every version of an agent. Each batch first
+ * creates missing rows in `agents`, then uses their generated IDs to fill
+ * `agent_configurations.agentId` for all matching versions.
+ */
 export async function backfillAgentIdentities({
   execute,
   logger,
