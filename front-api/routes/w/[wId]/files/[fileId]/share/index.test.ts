@@ -1,5 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -234,7 +234,7 @@ describe("share scope endpoint", () => {
       expect((await response.json()).scope).toBe("workspace_and_emails");
     });
 
-    it("uses the existing sharing model for Frames v2", async () => {
+    it("lazily repairs a missing Frames v2 sharing record", async () => {
       const { auth, user, workspace } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
@@ -246,6 +246,10 @@ describe("share scope endpoint", () => {
         status: "ready",
         useCase: "conversation",
       });
+      await FileResource.shareableFileModel.destroy({
+        where: { fileId: file.id, workspaceId: file.workspaceId },
+      });
+      expect(await file.getShareInfo()).toBeNull();
 
       const response = await postShare(workspace, file.sId, {
         shareScope: "workspace_and_emails",
@@ -253,6 +257,7 @@ describe("share scope endpoint", () => {
 
       expect(response.status).toBe(200);
       expect((await response.json()).scope).toBe("workspace_and_emails");
+      expect(await file.getShareInfo()).not.toBeNull();
     });
   });
 });

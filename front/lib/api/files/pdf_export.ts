@@ -68,6 +68,10 @@ export async function exportInteractiveContentFileAsPdf(
     }
   }
 
+  if (file.isFrameV2) {
+    await file.ensureShareableFrame(auth);
+  }
+
   const shareInfo = await file.getShareInfo();
   if (!shareInfo) {
     return new Err({

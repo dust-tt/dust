@@ -78,7 +78,7 @@ app.get(
       });
     }
 
-    // Only allow conversation Frame files.
+    // Only allow Frame files.
     if (!isFrameContentType(file.contentType)) {
       return apiError(ctx, {
         status_code: 400,

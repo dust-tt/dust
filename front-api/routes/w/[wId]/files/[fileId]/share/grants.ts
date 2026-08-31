@@ -237,6 +237,10 @@ async function fetchShareableFile(
     });
   }
 
+  if (file.isFrameV2) {
+    await file.ensureShareableFrame(auth);
+  }
+
   return file;
 }
 

@@ -103,6 +103,26 @@ export async function readFrameFileContent(
   return frameFile.getRenderableContent(workspace);
 }
 
+export async function computeAuthorizedFileAccessForShare(
+  auth: Authenticator,
+  frameFile: FileResource,
+  { frameContent }: { frameContent: string }
+): Promise<
+  Result<ComputedAuthorizedFileAccess, AuthorizedFileAccessShareError>
+> {
+  const authorized = await frameFile.computeAuthorizedFileAccess(auth, {
+    frameContent,
+  });
+
+  if (authorized.unverifiableRefs && authorized.unverifiableRefs.length > 0) {
+    return new Err(
+      unverifiableFrameFileRefsShareError(authorized.unverifiableRefs)
+    );
+  }
+
+  return new Ok(authorized);
+}
+
 /**
  * Recomputes the allowlist when missing or stale on frame save.
  * Blocks when any static file ref cannot be verified under the author's auth.
@@ -138,26 +158,27 @@ export async function ensureAuthorizedFileAccessForShare(
     return new Ok(active);
   }
 
-  const authorized = await frameFile.computeAuthorizedFileAccess(auth, {
-    frameContent,
-  });
-
-  if (authorized.unverifiableRefs && authorized.unverifiableRefs.length > 0) {
-    return new Err(
-      unverifiableFrameFileRefsShareError(authorized.unverifiableRefs)
-    );
+  const authorized = await computeAuthorizedFileAccessForShare(
+    auth,
+    frameFile,
+    {
+      frameContent,
+    }
+  );
+  if (authorized.isErr()) {
+    return authorized;
   }
 
-  await frameFile.persistAuthorizedFileAccess(authorized);
+  await frameFile.persistAuthorizedFileAccess(authorized.value);
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
     auth,
     frameFile,
-    authorized,
+    authorized.value,
     currentShareScope
   );
 
-  return new Ok(authorized);
+  return authorized;
 }
 
 type VizFileAuthorizationMode = "authorized" | "denied";

@@ -548,6 +548,12 @@ describe("activateFramePublication", () => {
       (await frame.getActiveAuthorizedFileAccessAllowlist())?.frameContentHash
     ).toBe(computeFrameContentHash(firstBundle));
 
+    const setActivePublication = vi.spyOn(frame, "setActiveFramePublication");
+    const persistAuthorizedFileAccess = vi.spyOn(
+      frame,
+      "persistAuthorizedFileAccess"
+    );
+
     const secondBundle = "export default function Second() {}";
     const second = await publishFramePublication(auth, {
       frame,
@@ -562,6 +568,11 @@ describe("activateFramePublication", () => {
     ).toBe(computeFrameContentHash(secondBundle));
     expect(frame.useCaseMetadata?.activePublicationId).toBe(
       second.isOk() ? second.value.publicationId : undefined
+    );
+    const activationTransaction = setActivePublication.mock.calls[0]?.[1];
+    expect(activationTransaction).toBeDefined();
+    expect(persistAuthorizedFileAccess.mock.calls[0]?.[1]?.transaction).toBe(
+      activationTransaction
     );
   });
 });

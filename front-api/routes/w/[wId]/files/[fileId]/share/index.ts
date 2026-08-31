@@ -159,7 +159,7 @@ app.post(
   }
 );
 
-// Returns the file when it exists, is interactive, and (if linked to a
+// Returns the file when it exists, is a Frame, and (if linked to a
 // conversation) the caller can access it. Otherwise returns a `Response` for
 // the handler to short-circuit on.
 async function fetchShareableFile(

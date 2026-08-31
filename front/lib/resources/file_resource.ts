@@ -701,13 +701,19 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
-  async setActiveFramePublication(publicationId: string) {
-    return this.update({
-      useCaseMetadata: {
-        ...this.useCaseMetadata,
-        activePublicationId: publicationId,
+  async setActiveFramePublication(
+    publicationId: string,
+    transaction?: Transaction
+  ) {
+    return this.update(
+      {
+        useCaseMetadata: {
+          ...this.useCaseMetadata,
+          activePublicationId: publicationId,
+        },
       },
-    });
+      transaction
+    );
   }
 
   // Content access logic.
@@ -1593,6 +1599,8 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Only Frame files can be shared");
     }
 
+    await this.ensureShareableFrame(auth);
+
     const user = auth.getNonNullableUser();
 
     // Always update the existing ShareableFileModel record (never delete).
@@ -2010,7 +2018,9 @@ export class FileResource extends BaseResource<FileModel> {
     };
   }
 
-  private async getShareableFile(): Promise<ShareableFileModel> {
+  private async getShareableFile(
+    transaction?: Transaction
+  ): Promise<ShareableFileModel> {
     assert(
       this.isShareableFrame,
       `Shareable file access requires a Frame (file: ${this.sId})`
@@ -2018,6 +2028,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     const shareableFile = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
+      transaction,
     });
 
     assert(
@@ -2060,9 +2071,12 @@ export class FileResource extends BaseResource<FileModel> {
 
   async persistAuthorizedFileAccess(
     computed: ComputedAuthorizedFileAccess,
-    allowedAt: Date = new Date()
+    {
+      allowedAt = new Date(),
+      transaction,
+    }: { allowedAt?: Date; transaction?: Transaction } = {}
   ): Promise<void> {
-    const shareableFile = await this.getShareableFile();
+    const shareableFile = await this.getShareableFile(transaction);
 
     const baseRow = {
       workspaceId: this.workspaceId,
@@ -2096,10 +2110,13 @@ export class FileResource extends BaseResource<FileModel> {
         shareableFileId: shareableFile.id,
         workspaceId: this.workspaceId,
       },
+      transaction,
     });
 
     if (rows.length > 0) {
-      await FileResource.authorizedFileAccessModel.bulkCreate(rows);
+      await FileResource.authorizedFileAccessModel.bulkCreate(rows, {
+        transaction,
+      });
     }
   }
 
@@ -2147,6 +2164,7 @@ export class FileResource extends BaseResource<FileModel> {
     { emails }: { emails: string[] }
   ): Promise<SharingGrantType[]> {
     assert(this.isShareableFrame, "addSharingGrants requires a Frame file");
+    await this.ensureShareableFrame(auth);
     const user = auth.getNonNullableUser();
     const shareableFileId = await this.getShareableFileId();
 

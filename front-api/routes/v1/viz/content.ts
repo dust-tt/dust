@@ -66,7 +66,7 @@ app.get("/", async (ctx): HandlerResult<PublicVizContentResponseBodyType> => {
     });
   }
 
-  // Only allow conversation interactive files.
+  // Only allow Frame files.
   if (!file.isShareableFrame) {
     return apiError(ctx, {
       status_code: 400,

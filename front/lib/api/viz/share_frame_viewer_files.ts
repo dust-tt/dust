@@ -229,6 +229,10 @@ export async function buildShareFileResponse(
   auth: Authenticator,
   file: FileResource
 ): Promise<ShareFileResponseBody | null> {
+  if (file.isFrameV2) {
+    await file.ensureShareableFrame(auth);
+  }
+
   const shareInfo = await file.getShareInfo();
   if (!shareInfo) {
     return null;

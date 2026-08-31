@@ -4,7 +4,8 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import type { Authenticator } from "@app/lib/auth";
 import {
   GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
@@ -13,6 +14,7 @@ import {
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import {
   isSafeFrameRelativePath,
@@ -345,7 +347,7 @@ export async function activateFramePublication(
   }
 
   await frame.ensureShareableFrame(auth);
-  const allowlist = await ensureAuthorizedFileAccessForShare(auth, frame, {
+  const allowlist = await computeAuthorizedFileAccessForShare(auth, frame, {
     frameContent: uiBundleCode,
   });
   if (allowlist.isErr()) {
@@ -353,8 +355,21 @@ export async function activateFramePublication(
       new FramePublicationError("allowlist_failed", allowlist.error.message)
     );
   }
+  const shareScope = await frame.getShareScope();
 
-  await frame.setActiveFramePublication(publicationId);
+  await withTransaction(async (transaction) => {
+    // Updating the Frame first serializes concurrent activations. Neither the new
+    // pointer nor its allowlist becomes visible until the transaction commits.
+    await frame.setActiveFramePublication(publicationId, transaction);
+    await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
+  });
+
+  emitFrameAuthorizedFilesUpdatedAuditLog(
+    auth,
+    frame,
+    allowlist.value,
+    shareScope
+  );
 
   void emitAuditLogEvent({
     auth,
