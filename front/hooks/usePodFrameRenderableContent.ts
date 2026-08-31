@@ -31,6 +31,7 @@ export function usePodFrameRenderableContent({
     fileContent,
     isFileContentLoading,
     error: fileContentError,
+    mutateFileContent,
   } = useFileContent({
     fileId,
     owner,
@@ -44,5 +45,10 @@ export function usePodFrameRenderableContent({
       !isDisabled && (isFileIdLoading || (!!fileId && isFileContentLoading)),
     isNotFound: isFileIdNotFound,
     error: fileIdError ?? fileContentError,
+    /**
+     * Revalidates the Frame's content. Needed when the Frame is rebuilt in place: the path and the
+     * fileId are unchanged, so nothing else invalidates the cached bundle.
+     */
+    mutateFrameContent: mutateFileContent,
   };
 }

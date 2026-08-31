@@ -37,8 +37,14 @@ const app = workspaceApp();
 app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
   const auth = ctx.get("auth");
 
-  const { nonArchivedSpaces, metadataMap } =
+  const { nonArchivedSpaces: memberSpaces, metadataMap } =
     await listNonArchivedMemberSpacesWithMetadata(auth);
+
+  // Apps are Pods too, but they live under Apps in the sidebar and are rendered by the App builder,
+  // so they are kept out of the Pods summary this endpoint feeds.
+  const nonArchivedSpaces = memberSpaces.filter(
+    (space) => !metadataMap.get(space.id)?.isApp
+  );
 
   // Fetch all unread conversations for the user in one query.
   const {
