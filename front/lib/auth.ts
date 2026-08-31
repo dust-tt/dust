@@ -81,6 +81,7 @@ import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
   LightWorkspaceType,
   RoleType,
+  UserType,
   WorkspaceType,
 } from "@app/types/user";
 import { isAdmin, isBuilder, isManager, isUser } from "@app/types/user";
@@ -92,6 +93,10 @@ const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
+export function isDustInternalEmail(email: string): boolean {
+  return isDevelopment() || DUST_INTERNAL_EMAIL_REGEXP.test(email);
+}
+
 const DustApiKeyNameHeader = "x-dust-api-key-name";
 
 export type AuthMethodType =
@@ -101,6 +106,12 @@ export type AuthMethodType =
   | "session"
   | "sandbox_token"
   | "internal";
+
+/** Principal used by poke when there is no provisioned Dust user (e.g. Cloudflare Access). */
+export type PokePrincipal = {
+  email: string;
+  name: string | null;
+};
 
 // Bearer tokens are identified by their prefix: API keys start with `sk-`,
 // sandbox exec tokens with `sbt-`. Anything else is treated as an OAuth
@@ -157,6 +168,11 @@ export class Authenticator {
   _permissions: GroupPermissions;
   // The workspace global group's model id. `undefined` = not resolved yet (resolved lazily on first use)
   _globalGroupModelId: ModelId | null | undefined;
+  // Set only by poke factory methods (`fromDustSuperUser` / `fromSuperUserSession`).
+  // Regular session/API auths keep this false even if the user has the DB flag.
+  _isDustSuperUser: boolean;
+  // Poke operator principal when no provisioned Dust user is attached (CF Access).
+  _pokePrincipal: PokePrincipal | null;
 
   // Should only be called from the static methods below.
   constructor({
@@ -172,6 +188,8 @@ export class Authenticator {
     clientIp,
     permissions,
     globalGroupModelId,
+    isDustSuperUser = false,
+    pokePrincipal = null,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
@@ -185,6 +203,8 @@ export class Authenticator {
     clientIp?: string;
     permissions: GroupPermissions;
     globalGroupModelId?: ModelId | null;
+    isDustSuperUser?: boolean;
+    pokePrincipal?: PokePrincipal | null;
   }) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
@@ -201,6 +221,8 @@ export class Authenticator {
     this._clientIp = clientIp;
     this._permissions = permissions;
     this._globalGroupModelId = globalGroupModelId;
+    this._isDustSuperUser = isDustSuperUser;
+    this._pokePrincipal = pokePrincipal;
 
     if (user) {
       tracer.setUser({
@@ -427,6 +449,11 @@ export class Authenticator {
    * workos session.
    * Super User will have `role` set to `admin` regardless of their actual role in the workspace.
    *
+   * Only elevates (and sets the poke `_isDustSuperUser` flag) when the session
+   * user has the DB super-user flag and a Dust-internal email. Otherwise
+   * returns a non-privileged authenticator (legacy behavior for callers like
+   * app runs `wIdTarget`).
+   *
    * @param session any workos session
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
@@ -435,21 +462,72 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string | null
   ): Promise<Authenticator> {
-    const [workspace, user] = await Promise.all([
-      wId ? WorkspaceResource.fetchById(wId) : null,
-      this.userFromSession(session),
-    ]);
+    const user = await this.userFromSession(session);
+    if (user && user.isDustSuperUser && isDustInternalEmail(user.email)) {
+      return this.fromDustSuperUser({ user, wId });
+    }
+
+    const workspace = wId ? await WorkspaceResource.fetchById(wId) : null;
+    const subscription = workspace
+      ? await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id)
+      : null;
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      subscription
+    );
+
+    return new Authenticator({
+      authMethod: "session",
+      workspace,
+      user,
+      role: "none",
+      groupModelIds: [],
+      subscription,
+      providersHealth,
+      permissions: await this.resolvePermissions({
+        workspace,
+        groupModelIds: [],
+      }),
+      isDustSuperUser: false,
+    });
+  }
+
+  /**
+   * Build a poke super-user Authenticator. Only poke entrypoints should call
+   * this (or `fromSuperUserSession`). The resulting auth has
+   * `_isDustSuperUser` set; regular session/API factories leave it false.
+   *
+   * Super users get `role` admin and all workspace groups when `wId` is set.
+   * `pokePrincipal` is required when `user` is null (Cloudflare Access path).
+   */
+  static async fromDustSuperUser({
+    user = null,
+    wId = null,
+    pokePrincipal = null,
+  }: {
+    user?: UserResource | null;
+    wId?: string | null;
+    pokePrincipal?: PokePrincipal | null;
+  }): Promise<Authenticator> {
+    const workspace = wId ? await WorkspaceResource.fetchById(wId) : null;
+
+    const resolvedPokePrincipal: PokePrincipal | null = pokePrincipal
+      ? {
+          email: pokePrincipal.email.toLowerCase(),
+          name: pokePrincipal.name,
+        }
+      : user
+        ? { email: user.email, name: user.fullName() }
+        : null;
 
     let groups: GroupResource[] = [];
     let subscription: SubscriptionResource | null = null;
 
     if (workspace) {
       [groups, subscription] = await Promise.all([
-        user?.isDustSuperUser
-          ? GroupResource.internalFetchAllWorkspaceGroups({
-              workspaceId: workspace.id,
-            })
-          : [],
+        GroupResource.internalFetchAllWorkspaceGroups({
+          workspaceId: workspace.id,
+        }),
         SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
       ]);
     }
@@ -459,13 +537,12 @@ export class Authenticator {
       subscription
     );
 
-    const role: RoleType = user?.isDustSuperUser ? "admin" : "none";
     const groupModelIds = groups.map((g) => g.id);
     return new Authenticator({
       authMethod: "session",
       workspace,
       user,
-      role,
+      role: "admin",
       groupModelIds,
       subscription,
       providersHealth,
@@ -473,6 +550,8 @@ export class Authenticator {
         workspace,
         groupModelIds,
       }),
+      isDustSuperUser: true,
+      pokePrincipal: resolvedPokePrincipal,
     });
   }
   /**
@@ -1249,6 +1328,8 @@ export class Authenticator {
       providersHealth: this._providersHealth,
       // Role and groups are unchanged, so capabilities carry over unchanged.
       permissions: this._permissions,
+      isDustSuperUser: this._isDustSuperUser,
+      pokePrincipal: this._pokePrincipal,
     });
   }
 
@@ -1489,15 +1570,50 @@ export class Authenticator {
   }
 
   isDustSuperUser(): boolean {
-    if (!this._user) {
-      return false;
+    return this._isDustSuperUser;
+  }
+
+  /**
+   * Poke operator principal (email/name). Prefers the attached Dust user when
+   * present; otherwise the Cloudflare Access principal stashed at auth time.
+   */
+  getPokePrincipal(): PokePrincipal {
+    if (this._pokePrincipal) {
+      return this._pokePrincipal;
+    }
+    if (this._user) {
+      return { email: this._user.email, name: this._user.fullName() };
+    }
+    throw new Error("Unexpected poke authenticator without principal.");
+  }
+
+  /**
+   * User payload for poke UI / audit. Uses the real user when available;
+   * otherwise a non-persisted shape derived from Cloudflare Access claims.
+   */
+  toPokeUserJSON(): UserType {
+    if (this._user) {
+      return this._user.toJSON();
     }
 
-    const { email, isDustSuperUser = false } = this._user;
-    const isDustInternal =
-      isDevelopment() || DUST_INTERNAL_EMAIL_REGEXP.test(email);
+    const principal = this.getPokePrincipal();
+    const displayName =
+      principal.name?.trim() || principal.email.split("@")[0] || "poke";
+    const [firstName, ...rest] = displayName.split(/\s+/);
 
-    return isDustInternal && isDustSuperUser;
+    return {
+      sId: `poke_${principal.email}`,
+      id: 0,
+      createdAt: 0,
+      provider: null,
+      username: principal.email.split("@")[0] || "poke",
+      email: principal.email,
+      firstName: firstName || "poke",
+      lastName: rest.length > 0 ? rest.join(" ") : null,
+      fullName: displayName,
+      image: null,
+      lastLoginAt: null,
+    };
   }
 
   groupIds(): string[] {
@@ -1763,6 +1879,8 @@ export class Authenticator {
       providersHealth: this._providersHealth,
       // Attribution-only copy: role and groups are unchanged, so capabilities carry over unchanged.
       permissions: this._permissions,
+      isDustSuperUser: this._isDustSuperUser,
+      pokePrincipal: this._pokePrincipal,
     });
   }
 

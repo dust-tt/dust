@@ -113,6 +113,18 @@ const config = {
   getPokeAppUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
+  // Cloudflare Access team domain used to validate poke JWTs
+  // (e.g. "https://dust.cloudflareaccess.com"). Optional: when unset, poke
+  // falls back to the WorkOS super-user session path.
+  getCloudflareAccessTeamDomain: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "CLOUDFLARE_ACCESS_TEAM_DOMAIN"
+    );
+  },
+  // Cloudflare Access application Audience (AUD) tag for poke.
+  getCloudflareAccessAud: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("CLOUDFLARE_ACCESS_AUD");
+  },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
   // from NEXT_PUBLIC_DUST_API_URL. Falls back to getClientFacingUrl() when not set.
   getAuthRedirectBaseUrl: (): string => {

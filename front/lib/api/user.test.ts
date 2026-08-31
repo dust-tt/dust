@@ -295,14 +295,9 @@ describe("getUserForWorkspace", () => {
       throw new Error("workspace1Resource not found");
     }
 
-    const auth = new Authenticator({
-      authMethod: "session",
-      workspace: workspace1Resource,
+    const auth = await Authenticator.fromDustSuperUser({
       user: superUser,
-      role: "admin",
-      groupModelIds: [],
-      permissions: GroupPermissions.empty(),
-      subscription: null,
+      wId: workspace1.sId,
     });
 
     const result = await getUserForWorkspace(auth, { userId: user1.sId });

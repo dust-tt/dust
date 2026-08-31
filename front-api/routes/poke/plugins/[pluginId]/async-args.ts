@@ -68,8 +68,11 @@ app.get(
 
     let auth = ctx.get("auth");
     if (workspaceId) {
-      const session = ctx.get("session");
-      auth = await Authenticator.fromSuperUserSession(session, workspaceId);
+      auth = await Authenticator.fromDustSuperUser({
+        user: auth.user(),
+        wId: workspaceId,
+        pokePrincipal: auth.getPokePrincipal(),
+      });
     }
 
     let resource = null;

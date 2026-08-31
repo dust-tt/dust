@@ -21,7 +21,8 @@ import templates from "./templates";
 import workspaces from "./workspaces";
 
 // Mounted at /api/poke. Every route below inherits pokeAuth, which resolves
-// the super-user Authenticator and stashes it on the context.
+// a super-user Authenticator (Cloudflare Access JWT, or WorkOS session
+// fallback) and stashes it on the context.
 const app = pokeApp();
 
 app.use("*", pokeAuth);

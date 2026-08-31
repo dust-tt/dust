@@ -279,7 +279,7 @@ export function usePokeWorkOSDSyncStatus({
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/dsync`,
     fetcher,
-    { disabled }
+    { disabled: disabled || !owner.workOSOrganizationId }
   );
 
   return {

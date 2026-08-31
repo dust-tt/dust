@@ -181,7 +181,7 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
           user,
           workspace,
           newOrigin: "invited",
-          author: auth.user()?.toJSON() ?? "no-author",
+          author: auth.toPokeUserJSON(),
         });
 
         return {

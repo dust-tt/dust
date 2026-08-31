@@ -382,6 +382,14 @@ export async function emitAuditLogEventDirect({
  * Uses the authenticated user when available, falls back to the API key.
  */
 export function buildAuditActor(auth: Authenticator): AuditLogActor {
+  if (auth.isDustSuperUser()) {
+    return {
+      type: "dust_super_user",
+      id: auth.getPokePrincipal().email,
+      name: auth.getPokePrincipal().name ?? undefined,
+    };
+  }
+
   const user = auth.user();
   if (user) {
     return {

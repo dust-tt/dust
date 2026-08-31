@@ -57,8 +57,11 @@ app.post(
       auth.setClientIp(ip);
     }
     if (workspaceId) {
-      const session = ctx.get("session");
-      auth = await Authenticator.fromSuperUserSession(session, workspaceId);
+      auth = await Authenticator.fromDustSuperUser({
+        user: auth.user(),
+        wId: workspaceId,
+        pokePrincipal: auth.getPokePrincipal(),
+      });
       if (ip !== "internal") {
         auth.setClientIp(ip);
       }
@@ -171,7 +174,7 @@ app.post(
     const pluginRun = await PluginRunResource.makeNew(
       plugin,
       pluginArgsValidation.data,
-      auth.getNonNullableUser(),
+      auth.getPokePrincipal().email,
       workspaceId ? auth.getNonNullableWorkspace() : null,
       {
         resourceId: resourceId ?? undefined,

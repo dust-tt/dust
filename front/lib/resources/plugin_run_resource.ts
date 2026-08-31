@@ -26,8 +26,6 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import type { UserResource } from "./user_resource";
-
 function redactPluginArgs(
   plugin: AllPlugins,
   args: InferPluginArgsAtExecution<PluginArgs>
@@ -78,7 +76,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   static async makeNew(
     plugin: AllPlugins,
     args: InferPluginArgsAtExecution<PluginArgs>,
-    author: UserResource,
+    authorEmail: string,
     workspace: LightWorkspaceType | null,
     pluginResourceTarget: PluginResourceTarget
   ) {
@@ -89,7 +87,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
         0,
         POKE_PLUGIN_RUN_MAX_ARGS_LENGTH
       ),
-      author: author.email,
+      author: authorEmail,
       pluginId: plugin.manifest.id,
       status: "pending",
       workspaceId: workspace?.id,

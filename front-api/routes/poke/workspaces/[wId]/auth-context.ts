@@ -2,7 +2,7 @@ import type { GetPokeWorkspaceAuthContextResponseType } from "@app/lib/api/poke/
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";
 import { allWorkspacePermissions } from "@app/lib/resources/group_permission_registry";
-import { sessionApp } from "@front-api/middlewares/ctx";
+import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -13,12 +13,12 @@ const ParamsSchema = z.object({
 
 // Mounted at /api/poke/workspaces/:wId/auth-context.
 //
-// This route deliberately does NOT use pokeAuth: when the workspace
+// This route deliberately does NOT use withPokeWorkspace: when the workspace
 // is not found locally we still need to check whether it lives in another
 // region and respond with a redirect rather than a plain 404. pokeAuth is
-// inherited from the parent /poke sub-app and stashes the session, which we
-// use here to resolve a workspace-scoped Authenticator inline.
-const app = sessionApp();
+// inherited from the parent /poke sub-app and stashes the unscoped super-user
+// Authenticator, which we re-scope to the target workspace inline.
+const app = pokeApp();
 
 /** @ignoreswagger */
 app.get(
@@ -26,9 +26,13 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetPokeWorkspaceAuthContextResponseType> => {
     const { wId } = ctx.req.valid("param");
-    const session = ctx.get("session");
+    const current = ctx.get("auth");
 
-    const auth = await Authenticator.fromSuperUserSession(session, wId);
+    const auth = await Authenticator.fromDustSuperUser({
+      user: current.user(),
+      wId,
+      pokePrincipal: current.getPokePrincipal(),
+    });
     const workspace = auth.workspace();
     const subscription = auth.subscription();
 
@@ -61,12 +65,10 @@ app.get(
       });
     }
 
-    const user = auth.getNonNullableUser();
-
     const workspacePermissions = allWorkspacePermissions();
 
     return ctx.json({
-      user: user.toJSON(),
+      user: auth.toPokeUserJSON(),
       workspace,
       subscription,
       isAdmin: true,
