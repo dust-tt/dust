@@ -684,7 +684,9 @@ export function ConsumptionAttributionRowsView({
       <div>
         {rows.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            {search.trim() ? `No match for "${search.trim()}".` : emptyMessage}
+            {search.trim()
+              ? `No results for "${search.trim()}". Only items with usage data appear here.`
+              : emptyMessage}
           </div>
         ) : (
           <div className="overflow-x-auto">
