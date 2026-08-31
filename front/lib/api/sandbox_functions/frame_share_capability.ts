@@ -31,26 +31,53 @@ export async function resolveSandboxFunctionWithCapability(
   }: { allowInactiveFramePublication?: boolean } = {}
 ): Promise<SandboxFunctionResource | null> {
   const featureFlags = await getFeatureFlags(auth);
-  if (featureFlags.includes("sandbox_functions")) {
-    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
-      auth,
-      functionIdOrSlug
-    );
-    if (sandboxFunction) {
+  const isSandboxFunctionsEnabled = featureFlags.includes("sandbox_functions");
+  const isFramesV2Enabled = featureFlags.includes("frames_v2");
+
+  if (isResourceSId("sandbox_function", functionIdOrSlug)) {
+    const sandboxFunction =
+      await SandboxFunctionResource.fetchByIdForInvocationResolution(
+        auth,
+        functionIdOrSlug
+      );
+    if (sandboxFunction?.frame) {
+      if (isFramesV2Enabled) {
+        const frameFunction = await resolveFrameV2FunctionAccess(
+          auth,
+          sandboxFunction,
+          { allowInactivePublication: allowInactiveFramePublication }
+        );
+        if (frameFunction) {
+          return frameFunction;
+        }
+      }
+    } else if (sandboxFunction && isSandboxFunctionsEnabled) {
       return sandboxFunction;
     }
-  }
+  } else {
+    if (isSandboxFunctionsEnabled) {
+      const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+        auth,
+        functionIdOrSlug
+      );
+      if (sandboxFunction) {
+        return sandboxFunction;
+      }
+    }
 
-  if (featureFlags.includes("frames_v2")) {
-    const frameFunction = await resolveFrameV2Function(auth, functionIdOrSlug, {
-      allowInactivePublication: allowInactiveFramePublication,
-    });
-    if (frameFunction) {
-      return frameFunction;
+    if (isFramesV2Enabled) {
+      const frameFunction = await resolveFrameV2FunctionReference(
+        auth,
+        functionIdOrSlug,
+        { allowInactivePublication: allowInactiveFramePublication }
+      );
+      if (frameFunction) {
+        return frameFunction;
+      }
     }
   }
 
-  if (!featureFlags.includes("sandbox_functions") || !frameShareToken) {
+  if (!isSandboxFunctionsEnabled || !frameShareToken) {
     return null;
   }
 
@@ -66,42 +93,43 @@ export async function resolveSandboxFunctionWithCapability(
   });
 }
 
-async function resolveFrameV2Function(
+async function resolveFrameV2FunctionReference(
   auth: Authenticator,
   functionIdOrReference: string,
   { allowInactivePublication }: { allowInactivePublication: boolean }
 ): Promise<SandboxFunctionResource | null> {
-  let sandboxFunction: SandboxFunctionResource | null = null;
-  if (isResourceSId("sandbox_function", functionIdOrReference)) {
-    sandboxFunction =
-      await SandboxFunctionResource.fetchByIdForInvocationResolution(
-        auth,
-        functionIdOrReference
-      );
-  } else {
-    const [frameId, slug, ...rest] = functionIdOrReference.split("/");
-    if (
-      !frameId ||
-      !slug ||
-      rest.length > 0 ||
-      !isResourceSId("file", frameId) ||
-      !isValidSandboxFunctionSlug(slug)
-    ) {
-      return null;
-    }
-    const frame = await FileResource.fetchById(auth, frameId);
-    const publicationId = frame?.useCaseMetadata?.activePublicationId;
-    if (!frame?.isFrameV2 || !publicationId) {
-      return null;
-    }
-    sandboxFunction =
-      await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
-        frame,
-        publicationId,
-        slug,
-      });
+  const [frameId, slug, ...rest] = functionIdOrReference.split("/");
+  if (
+    !frameId ||
+    !slug ||
+    rest.length > 0 ||
+    !isResourceSId("file", frameId) ||
+    !isValidSandboxFunctionSlug(slug)
+  ) {
+    return null;
   }
+  const frame = await FileResource.fetchById(auth, frameId);
+  const publicationId = frame?.useCaseMetadata?.activePublicationId;
+  if (!frame?.isFrameV2 || !publicationId) {
+    return null;
+  }
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
+      frame,
+      publicationId,
+      slug,
+    });
 
+  return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
+    allowInactivePublication,
+  });
+}
+
+async function resolveFrameV2FunctionAccess(
+  auth: Authenticator,
+  sandboxFunction: SandboxFunctionResource | null,
+  { allowInactivePublication }: { allowInactivePublication: boolean }
+): Promise<SandboxFunctionResource | null> {
   const frame = sandboxFunction?.frame;
   if (
     !sandboxFunction ||

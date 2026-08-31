@@ -242,16 +242,11 @@ async function setupFrameV2Function({
     role: "user",
     workspace,
   });
-  const callerAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
   return {
     adminAuth,
-    callerAuth,
     frame,
-    publicationId,
     sandboxFunction,
+    space,
     user,
     workspace,
   };
@@ -299,11 +294,25 @@ async function createSharedAppFrame(
 
 // Builds a blocked action awaiting validation, the state spolu's creation gate produces for
 // approval-requiring tools (created without a workflow launch).
+async function setupFunctionForBlockedAction(functionOwner: "pod" | "frame") {
+  if (functionOwner === "frame") {
+    const setup = await setupFrameV2Function();
+    const callerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      setup.user.sId,
+      setup.workspace.sId
+    );
+    return { ...setup, callerAuth };
+  }
+
+  return { ...(await setupSandboxFunction()), frame: null };
+}
+
 async function setupBlockedAction({
   permission = "high",
   blockedStatus = "blocked_validation_required",
   invocationOwnedByOtherMember = false,
   invocationOwnerless = false,
+  functionOwner = "pod",
 }: {
   permission?: MCPToolStakeLevelType;
   blockedStatus?:
@@ -311,9 +320,10 @@ async function setupBlockedAction({
     | "blocked_authentication_required";
   invocationOwnedByOtherMember?: boolean;
   invocationOwnerless?: boolean;
+  functionOwner?: "pod" | "frame";
 } = {}) {
-  const { workspace, sandboxFunction, adminAuth, callerAuth, space } =
-    await setupSandboxFunction();
+  const { workspace, sandboxFunction, adminAuth, callerAuth, space, frame } =
+    await setupFunctionForBlockedAction(functionOwner);
 
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
   await SpaceResource.makeDefaultsForWorkspace(adminAuth, {
@@ -358,7 +368,15 @@ async function setupBlockedAction({
   });
   expect(blockedCount).toBe(1);
 
-  return { workspace, sandboxFunction, invocation, action, view, adminAuth };
+  return {
+    workspace,
+    sandboxFunction,
+    invocation,
+    action,
+    view,
+    adminAuth,
+    frame,
+  };
 }
 
 function postValidate({
@@ -558,16 +576,21 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
   });
 
   it("does not expose Frame functions through the Pod Functions flag", async () => {
-    const { workspace, frame } = await setupFrameV2Function({
+    const { workspace, frame, sandboxFunction } = await setupFrameV2Function({
       featureFlag: "sandbox_functions",
     });
 
-    const response = await postInvocation({
+    const byReference = await postInvocation({
       workspaceId: workspace.sId,
       functionIdOrSlug: `${frame.sId}/run-function`,
     });
+    const byId = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
 
-    expect(response.status).toBe(404);
+    expect(byReference.status).toBe(404);
+    expect(byId.status).toBe(404);
   });
 
   it("does not expose Pod Functions through the Frames v2 flag", async () => {
@@ -1207,6 +1230,34 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     );
   });
 
+  it("approves an in-flight Frame action after a new publication activates", async () => {
+    const { workspace, sandboxFunction, invocation, action, adminAuth, frame } =
+      await setupBlockedAction({ functionOwner: "frame" });
+    if (!frame) {
+      throw new Error("Expected a Frame-owned function.");
+    }
+    await createFramePublicationFunction({
+      adminAuth,
+      frame,
+      publicationId: "publication-2",
+    });
+    await frame.setActiveFramePublication("publication-2");
+    vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
+      undefined
+    );
+
+    const response = await postValidate({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { approved: "approved" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalledOnce();
+  });
+
   it("rejects a blocked action without launching its workflow", async () => {
     const { workspace, sandboxFunction, invocation, action, adminAuth } =
       await setupBlockedAction();
@@ -1437,6 +1488,37 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       expect.any(Function),
       `sandbox-function-invocation-${invocation.sId}`
     );
+  });
+
+  it("resolves an in-flight Frame authentication after a new publication activates", async () => {
+    const { workspace, sandboxFunction, invocation, action, adminAuth, frame } =
+      await setupBlockedAction({
+        blockedStatus: "blocked_authentication_required",
+        functionOwner: "frame",
+      });
+    if (!frame) {
+      throw new Error("Expected a Frame-owned function.");
+    }
+    await createFramePublicationFunction({
+      adminAuth,
+      frame,
+      publicationId: "publication-2",
+    });
+    await frame.setActiveFramePublication("publication-2");
+    vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
+      undefined
+    );
+
+    const response = await postResolveAuthentication({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { outcome: "completed" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalledOnce();
   });
 
   it("denies authentication without relaunching the workflow", async () => {
