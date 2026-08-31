@@ -1,4 +1,4 @@
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
@@ -6,7 +6,6 @@ import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { NoArchivedAgentsCTA } from "@app/components/assistant/manager/NoArchivedAgentsCTA";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
-import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import {
   useSetContentWidth,
@@ -33,7 +32,6 @@ import {
   EmptyCTA,
   InfoCircle,
   Page,
-  Plus,
   SearchInput,
   Tabs,
   TabsList,
@@ -322,7 +320,7 @@ export function ManageAgentsPage() {
                 isCompact={isMobile}
               />
               {canCreateAgent && (
-                <CreateDropdown
+                <CreateAgentDropdown
                   owner={owner}
                   dataGtmLocation="assistantsWorkspace"
                   isCompact={isMobile}
@@ -433,12 +431,14 @@ export function ManageAgentsPage() {
             ) : (
               canCreateAgent && (
                 <div className="pt-2">
-                  <EmptyCallToAction
-                    href={`/w/${owner.sId}/builder/agents/create`}
-                    label="Create an agent"
-                    icon={Plus}
-                    data-gtm-label="assistantCreationButton"
-                    data-gtm-location="assistantsWorkspace"
+                  <EmptyCTA
+                    message="No agents yet."
+                    action={
+                      <CreateAgentDropdown
+                        owner={owner}
+                        dataGtmLocation="assistantsWorkspace"
+                      />
+                    }
                   />
                 </div>
               )
