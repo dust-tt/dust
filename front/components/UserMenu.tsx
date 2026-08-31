@@ -402,7 +402,7 @@ export function UserMenu({
                 />
                 <DropdownMenuLabel label="Ask questions" />
                 <DropdownMenuItem
-                  label="Ask help"
+                  label="Ask @help"
                   icon={MessageChatCircle}
                   onClick={() => {
                     trackUserMenuEvent("help_ask");
