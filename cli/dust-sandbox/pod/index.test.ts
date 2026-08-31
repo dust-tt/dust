@@ -1,11 +1,15 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   db,
   FRAME_ID_ENV,
+  FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV,
+  FrameDatabaseNotDeclaredError,
+  FrameDatabaseUnavailableError,
+  FramePublicationDescriptorError,
   POD_DATABASE_BUSY_TIMEOUT_MS,
   POD_DATABASE_MAX_SIZE_BYTES_ENV,
   POD_DATABASE_PREFIX_ENV,
@@ -17,6 +21,7 @@ import {
   PodDatabaseNotDeclaredError,
   PodDatabasesUnavailableError,
   runWithInvocationEnv,
+  SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION,
 } from "@dust/pod";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -56,8 +61,29 @@ function uniqueName(prefix: string): string {
   return `${prefix}_${uniqueNameCounter}`;
 }
 
+function createFramePublicationDescriptor(
+  databaseNames: string[],
+  schemaVersion = SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION
+): string {
+  const descriptorPath = join(
+    databasesDir,
+    `${uniqueName("publication")}.json`
+  );
+  writeFileSync(
+    descriptorPath,
+    JSON.stringify({
+      schemaVersion,
+      manifest: {
+        databases: databaseNames.map((name) => ({ name })),
+      },
+    })
+  );
+  return descriptorPath;
+}
+
 let originalSpaceId: string | undefined;
 let originalFrameId: string | undefined;
+let originalFramePublicationDescriptorPath: string | undefined;
 
 beforeEach(() => {
   databasesDir = mkdtempSync(join(tmpdir(), "dust-pod-test-"));
@@ -69,6 +95,9 @@ beforeEach(() => {
   process.env[POD_SPACE_ID_ENV] = "spc_test_pod";
   originalFrameId = process.env[FRAME_ID_ENV];
   delete process.env[FRAME_ID_ENV];
+  originalFramePublicationDescriptorPath =
+    process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV];
+  delete process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV];
 });
 
 afterEach(() => {
@@ -84,6 +113,12 @@ afterEach(() => {
     delete process.env[FRAME_ID_ENV];
   } else {
     process.env[FRAME_ID_ENV] = originalFrameId;
+  }
+  if (originalFramePublicationDescriptorPath === undefined) {
+    delete process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV];
+  } else {
+    process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV] =
+      originalFramePublicationDescriptorPath;
   }
   rmSync(databasesDir, { recursive: true, force: true });
 });
@@ -110,6 +145,8 @@ describe("sandbox database owner guard", () => {
     createDatabaseFile(name);
     delete process.env[POD_SPACE_ID_ENV];
     process.env[FRAME_ID_ENV] = "fil_test_frame";
+    process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV] =
+      createFramePublicationDescriptor([name]);
 
     expect(() => db(name)).not.toThrow();
   });
@@ -118,6 +155,81 @@ describe("sandbox database owner guard", () => {
     delete process.env[POD_SPACE_ID_ENV];
     delete process.env[FRAME_ID_ENV];
     expect(() => db(uniqueName("guard"))).toThrow(PodDatabasesUnavailableError);
+  });
+});
+
+describe("Frame publication database contract", () => {
+  function frameInvocationEnv(descriptorPath?: string) {
+    return {
+      [POD_DATABASES_DIR_ENV]: databasesDir,
+      [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
+      [FRAME_ID_ENV]: "fil_test_frame",
+      ...(descriptorPath
+        ? { [FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV]: descriptorPath }
+        : {}),
+    };
+  }
+
+  test("opens only databases declared by the selected publication", () => {
+    const declared = uniqueName("frame_db");
+    const undeclared = uniqueName("frame_db");
+    createDatabaseFile(declared);
+    createDatabaseFile(undeclared);
+    const descriptorPath = createFramePublicationDescriptor([declared]);
+
+    expect(() =>
+      runWithInvocationEnv(frameInvocationEnv(descriptorPath), () =>
+        db(declared)
+      )
+    ).not.toThrow();
+    expect(() =>
+      runWithInvocationEnv(frameInvocationEnv(descriptorPath), () =>
+        db(undeclared)
+      )
+    ).toThrow(FrameDatabaseNotDeclaredError);
+  });
+
+  test("reports declared state that reconciliation has not created", () => {
+    const name = uniqueName("frame_db");
+    const descriptorPath = createFramePublicationDescriptor([name]);
+
+    expect(() =>
+      runWithInvocationEnv(frameInvocationEnv(descriptorPath), () => db(name))
+    ).toThrow(FrameDatabaseUnavailableError);
+    expect(existsSync(join(databasesDir, `${name}.db`))).toBe(false);
+  });
+
+  test("requires a readable, supported publication descriptor", () => {
+    const name = uniqueName("frame_db");
+    createDatabaseFile(name);
+
+    expect(() =>
+      runWithInvocationEnv(frameInvocationEnv(), () => db(name))
+    ).toThrow(FramePublicationDescriptorError);
+
+    const unsupported = createFramePublicationDescriptor(
+      [name],
+      SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION + 1
+    );
+    expect(() =>
+      runWithInvocationEnv(frameInvocationEnv(unsupported), () => db(name))
+    ).toThrow(FramePublicationDescriptorError);
+  });
+
+  test("rechecks declarations before returning a warm cached database", () => {
+    const name = uniqueName("frame_db");
+    createDatabaseFile(name);
+    const declaringPublication = createFramePublicationDescriptor([name]);
+    const removingPublication = createFramePublicationDescriptor([]);
+
+    runWithInvocationEnv(frameInvocationEnv(declaringPublication), () =>
+      db(name)
+    );
+    expect(() =>
+      runWithInvocationEnv(frameInvocationEnv(removingPublication), () =>
+        db(name)
+      )
+    ).toThrow(FrameDatabaseNotDeclaredError);
   });
 });
 
@@ -301,6 +413,7 @@ describe("app prefix resolution", () => {
     test("accepts a Frame-only invocation context", () => {
       const name = uniqueName("frame_context");
       createDatabaseOwnedBy(name, "frame");
+      const descriptorPath = createFramePublicationDescriptor([name]);
 
       expect(
         runWithInvocationEnv(
@@ -308,6 +421,7 @@ describe("app prefix resolution", () => {
             [POD_DATABASES_DIR_ENV]: databasesDir,
             [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
             [FRAME_ID_ENV]: "fil_test_frame",
+            [FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV]: descriptorPath,
             [POD_DATABASE_PREFIX_ENV]: "",
           },
           () => ownerOf(name)

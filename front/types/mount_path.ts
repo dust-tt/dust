@@ -7,6 +7,7 @@
 //                     the same Pod.
 
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { FRAME_PUBLICATION_FILE } from "@app/types/api/frame_storage";
 import {
   LEGACY_PREFIX_CONVERSATION,
   LEGACY_PREFIX_PROJECT,
@@ -117,6 +118,17 @@ export function getFramePublicationFunctionsMountPoint({
   return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/functions`;
 }
 
+/** Exact immutable publication descriptor selected for one Frame invocation. */
+export function getFramePublicationDescriptorMountPoint({
+  frameId,
+  publicationId,
+}: {
+  frameId: string;
+  publicationId: string;
+}): string {
+  return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/${FRAME_PUBLICATION_FILE}`;
+}
+
 /**
  * Frame-owned SQLite uses the same isolated local runtime directories as Pod SQLite. A Frame has
  * its own sandbox, so the live files cannot overlap another Frame or a Pod; only its Litestream
@@ -155,18 +167,27 @@ const SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
  */
 export function sandboxDatabaseExecEnvVars({
   databasePrefix,
+  framePublicationDescriptorPath,
 }: {
   databasePrefix?: string | null;
+  framePublicationDescriptorPath?: string;
 } = {}): {
   DUST_POD_DATABASES_DIR: string;
   DUST_POD_DATABASE_MAX_SIZE_BYTES: string;
   DUST_POD_DATABASE_PREFIX: string;
+  DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH?: string;
 } {
   return {
     DUST_POD_DATABASES_DIR: SANDBOX_STATE_DATABASES_DIR,
     DUST_POD_DATABASE_MAX_SIZE_BYTES: String(SANDBOX_DATABASE_MAX_SIZE_BYTES),
     // Empty means unprefixed, which is what the shim reads an absent value as.
     DUST_POD_DATABASE_PREFIX: databasePrefix ?? "",
+    ...(framePublicationDescriptorPath
+      ? {
+          DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH:
+            framePublicationDescriptorPath,
+        }
+      : {}),
   };
 }
 

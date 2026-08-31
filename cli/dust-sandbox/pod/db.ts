@@ -1,19 +1,22 @@
 import type { Changes, SQLQueryBindings, Statement } from "bun:sqlite";
 import { Database } from "bun:sqlite";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import { z } from "zod";
 
 import { podEnv } from "./context.ts";
 
 /**
  * Frame and Pod state databases.
  *
- * `db(name)` returns a cached Drizzle instance over the sandbox owner's live SQLite
- * database at `${DUST_POD_DATABASES_DIR}/{prefix}{name}.db`. Databases are
- * created by `dsbx db reconcile` (the db_reconcile tool), never here: the file
- * is opened must-exist so a typo'd name errors clearly instead of minting an
- * empty database. Functions that never call `db()` pay nothing.
+ * `db(name)` returns a cached Drizzle instance over the sandbox owner's live
+ * SQLite database at `${DUST_POD_DATABASES_DIR}/{prefix}{name}.db`. Pod names
+ * may be prefixed; Frame names are unprefixed and must be declared by the
+ * selected immutable publication. Databases are created by reconciliation,
+ * never here: the file is opened must-exist so a typo'd name errors clearly
+ * instead of minting an empty database. Functions that never call `db()` pay
+ * nothing.
  *
  * `name` is the app-relative name the function's source writes, and the app
  * prefix comes from the environment ({@link POD_DATABASE_PREFIX_ENV}) rather
@@ -59,6 +62,10 @@ export const POD_SPACE_ID_ENV = "SPACE_ID";
 /** Sandbox-global env var carrying the Frame sId for Frame-owned sandboxes. */
 export const FRAME_ID_ENV = "FRAME_ID";
 
+/** Exact immutable publication descriptor selected for a Frame invocation. */
+export const FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV =
+  "DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH";
+
 /**
  * Env var carrying the per-database size quota in bytes, required. Like the
  * databases directory, the value is owned by front (1 GiB in production) and
@@ -92,6 +99,16 @@ export const POD_DATABASE_BUSY_TIMEOUT_MS = 5000;
 
 /** Valid database names (also the manifest/publish contract). */
 export const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+export const SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION = 1;
+
+const framePublicationDatabaseContractSchema = z.object({
+  schemaVersion: z.literal(SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION),
+  manifest: z.object({
+    databases: z.array(
+      z.object({ name: z.string().regex(POD_DATABASE_NAME_REGEX) })
+    ),
+  }),
+});
 
 export class PodDatabaseError extends Error {
   constructor(message: string) {
@@ -120,6 +137,33 @@ export class PodDatabasesUnavailableError extends PodDatabaseError {
         `Frame sandbox.`
     );
     this.name = "PodDatabasesUnavailableError";
+  }
+}
+
+export class FramePublicationDescriptorError extends PodDatabaseError {
+  constructor(message: string) {
+    super(message);
+    this.name = "FramePublicationDescriptorError";
+  }
+}
+
+export class FrameDatabaseNotDeclaredError extends PodDatabaseError {
+  constructor(dbName: string) {
+    super(
+      `Frame database "${dbName}" is not declared in this publication. ` +
+        `Declare it in manifest.json and publish the Frame again.`
+    );
+    this.name = "FrameDatabaseNotDeclaredError";
+  }
+}
+
+export class FrameDatabaseUnavailableError extends PodDatabaseError {
+  constructor(dbName: string, path: string) {
+    super(
+      `Frame database "${dbName}" is declared but unavailable (no database ` +
+        `file at ${path}). Publish the Frame again to reconcile its state.`
+    );
+    this.name = "FrameDatabaseUnavailableError";
   }
 }
 
@@ -369,14 +413,80 @@ function applyPragmas(sqlite: PodSqliteDatabase, maxSizeBytes: number): void {
 // One instance per resolved database file path, opened lazily on first db().
 const instances = new Map<string, PodDatabase>();
 
+// Publication descriptors are immutable, so declarations can be cached by
+// their exact mounted path without mixing warm invocations across publications.
+const frameDatabaseDeclarations = new Map<string, ReadonlySet<string>>();
+
+function declaredFrameDatabases(frameId: string): ReadonlySet<string> {
+  const descriptorPath = podEnv(FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV);
+  if (!descriptorPath) {
+    throw new FramePublicationDescriptorError(
+      `${FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV} is not set for Frame ` +
+        `${frameId}: db() requires the selected publication descriptor.`
+    );
+  }
+
+  const cached = frameDatabaseDeclarations.get(descriptorPath);
+  if (cached) {
+    return cached;
+  }
+
+  let descriptorJson: unknown;
+  try {
+    descriptorJson = JSON.parse(readFileSync(descriptorPath, "utf8"));
+  } catch {
+    throw new FramePublicationDescriptorError(
+      `The Frame publication descriptor at ${descriptorPath} cannot be read ` +
+        `or is not valid JSON.`
+    );
+  }
+
+  const descriptor =
+    framePublicationDatabaseContractSchema.safeParse(descriptorJson);
+  if (!descriptor.success) {
+    throw new FramePublicationDescriptorError(
+      `The Frame publication descriptor at ${descriptorPath} has an invalid ` +
+        `database contract.`
+    );
+  }
+
+  const declarations = new Set(
+    descriptor.data.manifest.databases.map(({ name }) => name)
+  );
+  frameDatabaseDeclarations.set(descriptorPath, declarations);
+  return declarations;
+}
+
+/** Returns whether this invocation uses Frame-owned state. */
+function assertDatabaseOwnerCanUse(name: string): boolean {
+  const frameId = podEnv(FRAME_ID_ENV);
+  if (frameId) {
+    if (!declaredFrameDatabases(frameId).has(name)) {
+      throw new FrameDatabaseNotDeclaredError(name);
+    }
+    return true;
+  }
+
+  const spaceId = podEnv(POD_SPACE_ID_ENV);
+  if (!spaceId) {
+    throw new PodDatabasesUnavailableError();
+  }
+  return false;
+}
+
 /**
- * Get the sandbox owner's Drizzle handle for database `name`, where `name` is
- * the app's own name for it (`db("chat")`) and the app prefix is applied by
- * {@link resolveDatabasePath} from the environment.
+ * Get the sandbox owner's Drizzle handle for database `name`. Pod functions
+ * resolve app-relative names through {@link resolveDatabasePath}; Frame
+ * functions use unprefixed names declared by the selected publication.
  *
  * @throws PodDatabaseInvalidNameError when `name` does not match the contract.
  * @throws PodDatabasesUnavailableError when both SPACE_ID and FRAME_ID are
  *   absent — this sandbox is owned by neither a Pod nor a Frame.
+ * @throws FramePublicationDescriptorError when a Frame invocation has no valid
+ *   selected publication descriptor.
+ * @throws FrameDatabaseNotDeclaredError when the selected Frame publication
+ *   does not declare `name`.
+ * @throws FrameDatabaseUnavailableError when declared state was not reconciled.
  * @throws PodDatabaseError when DUST_POD_DATABASES_DIR or
  *   DUST_POD_DATABASE_MAX_SIZE_BYTES is absent or invalid — db() only works
  *   in functions launched by `dsbx function run`.
@@ -388,14 +498,9 @@ export function db(name: string): PodDatabase {
   if (!POD_DATABASE_NAME_REGEX.test(name)) {
     throw new PodDatabaseInvalidNameError(name);
   }
-  const spaceId = podEnv(POD_SPACE_ID_ENV);
-  const frameId = podEnv(FRAME_ID_ENV);
-  if (
-    (spaceId === undefined || spaceId.length === 0) &&
-    (frameId === undefined || frameId.length === 0)
-  ) {
-    throw new PodDatabasesUnavailableError();
-  }
+  // Recheck before the instance cache: a warm worker may have opened this
+  // database for an older publication that declared it.
+  const isFrame = assertDatabaseOwnerCanUse(name);
   const path = resolveDatabasePath(podDatabasesDir(), name);
   const cached = instances.get(path);
   if (cached !== undefined) {
@@ -408,6 +513,9 @@ export function db(name: string): PodDatabase {
     sqlite = new PodSqliteDatabase(path, name, maxSizeBytes);
   } catch (err) {
     if (isSqliteErrorWithCode(err, "SQLITE_CANTOPEN")) {
+      if (isFrame) {
+        throw new FrameDatabaseUnavailableError(name, path);
+      }
       throw new PodDatabaseNotDeclaredError(name, path);
     }
     throw err;

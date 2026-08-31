@@ -9,7 +9,7 @@ import path from "path";
 // external and resolve through NODE_PATH, like zod) and copy a flat
 // {package.json, index.js} into the image's global node_modules.
 export const POD_PACKAGE_NAME = "@dust/pod";
-export const POD_PACKAGE_VERSION = "0.3.1";
+export const POD_PACKAGE_VERSION = "0.3.2";
 export const POD_PACKAGE_IMAGE_DIR = `/opt/npm-global/lib/node_modules/${POD_PACKAGE_NAME}`;
 
 let podPackageSrcDir: string | undefined;
