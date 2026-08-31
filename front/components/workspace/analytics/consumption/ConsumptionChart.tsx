@@ -305,15 +305,6 @@ export function ConsumptionDailyChart({
           content={renderTooltip}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
         />
-        {partialTimestamp !== undefined && (
-          <ReferenceLine
-            x={partialTimestamp}
-            stroke="var(--color-primary)"
-            strokeDasharray="5 5"
-            label={{ position: "top", content: TodayPartialLabel }}
-            ifOverflow="extendDomain"
-          />
-        )}
         {orderedGroups.map((group, rank) => {
           const colorClassName = getConsumptionChartColor(rank);
 
@@ -342,6 +333,15 @@ export function ConsumptionDailyChart({
             </Bar>
           );
         })}
+        {partialTimestamp !== undefined && (
+          <ReferenceLine
+            x={partialTimestamp}
+            stroke="var(--color-primary)"
+            strokeDasharray="5 5"
+            label={{ position: "top", content: TodayPartialLabel }}
+            ifOverflow="extendDomain"
+          />
+        )}
       </BarChart>
     </ChartContainer>
   );
