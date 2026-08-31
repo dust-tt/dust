@@ -145,26 +145,16 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     return new this(this.model, row.get());
   }
 
-  static async listAfter(
+  static async listUnprocessed(
     auth: Authenticator,
-    {
-      runKey,
-      afterEventModelId,
-      limit,
-    }: {
-      runKey: string;
-      afterEventModelId: ModelId | null;
-      limit: number;
-    }
+    { runKey, limit }: { runKey: string; limit: number }
   ): Promise<AgentMessageConsumptionEventResource[]> {
     assert(limit > 0 && limit <= 1_000, "Invalid consumption event batch size");
     const rows = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         runKey,
-        ...(afterEventModelId === null
-          ? {}
-          : { id: { [Op.gt]: afterEventModelId } }),
+        processedAt: null,
       },
       order: [["id", "ASC"]],
       limit,
@@ -184,6 +174,36 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
       },
     });
     return row ? new this(this.model, row.get()) : null;
+  }
+
+  static async markProcessed(
+    auth: Authenticator,
+    {
+      runKey,
+      eventIds,
+      processedAt,
+    }: {
+      runKey: string;
+      eventIds: ModelId[];
+      processedAt: Date;
+    }
+  ): Promise<number> {
+    assert(
+      eventIds.length > 0 && eventIds.length <= 1_000,
+      "Invalid consumption event acknowledgement batch size"
+    );
+    const [updatedCount] = await this.model.update(
+      { processedAt },
+      {
+        where: {
+          id: { [Op.in]: eventIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          runKey,
+          processedAt: null,
+        },
+      }
+    );
+    return updatedCount;
   }
 
   async delete(): Promise<Result<undefined, Error>> {
