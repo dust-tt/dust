@@ -328,6 +328,54 @@ describe("addRateLimiterCount", () => {
     }
   });
 
+  it("records an idempotent increment only once", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+    await expireTestKey(`${key}:idempotency`);
+
+    for (const incrementBy of [2.5, 9]) {
+      await addRateLimiterCount({
+        key,
+        timeframeSeconds: 60,
+        incrementBy,
+        idempotencyKey: "execution-x",
+        logger,
+      });
+    }
+
+    const count = await getWeightedRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+    });
+    expect(count.isOk() && count.value).toBe(2_500_000);
+  });
+
+  it("removes expired rolling-window idempotency markers", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+    await expireTestKey(`${key}:idempotency`);
+    const idempotencyRedisKey = `${RATE_LIMITER_PREFIX}:${key}:idempotency`;
+    await runOnRedis({ origin: "rate_limiter" }, async (redis) =>
+      redis.zAdd(idempotencyRedisKey, {
+        score: Date.now() - 120_000,
+        value: "expired-execution",
+      })
+    );
+
+    await addRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+      incrementBy: 2.5,
+      idempotencyKey: "current-execution",
+      logger,
+    });
+
+    const markerCount = await runOnRedis({ origin: "rate_limiter" }, (redis) =>
+      redis.zCard(idempotencyRedisKey)
+    );
+    expect(markerCount).toBe(1);
+  });
+
   it("excludes entries outside the rolling window from the sum", async () => {
     const key = `test:${crypto.randomUUID()}`;
     await expireTestKey(key);
@@ -441,6 +489,26 @@ describe("fixed-window counter", () => {
       // records the full amount even past any threshold.
       expect(count.value).toBe(11);
     }
+  });
+
+  it("records an idempotent fixed-window increment only once", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    const bounds = boundsFor("idempotent");
+    fixedWindowKeysToExpire.add(`${key}:${bounds.label}`);
+    fixedWindowKeysToExpire.add(`${key}:${bounds.label}:idempotency`);
+
+    for (const incrementBy of [2_500_000, 9_000_000]) {
+      await addFixedWindowCount({
+        key,
+        bounds,
+        incrementBy,
+        idempotencyKey: "execution-x",
+        logger,
+      });
+    }
+
+    const count = await getFixedWindowCount({ key, bounds });
+    expect(count.isOk() && count.value).toBe(2_500_000);
   });
 
   it("returns 0 for a window with no entries", async () => {

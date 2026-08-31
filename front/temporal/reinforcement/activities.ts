@@ -152,7 +152,9 @@ async function reportSelfImprovingSkillsStepUsage({
       case "awu_credits":
         await Promise.all([
           launchAgentMessageAnalytics(auth, agentLoopArgs),
-          launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+          launchEmitMetronomeUsageEvents(auth, agentLoopArgs, {
+            consumptionMode: null,
+          }),
         ]);
         break;
       case "micro_usd":

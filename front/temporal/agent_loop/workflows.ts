@@ -6,6 +6,7 @@ import {
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
+import type * as consumptionActivities from "@app/temporal/agent_loop/activities/consumption";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
@@ -31,6 +32,7 @@ import {
 } from "@app/temporal/agent_loop/signals";
 import type { AgentLoopInstrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import type { AgentMessageConsumptionExecutionContext } from "@app/types/assistant/agent_message_consumption";
 import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
@@ -139,6 +141,12 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   },
 });
 
+const { initializeConsumptionExecutionActivity } = proxyActivities<
+  typeof consumptionActivities
+>({
+  startToCloseTimeout: "2 minutes",
+});
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -231,11 +239,13 @@ export async function agentLoopWorkflow({
   authType,
   initialStartTime,
   agentLoopArgs,
+  runKey,
   startStep,
 }: {
   authType: AuthenticatorType;
   initialStartTime: number;
   agentLoopArgs: AgentLoopArgs;
+  runKey?: string;
   startStep: number;
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
@@ -270,9 +280,24 @@ export async function agentLoopWorkflow({
   let creditStopRequested = false;
 
   const runIds: string[] = [];
+  let consumptionContext:
+    | AgentMessageConsumptionExecutionContext
+    | null
+    | undefined;
 
   try {
     const { agentMessageId, conversationId } = agentLoopArgs;
+
+    if (runKey !== undefined && patched("agent-loop-consumption-context")) {
+      consumptionContext = await initializeConsumptionExecutionActivity(
+        authType,
+        {
+          agentMessageId,
+          runKey,
+          startStep,
+        }
+      );
+    }
 
     await executionScope.run(async () => {
       const syncStartTime = Date.now();
@@ -304,6 +329,7 @@ export async function agentLoopWorkflow({
               initialStartTime,
             },
             currentStep,
+            consumptionContext,
             runIds,
             startStep,
             forceDisableToolUse,
@@ -386,17 +412,26 @@ export async function agentLoopWorkflow({
 
       await CancellationScope.nonCancellable(async () => {
         if (gracefulStopRequested) {
-          await finalizeGracefullyStoppedAgentLoopActivity(
+          await runFinalizeActivity(
+            finalizeGracefullyStoppedAgentLoopActivity,
             authType,
-            argsWithRunIds
+            argsWithRunIds,
+            consumptionContext
           );
         } else if (creditStopRequested) {
-          await finalizeCreditStoppedAgentLoopActivity(
+          await runFinalizeActivity(
+            finalizeCreditStoppedAgentLoopActivity,
             authType,
-            argsWithRunIds
+            argsWithRunIds,
+            consumptionContext
           );
         } else {
-          await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
+          await runFinalizeActivity(
+            finalizeSuccessfulAgentLoopActivity,
+            authType,
+            argsWithRunIds,
+            consumptionContext
+          );
         }
       });
 
@@ -426,23 +461,43 @@ export async function agentLoopWorkflow({
         // Interrupt takes precedence over cancel: the user chose to redirect rather than abort,
         // so pending queued messages should still be promoted.
         if (interruptRequested) {
-          await finalizeInterruptedAgentLoopActivity(authType, argsWithRunIds);
+          await runFinalizeActivity(
+            finalizeInterruptedAgentLoopActivity,
+            authType,
+            argsWithRunIds,
+            consumptionContext
+          );
         } else {
-          await finalizeCancelledAgentLoopActivity(authType, argsWithRunIds);
+          await runFinalizeActivity(
+            finalizeCancelledAgentLoopActivity,
+            authType,
+            argsWithRunIds,
+            consumptionContext
+          );
         }
       });
       return;
     }
 
-    await CancellationScope.nonCancellable(async () =>
-      finalizeErroredAgentLoopActivity(authType, argsWithRunIds, {
+    await CancellationScope.nonCancellable(async () => {
+      const error = {
         // Error objects don't survive JSON serialization across the workflow→activity boundary
         // (Error.message is not enumerable), so we extract the relevant fields into a plain object
         // before passing to the activity.
         message: workflowError.message,
         name: workflowError.name,
-      })
-    );
+      };
+      if (consumptionContext === undefined) {
+        await finalizeErroredAgentLoopActivity(authType, argsWithRunIds, error);
+      } else {
+        await finalizeErroredAgentLoopActivity(
+          authType,
+          argsWithRunIds,
+          error,
+          consumptionContext
+        );
+      }
+    });
 
     if (shouldSwallowWorkflowFailure) {
       return;
@@ -452,10 +507,28 @@ export async function agentLoopWorkflow({
   }
 }
 
+async function runFinalizeActivity(
+  activity: (
+    authType: AuthenticatorType,
+    agentLoopArgs: AgentLoopArgs,
+    consumptionContext?: AgentMessageConsumptionExecutionContext | null
+  ) => Promise<void>,
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  consumptionContext: AgentMessageConsumptionExecutionContext | null | undefined
+): Promise<void> {
+  if (consumptionContext === undefined) {
+    await activity(authType, agentLoopArgs);
+  } else {
+    await activity(authType, agentLoopArgs, consumptionContext);
+  }
+}
+
 async function executeStepIteration({
   authType,
   currentStep,
   agentLoopArgs,
+  consumptionContext,
   runIds,
   startStep,
   forceDisableToolUse,
@@ -463,6 +536,10 @@ async function executeStepIteration({
   authType: AuthenticatorType;
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
+  consumptionContext:
+    | AgentMessageConsumptionExecutionContext
+    | null
+    | undefined;
   runIds: string[];
   startStep: number;
   forceDisableToolUse: boolean;
@@ -473,14 +550,21 @@ async function executeStepIteration({
 }> {
   deprecatePatch("wait-for-model-activity-before-finalization");
 
-  const result = await runModelAndCreateActionsActivity({
+  const modelActivityArgs = {
     authType,
     checkForResume: currentStep === startStep, // Only run resume the first time.
     runAgentArgs: agentLoopArgs,
     runIds,
     step: currentStep,
     forceDisableToolUse,
-  });
+  };
+  const result =
+    consumptionContext === undefined
+      ? await runModelAndCreateActionsActivity(modelActivityArgs)
+      : await runModelAndCreateActionsActivity({
+          ...modelActivityArgs,
+          consumptionContext,
+        });
 
   if (!result) {
     // Error occurred — no runId to capture.
@@ -517,21 +601,21 @@ async function executeStepIteration({
 
   // Execute tools and collect any deferred events.
   deprecatePatch("wait-for-all-tool-activities-before-finalization");
-  const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) =>
-    retryPolicy === "no_retry"
-      ? runToolActivityWithExplicitCancellation(authType, {
-          actionId,
-          runAgentArgs: agentLoopArgs,
-          step: currentStep,
-          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-        })
-      : runRetryableToolActivityWithExplicitCancellation(authType, {
-          actionId,
-          runAgentArgs: agentLoopArgs,
-          step: currentStep,
-          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-        })
-  );
+  const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) => {
+    const activity =
+      retryPolicy === "no_retry"
+        ? runToolActivityWithExplicitCancellation
+        : runRetryableToolActivityWithExplicitCancellation;
+    const activityArgs = {
+      actionId,
+      runAgentArgs: agentLoopArgs,
+      step: currentStep,
+      runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+    };
+    return consumptionContext === undefined
+      ? activity(authType, activityArgs)
+      : activity(authType, { ...activityArgs, consumptionContext });
+  });
   const toolResults: ToolExecutionResult[] =
     await waitForAllPromises(toolActivityPromises);
 

@@ -244,12 +244,12 @@ async function collectDescendantData(
   agentMessageModelIds: ModelId[];
   dustRunIds: string[];
   descendantAgenticUserMessageCount: number;
-  subagentAgentMessageModelIds: ModelId[];
+  subagentAgentMessageModelIds: AgentMessageModel["id"][];
 }> {
   const workspace = auth.getNonNullableWorkspace();
   const visitedAgentMessageIds = new Set<string>();
   const agentMessageModelIds = new Set<ModelId>();
-  const subagentAgentMessageModelIds = new Set<ModelId>();
+  const subagentAgentMessageModelIds = new Set<AgentMessageModel["id"]>();
   const runIds = new Set<string>();
   const descendantAgenticUserMessageRowIds = new Set<number>();
   let frontierAgentMessageIds = [rootAgentMessageId];

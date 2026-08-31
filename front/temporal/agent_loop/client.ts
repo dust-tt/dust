@@ -109,28 +109,21 @@ export async function launchAgentLoopWorkflow({
     }
   }
 
-  const executionArgs: AgentLoopArgs = {
-    ...agentLoopArgs,
-    runKey: uuidv4(),
-    rootAgentMessageId:
-      agentLoopArgs.rootAgentMessageId ??
-      (await ConversationResource.findRootAgentMessageId(auth, {
-        agentMessageId,
-      })),
-  };
+  const runKey = uuidv4();
 
   try {
     await client.workflow.start(agentLoopWorkflow, {
       args: [
         {
           authType,
-          agentLoopArgs: executionArgs,
+          agentLoopArgs,
+          runKey,
           startStep,
           initialStartTime,
         },
       ],
       taskQueue: await getTaskQueueForRun(auth, {
-        userMessageOrigin: executionArgs.userMessageOrigin,
+        userMessageOrigin: agentLoopArgs.userMessageOrigin,
         conversationId,
       }),
       workflowId,

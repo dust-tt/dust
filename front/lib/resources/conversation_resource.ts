@@ -835,7 +835,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
-  static async getOrSetAgentMessageConsumptionMode(
+  static async getOrSetAgentMessageConsumptionRolloutMode(
     auth: Authenticator,
     {
       agentMessageId,
@@ -855,7 +855,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         {
           model: AgentMessageModel,
           as: "agentMessage",
-          attributes: ["id", "consumptionMode"],
+          attributes: ["id", "consumptionRolloutMode"],
           required: true,
         },
       ],
@@ -866,25 +866,25 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     await AgentMessageModel.update(
-      { consumptionMode: mode },
+      { consumptionRolloutMode: mode },
       {
         where: {
           id: message.agentMessage.id,
           workspaceId,
-          consumptionMode: null,
+          consumptionRolloutMode: null,
         },
         transaction,
       }
     );
     const rootAgentMessage = await AgentMessageModel.findOne({
-      attributes: ["consumptionMode"],
+      attributes: ["consumptionRolloutMode"],
       where: { id: message.agentMessage.id, workspaceId },
       transaction,
     });
-    return rootAgentMessage?.consumptionMode ?? null;
+    return rootAgentMessage?.consumptionRolloutMode ?? null;
   }
 
-  static async fetchAgentMessageConsumptionMode(
+  static async fetchAgentMessageConsumptionRolloutMode(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
   ): Promise<AgentMessageConsumptionMode | null> {
@@ -898,12 +898,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         {
           model: AgentMessageModel,
           as: "agentMessage",
-          attributes: ["consumptionMode"],
+          attributes: ["consumptionRolloutMode"],
           required: true,
         },
       ],
     });
-    return message?.agentMessage?.consumptionMode ?? null;
+    return message?.agentMessage?.consumptionRolloutMode ?? null;
   }
 
   static async fetchAgentMessageUsageEventContext(
@@ -1083,6 +1083,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           id: agentMessageModelId,
           workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  static async updateAgentMessageCostCreditsAtLeast(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      costCredits,
+    }: { agentMessageModelId: ModelId; costCredits: number }
+  ): Promise<void> {
+    assert(
+      Number.isSafeInteger(costCredits) && costCredits >= 0,
+      "Agent message credits must be a non-negative integer"
+    );
+    await AgentMessageModel.update(
+      { costCredits },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          [Op.or]: [
+            { costCredits: null },
+            { costCredits: { [Op.lt]: costCredits } },
+          ],
         },
       }
     );

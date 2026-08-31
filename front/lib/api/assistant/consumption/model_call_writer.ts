@@ -58,12 +58,9 @@ export async function recordModelCallConsumption(
     });
   }
   if (usages.length > 0) {
-    const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
+    await signalConsumptionEventsAppended(auth.toJSON(), {
       runKey: context.runKey,
     });
-    if (signalRes.isErr()) {
-      throw signalRes.error;
-    }
   }
 }
 

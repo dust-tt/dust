@@ -423,17 +423,19 @@ export async function isApiKeySpendLimitRateCapReached(
   return count >= roundCreditsToMicroCredits(threshold);
 }
 
-/**
- * Adds `incrementBy` AWU credits to the per-API-key fixed-window spend-cap
- * counter for the current contract billing cycle. Records for every key (the
- * cap is resolved at enforcement/read time, not here). `incrementBy` is the
- * newly-accrued delta for a message (the caller diffs against the previously
- * recorded amount so repeated finalizes don't over-count). No-op when the
- * billing period can't be resolved.
- */
 export async function recordApiKeySpendLimitUsage(
   auth: Authenticator,
-  { keyModelId, incrementBy }: { keyModelId: number; incrementBy: number }
+  {
+    keyModelId,
+    incrementBy,
+    idempotencyKey,
+    throwOnError,
+  }: {
+    keyModelId: number;
+    incrementBy: number;
+    idempotencyKey?: string;
+    throwOnError?: boolean;
+  }
 ): Promise<void> {
   // Credits may be fractional; the counter stores microCredits (integer
   // INCRBY), so convert before recording. A non-positive or non-finite delta is
@@ -466,6 +468,8 @@ export async function recordApiKeySpendLimitUsage(
     key: redisKey,
     bounds,
     incrementBy: incrementByMicroCredits,
+    idempotencyKey,
+    throwOnError,
     logger,
   });
 }

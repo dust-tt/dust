@@ -135,26 +135,19 @@ export async function rateLimiter({
   }
 }
 
-/**
- * Unconditionally records `incrementBy` AWU credits against `key`, with no limit guard.
- *
- * `incrementBy` is a (possibly fractional) credit amount: it is converted to integer microCredits
- * and stored as a single sorted-set entry carrying the amount (`<microCredits>:<uuid>`), summed on
- * read by `getWeightedRateLimiterCount`. Unlike `rateLimiter`, which drops the write entirely when
- * count + incrementBy would exceed the limit, this always persists the entry. Use this for post-hoc
- * recording of a cost that already happened (e.g. AWU credits for a message that already ran) —
- * enforcement must happen beforehand via `getWeightedRateLimiterCount` + a limit check, not by
- * relying on this function to gatekeep.
- */
 export async function addRateLimiterCount({
   key,
   timeframeSeconds,
   incrementBy,
+  idempotencyKey,
+  throwOnError = false,
   logger,
 }: {
   key: string;
   timeframeSeconds: number;
   incrementBy: number;
+  idempotencyKey?: string;
+  throwOnError?: boolean;
   logger: LoggerInterface;
 }): Promise<void> {
   // Fail open on a non-positive/non-finite amount: recording runs on the
@@ -173,20 +166,31 @@ export async function addRateLimiterCount({
   }
 
   const redisKey = makeRateLimiterKey(key);
+  const idempotencyRedisKey = makeRateLimiterKey(`${key}:idempotency`);
   const windowMs = timeframeSeconds * 1000;
 
   const luaScript = `
     local key = KEYS[1]
+    local idempotency_key = KEYS[2]
     local window_ms = tonumber(ARGV[1])
     local member = ARGV[2]
+    local idempotency_field = ARGV[3]
 
     -- Use Redis server time to avoid client clock skew
     local t = redis.call('TIME') -- { seconds, microseconds }
     local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
 
-    -- Always record unconditionally: no limit check, no dropped writes. A single
-    -- entry carries the amount (microCredits prefix + uuid for uniqueness); the
-    -- reader sums the prefixes via getWeightedRateLimiterCount.
+    redis.call('ZCARD', key)
+    if idempotency_field ~= '' then
+      redis.call('ZCARD', idempotency_key)
+      redis.call('ZREMRANGEBYSCORE', idempotency_key, '-inf', now_ms - window_ms)
+      local first_write = redis.call('ZADD', idempotency_key, 'NX', now_ms, idempotency_field)
+      redis.call('PEXPIRE', idempotency_key, window_ms + 60000)
+      if first_write == 0 then
+        return
+      end
+    end
+
     redis.call('ZADD', key, now_ms, member)
 
     -- Keep the key around a bit longer than the window to allow trims
@@ -195,14 +199,17 @@ export async function addRateLimiterCount({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const member = `${microCredits}:${uuidv4()}`;
+    const member = `${microCredits}:${idempotencyKey ?? uuidv4()}`;
     await redis.eval(luaScript, {
-      keys: [redisKey],
-      arguments: [windowMs.toString(), member],
+      keys: [redisKey, idempotencyRedisKey],
+      arguments: [windowMs.toString(), member, idempotencyKey ?? ""],
     });
   } catch (e) {
     statsDMetrics.increment("ratelimiter.error.count", 1, ["operation:add"]);
     logger.error({ key, incrementBy, error: e }, "addRateLimiterCount error");
+    if (throwOnError) {
+      throw normalizeError(e);
+    }
   }
 }
 
@@ -387,22 +394,19 @@ export function getTimeframeSecondsFromLiteral(
   }
 }
 
-/**
- * Unconditionally records `incrementBy` units against a fixed-window counter
- * identified by `bounds`. Unlike the rolling `addRateLimiterCount`, the key
- * encodes the current window (via `bounds.label`) and is a plain `INCRBY` with
- * `PEXPIREAT` set to `bounds.windowEndMs` — enforcement (reading the count and
- * comparing to a limit) happens beforehand via `getFixedWindowCount`, not here.
- */
 export async function addFixedWindowCount({
   key,
   bounds,
   incrementBy,
+  idempotencyKey,
+  throwOnError = false,
   logger,
 }: {
   key: string;
   bounds: FixedWindowBounds;
   incrementBy: number;
+  idempotencyKey?: string;
+  throwOnError?: boolean;
   logger: LoggerInterface;
 }): Promise<void> {
   // Fail open on invalid input, matching the Redis-error path below: recording
@@ -420,12 +424,30 @@ export async function addFixedWindowCount({
   }
 
   const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+  const idempotencyRedisKey = makeRateLimiterKey(
+    `${key}:${bounds.label}:idempotency`
+  );
   const expireAtMs = bounds.windowEndMs + FIXED_WINDOW_EXPIRE_GRACE_MS;
 
   const luaScript = `
     local key = KEYS[1]
+    local idempotency_key = KEYS[2]
     local increment_by = tonumber(ARGV[1])
     local expire_at_ms = tonumber(ARGV[2])
+    local idempotency_field = ARGV[3]
+    local current_value = redis.call('GET', key)
+    if current_value and tonumber(current_value) == nil then
+      return redis.error_reply('fixed-window counter is not an integer')
+    end
+
+    if idempotency_field ~= '' then
+      redis.call('HEXISTS', idempotency_key, idempotency_field)
+      local first_write = redis.call('HSETNX', idempotency_key, idempotency_field, '1')
+      redis.call('PEXPIREAT', idempotency_key, expire_at_ms)
+      if first_write == 0 then
+        return tonumber(current_value or '0')
+      end
+    end
 
     local total = redis.call('INCRBY', key, increment_by)
     redis.call('PEXPIREAT', key, expire_at_ms)
@@ -435,8 +457,12 @@ export async function addFixedWindowCount({
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
     await redis.eval(luaScript, {
-      keys: [redisKey],
-      arguments: [incrementBy.toString(), expireAtMs.toString()],
+      keys: [redisKey, idempotencyRedisKey],
+      arguments: [
+        incrementBy.toString(),
+        expireAtMs.toString(),
+        idempotencyKey ?? "",
+      ],
     });
   } catch (e) {
     statsDMetrics.increment("ratelimiter.error.count", 1, [
@@ -446,6 +472,9 @@ export async function addFixedWindowCount({
       { key, label: bounds.label, incrementBy, error: e },
       "addFixedWindowCount error"
     );
+    if (throwOnError) {
+      throw normalizeError(e);
+    }
   }
 }
 

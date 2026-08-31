@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionEventModel } from "@app/lib/models/agent/agent_message_consumption_event";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
@@ -12,7 +13,7 @@ import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 export type StoredConsumptionEvent =
   | {
@@ -171,19 +172,6 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     return rows.map((row) => new this(this.model, row.get()));
   }
 
-  static async fetchByEventKey(
-    auth: Authenticator,
-    { eventKey }: { eventKey: string }
-  ): Promise<AgentMessageConsumptionEventResource | null> {
-    const row = await this.model.findOne({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        eventKey,
-      },
-    });
-    return row ? new this(this.model, row.get()) : null;
-  }
-
   static async markProcessed(
     auth: Authenticator,
     {
@@ -214,6 +202,33 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     return updatedCount;
   }
 
+  static async listOldestUnprocessedExecutions({
+    limit,
+  }: {
+    limit: number;
+  }): Promise<{
+    executions: { runKey: string; workspaceModelId: ModelId }[];
+    hasMore: boolean;
+  }> {
+    assert(limit > 0 && limit <= 10_000, "Invalid outbox recovery scan size");
+    const rows = await this.model.findAll({
+      attributes: ["workspaceId", "runKey"],
+      where: { processedAt: null },
+      order: [["id", "ASC"]],
+      limit,
+    });
+    const seen = new Set<string>();
+    const executions = rows.flatMap((row) => {
+      const key = `${row.workspaceId}:${row.runKey}`;
+      if (seen.has(key)) {
+        return [];
+      }
+      seen.add(key);
+      return [{ runKey: row.runKey, workspaceModelId: row.workspaceId }];
+    });
+    return { executions, hasMore: rows.length === limit };
+  }
+
   static async maxIdForAgentMessage(
     auth: Authenticator,
     { agentMessageModelId }: { agentMessageModelId: ModelId }
@@ -229,6 +244,53 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
       "Consumption event is missing its committed Elasticsearch version"
     );
     return maxId;
+  }
+
+  static async fetchByEventKey(
+    auth: Authenticator,
+    { eventKey }: { eventKey: string }
+  ): Promise<AgentMessageConsumptionEventResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        eventKey,
+      },
+    });
+    return row ? new this(this.model, row.get()) : null;
+  }
+
+  static async deleteOlderThan({
+    cutoff,
+    limit,
+  }: {
+    cutoff: Date;
+    limit: number;
+  }): Promise<number> {
+    assert(limit > 0 && limit <= 10_000, "Invalid outbox cleanup batch size");
+    // biome-ignore lint/plugin/noRawSql: PostgreSQL has no DELETE LIMIT; the CTE keeps each batch bounded.
+    const [result] = await frontSequelize.query<{ deletedCount: number }>(
+      `
+        WITH victims AS (
+          SELECT id
+          FROM agent_message_consumption_events
+          WHERE "createdAt" < $cutoff
+            AND "processedAt" IS NOT NULL
+          ORDER BY "createdAt", id
+          LIMIT $limit
+        ), deleted AS (
+          DELETE FROM agent_message_consumption_events event
+          USING victims
+          WHERE event.id = victims.id
+          RETURNING event.id
+        )
+        SELECT COUNT(*)::int AS "deletedCount" FROM deleted
+      `,
+      {
+        bind: { cutoff, limit },
+        type: QueryTypes.SELECT,
+      }
+    );
+    return result?.deletedCount ?? 0;
   }
 
   async delete(): Promise<Result<undefined, Error>> {

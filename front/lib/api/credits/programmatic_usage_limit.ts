@@ -220,16 +220,17 @@ export async function isProgrammaticSpendLimitRateCapReached(
   return count >= roundCreditsToMicroCredits(threshold);
 }
 
-/**
- * Adds `incrementBy` AWU credits to the workspace programmatic spend-cap counter
- * for the current contract billing cycle. Records for every workspace (the cap
- * is resolved at enforcement/read time, not here). `incrementBy` is the
- * newly-accrued delta for a message. No-op when the billing period can't be
- * resolved.
- */
 export async function recordProgrammaticSpendLimitUsage(
   auth: Authenticator,
-  { incrementBy }: { incrementBy: number }
+  {
+    incrementBy,
+    idempotencyKey,
+    throwOnError,
+  }: {
+    incrementBy: number;
+    idempotencyKey?: string;
+    throwOnError?: boolean;
+  }
 ): Promise<void> {
   // Credits may be fractional; the counter stores microCredits (integer
   // INCRBY), so convert before recording. A non-positive or non-finite delta is
@@ -259,6 +260,8 @@ export async function recordProgrammaticSpendLimitUsage(
     key: redisKey,
     bounds,
     incrementBy: incrementByMicroCredits,
+    idempotencyKey,
+    throwOnError,
     logger,
   });
 }
