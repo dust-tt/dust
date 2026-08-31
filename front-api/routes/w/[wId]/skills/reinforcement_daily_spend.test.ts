@@ -105,7 +105,7 @@ describe("GET /api/w/:wId/skills/reinforcement_daily_spend", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    for (const role of ["builder", "user"] as const) {
+    for (const role of ["user", "manager"] as const) {
       const { workspace } = await setup(role);
 
       const response = await get(workspace);

@@ -10,6 +10,8 @@ export class MembershipInvitationFactory {
     overrides: {
       inviteEmail?: string;
       status?: "pending" | "consumed" | "revoked";
+      // `builder` is still accepted so tests can seed a legacy pending invitation and exercise
+      // the downgrade-to-user path.
       initialRole?: "user" | "builder" | "admin";
       createdAt?: Date;
     } = {}

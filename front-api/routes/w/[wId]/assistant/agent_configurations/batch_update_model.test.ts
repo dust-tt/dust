@@ -14,6 +14,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
@@ -44,7 +45,7 @@ async function findTargetModel(auth: Authenticator) {
   return target;
 }
 
-async function setupTest(role: "admin" | "user") {
+async function setupTest(role: MembershipRoleType) {
   const { workspace, auth } = await createPrivateApiMockRequest({ role });
 
   const agent = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -70,7 +71,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     // require a space the acting admin is not a member of: what "Show hidden agents" surfaces.
     const agentOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, {
-      role: "builder",
+      role: "user",
     });
     const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,
@@ -217,7 +218,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
-    const { agentOwnerAuth } = await setupAgentOwner(workspace, "builder");
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
 
     // Authored by, and only editable by, someone else.
     const agent = await AgentConfigurationFactory.createTestAgent(

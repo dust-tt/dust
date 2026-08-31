@@ -17,7 +17,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/skills", () => {
   it("should return 200 with empty array when agent has no skills", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "builder",
+      role: "user",
     });
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -38,7 +38,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/skills", () => {
   it("should return 200 with skills when agent has skills", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "builder",
+      role: "user",
     });
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -82,7 +82,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/skills", () => {
   it("should return 404 when agent does not exist", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "builder",
+      role: "user",
     });
 
     const response = await getSkills(workspace, "non_existent_agent_sId");
@@ -100,7 +100,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/skills", () => {
   it("should only return skills from the correct workspace", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "builder",
+      role: "user",
     });
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -123,8 +123,8 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/skills", () => {
     expect(data.skills[0].name).toBe("Workspace Skill");
   });
 
-  it("should work for builder roles (builder, admin)", async () => {
-    for (const role of ["builder", "admin"] as const) {
+  it("should work for user and admin roles", async () => {
+    for (const role of ["user", "admin"] as const) {
       const { workspace, user } = await createPrivateApiMockRequest({
         method: "GET",
         role: role as MembershipRoleType,

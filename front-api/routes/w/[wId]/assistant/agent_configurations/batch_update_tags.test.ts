@@ -75,7 +75,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
     // acting admin is not a member of: exactly what "Show hidden agents" surfaces.
     const agentOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, {
-      role: "builder",
+      role: "user",
     });
     const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,

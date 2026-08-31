@@ -15,7 +15,7 @@ const MISSING_TRIGGER_MODEL_ID = 9_000_000_000;
 
 describe("runTriggeredAgentsActivity", () => {
   it("skips missing triggers without failing the activity", async () => {
-    const { user, workspace } = await createResourceTest({ role: "builder" });
+    const { user, workspace } = await createResourceTest({ role: "user" });
     const triggerId = TriggerResource.modelIdToSId({
       id: MISSING_TRIGGER_MODEL_ID,
       workspaceId: workspace.id,
@@ -31,7 +31,7 @@ describe("runTriggeredAgentsActivity", () => {
   });
 
   it("skips missing users without failing the activity", async () => {
-    const { workspace } = await createResourceTest({ role: "builder" });
+    const { workspace } = await createResourceTest({ role: "user" });
     const triggerId = TriggerResource.modelIdToSId({
       id: MISSING_TRIGGER_MODEL_ID,
       workspaceId: workspace.id,
@@ -50,7 +50,7 @@ describe("runTriggeredAgentsActivity", () => {
 describe("wake-up activities", () => {
   it("skips terminal wake-ups without failing the activity", async () => {
     const { authenticator, user, workspace } = await createResourceTest({
-      role: "builder",
+      role: "user",
     });
     const conversation = await createConversation(authenticator, {
       title: null,
@@ -82,7 +82,7 @@ describe("wake-up activities", () => {
   });
 
   it("skips missing wake-ups without failing the activity", async () => {
-    const { workspace } = await createResourceTest({ role: "builder" });
+    const { workspace } = await createResourceTest({ role: "user" });
     const wakeUpId = WakeUpResource.modelIdToSId({
       id: MISSING_WAKE_UP_MODEL_ID,
       workspaceId: workspace.id,

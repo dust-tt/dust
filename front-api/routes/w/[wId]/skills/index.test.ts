@@ -32,14 +32,13 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
-async function setupTest(role: MembershipRoleType = "builder") {
+async function setupTest(role: MembershipRoleType = "user") {
   return createPrivateApiMockRequest({ role });
 }
 
-// The test's own "builder" membership role doesn't grant create/skill by itself anymore — it
-// requires a group grant. Used by tests that specifically need a non-admin caller (e.g. to
-// exercise space-access checks admins would otherwise bypass) while still being allowed to
-// create a skill.
+// A non-admin membership role doesn't grant create/skill by itself — it requires a group grant.
+// Used by tests that specifically need a non-admin caller (e.g. to exercise space-access checks
+// admins would otherwise bypass) while still being allowed to create a skill.
 async function grantCreateSkillCapability(
   workspace: Awaited<ReturnType<typeof setupTest>>["workspace"],
   user: Awaited<ReturnType<typeof setupTest>>["user"]
@@ -137,7 +136,7 @@ describe("GET /api/w/:wId/skills", () => {
     // Skills created by another user: the requester is not in their editor groups.
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, otherUser, {
-      role: "builder",
+      role: "user",
     });
     const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
       otherUser.sId,
@@ -231,7 +230,7 @@ describe("GET /api/w/:wId/skills", () => {
     // scoped to suggestions, not to admins at large (that is bypassEditorVisibility's job).
     const skillOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, skillOwner, {
-      role: "builder",
+      role: "user",
     });
     const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       skillOwner.sId,
@@ -290,7 +289,7 @@ describe("GET /api/w/:wId/skills", () => {
 
     const skillOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, skillOwner, {
-      role: "builder",
+      role: "user",
     });
     const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       skillOwner.sId,
@@ -321,7 +320,7 @@ describe("GET /api/w/:wId/skills", () => {
   });
 
   it("rejects bypassEditorVisibility for non-admins", async () => {
-    const { workspace } = await setupTest("builder");
+    const { workspace } = await setupTest("user");
 
     const response = await getSkills(workspace, {
       bypassEditorVisibility: "true",
@@ -489,8 +488,8 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).not.toContain("Archived Skill");
   });
 
-  it("should work for builder and admin roles", async () => {
-    for (const role of ["builder", "admin"] as const) {
+  it("should work for user and admin roles", async () => {
+    for (const role of ["user", "admin"] as const) {
       const { workspace, user } = await setupTest(role);
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -1430,7 +1429,7 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("rejects additional requested spaces the user cannot access", async () => {
-    const { workspace, user } = await setupTest("builder");
+    const { workspace, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
 
     const restrictedSpace = await SpaceFactory.regular(workspace);
@@ -1457,7 +1456,7 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("allows restricting a skill to an open Pod the user can access", async () => {
-    const { workspace, globalGroup, user } = await setupTest("builder");
+    const { workspace, globalGroup, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
 
     const openPod = await SpaceFactory.project(workspace);
@@ -1710,7 +1709,7 @@ describe("POST /api/w/:wId/skills", () => {
 
 describe("POST /api/w/:wId/skills - file attachments", () => {
   it("creates a skill with file attachments", async () => {
-    const { auth, workspace, user } = await setupTest("builder");
+    const { auth, workspace, user } = await setupTest("user");
     await grantCreateSkillCapability(workspace, user);
 
     const file1 = await FileFactory.create(auth, user, {

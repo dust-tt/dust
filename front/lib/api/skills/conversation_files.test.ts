@@ -32,7 +32,7 @@ async function setupConversationAndSkillPermissions() {
     authenticator: auth,
     user,
     workspace,
-  } = await createResourceTest({ role: "builder" });
+  } = await createResourceTest({ role: "user" });
 
   if (!(await auth.hasWorkspacePermission("create", "skill"))) {
     await grantWorkspacePermission(workspace, user, {

@@ -80,7 +80,7 @@ function postWebhook(
 async function makeTriggerEditorAuth(workspace: WorkspaceType) {
   const triggerEditor = await UserFactory.basic();
   await MembershipFactory.associate(workspace, triggerEditor, {
-    role: "builder",
+    role: "user",
   });
 
   return Authenticator.fromUserIdAndWorkspaceId(

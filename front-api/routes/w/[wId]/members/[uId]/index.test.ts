@@ -257,7 +257,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "user" }),
         }
       );
 
@@ -481,7 +481,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
 
       const targetUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, targetUser, {
-        role: "builder",
+        role: "user",
       });
 
       const response = await honoApp.request(
@@ -494,7 +494,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
         new Set(Object.keys(data.member))
       );
       expect(data.member.id).toBe(targetUser.sId);
-      expect(data.member.role).toBe("builder");
+      expect(data.member.role).toBe("user");
     });
 
     it("should return 200 when non-admin user requests another user's data", async () => {

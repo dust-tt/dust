@@ -284,10 +284,10 @@ describe("POST /api/w/:wId/groups", () => {
     expect((await response.json()).error.type).toBe("workspace_auth_error");
   });
 
-  it("returns 403 for a builder", async () => {
+  it("returns 403 for a regular user", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
 
     const response = await postGroup(workspace, { name: "Nope" });

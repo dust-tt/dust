@@ -14,7 +14,7 @@ async function setupTest(role: MembershipRoleType = "admin") {
   });
   const skillOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, skillOwner, {
-    role: "builder",
+    role: "user",
   });
 
   const requestUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -66,7 +66,7 @@ describe("POST /api/w/:wId/skills/archive", () => {
 
   it("denies a caller who cannot administrate every skill", async () => {
     const { workspace, requestUserAuth, skillOwnerAuth } =
-      await setupTest("builder");
+      await setupTest("user");
     const administratedSkill = await SkillFactory.create(requestUserAuth, {
       name: "Administrated Skill",
     });

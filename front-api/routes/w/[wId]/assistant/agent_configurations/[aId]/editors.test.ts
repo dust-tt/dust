@@ -8,6 +8,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import type { UserType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
@@ -18,8 +19,8 @@ vi.mock("@app/lib/api/assistant/recent_authors", () => ({
 
 async function setupTest(
   options: {
-    agentOwnerRole?: "admin" | "builder" | "user";
-    requestUserRole?: "admin" | "builder" | "user";
+    agentOwnerRole?: MembershipRoleType;
+    requestUserRole?: MembershipRoleType;
   } = {}
 ) {
   const agentOwnerRole = options.agentOwnerRole ?? "admin";
@@ -87,8 +88,8 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
 
   it("should return 200 and only light user fields for non-admin editor", async () => {
     const { workspace, agent, agentOwner } = await setupTest({
-      agentOwnerRole: "builder",
-      requestUserRole: "builder",
+      agentOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     const response = await getEditors(workspace, agent.sId);
@@ -149,7 +150,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
 
     const newEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, newEditor, {
-      role: "builder",
+      role: "user",
     });
 
     const response = await patchEditors(workspace, agent.sId, {
@@ -165,7 +166,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
 
   it("admin who is not an agent editor can become an editor", async () => {
     const { workspace, agent, agentOwner, requestUser } = await setupTest({
-      agentOwnerRole: "builder",
+      agentOwnerRole: "user",
       requestUserRole: "admin",
     });
 
@@ -187,7 +188,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
 
     const editorToRemove = await UserFactory.basic();
     await MembershipFactory.associate(workspace, editorToRemove, {
-      role: "builder",
+      role: "user",
     });
     const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,
@@ -213,8 +214,8 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
 
   it("editor should successfully add another editor and get light response", async () => {
     const { workspace, agent, agentOwner } = await setupTest({
-      agentOwnerRole: "builder",
-      requestUserRole: "builder",
+      agentOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     const newEditor = await UserFactory.basic();
@@ -235,8 +236,8 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
 
   it("editor should successfully remove another editor", async () => {
     const { workspace, agent, agentOwner, requestUser } = await setupTest({
-      agentOwnerRole: "builder",
-      requestUserRole: "builder",
+      agentOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     const editorToRemove = await UserFactory.basic();
@@ -380,7 +381,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
 
     const editorToAdd = await UserFactory.basic();
     await MembershipFactory.associate(workspace, editorToAdd, {
-      role: "builder",
+      role: "user",
     });
 
     const response = await patchEditors(workspace, agent.sId, {

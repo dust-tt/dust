@@ -39,7 +39,7 @@ async function setupTestAgents(workspace: WorkspaceType) {
   await SpaceFactory.defaults(internalAdminAuth);
 
   const agentOwner = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, agentOwner, { role: "builder" });
+  await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
   const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     agentOwner.sId,
     workspace.sId
@@ -97,7 +97,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
 
   it("rejects the all_unrestricted view for non-admin keys", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
-      role: "builder",
+      role: "user",
     });
 
     const response = await listAgents(workspace, key, {

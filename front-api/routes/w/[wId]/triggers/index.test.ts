@@ -71,7 +71,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
   it("creates a trigger scoped to an open pod", async () => {
     const { workspace, user, globalGroup } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -100,7 +100,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
   it("creates a trigger scoped to a restricted pod the user is a member of", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -121,7 +121,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
   it("rejects a restricted pod the user is not a member of", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -145,7 +145,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
   it("rejects a space that is not a Pod", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -166,7 +166,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
   it("creates a trigger with no pod (backward compatible default)", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -186,7 +186,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
   it("rejects a Pod that does not exist", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -208,7 +208,7 @@ describe("PATCH /api/w/:wId/triggers (spaceId)", () => {
   it("updates an existing trigger to run inside a Pod", async () => {
     const { workspace, user, globalGroup } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -242,7 +242,7 @@ describe("PATCH /api/w/:wId/triggers (spaceId)", () => {
   it("rejects updating a trigger to a Pod the user is not a member of", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -282,7 +282,7 @@ describe("PATCH /api/w/:wId/triggers (disabled_by_manager)", () => {
   it("rejects a non-admin editor re-enabling an admin-locked trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -303,7 +303,7 @@ describe("PATCH /api/w/:wId/triggers (disabled_by_manager)", () => {
   it("rejects a non-admin editor re-enabling a relocating trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -376,7 +376,7 @@ describe("PATCH /api/w/:wId/triggers (disabled_by_manager)", () => {
   it("lets an editor save other fields of a system-disabled trigger, status echoed unchanged", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -443,7 +443,7 @@ describe("PATCH /api/w/:wId/triggers (disabled_by_manager)", () => {
   it("lets a non-admin editor edit other fields of an admin-locked trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -498,7 +498,7 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
   it("rejects creating a workspace pool trigger without the permission", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -545,7 +545,7 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
   it("rejects an update to the workspace pool without the permission", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,

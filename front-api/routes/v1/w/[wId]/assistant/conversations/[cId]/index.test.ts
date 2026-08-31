@@ -19,7 +19,7 @@ async function setupGetRequest() {
   });
 
   const user = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, user, { role: "builder" });
+  await MembershipFactory.associate(workspace, user, { role: "user" });
   const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
@@ -137,7 +137,7 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
     });
 
     const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "builder" });
+    await MembershipFactory.associate(workspace, user, { role: "user" });
     const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId

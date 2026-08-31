@@ -46,7 +46,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     const skill = await SkillFactory.create(auth);
     const builderUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, builderUser, {
-      role: "builder",
+      role: "user",
     });
 
     await skill.archive(auth);
@@ -70,14 +70,14 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     );
   });
 
-  it("allows adding builder as editor", async () => {
+  it("allows adding a workspace member as editor", async () => {
     const { workspace, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
 
     const builderUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, builderUser, {
-      role: "builder",
+      role: "user",
     });
 
     const response = await patch(workspace, skill.sId, {
@@ -117,7 +117,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
 
     const builderUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, builderUser, {
-      role: "builder",
+      role: "user",
     });
     const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
       builderUser.sId,
@@ -155,14 +155,14 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(data.editors).toHaveLength(2); // admin + regular user
   });
 
-  it("allows a mixed batch (builder + user)", async () => {
+  it("allows a mixed batch of members", async () => {
     const { workspace, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
 
     const builderUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, builderUser, {
-      role: "builder",
+      role: "user",
     });
 
     const regularUser = await UserFactory.basic();
@@ -211,7 +211,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     });
 
     const outsider = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
 
     const response = await patch(workspace, skill.sId, {
       addEditorIds: [outsider.sId],
@@ -237,7 +237,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     const space = await SpaceFactory.regular(workspace);
 
     const peer = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, peer, { role: "builder" });
+    await MembershipFactory.associate(workspace, peer, { role: "user" });
     await space.addMembers(adminAuth, { userIds: [user.sId, peer.sId] });
 
     const skill = await SkillFactory.create(auth, {
@@ -261,7 +261,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     });
 
     const outsider = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
 
     const response = await patch(workspace, skill.sId, {
       addEditorIds: [outsider.sId],

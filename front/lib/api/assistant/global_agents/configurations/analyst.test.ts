@@ -72,10 +72,6 @@ describe("analyst global agent visibility", () => {
     expect(await fetchAnalyst("manager", true)).toEqual([]);
   });
 
-  it("is hidden from builders even by default", async () => {
-    expect(await fetchAnalyst("builder")).toEqual([]);
-  });
-
   it("is hidden from regular users even by default", async () => {
     expect(await fetchAnalyst("user")).toEqual([]);
   });

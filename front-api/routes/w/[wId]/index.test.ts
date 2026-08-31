@@ -56,7 +56,7 @@ describe("POST /api/w/:wId (reinforcement caps)", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    for (const role of ["builder", "user"] as const) {
+    for (const role of ["user", "manager"] as const) {
       const { workspace } = await setup(role);
 
       const response = await post(workspace, {
@@ -131,7 +131,7 @@ describe("POST /api/w/:wId (workspace default agent)", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    for (const role of ["builder", "user"] as const) {
+    for (const role of ["user", "manager"] as const) {
       const { workspace } = await setup(role);
 
       const response = await post(workspace, {
@@ -180,7 +180,7 @@ describe("POST /api/w/:wId (published agents restricted models)", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    for (const role of ["builder", "user"] as const) {
+    for (const role of ["user", "manager"] as const) {
       const { workspace } = await setup(role);
 
       const response = await post(workspace, {
@@ -225,7 +225,7 @@ describe("POST /api/w/:wId (workspace analytics opt-out)", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    for (const role of ["builder", "user"] as const) {
+    for (const role of ["user", "manager"] as const) {
       const { workspace } = await setup(role);
 
       const response = await post(workspace, {

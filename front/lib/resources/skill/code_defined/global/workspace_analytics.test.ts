@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 describe("workspace-analytics code-defined skill", () => {
   it("is hidden from non-admins", async () => {
-    const { authenticator } = await createResourceTest({ role: "builder" });
+    const { authenticator } = await createResourceTest({ role: "user" });
 
     const skill = await GlobalSkillsRegistry.getById(
       authenticator,
