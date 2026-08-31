@@ -916,9 +916,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ids: ModelId[],
     {
       dangerouslySkipPermissionFiltering,
+      status,
       withTools = true,
     }: {
       dangerouslySkipPermissionFiltering?: boolean;
+      // `baseFetch` returns active skills only unless a status is given.
+      status?: SkillStatus | SkillStatus[];
       withTools?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
@@ -929,6 +932,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           id: {
             [Op.in]: ids,
           },
+          ...(status ? { status } : {}),
         },
         onlyCustom: true,
         withTools,

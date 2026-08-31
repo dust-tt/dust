@@ -234,6 +234,9 @@ async function backfillWorkspaceSkills(
   // ids need dropping from the manual list rather than being copied into it.
   const skills = await SkillResource.fetchByModelIds(auth, skillModelIds, {
     dangerouslySkipPermissionFiltering: true,
+    // `fetchByModelIds` returns active skills only by default. An archived or suggested skill still
+    // holds its requested spaces and can be restored and saved, so it needs the provenance too.
+    status: ["active", "archived", "suggested"],
   });
   if (skills.length !== skillModelIds.length) {
     logger.warn(
