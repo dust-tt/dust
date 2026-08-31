@@ -7,6 +7,7 @@ import type {
   ConsumptionScopeFilter,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
+  agentTagIdsFilter,
   buildConsumptionScopeQuery,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
@@ -54,6 +55,7 @@ export type ConsumptionTimeseries = {
   granularity: ConsumptionGranularity;
   mode: ConsumptionTimeseriesMode;
   metric: ConsumptionMetric;
+  timezone: string;
   breakdownBy: ConsumptionBreakdownDimension | null;
   // In rank order, highest consumption first, with "others" last when present.
   groups: ConsumptionTimeseriesGroup[];
@@ -67,6 +69,7 @@ type ConsumptionTimeseriesScope = {
   granularity: ConsumptionGranularity;
   mode: ConsumptionTimeseriesMode;
   metric: ConsumptionMetric;
+  timezone: string;
 };
 
 type DateBucket = {
@@ -102,6 +105,8 @@ export async function fetchConsumptionTimeseries(
     breakdownBy,
     breakdownCount = DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
     filter,
+    agentTagIds,
+    timezone = "UTC",
   }: {
     period: ConsumptionPeriod;
     granularity: ConsumptionGranularity;
@@ -110,6 +115,8 @@ export async function fetchConsumptionTimeseries(
     breakdownBy?: ConsumptionBreakdownDimension | null;
     breakdownCount?: number;
     filter?: ConsumptionScopeFilter;
+    agentTagIds?: string[];
+    timezone?: string;
   }
 ): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
@@ -117,8 +124,9 @@ export async function fetchConsumptionTimeseries(
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
+    extraFilters: agentTagIdsFilter(agentTagIds ?? []),
   });
-  const scope = { period, granularity, mode, metric };
+  const scope = { period, granularity, mode, metric, timezone };
 
   if (!breakdownBy) {
     return fetchTimeseries(query, scope);
@@ -138,6 +146,7 @@ async function fetchTimeseries(
   const bucketsResult = await fetchMetricTimeseries(query, {
     period: scope.period,
     granularity: scope.granularity,
+    timezone: scope.timezone,
     metric: scope.metric,
     breakdown: null,
   });
@@ -189,6 +198,7 @@ async function fetchTimeseriesBreakdown(
   const bucketsResult = await fetchMetricTimeseries(query, {
     period: scope.period,
     granularity: scope.granularity,
+    timezone: scope.timezone,
     metric: scope.metric,
     breakdown: { field, groupKeys: topDimensionKeys },
   });
@@ -231,11 +241,13 @@ async function fetchMetricTimeseries(
   {
     period,
     granularity,
+    timezone,
     metric,
     breakdown,
   }: {
     period: ConsumptionPeriod;
     granularity: ConsumptionGranularity;
+    timezone: string;
     metric: ConsumptionMetric;
     breakdown: ConsumptionBreakdown | null;
   }
@@ -248,7 +260,7 @@ async function fetchMetricTimeseries(
           date_histogram: {
             field: COMPLETED_AT_FIELD,
             calendar_interval: granularity,
-            time_zone: "UTC",
+            time_zone: timezone,
             min_doc_count: 0,
             extended_bounds: {
               min: new Date(period.startDate).getTime(),
