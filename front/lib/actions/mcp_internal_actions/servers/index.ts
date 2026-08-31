@@ -21,7 +21,6 @@ import { default as conversationFilesServer } from "@app/lib/api/actions/servers
 import { default as conversationSidePanelServer } from "@app/lib/api/actions/servers/conversation_side_panel";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
-import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
 import { default as exaServer } from "@app/lib/api/actions/servers/exa";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fathomServer } from "@app/lib/api/actions/servers/fathom";
@@ -201,8 +200,6 @@ export async function getInternalMCPServer(
       return conversationSidePanelServer(auth, toolContext);
     case "files":
       return filesServer(auth, toolContext);
-    case "databricks":
-      return databricksServer(auth, toolContext);
     case "servicenow":
       return servicenowServer(auth, toolContext);
     case "shopify":

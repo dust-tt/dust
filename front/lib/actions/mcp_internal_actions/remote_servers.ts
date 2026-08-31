@@ -2304,6 +2304,50 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10030,
+    name: "Databricks SQL",
+    description:
+      "Run SQL against your Databricks workspace through the official Databricks-managed SQL MCP server.",
+    url: "",
+    icon: "DatabricksLogo",
+    documentationUrl:
+      "https://docs.databricks.com/aws/en/generative-ai/mcp/managed-mcp",
+    connectionInstructions:
+      "URL: https://<workspace-host>/api/2.0/mcp/sql. For OAuth, use a Databricks OAuth app and " +
+      "enter authorization endpoint https://<workspace-host>/oidc/v1/authorize, token endpoint " +
+      "https://<workspace-host>/oidc/v1/token, its client ID/secret, and scope `sql offline_access`.",
+    authMethod: "oauth-static",
+    supportedOAuthUseCases: ["platform_actions", "personal_actions"],
+    toolStakes: {
+      execute_sql: "high",
+      execute_sql_read_only: "never_ask",
+      poll_sql_result: "never_ask",
+    },
+    featureFlag: "databricks_tool",
+  },
+  {
+    id: 10031,
+    name: "Databricks Genie",
+    description:
+      "Ask questions about your Databricks data in natural language through the official Databricks-managed Genie MCP server.",
+    url: "",
+    icon: "DatabricksLogo",
+    documentationUrl:
+      "https://docs.databricks.com/aws/en/agents/mcp-tools/genie-mcp",
+    connectionInstructions:
+      "URL: https://<workspace-host>/api/2.0/mcp/genie. For OAuth, use a Databricks OAuth app and " +
+      "enter authorization endpoint https://<workspace-host>/oidc/v1/authorize, token endpoint " +
+      "https://<workspace-host>/oidc/v1/token, its client ID/secret, and scope `genie offline_access`.",
+    authMethod: "oauth-static",
+    supportedOAuthUseCases: ["platform_actions", "personal_actions"],
+    toolStakes: {
+      genie_ask: "never_ask",
+      genie_poll_response: "never_ask",
+      genie_get_query_result: "never_ask",
+    },
+    featureFlag: "databricks_tool",
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

@@ -9,7 +9,6 @@ import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversa
 import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
-import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
@@ -201,7 +200,6 @@ const SERVER_SOURCES: Array<{
   { name: "exa_people_and_company", tools: EXA_SERVER.tools },
   { name: "microsoft_excel", tools: MICROSOFT_EXCEL_SERVER.tools },
   { name: "openai_usage", tools: OPENAI_USAGE_SERVER.tools },
-  { name: "databricks", tools: DATABRICKS_SERVER.tools },
   {
     name: "data_sources_file_system",
     tools: DATA_SOURCES_FILE_SYSTEM_SERVER.tools,
