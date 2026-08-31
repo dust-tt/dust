@@ -4,6 +4,8 @@ import { useAppRouter } from "@app/lib/platform";
 import { datadogLogs } from "@datadog/browser-logs";
 import { useEffect } from "react";
 
+const CELL = import.meta.env?.VITE_DUST_CELL;
+
 export function useDatadogLogs() {
   const { user } = useAuth();
   const userId = user?.sId;
@@ -30,8 +32,13 @@ export function useDatadogLogs() {
   }, [userId]);
 
   useEffect(() => {
-    const globalContext: Record<string, string> =
-      wId && !Array.isArray(wId) ? { region, workspaceId: wId } : { region };
+    const globalContext: Record<string, string> = { region };
+    if (CELL) {
+      globalContext.cell = CELL;
+    }
+    if (wId && !Array.isArray(wId)) {
+      globalContext.workspaceId = wId;
+    }
 
     datadogLogs.setGlobalContext(globalContext);
     window.DD_RUM?.onReady(() => {
