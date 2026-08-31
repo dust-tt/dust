@@ -121,12 +121,19 @@ export const NewAPIKeyDialog = ({
     [spaces]
   );
 
+  const selectedSpaceIdSet = useMemo(
+    () => new Set(selectedSpaceIds),
+    [selectedSpaceIds]
+  );
+
   const matchingSpaces = useMemo(
     () =>
-      sortedSpaces.filter((space) =>
-        space.name.toLowerCase().includes(spaceSearch.toLowerCase())
+      sortedSpaces.filter(
+        (space) =>
+          !selectedSpaceIdSet.has(space.sId) &&
+          space.name.toLowerCase().includes(spaceSearch.toLowerCase())
       ),
-    [sortedSpaces, spaceSearch]
+    [sortedSpaces, spaceSearch, selectedSpaceIdSet]
   );
 
   const handleClose = () => {
@@ -207,23 +214,19 @@ export const NewAPIKeyDialog = ({
                           No spaces found
                         </div>
                       )}
-                      {matchingSpaces
-                        .filter(
-                          (space) => !selectedSpaceIds.includes(space.sId)
-                        )
-                        .map((space) => (
-                          <DropdownMenuItem
-                            key={space.sId}
-                            label={space.name}
-                            onSelect={(e) => e.preventDefault()}
-                            onClick={() =>
-                              setSelectedSpaceIds([
-                                ...selectedSpaceIds,
-                                space.sId,
-                              ])
-                            }
-                          />
-                        ))}
+                      {matchingSpaces.map((space) => (
+                        <DropdownMenuItem
+                          key={space.sId}
+                          label={space.name}
+                          onSelect={(e) => e.preventDefault()}
+                          onClick={() =>
+                            setSelectedSpaceIds([
+                              ...selectedSpaceIds,
+                              space.sId,
+                            ])
+                          }
+                        />
+                      ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

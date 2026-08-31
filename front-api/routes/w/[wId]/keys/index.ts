@@ -206,15 +206,20 @@ app.post(
       );
     }
 
-    const requestedGroupIds = [
-      ...new Set(group_ids ?? (group_id ? [group_id] : [])),
-    ].filter((groupId) => groupId !== globalGroup.sId);
+    const additionalGroupIds = group_ids
+      ? group_ids.filter((gId) => gId !== globalGroup.sId)
+      : group_id && group_id !== globalGroup.sId
+        ? [group_id]
+        : [];
 
-    if (requestedGroupIds.length > 0) {
+    if (additionalGroupIds.length > 0) {
       const scopableGroupIds = new Set(
         (await listKeyScopableGroups(auth)).map((group) => group.sId)
       );
-      if (requestedGroupIds.some((groupId) => !scopableGroupIds.has(groupId))) {
+      const invalidGroupIds = additionalGroupIds.filter(
+        (gId) => !scopableGroupIds.has(gId)
+      );
+      if (invalidGroupIds.length > 0) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
@@ -225,7 +230,10 @@ app.post(
         });
       }
 
-      const groupsRes = await GroupResource.fetchByIds(auth, requestedGroupIds);
+      const groupsRes = await GroupResource.fetchByIds(
+        auth,
+        additionalGroupIds
+      );
       if (groupsRes.isErr()) {
         return apiError(ctx, {
           status_code: 404,
