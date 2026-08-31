@@ -5,6 +5,7 @@ import {
   User01,
   XClose,
 } from "@dust-tt/sparkle";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 // =============================================================================
@@ -17,26 +18,15 @@ import { useEffect, useState } from "react";
 // =============================================================================
 const PROMO_SCHEDULE: PromoConfig[] = [
   {
-    id: "use-gamma-in-dust-aug20",
-    image: "/static/landing/Webinar_Banner.jpeg",
-    link: "https://watch.getcontrast.io/register/dust-gamma-in-dust?utm_source=website",
+    id: "take-control-of-your-ai-spend-sep17",
+    image: "/static/landing/AI_Spend_Webinar_Banner.png",
+    link: "https://watch.getcontrast.io/register/dust-take-control-of-your-ai-spend?utm_source=website",
     badge: "Online Event",
-    title: "How to use Gamma in Dust",
-    time: "August 20 · 9:00am PT / 6:00pm CET",
+    title: "Take control of your AI spend",
+    time: "September 17 · 9:00am PT / 6:00pm CET",
     linkLabel: "Register Now",
-    // Drops out of the carousel an hour after the August 20th event.
-    expiresAt: new Date("2026-08-20T10:00:00-07:00"),
-  },
-  {
-    id: "build-your-gtm-cockpit-aug27",
-    image: "/static/landing/GTM_Engineers_Webinar_Banner.png",
-    link: "https://watch.getcontrast.io/register/dust-build-your-gtm-cockpit?utm_source=website",
-    badge: "Online Event",
-    title: "Build your GTM cockpit",
-    time: "August 27 · 9:00am PT / 6:00pm CET",
-    linkLabel: "Register Now",
-    // Banner auto-hides after this date (a few hours after the August 27th event).
-    expiresAt: new Date("2026-08-27T22:00:00+02:00"),
+    // Drops out of the carousel an hour after the September 17th event.
+    expiresAt: new Date("2026-09-17T10:00:00-07:00"),
   },
 ];
 // =============================================================================
@@ -44,7 +34,7 @@ const PROMO_SCHEDULE: PromoConfig[] = [
 interface PromoConfig {
   /** Unique id — changing it resets dismissal for returning visitors. */
   id: string;
-  /** Path to the image in public/static/. */
+  /** Path to the image in public/static/ — shown on `sm` and up only. */
   image: string;
   /** Registration / event URL. */
   link: string;
@@ -128,41 +118,52 @@ export function PromoBanner() {
                 href={promo.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block w-full shrink-0 px-4 py-3 sm:p-4"
+                className="group block w-full shrink-0"
                 // Off-screen slides stay out of the tab order and the a11y tree.
                 aria-hidden={!isActive}
                 tabIndex={isActive ? undefined : -1}
               >
-                <div className="mb-1.5 flex items-center gap-2 pr-6 text-[11px] font-semibold uppercase tracking-wide text-blue-600 sm:mb-2.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
-                  </span>
-                  {promo.badge}
-                </div>
-                <div className="text-sm font-semibold leading-snug text-slate-900">
-                  {promo.title}
-                </div>
-                <div className="mt-1.5 space-y-1 text-[11px] leading-relaxed text-slate-500 sm:mt-2">
-                  <div className="flex items-start gap-1.5">
-                    <Clock className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400" />
-                    <span>{promo.time}</span>
+                {/* Decorative, and hidden below `sm` so the card stays small on
+                    a phone — the title and time carry the message on their own. */}
+                <Image
+                  alt=""
+                  src={promo.image}
+                  width={972}
+                  height={540}
+                  className="hidden h-auto w-full sm:block"
+                />
+                <div className="px-4 py-3 sm:p-4">
+                  <div className="mb-1.5 flex items-center gap-2 pr-6 text-[11px] font-semibold uppercase tracking-wide text-blue-600 sm:mb-2.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+                    </span>
+                    {promo.badge}
                   </div>
-                  {promo.host && (
+                  <div className="text-sm font-semibold leading-snug text-slate-900">
+                    {promo.title}
+                  </div>
+                  <div className="mt-1.5 space-y-1 text-[11px] leading-relaxed text-slate-500 sm:mt-2">
                     <div className="flex items-start gap-1.5">
-                      <User01 className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span>{promo.host}</span>
+                      <Clock className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span>{promo.time}</span>
                     </div>
-                  )}
-                </div>
-                <div className="mt-2 flex items-center gap-1 text-[11px] font-medium text-blue-600 group-hover:underline sm:mt-3">
-                  {promo.linkLabel}
-                  <span
-                    aria-hidden
-                    className="transition-transform group-hover:translate-x-0.5"
-                  >
-                    →
-                  </span>
+                    {promo.host && (
+                      <div className="flex items-start gap-1.5">
+                        <User01 className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        <span>{promo.host}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center gap-1 text-[11px] font-medium text-blue-600 group-hover:underline sm:mt-3">
+                    {promo.linkLabel}
+                    <span
+                      aria-hidden
+                      className="transition-transform group-hover:translate-x-0.5"
+                    >
+                      →
+                    </span>
+                  </div>
                 </div>
               </a>
             );
