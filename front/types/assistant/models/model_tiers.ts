@@ -496,10 +496,12 @@ export function getTierForModelConfiguration(
   model: ModelConfigurationType,
   reasoningEffort?: ReasoningEffort
 ): ModelsTierName | null {
-  return (
-    getTierForModel(
-      model.modelId,
-      reasoningEffort ?? model.defaultReasoningEffort
-    ) ?? getTierForModel(model.modelId, model.defaultReasoningEffort)
-  );
+  if (reasoningEffort) {
+    const tier = getTierForModel(model.modelId, reasoningEffort);
+    if (tier) {
+      return tier;
+    }
+  }
+
+  return getTierForModel(model.modelId, model.defaultReasoningEffort);
 }
