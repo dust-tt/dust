@@ -860,6 +860,16 @@ async function fetchFreeSeatCreditsForMembersTable({
  * Metronome calls regardless of workspace size, not one per member.
  * Returns `null` when Metronome isn't configured for the workspace.
  */
+export type MemberPoolConsumedCredits = {
+  username: string;
+  poolConsumedCredits: number;
+};
+
+export type ActiveMembersPoolConsumedCredits = {
+  totalPoolConsumedCredits: number;
+  byMember: MemberPoolConsumedCredits[];
+};
+
 export async function sumActiveMembersPoolConsumedCredits({
   workspace,
   metronomeCustomerId,
@@ -868,7 +878,7 @@ export async function sumActiveMembersPoolConsumedCredits({
   workspace: LightWorkspaceType;
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
-}): Promise<number | null> {
+}): Promise<ActiveMembersPoolConsumedCredits | null> {
   if (!metronomeCustomerId || !metronomeContractId) {
     return null;
   }
@@ -877,7 +887,7 @@ export async function sumActiveMembersPoolConsumedCredits({
     workspace,
   });
   if (memberships.length === 0) {
-    return 0;
+    return { totalPoolConsumedCredits: 0, byMember: [] };
   }
   const users = await UserResource.fetchByModelIds(
     memberships.map((m) => m.userId)
@@ -885,7 +895,15 @@ export async function sumActiveMembersPoolConsumedCredits({
   const userByModelId = new Map(users.map((u) => [u.id, u]));
   const members = memberships.flatMap((m) => {
     const user = userByModelId.get(m.userId);
-    return user ? [{ sId: user.sId, seatType: m.seatType ?? null }] : [];
+    return user
+      ? [
+          {
+            sId: user.sId,
+            username: user.username,
+            seatType: m.seatType ?? null,
+          },
+        ]
+      : [];
   });
 
   // Same per-seat-type allowance the members table uses (source of truth for
@@ -918,7 +936,8 @@ export async function sumActiveMembersPoolConsumedCredits({
     fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
   ]);
 
-  let sumConsumedFromPoolAwuCredits = 0;
+  let totalPoolConsumedCredits = 0;
+  const byMember: MemberPoolConsumedCredits[] = [];
   for (const member of members) {
     const metronomeUserId =
       member.seatType === "free"
@@ -936,10 +955,12 @@ export async function sumActiveMembersPoolConsumedCredits({
       totalConsumedCredits,
       effectiveAllocationAwu
     );
-    sumConsumedFromPoolAwuCredits +=
+    const poolConsumedCredits =
       totalConsumedCredits - consumedFromAllowanceAwuCredits;
+    totalPoolConsumedCredits += poolConsumedCredits;
+    byMember.push({ username: member.username, poolConsumedCredits });
   }
-  return sumConsumedFromPoolAwuCredits;
+  return { totalPoolConsumedCredits, byMember };
 }
 
 /**
@@ -2084,11 +2105,11 @@ async function computeMembersUsageRanking({
 // member) but identical for every page of the same sort/filter combination,
 // so it's cached as a unit: paginating or re-sorting into the same order
 // within the TTL reuses it instead of re-scanning the whole workspace.
-// Matches the 60s TTL of `getPerUserAwuUsage`, the per-user cache this
-// ranking is itself built from — caching it longer would just serve a
-// ranking staler than the consumption figures it was computed from.
+// Matches the TTL of `getPerUserAwuUsage`, the per-user cache this ranking
+// is itself built from — caching it longer would just serve a ranking
+// staler than the consumption figures it was computed from.
 const MEMBERS_USAGE_RANKING_CACHE_ID = "membersUsageRanking";
-const MEMBERS_USAGE_RANKING_CACHE_TTL_MS = 60 * 1000;
+const MEMBERS_USAGE_RANKING_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const getCachedMembersUsageRanking = cacheWithRedis(
   computeMembersUsageRanking,

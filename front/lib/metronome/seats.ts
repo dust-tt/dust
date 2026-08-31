@@ -2431,7 +2431,7 @@ export async function buildSeatDataByUserId({
   return new Ok(seatDataByUserId);
 }
 
-const SEAT_DATA_CACHE_TTL_MS = 60 * 1000;
+const SEAT_DATA_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const seatDataCacheResolver = ({
   metronomeCustomerId,

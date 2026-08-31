@@ -370,7 +370,7 @@ export async function fetchPerUserAwuUsageRows({
   return new Ok(rows);
 }
 
-const PER_USER_AWU_USAGE_CACHE_TTL_MS = 60 * 1000;
+const PER_USER_AWU_USAGE_CACHE_TTL_MS = 10 * 60 * 1000;
 
 function perUserAwuUsageCacheKey(
   metronomeCustomerId: string,
@@ -382,7 +382,7 @@ function perUserAwuUsageCacheKey(
 
 /**
  * Per-user-cached AWU consumption for the current billing period. Each user is
- * cached under its own key (60s TTL); the users not in cache are fetched in ONE
+ * cached under its own key (10min TTL); the users not in cache are fetched in ONE
  * batched Metronome query and written back — including 0 for users with no
  * usage, so they don't perpetually miss. Caching per user (rather than per
  * requested set) lets the members table, single-user cap checks and reconcile

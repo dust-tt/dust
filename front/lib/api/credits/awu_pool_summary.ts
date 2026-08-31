@@ -532,15 +532,33 @@ async function getAwuPoolSummaryUncached(
         awuCreditTypeId,
       });
 
+  const membersPoolConsumedCreditsTotal =
+    membersPoolConsumedCredits?.totalPoolConsumedCredits ?? null;
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      currentCycleConsumedCredits,
+      programmaticConsumedCredits,
+      membersPoolConsumedCredits: membersPoolConsumedCreditsTotal,
+      membersPoolConsumedCreditsByUsername: Object.fromEntries(
+        (membersPoolConsumedCredits?.byMember ?? [])
+          .filter((m) => m.poolConsumedCredits > 0)
+          .map((m) => [m.username, m.poolConsumedCredits])
+      ),
+    },
+    "[AwuPoolSummary] otherConsumedCredits inputs"
+  );
+
   const otherConsumedCredits =
     currentCycleConsumedCredits !== null &&
     programmaticConsumedCredits !== null &&
-    membersPoolConsumedCredits !== null
+    membersPoolConsumedCreditsTotal !== null
       ? Math.max(
           0,
           currentCycleConsumedCredits -
             programmaticConsumedCredits -
-            membersPoolConsumedCredits
+            membersPoolConsumedCreditsTotal
         )
       : null;
 
