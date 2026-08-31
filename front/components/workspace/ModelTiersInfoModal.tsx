@@ -111,30 +111,28 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
             compact (no empty space) when the tiers are collapsed. */}
         <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 py-4">
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            <p>
-              <b>What each tier includes</b>
-              <br />
-              Each tier groups <b>model + reasoning-effort</b> options by cost.
-              <br />
-              <br />
-              <b>How pricing tier is calculated</b>
-              <br />
-              Dust benchmarks each model and reasoning-effort combination at the
-              task level, rather than relying only on the model's price per
-              token. Reasoning effort can significantly affect the final price.
-              Increasing reasoning effort by one level typically increases the
-              price by about 30%.
-              <br />
-              <br />
-              <b>How tier limits work</b>
-              <br />A member capped at a tier can use that tier and every
-              cheaper one: “up to Standard” means Standard and Basic.
-              <br />
-              <br />
-              <b>Explore a tier</b>
-              <br />
-              Open a tier to see what's inside.
-            </p>
+            <b>What each tier includes</b>
+            <br />
+            Each tier groups <b>model + reasoning-effort</b> options by cost.
+            <br />
+            <br />
+            <b>How pricing tier is calculated</b>
+            <br />
+            Dust benchmarks each model and reasoning-effort combination at the
+            task level, rather than relying only on the model's price per token.
+            Reasoning effort can significantly affect the final price.
+            Increasing reasoning effort by one level typically increases the
+            price by about 30%.
+            <br />
+            <br />
+            <b>How tier limits work</b>
+            <br />A member capped at a tier can use that tier and every cheaper
+            one: “up to Standard” means Standard and Basic.
+            <br />
+            <br />
+            <b>Explore a tier</b>
+            <br />
+            Open a tier to see what's inside.
           </p>
           <div className="flex flex-col gap-2">
             {tiers.map((tier) => (
