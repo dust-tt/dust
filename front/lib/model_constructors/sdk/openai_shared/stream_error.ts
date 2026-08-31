@@ -5,7 +5,12 @@ import {
   classifyStreamError,
   httpStatusToClassification,
 } from "@app/lib/model_constructors/utils/classify_stream_error";
-import { APIConnectionError, APIError, APIUserAbortError } from "openai";
+import {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIError,
+  APIUserAbortError,
+} from "openai";
 
 // Shared by every adapter built on the `openai` SDK (Fireworks via chat
 // completions, OpenAI/xAI/Fireworks via responses). The SDK error classes and
@@ -16,13 +21,22 @@ export function openaiStreamErrorToErrorEvent(
   error: unknown,
   providerName: string
 ): ErrorEvent {
-  // Abort and connection errors extend `APIError`, so they are checked first.
-  // They only hint the code/name classifier, which decides attribution.
+  // Abort, timeout, and connection errors all extend `APIError`, so they are
+  // checked first. `APIConnectionTimeoutError` extends `APIConnectionError`, so
+  // it must be checked before it. They only hint the code/name classifier, which
+  // decides the final type and attribution.
   if (error instanceof APIUserAbortError) {
     return classificationToErrorEvent(
       metadata,
       error,
       classifyStreamError({ error, providerName, sdkClass: "abort" })
+    );
+  }
+  if (error instanceof APIConnectionTimeoutError) {
+    return classificationToErrorEvent(
+      metadata,
+      error,
+      classifyStreamError({ error, providerName, sdkClass: "timeout" })
     );
   }
   if (error instanceof APIConnectionError) {
@@ -33,14 +47,16 @@ export function openaiStreamErrorToErrorEvent(
     );
   }
   if (error instanceof APIError) {
-    // A statusless `APIError` is how the SDK surfaces an SSE `error` payload — an
-    // explicit provider-side failure, not an ambiguous transport exception, so
-    // it is a server error rather than the table's default `unknown`.
+    // A statusless `APIError` is how the SDK surfaces an in-band SSE `error`
+    // payload. That can be a permanent request or model error, not only a
+    // transient provider outage, so we attribute it to the provider but leave it
+    // as a non-retryable `unknown_error` rather than a retryable `server_error`.
+    // We do not inspect free-form message text to upgrade it.
     if (error.status === undefined) {
       return classificationToErrorEvent(metadata, error, {
         errorSource: "provider",
-        type: "server_error",
-        message: `Server error from ${providerName}: ${error.message}`,
+        type: "unknown_error",
+        message: `Error from ${providerName}: ${error.message}`,
       });
     }
     return classificationToErrorEvent(

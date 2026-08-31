@@ -67,6 +67,19 @@ describe("classifyStreamError", () => {
     });
   });
 
+  it("classifies an SDK timeout error from the adapter instanceof hint", () => {
+    expect(
+      classifyStreamError({
+        error: new Error("request timed out"),
+        providerName: "OpenAI",
+        sdkClass: "timeout",
+      })
+    ).toMatchObject({
+      errorSource: "unknown",
+      type: "timeout_error",
+    });
+  });
+
   it("does not classify on free-form message text", () => {
     expect(
       classifyStreamError({

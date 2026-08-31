@@ -2,7 +2,12 @@ import { convertToOldEvent } from "@app/lib/api/llm/transitionLLM";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { streamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_completions/converters/output/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
-import { APIConnectionError, APIError, APIUserAbortError } from "openai";
+import {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIError,
+  APIUserAbortError,
+} from "openai";
 import { describe, expect, it } from "vitest";
 
 const metadata: EndpointMetadata = {
@@ -42,7 +47,10 @@ describe("streamErrorToErrorEvent", () => {
     expect(result.content.errorSource).toBe("provider");
   });
 
-  it("maps a statusless SSE APIError to server_error from the provider", () => {
+  // A statusless SSE `APIError` can be a permanent request/model error, not only
+  // a transient outage, so it stays a non-retryable unknown_error (attributed to
+  // the provider) rather than becoming a retryable server_error.
+  it("maps a generic statusless SSE APIError to a non-retryable unknown_error", () => {
     const err = new APIError(
       undefined,
       { message: "generation failed" },
@@ -50,8 +58,39 @@ describe("streamErrorToErrorEvent", () => {
       undefined
     );
     const result = streamErrorToErrorEvent(metadata, err);
-    expect(result.content.type).toBe("server_error");
+    expect(result.content.type).toBe("unknown_error");
     expect(result.content.errorSource).toBe("provider");
+    expect(convertToOldEvent(result, llmMetadata)).toMatchObject({
+      type: "error",
+      content: { type: "unknown_error", isRetryable: false },
+    });
+  });
+
+  it("does not turn a statusless SSE payload with a permanent error code into a retryable server_error", () => {
+    const err = new APIError(
+      undefined,
+      { code: "context_length_exceeded", message: "too many tokens" },
+      "too many tokens",
+      undefined
+    );
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("provider");
+    expect(convertToOldEvent(result, llmMetadata)).toMatchObject({
+      type: "error",
+      content: { type: "unknown_error", isRetryable: false },
+    });
+  });
+
+  it("maps APIConnectionTimeoutError to a retryable timeout_error without blaming the provider", () => {
+    const err = new APIConnectionTimeoutError({ message: "request timed out" });
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe("timeout_error");
+    expect(result.content.errorSource).toBe("unknown");
+    expect(convertToOldEvent(result, llmMetadata)).toMatchObject({
+      type: "error",
+      content: { type: "timeout_error", isRetryable: true },
+    });
   });
 
   it("maps an unrecognized status to unknown_error without blaming either side", () => {

@@ -6,9 +6,9 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isNumber } from "@app/types/shared/utils/general";
+import { isNumber, isString } from "@app/types/shared/utils/general";
 
-export type StreamErrorSdkClass = "connection" | "abort";
+export type StreamErrorSdkClass = "connection" | "abort" | "timeout";
 
 export type StreamErrorClassification = {
   errorSource: ErrorSource;
@@ -69,10 +69,10 @@ function getErrorSignals(error: unknown): ErrorSignal[] {
       message: normalizeError(current).message,
     };
     if (typeof current === "object") {
-      if ("name" in current && typeof current.name === "string") {
+      if ("name" in current && isString(current.name)) {
         signal.name = current.name;
       }
-      if ("code" in current && typeof current.code === "string") {
+      if ("code" in current && isString(current.code)) {
         signal.code = current.code;
       }
     }
@@ -139,7 +139,9 @@ export function classifyStreamError({
     hasAny(codes, ABORT_ERROR_CODES) ||
     hasAny(names, ABORT_ERROR_NAMES);
   const isTimeout =
-    hasAny(codes, TIMEOUT_ERROR_CODES) || hasAny(names, TIMEOUT_ERROR_NAMES);
+    sdkClass === "timeout" ||
+    hasAny(codes, TIMEOUT_ERROR_CODES) ||
+    hasAny(names, TIMEOUT_ERROR_NAMES);
   const isNetwork =
     hasAny(codes, NETWORK_ERROR_CODES) || hasAny(names, NETWORK_ERROR_NAMES);
   const isStream = hasAny(codes, STREAM_ERROR_CODES);
