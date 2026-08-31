@@ -91,11 +91,31 @@ function dbErrorToSandboxFunctionError(
   return new SandboxFunctionError(dsbxErrorCode, `${prefix}${envelope.error}`);
 }
 
-// Ensure the pod sandbox is up, run a `dsbx db` command as agent-proxied, and parse its one-line
-// JSON envelope. Returns the sandbox too, since `db schema` reads a file back afterwards.
-async function execDbCommand<S extends z.ZodTypeAny>(
+type DbCommandArgs<S extends z.ZodTypeAny> = {
+  command: string;
+  schema: S;
+  what: string;
+  envVars?: Record<string, string>;
+  stdin?: string;
+  // Set only when `command` appends stagingHashCaptureLines.
+  stagingCapture?: boolean;
+};
+
+type DbCommandResult<S extends z.ZodTypeAny> = Result<
+  {
+    sandbox: SandboxResource;
+    envelope: z.infer<S>;
+    stagingHashes: StagingHashes;
+    execStderr: string;
+  },
+  SandboxFunctionError
+>;
+
+// Run a `dsbx db` command as agent-proxied on an already-ready owner sandbox and parse its
+// one-line JSON envelope. Returns the sandbox too, since `db schema` reads a file back afterwards.
+async function execDbCommandOnReadySandbox<S extends z.ZodTypeAny>(
   auth: Authenticator,
-  space: SpaceResource,
+  sandbox: SandboxResource,
   {
     command,
     schema,
@@ -103,37 +123,8 @@ async function execDbCommand<S extends z.ZodTypeAny>(
     envVars,
     stdin,
     stagingCapture = false,
-  }: {
-    command: string;
-    schema: S;
-    what: string;
-    envVars?: Record<string, string>;
-    stdin?: string;
-    // Set only when `command` appends stagingHashCaptureLines.
-    stagingCapture?: boolean;
-  }
-): Promise<
-  Result<
-    {
-      sandbox: SandboxResource;
-      envelope: z.infer<S>;
-      stagingHashes: StagingHashes;
-      execStderr: string;
-    },
-    SandboxFunctionError
-  >
-> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-  const { sandbox } = ensureResult.value;
-
+  }: DbCommandArgs<S>
+): Promise<DbCommandResult<S>> {
   const execResult = await sandbox.exec(auth, command, {
     timeoutMs: DB_EXEC_TIMEOUT_MS,
     envVars: { ...sandboxDatabaseExecEnvVars(), ...envVars },
@@ -164,6 +155,25 @@ async function execDbCommand<S extends z.ZodTypeAny>(
   });
 }
 
+// Ensure the Pod sandbox is up before using the owner-neutral ready-sandbox primitive.
+async function execDbCommand<S extends z.ZodTypeAny>(
+  auth: Authenticator,
+  space: SpaceResource,
+  args: DbCommandArgs<S>
+): Promise<DbCommandResult<S>> {
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+
+  return execDbCommandOnReadySandbox(auth, ensureResult.value.sandbox, args);
+}
+
 // Success mirrors the reconcile result in cli/dust-sandbox/functions-runner/db/reconcile.ts.
 const reconcileEnvelopeSchema = z.union([
   z.object({
@@ -176,9 +186,8 @@ const reconcileEnvelopeSchema = z.union([
 
 export interface ReconcileDatabaseResult {
   /**
-   * The on-disk database name that was reconciled: the app-relative name qualified with the app
-   * prefix (see resolvePodDatabaseName). Reported back because it is what `db_list`, `db_query` and
-   * `db_schema` address the database by, and it is not what the caller passed in.
+   * The on-disk database name that was reconciled. Pod callers qualify the app-relative name with
+   * their app prefix; Frame callers use the unprefixed Frame-owned name.
    */
   database: string;
   created: boolean;
@@ -190,6 +199,43 @@ export interface ReconcileDatabaseResult {
  * apply it when strictly additive, refuse anything destructive. Runs as `agent-proxied` (the
  * schema file is model-written code that gets imported).
  */
+export async function reconcileDatabaseOnReadySandbox(
+  auth: Authenticator,
+  {
+    sandbox,
+    database,
+    schemaFileSandboxPath,
+  }: {
+    sandbox: SandboxResource;
+    database: string;
+    schemaFileSandboxPath: string;
+  }
+): Promise<Result<ReconcileDatabaseResult, SandboxFunctionError>> {
+  const result = await execDbCommandOnReadySandbox(auth, sandbox, {
+    // `--` stops the model-influenced name and path from being read as flags.
+    command: `set -euo pipefail\n${DSBX_BIN_PATH} db reconcile -- ${shellEscape(database)} ${shellEscape(schemaFileSandboxPath)}`,
+    schema: reconcileEnvelopeSchema,
+    what: `dsbx db reconcile ${database}`,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  const { envelope } = result.value;
+
+  if ("ok" in envelope && envelope.ok) {
+    return new Ok({
+      database,
+      created: envelope.created,
+      statements: envelope.statements,
+    });
+  }
+
+  // A bare `{error}` here is a bad database name or missing schema file, both model-supplied.
+  return new Err(
+    dbErrorToSandboxFunctionError(database, envelope, "reconcile_blocked")
+  );
+}
+
 async function reconcileDatabaseOnSandbox(
   auth: Authenticator,
   {
@@ -202,41 +248,34 @@ async function reconcileDatabaseOnSandbox(
     schemaFileSandboxPath: string;
   }
 ): Promise<Result<ReconcileDatabaseResult, SandboxFunctionError>> {
-  const result = await execDbCommand(auth, space, {
-    // `--` stops the model-influenced name and path from being read as flags.
-    command: `set -euo pipefail\n${DSBX_BIN_PATH} db reconcile -- ${shellEscape(database)} ${shellEscape(schemaFileSandboxPath)}`,
-    schema: reconcileEnvelopeSchema,
-    what: `dsbx db reconcile ${database}`,
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+
+  const result = await reconcileDatabaseOnReadySandbox(auth, {
+    sandbox: ensureResult.value.sandbox,
+    database,
+    schemaFileSandboxPath,
   });
-  if (result.isErr()) {
-    return result;
+  if (result.isOk() && result.value.statements.length > 0) {
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        podId: space.sId,
+        database,
+        created: result.value.created,
+        statements: result.value.statements,
+      },
+      "Pod database reconciled: applied DDL"
+    );
   }
-  const { envelope } = result.value;
-
-  if ("ok" in envelope && envelope.ok) {
-    if (envelope.statements.length > 0) {
-      logger.info(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          podId: space.sId,
-          database,
-          created: envelope.created,
-          statements: envelope.statements,
-        },
-        "Pod database reconciled: applied DDL"
-      );
-    }
-    return new Ok({
-      database,
-      created: envelope.created,
-      statements: envelope.statements,
-    });
-  }
-
-  // A bare `{error}` here is a bad database name or missing schema file, both model-supplied.
-  return new Err(
-    dbErrorToSandboxFunctionError(database, envelope, "reconcile_blocked")
-  );
+  return result;
 }
 
 const RECONCILE_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;

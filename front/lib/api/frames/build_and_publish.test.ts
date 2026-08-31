@@ -1,7 +1,12 @@
 // @vitest-environment node
 
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import {
+  computeFrameSourcePathSetSha256,
+  FRAME_SOURCE_STAGING_ROOT,
+} from "@app/lib/api/frames/source_staging";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
+import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
@@ -117,9 +122,25 @@ async function setup(): Promise<{
     version: "0.0.0-test",
   });
   vi.spyOn(sandbox, "writeFile").mockResolvedValue(new Ok(undefined));
-  vi.spyOn(sandbox, "exec").mockResolvedValue(
-    new Ok({ exitCode: 0, stdout: "", stderr: "" })
-  );
+  vi.spyOn(sandbox, "execRoot").mockImplementation(async () => {
+    const call = vi.mocked(sandbox.execRoot).mock.calls.length;
+    const pathSetSha256 = computeFrameSourcePathSetSha256(
+      sourceFiles.map((sourceFile) => sourceFile.relativePath)
+    );
+    return new Ok({
+      exitCode: 0,
+      stdout: call === 2 ? `${pathSetSha256}  -\n` : "",
+      stderr: "",
+    });
+  });
+  vi.spyOn(sandbox, "readFile").mockImplementation(async (_auth, filePath) => {
+    const sourceFile = sourceFiles.find(({ relativePath }) =>
+      filePath.endsWith(`/${relativePath}`)
+    );
+    return sourceFile
+      ? new Ok(sourceFile.content)
+      : new Err(new Error(`Unexpected staged path: ${filePath}`));
+  });
   vi.mocked(ensureConversationSandboxReadyWithScope).mockResolvedValue(
     new Ok({ sandbox, freshlyCreated: false, scope: { spaceId: null } })
   );
@@ -200,7 +221,9 @@ describe("buildAndPublishFramePublication", () => {
       {
         sandbox,
         srcSandboxPath: expect.stringMatching(
-          /^\/tmp\/dust-frame-publication-builds\/[^/]+\/functions\/add_task\.ts$/
+          new RegExp(
+            `^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/functions/add_task\\.ts$`
+          )
         ),
       }
     );
@@ -210,16 +233,17 @@ describe("buildAndPublishFramePublication", () => {
       {
         sandbox,
         srcSandboxPath: expect.stringMatching(
-          /^\/tmp\/dust-frame-publication-builds\/[^/]+\/functions\/list_tasks\.ts$/
+          new RegExp(
+            `^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/functions/list_tasks\\.ts$`
+          )
         ),
       }
     );
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      auth,
-      expect.stringMatching(
-        /^rm -rf -- '\/tmp\/dust-frame-publication-builds\/[^/]+'$/
-      ),
-      { user: "agent-proxied" }
+    expect(sandbox.readFile).toHaveBeenCalledTimes(sourceFiles.length);
+    expect(
+      renderRootCommand(vi.mocked(sandbox.execRoot).mock.calls.at(-1)![1])
+    ).toMatch(
+      new RegExp(`^/usr/bin/rm -rf -- ${FRAME_SOURCE_STAGING_ROOT}/[^/]+$`)
     );
     expect(ensureConversationSandboxReadyWithScope).toHaveBeenCalledOnce();
     const publicationId = result.isOk() ? result.value.publicationId : "";
@@ -244,6 +268,80 @@ describe("buildAndPublishFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       result.isOk() ? result.value.publicationId : undefined
     );
+  });
+
+  it("publishes only after staged function source cleanup succeeds", async () => {
+    const { auth, conversation, frame, sandbox } = await setup();
+    vi.mocked(buildSandboxFunctionOnReadySandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export const built = true;",
+        userIdentity: "optional",
+        inputSchema: { type: "object" },
+        outputSchema: { type: "object" },
+      })
+    );
+
+    const pathSetSha256 = computeFrameSourcePathSetSha256(
+      sourceFiles.map((sourceFile) => sourceFile.relativePath)
+    );
+    const execRoot = vi.mocked(sandbox.execRoot);
+    execRoot.mockImplementation(async () => {
+      const call = execRoot.mock.calls.length;
+      if (call === 3) {
+        return new Err(new Error("cleanup failed"));
+      }
+      return new Ok({
+        exitCode: 0,
+        stdout: call === 2 ? `${pathSetSha256}  -\n` : "",
+        stderr: "",
+      });
+    });
+
+    const failed = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(failed.isErr() && failed.error).toMatchObject({
+      code: "internal",
+      message: "cleanup failed",
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBeUndefined();
+
+    execRoot.mockClear();
+    execRoot.mockImplementation(async () => {
+      const call = execRoot.mock.calls.length;
+      return new Ok({
+        exitCode: 0,
+        stdout: call === 2 ? `${pathSetSha256}  -\n` : "",
+        stderr: "",
+      });
+    });
+
+    const published = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(published.isOk()).toBe(true);
+    expect(execRoot).toHaveBeenCalledTimes(3);
+    expect(
+      fileStorageMock.saveFileCalls.filter(({ filePath }) =>
+        filePath.endsWith("/publication.json")
+      )
+    ).toHaveLength(1);
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBe(published.isOk() ? published.value.publicationId : undefined);
   });
 
   it("does not write a publication when a function build fails", async () => {

@@ -718,15 +718,11 @@ export class FileResource extends BaseResource<FileModel> {
       return this.deleteAfterSandboxCleanup(auth);
     }
 
-    try {
-      return await withFramePublishLock(this.sId, () =>
-        FrameSandboxAdapter.deleteSandbox(auth, this, {
-          afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
-        })
-      );
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    return withFramePublishLock(this.sId, () =>
+      FrameSandboxAdapter.deleteSandbox(auth, this, {
+        afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
+      })
+    );
   }
 
   get sId(): string {

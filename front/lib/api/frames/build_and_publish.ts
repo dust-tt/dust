@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type {
   FramePublicationFunctionArtifact,
@@ -8,22 +7,18 @@ import {
   FramePublicationError,
   publishFramePublication,
 } from "@app/lib/api/frames/publication_storage";
+import { withStagedFrameSource } from "@app/lib/api/frames/source_staging";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
-import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-const FRAME_BUILD_STAGING_ROOT = "/tmp/dust-frame-publication-builds";
-const FRAME_BUILD_STAGING_CONCURRENCY = 8;
 
 async function buildFrameUiBundle({
   manifest,
@@ -127,57 +122,40 @@ export async function buildAndPublishFramePublication(
     );
   }
   const sandbox = ensureResult.value.sandbox;
-  const stagingDirectory = path.posix.join(
-    FRAME_BUILD_STAGING_ROOT,
-    randomUUID()
-  );
+  const functionArtifactResult = await withStagedFrameSource(
+    auth,
+    { sandbox, sourceFiles },
+    async (stagingDirectory) => {
+      const functionArtifacts: FramePublicationFunctionArtifact[] = [];
+      for (const fn of manifest.functions) {
+        const buildResult = await buildSandboxFunctionOnReadySandbox(auth, {
+          sandbox,
+          srcSandboxPath: path.posix.join(stagingDirectory, fn.entryPoint),
+        });
+        if (buildResult.isErr()) {
+          return new Err(
+            new SandboxFunctionError(
+              buildResult.error.code,
+              `Failed to build Frame function "${fn.name}": ${buildResult.error.message}`
+            )
+          );
+        }
 
-  try {
-    const stagingResults = await concurrentExecutor(
-      sourceFiles,
-      (sourceFile) =>
-        sandbox.writeFile(
-          auth,
-          path.posix.join(stagingDirectory, sourceFile.relativePath),
-          Uint8Array.from(sourceFile.content).buffer
-        ),
-      { concurrency: FRAME_BUILD_STAGING_CONCURRENCY }
-    );
-    const stagingError = stagingResults.find((result) => result.isErr());
-    if (stagingError?.isErr()) {
-      return new Err(
-        new SandboxFunctionError("internal", stagingError.error.message)
-      );
-    }
-
-    const functionArtifacts: FramePublicationFunctionArtifact[] = [];
-    for (const fn of manifest.functions) {
-      const buildResult = await buildSandboxFunctionOnReadySandbox(auth, {
-        sandbox,
-        srcSandboxPath: path.posix.join(stagingDirectory, fn.entryPoint),
-      });
-      if (buildResult.isErr()) {
-        return new Err(
-          new SandboxFunctionError(
-            buildResult.error.code,
-            `Failed to build Frame function "${fn.name}": ${buildResult.error.message}`
-          )
-        );
+        functionArtifacts.push({ name: fn.name, ...buildResult.value });
       }
 
-      functionArtifacts.push({ name: fn.name, ...buildResult.value });
+      return new Ok(functionArtifacts);
     }
-
-    return publishFramePublication(auth, {
-      frame,
-      functionArtifacts,
-      manifest,
-      sourceFiles,
-      uiBundleCode: uiBundle.value,
-    });
-  } finally {
-    await sandbox.exec(auth, `rm -rf -- ${shellEscape(stagingDirectory)}`, {
-      user: "agent-proxied",
-    });
+  );
+  if (functionArtifactResult.isErr()) {
+    return functionArtifactResult;
   }
+
+  return publishFramePublication(auth, {
+    frame,
+    functionArtifacts: functionArtifactResult.value,
+    manifest,
+    sourceFiles,
+    uiBundleCode: uiBundle.value,
+  });
 }

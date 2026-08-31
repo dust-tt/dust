@@ -1,3 +1,4 @@
+import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
 import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
@@ -6,8 +7,11 @@ import {
   publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
+import { getRedisStreamClient } from "@app/lib/api/redis";
+import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
+import { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import {
   computeSandboxFunctionBundleSha256,
@@ -31,7 +35,12 @@ import {
   frameV2ContentType,
   sandboxFunctionContentType,
 } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/frames/database_reconciliation", () => ({
+  reconcileFramePublicationDatabases: vi.fn(),
+}));
 
 async function setupFrame({
   ready = false,
@@ -135,6 +144,9 @@ function createDeferred() {
 }
 
 beforeEach(() => {
+  vi.mocked(reconcileFramePublicationDatabases).mockResolvedValue(
+    new Ok(undefined)
+  );
   fileStorageMock.reset();
 });
 
@@ -824,6 +836,56 @@ describe("activateFramePublication", () => {
 });
 
 describe("publishFramePublication", () => {
+  it("returns a typed conflict when another publication holds the lock", async () => {
+    const { auth, frame } = await setupFrame();
+    const lockKey = `lock:${getFramePublishLockName(frame.sId)}`;
+    const redisClient = await getRedisStreamClient({ origin: "lock" });
+    await redisClient.set(lockKey, "held-by-test", {
+      NX: true,
+      PX: 60_000,
+    });
+    vi.useFakeTimers();
+
+    try {
+      const publicationPromise = publishFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      });
+      await vi.runAllTimersAsync();
+      const published = await publicationPromise;
+
+      expect(published.isErr() && published.error.code).toBe(
+        "publish_conflict"
+      );
+    } finally {
+      vi.useRealTimers();
+      await redisClient.del(lockKey);
+    }
+  });
+
+  it("does not relabel a nested lock timeout as a publication conflict", async () => {
+    const { auth, frame } = await setupFrame();
+    vi.mocked(reconcileFramePublicationDatabases).mockRejectedValueOnce(
+      new LockAcquisitionTimeoutError(`sandbox:lifecycle:frame:${frame.sId}`)
+    );
+
+    await expect(
+      publishFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      })
+    ).rejects.toMatchObject({
+      name: "LockAcquisitionTimeoutError",
+      lockName: `sandbox:lifecycle:frame:${frame.sId}`,
+    });
+  });
+
   it("stores and activates a publication", async () => {
     const { auth, frame } = await setupFrame();
 
@@ -842,6 +904,65 @@ describe("publishFramePublication", () => {
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       published.value.publicationId
+    );
+  });
+
+  it("reconciles declared databases before activation", async () => {
+    const { auth, frame } = await setupFrame();
+    const databaseSchema = {
+      relativePath: "databases/tasks.db.ts",
+      content: Buffer.from("export const tasks = {};"),
+      contentType: "text/typescript" as const,
+    };
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest: manifestWithDatabase,
+      sourceFiles: [...sourceFiles, databaseSchema],
+      uiBundleCode,
+    });
+
+    expect(published.isOk()).toBe(true);
+    expect(reconcileFramePublicationDatabases).toHaveBeenCalledWith(auth, {
+      frame,
+      manifest: manifestWithDatabase,
+      sourceFiles: [...sourceFiles, databaseSchema],
+    });
+  });
+
+  it("keeps the previous publication active when database reconciliation fails", async () => {
+    const { auth, frame } = await setupFrame();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication(activePublicationId);
+    vi.mocked(reconcileFramePublicationDatabases).mockResolvedValueOnce(
+      new Err(
+        new SandboxFunctionError(
+          "reconcile_blocked",
+          'Database "tasks": destructive change.'
+        )
+      )
+    );
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest: manifestWithDatabase,
+      sourceFiles: [
+        ...sourceFiles,
+        {
+          relativePath: "databases/tasks.db.ts",
+          content: Buffer.from("export const tasks = {};"),
+          contentType: "text/typescript",
+        },
+      ],
+      uiBundleCode,
+    });
+
+    expect(published.isErr() && published.error.code).toBe("reconcile_blocked");
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      activePublicationId
     );
   });
 

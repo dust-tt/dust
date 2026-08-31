@@ -4,7 +4,9 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,6 +15,7 @@ import {
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -577,27 +580,58 @@ export async function publishFramePublication(
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
   }
-): Promise<Result<{ publicationId: string }, FramePublicationError>> {
-  return withFramePublishLock(frame.sId, async () => {
-    const publication = await storeFramePublication(auth, {
+): Promise<
+  Result<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >
+> {
+  const publication = await withFramePublishLock<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >(frame.sId, async () => {
+    const storedPublication = await storeFramePublication(auth, {
       frame,
       functionArtifacts,
       manifest,
       sourceFiles,
       uiBundleCode,
     });
-    if (publication.isErr()) {
-      return publication;
+    if (storedPublication.isErr()) {
+      return storedPublication;
+    }
+
+    const reconciliation = await reconcileFramePublicationDatabases(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+    if (reconciliation.isErr()) {
+      return reconciliation;
     }
 
     const activation = await activateFramePublication(auth, {
       frame,
-      publicationId: publication.value.publicationId,
+      publicationId: storedPublication.value.publicationId,
     });
     if (activation.isErr()) {
       return activation;
     }
 
-    return publication;
+    return storedPublication;
   });
+  if (publication.isErr()) {
+    const error = publication.error;
+    if (isLockAcquisitionTimeoutError(error)) {
+      return new Err(
+        new SandboxFunctionError(
+          "publish_conflict",
+          "Another publication is in progress for this Frame; retry shortly."
+        )
+      );
+    }
+    return new Err(error);
+  }
+
+  return publication;
 }

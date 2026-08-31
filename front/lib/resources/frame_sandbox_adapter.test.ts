@@ -30,6 +30,7 @@ vi.mock("@app/lib/api/sandbox/image", () => ({
 
 vi.mock("@app/lib/lock", () => ({
   executeWithLock: mockExecuteWithLock,
+  executeWithLockResult: mockExecuteWithLock,
 }));
 
 import { FileResource } from "@app/lib/resources/file_resource";
