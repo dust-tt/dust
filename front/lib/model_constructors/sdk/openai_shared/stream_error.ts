@@ -34,7 +34,15 @@ export function openaiStreamErrorToErrorEvent(
   }
   if (error instanceof APIError) {
     // A statusless `APIError` is how the SDK surfaces an SSE `error` payload — an
-    // explicit provider-side failure, not a transport exception.
+    // explicit provider-side failure, not an ambiguous transport exception, so
+    // it is a server error rather than the table's default `unknown`.
+    if (error.status === undefined) {
+      return classificationToErrorEvent(metadata, error, {
+        errorSource: "provider",
+        type: "server_error",
+        message: `Server error from ${providerName}: ${error.message}`,
+      });
+    }
     return classificationToErrorEvent(
       metadata,
       error,
@@ -42,7 +50,6 @@ export function openaiStreamErrorToErrorEvent(
         providerName,
         model: metadata.model,
         status: error.status,
-        statuslessServerError: true,
         detail: error.message,
       })
     );

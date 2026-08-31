@@ -192,27 +192,21 @@ export function classifyStreamError({
 /**
  * Maps an HTTP status returned by a provider into a classification. The table is
  * identical across every provider adapter: known 4xx are Dust's fault, known
- * 5xx are the provider's, and a status we do not recognize is not enough to
- * blame either side. Only the provider name and the model differ, so they are
- * passed in. `detail` is appended verbatim (typically `error.message`).
- *
- * A typed HTTP error with no status is ambiguous by default. Adapters whose SDK
- * raises a statusless error for an explicit provider-side failure (an SSE
- * `error` payload) pass `statuslessServerError: true` to treat it as a server
- * error instead.
+ * 5xx are the provider's, and a status we do not recognize (including a missing
+ * one) is not enough to blame either side. Only the provider name and the model
+ * differ, so they are passed in. `detail` is appended verbatim (typically
+ * `error.message`).
  */
 export function httpStatusToClassification({
   providerName,
   model,
   status,
   detail,
-  statuslessServerError = false,
 }: {
   providerName: string;
   model: string;
   status: number | undefined;
   detail: string;
-  statuslessServerError?: boolean;
 }): StreamErrorClassification {
   const build = (
     errorSource: ErrorSource,
@@ -263,13 +257,6 @@ export function httpStatusToClassification({
         `${providerName} is overloaded`
       );
     case undefined:
-      if (statuslessServerError) {
-        return build(
-          "provider",
-          "server_error",
-          `Server error from ${providerName}`
-        );
-      }
       return build("unknown", "unknown_error", `Error from ${providerName}`);
     default:
       if (isNumber(status) && status >= 500 && status < 600) {

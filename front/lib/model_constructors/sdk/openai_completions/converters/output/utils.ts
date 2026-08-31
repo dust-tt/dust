@@ -65,8 +65,7 @@ function usageToTokenUsageEvent(
 }
 
 // Maps any error thrown while streaming into a unified `ErrorEvent`, so
-// everything leaving the endpoint is an event, not an exception. This adapter
-// is Fireworks-only (see stream/clients/fireworks.ts).
+// everything leaving the endpoint is an event, not an exception.
 export function streamErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: unknown
