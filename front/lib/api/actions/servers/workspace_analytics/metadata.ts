@@ -370,6 +370,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "credits. Rows may overlap, so don't sum them for a workspace total.",
     schema: getTopEntitiesByCreditsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving top consumers",
       done: "Retrieved top consumers",
