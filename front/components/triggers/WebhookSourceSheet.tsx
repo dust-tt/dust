@@ -465,7 +465,7 @@ function WebhookSourceSheetContent({
         .filter((source) => source.sId === webhookSource.sId)
         .map((source) => source.usage?.agents ?? [])
         .flat()
-        .map((agent) => `@${agent.name}`)
+        .map((agent) => agent.name)
     );
 
     const confirmed = await confirm({

@@ -54,15 +54,15 @@ export function assistantUsageMessage<T extends boolean>({
     }
 
     const messageCount = boldIfRequested(`${nb} time${pluralize(nb)}`);
+    const agentDisplayName = assistantName || "This agent";
 
     return (
       asString ? (
-        `${assistantName ? "@" + assistantName : "This agent"} has been used ${nb} time${pluralize(nb)} in the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`
+        `${agentDisplayName} has been used ${nb} time${pluralize(nb)} in the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`
       ) : (
         <>
-          {assistantName ? "@" + assistantName : "This agent"} has been used{" "}
-          {messageCount} in the last {usage.timePeriodSec / (60 * 60 * 24)}{" "}
-          days.
+          {agentDisplayName} has been used {messageCount} in the last{" "}
+          {usage.timePeriodSec / (60 * 60 * 24)} days.
         </>
       )
     ) as T extends true ? string : ReactNode;

@@ -284,7 +284,7 @@ export function PodTaskStartWorkingDropdown({
                             <Icon visual={InfoCircle} size="xs" />
                           </span>
                         }
-                        label="This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+                        label="This Pod's default agent isn't available to you, so Dust is used instead. Discuss with your Pod editors if you think this is an error."
                       />
                     )}
                     <Icon

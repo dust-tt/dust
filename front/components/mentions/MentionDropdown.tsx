@@ -73,13 +73,13 @@ export const MentionDropdown = React.forwardRef<
           <DropdownMenuItem
             onClick={handleAgentStartConversation}
             icon={MessagePlusCircle}
-            label={`New conversation with @${mention.label}`}
+            label={`New conversation with ${mention.label}`}
           />
           {clientType !== "extension" && (
             <DropdownMenuItem
               onClick={handleAgentSeeDetails}
               icon={Eye}
-              label={`About @${mention.label}`}
+              label={`About ${mention.label}`}
             />
           )}
         </DropdownMenuContent>

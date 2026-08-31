@@ -94,7 +94,7 @@ function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
 
 function makeChildAgentUnavailableError(childAgentName: string): MCPError {
   return new MCPError(
-    `Agent @${childAgentName} is not available to the user running this conversation. ` +
+    `Agent ${childAgentName} is not available to the user running this conversation. ` +
       "Ask a workspace admin to grant access to the agent and its spaces.",
     { tracked: false }
   );
@@ -915,8 +915,8 @@ async function createServer(
     schema: schema,
     stake: "never_ask",
     displayLabels: {
-      running: `Running @${childAgentBlob.name}`,
-      done: `Run @${childAgentBlob.name}`,
+      running: `Running ${childAgentBlob.name}`,
+      done: `Run ${childAgentBlob.name}`,
     },
     enableAlerting: true,
     handler: (params: SchemaType, extra: ToolHandlerExtra) => {

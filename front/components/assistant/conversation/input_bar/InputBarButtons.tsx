@@ -141,8 +141,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
 
   const isPod = space ? isProjectType(space) : false;
   const defaultAgentUnavailableLabel = isPod
-    ? "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
-    : "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.";
+    ? "This Pod's default agent isn't available to you, so Dust is used instead. Discuss with your Pod editors if you think this is an error."
+    : "This conversation's default agent isn't available to you, so Dust is used instead. Discuss with your Workspace admin if you think this is an error.";
 
   const handleAgentDetailsClick = (agentId: string) => {
     setQueryParam(router, "agentDetails", agentId);

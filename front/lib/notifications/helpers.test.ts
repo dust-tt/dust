@@ -222,7 +222,7 @@ describe("getConversationDetails", () => {
     expect(agentDetails.isOk()).toBe(true);
     if (agentDetails.isOk()) {
       expect(agentDetails.value.authorIsAgent).toBe(true);
-      expect(agentDetails.value.author).toBe("@DetailsAgent");
+      expect(agentDetails.value.author).toBe("DetailsAgent");
       expect(agentDetails.value.isFromSlackAgentConversation).toBe(true);
       expect(agentDetails.value.isFromEmailAgentConversation).toBe(false);
     }

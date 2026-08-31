@@ -34,11 +34,11 @@ export async function getApprovalArgsLabel({
       if (parsedProject.isOk()) {
         const { workspaceId, podId: projectId } = parsedProject.value;
         if (workspaceId !== auth.getNonNullableWorkspace().sId) {
-          return `Always allow @${agentName} to ${asDisplayName(toolName)} in Pod ${parsed.data.uri}`;
+          return `Always allow ${agentName} to ${asDisplayName(toolName)} in Pod ${parsed.data.uri}`;
         }
 
         const space = await SpaceResource.fetchById(auth, projectId);
-        return `Always allow @${agentName} to ${asDisplayName(toolName)} in "${space?.name ?? parsed.data.uri}".`;
+        return `Always allow ${agentName} to ${asDisplayName(toolName)} in "${space?.name ?? parsed.data.uri}".`;
       }
     }
 
@@ -50,7 +50,7 @@ export async function getApprovalArgsLabel({
     ) {
       const file = await FileResource.fetchById(auth, inputValue);
       if (file) {
-        return `Always allow @${agentName} to ${asDisplayName(toolName)} for file ${file?.fileName ?? inputValue}.`;
+        return `Always allow ${agentName} to ${asDisplayName(toolName)} for file ${file?.fileName ?? inputValue}.`;
       }
     }
   }

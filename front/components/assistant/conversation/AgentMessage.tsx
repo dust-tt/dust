@@ -1058,7 +1058,7 @@ export function AgentMessage({
         )}
         {parentAgent && (
           <Chip
-            label={`handoff from @${parentAgent.name}`}
+            label={`handoff from ${parentAgent.name}`}
             size="xs"
             className="ml-1"
             color="primary"

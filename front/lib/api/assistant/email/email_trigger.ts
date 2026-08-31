@@ -1116,7 +1116,7 @@ export async function sendToolValidationEmail({
 
   const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <p><strong>@${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs permission to use the following tool(s):</p>
+      <p><strong>${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs permission to use the following tool(s):</p>
       ${actionBlocks.join("")}
       <p style="color: #666; margin-top: 16px;">Links expire in 24 hours.</p>
       <p><a href="${conversationUrl}" style="color: #2563eb;">View conversation in Dust</a></p>

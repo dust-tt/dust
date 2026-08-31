@@ -116,8 +116,7 @@ export function CommandPaletteActionPhase({
     }
   }
 
-  const itemName =
-    item.kind === "agent" ? `@${item.agent.name}` : item.skill.name;
+  const itemName = item.kind === "agent" ? item.agent.name : item.skill.name;
 
   const itemAvatar =
     item.kind === "agent" ? (
