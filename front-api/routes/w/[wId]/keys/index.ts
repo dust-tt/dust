@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { listKeyScopableGroups } from "@app/lib/api/keys/scopable_groups";
 import {
   MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS,
   MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS,
@@ -33,6 +34,8 @@ const MAX_API_KEY_CREATION_PER_DAY = 30;
 const CreateKeyPostBodySchema = z.object({
   name: z.string(),
   space_ids: z.array(z.string()).optional(),
+  group_ids: z.array(z.string()).optional(),
+  group_id: z.string().optional(),
   monthly_cap_micro_usd: z.number().nullish(),
   // Per-key credit cap in AWU credits (credit-priced plans only). null/omitted
   // = unlimited.
@@ -72,6 +75,8 @@ app.post(
     const {
       name,
       space_ids,
+      group_ids,
+      group_id,
       monthly_cap_micro_usd,
       monthly_cap_awu_credits,
       role,
@@ -199,6 +204,38 @@ app.post(
           scopableSpaces
         ))
       );
+    }
+
+    const requestedGroupIds = [
+      ...new Set(group_ids ?? (group_id ? [group_id] : [])),
+    ].filter((groupId) => groupId !== globalGroup.sId);
+
+    if (requestedGroupIds.length > 0) {
+      const scopableGroupIds = new Set(
+        (await listKeyScopableGroups(auth)).map((group) => group.sId)
+      );
+      if (requestedGroupIds.some((groupId) => !scopableGroupIds.has(groupId))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "An API key can only be scoped to groups of restricted spaces or pods.",
+          },
+        });
+      }
+
+      const groupsRes = await GroupResource.fetchByIds(auth, requestedGroupIds);
+      if (groupsRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "group_not_found",
+            message: "Invalid group",
+          },
+        });
+      }
+      resolvedGroups.push(...groupsRes.value);
     }
 
     const rateLimitKey = `api_key_creation_${owner.sId}`;
