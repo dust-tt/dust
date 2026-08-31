@@ -2,10 +2,7 @@ import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
-import type {
-  ListScrollLocation,
-  VirtuosoMessageListMethods,
-} from "@virtuoso.dev/message-list";
+import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -28,21 +25,6 @@ export function useConversationAutoScroll({
     isAutoScrollEnabledRef.current = true;
     hasLeftBottomSinceDetachRef.current = false;
   }, []);
-
-  const handleScroll = useCallback(
-    (location: Pick<ListScrollLocation, "isAtBottom">) => {
-      if (isAutoScrollEnabledRef.current) {
-        return;
-      }
-
-      if (!location.isAtBottom) {
-        hasLeftBottomSinceDetachRef.current = true;
-      } else if (hasLeftBottomSinceDetachRef.current) {
-        enableAutoScroll();
-      }
-    },
-    [enableAutoScroll]
-  );
 
   // While the list's scroll direction is "up", Virtuoso compensates row-height
   // growth by adding the same delta to scrollTop. Streaming markdown can keep
@@ -102,16 +84,28 @@ export function useConversationAutoScroll({
       const isHeightCompensation =
         scrollHeightDelta !== 0 &&
         Math.abs(scrollTopDelta - scrollHeightDelta) <= 1;
+      const isAtBottom =
+        messageListRef.current?.getScrollLocation().isAtBottom === true;
 
       if (
         isAutoScrollEnabledRef.current &&
         scrollTopDelta < 0 &&
         !isHeightCompensation &&
-        messageListRef.current?.getScrollLocation().isAtBottom === false
+        !isAtBottom
       ) {
         isAutoScrollEnabledRef.current = false;
         hasLeftBottomSinceDetachRef.current = true;
         messageListRef.current?.cancelSmoothScroll();
+      }
+
+      // Reattach before correcting concurrent height compensation. Otherwise
+      // the correction can move the viewport away from the bottom again.
+      if (!isAutoScrollEnabledRef.current) {
+        if (!isAtBottom) {
+          hasLeftBottomSinceDetachRef.current = true;
+        } else if (hasLeftBottomSinceDetachRef.current) {
+          enableAutoScroll();
+        }
       }
 
       if (!isAutoScrollEnabledRef.current && isHeightCompensation) {
@@ -157,7 +151,7 @@ export function useConversationAutoScroll({
       scrollElement.removeEventListener("touchstart", onTouchStart);
       scrollElement.removeEventListener("touchmove", onTouchMove);
     };
-  }, [isMobile, messageListRef]);
+  }, [enableAutoScroll, isMobile, messageListRef]);
 
-  return { enableAutoScroll, handleScroll, isAutoScrollEnabledRef };
+  return { enableAutoScroll, isAutoScrollEnabledRef };
 }

@@ -264,14 +264,11 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const isMobile = useIsMobile();
-  const {
-    enableAutoScroll,
-    handleScroll: handleAutoScroll,
-    isAutoScrollEnabledRef,
-  } = useConversationAutoScroll({
-    isMobile,
-    messageListRef: virtuosoMessageListRef,
-  });
+  const { enableAutoScroll, isAutoScrollEnabledRef } =
+    useConversationAutoScroll({
+      isMobile,
+      messageListRef: virtuosoMessageListRef,
+    });
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
@@ -1359,8 +1356,6 @@ export const ConversationViewer = ({
 
   const onScroll = useCallback(
     (location: ListScrollLocation) => {
-      handleAutoScroll(location);
-
       const isLoadingData =
         isLoadingInitialData || isMessagesLoading || isValidating;
 
@@ -1377,7 +1372,6 @@ export const ConversationViewer = ({
       isLoadingInitialData,
       isMessagesLoading,
       isValidating,
-      handleAutoScroll,
       setSize,
       size,
       messages,
