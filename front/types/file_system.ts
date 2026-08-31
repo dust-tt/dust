@@ -59,7 +59,7 @@ export type FileSystemMount = {
  * A mount that exists only inside the sandbox filesystem and is never exposed through the
  * scoped-path API (the agent's file tools never see it). Used for prefixes the sandbox must read
  * but that are not an agent-visible namespace, e.g. published sandbox-function bundles or the
- * pod-state litestream replica.
+ * sandbox-state Litestream replica.
  */
 type SandboxOnlyMountConfig = {
   sandboxMountPoint: string;
@@ -69,6 +69,7 @@ type SandboxOnlyMountConfig = {
 export type SandboxOnlyMount = SandboxOnlyMountConfig &
   (
     | { kind: "frame_publications"; frameId: string }
+    | { kind: "frame_state"; frameId: string }
     | { kind: "pod_sandbox_functions"; podId: string }
     | { kind: "pod_state"; podId: string }
   );

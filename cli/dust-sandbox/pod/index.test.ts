@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   db,
+  FRAME_ID_ENV,
   POD_DATABASE_BUSY_TIMEOUT_MS,
   POD_DATABASE_MAX_SIZE_BYTES_ENV,
   POD_DATABASE_PREFIX_ENV,
@@ -56,6 +57,7 @@ function uniqueName(prefix: string): string {
 }
 
 let originalSpaceId: string | undefined;
+let originalFrameId: string | undefined;
 
 beforeEach(() => {
   databasesDir = mkdtempSync(join(tmpdir(), "dust-pod-test-"));
@@ -65,6 +67,8 @@ beforeEach(() => {
   // Pod sandboxes carry SPACE_ID as a sandbox-global env var.
   originalSpaceId = process.env[POD_SPACE_ID_ENV];
   process.env[POD_SPACE_ID_ENV] = "spc_test_pod";
+  originalFrameId = process.env[FRAME_ID_ENV];
+  delete process.env[FRAME_ID_ENV];
 });
 
 afterEach(() => {
@@ -76,27 +80,43 @@ afterEach(() => {
   } else {
     process.env[POD_SPACE_ID_ENV] = originalSpaceId;
   }
+  if (originalFrameId === undefined) {
+    delete process.env[FRAME_ID_ENV];
+  } else {
+    process.env[FRAME_ID_ENV] = originalFrameId;
+  }
   rmSync(databasesDir, { recursive: true, force: true });
 });
 
-describe("pod sandbox guard", () => {
-  test("SPACE_ID absent throws PodDatabasesUnavailableError even when the file exists", () => {
+describe("sandbox database owner guard", () => {
+  test("both owner ids absent throws even when the file exists", () => {
     const name = uniqueName("guard");
     createDatabaseFile(name);
     delete process.env[POD_SPACE_ID_ENV];
     expect(() => db(name)).toThrow(PodDatabasesUnavailableError);
-    expect(() => db(name)).toThrow(/does not belong to a pod/);
+    expect(() => db(name)).toThrow(/does not belong to a Pod or Frame/);
   });
 
-  test("empty SPACE_ID is treated as absent", () => {
+  test("empty owner ids are treated as absent", () => {
     const name = uniqueName("guard");
     createDatabaseFile(name);
     process.env[POD_SPACE_ID_ENV] = "";
+    process.env[FRAME_ID_ENV] = "";
     expect(() => db(name)).toThrow(PodDatabasesUnavailableError);
+  });
+
+  test("FRAME_ID makes databases available without SPACE_ID", () => {
+    const name = uniqueName("frame_guard");
+    createDatabaseFile(name);
+    delete process.env[POD_SPACE_ID_ENV];
+    process.env[FRAME_ID_ENV] = "fil_test_frame";
+
+    expect(() => db(name)).not.toThrow();
   });
 
   test("the guard runs before the missing-file check", () => {
     delete process.env[POD_SPACE_ID_ENV];
+    delete process.env[FRAME_ID_ENV];
     expect(() => db(uniqueName("guard"))).toThrow(PodDatabasesUnavailableError);
   });
 });
@@ -276,6 +296,23 @@ describe("app prefix resolution", () => {
       expect(
         runWithInvocationEnv(contextEnv("myapp__"), () => ownerOf(name))
       ).toBe("myapp");
+    });
+
+    test("accepts a Frame-only invocation context", () => {
+      const name = uniqueName("frame_context");
+      createDatabaseOwnedBy(name, "frame");
+
+      expect(
+        runWithInvocationEnv(
+          {
+            [POD_DATABASES_DIR_ENV]: databasesDir,
+            [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
+            [FRAME_ID_ENV]: "fil_test_frame",
+            [POD_DATABASE_PREFIX_ENV]: "",
+          },
+          () => ownerOf(name)
+        )
+      ).toBe("frame");
     });
 
     test("the context's prefix wins over the one in process.env", () => {

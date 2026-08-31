@@ -58,7 +58,11 @@ import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
+import {
+  getFrameBasePath,
+  getFramePublicationUiBundlePath,
+  getFramesBasePath,
+} from "@app/types/api/frame_storage";
 import { CoreAPI } from "@app/types/core/core_api";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -465,33 +469,37 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const owner = auth.getNonNullableWorkspace();
+    const workspaceModelId = owner.id;
 
     await FrameSandboxAdapter.deleteAllForWorkspace(auth);
-    await this.deleteAllFrameFunctionsForWorkspace(workspaceId);
+    await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
+    await getPrivateUploadBucket().deleteByPrefix(
+      getFramesBasePath({ workspaceId: owner.sId })
+    );
 
     await AuthorizedFileAccessModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete external viewer sessions before shareable files (FK constraint).
     await ExternalViewerSessionModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete sharing grants before shareable files (FK constraint).
     await SharingGrantModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete authorized file accesses before shareable files (FK constraint).
     await this.authorizedFileAccessModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     return this.batchDestroyAllForWorkspace(auth);
@@ -637,6 +645,12 @@ export class FileResource extends BaseResource<FileModel> {
     try {
       if (this.isFrameV2) {
         await this.deleteFrameFunctions(auth);
+        await getPrivateUploadBucket().deleteByPrefix(
+          getFrameBasePath({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            frameId: this.sId,
+          })
+        );
       }
 
       if (this.isReady) {

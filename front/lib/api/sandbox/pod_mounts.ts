@@ -1,7 +1,9 @@
-import { POD_STATE_REPLICA_MOUNT_POINT } from "@app/lib/api/sandbox/db";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SandboxOnlyMount } from "@app/types/file_system";
-import { getPodSandboxFunctionsMountPoint } from "@app/types/mount_path";
+import {
+  getPodSandboxFunctionsMountPoint,
+  SANDBOX_STATE_REPLICA_MOUNT_POINT,
+} from "@app/types/mount_path";
 
 /**
  * The pod sandbox's sandbox-only mounts, shared by the bring-up path
@@ -26,13 +28,13 @@ function podSandboxFunctionsMount(pod: PodRef): SandboxOnlyMount {
 }
 
 // The pod's litestream replica prefix, mounted dust-state-only (no
-// allow_other) at /pod-state/replica. rw: the in-sandbox litestream daemon is
+// allow_other) at /sandbox-state/replica. rw: the in-sandbox litestream daemon is
 // the writer.
 function podStateReplicaMount(pod: PodRef): SandboxOnlyMount {
   return {
     kind: "pod_state",
     podId: pod.sId,
-    sandboxMountPoint: POD_STATE_REPLICA_MOUNT_POINT,
+    sandboxMountPoint: SANDBOX_STATE_REPLICA_MOUNT_POINT,
     readOnly: false,
   };
 }

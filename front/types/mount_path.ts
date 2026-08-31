@@ -118,17 +118,20 @@ export function getFramePublicationFunctionsMountPoint({
 }
 
 /**
- * Absolute in-sandbox path of the pod's live SQLite databases (`{name}.db` files opened by
+ * Frame-owned SQLite uses the same isolated local runtime directories as Pod SQLite. A Frame has
+ * its own sandbox, so the live files cannot overlap another Frame or a Pod; only its Litestream
+ * replica is durable, under the stable Frame identity in GCS.
+ */
+export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/sandbox-state/replica";
+
+/**
+ * Absolute in-sandbox path of the owner's live SQLite databases (`{name}.db` files opened by
  * `@dust/pod`'s `db()`). Local disk, not a gcsfuse mount — Litestream replicates it to GCS.
  * Front is the only layer that hardcodes this location (the paths-env.v1 contract): it is
  * passed per exec to `dsbx function run` as `DUST_POD_DATABASES_DIR`, dsbx forwards it to
  * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
- *
- * TODO(pod-state): Track 1's parallel stack defines the same contract value as
- * `POD_STATE_DATABASES_DIR` in `front/lib/api/sandbox/db.ts` (litestream config /
- * restore side). Dedup into a single constant once both stacks are merged.
  */
-export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
+export const SANDBOX_STATE_DATABASES_DIR = "/pod-state/databases";
 
 /**
  * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like
@@ -137,19 +140,20 @@ export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
  * require it and carry no fallback (see `cli/dust-sandbox/pod/db.ts`). A single source here
  * keeps the quota the workload writes against identical to the one `db_query` enforces.
  */
-const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
+const SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
 
 /**
- * The env vars every pod-database exec (`dsbx function run` and every `dsbx db` subcommand)
+ * The env vars every sandbox-database exec (`dsbx function run` and every `dsbx db` subcommand)
  * must carry so the bun child resolves the databases dir and the size quota. Returned as a
  * fresh object so callers can spread it into their own env without sharing a reference.
  *
- * `databasePrefix` is the app prefix that namespaces the databases the exec resolves by their
+ * The `DUST_POD_*` names are the existing DSBX/@dust/pod ABI and also apply to Frame-owned state.
+ * `databasePrefix` is the Pod app prefix that namespaces the databases the exec resolves by their
  * app-relative name, i.e. `@dust/pod`'s `db("chat")` inside a published function (see
  * `podDatabasePrefixFromSlug`). Omit it for execs that address databases by their on-disk name —
  * every `dsbx db` subcommand does, since front resolves the name before running them.
  */
-export function podDatabaseExecEnvVars({
+export function sandboxDatabaseExecEnvVars({
   databasePrefix,
 }: {
   databasePrefix?: string | null;
@@ -159,10 +163,8 @@ export function podDatabaseExecEnvVars({
   DUST_POD_DATABASE_PREFIX: string;
 } {
   return {
-    DUST_POD_DATABASES_DIR: POD_SANDBOX_DATABASES_DIR,
-    DUST_POD_DATABASE_MAX_SIZE_BYTES: String(
-      POD_SANDBOX_DATABASE_MAX_SIZE_BYTES
-    ),
+    DUST_POD_DATABASES_DIR: SANDBOX_STATE_DATABASES_DIR,
+    DUST_POD_DATABASE_MAX_SIZE_BYTES: String(SANDBOX_DATABASE_MAX_SIZE_BYTES),
     // Empty means unprefixed, which is what the shim reads an absent value as.
     DUST_POD_DATABASE_PREFIX: databasePrefix ?? "",
   };
@@ -171,7 +173,7 @@ export function podDatabaseExecEnvVars({
 /**
  * Prefix for the pod's Litestream state replica (LTX chains for the pod's SQLite databases). The
  * sandbox's litestream daemon is the only writer, through the dust-state-only gcsfuse mount at
- * /pod-state/replica. Never mounted under /files, never a FileResource: cleanup is a wholesale
+ * /sandbox-state/replica. Never mounted under /files, never a FileResource: cleanup is a wholesale
  * prefix delete at pod deletion (see deletePodStatePrefix).
  */
 export function getPodStateBasePath({

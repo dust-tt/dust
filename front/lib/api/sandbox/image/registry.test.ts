@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.99",
+      tag: "0.8.100",
     });
     expect(getDustBaseImage().baseImage).toEqual({
       type: "docker",
@@ -570,7 +570,10 @@ describe("sandbox image registry", () => {
         expect.stringContaining("setfacl -R -d -m g::rwx /pod-state/databases"),
         expect.stringContaining("setfacl -R -m g::rwx /pod-state/databases"),
         expect.stringContaining(
-          "install -d -o dust-state -g dust-state -m 700 /pod-state/replica"
+          "install -d -o root -g root -m 755 /sandbox-state"
+        ),
+        expect.stringContaining(
+          "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica"
         ),
       ])
     );
@@ -599,7 +602,9 @@ describe("sandbox image registry", () => {
     expect(litestreamUnit).toContain("RuntimeDirectory=litestream");
     expect(litestreamUnit).toContain("NoNewPrivileges=yes");
     expect(litestreamUnit).toContain("ProtectSystem=strict");
-    expect(litestreamUnit).toContain("ReadWritePaths=/pod-state");
+    expect(litestreamUnit).toContain(
+      "ReadWritePaths=/pod-state /sandbox-state"
+    );
     expect(litestreamUnit).toContain("RestrictAddressFamilies=AF_UNIX");
     expect(litestreamUnit).toContain("MemoryDenyWriteExecute=yes");
 
@@ -638,7 +643,7 @@ describe("sandbox image registry", () => {
     expect(litestreamConfig).toContain('pattern: "*.db"');
     expect(litestreamConfig).toContain("watch: true");
     expect(litestreamConfig).toContain("type: file");
-    expect(litestreamConfig).toContain("path: /pod-state/replica");
+    expect(litestreamConfig).toContain("path: /sandbox-state/replica");
   });
 
   test("pins drizzle packages and vendors @dust/pod", () => {
@@ -673,7 +678,7 @@ describe("sandbox image registry", () => {
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
         expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
-        expect.objectContaining({ name: "@dust/pod", version: "0.3.0" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.3.1" }),
       ])
     );
   });

@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.99";
+const DUST_BASE_IMAGE_VERSION = "0.8.100";
 const DSBX_CLI_VERSION = "0.1.52";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -53,7 +53,7 @@ const SNOWFLAKE_CLI_DEB_SHA256 =
 // machine and not another. This assumes an Ubuntu base and build-time egress to
 // launchpad.net; if PPAs are blocked, install the TDF .deb bundle instead.
 const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
-// Litestream (Apache-2.0) replicates the pod-state SQLite databases to the
+// Litestream (Apache-2.0) replicates the sandbox-state SQLite databases to the
 // GCS replica mount.
 const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
@@ -237,7 +237,7 @@ function getPodStateSetupCommand(): string {
   // /pod-state/databases holds the live SQLite files: both agent-proxied
   // function code (group agent) and the litestream daemon (user dust-state)
   // need rw, so it gets the same setgid + default-ACL treatment as /files.
-  // /pod-state/replica is the gcsfuse mount point for the litestream replica
+  // /sandbox-state/replica is the gcsfuse mount point for the litestream replica
   // — the durable copy of pod state. Untrusted workload code must never read
   // or tamper with it, so the directory is dust-state-only: 0700 here, no
   // allow_other on the runtime mount.
@@ -246,7 +246,8 @@ function getPodStateSetupCommand(): string {
     "install -d -o dust-state -g agent -m 2770 /pod-state/databases",
     "setfacl -R -d -m g::rwx /pod-state/databases",
     "setfacl -R -m g::rwx /pod-state/databases",
-    "install -d -o dust-state -g dust-state -m 700 /pod-state/replica",
+    "install -d -o root -g root -m 755 /sandbox-state",
+    "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica",
   ].join(" && ");
 }
 
@@ -557,7 +558,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       "chown root:root /opt/bin/litestream && chmod 755 /opt/bin/litestream",
     { user: "root" }
   )
-  // Litestream unit + STATIC config (all paths are pod-state contract
+  // Litestream unit + STATIC config (all paths are sandbox-state contract
   // constants), both baked at build. The unit is deliberately NOT enabled:
   // front starts it at runtime AFTER the replica gcsfuse mount and the
   // cold-start restore — at boot the daemon would write to the unmounted
@@ -583,7 +584,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     name: POD_PACKAGE_NAME,
     version: POD_PACKAGE_VERSION,
     description:
-      "Pod database access: db(name) returns a drizzle instance over the pod's SQLite database",
+      "Frame and Pod database access: db(name) returns a Drizzle instance over the sandbox owner's SQLite database",
     runtime: "node",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })

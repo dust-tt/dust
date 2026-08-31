@@ -170,16 +170,16 @@ describe("buildMountCommand", () => {
     expect(command).toContain("bucket-x /frames/fil_frame/publications");
   });
 
-  test("pod_state_replica profile mounts as dust-state without allow_other or list caching", () => {
+  test("sandbox state replica mounts as dust-state without allow_other or list caching", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
         target: {
           gcsPrefix: "w/ws1/pods/spc1/state",
-          sandboxMountPoint: "/pod-state/replica",
+          sandboxMountPoint: "/sandbox-state/replica",
           legacySandboxMountPoint: null,
           readOnly: false,
-          mountProfile: "pod_state_replica",
+          mountProfile: "sandbox_state_replica",
         },
       })
     );
@@ -198,7 +198,7 @@ describe("buildMountCommand", () => {
     expect(command).toContain("--dir-mode=700");
     expect(command).toContain("--only-dir w/ws1/pods/spc1/state");
     expect(command).toContain("--enable-hns=false");
-    expect(command).toContain("bucket-x /pod-state/replica");
+    expect(command).toContain("bucket-x /sandbox-state/replica");
   });
 });
 
@@ -278,13 +278,16 @@ describe("Frame sandbox mount wiring", () => {
     process.env.DUST_PRIVATE_UPLOADS_BUCKET ??= "test-private-uploads";
   });
 
-  test("grants only the stable Frame publication prefix", () => {
+  test("grants only stable Frame publication and state prefixes", () => {
     const rules = createFrameSandboxAdapter().getAccessBoundaryRules();
 
-    expect(rules).toHaveLength(1);
-    expect(rules[0]).toHaveLength(3);
+    expect(rules).toHaveLength(2);
+    expect(rules.every((tokenRules) => tokenRules.length === 3)).toBe(true);
     const serializedRules = JSON.stringify(rules);
     expect(serializedRules).toContain("w/ws1/frames/fil_frame/publications/");
+    expect(serializedRules).toContain(
+      "w/ws1/frames/fil_frame/state/databases/"
+    );
     expect(serializedRules).not.toContain("/conversations/");
     expect(serializedRules).not.toContain("/pods/");
   });

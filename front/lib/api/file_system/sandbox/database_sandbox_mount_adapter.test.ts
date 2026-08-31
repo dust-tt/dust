@@ -52,7 +52,7 @@ const sandboxOnlyMounts: SandboxOnlyMount[] = [
   {
     kind: "pod_state",
     podId: "pod1",
-    sandboxMountPoint: "/pod-state/replica",
+    sandboxMountPoint: "/sandbox-state/replica",
     readOnly: false,
   },
 ];

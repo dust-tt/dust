@@ -44,6 +44,7 @@ import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameV2ContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -179,6 +180,10 @@ describe("FrameSandboxAdapter", () => {
       throw sandboxResult.error;
     }
     const sandboxModelId = sandboxResult.value.sandbox.id;
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) =>
+      deletedPrefixes.push(prefix)
+    );
 
     const deleteResult = await frame.delete(auth);
 
@@ -193,6 +198,9 @@ describe("FrameSandboxAdapter", () => {
     expect(
       await SandboxResource.fetchByModelIdForWorkspace(auth, sandboxModelId)
     ).toBeNull();
+    expect(deletedPrefixes).toContain(
+      `w/${workspace.sId}/frames/${frame.sId}/`
+    );
   });
 
   it("keeps sandbox creation blocked until Frame deletion completes", async () => {
@@ -316,6 +324,10 @@ describe("FrameSandboxAdapter", () => {
       )
     );
     const sandboxModelIds: ModelId[] = [];
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) =>
+      deletedPrefixes.push(prefix)
+    );
     for (const frame of frames) {
       const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
         auth,
@@ -338,5 +350,6 @@ describe("FrameSandboxAdapter", () => {
         await SandboxResource.fetchByModelIdForWorkspace(auth, sandboxModelId)
       ).toBeNull();
     }
+    expect(deletedPrefixes).toContain(`w/${workspace.sId}/frames/`);
   });
 });
