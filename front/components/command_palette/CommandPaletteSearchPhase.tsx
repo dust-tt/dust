@@ -11,6 +11,7 @@ import type {
 import {
   COMMAND_GROUP_LABELS,
   COMMAND_GROUP_ORDER,
+  TRAILING_COMMAND_GROUP_ORDER,
 } from "@app/components/command_palette/commandPaletteCommands";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -44,16 +45,21 @@ interface CommandPaletteSearchPhaseProps {
 }
 
 // Commands are shown grouped, in a fixed group order. Grouping here keeps the
-// render order and the flat keyboard-navigation order in sync.
-function groupCommands(commands: CommandPaletteCommand[]) {
+// render order and the flat keyboard-navigation order in sync: `startIndex` is
+// the position of a group's first row in that flat order.
+function groupCommands(
+  commands: CommandPaletteCommand[],
+  groupOrder: CommandGroup[],
+  firstIndex: number
+) {
   const groups: Array<{
     group: CommandGroup;
     commands: CommandPaletteCommand[];
     startIndex: number;
   }> = [];
 
-  let startIndex = 0;
-  for (const group of COMMAND_GROUP_ORDER) {
+  let startIndex = firstIndex;
+  for (const group of groupOrder) {
     const groupItems = commands.filter((command) => command.group === group);
     if (groupItems.length === 0) {
       continue;
@@ -66,18 +72,22 @@ function groupCommands(commands: CommandPaletteCommand[]) {
 }
 
 function getFlatItems(
-  orderedCommands: CommandPaletteCommand[],
+  leadingCommands: CommandPaletteCommand[],
   agents: LightAgentConfigurationType[],
   pods: PodType[],
-  skills: SkillWithoutInstructionsAndToolsType[]
+  skills: SkillWithoutInstructionsAndToolsType[],
+  trailingCommands: CommandPaletteCommand[]
 ): CommandPaletteItem[] {
   return [
-    ...orderedCommands.map(
+    ...leadingCommands.map(
       (command): CommandPaletteItem => ({ kind: "command", command })
     ),
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
+    ...trailingCommands.map(
+      (command): CommandPaletteItem => ({ kind: "command", command })
+    ),
   ];
 }
 
@@ -97,14 +107,32 @@ export function CommandPaletteSearchPhase({
   onItemSelect,
   onClose,
 }: CommandPaletteSearchPhaseProps) {
-  const commandGroups = useMemo(() => groupCommands(commands), [commands]);
-  const orderedCommands = useMemo(
-    () => commandGroups.flatMap(({ commands: groupCommands }) => groupCommands),
-    [commandGroups]
+  const leadingGroups = useMemo(
+    () => groupCommands(commands, COMMAND_GROUP_ORDER, 0),
+    [commands]
   );
+  const leadingCommands = useMemo(
+    () => leadingGroups.flatMap(({ commands: groupItems }) => groupItems),
+    [leadingGroups]
+  );
+
+  // Trailing groups render below the results, so their flat indices start after
+  // every leading command and every entity row.
+  const trailingFirstIndex =
+    leadingCommands.length + agents.length + pods.length + skills.length;
+  const trailingGroups = useMemo(
+    () =>
+      groupCommands(commands, TRAILING_COMMAND_GROUP_ORDER, trailingFirstIndex),
+    [commands, trailingFirstIndex]
+  );
+  const trailingCommands = useMemo(
+    () => trailingGroups.flatMap(({ commands: groupItems }) => groupItems),
+    [trailingGroups]
+  );
+
   const flatItems = useMemo(
-    () => getFlatItems(orderedCommands, agents, pods, skills),
-    [orderedCommands, agents, pods, skills]
+    () => getFlatItems(leadingCommands, agents, pods, skills, trailingCommands),
+    [leadingCommands, agents, pods, skills, trailingCommands]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -132,12 +160,46 @@ export function CommandPaletteSearchPhase({
     itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
   }, [
-    orderedCommands.length,
+    leadingCommands.length,
+    trailingCommands.length,
     agents.length,
     pods.length,
     skills.length,
     onSelectedIndexChange,
   ]);
+
+  function renderCommandGroups(
+    groups: ReturnType<typeof groupCommands>
+  ): React.ReactNode {
+    return groups.map(({ group, commands: groupItems, startIndex }) => (
+      <div key={group}>
+        <ItemTitle>{COMMAND_GROUP_LABELS[group]}</ItemTitle>
+        {groupItems.map((command, i) => {
+          const globalIndex = startIndex + i;
+          return (
+            <ItemRow
+              key={command.id}
+              ref={(el) => {
+                itemRefs.current[globalIndex] = el;
+              }}
+              isSelected={selectedIndex === globalIndex}
+              onClick={() => onItemSelect({ kind: "command", command })}
+              onMouseMove={() => onSelectedIndexChange(globalIndex)}
+            >
+              <Icon
+                visual={command.icon}
+                size="xs"
+                className="text-muted-foreground"
+              />
+              <span className="min-w-0 truncate font-medium">
+                {command.label}
+              </span>
+            </ItemRow>
+          );
+        })}
+      </div>
+    ));
+  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
@@ -212,40 +274,13 @@ export function CommandPaletteSearchPhase({
           </ItemEmptyState>
         )}
 
-        {commandGroups.map(({ group, commands: groupCommands, startIndex }) => (
-          <div key={group}>
-            <ItemTitle>{COMMAND_GROUP_LABELS[group]}</ItemTitle>
-            {groupCommands.map((command, i) => {
-              const globalIndex = startIndex + i;
-              return (
-                <ItemRow
-                  key={command.id}
-                  ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
-                  }}
-                  isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "command", command })}
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                >
-                  <Icon
-                    visual={command.icon}
-                    size="xs"
-                    className="text-muted-foreground"
-                  />
-                  <span className="min-w-0 truncate font-medium">
-                    {command.label}
-                  </span>
-                </ItemRow>
-              );
-            })}
-          </div>
-        ))}
+        {renderCommandGroups(leadingGroups)}
 
         {agents.length > 0 && (
           <div>
             <ItemTitle>Agents</ItemTitle>
             {agents.map((agent, i) => {
-              const globalIndex = orderedCommands.length + i;
+              const globalIndex = leadingCommands.length + i;
               return (
                 <ItemRow
                   key={agent.sId}
@@ -279,7 +314,7 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Pods</ItemTitle>
             {pods.map((pod, i) => {
-              const globalIndex = orderedCommands.length + agents.length + i;
+              const globalIndex = leadingCommands.length + agents.length + i;
               return (
                 <ItemRow
                   key={pod.sId}
@@ -320,7 +355,7 @@ export function CommandPaletteSearchPhase({
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
               const globalIndex =
-                orderedCommands.length + agents.length + pods.length + i;
+                leadingCommands.length + agents.length + pods.length + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow
@@ -350,6 +385,8 @@ export function CommandPaletteSearchPhase({
             )}
           </div>
         )}
+
+        {renderCommandGroups(trailingGroups)}
       </div>
       <KeyboardHints
         hints={[

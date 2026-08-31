@@ -157,7 +157,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   // With no query the palette shows the first couple of commands of each group,
   // so every group stays visible without burying the entity results; a query
   // lifts the cap and lets them all show.
-  const MAX_COMMANDS_PER_GROUP_WITHOUT_QUERY = 2;
+  const MAX_COMMANDS_PER_GROUP_WITHOUT_QUERY = 3;
 
   const filteredCommands = useMemo(() => {
     const matching = filterCommands(commands, debouncedQuery);

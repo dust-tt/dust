@@ -11,7 +11,6 @@ import {
   BookOpen01,
   File02,
   Globe01,
-  IntersectDust,
   LogOut01,
   MagicWand02,
   MessageCircle01,
@@ -29,23 +28,26 @@ import type { ComponentType } from "react";
 export type CommandGroup =
   | "navigation"
   | "create"
-  | "workspace"
+  | "settings"
   | "appearance"
   | "account";
 
-// Rendered in this order, so the groups people reach for most come first.
+// Groups shown above the agent/pod/skill results, in this order.
 export const COMMAND_GROUP_ORDER: CommandGroup[] = [
   "create",
   "navigation",
+  "settings",
   "appearance",
-  "workspace",
-  "account",
 ];
+
+// Groups shown below every other list. Signing out is destructive and rarely
+// the reason the palette was opened, so it never sits among the results.
+export const TRAILING_COMMAND_GROUP_ORDER: CommandGroup[] = ["account"];
 
 export const COMMAND_GROUP_LABELS: Record<CommandGroup, string> = {
   navigation: "Go to",
   create: "Create",
-  workspace: "Workspace",
+  settings: "Settings & Governance",
   appearance: "Appearance",
   account: "Account",
 };
@@ -86,22 +88,6 @@ function buildNavigationCommands({
   const canUseProduct = subscription.plan.limits.canUseProduct;
 
   const commands: CommandPaletteCommand[] = [
-    {
-      id: "nav.conversations",
-      label: "Go to Conversations",
-      group: "navigation",
-      icon: IntersectDust,
-      keywords: ["chat", "work", "home", "conversation"],
-      run: () => navigate(`/w/${wId}/conversation/new`),
-    },
-    {
-      id: "nav.for-you",
-      label: "Go to For you",
-      group: "navigation",
-      icon: Robot,
-      keywords: ["home", "get started", "for you", "feed"],
-      run: () => navigate(`/w/${wId}/for-you`),
-    },
     {
       id: "nav.spaces",
       label: "Go to Spaces",
@@ -181,7 +167,34 @@ function buildCreateCommands({
   openCreateSpace,
 }: BuildCommandsDeps): CommandPaletteCommand[] {
   const wId = owner.sId;
-  const commands: CommandPaletteCommand[] = [
+
+  // Agents and skills lead: they are what people build here, and only a
+  // group's first entries survive the empty-state trim.
+  const commands: CommandPaletteCommand[] = [];
+
+  if (hasPermission("create", "agent")) {
+    commands.push({
+      id: "create.agent",
+      label: "New agent",
+      group: "create",
+      icon: File02,
+      keywords: ["new", "agent", "assistant", "scratch", "build"],
+      run: () => navigate(`/w/${wId}/builder/agents/new`),
+    });
+  }
+
+  if (hasPermission("create", "skill")) {
+    commands.push({
+      id: "create.skill",
+      label: "New skill",
+      group: "create",
+      icon: PuzzlePiece01,
+      keywords: ["new", "skill", "tool", "build"],
+      run: () => navigate(`/w/${wId}/builder/skills/new`),
+    });
+  }
+
+  commands.push(
     {
       id: "create.conversation",
       label: "New conversation",
@@ -197,38 +210,17 @@ function buildCreateCommands({
       icon: Plus,
       keywords: ["new", "pod", "project", "team"],
       run: openCreatePod,
-    },
-  ];
+    }
+  );
 
   if (hasPermission("create", "agent")) {
-    commands.push(
-      {
-        id: "create.agent",
-        label: "New agent",
-        group: "create",
-        icon: File02,
-        keywords: ["new", "agent", "assistant", "scratch", "build"],
-        run: () => navigate(`/w/${wId}/builder/agents/new`),
-      },
-      {
-        id: "create.agent-from-template",
-        label: "New agent from template",
-        group: "create",
-        icon: MagicWand02,
-        keywords: ["new", "agent", "template", "gallery"],
-        run: () => navigate(`/w/${wId}/builder/agents/create`),
-      }
-    );
-  }
-
-  if (hasPermission("create", "skill")) {
     commands.push({
-      id: "create.skill",
-      label: "New skill",
+      id: "create.agent-from-template",
+      label: "New agent from template",
       group: "create",
-      icon: PuzzlePiece01,
-      keywords: ["new", "skill", "tool", "build"],
-      run: () => navigate(`/w/${wId}/builder/skills/new`),
+      icon: MagicWand02,
+      keywords: ["new", "agent", "template", "gallery"],
+      run: () => navigate(`/w/${wId}/builder/agents/create`),
     });
   }
 
@@ -280,9 +272,9 @@ function buildWorkspaceCommands(
       }
       const href = menu.href;
       commands.push({
-        id: `workspace.${menu.id}`,
+        id: `settings.${menu.id}`,
         label: menu.label,
-        group: "workspace",
+        group: "settings",
         icon: menu.icon,
         keywords: ["admin", "workspace", "settings", menu.label.toLowerCase()],
         run: () => navigate(href),
@@ -291,11 +283,11 @@ function buildWorkspaceCommands(
   }
 
   // "Invite a member" is the reason most people open the members page.
-  if (commands.some((c) => c.id === "workspace.members")) {
+  if (commands.some((c) => c.id === "settings.members")) {
     commands.push({
-      id: "workspace.invite-member",
+      id: "settings.invite-member",
       label: "Invite a member",
-      group: "workspace",
+      group: "settings",
       icon: UserPlus01,
       keywords: ["invite", "member", "people", "add user", "teammate"],
       run: () => navigate(`/w/${owner.sId}/members`),
@@ -306,8 +298,8 @@ function buildWorkspaceCommands(
   // "settings" is what people come to the palette looking for, and only the
   // first entries of a group survive the empty-state trim.
   return [
-    ...commands.filter((command) => command.id === "workspace.governance"),
-    ...commands.filter((command) => command.id !== "workspace.governance"),
+    ...commands.filter((command) => command.id === "settings.governance"),
+    ...commands.filter((command) => command.id !== "settings.governance"),
   ];
 }
 
