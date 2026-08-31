@@ -75,8 +75,13 @@ export function ModelPickerContent({
   onChangeEffort,
   confirm,
 }: ModelPickerContentProps) {
+  // Remount after the inline list changes height so Radix reruns collision
+  // detection and can flip the menu to the side with enough room.
+  const contentKey = isMakersExpanded ? "expanded" : "collapsed";
+
   return (
     <DropdownMenuContent
+      key={contentKey}
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
       align="start"
       side={side}
