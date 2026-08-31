@@ -1,7 +1,10 @@
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useAppRouter } from "@app/lib/platform";
 import { datadogLogs } from "@datadog/browser-logs";
 import { useEffect } from "react";
+
+const CELL = import.meta.env?.VITE_DUST_CELL;
 
 export function useDatadogLogs() {
   const { user } = useAuth();
@@ -9,6 +12,9 @@ export function useDatadogLogs() {
 
   const router = useAppRouter();
   const { wId } = router.query;
+
+  const { regionInfo } = useRegionContext();
+  const region = regionInfo.name;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
@@ -26,20 +32,17 @@ export function useDatadogLogs() {
   }, [userId]);
 
   useEffect(() => {
-    if (wId && !Array.isArray(wId)) {
-      datadogLogs.setGlobalContext({
-        workspaceId: wId,
-      });
-      window.DD_RUM?.onReady(() => {
-        window.DD_RUM?.setGlobalContext({
-          workspaceId: wId,
-        });
-      });
-    } else {
-      datadogLogs.setGlobalContext({});
-      window.DD_RUM?.onReady(() => {
-        window.DD_RUM?.setGlobalContext({});
-      });
+    const globalContext: Record<string, string> = { region };
+    if (CELL) {
+      globalContext.cell = CELL;
     }
-  }, [wId]);
+    if (wId && !Array.isArray(wId)) {
+      globalContext.workspaceId = wId;
+    }
+
+    datadogLogs.setGlobalContext(globalContext);
+    window.DD_RUM?.onReady(() => {
+      window.DD_RUM?.setGlobalContext(globalContext);
+    });
+  }, [wId, region]);
 }
