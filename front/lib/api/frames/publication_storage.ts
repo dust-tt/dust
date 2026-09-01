@@ -5,7 +5,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  getFrameSourceLockName,
+  withFramePublishLock,
+} from "@app/lib/api/frames/operation_lock";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
@@ -15,7 +18,11 @@ import {
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
+import type { LockLeaseGuard, LockLeaseLostError } from "@app/lib/lock";
+import {
+  isLockAcquisitionTimeoutError,
+  isLockLeaseLostError,
+} from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -83,6 +90,26 @@ export class FramePublicationError extends Error {
 
 function sha256(content: string | Buffer): string {
   return createHash("sha256").update(content).digest("hex");
+}
+
+function checkPublicationLeases({
+  publishLease,
+  sourceLease,
+}: {
+  publishLease?: LockLeaseGuard;
+  sourceLease: LockLeaseGuard;
+}): Result<void, LockLeaseLostError> {
+  const sourceHeld = sourceLease.check();
+  if (sourceHeld.isErr()) {
+    return sourceHeld;
+  }
+
+  const publishHeld = publishLease?.check();
+  if (publishHeld?.isErr()) {
+    return publishHeld;
+  }
+
+  return new Ok(undefined);
 }
 export function isFramePublicationError(
   error: unknown
@@ -456,12 +483,16 @@ export async function activateFramePublication(
   auth: Authenticator,
   {
     frame,
+    lease,
     publicationId,
+    sourceLease,
   }: {
     frame: FileResource;
+    lease?: LockLeaseGuard;
     publicationId: string;
+    sourceLease: LockLeaseGuard;
   }
-): Promise<Result<void, FramePublicationError>> {
+): Promise<Result<void, FramePublicationError | LockLeaseLostError>> {
   const descriptor = await loadFramePublicationDescriptor(auth, {
     frame,
     publicationId,
@@ -522,21 +553,46 @@ export async function activateFramePublication(
   }
   const shareScope = await frame.getShareScope();
 
-  await withTransaction(async (transaction) => {
-    // Updating the Frame first serializes concurrent activations. None of the
-    // new publication state becomes visible until the transaction commits.
-    await frame.setActiveFramePublication(publicationId, transaction);
-    await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
-    await SandboxFunctionResource.createForFramePublication(
-      auth,
-      {
-        frame,
-        functions: functionDefinitions.value,
-        publicationId,
-      },
-      transaction
-    );
-  });
+  try {
+    await withTransaction(async (transaction) => {
+      const heldBeforeActivation = checkPublicationLeases({
+        publishLease: lease,
+        sourceLease,
+      });
+      if (heldBeforeActivation.isErr()) {
+        throw heldBeforeActivation.error;
+      }
+
+      // Updating the Frame first serializes concurrent activations. None of the
+      // new publication state becomes visible until the transaction commits.
+      await frame.setActiveFramePublication(publicationId, transaction);
+      await frame.persistAuthorizedFileAccess(allowlist.value, {
+        transaction,
+      });
+      await SandboxFunctionResource.createForFramePublication(
+        auth,
+        {
+          frame,
+          functions: functionDefinitions.value,
+          publicationId,
+        },
+        transaction
+      );
+
+      const heldBeforeCommit = checkPublicationLeases({
+        publishLease: lease,
+        sourceLease,
+      });
+      if (heldBeforeCommit.isErr()) {
+        throw heldBeforeCommit.error;
+      }
+    });
+  } catch (error) {
+    if (isLockLeaseLostError(error)) {
+      return new Err(error);
+    }
+    throw error;
+  }
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
     auth,
@@ -571,12 +627,14 @@ export async function publishFramePublication(
     frame,
     functionArtifacts,
     manifest,
+    sourceLease,
     sourceFiles,
     uiBundleCode,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
+    sourceLease: LockLeaseGuard;
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
   }
@@ -589,7 +647,7 @@ export async function publishFramePublication(
   const publication = await withFramePublishLock<
     { publicationId: string },
     FramePublicationError | SandboxFunctionError
-  >(frame.sId, async () => {
+  >(frame.sId, async (lease) => {
     const storedPublication = await storeFramePublication(auth, {
       frame,
       functionArtifacts,
@@ -601,18 +659,35 @@ export async function publishFramePublication(
       return storedPublication;
     }
 
+    const heldBeforeReconciliation = checkPublicationLeases({
+      publishLease: lease,
+      sourceLease,
+    });
+    if (heldBeforeReconciliation.isErr()) {
+      return heldBeforeReconciliation;
+    }
     const reconciliation = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
+      sourceLease,
       sourceFiles,
     });
     if (reconciliation.isErr()) {
       return reconciliation;
     }
 
+    const heldBeforeActivation = checkPublicationLeases({
+      publishLease: lease,
+      sourceLease,
+    });
+    if (heldBeforeActivation.isErr()) {
+      return heldBeforeActivation;
+    }
     const activation = await activateFramePublication(auth, {
       frame,
+      lease,
       publicationId: storedPublication.value.publicationId,
+      sourceLease,
     });
     if (activation.isErr()) {
       return activation;
@@ -622,7 +697,18 @@ export async function publishFramePublication(
   });
   if (publication.isErr()) {
     const error = publication.error;
-    if (isLockAcquisitionTimeoutError(error)) {
+    if (
+      isLockLeaseLostError(error) &&
+      error.lockName === getFrameSourceLockName(frame.sId)
+    ) {
+      return new Err(
+        new SandboxFunctionError(
+          "publish_conflict",
+          "Another source operation is in progress for this Frame; retry shortly."
+        )
+      );
+    }
+    if (isLockAcquisitionTimeoutError(error) || isLockLeaseLostError(error)) {
       return new Err(
         new SandboxFunctionError(
           "publish_conflict",

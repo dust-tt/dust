@@ -13,6 +13,7 @@ import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functio
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
 import type { Authenticator } from "@app/lib/auth";
+import type { LockLeaseGuard } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
@@ -65,11 +66,13 @@ export async function buildAndPublishFramePublication(
     conversation,
     frame,
     manifest,
+    sourceLease,
     sourceFiles,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifest: FrameManifest;
+    sourceLease: LockLeaseGuard;
     sourceFiles: FramePublicationSourceFile[];
   }
 ): Promise<
@@ -104,6 +107,7 @@ export async function buildAndPublishFramePublication(
       frame,
       functionArtifacts: [],
       manifest,
+      sourceLease,
       sourceFiles,
       uiBundleCode: uiBundle.value,
     });
@@ -155,6 +159,7 @@ export async function buildAndPublishFramePublication(
     frame,
     functionArtifacts: functionArtifactResult.value,
     manifest,
+    sourceLease,
     sourceFiles,
     uiBundleCode: uiBundle.value,
   });

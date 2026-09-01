@@ -1,5 +1,8 @@
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
+import {
+  getFramePublishLockName,
+  getFrameSourceLockName,
+} from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
   activateFramePublication,
@@ -11,8 +14,13 @@ import { getRedisStreamClient } from "@app/lib/api/redis";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
-import { LockAcquisitionTimeoutError } from "@app/lib/lock";
+import {
+  isLockLeaseLostError,
+  LockAcquisitionTimeoutError,
+  LockLeaseLostError,
+} from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import {
   computeSandboxFunctionBundleSha256,
   SandboxFunctionResource,
@@ -20,6 +28,7 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { makeAlwaysHeldLockLease } from "@app/tests/utils/LockLeaseFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { getNamespace } from "@app/tests/utils/test_cls";
@@ -582,6 +591,7 @@ describe("activateFramePublication", () => {
     const activated = await activateFramePublication(auth, {
       frame,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
     expect(
@@ -592,6 +602,106 @@ describe("activateFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
     );
+  });
+
+  it("does not start activation when the lease is already lost", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    const leaseError = new LockLeaseLostError(
+      getFramePublishLockName(frame.sId)
+    );
+    const lease = {
+      check: vi.fn().mockReturnValue(new Err(leaseError)),
+    };
+    const setActivePublication = vi.spyOn(frame, "setActiveFramePublication");
+
+    const activated = await activateFramePublication(auth, {
+      frame,
+      lease,
+      publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
+    });
+
+    expect(activated.isErr() && isLockLeaseLostError(activated.error)).toBe(
+      true
+    );
+    expect(setActivePublication).not.toHaveBeenCalled();
+  });
+
+  it("rolls back activation when the source lease is lost before commit", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    const leaseError = new LockLeaseLostError(
+      getFrameSourceLockName(frame.sId)
+    );
+    const publishLease = {
+      check: vi.fn().mockReturnValue(new Ok(undefined)),
+    };
+    const sourceLease = {
+      check: vi
+        .fn()
+        .mockReturnValueOnce(new Ok(undefined))
+        .mockReturnValueOnce(new Err(leaseError)),
+    };
+    const parentTransaction =
+      getNamespace("test-namespace")?.get("transaction");
+    expect(parentTransaction).toBeDefined();
+
+    await expect(
+      frontSequelize.transaction(
+        { transaction: parentTransaction },
+        async () => {
+          const activated = await activateFramePublication(auth, {
+            frame,
+            lease: publishLease,
+            publicationId: stored.value.publicationId,
+            sourceLease,
+          });
+          throw activated.isErr()
+            ? activated.error
+            : new Error("Expected the activation lease to be lost.");
+        }
+      )
+    ).rejects.toMatchObject({ name: "LockLeaseLostError" });
+
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBeUndefined();
+    expect(
+      await FileResource.shareableFileModel.count({
+        where: { fileId: frame.id, workspaceId: frame.workspaceId },
+      })
+    ).toBe(0);
+    expect(
+      await FileResource.authorizedFileAccessModel.count({
+        where: { workspaceId: frame.workspaceId },
+      })
+    ).toBe(0);
+    expect(
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: stored.value.publicationId,
+      })
+    ).toHaveLength(0);
   });
 
   it("keeps the active publication when validation fails", async () => {
@@ -610,17 +720,21 @@ describe("activateFramePublication", () => {
     await activateFramePublication(auth, {
       frame,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
     fileStorageMock.setFetchFileContentNotFound(() => true);
 
     const activation = await activateFramePublication(auth, {
       frame,
       publicationId: "b8c2b796-534a-4ad2-a5ad-071da692ca0b",
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
-    expect(activation.isErr() && activation.error.code).toBe(
-      "publication_not_found"
-    );
+    expect(
+      activation.isErr() && "code" in activation.error
+        ? activation.error.code
+        : undefined
+    ).toBe("publication_not_found");
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
@@ -644,6 +758,7 @@ describe("activateFramePublication", () => {
     const activated = await activateFramePublication(auth, {
       frame,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
     expect(activated.isOk()).toBe(true);
@@ -697,11 +812,12 @@ describe("activateFramePublication", () => {
     const result = await activateFramePublication(auth, {
       frame,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
-    expect(result.isErr() && result.error.code).toBe(
-      "invalid_function_artifact"
-    );
+    expect(
+      result.isErr() && "code" in result.error ? result.error.code : undefined
+    ).toBe("invalid_function_artifact");
     expect(frame.useCaseMetadata?.activePublicationId).toBeUndefined();
   });
 
@@ -720,6 +836,7 @@ describe("activateFramePublication", () => {
       frame,
       functionArtifacts,
       manifest: manifestWithFunction,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: sourceFilesWithFunction,
       uiBundleCode: activeBundle,
     });
@@ -759,6 +876,7 @@ describe("activateFramePublication", () => {
         activateFramePublication(auth, {
           frame,
           publicationId: active.value.publicationId,
+          sourceLease: makeAlwaysHeldLockLease(),
         })
       )
     ).rejects.toThrow();
@@ -798,6 +916,7 @@ describe("activateFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
       uiBundleCode: firstBundle,
     });
@@ -817,6 +936,7 @@ describe("activateFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
       uiBundleCode: secondBundle,
     });
@@ -851,19 +971,46 @@ describe("publishFramePublication", () => {
         frame,
         functionArtifacts: [],
         manifest,
+        sourceLease: makeAlwaysHeldLockLease(),
         sourceFiles,
         uiBundleCode,
       });
       await vi.runAllTimersAsync();
       const published = await publicationPromise;
 
-      expect(published.isErr() && published.error.code).toBe(
-        "publish_conflict"
-      );
+      expect(published.isErr() && published.error).toMatchObject({
+        code: "publish_conflict",
+        message:
+          "Another publication is in progress for this Frame; retry shortly.",
+      });
     } finally {
       vi.useRealTimers();
       await redisClient.del(lockKey);
     }
+  });
+
+  it("reports source lease loss as a source-operation conflict", async () => {
+    const { auth, frame } = await setupFrame();
+    const sourceLease = {
+      check: () =>
+        new Err(new LockLeaseLostError(getFrameSourceLockName(frame.sId))),
+    };
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceLease,
+      sourceFiles,
+      uiBundleCode,
+    });
+
+    expect(published.isErr() && published.error).toMatchObject({
+      code: "publish_conflict",
+      message:
+        "Another source operation is in progress for this Frame; retry shortly.",
+    });
+    expect(reconcileFramePublicationDatabases).not.toHaveBeenCalled();
   });
 
   it("does not relabel a nested lock timeout as a publication conflict", async () => {
@@ -877,6 +1024,7 @@ describe("publishFramePublication", () => {
         frame,
         functionArtifacts: [],
         manifest,
+        sourceLease: makeAlwaysHeldLockLease(),
         sourceFiles,
         uiBundleCode,
       })
@@ -893,6 +1041,7 @@ describe("publishFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
       uiBundleCode,
     });
@@ -919,6 +1068,7 @@ describe("publishFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest: manifestWithDatabase,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: [...sourceFiles, databaseSchema],
       uiBundleCode,
     });
@@ -927,6 +1077,7 @@ describe("publishFramePublication", () => {
     expect(reconcileFramePublicationDatabases).toHaveBeenCalledWith(auth, {
       frame,
       manifest: manifestWithDatabase,
+      sourceLease: expect.objectContaining({ check: expect.any(Function) }),
       sourceFiles: [...sourceFiles, databaseSchema],
     });
   });
@@ -948,6 +1099,7 @@ describe("publishFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest: manifestWithDatabase,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: [
         ...sourceFiles,
         {
@@ -979,6 +1131,7 @@ describe("publishFramePublication", () => {
         frame,
         functionArtifacts,
         manifest: manifestWithFunction,
+        sourceLease: makeAlwaysHeldLockLease(),
         sourceFiles: sourceFilesWithFunction,
         uiBundleCode,
       })
@@ -1014,6 +1167,7 @@ describe("publishFramePublication", () => {
       frame,
       functionArtifacts,
       manifest: manifestWithFunction,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: sourceFilesWithFunction,
       uiBundleCode,
     });
@@ -1052,5 +1206,45 @@ describe("publishFramePublication", () => {
       deletion.isErr() ? deletion.error.message : undefined
     ).toBe(true);
     await expect(FileResource.fetchById(auth, frame.sId)).resolves.toBeNull();
+  });
+
+  it("preserves the Frame when its deletion lease is lost", async () => {
+    const { auth, frame } = await setupFrame({ ready: true });
+    const onDeleteByPrefix = vi.fn();
+    fileStorageMock.setOnDeleteByPrefix(onDeleteByPrefix);
+    const redisEval = vi.mocked(
+      redisMock.streamClient.eval as (...args: unknown[]) => Promise<number>
+    );
+    redisEval.mockResolvedValueOnce(0).mockResolvedValue(1);
+    const deleteSandbox = vi
+      .spyOn(FrameSandboxAdapter, "deleteSandbox")
+      .mockImplementation(
+        async (
+          _auth,
+          _frame,
+          { afterSandboxCleanup, beforeSandboxCleanup } = {}
+        ) => {
+          expect(beforeSandboxCleanup?.().isOk()).toBe(true);
+          await vi.advanceTimersByTimeAsync(200_000);
+          return afterSandboxCleanup?.() ?? new Ok(undefined);
+        }
+      );
+    vi.useFakeTimers();
+
+    try {
+      const deletion = await frame.delete(auth);
+
+      expect(deletion.isErr() && isLockLeaseLostError(deletion.error)).toBe(
+        true
+      );
+      await expect(
+        FileResource.fetchById(auth, frame.sId)
+      ).resolves.not.toBeNull();
+      expect(onDeleteByPrefix).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      deleteSandbox.mockRestore();
+      redisEval.mockResolvedValue(1);
+    }
   });
 });
