@@ -107,7 +107,6 @@ collect_env_args() {
   for var in \
     OP_SERVICE_ACCOUNT_TOKEN \
     OP_ENVIRONMENT_ID \
-    GCP_SERVICE_ACCOUNT \
     DEV_WORKOS_USER_EMAIL \
     DEV_WORKOS_USER_ID \
     DEV_WORKOS_USER_PASSWORD; do

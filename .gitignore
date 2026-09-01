@@ -12,6 +12,7 @@ qdrant_storage
 core-api-keys.json
 oauth-api-keys.json
 /extension/build/
+**/__pycache__
 **/.claude/*
 !**/.claude/skills/
 **/.claude/skills/*
