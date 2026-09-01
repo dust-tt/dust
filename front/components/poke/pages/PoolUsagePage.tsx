@@ -15,6 +15,7 @@ import { expandMaxTierName } from "@app/lib/client/model_tiers";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   usePokeAwuPoolCurrentCycle,
+  usePokeAwuPoolCycleHistory,
   usePokeMembersUsage,
 } from "@app/poke/swr/credits";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
@@ -73,6 +74,12 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
     isAwuPoolCurrentCycleLoading,
     isAwuPoolCurrentCycleError,
   } = usePokeAwuPoolCurrentCycle({ owner });
+  const {
+    cycleBreakdown: poolCycleBreakdown,
+    excessCycleBreakdown,
+    isAwuPoolCycleHistoryLoading,
+    isAwuPoolCycleHistoryError,
+  } = usePokeAwuPoolCycleHistory({ owner });
 
   const {
     totalRemainingCredits,
@@ -80,28 +87,33 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
     currentCycleConsumedCredits,
     currentCycleStartMs,
     currentCycleEndMs,
+    excessConsumedCredits,
     programmaticConsumedCredits,
     otherConsumedCredits,
-    excessConsumedCredits,
   } = awuPoolCurrentCycle ?? {
     totalRemainingCredits: 0,
     totalActiveCredits: 0,
     currentCycleConsumedCredits: null,
     currentCycleStartMs: null,
     currentCycleEndMs: null,
+    excessConsumedCredits: null,
     programmaticConsumedCredits: null,
     otherConsumedCredits: null,
-    excessConsumedCredits: null,
   };
 
   const hasPool = totalActiveCredits > 0;
-  const hasExcessData = excessConsumedCredits !== null;
+  const hasExcessData =
+    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
 
   return (
     <WorkspaceCreditPoolSection
       cardsStatus={toCreditPoolFetchStatus(
         isAwuPoolCurrentCycleLoading,
         !!isAwuPoolCurrentCycleError
+      )}
+      tableStatus={toCreditPoolFetchStatus(
+        isAwuPoolCycleHistoryLoading,
+        !!isAwuPoolCycleHistoryError
       )}
       showPoolCard={hasPool}
       isVisible={hasPool || hasExcessData}
@@ -111,6 +123,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
       }
       currentCycleStartMs={currentCycleStartMs}
       currentCycleEndMs={currentCycleEndMs}
+      cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
       otherConsumedCredits={otherConsumedCredits}
     />
