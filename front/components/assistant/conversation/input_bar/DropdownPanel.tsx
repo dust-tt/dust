@@ -1,8 +1,9 @@
 import {
-  Button,
   ChevronLeft,
   cn,
+  DropdownMenuItem,
   DropdownMenuSeparator,
+  Icon,
   ScrollArea,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -33,21 +34,28 @@ export function DropdownPanelContent({
   title,
 }: DropdownPanelContentProps) {
   return (
-    <div className={cn("flex flex-col p-1", className)}>
+    <div
+      className={cn(
+        "flex flex-col p-1",
+        "max-h-[var(--radix-dropdown-menu-content-available-height)]",
+        className
+      )}
+    >
       <div className="flex shrink-0 flex-col">
-        <div className="flex items-center gap-1.5 px-1 py-1">
-          <Button
-            variant="ghost-secondary"
-            size="xs"
-            icon={ChevronLeft}
-            isRounded
-            tooltip="Back"
+        {title !== undefined && (
+          <DropdownMenuItem
+            label={title}
+            icon={
+              <Icon
+                size="xs"
+                visual={ChevronLeft}
+                className="text-muted-foreground"
+              />
+            }
+            onSelect={(event) => event.preventDefault()}
             onClick={onBack}
           />
-          <span className="heading-sm text-foreground dark:text-foreground-night">
-            {title}
-          </span>
-        </div>
+        )}
         <DropdownMenuSeparator />
         {dropdownHeaders}
       </div>
@@ -55,7 +63,7 @@ export function DropdownPanelContent({
         className="w-full flex-1"
         hideScrollBar={false}
         orientation="vertical"
-        viewportClassName="flex-1"
+        viewportClassName="flex-1 overscroll-contain"
       >
         {children}
       </ScrollArea>

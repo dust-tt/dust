@@ -1,5 +1,6 @@
 import { DropdownPanelContent } from "@app/components/assistant/conversation/input_bar/DropdownPanel";
 import { getSpaceIcon } from "@app/lib/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import {
   DropdownMenuCheckboxItem,
@@ -36,6 +37,7 @@ export function InputBarSpacesPicker({
   selectedSpaceIds,
   spaces,
 }: InputBarSpacesPickerProps) {
+  const isMobile = useIsMobile();
   const selectedSpaceIdsSet = useMemo(
     () => new Set(selectedSpaceIds),
     [selectedSpaceIds]
@@ -79,7 +81,7 @@ export function InputBarSpacesPicker({
       dropdownHeaders={
         <>
           <DropdownMenuSearchbar
-            autoFocus
+            autoFocus={!isMobile}
             name="search-spaces"
             placeholder="Search Spaces"
             value={searchText}
