@@ -966,13 +966,18 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async fetchByName(
     auth: Authenticator,
-    name: string
+    name: string,
+    transaction?: Transaction
   ): Promise<GroupResource | null> {
-    const [group] = await this.baseFetch(auth, {
-      where: {
-        name,
+    const [group] = await this.baseFetch(
+      auth,
+      {
+        where: {
+          name,
+        },
       },
-    });
+      transaction
+    );
     if (group && !group.canRead(auth)) {
       return null;
     }
