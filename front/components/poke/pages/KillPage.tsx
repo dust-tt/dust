@@ -3,7 +3,7 @@ import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { KillSwitchType } from "@app/lib/poke/types";
-import { TOGGLABLE_KILL_SWITCH_TYPES } from "@app/lib/poke/types";
+import { isLegacyKillSwitchType, KILL_SWITCH_TYPES } from "@app/lib/poke/types";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDegradedModels } from "@app/poke/swr/degraded_models";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
@@ -14,10 +14,13 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   AlertCircle,
+  AnthropicLogo,
   Button,
+  Chip,
   CloudArrowLeftRight,
   Cube01,
   Fire,
+  OpenaiLogo,
   PauseCircle,
   RefreshCw02,
   Settings01,
@@ -36,10 +39,7 @@ interface KillSwitchDefinition {
   icon: ComponentType<{ className?: string }>;
 }
 
-const KILL_SWITCH_DEFINITIONS: Record<
-  (typeof TOGGLABLE_KILL_SWITCH_TYPES)[number],
-  KillSwitchDefinition
-> = {
+const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
   save_agent_configurations: {
     title: "Agent Configurations",
     description: "Disable saving of agent configurations.",
@@ -50,11 +50,28 @@ const KILL_SWITCH_DEFINITIONS: Record<
     description: "Disable saving of data source views.",
     icon: CloudArrowLeftRight,
   },
+  global_blacklist_anthropic: {
+    title: "Anthropic Models",
+    description: "Disable Anthropic models in all agents.",
+    icon: AnthropicLogo,
+  },
+  global_blacklist_openai: {
+    title: "OpenAI Models",
+    description: "Disable OpenAI models in all agents.",
+    icon: OpenaiLogo,
+  },
   global_disable_firecrawl: {
     title: "Firecrawl",
     description:
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
     icon: Fire,
+  },
+  global_dust_agents_fallback: {
+    title: "Dust Agents Fallback Provider",
+    description:
+      "Force Dust and Deep Dive agents to use non-Anthropic providers.",
+    note: "Use only when the latest Sonnet or Opus models are down.",
+    icon: RefreshCw02,
   },
   pause_upsert_queue: {
     title: "Upsert Queue",
@@ -71,6 +88,12 @@ const KILL_SWITCH_DEFINITIONS: Record<
     icon: RefreshCw02,
   },
 };
+
+// Kills a whole provider at once, which the per-endpoint degraded models
+// switches below do more precisely.
+const LEGACY_KILL_SWITCH_NOTE =
+  "Superseded by the degraded models section: prefer flagging the affected " +
+  "endpoints there, and reach for this only to take a provider out entirely.";
 
 const PANEL_HEADING_CLASSES =
   "flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-foreground";
@@ -108,7 +131,7 @@ export function KillPage() {
     useState<SandboxKillRequestKey | null>(null);
 
   async function updateKillSwitch(
-    killSwitch: (typeof TOGGLABLE_KILL_SWITCH_TYPES)[number],
+    killSwitch: KillSwitchType,
     enabled: boolean
   ): Promise<void> {
     if (updatingKillSwitch) {
@@ -205,7 +228,7 @@ export function KillPage() {
           </div>
         ) : (
           <div className={PANEL_SECTION_CLASSES}>
-            {TOGGLABLE_KILL_SWITCH_TYPES.map((type, index) => {
+            {KILL_SWITCH_TYPES.map((type, index) => {
               const {
                 title,
                 description,
@@ -215,6 +238,7 @@ export function KillPage() {
 
               const isEnabled = enabledKillSwitches.has(type);
               const isUpdating = updatingKillSwitch === type;
+              const isLegacy = isLegacyKillSwitchType(type);
 
               return (
                 <div
@@ -228,11 +252,20 @@ export function KillPage() {
                     <h3 className="flex items-center gap-3 text-sm font-medium text-foreground">
                       <Icon className="h-4 w-4 text-foreground" />
                       <span>{title}</span>
+                      {isLegacy && (
+                        <Chip size="mini" color="primary" label="Legacy" />
+                      )}
                     </h3>
 
                     <p className="text-sm leading-6 text-muted-foreground">
                       {description}
                     </p>
+
+                    {isLegacy && (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {LEGACY_KILL_SWITCH_NOTE}
+                      </p>
+                    )}
 
                     {note && (
                       <p className="text-xs leading-5 text-muted-foreground">
