@@ -52,6 +52,24 @@ describe("resolveFrameSourceMovePaths", () => {
     });
   });
 
+  it("rejects identical and nested destinations after trimming trailing slashes", () => {
+    const identical = resolveFrameSourceMovePaths({
+      sourceDirectoryPath: "conversation-conv_123/Status/",
+      destinationDirectoryPath: "conversation-conv_123/Status",
+    });
+    const nested = resolveFrameSourceMovePaths({
+      sourceDirectoryPath: "conversation-conv_123/Status/",
+      destinationDirectoryPath: "conversation-conv_123/Status/Nested",
+    });
+
+    expect(identical.isErr() && identical.error).toMatchObject({
+      code: "invalid_source",
+    });
+    expect(nested.isErr() && nested.error).toMatchObject({
+      code: "invalid_source",
+    });
+  });
+
   it("rejects nested and cross-mount destinations", () => {
     const nested = resolveFrameSourceMovePaths({
       sourceDirectoryPath: "conversation-conv_123/Status",

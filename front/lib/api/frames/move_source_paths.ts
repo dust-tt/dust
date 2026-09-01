@@ -33,6 +33,15 @@ export type FrameSourceMovePaths = {
   sourceManifestPath: string;
 };
 
+function normalizeFrameDirectoryPath(scopedPath: string): string | null {
+  const normalized = DustFileSystem.normalizeScopedPath(scopedPath);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
+}
+
 export function resolveFrameSourceMovePaths({
   destinationDirectoryPath,
   sourceDirectoryPath,
@@ -40,10 +49,8 @@ export function resolveFrameSourceMovePaths({
   destinationDirectoryPath: string;
   sourceDirectoryPath: string;
 }): Result<FrameSourceMovePaths, FrameSourceMoveError> {
-  const source = DustFileSystem.normalizeScopedPath(sourceDirectoryPath);
-  const destination = DustFileSystem.normalizeScopedPath(
-    destinationDirectoryPath
-  );
+  const source = normalizeFrameDirectoryPath(sourceDirectoryPath);
+  const destination = normalizeFrameDirectoryPath(destinationDirectoryPath);
   if (!source || !destination) {
     return new Err(
       new FrameSourceMoveError(
@@ -66,8 +73,6 @@ export function resolveFrameSourceMovePaths({
   if (
     !source.includes("/") ||
     !destination.includes("/") ||
-    source.indexOf("/") === source.length - 1 ||
-    destination.indexOf("/") === destination.length - 1 ||
     !sourcePrefix ||
     !destinationPrefix ||
     sourcePrefix.kind === "user" ||
