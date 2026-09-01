@@ -1,14 +1,17 @@
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
+  buildConsumptionScopeQuery,
   COMPLETED_AT_FIELD,
+  CONSUMPTION_DIMENSION_FIELDS,
   uniqueMessagesCardinalityAgg,
 } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import {
   bucketsToArray,
   formatDateFromMillis,
-  searchAnalytics,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -66,7 +69,7 @@ type LabeledSource = {
   count: number;
 };
 
-// Maps raw context_origin buckets to the dashboard's display labels, merging
+// Maps origin buckets to the dashboard's display labels, merging
 // origins that share a label (e.g. triggered + triggered_programmatic ->
 // "Trigger"). Origins outside the visible set — including the "unknown"
 // sentinel — are dropped, mirroring the usage page's source chart.
@@ -86,43 +89,57 @@ export function toLabeledSources(
     .sort((a, b) => b.count - a.count);
 }
 
+type OriginSubBucket = {
+  key: string;
+  doc_count: number;
+  unique_messages?: estypes.AggregationsCardinalityAggregate;
+};
+
 type ContextOriginAggs = {
-  by_origin?: estypes.AggregationsMultiBucketAggregateBase<{
-    key: string;
-    doc_count: number;
-  }>;
+  by_origin?: estypes.AggregationsMultiBucketAggregateBase<OriginSubBucket>;
 };
 
 export async function fetchContextOriginBreakdown(
-  baseQuery: estypes.QueryDslQueryContainer
+  auth: Authenticator,
+  { period }: { period: ConsumptionPeriod }
 ): Promise<Result<ContextOriginBucket[], Error>> {
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate: period.startDate,
+    endDate: period.endDate,
+  });
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
     by_origin: {
       terms: {
-        field: "context_origin",
+        field: CONSUMPTION_DIMENSION_FIELDS.source,
         size: 20,
         missing: UNKNOWN_CONTEXT_ORIGIN,
+      },
+      aggs: {
+        unique_messages: uniqueMessagesCardinalityAgg(),
       },
     },
   };
 
-  const result = await searchAnalytics<never, ContextOriginAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
-  });
+  const result = await searchConsumptionAnalytics<never, ContextOriginAggs>(
+    query,
+    {
+      aggregations: aggs,
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return new Err(new Error(result.error.message));
   }
 
-  const buckets = bucketsToArray<{
-    key: string;
-    doc_count: number;
-  }>(result.value.aggregations?.by_origin?.buckets);
+  const buckets = bucketsToArray<OriginSubBucket>(
+    result.value.aggregations?.by_origin?.buckets
+  );
 
   const mapped: ContextOriginBucket[] = buckets.map((b) => ({
     origin: String(b.key),
-    count: b.doc_count ?? 0,
+    count: Math.round(b.unique_messages?.value ?? 0),
   }));
 
   return new Ok(mapped);
@@ -132,12 +149,6 @@ type ContextOriginDailyPoint = {
   date: string;
   origin: string;
   messageCount: number;
-};
-
-type OriginSubBucket = {
-  key: string;
-  doc_count: number;
-  unique_messages?: estypes.AggregationsCardinalityAggregate;
 };
 
 type DailyOriginDateBucket = {
