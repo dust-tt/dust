@@ -71,7 +71,6 @@ import {
 } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
-  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -82,7 +81,6 @@ interface DustLikeGlobalAgentArgs {
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
-  excludeProviders?: ReadonlySet<ModelProviderIdType>;
   // Workspace feature flags, forwarded to model selection so it runs the exact
   // same model availability check that is enforced when a message is posted.
   featureFlags: WhitelistableFeature[];
@@ -260,7 +258,6 @@ function _getDustLikeGlobalAgent(
     mcpServerViews,
     hasDeepDive,
     globalAgentContext,
-    excludeProviders = new Set<ModelProviderIdType>(),
     featureFlags,
   }: DustLikeGlobalAgentArgs,
   {
@@ -300,11 +297,10 @@ function _getDustLikeGlobalAgent(
       preferredModelConfiguration != null &&
       selectEnabledModel(auth, [preferredModelConfiguration], {
         featureFlags,
-        excludeProviders,
       }) != null;
 
     if (!auth.isUpgraded()) {
-      return getSmallWhitelistedModel(auth, excludeProviders, {
+      return getSmallWhitelistedModel(auth, undefined, {
         featureFlags,
       });
     }
@@ -314,7 +310,7 @@ function _getDustLikeGlobalAgent(
       return preferredModelConfiguration;
     }
 
-    return getLargeWhitelistedModel(auth, excludeProviders, { featureFlags });
+    return getLargeWhitelistedModel(auth, undefined, { featureFlags });
   })();
 
   const model: AgentModelConfigurationType = modelConfiguration

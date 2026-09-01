@@ -118,7 +118,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getDefaultStreamConfigForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -130,10 +129,7 @@ import {
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
-import type {
-  ModelConfigurationType,
-  ModelProviderIdType,
-} from "@app/types/assistant/models/types";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
@@ -148,7 +144,6 @@ function getGlobalAgent({
   hasDeepDive,
   hasSandbox,
   globalAgentContext,
-  excludeProviders,
   autoDefaultModelConfig,
   preferSonnet5DefaultModel,
   featureFlags,
@@ -162,7 +157,6 @@ function getGlobalAgent({
   hasDeepDive: boolean;
   hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
-  excludeProviders: ReadonlySet<ModelProviderIdType>;
   autoDefaultModelConfig: ModelConfigurationType | null;
   preferSonnet5DefaultModel: boolean;
   featureFlags: WhitelistableFeature[];
@@ -383,7 +377,6 @@ function getGlobalAgent({
         hasDeepDive,
         featureFlags,
         globalAgentContext,
-        excludeProviders,
         autoDefaultModelConfig,
         preferSonnet5DefaultModel,
       });
@@ -875,7 +868,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasSandbox,
-        excludeProviders,
         featureFlags,
       });
       break;
@@ -884,7 +876,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        excludeProviders,
         featureFlags,
       });
       break;
@@ -894,7 +885,6 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_PLANNING:
       agentConfiguration = _getPlanningAgent(auth, {
         settings,
-        excludeProviders,
         featureFlags,
       });
       break;
@@ -1043,13 +1033,11 @@ export async function getGlobalAgents(
 
   const [
     isDeepDiveDisabled,
-    isDustAgentsFallback,
     preFetchedDataSources,
     globalAgentSettings,
     mcpServerViews,
   ] = await Promise.all([
     isDeepDiveDisabledByAdmin(auth),
-    KillSwitchResource.isKillSwitchEnabled("global_dust_agents_fallback"),
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
       : null,
@@ -1058,11 +1046,6 @@ export async function getGlobalAgents(
     }),
     getMCPServerViewsForGlobalAgents(auth, variant),
   ]);
-
-  const excludeProviders: ReadonlySet<ModelProviderIdType> =
-    isDustAgentsFallback
-      ? new Set<ModelProviderIdType>(["anthropic"])
-      : new Set<ModelProviderIdType>();
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
@@ -1209,7 +1192,6 @@ export async function getGlobalAgents(
       hasDeepDive: !isDeepDiveDisabled,
       hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
-      excludeProviders,
       autoDefaultModelConfig,
       preferSonnet5DefaultModel: flags.includes("dust_agent_sonnet_5_default"),
       featureFlags: flags,

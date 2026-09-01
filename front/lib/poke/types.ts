@@ -4,7 +4,6 @@ export const KILL_SWITCH_TYPES = [
   "global_blacklist_anthropic",
   "global_blacklist_openai",
   "global_disable_firecrawl",
-  "global_dust_agents_fallback",
   "pause_upsert_queue",
   "use_legacy_acls",
 ] as const;
@@ -16,7 +15,6 @@ export type KillSwitchType = (typeof KILL_SWITCH_TYPES)[number];
 export const LEGACY_KILL_SWITCH_TYPES = [
   "global_blacklist_anthropic",
   "global_blacklist_openai",
-  "global_dust_agents_fallback",
 ] as const satisfies readonly KillSwitchType[];
 
 const LEGACY_KILL_SWITCH_TYPE_SET: ReadonlySet<KillSwitchType> = new Set(

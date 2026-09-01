@@ -66,13 +66,6 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
     icon: Fire,
   },
-  global_dust_agents_fallback: {
-    title: "Dust Agents Fallback Provider",
-    description:
-      "Force Dust and Deep Dive agents to use non-Anthropic providers.",
-    note: "Use only when the latest Sonnet or Opus models are down.",
-    icon: RefreshCw02,
-  },
   pause_upsert_queue: {
     title: "Upsert Queue",
     description:
