@@ -449,7 +449,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
         name: "drizzle-orm",
         version: "0.45.2",
         description:
-          "SQLite ORM (pod database schema files and function queries)",
+          "SQLite ORM (sandbox database schema files and function queries)",
         runtime: "node",
       },
       {
