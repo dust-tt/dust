@@ -38,6 +38,12 @@ export class FrameFunctionExecutionError extends Error {
   }
 }
 
+export function isFrameFunctionExecutionError(
+  error: unknown
+): error is FrameFunctionExecutionError {
+  return error instanceof FrameFunctionExecutionError;
+}
+
 export type CallFrameFunctionFromSourceError =
   | DustFileSystemError
   | FrameFunctionCallFromSourceError

@@ -2,7 +2,7 @@ import {
   type CallFrameFunctionFromSourceResult,
   callFrameFunctionFromSource,
   type FrameFunctionCallFromSourceError,
-  FrameFunctionExecutionError,
+  isFrameFunctionExecutionError,
 } from "@app/lib/api/frames/call_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -43,10 +43,20 @@ function frameCallErrorStatus(
 }
 
 function fileSystemErrorStatus(error: DustFileSystemError): 400 | 403 | 500 {
-  if (error.code === "unauthorized") {
-    return 403;
+  switch (error.code) {
+    case "unauthorized":
+      return 403;
+    case "internal":
+      return 500;
+    case "already_exists":
+    case "invalid_path":
+    case "legacy_path":
+    case "not_found":
+    case "too_many_mounts":
+      return 400;
+    default:
+      return assertNever(error.code);
   }
-  return error.code === "internal" ? 500 : 400;
 }
 
 const app = sandboxApp();
@@ -96,7 +106,7 @@ app.post(
       ...ctx.req.valid("json"),
     });
     if (result.isErr()) {
-      if (result.error instanceof FrameFunctionExecutionError) {
+      if (isFrameFunctionExecutionError(result.error)) {
         const { callError } = result.error;
         if (
           callError.code === "user_authentication_required" ||
