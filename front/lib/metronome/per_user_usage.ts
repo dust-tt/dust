@@ -20,7 +20,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-type UsageWindowSize = "HOUR" | "DAY";
+type UsageWindowSize = "HOUR" | "DAY" | "NONE";
 
 interface UsageQuerySegment {
   startingOn: string;
@@ -30,10 +30,13 @@ interface UsageQuerySegment {
 
 /**
  * Partition `[cycleStart, requestEnd)` into the fewest midnight-aligned
- * segments the usage endpoint can query directly: a single DAY-granularity
- * segment for the interior days (the bulk of a typical month-long billing
- * period), plus HOUR-granularity segments only for the partial first/last day
- * when a boundary isn't already UTC midnight.
+ * segments the usage endpoint can query directly: a single segment covering
+ * the interior days (the bulk of a typical month-long billing period),
+ * queried with `windowSize: "NONE"` so it comes back as one aggregate bucket
+ * per group instead of one per day — callers here only ever sum rows into a
+ * per-group total, so the daily breakdown would just multiply page count for
+ * no benefit — plus HOUR-granularity segments only for the partial
+ * first/last day when a boundary isn't already UTC midnight.
  *
  * Segments are contiguous and non-overlapping by construction, so summing
  * their results is safe.
@@ -75,7 +78,7 @@ export function buildUsageQuerySegments({
   segments.push({
     startingOn: dayStart.toISOString(),
     endingBefore: dayEnd.toISOString(),
-    windowSize: "DAY",
+    windowSize: "NONE",
   });
   if (requestEnd.getTime() > dayEnd.getTime()) {
     segments.push({
