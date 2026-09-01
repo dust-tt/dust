@@ -1,6 +1,8 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
+import path from "node:path";
+
 import config from "@app/lib/api/config";
 import {
   SCOPED_PREFIX_CONVERSATION,
@@ -14,6 +16,8 @@ import {
 } from "@app/lib/api/files/processing";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
+import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
+import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import {
   getDefaultFrameShareScope,
   sendFrameSharedEmail,
@@ -39,6 +43,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
@@ -58,6 +63,7 @@ import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import {
   getFrameBasePath,
   getFramePublicationUiBundlePath,
@@ -472,6 +478,32 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  static async fetchFrameV2Descendants(
+    auth: Authenticator,
+    parent: FileResource
+  ): Promise<FileResource[]> {
+    if (!parent.mountFilePath) {
+      return [];
+    }
+    const owner = auth.getNonNullableWorkspace();
+    const directoryPrefix = parent.mountFilePath.slice(
+      0,
+      parent.mountFilePath.lastIndexOf("/") + 1
+    );
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        contentType: frameV2ContentType,
+        status: "ready",
+        mountFilePath: { [Op.startsWith]: directoryPrefix },
+      },
+    });
+
+    return files
+      .map((file) => new this(this.model, file.get()))
+      .filter((file) => file.id !== parent.id);
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const owner = auth.getNonNullableWorkspace();
     const workspaceModelId = owner.id;
@@ -660,21 +692,25 @@ export class FileResource extends BaseResource<FileModel> {
       if (this.isReady) {
         await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
 
-        // Delete mount file copies if set.
-        await this.deleteMountFileCopies();
+        // Frames v2 source is the package folder deleted before sandbox cleanup. It has no
+        // canonical original/processed/public objects.
+        if (!this.isFrameV2) {
+          // Delete mount file copies if set.
+          await this.deleteMountFileCopies();
 
-        await this.getBucketForVersion("original")
-          .file(this.getCloudStoragePath(auth, "original"))
-          .delete();
+          await this.getBucketForVersion("original")
+            .file(this.getCloudStoragePath(auth, "original"))
+            .delete();
 
-        // Delete the processed file if it exists.
-        await this.getBucketForVersion("processed")
-          .file(this.getCloudStoragePath(auth, "processed"))
-          .delete({ ignoreNotFound: true });
-        // Delete the public file if it exists.
-        await this.getBucketForVersion("public")
-          .file(this.getCloudStoragePath(auth, "public"))
-          .delete({ ignoreNotFound: true });
+          // Delete the processed file if it exists.
+          await this.getBucketForVersion("processed")
+            .file(this.getCloudStoragePath(auth, "processed"))
+            .delete({ ignoreNotFound: true });
+          // Delete the public file if it exists.
+          await this.getBucketForVersion("public")
+            .file(this.getCloudStoragePath(auth, "public"))
+            .delete({ ignoreNotFound: true });
+        }
 
         // Delete sharing grants and access snapshots before shareable file (FK constraint).
         const shareableFile = await FileResource.shareableFileModel.findOne({
@@ -717,16 +753,142 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (!this.isFrameV2) {
-      return this.deleteAfterSandboxCleanup(auth);
+  private async deleteFrameV2(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+    if (this.workspaceId !== owner.id) {
+      return new Err(
+        new Error("The Frame must belong to the authenticated workspace.")
+      );
     }
 
-    return withFramePublishLock(this.sId, () =>
-      FrameSandboxAdapter.deleteSandbox(auth, this, {
-        afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
-      })
+    const manifestPath = this.toScopedPath(auth);
+    if (!manifestPath) {
+      return new Err(new Error("Frame source path not found."));
+    }
+    const sourceDirectory = DustFileSystem.normalizeScopedPath(
+      path.posix.dirname(manifestPath)
     );
+    if (
+      !sourceDirectory ||
+      !sourceDirectory.includes("/") ||
+      path.posix.basename(manifestPath) !== FRAME_MANIFEST_FILE
+    ) {
+      return new Err(
+        new Error("Frame deletion requires its source folder under /files.")
+      );
+    }
+
+    const fileSystemResult = await DustFileSystem.fromScopedPath(
+      auth,
+      manifestPath
+    );
+    if (fileSystemResult.isErr()) {
+      return new Err(fileSystemResult.error);
+    }
+    const dustFileSystem = fileSystemResult.value;
+    if (!dustFileSystem.isGCSBacked()) {
+      return new Err(
+        new Error(
+          "Frames v2 deletion does not yet support the database-backed filesystem."
+        )
+      );
+    }
+    const writeAccess = dustFileSystem.checkWriteAccess(sourceDirectory);
+    if (writeAccess.isErr()) {
+      return new Err(writeAccess.error);
+    }
+
+    return withFramePublishLock(this.sId, async () => {
+      const frame = await this.fetchFreshFrameV2(auth);
+      if (!frame || frame.toScopedPath(auth) !== manifestPath) {
+        return new Err(
+          new Error(
+            "The Frame source changed while it was being deleted; retry from its current path."
+          )
+        );
+      }
+
+      const descendantFrames = await FileResource.fetchFrameV2Descendants(
+        auth,
+        frame
+      );
+      if (descendantFrames.length > 0) {
+        return new Err(
+          new Error(
+            "Delete nested Frames before deleting their parent package."
+          )
+        );
+      }
+
+      let projectSpace: SpaceResource | null = null;
+      let projectMetadata: ProjectMetadataResource | null = null;
+      if (frame.useCase === "project_context") {
+        const spaceId = frame.useCaseMetadata?.spaceId;
+        projectSpace = spaceId
+          ? await SpaceResource.fetchById(auth, spaceId)
+          : null;
+        if (!projectSpace?.isProject()) {
+          return new Err(new Error("Frame source Pod not found."));
+        }
+        projectMetadata = await ProjectMetadataResource.fetchBySpace(
+          auth,
+          projectSpace
+        );
+      }
+
+      const sourceResult = await dustFileSystem.delete(sourceDirectory, {
+        ignoreNotFound: true,
+      });
+      if (sourceResult.isErr()) {
+        return sourceResult;
+      }
+
+      try {
+        if (projectSpace) {
+          await projectMetadata?.removeFramePath(manifestPath);
+          await cleanupProjectFileFragments({
+            fileModelId: frame.id,
+            spaceModelId: projectSpace.id,
+            workspaceModelId: owner.id,
+          });
+          requestDustProjectIncrementalSync(auth, projectSpace);
+        }
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+
+      const deleteResult = await FrameSandboxAdapter.deleteSandbox(
+        auth,
+        frame,
+        {
+          afterSandboxCleanup: () => frame.deleteAfterSandboxCleanup(auth),
+        }
+      );
+      if (deleteResult.isOk()) {
+        logger.info(
+          {
+            activePublicationId:
+              frame.useCaseMetadata?.activePublicationId ?? "",
+            frameId: frame.sId,
+            source: "api",
+            sourceDirectoryPath: sourceDirectory,
+            workspaceId: owner.sId,
+          },
+          "Deleted Frame v2"
+        );
+      }
+      return deleteResult;
+    });
+  }
+
+  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (this.isFrameV2) {
+      return this.deleteFrameV2(auth);
+    }
+
+    return this.deleteAfterSandboxCleanup(auth);
   }
 
   get sId(): string {

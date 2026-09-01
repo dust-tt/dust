@@ -12,6 +12,7 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { frameV2ContentType } from "@app/types/files";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("removeFileFromProject", () => {
@@ -57,6 +58,41 @@ describe("removeFileFromProject", () => {
       where: { id: frBefore!.id, workspaceId: workspace.id },
     });
     expect(frAfter).toBeNull();
+  });
+
+  it("keeps project state when a Frame source cannot be deleted", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const project = await SpaceFactory.project(workspace, user.id);
+    const file = await ProjectFileFactory.create(auth, user, project, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 123,
+      status: "ready",
+    });
+
+    const result = await removeFileFromProject(auth, {
+      space: project,
+      fileId: file.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(
+      await FileModel.findOne({
+        where: { id: file.id, workspaceId: workspace.id },
+      })
+    ).not.toBeNull();
+    expect(
+      await ContentFragmentModel.findOne({
+        where: {
+          fileId: file.id,
+          spaceId: project.id,
+          workspaceId: workspace.id,
+        },
+      })
+    ).not.toBeNull();
   });
 
   it("marks referenced project fragments as expired and clears spaceId", async () => {

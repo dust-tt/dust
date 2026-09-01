@@ -18,23 +18,29 @@ import {
   SandboxFunctionResource,
 } from "@app/lib/resources/sandbox_function_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { getNamespace } from "@app/tests/utils/test_cls";
-import { FrameManifestSchema } from "@app/types/api/frame_manifest";
+import {
+  FRAME_MANIFEST_FILE,
+  FrameManifestSchema,
+} from "@app/types/api/frame_manifest";
 import { FramePublicationDescriptorSchema } from "@app/types/api/frame_publication";
 import {
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   frameContentType,
   frameV2ContentType,
   sandboxFunctionContentType,
 } from "@app/types/files";
+import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -52,12 +58,21 @@ async function setupFrame({
   auth: Authenticator;
 }> {
   const { authenticator, workspace } = await createResourceTest({});
+  const conversation = await ConversationFactory.create(authenticator, {
+    agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+    messagesCreatedAt: [new Date()],
+  });
   const frame = await FileFactory.create(authenticator, null, {
     contentType: frameV2ContentType,
     fileName: "manifest.json",
     fileSize: 0,
     status: ready ? "ready" : "created",
-    useCase: "project_context",
+    useCase: "conversation",
+    useCaseMetadata: { conversationId: conversation.sId },
+    mountFilePath: `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}Frame/${FRAME_MANIFEST_FILE}`,
   });
 
   return { auth: authenticator, frame, workspaceId: workspace.sId };
