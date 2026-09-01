@@ -1,42 +1,35 @@
-import { connectorsConfig } from "@connectors/connectors/shared/config";
+import {
+  CELL_TO_REGION,
+  type CellType,
+  connectorsConfig,
+  SUPPORTED_CELLS,
+  SUPPORTED_REGIONS,
+} from "@connectors/connectors/shared/config";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
 import { Storage } from "@google-cloud/storage";
+import { z } from "zod";
 
 const WEBHOOK_ROUTER_CONFIG_FILE = "webhook-router-config.json";
 
-export interface WebhookRouterEntry {
-  signingSecret: string;
-  regions: {
-    [region: string]: number[]; // region name -> connector IDs
-  };
-}
+const WebhookRouterEntrySchema = z.object({
+  signingSecret: z.string(),
+  regions: z.record(z.enum(SUPPORTED_REGIONS), z.array(z.number())),
+  cells: z.record(z.enum(SUPPORTED_CELLS), z.array(z.number())).optional(),
+});
 
-export interface WebhookRouterConfig {
-  [provider: string]: {
-    [providerWorkspaceId: string]: WebhookRouterEntry;
-  };
-}
+const WebhookRouterConfigSchema = z.record(
+  z.enum(["slack", "notion"]),
+  z.record(z.string(), WebhookRouterEntrySchema)
+);
 
-/**
- * Error thrown when a webhook router entry is not found.
- */
-export class WebhookRouterEntryNotFoundError extends Error {
-  constructor(
-    public readonly provider: string,
-    public readonly providerWorkspaceId: string
-  ) {
-    super(
-      `Webhook router entry not found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`
-    );
-    this.name = "WebhookRouterEntryNotFoundError";
-  }
-}
+type WebhookRouterEntry = z.infer<typeof WebhookRouterEntrySchema>;
+type WebhookRouterConfig = z.infer<typeof WebhookRouterConfigSchema>;
 
 /**
  * Error thrown when a concurrent modification is detected during a write operation.
  */
-export class ConcurrentModificationError extends Error {
+class ConcurrentModificationError extends Error {
   constructor(message: string = "Concurrent modification detected") {
     super(message);
     this.name = "ConcurrentModificationError";
@@ -89,14 +82,8 @@ export class WebhookRouterConfigService {
       const [contents] = await file.download();
       const [metadata] = await file.getMetadata();
 
-      const config = JSON.parse(contents.toString("utf-8"));
-
-      // Validate the structure
-      if (typeof config !== "object" || config === null) {
-        throw new Error(
-          "Invalid webhook router configuration format. Expected an object."
-        );
-      }
+      const parsed = JSON.parse(contents.toString("utf-8"));
+      const config = WebhookRouterConfigSchema.parse(parsed);
 
       return {
         config,
@@ -260,13 +247,14 @@ export class WebhookRouterConfigService {
    * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
   async syncEntry(
-    provider: string,
+    provider: "slack" | "notion",
     providerWorkspaceId: string,
     signingSecret: string | undefined,
-    region: string,
+    cell: CellType,
     connectorIds: number[],
     maxRetries: number = 5
   ): Promise<void> {
+    const region = CELL_TO_REGION[cell];
     return this.executeWithRetry(
       async (config) => {
         // Initialize provider object if it doesn't exist
@@ -278,12 +266,18 @@ export class WebhookRouterConfigService {
         const existingEntry = config[provider]![providerWorkspaceId];
 
         if (connectorIds.length === 0) {
-          // No connectors for this region - remove the region
+          // No connectors for this cell - remove the region & cell
           if (existingEntry) {
             delete existingEntry.regions[region];
+            if (existingEntry.cells) {
+              delete existingEntry.cells[cell];
+            }
 
-            // If no regions left, delete the entire entry
-            if (Object.keys(existingEntry.regions).length === 0) {
+            // If no regions & cells left, delete the entire entry
+            const cellsEmpty =
+              !existingEntry.cells ||
+              Object.keys(existingEntry.cells).length === 0;
+            if (Object.keys(existingEntry.regions).length === 0 && cellsEmpty) {
               delete config[provider]![providerWorkspaceId];
             }
           }
@@ -295,6 +289,10 @@ export class WebhookRouterConfigService {
               existingEntry.signingSecret = signingSecret;
             }
             existingEntry.regions[region] = connectorIds;
+            existingEntry.cells = {
+              ...(existingEntry.cells ?? {}),
+              [cell]: connectorIds,
+            };
           } else {
             // Create new entry - signingSecret must be provided for new entries
             if (!signingSecret) {
@@ -306,6 +304,9 @@ export class WebhookRouterConfigService {
               signingSecret,
               regions: {
                 [region]: connectorIds,
+              },
+              cells: {
+                [cell]: connectorIds,
               },
             };
           }
@@ -328,10 +329,73 @@ export class WebhookRouterConfigService {
    * @returns The entry if found, null otherwise
    */
   async getEntry(
-    provider: string,
+    provider: "slack" | "notion",
     providerWorkspaceId: string
   ): Promise<WebhookRouterEntry | null> {
     const { config } = await this.readConfig();
     return config[provider]?.[providerWorkspaceId] || null;
+  }
+
+  /**
+   * Backfill missing `cells` fields from `regions` in the GCS config file.
+   */
+  async backfillMissingCells(
+    execute: boolean
+  ): Promise<{ entriesUpdated: number }> {
+    const bucket = this.storage.bucket(this.bucketName);
+    const file = bucket.file(WEBHOOK_ROUTER_CONFIG_FILE);
+    const [exists] = await file.exists();
+
+    if (!exists) {
+      return { entriesUpdated: 0 };
+    }
+
+    const [contents] = await file.download();
+    const [metadata] = await file.getMetadata();
+    const raw = JSON.parse(contents.toString("utf-8"));
+
+    let entriesUpdated = 0;
+    if (typeof raw === "object" && raw !== null) {
+      for (const providerConfig of Object.values(raw)) {
+        if (typeof providerConfig !== "object" || providerConfig === null) {
+          continue;
+        }
+        for (const entry of Object.values(providerConfig)) {
+          if (
+            typeof entry === "object" &&
+            entry !== null &&
+            !("cells" in entry)
+          ) {
+            entriesUpdated++;
+          }
+        }
+      }
+    }
+
+    if (entriesUpdated === 0) {
+      return { entriesUpdated: 0 };
+    }
+
+    const config = WebhookRouterConfigSchema.parse(raw);
+
+    for (const providerConfig of Object.values(config)) {
+      for (const entry of Object.values(providerConfig)) {
+        if (entry.cells === undefined) {
+          entry.cells = Object.fromEntries(
+            SUPPORTED_CELLS.flatMap((cell) => {
+              const region = CELL_TO_REGION[cell];
+              const connectorIds = entry.regions[region];
+              return connectorIds !== undefined ? [[cell, connectorIds]] : [];
+            })
+          );
+        }
+      }
+    }
+
+    if (execute) {
+      await this.writeConfig(config, metadata.generation?.toString() || null);
+    }
+
+    return { entriesUpdated };
   }
 }

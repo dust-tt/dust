@@ -1,45 +1,37 @@
 import type { Database } from "firebase-admin/database";
+import { z } from "zod";
 
 export const ALL_REGIONS = ["us-central1", "europe-west1"] as const;
 export type Region = (typeof ALL_REGIONS)[number];
 
-type ProviderWithSigningSecret = "slack" | "notion";
+export const ALL_CELLS = ["cell-00000", "cell-00001"] as const;
+export type Cell = (typeof ALL_CELLS)[number];
 
-type WebhookRouterConfigEntry = {
-  signingSecret: string;
-  regions: {
-    [region in Region]: number[];
-  };
+export const CELL_TO_REGION: Record<Cell, Region> = {
+  "cell-00000": "us-central1",
+  "cell-00001": "europe-west1",
 };
 
-/**
- * Type guard to validate webhook router configuration entries.
- *
- * Example valid object:
- * {
- *   signingSecret: "abc123def456",
- *   regions: {
- *     "us-central1": [123, 456],
- *     "europe-west1": [789]
- *   }
- * }
- */
-function isValidWebhookRouterConfigEntry(
-  value: unknown
-): value is WebhookRouterConfigEntry {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "signingSecret" in value &&
-    typeof value.signingSecret === "string" &&
-    "regions" in value &&
-    typeof value.regions === "object" &&
-    value.regions !== null &&
-    Object.keys(value.regions).every(
-      (region: unknown) =>
-        typeof region === "string" && ALL_REGIONS.includes(region as Region)
-    )
-  );
+type ProviderWithSigningSecret = "slack" | "notion";
+
+const WebhookRouterEntrySchema = z.object({
+  signingSecret: z.string(),
+  regions: z.record(z.enum(ALL_REGIONS), z.array(z.number())),
+  cells: z.record(z.enum(ALL_CELLS), z.array(z.number())).optional(),
+});
+
+const WebhookRouterConfigSchema = z.record(
+  z.enum(["slack", "notion"]),
+  z.record(z.string(), WebhookRouterEntrySchema)
+);
+
+export type WebhookRouterConfigEntry = z.infer<typeof WebhookRouterEntrySchema>;
+type WebhookRouterConfig = z.infer<typeof WebhookRouterConfigSchema>;
+
+export function normalizeWebhookRouterConfig(
+  raw: unknown
+): WebhookRouterConfig {
+  return WebhookRouterConfigSchema.parse(raw);
 }
 
 export class WebhookRouterConfigManager {
@@ -58,16 +50,15 @@ export class WebhookRouterConfigManager {
       );
     }
 
-    const configEntry = configSnapshot.val();
-    if (!isValidWebhookRouterConfigEntry(configEntry)) {
+    const parsedEntry = WebhookRouterEntrySchema.safeParse(
+      configSnapshot.val()
+    );
+    if (!parsedEntry.success) {
       throw new Error(
         `Invalid ${provider} webhook router configuration found for providerWorkspaceId ${providerWorkspaceId}`
       );
     }
 
-    return {
-      signingSecret: configEntry.signingSecret,
-      regions: configEntry.regions,
-    };
+    return parsedEntry.data;
   }
 }
