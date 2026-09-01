@@ -1,5 +1,6 @@
 import {
   getFrameRuntimeAccess,
+  getSandboxFunctionInvocationAccessError,
   VisualizationActionIframe,
 } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
@@ -126,6 +127,35 @@ describe("getFrameRuntimeAccess", () => {
         isPodMember: false,
         user,
       },
+    });
+  });
+});
+
+describe("getSandboxFunctionInvocationAccessError", () => {
+  it("returns a typed workspace-membership error to a Frames v2 guest", () => {
+    expect(
+      getSandboxFunctionInvocationAccessError(
+        { kind: "v2", frameId: "fil_frame" },
+        false,
+        false
+      )
+    ).toEqual({
+      code: "user_authentication_required",
+      message:
+        "This Frame function requires a logged-in user from its workspace.",
+    });
+  });
+
+  it("keeps the generic unsupported error for disabled legacy calls", () => {
+    expect(
+      getSandboxFunctionInvocationAccessError(
+        { kind: "legacy", podFunctionScope: null },
+        false,
+        false
+      )
+    ).toEqual({
+      code: "not_supported",
+      message: "Function calls are not available in this Frame.",
     });
   });
 });

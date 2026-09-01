@@ -113,6 +113,26 @@ export function getFrameRuntimeAccess(
   };
 }
 
+export function getSandboxFunctionInvocationAccessError(
+  scope: FrameFunctionReferenceScope,
+  canInvokeFunctions: boolean,
+  isWorkspaceMember: boolean
+): SandboxFunctionCallError | null {
+  if (canInvokeFunctions) {
+    return null;
+  }
+  return scope.kind === "v2" && !isWorkspaceMember
+    ? {
+        code: "user_authentication_required",
+        message:
+          "This Frame function requires a logged-in user from its workspace.",
+      }
+    : {
+        code: "not_supported",
+        message: "Function calls are not available in this Frame.",
+      };
+}
+
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
   response: CommandResultMap[T],
@@ -882,11 +902,13 @@ export const VisualizationActionIframe = forwardRef<
       >
     > => {
       try {
-        if (!runtimeAccess.canInvokeFunctions) {
-          return new Err({
-            code: "not_supported",
-            message: "Function calls are not available in this Frame.",
-          });
+        const accessError = getSandboxFunctionInvocationAccessError(
+          functionReferenceScope,
+          runtimeAccess.canInvokeFunctions,
+          runtimeAccess.userIdentity.isWorkspaceMember
+        );
+        if (accessError) {
+          return new Err(accessError);
         }
 
         const body: PostSandboxFunctionInvocationRequestBody = {
@@ -933,7 +955,9 @@ export const VisualizationActionIframe = forwardRef<
       }
     },
     [
+      functionReferenceScope,
       runtimeAccess.canInvokeFunctions,
+      runtimeAccess.userIdentity.isWorkspaceMember,
       workspaceId,
       props.viewer?.frameShareToken,
     ]
