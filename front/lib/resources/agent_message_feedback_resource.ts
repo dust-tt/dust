@@ -619,8 +619,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       `
       SELECT
         "createdAt"::date AS day,
-        SUM(CASE WHEN "thumbDirection" = 'up' THEN 1 ELSE 0 END) AS positive,
-        SUM(CASE WHEN "thumbDirection" = 'down' THEN 1 ELSE 0 END) AS negative
+        COUNT(*) FILTER (WHERE "thumbDirection" = 'up') AS positive,
+        COUNT(*) FILTER (WHERE "thumbDirection" = 'down') AS negative
       FROM agent_message_feedbacks
       WHERE "workspaceId" = :workspaceId
         AND "agentConfigurationId" = :agentConfigurationId
