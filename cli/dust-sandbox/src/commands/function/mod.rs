@@ -152,9 +152,7 @@ pub(crate) async fn spawn_function_at(
         c.arg(&*runner).arg(subcommand).arg(handler);
         c
     };
-    // No env_clear: the child inherits dsbx's env verbatim, so per-exec vars
-    // front sets (e.g. DUST_POD_DATABASES_DIR, read by `@dust/pod`) flow
-    // through without dsbx naming each one — pinned by the inheritance tests.
+    // No env_clear: Bun inherits every per-exec Front variable, as pinned by the tests below.
     cmd.env("NODE_PATH", harness_node_path())
         .stdin(if input.is_some() {
             Stdio::piped()
@@ -471,10 +469,8 @@ mod tests {
         assert!(resolve_existing("../escape").is_err());
     }
 
-    /// The pod-databases env contract: front sets it per exec, `@dust/pod`
-    /// reads it in the bun child, and dsbx passes it along by plain env
-    /// inheritance — the tests below pin that inheritance.
-    const POD_DATABASES_DIR_ENV: &str = "DUST_POD_DATABASES_DIR";
+    // Front sets this per exec; the database runtime reads it in the Bun child.
+    const SANDBOX_DATABASES_DIR_ENV: &str = "DUST_SANDBOX_DATABASES_DIR";
 
     /// Restore an env var to its captured original value.
     fn restore_env(key: &str, original: Option<std::ffi::OsString>) {
@@ -493,17 +489,11 @@ mod tests {
             .is_ok()
     }
 
-    /// Function fixture that turns the bun child's environment into an
-    /// observable output: its schema `description` is a template literal, so
-    /// it is evaluated *inside whichever bun process imports the module*, and
-    /// the schema text that comes back records what DUST_POD_DATABASES_DIR
-    /// looked like in that child — `unset` when absent. Asserting on the
-    /// schema output is therefore asserting on the child's env, from outside.
-    /// `zod` resolves via NODE_PATH (set by the tests to the functions-runner
-    /// package's node_modules).
+    // The fixture records the child process's database-dir env in its schema description.
+    // Zod resolves through the NODE_PATH configured by these tests.
     const ENV_PROBE_FIXTURE: &str = r#"import { z } from "zod";
 export const schema = {
-  description: `pod-databases-dir=${process.env.DUST_POD_DATABASES_DIR ?? "unset"}`,
+  description: `sandbox-databases-dir=${process.env.DUST_SANDBOX_DATABASES_DIR ?? "unset"}`,
   input: z.object({}),
   output: z.object({}),
 };
@@ -517,19 +507,13 @@ export default {
     const RUNNER_NODE_MODULES: &str =
         concat!(env!("CARGO_MANIFEST_DIR"), "/functions-runner/node_modules");
 
-    /// End-to-end pin of the env contract's dsbx hop, through the production
-    /// `dsbx function get` path: a var present in dsbx's process env (front
-    /// sets it per exec) must reach the untrusted bun child, where
-    /// `@dust/pod`'s `db()` reads it. spawn_function has no forwarding code —
-    /// the var travels by plain inheritance — so this test is what fails if
-    /// anyone scrubs the child env later (env_clear, a runuser flag): cargo
-    /// runs bun nowhere else.
+    // Pin plain env inheritance through the production `dsbx function get` path.
     #[tokio::test]
     // The spawned bun child inherits process-global env, so the env lock must
     // span the spawn awaits; contending tests just block on the mutex (each
     // #[tokio::test] runs its own runtime, so no deadlock is possible).
     #[allow(clippy::await_holding_lock)]
-    async fn function_get_bun_child_inherits_pod_databases_dir() {
+    async fn function_get_bun_child_inherits_sandbox_databases_dir() {
         let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         if !bun_available() {
             eprintln!("skipping: bun not on PATH");
@@ -538,7 +522,7 @@ export default {
         let original_functions_dir = std::env::var_os(FUNCTIONS_DIR_ENV);
         let original_working_dir = std::env::var_os(FUNCTION_WORKING_DIR_ENV);
         let original_node_path = std::env::var_os("NODE_PATH");
-        let original_pod_dir = std::env::var_os(POD_DATABASES_DIR_ENV);
+        let original_database_dir = std::env::var_os(SANDBOX_DATABASES_DIR_ENV);
 
         // Stage the probe where resolve_existing() will find it, so
         // `spawn_function("get", "envprobe", ...)` runs the real runner
@@ -552,53 +536,49 @@ export default {
         std::env::set_var("NODE_PATH", RUNNER_NODE_MODULES);
 
         // A var set on dsbx's own process reaches the child by inheritance.
-        std::env::set_var(POD_DATABASES_DIR_ENV, "/custom/pod-databases");
+        std::env::set_var(SANDBOX_DATABASES_DIR_ENV, "/custom/sandbox-databases");
         let (code, stdout) = spawn_function("get", "envprobe", None, true)
             .await
             .expect("spawn get");
         let stdout = stdout.unwrap_or_default();
         assert_eq!(code, 0, "runner failed: {stdout}");
         assert!(
-            stdout.contains("pod-databases-dir=/custom/pod-databases"),
+            stdout.contains("sandbox-databases-dir=/custom/sandbox-databases"),
             "unexpected stdout: {stdout}"
         );
 
         // Absent env var: no dsbx-side default, the child sees it unset.
-        // (Empty-string normalization is `@dust/pod`'s job, tested there.)
-        std::env::remove_var(POD_DATABASES_DIR_ENV);
+        // Empty-string normalization belongs to the runtime consumer.
+        std::env::remove_var(SANDBOX_DATABASES_DIR_ENV);
         let (code, stdout) = spawn_function("get", "envprobe", None, true)
             .await
             .expect("spawn get");
         let stdout = stdout.unwrap_or_default();
         assert_eq!(code, 0, "runner failed: {stdout}");
         assert!(
-            stdout.contains("pod-databases-dir=unset"),
+            stdout.contains("sandbox-databases-dir=unset"),
             "unexpected stdout: {stdout}"
         );
 
         restore_env(FUNCTIONS_DIR_ENV, original_functions_dir);
         restore_env(FUNCTION_WORKING_DIR_ENV, original_working_dir);
         restore_env("NODE_PATH", original_node_path);
-        restore_env(POD_DATABASES_DIR_ENV, original_pod_dir);
+        restore_env(SANDBOX_DATABASES_DIR_ENV, original_database_dir);
     }
 
-    /// Same pin for the `dsbx function build` path: schema extraction imports
-    /// the just-built bundle in a bun child (running its top-level code), so
-    /// a function calling `db()` at top level must see the same env at build
-    /// time as at run time. Here the probe's env recording comes back through
-    /// the extracted schema file rather than stdout.
+    // Pin the same env inheritance during build-time schema extraction.
     #[tokio::test]
-    // See function_get_bun_child_inherits_pod_databases_dir: the env lock
+    // See function_get_bun_child_inherits_sandbox_databases_dir: the env lock
     // intentionally spans the spawn await.
     #[allow(clippy::await_holding_lock)]
-    async fn build_bun_child_inherits_pod_databases_dir() {
+    async fn build_bun_child_inherits_sandbox_databases_dir() {
         let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         if !bun_available() {
             eprintln!("skipping: bun not on PATH");
             return;
         }
         let original_node_path = std::env::var_os("NODE_PATH");
-        let original_pod_dir = std::env::var_os(POD_DATABASES_DIR_ENV);
+        let original_database_dir = std::env::var_os(SANDBOX_DATABASES_DIR_ENV);
 
         let src_dir = tempfile::tempdir().expect("src tempdir");
         let src = src_dir.path().join("envprobe.ts");
@@ -611,7 +591,7 @@ export default {
         let out_bundle = out_dir.path().join("out.bundle.js");
         let out_schema = out_dir.path().join("out.schema.json");
         std::env::set_var("NODE_PATH", RUNNER_NODE_MODULES);
-        std::env::set_var(POD_DATABASES_DIR_ENV, "/custom/pod-databases");
+        std::env::set_var(SANDBOX_DATABASES_DIR_ENV, "/custom/sandbox-databases");
 
         // Build's schema extraction imports the built bundle, so the fixture's
         // description records the env var the build-time bun child saw.
@@ -621,12 +601,12 @@ export default {
         assert_eq!(code, 0);
         let schema = std::fs::read_to_string(&out_schema).expect("schema file");
         assert!(
-            schema.contains("pod-databases-dir=/custom/pod-databases"),
+            schema.contains("sandbox-databases-dir=/custom/sandbox-databases"),
             "unexpected schema: {schema}"
         );
 
         restore_env("NODE_PATH", original_node_path);
-        restore_env(POD_DATABASES_DIR_ENV, original_pod_dir);
+        restore_env(SANDBOX_DATABASES_DIR_ENV, original_database_dir);
     }
 
     #[test]

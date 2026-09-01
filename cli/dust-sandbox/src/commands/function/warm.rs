@@ -406,7 +406,7 @@ fn lost_outcome_after_ack() -> serde_json::Value {
 
 async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<WarmRun> {
     // The request carries the client's full environment: per-invocation
-    // values (sandbox token, user identity, pod databases dir) travel in env
+    // values (sandbox token, user identity, sandbox databases dir) travel in env
     // vars, and the resident worker's own env is stale by definition. This
     // mirrors the env inheritance of the cold path's bun child.
     // vars_os + lossy filtering: std::env::vars() panics on non-unicode
