@@ -3,6 +3,7 @@
 
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -124,6 +125,22 @@ function requestFrameShare(
   );
 }
 
+function requestFrameClone(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string,
+  destinationDirectoryPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/clone`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ sourceDirectoryPath, destinationDirectoryPath }),
+  });
+}
+
 async function setup({ registered = true }: { registered?: boolean } = {}) {
   const context = await createSandboxTokenTestContext();
   await FeatureFlagFactory.basic(context.auth, "frames_v2");
@@ -171,7 +188,57 @@ async function setup({ registered = true }: { registered?: boolean } = {}) {
       : null
   );
 
-  return { ...context, frame, manifestPath };
+  return { ...context, frame, manifestPath, mountDirectoryPath, sourceByPath };
+}
+
+function configureCloneStorage(
+  sourceDirectoryPath: string,
+  destinationDirectoryPath: string,
+  sourceByPath: Map<string, string>,
+  {
+    destinationByPath = new Map<string, string>(),
+    sourceSizeByPath = new Map<string, number>(),
+  }: {
+    destinationByPath?: Map<string, string>;
+    sourceSizeByPath?: Map<string, number>;
+  } = {}
+) {
+  for (const [filePath, content] of [...sourceByPath, ...destinationByPath]) {
+    fileStorageMock.setObject(filePath, content);
+  }
+  fileStorageMock.setFileExists(
+    (filePath) =>
+      sourceByPath.has(filePath) ||
+      destinationByPath.has(filePath) ||
+      fileStorageMock.getObject(filePath) !== undefined
+  );
+  fileStorageMock.setFilesByPrefix((prefix) => {
+    let entries: Array<[string, string]>;
+    if (prefix === `${sourceDirectoryPath}/`) {
+      entries = [...sourceByPath];
+    } else if (prefix === `${destinationDirectoryPath}/`) {
+      const copiedEntries: Array<[string, string]> = [];
+      for (const [name, content] of sourceByPath) {
+        const destinationName = `${destinationDirectoryPath}/${name.slice(sourceDirectoryPath.length + 1)}`;
+        if (fileStorageMock.getObject(destinationName) !== undefined) {
+          copiedEntries.push([destinationName, content]);
+        }
+      }
+      entries = [...new Map([...destinationByPath, ...copiedEntries])];
+    } else {
+      return null;
+    }
+
+    return entries.map(([name, content]) => ({
+      name,
+      metadata: {
+        contentType: name.endsWith(".tsx")
+          ? "text/typescript"
+          : "application/json",
+        size: String(sourceSizeByPath.get(name) ?? Buffer.byteLength(content)),
+      },
+    }));
+  });
 }
 
 async function setupLegacyFrame() {
@@ -446,6 +513,121 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  it("clones source into fresh Frame, publication, sharing, and runtime ownership", async () => {
+    const context = await setup();
+    assert(context.frame);
+    await context.frame.markFrameV2AsReadyFromMount(context.auth);
+    await context.frame.setShareScope(context.auth, "public");
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = sourceDirectoryPath.replace(
+      "/Status",
+      "/Status Copy"
+    );
+    const destinationMountDirectoryPath = context.mountDirectoryPath.replace(
+      /Status$/,
+      "Status Copy"
+    );
+    const rawSourceByPath = new Map(context.sourceByPath);
+    rawSourceByPath.set(`${context.mountDirectoryPath}/.cache/data.json`, "{}");
+    rawSourceByPath.set(
+      `${context.mountDirectoryPath}/notes.processed.txt`,
+      "processed"
+    );
+    rawSourceByPath.set(`${context.mountDirectoryPath}/assets/`, "");
+    configureCloneStorage(
+      context.mountDirectoryPath,
+      destinationMountDirectoryPath,
+      rawSourceByPath
+    );
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    const cloned = await response.json();
+    expect(response.status, JSON.stringify(cloned)).toBe(200);
+    expect(cloned.frameId).not.toBe(context.frame.sId);
+    const clonedFrame = await FileResource.fetchById(
+      context.auth,
+      cloned.frameId
+    );
+    assert(clonedFrame);
+    expect(clonedFrame.toScopedPath(context.auth)).toBe(
+      `${destinationDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(clonedFrame.useCaseMetadata?.activePublicationId).toBe(
+      cloned.publicationId
+    );
+    expect(await clonedFrame.getShareScope()).toBe("workspace_and_emails");
+    expect((await clonedFrame.getShareInfo())?.shareUrl).not.toBe(
+      (await context.frame.getShareInfo())?.shareUrl
+    );
+    expect(
+      fileStorageMock.getObject(
+        `${destinationMountDirectoryPath}/${FRAME_MANIFEST_FILE}`
+      )
+    ).toBe(manifest);
+    expect(
+      fileStorageMock.getObject(`${destinationMountDirectoryPath}/index.tsx`)
+    ).toBe(uiSource);
+    expect(
+      fileStorageMock.getObject(
+        `${destinationMountDirectoryPath}/.cache/data.json`
+      )
+    ).toBe("{}");
+    expect(
+      fileStorageMock.getObject(
+        `${destinationMountDirectoryPath}/notes.processed.txt`
+      )
+    ).toBe("processed");
+    expect(
+      fileStorageMock.getObject(`${destinationMountDirectoryPath}/assets/`)
+    ).toBe("");
+    await expect(
+      FrameSandboxAdapter.fetchSandbox(context.auth, clonedFrame)
+    ).resolves.toBeNull();
+  });
+
+  it("bounds the raw source byte size before copying", async () => {
+    const context = await setup();
+    const destinationMountDirectoryPath = context.mountDirectoryPath.replace(
+      /Status$/,
+      "Too Large"
+    );
+    configureCloneStorage(
+      context.mountDirectoryPath,
+      destinationMountDirectoryPath,
+      context.sourceByPath,
+      {
+        sourceSizeByPath: new Map([
+          [`${context.mountDirectoryPath}/index.tsx`, 100 * 1024 * 1024],
+        ]),
+      }
+    );
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath.replace(`/${FRAME_MANIFEST_FILE}`, ""),
+      context.manifestPath
+        .replace("/Status/", "/Too Large/")
+        .replace(`/${FRAME_MANIFEST_FILE}`, "")
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message: "Frame source exceeds the copy size or file count limit.",
+      },
+    });
   });
 
   it("publishes a legacy Frame through its existing publication flow", async () => {

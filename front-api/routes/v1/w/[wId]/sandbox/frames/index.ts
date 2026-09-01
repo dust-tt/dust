@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import call from "./call";
 import callById from "./call_by_id";
+import clone from "./clone";
 import { frameSourceErrorStatus } from "./errors";
 import move from "./move";
 import register from "./register";
@@ -36,6 +37,7 @@ const app = sandboxApp();
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
 app.route("/call", call);
 app.route("/:frameId/call", callById);
+app.route("/clone", clone);
 app.route("/move", move);
 app.route("/register", register);
 app.route("/share", share);
