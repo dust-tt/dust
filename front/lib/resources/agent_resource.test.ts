@@ -1,14 +1,13 @@
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
+
+const AGENT_MODEL_ID = 42;
 
 describe("AgentResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -18,15 +17,13 @@ describe("AgentResource", () => {
   });
 
   it("uses the stable id for custom-agent editor permissions", async () => {
-    const agent = await AgentConfigurationFactory.createTestAgent(
-      testContext.authenticator,
-      { scope: "hidden" }
-    );
-    const configuration = await AgentConfigurationModel.findOne({
-      where: { id: agent.id, workspaceId: testContext.workspace.id },
+    const resource = AgentResource.fromAgentConfiguration({
+      agentId: AGENT_MODEL_ID,
+      authorId: testContext.user.id,
+      sId: "custom-agent",
+      scope: "hidden",
+      workspaceId: testContext.workspace.id,
     });
-    assert(configuration);
-    const resource = AgentResource.fromAgentConfiguration(configuration);
 
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
@@ -46,7 +43,7 @@ describe("AgentResource", () => {
       testContext.workspace.sId
     );
 
-    expect(resource.id).toBe(configuration.agentId);
+    expect(resource.id).toBe(AGENT_MODEL_ID);
     expect([
       resource.canRead(testContext.authenticator),
       resource.canWrite(testContext.authenticator),
@@ -69,7 +66,7 @@ describe("AgentResource", () => {
         user: otherUser.toJSON(),
         grantType: "editor",
         resourceType: "agent",
-        resourceId: configuration.agentId,
+        resourceId: AGENT_MODEL_ID,
       }
     );
     expect(grantResult.isOk()).toBe(true);
@@ -83,15 +80,13 @@ describe("AgentResource", () => {
   });
 
   it("lets workspace members read visible agents without editing them", async () => {
-    const agent = await AgentConfigurationFactory.createTestAgent(
-      testContext.authenticator,
-      { scope: "visible" }
-    );
-    const configuration = await AgentConfigurationModel.findOne({
-      where: { id: agent.id, workspaceId: testContext.workspace.id },
+    const resource = AgentResource.fromAgentConfiguration({
+      agentId: AGENT_MODEL_ID,
+      authorId: testContext.user.id,
+      sId: "custom-agent",
+      scope: "visible",
+      workspaceId: testContext.workspace.id,
     });
-    assert(configuration);
-    const resource = AgentResource.fromAgentConfiguration(configuration);
 
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
