@@ -78,7 +78,7 @@ export function ModelPickerContent({
   return (
     <DropdownMenuContent
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
-      align="start"
+      align="end"
       side={side}
     >
       {tiers.length > 0 && (
