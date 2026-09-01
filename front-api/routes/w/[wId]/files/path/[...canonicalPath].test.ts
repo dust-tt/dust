@@ -4,7 +4,11 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { DUST_FILE_ID_HEADER, frameContentType } from "@app/types/files";
+import {
+  DUST_FILE_CONTENT_TYPE_HEADER,
+  DUST_FILE_ID_HEADER,
+  frameV2ContentType,
+} from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import { PassThrough } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -259,16 +263,16 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
     expect(fileStorageMock.readStreamCalls).toHaveLength(0);
   });
 
-  it("returns the linked file id header when a FileResource exists", async () => {
+  it("returns linked FileResource metadata without replacing raw metadata", async () => {
     const { workspace, auth, conversation } = await setup();
 
     setExistingFiles(["/files/frame.tsx"], {
-      contentType: frameContentType,
+      contentType: "text/plain",
       size: "2048",
     });
 
     const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
-      contentType: frameContentType,
+      contentType: frameV2ContentType,
       fileName: "frame.tsx",
       fileSize: 2048,
       status: "ready",
@@ -290,8 +294,11 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Type")).toBe(frameContentType);
+    expect(response.headers.get("Content-Type")).toBe("text/plain");
     expect(response.headers.get(DUST_FILE_ID_HEADER)).toBe(file.sId);
+    expect(response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER)).toBe(
+      frameV2ContentType
+    );
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 
