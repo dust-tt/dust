@@ -30,6 +30,7 @@ const EMPTY_POOL_SUMMARY = {
   currentCycleEndMs: null,
   currentCycleConsumedCredits: null,
   programmaticConsumedCredits: null,
+  otherConsumedCredits: null,
 };
 
 beforeEach(() => {
