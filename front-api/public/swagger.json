@@ -9047,7 +9047,7 @@
     "/api/w/{wId}/files/{fileId}": {
       "get": {
         "summary": "Get or download a file",
-        "description": "View or download a file. Skill attachments require read access to their associated skill. Feature-flagged Frames v2 return the active published UI bundle when viewed. Use query parameters `version` (original, processed, public) and `action` (view, download).",
+        "description": "View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).",
         "tags": [
           "Private Files"
         ],
@@ -9335,137 +9335,10 @@
         }
       }
     },
-    "/api/w/{wId}/frames/{frameId}/functions/{name}/invocations": {
-      "post": {
-        "summary": "Invoke an active Frames v2 function",
-        "description": "Resolves a bare function name from the Frame's active immutable publication, checks Frame use rights, and starts an invocation pinned to that publication.",
-        "tags": [
-          "Private Frames"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "frameId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "description": "Bare function name declared by the active Frame publication.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PrivateFrameFunctionInvocationRequest"
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Invocation created. Fast invocations may also include their terminal outcome.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrivateFrameFunctionInvocationResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The function requires a workspace member or a stricter caller identity."
-          },
-          "404": {
-            "description": "Frame, active publication, function, or Frame use right not found."
-          },
-          "500": {
-            "description": "Invocation failed before it could be created."
-          }
-        }
-      }
-    },
-    "/api/w/{wId}/frames/{frameId}/invocations/{invocationId}/events": {
-      "get": {
-        "summary": "Stream Frames v2 function invocation events",
-        "description": "Authorizes through the stable Frame identity and redirects to the SSE service. The invocation's own publication is used, so a republish cannot break an existing stream.",
-        "tags": [
-          "Private Frames"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "frameId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "invocationId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Server-Sent Event stream.",
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationEvent"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Frame use right or Frame-owned invocation not found."
-          }
-        }
-      }
-    },
     "/api/w/{wId}/sandbox-functions/{functionId}/invocations/{invocationId}/events": {
       "get": {
         "summary": "Stream sandbox function invocation events",
-        "description": "Stream real-time events for a Pod or Frame function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.",
+        "description": "Stream real-time events for a Pod function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.",
         "tags": [
           "Private Events"
         ],
@@ -9483,7 +9356,7 @@
             "in": "path",
             "name": "functionId",
             "required": true,
-            "description": "ID of the Pod or Frame function",
+            "description": "ID of the Pod function",
             "schema": {
               "type": "string"
             }
@@ -13363,123 +13236,6 @@
           "userId": {
             "type": "string",
             "description": "sId of the user who owns the wake-up."
-          }
-        }
-      },
-      "PrivateSandboxFunctionInvocation": {
-        "type": "object",
-        "required": [
-          "sId",
-          "functionId",
-          "status",
-          "createdAt"
-        ],
-        "properties": {
-          "sId": {
-            "type": "string"
-          },
-          "functionId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "created",
-              "errored",
-              "succeeded"
-            ]
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "PrivateSandboxFunctionCallError": {
-        "type": "object",
-        "required": [
-          "code",
-          "message"
-        ],
-        "properties": {
-          "code": {
-            "type": "string",
-            "description": "Classification forwarded from the runner, API, or invocation layer."
-          },
-          "message": {
-            "type": "string"
-          },
-          "status": {
-            "type": "integer"
-          }
-        }
-      },
-      "PrivateFrameFunctionInvocationRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "input": {
-            "description": "Input validated against the published function contract."
-          },
-          "context": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "timezone": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "PrivateFrameFunctionInvocationResponse": {
-        "type": "object",
-        "required": [
-          "invocation"
-        ],
-        "properties": {
-          "invocation": {
-            "$ref": "#/components/schemas/PrivateSandboxFunctionInvocation"
-          },
-          "outcome": {
-            "oneOf": [
-              {
-                "type": "object",
-                "required": [
-                  "status",
-                  "result"
-                ],
-                "properties": {
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "succeeded"
-                    ]
-                  },
-                  "result": {
-                    "description": "Parsed result validated against the function output schema."
-                  }
-                }
-              },
-              {
-                "type": "object",
-                "required": [
-                  "status",
-                  "error"
-                ],
-                "properties": {
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "errored"
-                    ]
-                  },
-                  "error": {
-                    "$ref": "#/components/schemas/PrivateSandboxFunctionCallError"
-                  }
-                }
-              }
-            ]
           }
         }
       },
