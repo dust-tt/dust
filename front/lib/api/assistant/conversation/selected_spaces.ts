@@ -81,7 +81,7 @@ export async function listSelectableSpaces(
     .filter((space) => space.isRegular())
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const enriched = await SpaceResource.batchToJSONEnriched(
+  const enriched = await SpaceResource.enrichSpacesWithAccess(
     auth,
     selectableSpaceResources
   );
@@ -206,7 +206,7 @@ export async function addSelectedConversationSpaces(
         }
       );
 
-    const enriched = await SpaceResource.batchToJSONEnriched(
+    const enriched = await SpaceResource.enrichSpacesWithAccess(
       auth,
       selectedSpaces
     );
@@ -317,7 +317,7 @@ export async function addSelectedConversationSpaces(
         }
       );
 
-    const enriched = await SpaceResource.batchToJSONEnriched(
+    const enriched = await SpaceResource.enrichSpacesWithAccess(
       auth,
       allSelectedSpaces
     );

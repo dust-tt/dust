@@ -186,7 +186,7 @@ app.get(
     const projectSpaces = spaces.filter((s) => s.kind === "project");
 
     const nonProjectsJson: EnrichedSpaceType[] =
-      await SpaceResource.batchToJSONEnriched(auth, nonProjectSpaces);
+      await SpaceResource.enrichSpacesWithAccess(auth, nonProjectSpaces);
     const projectsJson: PodType[] =
       projectSpaces.length > 0
         ? await enrichProjectsWithMetadata(auth, projectSpaces)
