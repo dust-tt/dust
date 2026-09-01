@@ -889,15 +889,13 @@ export async function sumActiveMembersPoolConsumedCredits({
   // alongside pure external calls, so the three fetchers below must stay Metronome/Redis-only.
   // If one of them ever needs a DB read, pull it out and sequence it before this Promise.all
   // instead of adding it here.
-  const [usageByMetronomeUserId, { freeStartingByUserId }, seatDataByUserId] =
+  const [consumedByUserId, { freeStartingByUserId }, seatDataByUserId] =
     await Promise.all([
-      fetchPerUserUsageCreditsForMembersTable({
+      fetchConsumedAwuCreditsFromMetronomeByUserId({
         workspaceId: auth.getNonNullableWorkspace().sId,
         metronomeCustomerId,
         metronomeContractId,
-        userIds: members.map((m) =>
-          m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
-        ),
+        users: members,
       }),
       fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
       fetchSeatDataForMembersTable({
@@ -908,12 +906,7 @@ export async function sumActiveMembersPoolConsumedCredits({
 
   let sumConsumedFromPoolAwuCredits = 0;
   for (const member of members) {
-    const metronomeUserId =
-      member.seatType === "free"
-        ? toFreeMetronomeUserId(member.sId)
-        : member.sId;
-    const totalConsumedCredits =
-      usageByMetronomeUserId.get(metronomeUserId) ?? 0;
+    const totalConsumedCredits = consumedByUserId.get(member.sId) ?? 0;
     const freeStartingBalanceAwu =
       member.seatType === "free"
         ? (freeStartingByUserId.get(member.sId) ?? null)
@@ -2234,21 +2227,17 @@ export async function getMembersUsage({
   // Bulk-fetch each user's Metronome-side per-user AWU consumption (poke-only),
   // shown next to the ES and rate-limiter figures to spot divergence. Reuses the
   // resilient wrapper (empty map when Metronome isn't configured or on error).
-  const metronomeConsumedByUserId = new Map<string, number>();
-  if (includeAlertLinks) {
-    const usage = await fetchPerUserUsageCreditsForMembersTable({
-      workspaceId: workspace.sId,
-      metronomeCustomerId: metronomeCustomerId ?? null,
-      metronomeContractId,
-      userIds: users.flatMap((u) => [u.sId, toFreeMetronomeUserId(u.sId)]),
-    });
-    for (const u of users) {
-      const membership = membershipByUserId.get(u.id);
-      const metronomeUserId =
-        membership?.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId;
-      metronomeConsumedByUserId.set(u.sId, usage.get(metronomeUserId) ?? 0);
-    }
-  }
+  const metronomeConsumedByUserId = includeAlertLinks
+    ? await fetchConsumedAwuCreditsFromMetronomeByUserId({
+        workspaceId: workspace.sId,
+        metronomeCustomerId: metronomeCustomerId ?? null,
+        metronomeContractId,
+        users: users.map((u) => ({
+          sId: u.sId,
+          seatType: membershipByUserId.get(u.id)?.seatType ?? null,
+        })),
+      })
+    : new Map<string, number>();
 
   // Bulk-fetch each user's fair-use AWU credit usage (poke-only). This is a
   // bounded page (≤ 150) of Redis reads, so batch with `concurrentExecutor`.
