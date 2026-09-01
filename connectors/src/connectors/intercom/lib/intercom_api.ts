@@ -13,10 +13,21 @@ import {
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
+function isRetryableIntercomFailure(
+  status: number,
+  errorCode?: string
+): boolean {
+  return (
+    status === 429 ||
+    status >= 500 ||
+    (errorCode?.toLowerCase().includes("rate_limit") ?? false)
+  );
+}
+
 /**
  * Utility function to call the Intercom API.
  * It centralizes calling the API and handling global errors.
- * Returns null in case of 404 errors.
+ * Returns null for not_found and other non-retryable errors.
  */
 async function queryIntercomAPI({
   accessToken,
@@ -81,16 +92,48 @@ async function queryIntercomAPI({
         if (error.code.toLowerCase() === "not_found") {
           return null;
         }
+        if (isRetryableIntercomFailure(rawResponse.status, error.code)) {
+          throw new ProviderWorkflowError(
+            "intercom",
+            `${error.code}: ${error.message ?? "Intercom API error"}`,
+            "transient_upstream_activity_error"
+          );
+        }
+        logger.warn(
+          {
+            path,
+            statusCode: rawResponse.status,
+            errorCode: error.code,
+            errorMessage: error.message,
+          },
+          "[Intercom] Non-retryable API error"
+        );
+        return null;
+      }
+
+      if (isRetryableIntercomFailure(rawResponse.status)) {
         throw new ProviderWorkflowError(
           "intercom",
-          `${error.code}: ${error.message ?? "Intercom API error"}`,
+          `${rawResponse.status} - ${text}`,
           "transient_upstream_activity_error"
         );
       }
+
+      logger.warn(
+        { path, statusCode: rawResponse.status, response: text },
+        "[Intercom] Non-retryable API error"
+      );
+      return null;
     }
 
     return response;
   } catch (e) {
+    if (
+      e instanceof ExternalOAuthTokenError ||
+      e instanceof ProviderWorkflowError
+    ) {
+      throw e;
+    }
     if (rawResponse.status === 405) {
       const isCaptchaError = text?.includes("captcha-container");
 
