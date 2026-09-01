@@ -1,13 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
-  DegradableModelEndpointType,
+  DegradedModelEndpointStatusType,
   GetDegradedModelsResponseBody,
 } from "@app/lib/api/poke/degraded_models";
 import { clientFetch } from "@app/lib/egress/client";
-import type {
-  DegradedModelEndpointType,
-  DegradedModelEndpointUpdateType,
-} from "@app/lib/model_constructors/types/degradations";
+import type { DegradedModelEndpointUpdateType } from "@app/lib/model_constructors/types/degradations";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback } from "react";
@@ -24,10 +21,7 @@ export function usePokeDegradedModels() {
   );
 
   return {
-    degradableEndpoints:
-      data?.degradableEndpoints ?? emptyArray<DegradableModelEndpointType>(),
-    degradedEndpoints:
-      data?.degradedEndpoints ?? emptyArray<DegradedModelEndpointType>(),
+    endpoints: data?.endpoints ?? emptyArray<DegradedModelEndpointStatusType>(),
     isDegradedModelsLoading: !error && !data,
     isDegradedModelsError: error,
     mutateDegradedModels: mutate,

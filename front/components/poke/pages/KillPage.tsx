@@ -115,8 +115,8 @@ export function KillPage() {
     useState<KillSwitchType | null>(null);
   const sendNotification = useSendNotification();
   const enabledKillSwitches = new Set(killSwitches);
-  const { degradableEndpoints, degradedEndpoints, mutateDegradedModels } =
-    usePokeDegradedModels();
+  const { endpoints, mutateDegradedModels } = usePokeDegradedModels();
+  const degradedEndpoints = endpoints.filter((endpoint) => endpoint.degraded);
 
   const { images, isImagesLoading } = usePokeSandboxKillImages();
   const requestSandboxKill = useRequestSandboxKill();
@@ -315,8 +315,7 @@ export function KillPage() {
               </div>
 
               <DegradedModelsDialog
-                degradableEndpoints={degradableEndpoints}
-                degradedEndpoints={degradedEndpoints}
+                endpoints={endpoints}
                 onSaved={async () => {
                   await mutateDegradedModels();
                 }}

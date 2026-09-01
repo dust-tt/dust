@@ -1,6 +1,5 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import type { DegradableModelEndpointType } from "@app/lib/api/poke/degraded_models";
-import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
+import type { DegradedModelEndpointStatusType } from "@app/lib/api/poke/degraded_models";
 import { degradedModelEndpointKey } from "@app/lib/model_constructors/types/degradations";
 import { useUpdatePokeDegradedModels } from "@app/poke/swr/degraded_models";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
@@ -27,7 +26,7 @@ import { useForm } from "react-hook-form";
 interface ModelGroup {
   modelId: ModelIdType;
   displayName: string;
-  endpoints: DegradableModelEndpointType[];
+  endpoints: DegradedModelEndpointStatusType[];
 }
 
 interface ProviderGroup {
@@ -40,14 +39,14 @@ interface ProviderGroup {
 // The catalog grouped provider -> model -> host, preserving the order the API
 // returns it in.
 function groupEndpoints(
-  degradableEndpoints: DegradableModelEndpointType[]
+  endpoints: DegradedModelEndpointStatusType[]
 ): ProviderGroup[] {
   const providers = new Map<
     ModelProviderIdType,
     Map<ModelIdType, ModelGroup>
   >();
 
-  for (const endpoint of degradableEndpoints) {
+  for (const endpoint of endpoints) {
     const models =
       providers.get(endpoint.providerId) ?? new Map<ModelIdType, ModelGroup>();
     const model = models.get(endpoint.modelId) ?? {
@@ -89,17 +88,18 @@ function sameKeys(a: string[], b: string[]): boolean {
 }
 
 interface DegradedModelsDialogProps {
-  degradableEndpoints: DegradableModelEndpointType[];
-  degradedEndpoints: DegradedModelEndpointType[];
+  endpoints: DegradedModelEndpointStatusType[];
   onSaved: () => Promise<void>;
 }
 
 export function DegradedModelsDialog({
-  degradableEndpoints,
-  degradedEndpoints,
+  endpoints,
   onSaved,
 }: DegradedModelsDialogProps) {
   const [open, setOpen] = useState(false);
+  const degradedCount = endpoints.filter(
+    (endpoint) => endpoint.degraded
+  ).length;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -107,11 +107,7 @@ export function DegradedModelsDialog({
         <Button
           variant="outline"
           size="sm"
-          label={
-            degradedEndpoints.length === 0
-              ? "Manage"
-              : `${degradedEndpoints.length} degraded`
-          }
+          label={degradedCount === 0 ? "Manage" : `${degradedCount} degraded`}
         />
       </DialogTrigger>
       <DialogContent size="xl" height="xl">
@@ -135,8 +131,7 @@ export function DegradedModelsDialog({
         </DialogHeader>
         {open && (
           <DegradedModelsEditor
-            degradableEndpoints={degradableEndpoints}
-            degradedEndpoints={degradedEndpoints}
+            endpoints={endpoints}
             onCancel={() => setOpen(false)}
             onSaved={async () => {
               await onSaved();
@@ -150,38 +145,36 @@ export function DegradedModelsDialog({
 }
 
 interface DegradedModelsEditorProps {
-  degradableEndpoints: DegradableModelEndpointType[];
-  degradedEndpoints: DegradedModelEndpointType[];
+  endpoints: DegradedModelEndpointStatusType[];
   onCancel: () => void;
   onSaved: () => Promise<void>;
 }
 
 function DegradedModelsEditor({
-  degradableEndpoints,
-  degradedEndpoints,
+  endpoints,
   onCancel,
   onSaved,
 }: DegradedModelsEditorProps) {
   const updateDegradedModels = useUpdatePokeDegradedModels();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const providerGroups = useMemo(
-    () => groupEndpoints(degradableEndpoints),
-    [degradableEndpoints]
-  );
+  const providerGroups = useMemo(() => groupEndpoints(endpoints), [endpoints]);
   const endpointByKey = useMemo(
     () =>
       new Map(
-        degradableEndpoints.map((endpoint) => [
+        endpoints.map((endpoint) => [
           degradedModelEndpointKey(endpoint),
           endpoint,
         ])
       ),
-    [degradableEndpoints]
+    [endpoints]
   );
   const degradedEndpointKeys = useMemo(
-    () => degradedEndpoints.map(degradedModelEndpointKey),
-    [degradedEndpoints]
+    () =>
+      endpoints
+        .filter((endpoint) => endpoint.degraded)
+        .map(degradedModelEndpointKey),
+    [endpoints]
   );
 
   const form = useForm<DegradedModelsFormValues>({
