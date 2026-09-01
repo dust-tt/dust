@@ -20,7 +20,10 @@ import type {
   FileTypeWithMetadata,
   SharingGrantType,
 } from "@app/types/files";
-import { DUST_FILE_ID_HEADER } from "@app/types/files";
+import {
+  DUST_FILE_CONTENT_TYPE_HEADER,
+  DUST_FILE_ID_HEADER,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -72,13 +75,18 @@ function getFilePathMetadataApiPath(
   return `${getFilePathContentApiPath(owner, canonicalPath)}?metadata=1`;
 }
 
-export async function fetchFileIdFromPath({
+export interface FilePathHeadMetadata {
+  fileId: string | null;
+  contentType: string | null;
+}
+
+export async function fetchFileHeadMetadataFromPath({
   owner,
   filePath,
 }: {
   owner: LightWorkspaceType;
   filePath: string;
-}): Promise<string | null> {
+}): Promise<FilePathHeadMetadata | null> {
   const response = await clientFetch(
     getFilePathMetadataApiPath(owner, filePath),
     { method: "HEAD" }
@@ -90,13 +98,27 @@ export async function fetchFileIdFromPath({
     throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
   }
 
-  return response.headers.get(DUST_FILE_ID_HEADER);
+  return {
+    fileId: response.headers.get(DUST_FILE_ID_HEADER),
+    contentType: response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER),
+  };
+}
+
+export async function fetchFileIdFromPath({
+  owner,
+  filePath,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string;
+}): Promise<string | null> {
+  const metadata = await fetchFileHeadMetadataFromPath({ owner, filePath });
+  return metadata?.fileId ?? null;
 }
 
 /**
- * Resolve the FileResource sId linked to a canonical scoped path.
- * Returns null when the path exists but has no linked FileResource, or when
- * the path is not found.
+ * Resolve the FileResource sId and content type linked to a canonical scoped path.
+ * The id is null when the path exists but has no linked FileResource, or when
+ * the path is not found; callers can use `isFileIdNotFound` to distinguish loading.
  */
 export function useFileIdFromPath({
   owner,
@@ -111,15 +133,15 @@ export function useFileIdFromPath({
   const swrKey =
     disabled || path === null
       ? null
-      : (`file-id-from-path:${owner.sId}:${path}` as const);
+      : (`file-head-metadata-from-path:${owner.sId}:${path}` as const);
 
   const { data, error } = useSWRWithDefaults(
     swrKey,
-    async (): Promise<string | null> => {
+    async (): Promise<FilePathHeadMetadata | null> => {
       if (path === null) {
         return null;
       }
-      return fetchFileIdFromPath({ owner, filePath: path });
+      return fetchFileHeadMetadataFromPath({ owner, filePath: path });
     },
     { disabled: swrKey === null }
   );
@@ -127,9 +149,11 @@ export function useFileIdFromPath({
   const isLoading = swrKey !== null && !error && data === undefined;
 
   return {
-    fileId: data ?? null,
+    fileId: data?.fileId ?? null,
+    fileContentType: data?.contentType ?? null,
     isFileIdLoading: isLoading,
-    isFileIdNotFound: swrKey !== null && !isLoading && data === null,
+    isFileIdNotFound:
+      swrKey !== null && !isLoading && (data === null || data?.fileId === null),
     fileIdError: error ? normalizeError(error) : null,
   };
 }

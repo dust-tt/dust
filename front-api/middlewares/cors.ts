@@ -4,7 +4,10 @@ import {
   isAllowedOrigin,
 } from "@app/config/cors";
 import logger from "@app/logger/logger";
-import { DUST_FILE_ID_HEADER } from "@app/types/files";
+import {
+  DUST_FILE_CONTENT_TYPE_HEADER,
+  DUST_FILE_ID_HEADER,
+} from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { MiddlewareHandler } from "hono";
 
@@ -14,6 +17,7 @@ const EXPOSE_HEADERS = [
   "WWW-Authenticate",
   "mcp-session-id",
   "mcp-protocol-version",
+  DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
 ].join(", ");
 
