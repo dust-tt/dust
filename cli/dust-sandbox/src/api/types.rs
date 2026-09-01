@@ -34,6 +34,15 @@ pub struct FrameRegisterResponse {
     pub created: bool,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameShareLinkResponse {
+    pub frame_id: String,
+    pub share_scope: String,
+    pub share_url: String,
+    pub source_directory_path: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SandboxServerViewsResponse {

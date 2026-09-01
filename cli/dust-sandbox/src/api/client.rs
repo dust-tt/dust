@@ -10,7 +10,8 @@ use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
     CallToolResponse, CallToolResult, FramePublishRequest, FramePublishResponse,
-    FrameRegisterRequest, FrameRegisterResponse, MCPServerView, SandboxServerViewsResponse,
+    FrameRegisterRequest, FrameRegisterResponse, FrameShareLinkResponse, MCPServerView,
+    SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -151,6 +152,17 @@ impl DustApiClient {
         self.post(
             "sandbox/frames/register",
             &FrameRegisterRequest { manifest_path },
+        )
+        .await
+    }
+
+    pub async fn get_frame_share_link(
+        &self,
+        source_directory_path: &str,
+    ) -> anyhow::Result<FrameShareLinkResponse> {
+        self.get(
+            "sandbox/frames/share",
+            &[("sourceDirectoryPath", source_directory_path)],
         )
         .await
     }
