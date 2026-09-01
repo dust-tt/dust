@@ -22,7 +22,8 @@ vi.mock("@app/lib/lock", async (importActual) => {
   const actual = await importActual<typeof import("@app/lib/lock")>();
   return {
     ...actual,
-    executeWithLock: async <T>(_name: string, cb: () => Promise<T>) => cb(),
+    executeWithLockResult: async <T>(_name: string, cb: () => Promise<T>) =>
+      cb(),
   };
 });
 
@@ -31,7 +32,6 @@ const manifest = JSON.stringify({
   name: "Status",
   description: "Show the current status.",
 });
-const uiSource = "export default function Status() { return <p>Ready</p>; }";
 
 beforeEach(() => {
   fileStorageMock.reset();
@@ -55,6 +55,18 @@ describe("shareFrameV2FromSource", () => {
       useCaseMetadata: { conversationId: context.conversation.sId },
       mountFilePath: `${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`,
     });
+    const dataFile = await FileFactory.create(context.auth, null, {
+      contentType: "text/plain",
+      fileName: "data.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: context.conversation.sId },
+    });
+    const uiSource = `export default function Status() {
+      useFile("${dataFile.sId}");
+      return <p>Ready</p>;
+    }`;
     const sourceByPath = new Map([
       [`${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
       [`${mountDirectoryPath}/index.tsx`, uiSource],
@@ -99,6 +111,9 @@ describe("shareFrameV2FromSource", () => {
       sourceDirectoryPath,
     });
     expect(await frame.getShareScope()).toBe("emails_only");
+    expect(await frame.getActiveAuthorizedFileAccessShareScope()).toBe(
+      "emails_only"
+    );
     expect(await frame.listActiveSharingGrants()).toHaveLength(1);
   });
 });
