@@ -4,6 +4,15 @@ import { useEffect, useRef, useState } from "react";
 export type StreamingState = "streaming" | "none" | "cancelled";
 
 /**
+ * Smallest gap between two cursor commits. `animate` ticks on every animation
+ * frame — 120 times a second on a modern display — and each commit re-renders
+ * the whole markdown tree, all while the main thread is already busy parsing
+ * the stream. Text appearing in ~30 steps a second is past what reading can
+ * resolve, so the extra commits bought nothing.
+ */
+const CURSOR_COMMIT_INTERVAL_MS = 32;
+
+/**
  * Provides a progressively revealed version of `text` while `streamingState`
  * is "streaming", animating a cursor over `delimiter`-separated parts for a
  * smooth reveal; returns the full text once streaming ends or is cancelled.
@@ -52,14 +61,30 @@ export function useAnimatedText(
     //   - First chunk: small gap (e.g. 29 chars / 1s = ~29 chars/sec) → feels slow/throttled.
     //   - Later chunks: larger gap (e.g. 131 chars / 1s = ~131 chars/sec) → feels smooth
     //     because more chars are crammed into the same duration.
+    let lastCommittedCursor = startingCursor;
+    let lastCommitAtMs = 0;
+
     controlsRef.current = animate(startingCursor, textParts.length, {
       duration: animationDurationSeconds,
       ease: "easeOut",
       // latest is the interpolated cursor position (number of visible characters).
       onUpdate(latest: number) {
-        setCursor(Math.floor(latest));
+        const next = Math.floor(latest);
+        if (next === lastCommittedCursor) {
+          return;
+        }
+        const nowMs = performance.now();
+        if (nowMs - lastCommitAtMs < CURSOR_COMMIT_INTERVAL_MS) {
+          return;
+        }
+        lastCommitAtMs = nowMs;
+        lastCommittedCursor = next;
+        setCursor(next);
       },
       onComplete() {
+        // Always land on the target: throttling can drop the final onUpdate,
+        // which would leave the reveal short until the next chunk arrives.
+        setCursor(textParts.length);
         setDisableAnimation(true);
         controlsRef.current = null;
       },
