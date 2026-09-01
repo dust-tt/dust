@@ -397,11 +397,11 @@ async function handlePerUserSpendThresholdEvent({
   // ladder).
   const groupCapAwuCredits =
     (
-      await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
         workspace: lightWorkspace,
         userModelIds: [membership.userId],
       })
-    ).get(membership.userId) ?? null;
+    ).get(membership.userId)?.capAwuCredits ?? null;
   const defaultPoolCapAwuCredits =
     creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
   const poolCap = resolveEffectiveSpendLimitAwuCredits({

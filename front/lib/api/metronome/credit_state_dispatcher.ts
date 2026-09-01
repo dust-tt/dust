@@ -82,12 +82,11 @@ async function fetchMaxGroupPoolCapForUser({
   workspace: LightWorkspaceType;
   userModelId: ModelId;
 }): Promise<number | null> {
-  const caps =
-    await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: [userModelId],
-    });
-  return caps.get(userModelId) ?? null;
+  const caps = await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+    workspace,
+    userModelIds: [userModelId],
+  });
+  return caps.get(userModelId)?.capAwuCredits ?? null;
 }
 
 /**

@@ -40,6 +40,7 @@ const MEMBER_USAGE = {
   rateLimiterSpendAwuCredits: null,
   metronomeConsumedAwuCredits: null,
   spendLimitSource: "default" as const,
+  spendLimitGroupName: null,
   spendLimitWarningAlertId: null,
 };
 
