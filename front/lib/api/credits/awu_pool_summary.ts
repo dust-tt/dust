@@ -1,4 +1,8 @@
-import { sumActiveMembersPoolConsumedCredits } from "@app/lib/api/credits/members_usage";
+import {
+  getEsConsumedAwuCreditsForWorkspace,
+  resolveMetronomeCycle,
+  sumActiveMembersPoolConsumedCredits,
+} from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
@@ -342,6 +346,12 @@ async function getAwuPoolCurrentCycleUncached(
       : null;
 
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
+    const fallbackCycle = await resolveMetronomeCycle(workspace);
+    const excessConsumedCredits = fallbackCycle
+      ? await getEsConsumedAwuCreditsForWorkspace(workspace, {
+          cycle: fallbackCycle,
+        })
+      : null;
     const programmaticConsumedCredits =
       await fetchProgrammaticConsumedCreditsOrNull({
         workspace,
@@ -356,6 +366,7 @@ async function getAwuPoolCurrentCycleUncached(
       currentCycleStartMs: null,
       currentCycleEndMs: null,
       currentCycleConsumedCredits,
+      excessConsumedCredits,
       programmaticConsumedCredits,
       otherConsumedCredits: null,
     });
@@ -408,6 +419,16 @@ async function getAwuPoolCurrentCycleUncached(
     }
   }
 
+  const excessConsumedCredits =
+    totalActiveCredits <= 0
+      ? await getEsConsumedAwuCreditsForWorkspace(workspace, {
+          cycle: {
+            cycleStart: new Date(currentCycleStartMs),
+            cycleEnd: new Date(currentCycleEndMs),
+          },
+        })
+      : null;
+
   const programmaticConsumedCredits = poolLedgerDataResult.isErr()
     ? null
     : sumProgrammaticPoolConsumedFromInvoice({
@@ -437,6 +458,7 @@ async function getAwuPoolCurrentCycleUncached(
     currentCycleStartMs,
     currentCycleEndMs,
     currentCycleConsumedCredits,
+    excessConsumedCredits,
     programmaticConsumedCredits,
     otherConsumedCredits,
   });

@@ -270,7 +270,7 @@ async function fetchCreditsResetAt(
 
 // The workspace's current Metronome contract billing period, or null when it
 // cannot be resolved (no contract, or a Metronome failure).
-async function resolveMetronomeCycle(
+export async function resolveMetronomeCycle(
   workspace: LightWorkspaceType
 ): Promise<BillingCycle | null> {
   const periodResult = await getCachedMetronomeCurrentBillingPeriod(
@@ -598,6 +598,56 @@ export async function getEsConsumedProgrammaticAwuCredits(
   return Math.max(
     0,
     Math.round(result.value.aggregations?.credits?.value ?? 0)
+  );
+}
+
+/**
+ * The workspace's total Elasticsearch-derived AWU consumption for the
+ * current billing cycle.
+ */
+export async function getEsConsumedAwuCreditsForWorkspace(
+  workspace: LightWorkspaceType,
+  { cycle }: { cycle: BillingCycle }
+): Promise<number | null> {
+  const { cycleStart, cycleEnd } = cycle;
+
+  const result = await searchConsumptionAnalytics<
+    never,
+    { credits?: estypes.AggregationsSumAggregate }
+  >(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: { credits: { sum: { field: "credit_micro" } } },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read total consumed credits from analytics index"
+    );
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.round(
+      microCreditsToCredits(result.value.aggregations?.credits?.value ?? 0)
+    )
   );
 }
 

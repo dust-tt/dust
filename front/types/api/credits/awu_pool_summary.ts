@@ -18,6 +18,8 @@ export type AwuPoolCurrentCycleResponseBody = {
   currentCycleConsumedCredits: number | null;
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
+  // PAYG credits
+  excessConsumedCredits: number | null;
   programmaticConsumedCredits: number | null;
   otherConsumedCredits: number | null;
 };

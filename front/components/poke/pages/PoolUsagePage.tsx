@@ -82,6 +82,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
     currentCycleEndMs,
     programmaticConsumedCredits,
     otherConsumedCredits,
+    excessConsumedCredits,
   } = awuPoolCurrentCycle ?? {
     totalRemainingCredits: 0,
     totalActiveCredits: 0,
@@ -90,9 +91,11 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
     currentCycleEndMs: null,
     programmaticConsumedCredits: null,
     otherConsumedCredits: null,
+    excessConsumedCredits: null,
   };
 
   const hasPool = totalActiveCredits > 0;
+  const hasExcessData = excessConsumedCredits !== null;
 
   return (
     <WorkspaceCreditPoolSection
@@ -101,9 +104,11 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
         !!isAwuPoolCurrentCycleError
       )}
       showPoolCard={hasPool}
-      isVisible={hasPool}
+      isVisible={hasPool || hasExcessData}
       totalRemainingCredits={totalRemainingCredits}
-      consumedCredits={currentCycleConsumedCredits}
+      consumedCredits={
+        hasPool ? currentCycleConsumedCredits : excessConsumedCredits
+      }
       currentCycleStartMs={currentCycleStartMs}
       currentCycleEndMs={currentCycleEndMs}
       programmaticConsumedCredits={programmaticConsumedCredits}
