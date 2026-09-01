@@ -410,10 +410,12 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           )
         ).filter((spaceId) => spaceId !== space.id);
 
+        // Rebuilt from the same four reasons a skill requests a space as when it is saved, with
+        // the deleted space stripped from each of them.
         const requestedSpaceIds = uniq([
-          ...computedRequestedSpaceIds,
-          ...referencedSkillSpaceIds,
-          ...manuallyRequestedSpaceIds,
+          ...computedRequestedSpaceIds, // Tools and attached knowledge.
+          ...referencedSkillSpaceIds, // Nested skills.
+          ...manuallyRequestedSpaceIds, // Picked by hand.
         ]);
 
         // Log an error if the deleted space is still in requestedSpaceIds.

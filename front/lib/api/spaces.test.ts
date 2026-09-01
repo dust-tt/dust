@@ -1566,7 +1566,9 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         { ignoreWorkspaceLimit: true }
       );
       expect(childSpaceResult.isOk()).toBe(true);
-      const childSpace = childSpaceResult.isOk() ? childSpaceResult.value : null;
+      const childSpace = childSpaceResult.isOk()
+        ? childSpaceResult.value
+        : null;
 
       const server = await RemoteMCPServerFactory.create(workspace, {
         name: "Test Server",

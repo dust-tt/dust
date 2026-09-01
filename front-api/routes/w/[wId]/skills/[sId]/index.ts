@@ -366,6 +366,8 @@ app.patch(
       skill.sId
     );
 
+    // `additionalRequestedSpaceIds` is the wire name of the skill's manual space selection, stored
+    // as `manuallyRequestedSpaceIds`.
     let additionalRequestedSpaceIds: ModelId[];
 
     if (body.additionalRequestedSpaceIds !== undefined) {
@@ -391,10 +393,14 @@ app.patch(
       additionalRequestedSpaceIds = [...skill.manuallyRequestedSpaceIds];
     }
 
+    // A skill requests a space for one of four reasons: one of its tools lives there, some of its
+    // attached knowledge does, a skill it references requests it, or a person picked it by hand.
+    // Only the last one is stored; the other three are derived, and disappear with what pulled
+    // them in.
     const requestedSpaceIds = uniq([
-      ...computedRequestedSpaceIds,
-      ...referencedSkillSpaceIds,
-      ...additionalRequestedSpaceIds,
+      ...computedRequestedSpaceIds, // Tools and attached knowledge.
+      ...referencedSkillSpaceIds, // Nested skills.
+      ...additionalRequestedSpaceIds, // Picked by hand.
     ]);
 
     // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`
