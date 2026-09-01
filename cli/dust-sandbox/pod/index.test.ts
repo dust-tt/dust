@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { PodDatabase, SandboxDatabase } from "@dust/pod";
 import {
   db,
   FRAME_ID_ENV,
@@ -12,6 +13,7 @@ import {
   FramePublicationDescriptorError,
   POD_DATABASE_BUSY_TIMEOUT_MS,
   POD_DATABASE_MAX_SIZE_BYTES_ENV,
+  POD_DATABASE_NAME_REGEX,
   POD_DATABASE_PREFIX_ENV,
   POD_DATABASES_DIR_ENV,
   POD_SPACE_ID_ENV,
@@ -21,6 +23,15 @@ import {
   PodDatabaseNotDeclaredError,
   PodDatabasesUnavailableError,
   runWithInvocationEnv,
+  SANDBOX_DATABASE_BUSY_TIMEOUT_MS,
+  SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV,
+  SANDBOX_DATABASE_NAME_REGEX,
+  SANDBOX_DATABASE_PREFIX_ENV,
+  SANDBOX_DATABASES_DIR_ENV,
+  SandboxDatabaseError,
+  SandboxDatabaseFullError,
+  SandboxDatabaseInvalidNameError,
+  SandboxDatabasesUnavailableError,
   SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION,
 } from "@dust/pod";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
@@ -103,6 +114,7 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env[POD_DATABASES_DIR_ENV];
   delete process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+  delete process.env[SANDBOX_DATABASE_PREFIX_ENV];
   delete process.env[POD_DATABASE_PREFIX_ENV];
   if (originalSpaceId === undefined) {
     delete process.env[POD_SPACE_ID_ENV];
@@ -123,13 +135,53 @@ afterEach(() => {
   rmSync(databasesDir, { recursive: true, force: true });
 });
 
+describe("legacy database compatibility aliases", () => {
+  test("constants reference their owner-neutral counterparts", () => {
+    expect(POD_DATABASES_DIR_ENV).toBe(SANDBOX_DATABASES_DIR_ENV);
+    expect(POD_DATABASE_MAX_SIZE_BYTES_ENV).toBe(
+      SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV
+    );
+    expect(POD_DATABASE_BUSY_TIMEOUT_MS).toBe(SANDBOX_DATABASE_BUSY_TIMEOUT_MS);
+    expect(POD_DATABASE_NAME_REGEX).toBe(SANDBOX_DATABASE_NAME_REGEX);
+    expect(POD_DATABASE_PREFIX_ENV).toBe("DUST_POD_DATABASE_PREFIX");
+    expect(SANDBOX_DATABASE_PREFIX_ENV).toBe("DUST_SANDBOX_DATABASE_PREFIX");
+  });
+
+  test("error aliases preserve constructor and instanceof behavior", () => {
+    expect(PodDatabaseError).toBe(SandboxDatabaseError);
+    expect(PodDatabaseInvalidNameError).toBe(SandboxDatabaseInvalidNameError);
+    expect(PodDatabasesUnavailableError).toBe(SandboxDatabasesUnavailableError);
+    expect(PodDatabaseFullError).toBe(SandboxDatabaseFullError);
+
+    expect(new PodDatabaseError("test")).toBeInstanceOf(SandboxDatabaseError);
+    expect(new SandboxDatabaseInvalidNameError("invalid")).toBeInstanceOf(
+      PodDatabaseInvalidNameError
+    );
+    expect(new SandboxDatabasesUnavailableError()).toBeInstanceOf(
+      PodDatabasesUnavailableError
+    );
+    expect(new SandboxDatabaseFullError("test", 1)).toBeInstanceOf(
+      PodDatabaseFullError
+    );
+  });
+
+  test("the database handle type remains compatible", () => {
+    const name = uniqueName("compatibility");
+    createDatabaseFile(name);
+
+    const legacyHandle: PodDatabase = db(name);
+    const sandboxHandle: SandboxDatabase = legacyHandle;
+    expect(sandboxHandle).toBe(legacyHandle);
+  });
+});
+
 describe("sandbox database owner guard", () => {
   test("both owner ids absent throws even when the file exists", () => {
     const name = uniqueName("guard");
     createDatabaseFile(name);
     delete process.env[POD_SPACE_ID_ENV];
     expect(() => db(name)).toThrow(PodDatabasesUnavailableError);
-    expect(() => db(name)).toThrow(/does not belong to a Pod or Frame/);
+    expect(() => db(name)).toThrow(/has no database owner/);
   });
 
   test("empty owner ids are treated as absent", () => {
@@ -322,15 +374,42 @@ describe("app prefix resolution", () => {
 
   test("opens the app-prefixed database when it exists", () => {
     const name = uniqueName("chat");
-    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = "myapp__";
     createDatabaseOwnedBy(`myapp__${name}`, "myapp");
 
     expect(ownerOf(name)).toBe("myapp");
   });
 
+  test("reads the legacy Pod prefix from an invocation context", () => {
+    const name = uniqueName("chat");
+    createDatabaseOwnedBy(`legacyapp__${name}`, "legacyapp");
+
+    expect(
+      runWithInvocationEnv(
+        {
+          [POD_DATABASES_DIR_ENV]: databasesDir,
+          [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
+          [POD_SPACE_ID_ENV]: "spc_test_pod",
+          [POD_DATABASE_PREFIX_ENV]: "legacyapp__",
+        },
+        () => ownerOf(name)
+      )
+    ).toBe("legacyapp");
+  });
+
+  test("prefers the canonical prefix over the legacy key", () => {
+    const name = uniqueName("chat");
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = "canonical__";
+    process.env[POD_DATABASE_PREFIX_ENV] = "legacy__";
+    createDatabaseOwnedBy(`canonical__${name}`, "canonical");
+    createDatabaseOwnedBy(`legacy__${name}`, "legacy");
+
+    expect(ownerOf(name)).toBe("canonical");
+  });
+
   test("prefers the app-prefixed database over a same-named legacy one", () => {
     const name = uniqueName("chat");
-    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = "myapp__";
     createDatabaseOwnedBy(name, "legacy");
     createDatabaseOwnedBy(`myapp__${name}`, "myapp");
 
@@ -341,7 +420,7 @@ describe("app prefix resolution", () => {
     // Transitional: databases created before app namespacing keep their bare filenames, and
     // litestream replicates them under a prefix keyed on that filename.
     const name = uniqueName("chat");
-    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = "myapp__";
     createDatabaseOwnedBy(name, "legacy");
 
     expect(ownerOf(name)).toBe("legacy");
@@ -352,9 +431,9 @@ describe("app prefix resolution", () => {
     createDatabaseOwnedBy(`myapp__${name}`, "myapp");
     createDatabaseOwnedBy(`otherapp__${name}`, "otherapp");
 
-    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = "myapp__";
     expect(ownerOf(name)).toBe("myapp");
-    process.env[POD_DATABASE_PREFIX_ENV] = "otherapp__";
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = "otherapp__";
     expect(ownerOf(name)).toBe("otherapp");
   });
 
@@ -368,7 +447,7 @@ describe("app prefix resolution", () => {
   test("an empty prefix means unprefixed", () => {
     // front passes "" for functions published outside an app folder.
     const name = uniqueName("chat");
-    process.env[POD_DATABASE_PREFIX_ENV] = "";
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = "";
     createDatabaseOwnedBy(name, "bare");
 
     expect(ownerOf(name)).toBe("bare");
@@ -378,7 +457,7 @@ describe("app prefix resolution", () => {
     // A prefix this long cannot produce a valid qualified name, so reconcile could never have
     // created one; looking for it would only mask the database that does exist.
     const name = uniqueName("chat");
-    process.env[POD_DATABASE_PREFIX_ENV] = `${"a".repeat(60)}__`;
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = `${"a".repeat(60)}__`;
     createDatabaseOwnedBy(name, "bare");
 
     expect(ownerOf(name)).toBe("bare");
@@ -386,7 +465,7 @@ describe("app prefix resolution", () => {
 
   test("still throws when neither the prefixed nor the bare database exists", () => {
     const name = uniqueName("missing");
-    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    process.env[SANDBOX_DATABASE_PREFIX_ENV] = "myapp__";
 
     expect(() => db(name)).toThrow(PodDatabaseNotDeclaredError);
   });
@@ -398,7 +477,7 @@ describe("app prefix resolution", () => {
       [POD_DATABASES_DIR_ENV]: databasesDir,
       [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
       [POD_SPACE_ID_ENV]: "spc_test_pod",
-      [POD_DATABASE_PREFIX_ENV]: prefix,
+      [SANDBOX_DATABASE_PREFIX_ENV]: prefix,
     });
 
     test("reads the prefix from the context env", () => {
@@ -422,7 +501,7 @@ describe("app prefix resolution", () => {
             [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
             [FRAME_ID_ENV]: "fil_test_frame",
             [FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV]: descriptorPath,
-            [POD_DATABASE_PREFIX_ENV]: "",
+            [SANDBOX_DATABASE_PREFIX_ENV]: "",
           },
           () => ownerOf(name)
         )
@@ -433,7 +512,7 @@ describe("app prefix resolution", () => {
       const name = uniqueName("chat");
       createDatabaseOwnedBy(`myapp__${name}`, "myapp");
       createDatabaseOwnedBy(`otherapp__${name}`, "otherapp");
-      process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+      process.env[SANDBOX_DATABASE_PREFIX_ENV] = "myapp__";
 
       expect(
         runWithInvocationEnv(contextEnv("otherapp__"), () => ownerOf(name))
@@ -444,7 +523,7 @@ describe("app prefix resolution", () => {
       const name = uniqueName("chat");
       createDatabaseOwnedBy(name, "bare");
       createDatabaseOwnedBy(`myapp__${name}`, "myapp");
-      process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+      process.env[SANDBOX_DATABASE_PREFIX_ENV] = "myapp__";
 
       expect(runWithInvocationEnv(contextEnv(""), () => ownerOf(name))).toBe(
         "bare"
