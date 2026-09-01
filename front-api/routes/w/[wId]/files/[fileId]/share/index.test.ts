@@ -1,5 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -234,7 +234,7 @@ describe("share scope endpoint", () => {
       expect((await response.json()).scope).toBe("workspace_and_emails");
     });
 
-    it("lazily repairs a missing Frames v2 sharing record", async () => {
+    it("rejects Frames v2 scope mutations", async () => {
       const { auth, user, workspace } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
@@ -246,18 +246,15 @@ describe("share scope endpoint", () => {
         status: "ready",
         useCase: "conversation",
       });
-      await FileResource.shareableFileModel.destroy({
-        where: { fileId: file.id, workspaceId: file.workspaceId },
-      });
-      expect(await file.getShareInfo()).toBeNull();
+      const initialScope = await file.getShareScope();
 
       const response = await postShare(workspace, file.sId, {
-        shareScope: "workspace_and_emails",
+        shareScope: "emails_only",
       });
 
-      expect(response.status).toBe(200);
-      expect((await response.json()).scope).toBe("workspace_and_emails");
-      expect(await file.getShareInfo()).not.toBeNull();
+      expect(response.status).toBe(400);
+      expect(await file.getShareScope()).toBe(initialScope);
+      expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
     });
   });
 });

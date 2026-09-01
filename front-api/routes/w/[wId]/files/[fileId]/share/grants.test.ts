@@ -5,9 +5,10 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
@@ -95,6 +96,54 @@ describe("sharing grants endpoint", () => {
     const response = await getGrants(workspace, file.sId);
 
     expect(response.status).toBe(400);
+  });
+
+  it("rejects adding grants to Frames v2", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    const response = await postGrants(workspace, file.sId, {
+      emails: ["viewer@example.com"],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await file.listActiveSharingGrants()).toEqual([]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("rejects revoking grants from Frames v2", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "admin",
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+    });
+    const [grant] = await file.addSharingGrants(auth, {
+      emails: ["viewer@example.com"],
+    });
+    assert(grant);
+
+    const response = await deleteGrant(workspace, file.sId, {
+      grantId: grant.id,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await file.listActiveSharingGrants()).toHaveLength(1);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 
   it("should return empty grants list for a new frame", async () => {

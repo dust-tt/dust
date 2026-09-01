@@ -79,7 +79,9 @@ app.post(
     const auth = ctx.get("auth");
     const { fileId } = ctx.req.valid("param");
 
-    const file = await fetchShareableFile(ctx, auth, fileId);
+    const file = await fetchShareableFile(ctx, auth, fileId, {
+      rejectFrameV2: true,
+    });
     if (file instanceof Response) {
       return file;
     }
@@ -156,7 +158,8 @@ app.post(
 async function fetchShareableFile(
   ctx: Context,
   auth: Authenticator,
-  fileId: string
+  fileId: string,
+  { rejectFrameV2 = false }: { rejectFrameV2?: boolean } = {}
 ): Promise<FileResource | (Response & TypedResponse<APIErrorResponse>)> {
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {
@@ -188,6 +191,16 @@ async function fetchShareableFile(
       api_error: {
         type: "invalid_request_error",
         message: "Only Frame files can be shared publicly.",
+      },
+    });
+  }
+
+  if (rejectFrameV2 && file.isFrameV2) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Frames v2 sharing must be configured in the Dust UI.",
       },
     });
   }
