@@ -38,6 +38,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Clock,
+  cn,
   createSelectionColumn,
   DataTable,
   Icon,
@@ -533,6 +534,147 @@ const seatsIconColumn: ColumnDef<RowData, string> = {
   },
 };
 
+function computeSeatUsage({
+  seatType,
+  memberUsageLimit,
+  seatBalanceAwu,
+  consumedFromAllowanceAwuCredits,
+}: {
+  seatType: MembershipSeatType | null;
+  memberUsageLimit: number | null;
+  seatBalanceAwu: number | null;
+  consumedFromAllowanceAwuCredits: number;
+}): {
+  percent: number;
+  isOverAllowance: boolean;
+  consumed: number;
+  allowance: number;
+} {
+  const allowance = memberUsageLimit ?? 0;
+  const isFreeWithBalance =
+    seatType === "free" &&
+    typeof seatBalanceAwu === "number" &&
+    typeof memberUsageLimit === "number";
+  const consumed = isFreeWithBalance
+    ? Math.max(0, memberUsageLimit - seatBalanceAwu)
+    : consumedFromAllowanceAwuCredits;
+  if (allowance <= 0) {
+    return {
+      percent: consumed > 0 ? 100 : 0,
+      isOverAllowance: consumed > 0,
+      consumed,
+      allowance,
+    };
+  }
+  return {
+    percent: Math.min(100, (consumed / allowance) * 100),
+    isOverAllowance: consumed > allowance,
+    consumed,
+    allowance,
+  };
+}
+
+interface SeatUsageRingProps {
+  percent: number;
+  colorClassName: string;
+}
+
+function SeatUsageRing({ percent, colorClassName }: SeatUsageRingProps) {
+  const radius = 6;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(100, Math.max(0, percent));
+  const dashOffset = circumference * (1 - clamped / 100);
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" className="-rotate-90">
+      <circle
+        cx="8"
+        cy="8"
+        r={radius}
+        strokeWidth="2"
+        fill="none"
+        stroke="currentColor"
+        className="text-muted-background"
+      />
+      {clamped > 0 && (
+        <circle
+          cx="8"
+          cy="8"
+          r={radius}
+          strokeWidth="2"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          className={colorClassName}
+        />
+      )}
+    </svg>
+  );
+}
+
+const seatUsageColumn: ColumnDef<RowData, string> = {
+  id: "seatUsage" as const,
+  header: "Seat usage",
+  enableSorting: false,
+  accessorFn: (row) =>
+    computeSeatUsage({
+      seatType: row.seatType,
+      memberUsageLimit: row.memberUsageLimit,
+      seatBalanceAwu: row.seatBalanceAwu,
+      consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
+    }).percent.toString(),
+  cell: (info: Info) => {
+    const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
+      info.row.original;
+    if (
+      isSeatChangePending ||
+      !seatType ||
+      memberUsageLimit === null ||
+      memberUsageLimit <= 0
+    ) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <span className="text-sm text-muted-foreground">--</span>
+        </DataTable.CellContent>
+      );
+    }
+    const { percent, isOverAllowance, consumed, allowance } = computeSeatUsage({
+      seatType,
+      memberUsageLimit,
+      seatBalanceAwu,
+      consumedFromAllowanceAwuCredits:
+        info.row.original.consumedFromAllowanceAwuCredits,
+    });
+    const colorClassName = isOverAllowance
+      ? "text-warning-700"
+      : getSeatIconColorClass(seatType);
+    return (
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={`${formatCredits(consumed)} / ${formatCredits(allowance)} credits used`}
+          trigger={
+            <div className="flex items-center gap-2">
+              <span className={cn("text-xs font-medium", colorClassName)}>
+                {Math.round(percent)}%
+              </span>
+              <SeatUsageRing
+                percent={percent}
+                colorClassName={colorClassName}
+              />
+            </div>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-24",
+    headerAlign: "center",
+  },
+};
+
 function buildConsumedAwuCreditsColumn(
   creditsResetAt: string | null
 ): ColumnDef<RowData, string> {
@@ -660,7 +802,7 @@ function buildColumns({
     ...(() => {
       switch (variant) {
         case "compact":
-          return [seatsIconColumn];
+          return [seatsIconColumn, seatUsageColumn];
         case "legacy":
           return [seatTypeColumn];
         default:
