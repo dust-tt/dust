@@ -28,7 +28,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.106";
+const DUST_BASE_IMAGE_VERSION = "0.8.107";
 const DSBX_CLI_VERSION = "0.1.56";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -205,7 +205,7 @@ function getLocalDirContent(
 
 function getAgentProxiedSetupCommand(): string {
   // agent-proxied has its own primary group. Supplementary membership in
-  // agent is limited to explicit shared state such as /files and pod DBs.
+  // agent is limited to explicit shared state such as /files and sandbox DBs.
   return [
     `groupadd --gid ${AGENT_PROXIED_UID} agent-proxied`,
     `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent-proxied --groups agent --shell /bin/bash agent-proxied`,
@@ -224,7 +224,7 @@ function getEgressResolverUserSetupCommand(): string {
 }
 
 function getDustStateUserSetupCommand(): string {
-  // dust-state runs the litestream replication daemon (pod state). Primary
+  // dust-state runs the Litestream replication daemon (sandbox state). Primary
   // group dust-state owns the replica mount point; supplementary membership
   // in `agent` grants rw on the live databases dir shared with agent-proxied
   // function code. Deliberately not egress-controlled: it never executes
@@ -235,21 +235,24 @@ function getDustStateUserSetupCommand(): string {
   ].join(" && ");
 }
 
-function getPodStateSetupCommand(): string {
-  // /pod-state/databases holds the live SQLite files: both agent-proxied
+function getSandboxStateSetupCommand(): string {
+  // /sandbox-state/databases holds the live SQLite files: both agent-proxied
   // function code (group agent) and the litestream daemon (user dust-state)
   // need rw, so it gets the same setgid + default-ACL treatment as /files.
   // /sandbox-state/replica is the gcsfuse mount point for the litestream replica
-  // — the durable copy of pod state. Untrusted workload code must never read
+  // — the durable copy of sandbox state. Untrusted workload code must never read
   // or tamper with it, so the directory is dust-state-only: 0700 here, no
   // allow_other on the runtime mount.
+  // /pod-state/databases remains an absolute symlink for callers that still
+  // emit the legacy path. There is only one physical live database directory.
   return [
-    "install -d -o root -g root -m 755 /pod-state",
-    "install -d -o dust-state -g agent -m 2770 /pod-state/databases",
-    "setfacl -R -d -m g::rwx /pod-state/databases",
-    "setfacl -R -m g::rwx /pod-state/databases",
     "install -d -o root -g root -m 755 /sandbox-state",
+    "install -d -o dust-state -g agent -m 2770 /sandbox-state/databases",
+    "setfacl -R -d -m g::rwx /sandbox-state/databases",
+    "setfacl -R -m g::rwx /sandbox-state/databases",
     "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica",
+    "install -d -o root -g root -m 755 /pod-state",
+    "ln -s /sandbox-state/databases /pod-state/databases",
   ].join(" && ");
 }
 
@@ -346,7 +349,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   )
   .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
   .runCmd(getDustStateUserSetupCommand(), { user: "root" })
-  .runCmd(getPodStateSetupCommand(), { user: "root" })
+  .runCmd(getSandboxStateSetupCommand(), { user: "root" })
   // Hidden tools: installed but not in manifest (back profile functions)
   .runCmd(
     "apt-get update && apt-get install -y ripgrep fd-find sd systemd-resolved",

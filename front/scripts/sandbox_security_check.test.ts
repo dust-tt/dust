@@ -7,9 +7,9 @@ import {
   assertNoEmptyPasswordAccounts,
   assertNoPasswordlessSudoers,
   assertNoPrivilegedGroupMembers,
-  assertPodStateDirsSafe,
   assertRootInvokedHelpersSafe,
   assertRootPathSafe,
+  assertSandboxStatePathsSafe,
   assertSshAndDnsHardening,
   assertStaticRootConsumedDirsSafe,
   assertSudoAbsent,
@@ -204,36 +204,42 @@ describe("sandbox security check assertions", () => {
     ).toThrow("missing root-invoked helper audit for /opt/bin/litestream");
   });
 
-  test("detects unsafe pod-state directory ownership or modes", () => {
+  test("detects unsafe sandbox-state paths", () => {
     const safeOutput = [
-      "POD_STATE_DIR=/pod-state root:root 755 drwxr-xr-x",
-      "POD_STATE_DIR=/pod-state/databases dust-state:agent 2770 drwxrws---",
-      "POD_STATE_DIR=/sandbox-state root:root 755 drwxr-xr-x",
-      "POD_STATE_DIR=/sandbox-state/replica dust-state:dust-state 700 drwx------",
+      "SANDBOX_STATE_DIR=/sandbox-state root:root 755 drwxr-xr-x",
+      "SANDBOX_STATE_DIR=/sandbox-state/databases dust-state:agent 2770 drwxrws---",
+      "SANDBOX_STATE_DIR=/sandbox-state/replica dust-state:dust-state 700 drwx------",
+      "SANDBOX_STATE_DIR=/pod-state root:root 755 drwxr-xr-x",
+      "SANDBOX_STATE_LEGACY_DATABASE_LINK=/pod-state/databases /sandbox-state/databases",
     ].join("\n");
 
-    expect(() => assertPodStateDirsSafe(safeOutput)).not.toThrow();
+    expect(() => assertSandboxStatePathsSafe(safeOutput)).not.toThrow();
     expect(() =>
-      assertPodStateDirsSafe(
+      assertSandboxStatePathsSafe(
         safeOutput.replace(
           "/sandbox-state/replica dust-state:dust-state 700",
           "/sandbox-state/replica dust-state:dust-state 755"
         )
       )
-    ).toThrow("pod-state directory /sandbox-state/replica");
+    ).toThrow("sandbox-state directory /sandbox-state/replica");
     expect(() =>
-      assertPodStateDirsSafe(
+      assertSandboxStatePathsSafe(
         safeOutput.replace(
-          "/pod-state/databases dust-state:agent 2770",
-          "/pod-state/databases agent:agent 2770"
+          "/sandbox-state/databases dust-state:agent 2770",
+          "/sandbox-state/databases agent:agent 2770"
         )
       )
-    ).toThrow("pod-state directory /pod-state/databases");
+    ).toThrow("sandbox-state directory /sandbox-state/databases");
     expect(() =>
-      assertPodStateDirsSafe(
-        "POD_STATE_DIR=/pod-state root:root 755 drwxr-xr-x"
+      assertSandboxStatePathsSafe(
+        safeOutput.replace(
+          "/pod-state/databases /sandbox-state/databases",
+          "/pod-state/databases /pod-state/other"
+        )
       )
-    ).toThrow("missing pod-state directory audit for /pod-state/databases");
+    ).toThrow(
+      "legacy database state path must be a symlink to /sandbox-state/databases"
+    );
   });
 
   test("detects root PATH entries that can resolve agent-writable binaries", () => {

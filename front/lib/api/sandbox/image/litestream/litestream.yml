@@ -1,8 +1,8 @@
 # Managed by Dust. Static config: every path is a fixed constant of the
-# pod-state layout, so it is baked at image build. The litestream.service unit
-# stays disabled at build and is started by front at runtime AFTER the replica
-# gcsfuse mount and the cold-start restore — starting at boot would let the
-# daemon write to the unmounted local directory and manage files mid-restore.
+# sandbox-state layout, so it is baked at image build. The litestream.service
+# unit stays disabled at build and is started by front at runtime AFTER the
+# replica gcsfuse mount and the cold-start restore — starting at boot would let
+# the daemon write to the unmounted local directory and manage files mid-restore.
 
 # JSON logs (slog): fluent-bit parses the journal MESSAGE with its json
 # parser, so level/msg land as structured fields in Datadog.
@@ -21,7 +21,7 @@ socket:
 # ignored by the watcher (header validation). Replica subdirectories are
 # named by database FILENAME: /sandbox-state/replica/{db}.db/ltx/...
 dbs:
-  - dir: /pod-state/databases
+  - dir: /sandbox-state/databases
     pattern: "*.db"
     watch: true
     replica:
