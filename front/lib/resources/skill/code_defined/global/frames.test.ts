@@ -90,27 +90,16 @@ describe("framesSkill.fetchInstructions", () => {
       "Chat apps, task lists, trackers, forms, CRUD apps"
     );
     expect(instructions).toContain(
-      "Do not substitute in-memory arrays or seed data"
+      "Do not store durable application state in memory; use a Frame database"
     );
-    expect(instructions).toContain("Do not inspect installed");
     expect(instructions).toContain(
-      "`@dust/pod` or `@dust/react-hooks` package internals"
+      "Use the Computer to create and edit their source"
     );
     expect(instructions).toContain("Do not pass the convenience aliases");
     expect(instructions).toContain("`/files/conversation` or `/files/pod`");
     expect(instructions).toContain(
       "Never run concurrent file mutations against the same path"
     );
-    expect(instructions).toContain("Do not use Files MCP");
-    expect(instructions).toContain("mutation tools for Frame authoring");
-    expect(instructions).toContain(
-      "exercise at least one read and one representative mutation"
-    );
-    expect(instructions).toContain(
-      'Distinguish "the UI renders" from "the application works end to end"'
-    );
-    expect(instructions).toContain("Never claim completion");
-    expect(instructions).toContain("while a verification step failed");
     expect(instructions).toContain(
       "Other interactive-content tools remain available"
     );

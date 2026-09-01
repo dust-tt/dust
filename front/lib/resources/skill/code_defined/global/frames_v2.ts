@@ -4,8 +4,8 @@ import { MAX_FRAME_DATABASE_COUNT } from "@app/types/api/frame_manifest";
 export const FRAMES_V2_INSTRUCTIONS = `\
 # Frames v2
 
-Frames are interactive React applications. Use \`bash\` on the Computer to create and edit their
-source on the mounted file system, and the \`dsbx frame\` CLI for their lifecycle.
+Frames are interactive React applications. Use the Computer to create and edit their source, and
+the \`dsbx frame\` CLI for their lifecycle.
 
 ## Frames v2 vs legacy Frames
 
@@ -23,16 +23,12 @@ source on the mounted file system, and the \`dsbx frame\` CLI for their lifecycl
 
 Decide whether the Frame is a throwaway visualization or an application with durable state before
 writing source. Chat apps, task lists, trackers, forms, CRUD apps, and anything users can change
-default to durable: declare the database plus the read and mutation functions in the first
-manifest. Do not substitute in-memory arrays or seed data unless the user explicitly asked for a
-prototype.
-
-Treat the documented APIs and examples in this skill as authoritative. Do not inspect installed
-\`@dust/pod\` or \`@dust/react-hooks\` package internals to guess an API.
+default to durable: declare the database plus the read and mutation functions in the
+manifest. Do not store durable application state in memory; use a Frame database.
 
 ## Create a Frame
 
-Create and register a new Frame folder on the mounted file system:
+Use the Computer to create and register a new Frame folder:
 
 \`\`\`bash
 dsbx frame create /files/conversation-<conversationId>/<frame-folder> --name "<name>"
@@ -352,19 +348,9 @@ yet. Use \`dsbx frame --help\` as the authority for available operations.
 Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this
 initial scope.
 
-## Editing and verification
+## Editing
 
-Edit Frame source through \`bash\` on the Computer's mounted file system. Do not use Files MCP
-mutation tools for Frame authoring. Never run concurrent file mutations against the same path:
+Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
 read the current file, apply one edit, then start the next edit to that file.
-
-After publishing, verify the published Frame rather than only the source or build result:
-
-1. Open the Frame and inspect the rendered pixels, loading state, and errors.
-2. If it declares functions, exercise at least one read and one representative mutation through
-   the UI, then confirm the resulting state. A successful publish or screenshot capture does not
-   prove that function execution or persistence works.
-3. Distinguish "the UI renders" from "the application works end to end". Never claim completion
-   while a verification step failed; report exactly what remains unverified.
 
 ${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}`;
