@@ -131,7 +131,7 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
 
     const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
       agentSId,
-      agentName: "test-agent",
+      agentName: agentSId,
       model: streamModel,
       modelResolutionMethod: AUTO_MODEL_ID,
     });
