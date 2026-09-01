@@ -16,6 +16,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { makeAlwaysHeldLockLease } from "@app/tests/utils/LockLeaseFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
@@ -161,6 +162,7 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest: uiOnlyManifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: sourceFiles.slice(0, 1),
     });
 
@@ -210,6 +212,7 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
@@ -301,6 +304,7 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
@@ -328,6 +332,7 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
@@ -354,6 +359,7 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
@@ -378,6 +384,7 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: [
         {
           ...sourceFiles[0],
@@ -404,6 +411,7 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: [
         ...sourceFiles,
         {
