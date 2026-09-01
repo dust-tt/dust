@@ -13,7 +13,7 @@ import {
   CONSUMPTION_DIMENSION_FIELDS,
   CREDIT_MICRO_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
-import { getAwuPoolSummary } from "@app/lib/api/credits/awu_pool_summary";
+import { getAwuPoolCurrentCycle } from "@app/lib/api/credits/awu_pool_summary";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -86,7 +86,7 @@ async function fetchPoolCapCredits(
     return null;
   }
 
-  const poolResult = await getAwuPoolSummary(auth);
+  const poolResult = await getAwuPoolCurrentCycle(auth);
   if (poolResult.isErr()) {
     return null;
   }

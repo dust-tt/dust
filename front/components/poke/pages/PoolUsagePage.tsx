@@ -13,7 +13,8 @@ import { expandMaxTierName } from "@app/lib/client/model_tiers";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
-  usePokeAwuPoolSummary,
+  usePokeAwuPoolCurrentCycle,
+  usePokeAwuPoolCycleHistory,
   usePokeMembersUsage,
 } from "@app/poke/swr/credits";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
@@ -24,7 +25,6 @@ import {
   usePokeWorkspaceAllowedModelTiers,
 } from "@app/poke/swr/model_tiers";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
-import type { AwuPoolCycleBreakdown } from "@app/types/api/credits/awu_pool_summary";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { isCapEligibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -72,30 +72,35 @@ interface PoolCreditCardProps {
 }
 
 function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
-  const { awuPoolSummary, isAwuPoolSummaryLoading, isAwuPoolSummaryError } =
-    usePokeAwuPoolSummary({ owner });
+  const {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+  } = usePokeAwuPoolCurrentCycle({ owner });
+  const {
+    cycleBreakdown,
+    excessCycleBreakdown,
+    isAwuPoolCycleHistoryLoading,
+    isAwuPoolCycleHistoryError,
+  } = usePokeAwuPoolCycleHistory({ owner });
   const {
     totalRemainingCredits,
     totalActiveCredits,
     overageCredits,
-    cycleBreakdown,
     currentCycleConsumedCredits,
     currentCycleStartMs,
     currentCycleEndMs,
     excessConsumedCredits,
-    excessCycleBreakdown,
     programmaticConsumedCredits,
     otherConsumedCredits,
-  } = awuPoolSummary ?? {
+  } = awuPoolCurrentCycle ?? {
     totalRemainingCredits: 0,
     totalActiveCredits: 0,
     overageCredits: null,
-    cycleBreakdown: [] as AwuPoolCycleBreakdown[],
     currentCycleConsumedCredits: null,
     currentCycleStartMs: null,
     currentCycleEndMs: null,
     excessConsumedCredits: null,
-    excessCycleBreakdown: [] as AwuPoolCycleBreakdown[],
     programmaticConsumedCredits: null,
     otherConsumedCredits: null,
   };
@@ -106,8 +111,10 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
 
   return (
     <WorkspaceCreditPoolSection
-      isLoading={isAwuPoolSummaryLoading}
-      isError={!!isAwuPoolSummaryError}
+      isCardsLoading={isAwuPoolCurrentCycleLoading}
+      isCardsError={!!isAwuPoolCurrentCycleError}
+      isTableLoading={isAwuPoolCycleHistoryLoading}
+      isTableError={!!isAwuPoolCycleHistoryError}
       showPoolBranch={hasPool}
       isVisible={hasPool || hasExcessData}
       totalRemainingCredits={totalRemainingCredits}

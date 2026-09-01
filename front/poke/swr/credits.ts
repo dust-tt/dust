@@ -10,7 +10,11 @@ import type { GetApiKeysUsageResponseBody } from "@app/lib/api/credits/api_keys_
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type {
+  AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleHistoryResponseBody,
+  AwuPoolSummaryResponseBody,
+} from "@app/types/api/credits/awu_pool_summary";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
 import type {
@@ -186,6 +190,72 @@ export function usePokeAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+export function usePokeAwuPoolCurrentCycle({
+  owner,
+  disabled,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<AwuPoolCurrentCycleResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/awu-pool-current-cycle`,
+    fetcherFn
+  );
+
+  // Defaulted field-by-field (mirroring `useAwuPoolCurrentCycle`), not just
+  // whole-object, so a cached response predating a newer field can't leave
+  // that field `undefined` downstream.
+  const awuPoolCurrentCycle: AwuPoolCurrentCycleResponseBody | null = data
+    ? {
+        totalRemainingCredits: data.totalRemainingCredits ?? 0,
+        totalActiveCredits: data.totalActiveCredits ?? 0,
+        overageCredits: data.overageCredits ?? null,
+        overageAmountCents: data.overageAmountCents ?? null,
+        overageCurrency: data.overageCurrency ?? null,
+        currentCycleConsumedCredits: data.currentCycleConsumedCredits ?? null,
+        currentCycleStartMs: data.currentCycleStartMs ?? null,
+        currentCycleEndMs: data.currentCycleEndMs ?? null,
+        excessConsumedCredits: data.excessConsumedCredits ?? null,
+        programmaticConsumedCredits: data.programmaticConsumedCredits ?? null,
+        otherConsumedCredits: data.otherConsumedCredits ?? null,
+      }
+    : null;
+
+  return {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading: !error && !data && !disabled,
+    isAwuPoolCurrentCycleError: error,
+    isAwuPoolCurrentCycleValidating: isValidating,
+    mutateAwuPoolCurrentCycle: mutate,
+  };
+}
+
+export function usePokeAwuPoolCycleHistory({
+  owner,
+  disabled,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history`,
+    fetcherFn
+  );
+
+  return {
+    cycleBreakdown: data?.cycleBreakdown ?? emptyArray(),
+    excessCycleBreakdown: data?.excessCycleBreakdown ?? emptyArray(),
+    isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
+    isAwuPoolCycleHistoryError: error,
+    isAwuPoolCycleHistoryValidating: isValidating,
+    mutateAwuPoolCycleHistory: mutate,
   };
 }
 

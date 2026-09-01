@@ -53,7 +53,8 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
-  useAwuPoolSummary,
+  useAwuPoolCurrentCycle,
+  useAwuPoolCycleHistory,
   useAwuPurchaseInfo,
   useCreditPurchaseInfo,
   useMyUsage,
@@ -470,15 +471,23 @@ export function UsagePageRedesign() {
     currentCycleConsumedCredits,
     currentCycleStartMs,
     currentCycleEndMs,
-    cycleBreakdown,
     excessConsumedCredits,
-    excessCycleBreakdown,
     programmaticConsumedCredits,
     otherConsumedCredits,
-    isAwuPoolSummaryLoading,
-    isAwuPoolSummaryError,
-    mutateAwuPoolSummary,
-  } = useAwuPoolSummary({
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+    mutateAwuPoolCurrentCycle,
+  } = useAwuPoolCurrentCycle({
+    workspaceId: owner.sId,
+  });
+
+  const {
+    cycleBreakdown,
+    excessCycleBreakdown,
+    isAwuPoolCycleHistoryLoading,
+    isAwuPoolCycleHistoryError,
+    mutateAwuPoolCycleHistory,
+  } = useAwuPoolCycleHistory({
     workspaceId: owner.sId,
   });
 
@@ -1103,7 +1112,8 @@ export function UsagePageRedesign() {
         isOpen={showBuyCreditDialog}
         onClose={() => setShowBuyCreditDialog(false)}
         onPurchaseSuccess={() => {
-          void mutateAwuPoolSummary();
+          void mutateAwuPoolCurrentCycle();
+          void mutateAwuPoolCycleHistory();
         }}
         workspaceId={owner.sId}
         awuPurchaseInfo={awuPurchaseInfo}
@@ -1276,8 +1286,10 @@ export function UsagePageRedesign() {
 
         {!showConsumptionAnalytics && (
           <WorkspaceCreditPoolSection
-            isLoading={isAwuPoolSummaryLoading}
-            isError={!!isAwuPoolSummaryError}
+            isCardsLoading={isAwuPoolCurrentCycleLoading}
+            isCardsError={!!isAwuPoolCurrentCycleError}
+            isTableLoading={isAwuPoolCycleHistoryLoading}
+            isTableError={!!isAwuPoolCycleHistoryError}
             showPoolBranch={hasPool || isReadOnly}
             isVisible={hasPool || isReadOnly || hasExcessData}
             totalRemainingCredits={totalRemainingCredits}
@@ -1427,7 +1439,7 @@ export function UsagePageRedesign() {
                   <ModelTiersSettingsCard owner={owner} readOnly={isReadOnly} />
                 )}
                 <LockedSection
-                  locked={!isAwuPoolSummaryLoading && !hasPool}
+                  locked={!isAwuPoolCurrentCycleLoading && !hasPool}
                   className="flex flex-col gap-10"
                 >
                   <UsageProgrammaticLimitCard

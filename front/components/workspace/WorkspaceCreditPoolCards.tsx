@@ -221,9 +221,47 @@ export function WorkspaceCreditPoolCycleHistoryTable({
   return <DataTable data={rows} columns={CYCLE_HISTORY_COLUMNS} />;
 }
 
+interface WorkspaceCreditPoolHistoryProps {
+  isTableLoading: boolean;
+  isTableError: boolean;
+  cycleBreakdown: AwuPoolCycleBreakdown[];
+}
+
+// Table area rendered under the value cards. Kept separate so a slow cycle
+// history fetch never blocks the (fast) cards above it from showing.
+function WorkspaceCreditPoolHistory({
+  isTableLoading,
+  isTableError,
+  cycleBreakdown,
+}: WorkspaceCreditPoolHistoryProps) {
+  if (isTableError) {
+    return (
+      <ContentMessage
+        title="Failed to load cycle history"
+        icon={AlertCircle}
+        variant="warning"
+      >
+        An error occurred while loading past-cycle consumption.
+      </ContentMessage>
+    );
+  }
+  if (isTableLoading) {
+    return (
+      <div className="flex justify-center py-4">
+        <Spinner />
+      </div>
+    );
+  }
+  return (
+    <WorkspaceCreditPoolCycleHistoryTable cycleBreakdown={cycleBreakdown} />
+  );
+}
+
 interface WorkspaceCreditPoolSectionProps {
-  isLoading: boolean;
-  isError: boolean;
+  isCardsLoading: boolean;
+  isCardsError: boolean;
+  isTableLoading: boolean;
+  isTableError: boolean;
   showPoolBranch: boolean;
   isVisible: boolean;
   totalRemainingCredits: number;
@@ -243,8 +281,10 @@ interface WorkspaceCreditPoolSectionProps {
 // consumption" block so the customer-facing usage page and its Poke mirror
 // can't drift from each other on this section's structure
 export function WorkspaceCreditPoolSection({
-  isLoading,
-  isError,
+  isCardsLoading,
+  isCardsError,
+  isTableLoading,
+  isTableError,
   showPoolBranch,
   isVisible,
   totalRemainingCredits,
@@ -259,7 +299,7 @@ export function WorkspaceCreditPoolSection({
   poolSecondaryContent,
   footer,
 }: WorkspaceCreditPoolSectionProps) {
-  if (!isLoading && !isError && !isVisible) {
+  if (!isCardsLoading && !isCardsError && !isVisible) {
     return null;
   }
 
@@ -269,7 +309,7 @@ export function WorkspaceCreditPoolSection({
         {showPoolBranch ? "Workspace credit pool" : "Excess credit consumption"}
       </Page.H>
 
-      {isError ? (
+      {isCardsError ? (
         <ContentMessage
           title="Failed to load Workspace Credits Pool"
           icon={AlertCircle}
@@ -277,7 +317,7 @@ export function WorkspaceCreditPoolSection({
         >
           An error occurred while loading the workspace&apos;s credit pool data.
         </ContentMessage>
-      ) : isLoading ? (
+      ) : isCardsLoading ? (
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
@@ -293,7 +333,9 @@ export function WorkspaceCreditPoolSection({
             isLoading={false}
           />
           {poolSecondaryContent}
-          <WorkspaceCreditPoolCycleHistoryTable
+          <WorkspaceCreditPoolHistory
+            isTableLoading={isTableLoading}
+            isTableError={isTableError}
             cycleBreakdown={cycleBreakdown}
           />
           {footer}
@@ -308,7 +350,9 @@ export function WorkspaceCreditPoolSection({
             otherConsumedCredits={otherConsumedCredits}
             isLoading={false}
           />
-          <WorkspaceCreditPoolCycleHistoryTable
+          <WorkspaceCreditPoolHistory
+            isTableLoading={isTableLoading}
+            isTableError={isTableError}
             cycleBreakdown={excessCycleBreakdown}
           />
           {footer}

@@ -6,7 +6,9 @@ export type AwuPoolCycleBreakdown = {
   consumedCredits: number;
 };
 
-export type AwuPoolSummaryResponseBody = {
+// Current-cycle figures only — cheap to compute (bounded ledger lookup),
+// meant to render before cycle history is available.
+export type AwuPoolCurrentCycleResponseBody = {
   totalRemainingCredits: number;
   totalActiveCredits: number;
   /**
@@ -19,14 +21,22 @@ export type AwuPoolSummaryResponseBody = {
   overageAmountCents: number | null;
   /** Invoice currency — needed to format `overageAmountCents`. */
   overageCurrency: SupportedCurrency | null;
-  // Per-cycle pool consumption, most recent first
-  cycleBreakdown: AwuPoolCycleBreakdown[];
   currentCycleConsumedCredits: number | null;
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   // PAYG credits
   excessConsumedCredits: number | null;
-  excessCycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
   otherConsumedCredits: number | null;
 };
+
+// Past-cycle history — requires scanning the full ledger window, slower than
+// `AwuPoolCurrentCycleResponseBody`.
+export type AwuPoolCycleHistoryResponseBody = {
+  // Per-cycle pool consumption, most recent first
+  cycleBreakdown: AwuPoolCycleBreakdown[];
+  excessCycleBreakdown: AwuPoolCycleBreakdown[];
+};
+
+export type AwuPoolSummaryResponseBody = AwuPoolCurrentCycleResponseBody &
+  AwuPoolCycleHistoryResponseBody;
