@@ -55,6 +55,32 @@ describe("renewing locks", () => {
     ).resolves.toBe(false);
   });
 
+  it("measures the initial lease from the start of lock acquisition", async () => {
+    const redisClient = makeRedisClient();
+    let finishAcquisition: (value: string) => void = () => {};
+    const pendingAcquisition = new Promise<string>((resolve) => {
+      finishAcquisition = resolve;
+    });
+    vi.mocked(redisClient.set).mockImplementationOnce(() => pendingAcquisition);
+    getRedisStreamClientMock.mockResolvedValue(redisClient);
+
+    const resultPromise = executeWithRenewingLockResult(
+      "frame:source:123",
+      async (lease) => {
+        const held = lease.check();
+        return held.isErr() ? held : new Ok("unexpectedly-held");
+      },
+      1_000,
+      { lockTtlMs: 90 }
+    );
+
+    await vi.advanceTimersByTimeAsync(90);
+    finishAcquisition("OK");
+    const result = await resultPromise;
+
+    expect(result.isErr() && isLockLeaseLostError(result.error)).toBe(true);
+  });
+
   it("does not overlap renewal requests", async () => {
     const redisClient = makeRedisClient();
     let finishRefresh: (value: number) => void = () => {};
@@ -162,6 +188,34 @@ describe("renewing locks", () => {
       { lockTtlMs: 90 }
     );
     const result = await resultPromise;
+
+    expect(result.isErr() && isLockLeaseLostError(result.error)).toBe(true);
+  });
+
+  it("measures a renewed lease from refresh start, not a delayed response", async () => {
+    const redisClient = makeRedisClient();
+    let finishRefresh: (value: number) => void = () => {};
+    const pendingRefresh = new Promise<number>((resolve) => {
+      finishRefresh = resolve;
+    });
+    vi.mocked(redisClient.eval)
+      .mockImplementationOnce(() => pendingRefresh)
+      .mockResolvedValue(1);
+    getRedisStreamClientMock.mockResolvedValue(redisClient);
+
+    const result = await executeWithRenewingLockResult(
+      "frame:source:123",
+      async (lease) => {
+        await vi.advanceTimersByTimeAsync(30);
+        await vi.advanceTimersByTimeAsync(60);
+        finishRefresh(1);
+        await vi.advanceTimersByTimeAsync(22);
+        const held = lease.check();
+        return held.isErr() ? held : new Ok("unexpectedly-held");
+      },
+      1_000,
+      { lockTtlMs: 90 }
+    );
 
     expect(result.isErr() && isLockLeaseLostError(result.error)).toBe(true);
   });

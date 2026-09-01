@@ -131,13 +131,19 @@ async function acquireLock(
     retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS,
     traceAcquireResource,
   }: ExecuteWithLockOptions
-): Promise<{ client: RedisClientType; lockValue: string | undefined }> {
+): Promise<{
+  client: RedisClientType;
+  lockAttemptStartedAtMs: number | undefined;
+  lockValue: string | undefined;
+}> {
   const client = await getRedisStreamClient({ origin: "lock" });
+  let lockAttemptStartedAtMs: number | undefined;
 
   const acquire = async (): Promise<string | undefined> => {
     const startMs = Date.now();
     let acquired: string | undefined;
     while (Date.now() - startMs < timeoutMs) {
+      lockAttemptStartedAtMs = performance.now();
       // Try to acquire the lock
       acquired = await distributedLock(client, lockName, lockTtlMs);
       if (acquired) {
@@ -160,7 +166,11 @@ async function acquireLock(
       )
     : await acquire();
 
-  return { client, lockValue };
+  return {
+    client,
+    lockAttemptStartedAtMs: lockValue ? lockAttemptStartedAtMs : undefined,
+    lockValue,
+  };
 }
 
 async function runWithAcquiredLock<T>(
@@ -237,10 +247,15 @@ async function runWithRenewingLockResult<T, E>(
   callback: (
     lease: LockLeaseGuard
   ) => Promise<Result<T, E | LockLeaseLostError>>,
-  lockTtlMs: number
+  lockTtlMs: number,
+  lockAttemptStartedAtMs: number
 ): Promise<Result<T, E | LockLeaseLostError>> {
   const renewalIntervalMs = Math.max(1, Math.floor(lockTtlMs / 3));
-  const lease = createLockLeaseGuard(lockName, lockTtlMs, performance.now());
+  const lease = createLockLeaseGuard(
+    lockName,
+    lockTtlMs,
+    lockAttemptStartedAtMs
+  );
   const stopController = new AbortController();
   const renew = async () => {
     const nextRenewalDelayMs = () =>
@@ -339,9 +354,13 @@ export const executeWithRenewingLockResult = async <T, E>(
   options: ExecuteWithLockOptions = {}
 ): Promise<Result<T, E | LockAcquisitionTimeoutError | LockLeaseLostError>> => {
   const { lockTtlMs = 5_000 } = options;
-  const { client, lockValue } = await acquireLock(lockName, timeoutMs, options);
+  const { client, lockAttemptStartedAtMs, lockValue } = await acquireLock(
+    lockName,
+    timeoutMs,
+    options
+  );
 
-  if (!lockValue) {
+  if (!lockValue || lockAttemptStartedAtMs === undefined) {
     return new Err(new LockAcquisitionTimeoutError(lockName));
   }
 
@@ -350,6 +369,7 @@ export const executeWithRenewingLockResult = async <T, E>(
     lockName,
     lockValue,
     callback,
-    lockTtlMs
+    lockTtlMs,
+    lockAttemptStartedAtMs
   );
 };
