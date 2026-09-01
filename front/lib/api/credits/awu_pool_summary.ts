@@ -117,6 +117,9 @@ async function getPoolLedgerData({
   return new Ok({ poolCommitIds, ledgerEntries });
 }
 
+// O(invoices x ledgerEntries) via computeCycleBreakdown's .map, but invoices
+// are capped at MAX_CYCLE_HISTORY_LIMIT (24) and ledgerEntries is bounded to
+// the same history window, so this stays cheap.
 function sumPoolLedgerEntriesForInvoice(
   ledgerEntries: PoolLedgerEntry[],
   invoiceId: string
