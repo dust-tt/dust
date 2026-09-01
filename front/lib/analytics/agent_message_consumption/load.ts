@@ -53,7 +53,6 @@ export type ConsumptionAnalyticsMessageMetadata = {
   agentMessageId: string;
   apiKeyName: string | null;
   completedAt: Date;
-  createdAt: Date;
   contextOrigin: UserMessageOrigin | null;
   conversationId: string;
   messageStatus: AgentMessageStatus;
@@ -298,7 +297,6 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     apiKeyName,
     billedCredits: agentMessage.costCredits,
     completedAt: agentMessage.completedAt,
-    createdAt: agentMessage.createdAt,
     contextOrigin: triggeringUserMessage.origin,
     conversationId: conversation.conversationId,
     dustRunIds,

@@ -152,7 +152,7 @@ async function fetchUserDayCellsBatch({
         { terms: { context_origin: USER_USAGE_ORIGINS } },
         {
           range: {
-            created_at: {
+            completed_at: {
               gte: windowStart.toISOString(),
               lt: windowEnd.toISOString(),
             },
@@ -202,7 +202,7 @@ async function fetchUserDayCellsBatch({
         {
           day: {
             date_histogram: {
-              field: "created_at",
+              field: "completed_at",
               calendar_interval: "1d",
               time_zone: "UTC",
             },

@@ -237,7 +237,6 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       agent_message_id: context.agentMessage.sId,
       attribution_version: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
       completed_at: context.completedAt.toISOString(),
-      created_at: context.agentMessage.createdAt.toISOString(),
       consumption_key: `run-usage:${context.runUsageModelId}`,
       consumption_type: "llm",
       conversation_id: context.conversation.sId,

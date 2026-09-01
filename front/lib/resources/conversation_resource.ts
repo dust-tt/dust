@@ -113,7 +113,6 @@ export type AgentMessageConsumptionAnalyticsContext = {
     agentConfigurationId: string;
     agentConfigurationVersion: number;
     completedAt: Date | null;
-    createdAt: Date;
     costCredits: number | null;
     agentMessageModelId: ModelId;
     modelResolutionMethod: ModelResolutionMethodType | null;
@@ -867,7 +866,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         agentConfigurationId: agentMessage.agentConfigurationId,
         agentConfigurationVersion: agentMessage.agentConfigurationVersion,
         completedAt: agentMessage.completedAt,
-        createdAt: messageRow.createdAt,
         costCredits: agentMessage.costCredits,
         agentMessageModelId: agentMessage.id,
         modelResolutionMethod: agentMessage.modelResolutionMethod,

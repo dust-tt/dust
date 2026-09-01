@@ -36,7 +36,6 @@ function makeDocument(): AgentMessageConsumptionAnalyticsData {
     api_key_name: null,
     attribution_version: 4,
     completed_at: "2026-08-07T12:00:00.000Z",
-    created_at: "2026-08-07T11:59:00.000Z",
     consumption_key: "run-usage:1",
     consumption_type: "llm",
     context_origin: "web",

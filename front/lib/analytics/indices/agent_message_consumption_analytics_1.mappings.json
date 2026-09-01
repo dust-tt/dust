@@ -3,9 +3,6 @@
     "completed_at": {
       "type": "date"
     },
-    "created_at": {
-      "type": "date"
-    },
     "workspace_id": {
       "type": "keyword"
     },

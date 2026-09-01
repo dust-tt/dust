@@ -127,7 +127,6 @@ describe("buildLlmConsumptionDocuments", () => {
       expect.objectContaining({
         agent_message_id: agentMessage.sId,
         completed_at: completedAt.toISOString(),
-        created_at: agentMessage.createdAt.toISOString(),
         consumption_key: `run-usage:${runUsageModelId}`,
         consumption_type: "llm",
         credit_micro: 5_000_000,

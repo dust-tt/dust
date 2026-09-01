@@ -65,7 +65,6 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
   api_key_name: null,
   attribution_version: 1,
   completed_at: "2026-08-01T00:00:00.000Z",
-  created_at: "2026-07-31T23:59:00.000Z",
   consumption_key: "run-usage:1",
   context_origin: "api",
   normalized_origin: "api",
