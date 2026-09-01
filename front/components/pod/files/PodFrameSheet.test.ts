@@ -45,8 +45,8 @@ vi.mock("@app/components/pod/files/PinPodBannerButton", () => ({
   PinPodBannerButton: () => null,
 }));
 
-vi.mock("@app/components/pod/files/PodFrameTabButton", () => ({
-  PodFrameTabButton: () => null,
+vi.mock("@app/components/pod/files/PodFileTabButton", () => ({
+  PodFileTabButton: () => null,
 }));
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
