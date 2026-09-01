@@ -60,6 +60,9 @@ class FileStorageMock {
   private _signedUploadUrlCalls: SignedUrlCall[] = [];
   private _metadataCalls: string[] = [];
   private _objectStore = new Map<string, string>();
+  private _objectGenerations = new Map<string, string>();
+  private _objectVersions = new Map<string, Map<string, string>>();
+  private _nextGeneration = 1;
   private _fetchNotFoundPredicate: (filePath: string) => boolean = () => false;
   private _existsPredicate: (filePath: string) => boolean = () => true;
   private _saveShouldFail: (filePath: string) => boolean = () => false;
@@ -70,6 +73,7 @@ class FileStorageMock {
     () => null;
   private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
     false;
+  private _afterCopyFile: (src: string, dest: string) => void = () => {};
   private _filesByPrefix: (
     prefix: string
   ) => { name: string; metadata: Record<string, unknown> }[] | null = () =>
@@ -156,6 +160,10 @@ class FileStorageMock {
     this._copyFileShouldFail = predicate;
   }
 
+  setAfterCopyFile(callback: (src: string, dest: string) => void): void {
+    this._afterCopyFile = callback;
+  }
+
   /**
    * Controls what `bucket.getAllFilesByPrefix({ prefix })` resolves to, keyed by the prefix. Return
    * null (the default) to resolve an empty list. Reset between tests via `reset()`.
@@ -213,9 +221,18 @@ class FileStorageMock {
     return this._objectStore.get(filePath);
   }
 
+  getObjectGeneration(filePath: string): string | undefined {
+    return this._objectGenerations.get(filePath);
+  }
+
   // Seed the in-memory object store directly (no write path).
   setObject(filePath: string, content: string): void {
+    const generation = String(this._nextGeneration++);
     this._objectStore.set(filePath, content);
+    this._objectGenerations.set(filePath, generation);
+    const versions = this._objectVersions.get(filePath) ?? new Map();
+    versions.set(generation, content);
+    this._objectVersions.set(filePath, versions);
   }
 
   reset(): void {
@@ -226,6 +243,9 @@ class FileStorageMock {
     this._signedUploadUrlCalls.length = 0;
     this._metadataCalls.length = 0;
     this._objectStore.clear();
+    this._objectGenerations.clear();
+    this._objectVersions.clear();
+    this._nextGeneration = 1;
     this._fetchNotFoundPredicate = () => false;
     this._existsPredicate = () => true;
     this._saveShouldFail = () => false;
@@ -233,6 +253,7 @@ class FileStorageMock {
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
     this._copyFileShouldFail = () => false;
+    this._afterCopyFile = () => {};
     this._filesByPrefix = () => null;
     this._subdirectoryNames = () => null;
     this._deletedPrefixes.length = 0;
@@ -293,10 +314,22 @@ class FileStorageMock {
           }
           return stream;
         }),
-      delete: vi.fn().mockImplementation(() => {
-        this._objectStore.delete(filePath ?? "unknown");
-        return Promise.resolve(undefined);
-      }),
+      delete: vi
+        .fn()
+        .mockImplementation((options?: { ifGenerationMatch?: string }) => {
+          const path = filePath ?? "unknown";
+          if (
+            options?.ifGenerationMatch !== undefined &&
+            this._objectGenerations.get(path) !== options.ifGenerationMatch
+          ) {
+            return Promise.reject(
+              new MockGcsError(412, `Object generation changed: ${path}`)
+            );
+          }
+          this._objectStore.delete(path);
+          this._objectGenerations.delete(path);
+          return Promise.resolve(undefined);
+        }),
       download: vi.fn().mockImplementation(() => {
         const content = this._objectStore.get(filePath ?? "unknown") ?? "";
         return Promise.resolve([Buffer.from(content, "utf-8")]);
@@ -435,18 +468,47 @@ class FileStorageMock {
         }
         return Promise.resolve(new Uint8Array());
       }),
-      copyFile: vi.fn((src: string, dest: string) => {
-        if (this._copyFileShouldFail(src, dest)) {
-          return Promise.reject(
-            new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
-          );
+      copyFile: vi.fn(
+        (
+          src: string,
+          dest: string,
+          _destinationStorage?: unknown,
+          options?: {
+            destinationGenerationMatch?: number | string;
+            sourceGeneration?: string;
+          }
+        ) => {
+          if (
+            options?.destinationGenerationMatch === 0 &&
+            this._objectStore.has(dest)
+          ) {
+            return Promise.reject(
+              new MockGcsError(412, `Object already exists: ${dest}`)
+            );
+          }
+          if (this._copyFileShouldFail(src, dest)) {
+            return Promise.reject(
+              new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
+            );
+          }
+          const content = options?.sourceGeneration
+            ? this._objectVersions.get(src)?.get(options.sourceGeneration)
+            : (this._objectStore.get(src) ?? this._contentForPath(src));
+          if (content === null || content === undefined) {
+            if (options?.sourceGeneration === undefined) {
+              // Preserve the legacy no-op for tests that do not seed GCS objects.
+              return Promise.resolve(undefined);
+            }
+            return Promise.reject(
+              new MockGcsError(404, `Source generation not found: ${src}`)
+            );
+          }
+          this.setObject(dest, content);
+          const destinationGeneration = this._objectGenerations.get(dest);
+          this._afterCopyFile(src, dest);
+          return Promise.resolve({ destinationGeneration });
         }
-        const content = this._objectStore.get(src) ?? this._contentForPath(src);
-        if (content !== null && content !== undefined) {
-          this._objectStore.set(dest, content);
-        }
-        return Promise.resolve(undefined);
-      }),
+      ),
       // Mirrors real GCS compose: concatenates each source's stored content, in order,
       // into the destination object.
       composeFiles: vi.fn((sourcePaths: string[], destinationPath: string) => {
@@ -463,10 +525,36 @@ class FileStorageMock {
         });
         return Promise.resolve(undefined);
       }),
-      delete: vi.fn((filePath: string) => {
-        this._objectStore.delete(filePath);
-        return Promise.resolve(undefined);
-      }),
+      delete: vi.fn(
+        (
+          filePath: string,
+          options?: { ignoreNotFound?: boolean; ifGenerationMatch?: string }
+        ) => {
+          if (!this._objectStore.has(filePath)) {
+            if (
+              options?.ignoreNotFound ||
+              options?.ifGenerationMatch === undefined
+            ) {
+              // Preserve the legacy no-op for unconditioned mock deletes.
+              return Promise.resolve(undefined);
+            }
+            return Promise.reject(
+              new MockGcsError(404, `No such object: ${filePath}`)
+            );
+          }
+          if (
+            options?.ifGenerationMatch !== undefined &&
+            this._objectGenerations.get(filePath) !== options.ifGenerationMatch
+          ) {
+            return Promise.reject(
+              new MockGcsError(412, `Object generation changed: ${filePath}`)
+            );
+          }
+          this._objectStore.delete(filePath);
+          this._objectGenerations.delete(filePath);
+          return Promise.resolve(undefined);
+        }
+      ),
       deleteByPrefix: vi.fn(async (prefix: string) => {
         this._deletedPrefixes.push(prefix);
         this._onDeleteByPrefix(prefix);
