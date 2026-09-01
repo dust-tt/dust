@@ -37,7 +37,11 @@ type CreateApiKeyErrorCode =
  */
 async function resolveApiKeyGroups(
   auth: Authenticator,
-  { spaceIds, groupIds }: { spaceIds: string[]; groupIds: string[] }
+  {
+    spaceIds,
+    groupIds,
+    role,
+  }: { spaceIds: string[]; groupIds: string[]; role: "user" | "admin" }
 ): Promise<Result<GroupResource[], DustError<CreateApiKeyErrorCode>>> {
   const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
   if (globalGroupRes.isErr()) {
@@ -72,7 +76,10 @@ async function resolveApiKeyGroups(
     resolvedGroups.push(
       ...(await SpaceResource.listRegularAutoGroupsForSpaces(
         auth,
-        scopableSpaces
+        scopableSpaces,
+        {
+          includeEditors: role === "admin",
+        }
       ))
     );
   }
@@ -187,7 +194,11 @@ export async function createApiKey(
     );
   }
 
-  const groupsRes = await resolveApiKeyGroups(auth, { spaceIds, groupIds });
+  const groupsRes = await resolveApiKeyGroups(auth, {
+    spaceIds,
+    groupIds,
+    role,
+  });
   if (groupsRes.isErr()) {
     return groupsRes;
   }

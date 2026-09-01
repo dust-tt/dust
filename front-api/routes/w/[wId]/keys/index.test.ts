@@ -146,7 +146,35 @@ describe("POST /api/w/:wId/keys — space scoping", () => {
     );
   });
 
-  it("attaches both the member and the editor group of a restricted pod", async () => {
+  it("attaches only the member group of a restricted pod to a user key", async () => {
+    const { workspace, auth, globalGroup } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const pod = await SpaceFactory.project(workspace, undefined, {
+      name: "SecretPod",
+    });
+    const podGroups = await SpaceResource.listRegularAutoGroupsForSpaces(auth, [
+      pod,
+    ]);
+    expect(podGroups).toHaveLength(2);
+    const memberGroup = await pod.fetchManualMemberGroup(auth);
+
+    const res = await createKey(workspace, {
+      name: "pod-scoped-user-key",
+      space_ids: [pod.sId],
+      role: "user",
+    });
+
+    expect(res.status).toBe(201);
+    const { key } = await res.json();
+    // The editor group holds the space `admin` grant, which would let the key administrate the pod.
+    expect(key.groupIds.toSorted()).toEqual(
+      [globalGroup.id, memberGroup.id].toSorted()
+    );
+  });
+
+  it("attaches both the member and the editor group of a restricted pod to an admin key", async () => {
     const { workspace, auth, globalGroup } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -160,8 +188,9 @@ describe("POST /api/w/:wId/keys — space scoping", () => {
     expect(podGroups).toHaveLength(2);
 
     const res = await createKey(workspace, {
-      name: "pod-scoped-key",
+      name: "pod-scoped-admin-key",
       space_ids: [pod.sId],
+      role: "admin",
     });
 
     expect(res.status).toBe(201);
