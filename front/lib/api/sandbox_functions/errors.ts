@@ -20,6 +20,12 @@ export class SandboxFunctionError extends Error {
   }
 }
 
+export function isSandboxFunctionError(
+  error: unknown
+): error is SandboxFunctionError {
+  return error instanceof SandboxFunctionError;
+}
+
 export type SandboxFunctionInvocationErrorCode =
   | "user_authentication_required"
   | "frame_runtime_unavailable";
