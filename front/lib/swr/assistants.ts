@@ -4,7 +4,6 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
-import type { GetFeedbackDistributionResponse } from "@app/lib/api/assistant/observability/feedback_distribution";
 import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observability/version_markers";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
@@ -29,6 +28,7 @@ import {
 } from "@app/types/api/assistant/configuration";
 import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
+import type { GetAgentFeedbackDistributionResponseBody } from "@app/types/api/assistant/observability/feedback-distribution";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/user_relation";
 import type { GetMemberResponseBody } from "@app/types/api/user";
@@ -1089,7 +1089,7 @@ export function useAgentFeedbackDistribution({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetFeedbackDistributionResponse> = fetcher;
+  const fetcherFn: Fetcher<GetAgentFeedbackDistributionResponseBody> = fetcher;
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/feedback-distribution?days=${days}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
