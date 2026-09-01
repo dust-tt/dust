@@ -1,5 +1,3 @@
-import type { Logger } from "@app/logger/logger";
-
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
@@ -149,43 +147,6 @@ async function createReplacementVersion(
   return result.value.version;
 }
 
-function logAgentChange(
-  {
-    change,
-    execute,
-    mcpServerViewId,
-    skillId,
-    targetVersion,
-    workspaceId,
-  }: {
-    change: AgentChange;
-    execute: boolean;
-    mcpServerViewId: string;
-    skillId: string;
-    targetVersion: number;
-    workspaceId: string;
-  },
-  logger: Logger
-): void {
-  logger.info(
-    {
-      agentId: change.agentId,
-      agentName: change.agentName,
-      changes: {
-        archiveAgentVersion: change.sourceVersion,
-        createAgentVersion: targetVersion,
-        skillIdOnNewVersion: skillId,
-        toolConfigurationIdsNotCopiedToNewVersion: change.toolConfigurationIds,
-      },
-      mcpServerViewId,
-      workspaceId,
-    },
-    execute
-      ? "Created a new agent version with the tool replaced by the skill"
-      : "Dry run: would create a new agent version with the tool replaced by the skill"
-  );
-}
-
 makeScript(
   {
     workspaceId: {
@@ -260,16 +221,23 @@ makeScript(
           })
         : change.sourceVersion + 1;
 
-      logAgentChange(
+      logger.info(
         {
-          change,
-          execute,
+          agentId: change.agentId,
+          agentName: change.agentName,
+          changes: {
+            archiveAgentVersion: change.sourceVersion,
+            createAgentVersion: targetVersion,
+            skillIdOnNewVersion: customSkill.sId,
+            toolConfigurationIdsNotCopiedToNewVersion:
+              change.toolConfigurationIds,
+          },
           mcpServerViewId,
-          skillId: customSkill.sId,
-          targetVersion,
           workspaceId: workspace.sId,
         },
-        logger
+        execute
+          ? "Created a new agent version with the tool replaced by the skill"
+          : "Dry run: would create a new agent version with the tool replaced by the skill"
       );
     }
 
