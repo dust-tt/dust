@@ -6,7 +6,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Result } from "#result.ts";
 import type { DbErrorKind } from "#types/db.ts";
-import { DbCommandError, POD_DATABASE_MAX_SIZE_BYTES_ENV } from "./common.ts";
+import {
+  DbCommandError,
+  LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV,
+  SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV,
+} from "./common.ts";
 import {
   QUERY_INLINE_PAYLOAD_CAP_BYTES,
   QUERY_INLINE_ROW_CAP,
@@ -397,7 +401,7 @@ describe("runner db-query envelope", () => {
       // Bun.spawn replaces the environment; carry the parent env and default the quota.
       env: {
         ...process.env,
-        [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(1024 * 1024 * 1024),
+        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(1024 * 1024 * 1024),
         ...env,
       },
     });
@@ -434,12 +438,42 @@ describe("runner db-query envelope", () => {
       const dbPath = join(dir, "chat.db");
       await run(["db-reconcile", dbPath, fx("chat.db.ts")]);
       const { stdout, code } = await run(["db-query", dbPath], "SELECT 1", {
-        [POD_DATABASE_MAX_SIZE_BYTES_ENV]: "",
+        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: "",
+        [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV]: "",
       });
       expect(code).toBe(1);
       const envelope = JSON.parse(stdout.trim());
       expect(envelope.error.kind).toBe("internal");
       expect(envelope.error.message).toMatch(/positive integer byte count/);
+    });
+  });
+
+  test("db-query falls back to the legacy size quota env", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "chat.db");
+      await run(["db-reconcile", dbPath, fx("chat.db.ts")]);
+      const { stdout, code } = await run(["db-query", dbPath], "SELECT 1", {
+        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: "",
+        [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(1024 * 1024 * 1024),
+      });
+      expect(code).toBe(0);
+      expect(JSON.parse(stdout.trim()).ok).toBe(true);
+    });
+  });
+
+  test("db-query prefers the canonical size quota env", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "chat.db");
+      await run(["db-reconcile", dbPath, fx("chat.db.ts")]);
+      const { stdout, code } = await run(["db-query", dbPath], "SELECT 1", {
+        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: "invalid",
+        [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(1024 * 1024 * 1024),
+      });
+      expect(code).toBe(1);
+      const envelope = JSON.parse(stdout.trim());
+      expect(envelope.error.message).toContain(
+        SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV
+      );
     });
   });
 });
