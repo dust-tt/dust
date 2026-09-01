@@ -63,7 +63,7 @@ export const ROLE_REGISTRY: Record<
     admin: { verbs: ["read", "write", "admin"], levels: ["instance"] },
   },
   agent: {
-    editor: { verbs: ["read", "write"], levels: ["instance"] },
+    editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },
   },
