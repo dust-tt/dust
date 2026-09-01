@@ -5,6 +5,7 @@ import type { GCSMountPoint } from "@app/lib/api/files/gcs_mount/files";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class FrameSourceMoveError extends Error {
   constructor(
@@ -65,8 +66,8 @@ export function resolveFrameSourceMovePaths({
   if (
     !source.includes("/") ||
     !destination.includes("/") ||
-    source.endsWith("/") ||
-    destination.endsWith("/") ||
+    source.indexOf("/") === source.length - 1 ||
+    destination.indexOf("/") === destination.length - 1 ||
     !sourcePrefix ||
     !destinationPrefix ||
     sourcePrefix.kind === "user" ||
@@ -82,16 +83,23 @@ export function resolveFrameSourceMovePaths({
     );
   }
 
-  const destinationScope: GCSMountPoint =
-    destinationPrefix.kind === "conversation"
-      ? {
-          useCase: "conversation",
-          conversationId: destinationPrefix.id,
-        }
-      : {
-          useCase: "pod",
-          podId: destinationPrefix.id,
-        };
+  let destinationScope: GCSMountPoint;
+  switch (destinationPrefix.kind) {
+    case "conversation":
+      destinationScope = {
+        useCase: "conversation",
+        conversationId: destinationPrefix.id,
+      };
+      break;
+    case "pod":
+      destinationScope = {
+        useCase: "pod",
+        podId: destinationPrefix.id,
+      };
+      break;
+    default:
+      assertNever(destinationPrefix);
+  }
   const scopedPrefix = source.split("/", 1)[0];
   const parentRelativePath = path.posix.dirname(
     path.posix.relative(scopedPrefix, destination)

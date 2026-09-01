@@ -39,6 +39,19 @@ describe("resolveFrameSourceMovePaths", () => {
     });
   });
 
+  it("accepts nested folder paths with trailing slashes", () => {
+    const result = resolveFrameSourceMovePaths({
+      sourceDirectoryPath: "conversation-conv_123/Status/",
+      destinationDirectoryPath: "conversation-conv_123/Archive/Renamed/",
+    });
+
+    expect(result.isOk() && result.value).toMatchObject({
+      destinationManifestPath:
+        "conversation-conv_123/Archive/Renamed/manifest.json",
+      sourceManifestPath: "conversation-conv_123/Status/manifest.json",
+    });
+  });
+
   it("rejects nested and cross-mount destinations", () => {
     const nested = resolveFrameSourceMovePaths({
       sourceDirectoryPath: "conversation-conv_123/Status",
