@@ -288,7 +288,7 @@ function responseErrorToErrorEvent(
       errorSource: "unknown",
       metadata,
       type: "unknown_error",
-      message: "OpenAI reported a failed response without error details.",
+      message: "Provider reported a failed response without error details.",
     });
   }
 
@@ -320,7 +320,7 @@ function responseErrorToErrorEvent(
     case "bio_policy":
     case "image_content_policy_violation":
       return buildErrorEvent({
-        errorSource: "dust",
+        errorSource: "unknown",
         metadata,
         type: "refusal_error",
         message: error.message,

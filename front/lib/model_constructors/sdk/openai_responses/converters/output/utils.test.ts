@@ -194,7 +194,7 @@ describe("rawOutputToEvents", () => {
     ["server_error", "server_error", "provider"],
     ["rate_limit_exceeded", "rate_limit_error", "dust"],
     ["invalid_prompt", "invalid_request_error", "dust"],
-    ["bio_policy", "refusal_error", "dust"],
+    ["bio_policy", "refusal_error", "unknown"],
   ] as const)("maps response.failed code %s to %s from %s", async (code, expectedType, errorSource) => {
     const events = [];
     for await (const event of rawOutputToEvents(
