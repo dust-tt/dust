@@ -176,13 +176,12 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       return apiError(ctx, keyRes.error);
     }
 
-    const keyAndWorkspaceAuth = await Authenticator.fromKey(
+    let workspaceAuth = await Authenticator.fromKey(
       keyRes.value,
       wId,
       getGroupIdsFromHeaders(headers),
       getRoleFromHeaders(headers)
     );
-    let { workspaceAuth } = keyAndWorkspaceAuth;
 
     const workspaceError = validateWorkspaceFromAuth(workspaceAuth);
     if (workspaceError) {

@@ -910,16 +910,14 @@ export class Authenticator {
    *                                   possible with a system key).
    * @param requestedRole optional role to assign the auth in place of the key role (only possible
    *                               with a system key).
-   * @returns Promise<{ workspaceAuth: Authenticator }>
+   * @returns Promise<Authenticator>
    */
   static async fromKey(
     key: KeyResource,
     wId: string,
     requestedGroupIds?: string[],
     requestedRole?: RoleType
-  ): Promise<{
-    workspaceAuth: Authenticator;
-  }> {
+  ): Promise<Authenticator> {
     const [workspace, keyWorkspace] = await Promise.all([
       WorkspaceResource.fetchById(wId),
       WorkspaceResource.fetchByModelId(key.workspaceId),
@@ -985,18 +983,16 @@ export class Authenticator {
         : { workspace, groupModelIds: workspaceGroupModelIds }
     );
 
-    return {
-      workspaceAuth: new Authenticator({
-        authMethod: key.isSystem ? "system_api_key" : "api_key",
-        groupModelIds: workspaceGroupModelIds,
-        key: key.toAuthJSON(),
-        role,
-        subscription: workspaceSubscription,
-        workspace,
-        providersHealth: workspaceProvidersHealth,
-        permissions,
-      }),
-    };
+    return new Authenticator({
+      authMethod: key.isSystem ? "system_api_key" : "api_key",
+      groupModelIds: workspaceGroupModelIds,
+      key: key.toAuthJSON(),
+      role,
+      subscription: workspaceSubscription,
+      workspace,
+      providersHealth: workspaceProvidersHealth,
+      permissions,
+    });
   }
 
   /**

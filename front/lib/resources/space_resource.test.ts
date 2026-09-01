@@ -2328,7 +2328,7 @@ describe("SpaceResource", () => {
       const second = await SpaceFactory.project(workspace);
 
       const key = await KeyFactory.system(systemGroup);
-      const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
+      const workspaceAuth = await Authenticator.fromKey(key, workspace.sId);
 
       // A system key holds the type-wide space grant, so `isMember` is true on every project. The
       // enumeration has to agree rather than come back empty.

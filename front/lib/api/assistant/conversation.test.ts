@@ -537,10 +537,7 @@ describe("retryAgentMessage", () => {
 
   it("should use the actor api key for rate limiting", async () => {
     const systemKey = await KeyFactory.system(globalGroup);
-    const { workspaceAuth: systemKeyAuth } = await Authenticator.fromKey(
-      systemKey,
-      workspace.sId
-    );
+    const systemKeyAuth = await Authenticator.fromKey(systemKey, workspace.sId);
 
     const rateLimiterSpy = vi
       .spyOn(rateLimiterModule, "rateLimiter")
@@ -2579,10 +2576,7 @@ describe("postUserMessage", () => {
       expect(await projectSpace.isOpen(auth)).toBe(false);
 
       const apiKey = await KeyFactory.regular(globalGroup);
-      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-        apiKey,
-        workspace.sId
-      );
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
       expect(apiKeyAuth.user()).toBeNull();
       const restrictedPod = await SpaceResource.fetchById(
@@ -2626,10 +2620,7 @@ describe("postUserMessage", () => {
       );
 
       const apiKey = await KeyFactory.regular(globalGroup);
-      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-        apiKey,
-        workspace.sId
-      );
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
       expect(apiKeyAuth.user()).toBeNull();
       const openPod = await SpaceResource.fetchById(
@@ -2672,10 +2663,7 @@ describe("postUserMessage", () => {
       );
 
       const apiKey = await KeyFactory.regular(globalGroup);
-      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-        apiKey,
-        workspace.sId
-      );
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
       expect(apiKeyAuth.user()).toBeNull();
       const openPod = await SpaceResource.fetchById(
@@ -2805,10 +2793,7 @@ describe("postUserMessage", () => {
       expect(updateResult.isOk()).toBe(true);
 
       const apiKey = await KeyFactory.regular(globalGroup);
-      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-        apiKey,
-        workspace.sId
-      );
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource,
@@ -3677,10 +3662,7 @@ describe("editUserMessage", () => {
     // A key has no `auth.user()` either, so the author check used to compare
     // null against null and let this through.
     const systemKey = await KeyFactory.system(globalGroup);
-    const { workspaceAuth: keyAuth } = await Authenticator.fromKey(
-      systemKey,
-      workspace.sId
-    );
+    const keyAuth = await Authenticator.fromKey(systemKey, workspace.sId);
 
     const result = await editUserMessage(keyAuth, {
       conversationResource,

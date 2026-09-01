@@ -51,7 +51,7 @@ export const createPublicApiMockRequest = async ({
   const auth = await Authenticator.fromKey(key, workspace.sId);
 
   return {
-    auth: auth.workspaceAuth,
+    auth,
     req,
     res,
     workspace,
