@@ -124,6 +124,8 @@ import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_mod
 
 export type FileVersion = "processed" | "original" | "public";
 
+export type FrameV2SourceDeletion = () => Promise<Result<void, Error>>;
+
 const FRAME_CONTENT_TYPES = new Set([
   frameContentType,
   frameSlideshowContentType,
@@ -659,18 +661,23 @@ export class FileResource extends BaseResource<FileModel> {
         // Delete mount file copies if set.
         await this.deleteMountFileCopies();
 
-        await this.getBucketForVersion("original")
-          .file(this.getCloudStoragePath(auth, "original"))
-          .delete();
+        // Frames v2 are contentless identities: their source lives at mountFilePath and their
+        // published/runtime data lives under the Frame prefix deleted above. They never own the
+        // canonical original/processed/public FileResource objects.
+        if (!this.isFrameV2) {
+          await this.getBucketForVersion("original")
+            .file(this.getCloudStoragePath(auth, "original"))
+            .delete();
 
-        // Delete the processed file if it exists.
-        await this.getBucketForVersion("processed")
-          .file(this.getCloudStoragePath(auth, "processed"))
-          .delete({ ignoreNotFound: true });
-        // Delete the public file if it exists.
-        await this.getBucketForVersion("public")
-          .file(this.getCloudStoragePath(auth, "public"))
-          .delete({ ignoreNotFound: true });
+          // Delete the processed file if it exists.
+          await this.getBucketForVersion("processed")
+            .file(this.getCloudStoragePath(auth, "processed"))
+            .delete({ ignoreNotFound: true });
+          // Delete the public file if it exists.
+          await this.getBucketForVersion("public")
+            .file(this.getCloudStoragePath(auth, "public"))
+            .delete({ ignoreNotFound: true });
+        }
 
         // Delete sharing grants and access snapshots before shareable file (FK constraint).
         const shareableFile = await FileResource.shareableFileModel.findOne({
@@ -713,16 +720,36 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+  async delete(
+    auth: Authenticator,
+    {
+      deleteFrameSource,
+    }: {
+      transaction?: Transaction;
+      deleteFrameSource?: FrameV2SourceDeletion;
+    } = {}
+  ): Promise<Result<undefined, Error>> {
     if (!this.isFrameV2) {
       return this.deleteAfterSandboxCleanup(auth);
     }
 
-    return withFramePublishLock(this.sId, () =>
-      FrameSandboxAdapter.deleteSandbox(auth, this, {
+    if (!deleteFrameSource) {
+      return new Err(
+        new Error(
+          "Frames v2 must be deleted through the package-aware Frame deletion flow."
+        )
+      );
+    }
+
+    return withFramePublishLock(this.sId, async () => {
+      const sourceResult = await deleteFrameSource();
+      if (sourceResult.isErr()) {
+        return sourceResult;
+      }
+      return FrameSandboxAdapter.deleteSandbox(auth, this, {
         afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
-      })
-    );
+      });
+    });
   }
 
   get sId(): string {

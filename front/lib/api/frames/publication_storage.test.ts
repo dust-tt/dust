@@ -1019,7 +1019,9 @@ describe("publishFramePublication", () => {
     });
     await activationStarted.promise;
 
-    const deletionPromise = frame.delete(auth);
+    const deletionPromise = frame.delete(auth, {
+      deleteFrameSource: async () => new Ok(undefined),
+    });
     const redisSet = vi.mocked(
       redisMock.streamClient.set as (
         key: string,
