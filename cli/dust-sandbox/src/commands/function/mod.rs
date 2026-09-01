@@ -392,12 +392,8 @@ pub(crate) fn is_valid_name(name: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
-// The environment is process-global and `cargo test` runs tests on parallel
-// threads within one process: any test (in this module or `warm`) that reads
-// or mutates env vars must hold this lock for the whole window where it
-// relies on them.
 #[cfg(test)]
-pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+pub(crate) use crate::commands::ENV_LOCK;
 
 #[cfg(test)]
 mod tests {
