@@ -12,7 +12,8 @@
     "build:watch": "tsc --watch",
     "start": "npm run build && firebase emulators:start --only functions,storage,database",
     "dev": "npm run start",
-    "deploy": "./deploy.sh"
+    "deploy": "./deploy.sh",
+    "test": "npm run build && node --test dist/shopify/verification.test.js"
   },
   "author": "Dust",
   "license": "ISC",
@@ -23,7 +24,8 @@
     "firebase-admin": "^13.4.0",
     "firebase-functions": "^6.3.2",
     "jose": "^5.0.0",
-    "raw-body": "^3.0.0"
+    "raw-body": "^3.0.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
