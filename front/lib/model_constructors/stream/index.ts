@@ -31,7 +31,6 @@ import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
-import { MoonshotAiKimiK2Dot5GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k2_dot_five_global_fireworks";
 import { MoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
@@ -116,8 +115,6 @@ export const STREAM_ENDPOINTS = {
     ZAiGlmFiveDotTwoGlobalFireworksStream,
   [ZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:
     ZAiGlmFiveDotThreeFlashGlobalFireworksStream,
-  [MoonshotAiKimiK2Dot5GlobalFireworksStream.id]:
-    MoonshotAiKimiK2Dot5GlobalFireworksStream,
   [MoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
     MoonshotAiKimiK2Dot6GlobalFireworksStream,
   [MoonshotAiKimiK3GlobalFireworksStream.id]:

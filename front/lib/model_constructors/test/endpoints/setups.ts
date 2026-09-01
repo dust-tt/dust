@@ -35,7 +35,6 @@ import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
-import { MoonshotAiKimiK2Dot5GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k2_dot_five_global_fireworks";
 import { MoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
@@ -102,7 +101,6 @@ import { MistralCodestralEuropeMistralStreamSetup } from "@app/lib/model_constru
 import { MistralMistralLargeEuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_large_eu_mistral.test";
 import { MistralMistralMedium35EuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_medium_3_5_eu_mistral.test";
 import { MistralMistralSmallEuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_small_eu_mistral.test";
-import { MoonshotAiKimiK2Dot5GlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/moonshot_ai_kimi_k2_dot_five_global_fireworks.test";
 import { MoonshotAiKimiK2Dot6GlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks.test";
 import { MoonshotAiKimiK3GlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/moonshot_ai_kimi_k3_global_fireworks.test";
 import { NoopNoopGlobalNoopStreamSetup } from "@app/lib/model_constructors/test/endpoints/noop_noop_global_noop.test";
@@ -188,8 +186,6 @@ export const STREAM_ENDPOINT_SETUPS = {
     ZAiGlmFiveDotTwoGlobalFireworksStreamSetup,
   [ZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:
     ZAiGlmFiveDotThreeFlashGlobalFireworksStreamSetup,
-  [MoonshotAiKimiK2Dot5GlobalFireworksStream.id]:
-    MoonshotAiKimiK2Dot5GlobalFireworksStreamSetup,
   [MoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
     MoonshotAiKimiK2Dot6GlobalFireworksStreamSetup,
   [MoonshotAiKimiK3GlobalFireworksStream.id]:

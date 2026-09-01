@@ -50,8 +50,8 @@ describe("GLM-5.3 Flash model configuration", () => {
     );
 
     expect(payload.model).toBe(FIREWORKS_GLM_5P3_FLASH_MODEL_ID);
-    expect(payload.reasoning_effort).toBe("max");
-    expect(payload.tool_choice).toBeUndefined();
+    expect(payload.reasoning).toEqual({ effort: "max", summary: "auto" });
+    expect(payload.tool_choice).toBe("auto");
     expect(ZAiGlmFiveDotThreeFlashGlobalFireworksStream.tokenPricing).toEqual({
       cacheHit: 0.029,
       standardInput: 0.15,

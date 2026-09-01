@@ -31,7 +31,6 @@ import { DustMistralCodestralEuropeMistralStream } from "@app/lib/llms/stream/en
 import { DustMistralMistralLargeEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { DustMistralMistralMedium35EuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { DustMistralMistralSmallEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_small_eu_mistral";
-import { DustMoonshotAiKimiK2Dot5GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k2_dot_five_global_fireworks";
 import { DustMoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks";
 import { DustMoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
@@ -127,8 +126,6 @@ export const DUST_STREAM_ENDPOINTS = {
   [DustZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:
     DustZAiGlmFiveDotThreeFlashGlobalFireworksStream,
 
-  [DustMoonshotAiKimiK2Dot5GlobalFireworksStream.id]:
-    DustMoonshotAiKimiK2Dot5GlobalFireworksStream,
   [DustMoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
     DustMoonshotAiKimiK2Dot6GlobalFireworksStream,
   [DustMoonshotAiKimiK3GlobalFireworksStream.id]:

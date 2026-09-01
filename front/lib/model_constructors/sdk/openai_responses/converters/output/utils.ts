@@ -308,7 +308,8 @@ function classifyStreamError(error: unknown): ClassifiedStreamError {
 // default branch.
 function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
-  error: APIError
+  error: APIError,
+  providerName: string
 ): ErrorEvent {
   const status = error.status;
   switch (status) {
@@ -318,7 +319,7 @@ function apiErrorToErrorEvent(
         errorSource: "dust",
         metadata,
         type: "invalid_request_error",
-        message: `Invalid request to OpenAI: ${error.message}`,
+        message: `Invalid request to ${providerName}: ${error.message}`,
         originalError: error,
       });
     case 401:
@@ -326,7 +327,7 @@ function apiErrorToErrorEvent(
         errorSource: "dust",
         metadata,
         type: "authentication_error",
-        message: `Authentication failed for OpenAI: ${error.message}`,
+        message: `Authentication failed for ${providerName}: ${error.message}`,
         originalError: error,
       });
     case 403:
@@ -334,7 +335,7 @@ function apiErrorToErrorEvent(
         errorSource: "dust",
         metadata,
         type: "permission_error",
-        message: `Permission denied for OpenAI: ${error.message}`,
+        message: `Permission denied for ${providerName}: ${error.message}`,
         originalError: error,
       });
     case 404:
@@ -342,7 +343,7 @@ function apiErrorToErrorEvent(
         errorSource: "dust",
         metadata,
         type: "not_found_error",
-        message: `Resource not found for OpenAI: ${error.message}`,
+        message: `Resource not found for ${providerName}: ${error.message}`,
         originalError: error,
       });
     case 429:
@@ -350,7 +351,7 @@ function apiErrorToErrorEvent(
         errorSource: "dust",
         metadata,
         type: "rate_limit_error",
-        message: `Rate limit exceeded for OpenAI/${metadata.model}: ${error.message}`,
+        message: `Rate limit exceeded for ${providerName}/${metadata.model}: ${error.message}`,
         originalError: error,
       });
     default:
@@ -359,7 +360,7 @@ function apiErrorToErrorEvent(
           errorSource: "provider",
           metadata,
           type: "server_error",
-          message: `Server error from OpenAI (${status}): ${error.message}`,
+          message: `Server error from ${providerName} (${status}): ${error.message}`,
           originalError: error,
         });
       }
@@ -367,7 +368,7 @@ function apiErrorToErrorEvent(
         errorSource: "provider",
         metadata,
         type: "unknown_error",
-        message: `Error from OpenAI (${status}): ${error.message}`,
+        message: `Error from ${providerName} (${status}): ${error.message}`,
         originalError: error,
       });
   }
@@ -375,34 +376,37 @@ function apiErrorToErrorEvent(
 
 // Maps any error thrown by the OpenAI SDK while streaming into a unified
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
-export function streamErrorToErrorEvent(
-  metadata: EndpointMetadata,
-  error: unknown
-): ErrorEvent {
-  const classified = classifyStreamError(error);
-  switch (classified.kind) {
-    case "connection":
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "network_error",
-        message: `Network error connecting to OpenAI: ${classified.error.message}`,
-        originalError: error,
-      });
-    case "api":
-      return apiErrorToErrorEvent(metadata, classified.error);
-    case "unknown":
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "unknown_error",
-        message: `Unknown error from OpenAI`,
-        originalError: error,
-      });
-    default:
-      assertNever(classified);
-  }
+export function makeStreamErrorToErrorEvent(
+  providerName: string
+): OutputEventConverters["streamErrorToErrorEvent"] {
+  return (metadata: EndpointMetadata, error: unknown): ErrorEvent => {
+    const classified = classifyStreamError(error);
+    switch (classified.kind) {
+      case "connection":
+        return buildErrorEvent({
+          errorSource: "provider",
+          metadata,
+          type: "network_error",
+          message: `Network error connecting to ${providerName}: ${classified.error.message}`,
+          originalError: error,
+        });
+      case "api":
+        return apiErrorToErrorEvent(metadata, classified.error, providerName);
+      case "unknown":
+        return buildErrorEvent({
+          errorSource: "provider",
+          metadata,
+          type: "unknown_error",
+          message: `Unknown error from ${providerName}`,
+          originalError: error,
+        });
+      default:
+        assertNever(classified);
+    }
+  };
 }
+
+export const streamErrorToErrorEvent = makeStreamErrorToErrorEvent("OpenAI");
 
 // -- Composite: a completed output item → unified events --
 
