@@ -3,6 +3,7 @@ import type {
   FileSystemFileEntry,
 } from "@app/types/api/file_system/types";
 import type { ConnectorProvider } from "@app/types/data_source";
+import type { frameV2ContentType } from "@app/types/files";
 import type React from "react";
 
 /** Explorer input: canonical `path` plus an optional UI-only navigation path. */
@@ -16,6 +17,18 @@ export type FileEntry = FileSystemFileEntry & {
   virtualPath?: string;
 };
 export type FileEntryWithId = FileEntry & { fileId: string };
+
+export type FramePackageEntry = Omit<
+  FileEntryWithId,
+  "contentType" | "fileName" | "kind"
+> & {
+  kind: "frame_package";
+  contentType: typeof frameV2ContentType;
+  /** Display name of the source folder represented by this package. */
+  fileName: string;
+  /** Explorer navigation path of the package's source folder. */
+  sourceFolderPath: string;
+};
 
 export type ContentNodeEntry = {
   kind: "node";
@@ -34,7 +47,11 @@ export type FolderEntry = {
   name: string;
 };
 
-export type FileExplorerEntry = FileEntry | ContentNodeEntry | FolderEntry;
+export type FileExplorerEntry =
+  | FileEntry
+  | FramePackageEntry
+  | ContentNodeEntry
+  | FolderEntry;
 
 export type FileExplorerMenuAction = {
   label: string;
