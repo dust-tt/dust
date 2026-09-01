@@ -61,7 +61,7 @@ export function assistantUsageMessage<T extends boolean>({
         `${agentDisplayName} has been used ${nb} time${pluralize(nb)} in the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`
       ) : (
         <>
-          {agentDisplayName} has been used {messageCount} in the last{" "}
+          {agentDisplayName} has been used {messageCount} in the last&nbsp;
           {usage.timePeriodSec / (60 * 60 * 24)} days.
         </>
       )
