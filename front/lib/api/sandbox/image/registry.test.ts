@@ -625,9 +625,8 @@ describe("sandbox image registry", () => {
     expect(litestreamUnit).toContain("RuntimeDirectory=litestream");
     expect(litestreamUnit).toContain("NoNewPrivileges=yes");
     expect(litestreamUnit).toContain("ProtectSystem=strict");
-    expect(litestreamUnit).toContain(
-      "ReadWritePaths=/sandbox-state /pod-state"
-    );
+    expect(litestreamUnit).toContain("ReadWritePaths=/sandbox-state");
+    expect(litestreamUnit).not.toContain("ReadWritePaths=/pod-state");
     expect(litestreamUnit).toContain("RestrictAddressFamilies=AF_UNIX");
     expect(litestreamUnit).toContain("MemoryDenyWriteExecute=yes");
 

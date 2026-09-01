@@ -21,12 +21,11 @@ RuntimeDirectoryMode=0755
 
 # Defense in depth, modeled on dust-egress-resolver.service. The daemon only
 # needs rw under /sandbox-state (live databases and replica gcsfuse mount).
-# /pod-state remains writable only for the legacy database-path symlink. The
-# control socket is AF_UNIX and the file replica needs no network.
+# The control socket is AF_UNIX and the file replica needs no network.
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
-ReadWritePaths=/sandbox-state /pod-state
+ReadWritePaths=/sandbox-state
 ProtectHome=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
