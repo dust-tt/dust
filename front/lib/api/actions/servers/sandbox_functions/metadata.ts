@@ -1,6 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  POD_DATABASE_NAME_REGEX,
+  SANDBOX_DATABASE_NAME_REGEX,
   SANDBOX_FUNCTION_EXECUTION_MODES,
   SANDBOX_FUNCTION_SLUG_REGEX,
   SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
@@ -196,23 +196,24 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
   },
   {
     name: "db_list",
-    description: "List the pod's SQLite databases and their sizes.",
+    description: "List the current project's SQLite databases and their sizes.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing pod databases...",
-      done: "Listed pod databases",
+      running: "Listing project databases...",
+      done: "Listed project databases",
     },
     toolCostCategory: "basic",
     freeUsage: true,
   },
   {
     name: "db_schema",
-    description: "Get a pod database's live schema as a drizzle schema file.",
+    description:
+      "Get a project database's live schema as a drizzle schema file.",
     schema: {
       database: z
         .string()
-        .regex(POD_DATABASE_NAME_REGEX)
+        .regex(SANDBOX_DATABASE_NAME_REGEX)
         .describe("The database name, as shown by the db_list tool."),
     },
     stake: "never_ask",
@@ -226,11 +227,11 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
   {
     name: "db_query",
     description:
-      "Run a single SQL statement against a pod database: SELECT and DML.",
+      "Run a single SQL statement against a project database: SELECT and DML.",
     schema: {
       database: z
         .string()
-        .regex(POD_DATABASE_NAME_REGEX)
+        .regex(SANDBOX_DATABASE_NAME_REGEX)
         .describe("The database name, as shown by the db_list tool."),
       sql: z
         .string()
@@ -242,8 +243,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Querying pod database...",
-      done: "Queried pod database",
+      running: "Querying project database...",
+      done: "Queried project database",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -251,11 +252,11 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
   {
     name: "db_reconcile",
     description:
-      "Apply a pod database's drizzle schema file to its live database (additive changes only).",
+      "Apply a project database's drizzle schema file to its live database (additive changes only).",
     schema: {
       database: z
         .string()
-        .regex(POD_DATABASE_NAME_REGEX)
+        .regex(SANDBOX_DATABASE_NAME_REGEX)
         .describe(
           "The database's short name as declared by the schema file (e.g. `chat`), without " +
             "the app prefix."
@@ -270,8 +271,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reconciling pod database...",
-      done: "Reconciled pod database",
+      running: "Reconciling project database...",
+      done: "Reconciled project database",
     },
     toolCostCategory: "basic",
     freeUsage: true,
