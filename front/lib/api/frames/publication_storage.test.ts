@@ -1,4 +1,5 @@
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import { deleteFrameV2Package } from "@app/lib/api/frames/delete";
 import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
@@ -1019,8 +1020,9 @@ describe("publishFramePublication", () => {
     });
     await activationStarted.promise;
 
-    const deletionPromise = frame.delete(auth, {
-      deleteFrameSource: async () => new Ok(undefined),
+    const deletionPromise = deleteFrameV2Package(auth, {
+      deleteSource: async () => new Ok(undefined),
+      frame,
     });
     const redisSet = vi.mocked(
       redisMock.streamClient.set as (

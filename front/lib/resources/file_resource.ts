@@ -12,7 +12,6 @@ import {
   getProcessedContentType,
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import {
   getDefaultFrameShareScope,
@@ -59,7 +58,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import {
-  getFrameBasePath,
   getFramePublicationUiBundlePath,
   getFramesBasePath,
 } from "@app/types/api/frame_storage";
@@ -123,8 +121,6 @@ import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
-
-export type FrameV2SourceDeletion = () => Promise<Result<void, Error>>;
 
 const FRAME_CONTENT_TYPES = new Set([
   frameContentType,
@@ -591,28 +587,6 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  private async deleteFrameFunctions(auth: Authenticator): Promise<void> {
-    assert(this.isFrameV2, "Frame function cleanup requires a Frames v2 file.");
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    assert(
-      this.workspaceId === workspaceModelId,
-      "The Frame must belong to the authenticated workspace."
-    );
-
-    const sandboxFunctions = await SandboxFunctionModel.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId: workspaceModelId,
-        fileId: this.id,
-        publicationId: { [Op.ne]: null },
-      },
-    });
-    await FileResource.deleteFrameFunctionModelIds(
-      workspaceModelId,
-      sandboxFunctions.map(({ id }) => id)
-    );
-  }
-
   static async deleteAllForUser(
     auth: Authenticator,
     user: UserType,
@@ -645,20 +619,16 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  private async deleteAfterSandboxCleanup(
+  /**
+   * @internal
+   *
+   * Deletes the artifacts and database records owned directly by this FileResource.
+   * Callers for resource types with additional owned state must remove that state first.
+   */
+  async deleteOwnArtifactsAndRecord(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
     try {
-      if (this.isFrameV2) {
-        await this.deleteFrameFunctions(auth);
-        await getPrivateUploadBucket().deleteByPrefix(
-          getFrameBasePath({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            frameId: this.sId,
-          })
-        );
-      }
-
       if (this.isReady) {
         await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
 
@@ -724,20 +694,8 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  async delete(
-    auth: Authenticator,
-    {
-      deleteFrameSource,
-    }: {
-      transaction?: Transaction;
-      deleteFrameSource?: FrameV2SourceDeletion;
-    } = {}
-  ): Promise<Result<undefined, Error>> {
-    if (!this.isFrameV2) {
-      return this.deleteAfterSandboxCleanup(auth);
-    }
-
-    if (!deleteFrameSource) {
+  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (this.isFrameV2) {
       return new Err(
         new Error(
           "Frames v2 must be deleted through the package-aware Frame deletion flow."
@@ -745,15 +703,7 @@ export class FileResource extends BaseResource<FileModel> {
       );
     }
 
-    return withFramePublishLock(this.sId, async () => {
-      const sourceResult = await deleteFrameSource();
-      if (sourceResult.isErr()) {
-        return sourceResult;
-      }
-      return FrameSandboxAdapter.deleteSandbox(auth, this, {
-        afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
-      });
-    });
+    return this.deleteOwnArtifactsAndRecord(auth);
   }
 
   get sId(): string {

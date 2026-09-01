@@ -33,6 +33,7 @@ vi.mock("@app/lib/lock", () => ({
   executeWithLockResult: mockExecuteWithLock,
 }));
 
+import { deleteFrameV2Package } from "@app/lib/api/frames/delete";
 import { FileResource } from "@app/lib/resources/file_resource";
 import {
   FrameGoneError,
@@ -186,8 +187,9 @@ describe("FrameSandboxAdapter", () => {
       deletedPrefixes.push(prefix)
     );
 
-    const deleteResult = await frame.delete(auth, {
-      deleteFrameSource: async () => new Ok(undefined),
+    const deleteResult = await deleteFrameV2Package(auth, {
+      deleteSource: async () => new Ok(undefined),
+      frame,
     });
 
     expect(
@@ -268,8 +270,9 @@ describe("FrameSandboxAdapter", () => {
 
     try {
       mockExecuteWithLock.mockClear();
-      const deletionPromise = frame.delete(auth, {
-        deleteFrameSource: async () => new Ok(undefined),
+      const deletionPromise = deleteFrameV2Package(auth, {
+        deleteSource: async () => new Ok(undefined),
+        frame,
       });
       await deletionReachedFunctionCleanup.promise;
       expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).toBeNull();

@@ -1,3 +1,4 @@
+import { deleteFrameV2Package } from "@app/lib/api/frames/delete";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
@@ -1787,8 +1788,9 @@ describe("FileResource", () => {
     );
     expect(await FileResource.fetchById(auth, frame.sId)).not.toBeNull();
 
-    const result = await frame.delete(auth, {
-      deleteFrameSource: async () => new Ok(undefined),
+    const result = await deleteFrameV2Package(auth, {
+      deleteSource: async () => new Ok(undefined),
+      frame,
     });
 
     expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
