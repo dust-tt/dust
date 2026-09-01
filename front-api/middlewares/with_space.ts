@@ -94,10 +94,9 @@ export function withSpace(options: WithSpaceOptions) {
     // and the emit is best-effort. Run the whole block off the critical path.
     void (async () => {
       // Only regular/project spaces are "restricted" (member-only); global and conversations spaces
-      // are workspace-wide and system is admin-only, so none of those is audited here. This is not
-      // simply `!isOpen`: a system space is not open, but is not restricted either.
-      const isRestricted =
-        (space.isRegular() || space.isProject()) && !(await space.isOpen(auth));
+      // are workspace-wide and system is admin-only, so none of those is audited here. `isRestricted`
+      // already encodes that: a system space is not open, but is not restricted either.
+      const isRestricted = await space.isRestricted(auth);
       if (isRestricted) {
         void emitAuditLogEvent({
           auth,

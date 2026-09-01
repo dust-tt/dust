@@ -834,7 +834,9 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedRestrictedSpace).not.toBeNull();
       // Regular spaces created by SpaceFactory.regular are restricted (no global group)
-      expect(await refreshedRestrictedSpace?.isOpen(adminAuth)).toBe(false);
+      expect(await refreshedRestrictedSpace?.isRestricted(adminAuth)).toBe(
+        true
+      );
 
       // Create a user who is NOT a member of the restricted space
       const mentionedUser = await UserFactory.basic();
@@ -948,7 +950,7 @@ describe("createAgentMessages", () => {
         openSpace.sId
       );
       expect(refreshedOpenSpace).not.toBeNull();
-      expect(await refreshedOpenSpace?.isOpen(adminAuth)).toBe(true);
+      expect(await refreshedOpenSpace?.isRestricted(adminAuth)).toBe(false);
 
       // Create a user who can access the space (all users can access open spaces)
       const mentionedUser = await UserFactory.basic();
@@ -1044,7 +1046,9 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedRestrictedSpace).not.toBeNull();
       // Regular spaces created by SpaceFactory.regular are restricted (no global group)
-      expect(await refreshedRestrictedSpace?.isOpen(adminAuth)).toBe(false);
+      expect(await refreshedRestrictedSpace?.isRestricted(adminAuth)).toBe(
+        true
+      );
 
       // Create a user who is NOT a member of the restricted space
       const mentionedUser = await UserFactory.basic();

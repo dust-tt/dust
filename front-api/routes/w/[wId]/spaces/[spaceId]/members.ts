@@ -55,7 +55,7 @@ app.patch(
       space.isProject() &&
       !body.isRestricted &&
       !areOpenPodsAllowed(owner) &&
-      !(await space.isOpen(auth))
+      (await space.isRestricted(auth))
     ) {
       return apiError(ctx, {
         status_code: 403,

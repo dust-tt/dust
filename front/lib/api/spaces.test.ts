@@ -128,7 +128,7 @@ describe("createSpaceAndGroup", () => {
         expect(space.name).toBe("Test Regular Space");
         expect(space.kind).toBe("regular");
         expect(space.managementMode).toBe("manual");
-        expect(await space.isOpen(adminAuth)).toBe(false);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify the space has a group
         const groups = await space.fetchGroupResources(adminAuth);
@@ -189,7 +189,7 @@ describe("createSpaceAndGroup", () => {
         expect(space.name).toBe("Test Group Space");
         expect(space.kind).toBe("regular");
         expect(space.managementMode).toBe("group");
-        expect(await space.isOpen(adminAuth)).toBe(false);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify groups were associated (from the space's group_permissions grants).
         const reloadedSpace = await SpaceResource.fetchById(
@@ -419,7 +419,7 @@ describe("createSpaceAndGroup", () => {
           space.sId
         );
         expect(reloadedSpace).not.toBeNull();
-        expect(await reloadedSpace!.isOpen(adminAuth)).toBe(true);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
         // Verify global group was added (from the space's group_permissions grants).
         const associatedGroupIds = (
@@ -462,7 +462,7 @@ describe("createSpaceAndGroup", () => {
         result.value.sId
       );
 
-      expect(await asMember!.isOpen(memberAuth)).toBe(true);
+      expect(await asMember!.isRestricted(memberAuth)).toBe(false);
 
       // The member group confers write; the global group's `reader` grant only confers read.
       expect(asMember!.canRead(memberAuth)).toBe(true);
@@ -484,7 +484,7 @@ describe("createSpaceAndGroup", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        expect(await space.isOpen(adminAuth)).toBe(false);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify global group was NOT added (from the space's group_permissions grants).
         const associatedGroupIds = (await space.fetchGrantReferences()).map(
@@ -932,7 +932,7 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           space.sId
         );
-        expect(await reloadedSpace!.isOpen(adminAuth)).toBe(true);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
         // Verify the global group holds a reader grant on the space (open regular space).
         const grants = await GroupPermissionResource.listForResource(
@@ -967,7 +967,7 @@ describe("createSpaceAndGroup", () => {
           space.sId
         );
         expect(reloadedSpace!.kind).toBe("project");
-        expect(await reloadedSpace!.isOpen(adminAuth)).toBe(true);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
         // Verify the global group holds a reader grant on the project (attached as viewer).
         const grants = await GroupPermissionResource.listForResource(

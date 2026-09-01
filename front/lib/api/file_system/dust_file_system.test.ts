@@ -952,7 +952,7 @@ describe("DustFileSystem.forAgentLoop", () => {
         openProjectRes.value.sId
       );
       assert(openProject, "Open project not found after creation");
-      expect(await openProject.isOpen(adminAuth)).toBe(true);
+      expect(await openProject.isRestricted(adminAuth)).toBe(false);
 
       const podConversation = await ConversationFactory.create(
         refreshedAdminAuth,
@@ -1007,7 +1007,7 @@ describe("DustFileSystem.forAgentLoop", () => {
       const userSessionAuth = await sessionAuthForUser(regularUser, workspace);
 
       const restrictedProject = await SpaceFactory.project(workspace, user.id);
-      expect(await restrictedProject.isOpen(userSessionAuth)).toBe(false);
+      expect(await restrictedProject.isRestricted(userSessionAuth)).toBe(true);
 
       const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,
