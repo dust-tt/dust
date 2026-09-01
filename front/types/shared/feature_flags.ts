@@ -441,12 +441,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "achilleburah",
   },
-  metronome_aggregated_usage_event: {
-    description:
-      "Ingest a single aggregated Metronome usage event (LLM + tools) instead of the legacy per-model llm_usage_v3 and per-tool tool_use_v3 events.",
-    stage: "dust_only",
-    owner: "tdraier",
-  },
   legacy_trigger_limits: {
     description:
       "Keep the legacy trigger limits: automations may still be charged to personal credits on a non credit-priced plan.",
