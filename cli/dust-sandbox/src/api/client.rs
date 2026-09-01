@@ -10,9 +10,10 @@ use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
     CallToolResponse, CallToolResult, FrameCallByIdRequest, FrameCallFromSourceRequest,
-    FrameCallResponse, FrameMoveRequest, FrameMoveResponse, FramePublishRequest,
-    FramePublishResponse, FrameRegisterRequest, FrameRegisterResponse, FrameShareLinkResponse,
-    FrameValidateRequest, FrameValidateResponse, MCPServerView, SandboxServerViewsResponse,
+    FrameCallResponse, FrameCloneRequest, FrameCloneResponse, FrameMoveRequest, FrameMoveResponse,
+    FramePublishRequest, FramePublishResponse, FrameRegisterRequest, FrameRegisterResponse,
+    FrameShareLinkResponse, FrameValidateRequest, FrameValidateResponse, MCPServerView,
+    SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -227,6 +228,22 @@ impl DustApiClient {
         self.get(
             "sandbox/frames/share",
             &[("sourceDirectoryPath", source_directory_path)],
+        )
+        .await
+    }
+
+    pub async fn clone_frame(
+        &self,
+        source_directory_path: &str,
+        destination_directory_path: &str,
+    ) -> anyhow::Result<FrameCloneResponse> {
+        self.post_with_timeout(
+            "sandbox/frames/clone",
+            &FrameCloneRequest {
+                source_directory_path,
+                destination_directory_path,
+            },
+            POLL_MAX_DURATION,
         )
         .await
     }

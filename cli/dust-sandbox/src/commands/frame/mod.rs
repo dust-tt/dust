@@ -1,4 +1,5 @@
 mod call;
+mod clone;
 mod create;
 mod move_frame;
 mod publish;
@@ -12,6 +13,7 @@ use anyhow::{bail, Context};
 use clap::Subcommand;
 
 pub use call::run as cmd_frame_call;
+pub use clone::run as cmd_frame_clone;
 pub use create::run as cmd_frame_create;
 pub use move_frame::run as cmd_frame_move;
 pub use publish::run as cmd_frame_publish;
@@ -33,6 +35,13 @@ pub enum FrameCommand {
         /// JSON input passed to the function
         #[arg(long, value_name = "JSON")]
         input: Option<String>,
+    },
+    /// Clone a registered Frame into a fresh identity, publication, sharing record, and state
+    Clone {
+        /// Existing Frame folder under /files
+        source: PathBuf,
+        /// New Frame folder path under /files
+        destination: PathBuf,
     },
     /// Create and register a new Frame folder
     Create {

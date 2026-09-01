@@ -77,6 +77,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("This command is read-only");
     expect(instructions).not.toContain("--scope");
     expect(instructions).not.toContain("--email");
+    expect(instructions).toContain("dsbx frame clone");
     expect(instructions).toContain("package-like folder");
     expect(instructions).toContain("canonical Frame resource");
     expect(instructions).toContain("`index.tsx` by default");

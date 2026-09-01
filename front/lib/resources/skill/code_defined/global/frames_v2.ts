@@ -78,6 +78,17 @@ This command is read-only. It never creates sharing state, changes the scope, or
 recipients. It returns the stable Frame ID, current share scope, and existing share URL. If no share
 link exists, ask the user to configure sharing in the Dust UI.
 
+## Clone a registered Frame
+
+Use the CLI instead of \`cp\` to copy source into a new Frame with a fresh identity, publication,
+sharing record, sandbox ownership, and empty database state:
+
+\`\`\`bash
+dsbx frame clone /files/<source-scope>/<frame-folder> /files/<destination-scope>/<new-folder>
+\`\`\`
+
+The destination must not exist. The source Frame and its sharing and database state are unchanged.
+
 ## Frames v2 source layout
 
 Keep one Frame and everything it owns in one folder:
@@ -386,8 +397,6 @@ dsbx frame publish /files/<scope>/<frame>.tsx
 Do not use the \`publish_interactive_content_file\` tool: the CLI replaces it under Frames v2.
 Other interactive-content tools remain available for Frame operations that the CLI does not cover
 yet. Use \`dsbx frame --help\` as the authority for available operations.
-
-Do not use \`cp\` to clone a registered Frame folder. Cloning is not supported yet.
 
 ## Editing
 
