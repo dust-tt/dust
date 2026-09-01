@@ -1,9 +1,18 @@
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { frameV2ContentType } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClientFetch = vi.fn();
 vi.mock("@app/lib/egress/client", () => ({
@@ -16,11 +25,13 @@ vi.mock("@app/lib/swr/useIsMobile", () => ({
 function makeFile({
   contentType,
   fileName,
+  fileResourceContentType,
   lastModifiedMs,
   path = fileName,
 }: {
   contentType: string;
   fileName: string;
+  fileResourceContentType?: string;
   lastModifiedMs: number;
   path?: string;
 }): FileSystemFileEntry {
@@ -30,6 +41,7 @@ function makeFile({
     path: `conversation-c1/${path}`,
     contentType,
     fileId: `file-${fileName}`,
+    fileResourceContentType,
     sizeBytes: 100,
     lastModifiedMs,
     thumbnailUrl: null,
@@ -54,6 +66,15 @@ function ControlledFileExplorer(props: ControlledFileExplorerProps) {
     />
   );
 }
+
+beforeAll(() => {
+  // Radix relies on this browser API when opening dropdown content.
+  global.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+});
 
 describe("FileExplorer file opening", () => {
   beforeEach(() => {
@@ -180,5 +201,73 @@ describe("FileExplorer navigation", () => {
     fireEvent.click(screen.getByText("folder"));
 
     expect(screen.getByText("nested.txt")).toBeInTheDocument();
+  });
+});
+
+describe("FileExplorer Frame packages", () => {
+  it("opens the Frame and exposes its source without generic file actions", async () => {
+    const user = userEvent.setup();
+    mockClientFetch.mockResolvedValue(new Response("preview content"));
+    const manifest = makeFile({
+      contentType: "application/json",
+      fileName: "manifest.json",
+      fileResourceContentType: frameV2ContentType,
+      lastModifiedMs: 2,
+      path: "status/manifest.json",
+    });
+    const source = makeFile({
+      contentType: "text/typescript",
+      fileName: "index.tsx",
+      lastModifiedMs: 1,
+      path: "status/index.tsx",
+    });
+    const onOpenInteractive = vi.fn();
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        displayFramePackages
+        files={[manifest, source]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDelete={vi.fn().mockResolvedValue(undefined)}
+        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onMoveFile={vi.fn().mockResolvedValue(new Ok(undefined))}
+        onOpenInteractive={onOpenInteractive}
+        onRename={vi.fn()}
+      />
+    );
+
+    const packageTitle = screen.getByText("status");
+    fireEvent.click(packageTitle);
+    expect(onOpenInteractive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileId: "file-manifest.json",
+        kind: "frame_package",
+        path: "conversation-c1/status/manifest.json",
+        sourceFolderPath: "status",
+      })
+    );
+
+    const packageRow = packageTitle.closest("div.cursor-pointer");
+    expect(packageRow).toBeInstanceOf(HTMLElement);
+    if (!(packageRow instanceof HTMLElement)) {
+      throw new Error("Frame package row not found.");
+    }
+    await user.click(within(packageRow).getByRole("button"));
+    expect(screen.getByText("View source")).toBeInTheDocument();
+    expect(screen.queryByText("Rename")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move to…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delete")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("View source"));
+    const manifestTitle = await screen.findByText("manifest.json");
+    expect(screen.getByText("index.tsx")).toBeInTheDocument();
+
+    fireEvent.click(manifestTitle);
+    expect(
+      await screen.findByRole("dialog", { name: "manifest.json" })
+    ).toBeInTheDocument();
+    expect(await screen.findByText("preview content")).toBeInTheDocument();
   });
 });

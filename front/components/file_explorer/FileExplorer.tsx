@@ -18,6 +18,7 @@ import type {
   FileExplorerSortMode,
   FileSystemTreeNode,
   FolderEntry,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import {
   buildFolderTree,
@@ -42,6 +43,7 @@ interface FileExplorerProps {
   emptyState?: React.ReactNode;
   hideBreadcrumbAtRoot?: boolean;
   currentFolderPath: string;
+  displayFramePackages?: boolean;
   files: FileExplorerPathEntry[];
   getFileUrl: (path: string) => string;
   toolbarExtraActions?: React.ReactNode;
@@ -53,7 +55,7 @@ interface FileExplorerProps {
     entry: FileEntry,
     parentRelativePath: string
   ) => Promise<Result<void, Error>>;
-  onOpenInteractive?: (entry: FileEntryWithId) => void;
+  onOpenInteractive?: (entry: FileEntryWithId | FramePackageEntry) => void;
   onOpenInPanel?: (entry: FileEntry) => boolean;
   onRename?: (entry: FileEntry | FolderEntry) => void;
   owner?: LightWorkspaceType;
@@ -68,6 +70,7 @@ export function FileExplorer({
   contentClassName,
   contentNodes = [],
   defaultViewMode = "grid",
+  displayFramePackages = false,
   emptyState,
   currentFolderPath,
   files,
@@ -109,6 +112,7 @@ export function FileExplorer({
       getFileExplorerPipeline({
         contentNodes,
         currentFolderPath,
+        displayFramePackages,
         files,
         searchQuery,
         activeFilter,
@@ -118,6 +122,7 @@ export function FileExplorer({
     [
       contentNodes,
       currentFolderPath,
+      displayFramePackages,
       files,
       searchQuery,
       activeFilter,
@@ -136,6 +141,18 @@ export function FileExplorer({
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
       const items: FileExplorerMenuAction[] =
         getExtraFileMenuItems?.(entry) ?? [];
+      if (entry.kind === "frame_package") {
+        items.push({
+          label: "View source",
+          icon: FolderOpen,
+          onClick: (e) => {
+            e.stopPropagation();
+            onCurrentFolderChange(entry.sourceFolderPath);
+            setActiveFilter("all");
+          },
+        });
+        return items;
+      }
       if (onRename && (entry.kind === "file" || entry.kind === "folder")) {
         items.push({
           label: "Rename",
@@ -175,7 +192,14 @@ export function FileExplorer({
       }
       return items;
     },
-    [getExtraFileMenuItems, onDelete, onMoveFile, onRename, totalFolderCount]
+    [
+      getExtraFileMenuItems,
+      onCurrentFolderChange,
+      onDelete,
+      onMoveFile,
+      onRename,
+      totalFolderCount,
+    ]
   );
 
   const handleMoveToFolder = useCallback(
@@ -241,6 +265,10 @@ export function FileExplorer({
     }
     setPreviewFile(entry);
     setShowPreviewSheet(true);
+  };
+
+  const handleFramePackageOpen = (entry: FramePackageEntry) => {
+    onOpenInteractive?.(entry);
   };
 
   const handleNodeOpen = (entry: ContentNodeEntry) => {
@@ -320,11 +348,16 @@ export function FileExplorer({
             fileDragEnabled={fileDragEnabled}
             onFolderNavigate={handleFolderNavigate}
             onFileOpen={handleFileOpen}
+            onFramePackageOpen={handleFramePackageOpen}
             onFileDownload={onFileDownload}
             onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             onNodeOpen={handleNodeOpen}
             getFileMenuItems={
-              onDelete || onRename || onMoveFile || getExtraFileMenuItems
+              displayFramePackages ||
+              onDelete ||
+              onRename ||
+              onMoveFile ||
+              getExtraFileMenuItems
                 ? getMenuItems
                 : undefined
             }

@@ -9,6 +9,7 @@ import type {
   FileEntry,
   FileExplorerMenuAction,
   FileSystemTreeNode,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import {
   getCategoryFromContentType,
@@ -442,6 +443,40 @@ export function FileExplorerFileCard({
     >
       {item}
     </FileExplorerDraggableWrapper>
+  );
+}
+
+interface FileExplorerFramePackageCardProps {
+  entry: FramePackageEntry;
+  /** When set, title shows path relative to this folder (search mode). */
+  searchFolderPath?: string;
+  viewMode: ViewMode;
+  onOpen: (entry: FramePackageEntry) => void;
+  extraMenuItems?: FileExplorerMenuAction[];
+}
+
+export function FileExplorerFramePackageCard({
+  entry,
+  searchFolderPath,
+  viewMode,
+  onOpen,
+  extraMenuItems,
+}: FileExplorerFramePackageCardProps) {
+  const title =
+    searchFolderPath !== undefined
+      ? getFileExplorerSearchResultTitle(entry, searchFolderPath)
+      : entry.fileName;
+
+  return (
+    <FileExplorerItem
+      kind="icon"
+      visual={getFileTypeIcon(entry.contentType, entry.fileName)}
+      viewMode={viewMode}
+      title={title}
+      subtitle="Frame"
+      onOpen={() => onOpen(entry)}
+      extraMenuItems={extraMenuItems}
+    />
   );
 }
 
