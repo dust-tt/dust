@@ -1,6 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { fetchVersionMarkers } from "@app/lib/api/assistant/observability/version_markers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -42,15 +41,12 @@ app.get(
     }
 
     const { days } = ctx.req.valid("query");
-    const owner = auth.getNonNullableWorkspace();
 
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: owner.sId,
+    const versionMarkersResult = await fetchVersionMarkers({
+      auth,
       agentId: assistant.sId,
       days,
     });
-
-    const versionMarkersResult = await fetchVersionMarkers(baseQuery);
     if (versionMarkersResult.isErr()) {
       return apiError(ctx, {
         status_code: 500,
