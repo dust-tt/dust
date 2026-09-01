@@ -41,7 +41,10 @@ makeScript({}, async ({ execute }, logger) => {
       return;
     }
 
-    const [migrated] = await MembershipModel.update({ role: "user" }, { where });
+    const [migrated] = await MembershipModel.update(
+      { role: "user" },
+      { where }
+    );
     if (migrated > 0) {
       totalMigrated += migrated;
       logger.info(
