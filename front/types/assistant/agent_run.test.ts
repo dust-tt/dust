@@ -89,7 +89,10 @@ describe("getAgentLoopRuntimeDataWithAuth", () => {
     );
 
     await AgentConfigurationModel.update(
-      { modelId: "claude-smores-eap" },
+      {
+        // @ts-expect-error retired EAP ids are no longer ModelIdType
+        modelId: "claude-smores-eap",
+      },
       { where: { sId: agentConfig.sId, workspaceId: workspace.id } }
     );
 

@@ -1332,7 +1332,10 @@ describe("finalizeCancellation", () => {
     );
 
     await AgentConfigurationModel.update(
-      { modelId: "claude-smores-eap" },
+      {
+        // @ts-expect-error retired EAP ids are no longer ModelIdType
+        modelId: "claude-smores-eap",
+      },
       { where: { sId: agentConfig.sId, workspaceId: workspace.id } }
     );
 
@@ -1346,10 +1349,10 @@ describe("finalizeCancellation", () => {
         userMessageVersion: userMessage.version,
         userMessageOrigin: userMessage.context.origin,
       })
-    ).rejects.toSatisfy((error: unknown) => {
+    ).rejects.toSatisfy((error: unknown): boolean => {
       return (
         error instanceof ApplicationFailure &&
-        error.nonRetryable &&
+        error.nonRetryable === true &&
         error.type === "ModelNotFound"
       );
     });
