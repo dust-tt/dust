@@ -1,15 +1,20 @@
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer";
 import Custom404 from "@app/components/pages/Custom404";
+import CustomErrorPage from "@app/components/pages/CustomErrorPage";
 import { EmailVerificationFlow } from "@app/components/pages/share/EmailVerificationFlow";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
+import config from "@app/lib/api/config";
+import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePathParam } from "@app/lib/platform";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useShareFrameMetadata } from "@app/lib/swr/share";
+import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
-import { Spinner } from "@dust-tt/sparkle";
+import { LogIn01, Spinner } from "@dust-tt/sparkle";
 import { usePostHog } from "posthog-js/react";
 import { useEffect, useMemo, useState } from "react";
+import { useCookies } from "react-cookie";
 
 // Origins from which the share frame is considered as embedded.
 // We hide the header for embedded origins.
@@ -20,6 +25,16 @@ export function SharedFramePage() {
   const posthog = usePostHog();
 
   const [isVerified, setIsVerified] = useState(false);
+  const [cookies] = useCookies([DUST_HAS_SESSION]);
+  const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
+  const {
+    user,
+    isUserLoading,
+    isUserError: userError,
+  } = useUser({
+    disabled: !hasSession,
+    redirectOnUnauthenticated: false,
+  });
 
   const hideHeader = useMemo(() => {
     if (typeof window === "undefined" || !document.referrer) {
@@ -160,6 +175,35 @@ export function SharedFramePage() {
     return (
       <EmailVerificationFlow shareToken={token} onVerified={handleVerified} />
     );
+  }
+
+  if (frameError) {
+    if (hasSession && isUserLoading && !userError) {
+      return (
+        <div className="flex h-dvh w-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      );
+    }
+
+    if (!hasSession || userError || !user) {
+      const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const loginUrl = `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(returnTo)}`;
+
+      return (
+        <CustomErrorPage
+          title="Sign in to open this Frame"
+          description="Sign in with an account that has access. We’ll bring you back here."
+          href={loginUrl}
+          label="Sign in"
+          icon={LogIn01}
+        />
+      );
+    }
+
+    // Keep the existing non-enumerating response for authenticated users who
+    // do not have access (or whose link no longer resolves).
+    return <Custom404 />;
   }
 
   return (
