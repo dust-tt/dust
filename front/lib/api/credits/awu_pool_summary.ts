@@ -1,3 +1,4 @@
+import { sumActiveMembersPoolConsumedCredits } from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
@@ -276,12 +277,21 @@ async function getAwuPoolCurrentCycleUncached(
     contextResult.value;
   const awuCreditTypeId = getCreditTypeAwuId();
 
-  const [balancesResult, invoicesResult, poolLedgerDataResult] =
-    await Promise.all([
-      listMetronomeBalances(metronomeCustomerId),
-      listMetronomeDraftInvoices(metronomeCustomerId),
-      getPoolLedgerData({ metronomeCustomerId }),
-    ]);
+  const [
+    balancesResult,
+    invoicesResult,
+    poolLedgerDataResult,
+    membersPoolConsumedCredits,
+  ] = await Promise.all([
+    listMetronomeBalances(metronomeCustomerId),
+    listMetronomeDraftInvoices(metronomeCustomerId),
+    getPoolLedgerData({ metronomeCustomerId }),
+    sumActiveMembersPoolConsumedCredits({
+      workspace,
+      metronomeCustomerId,
+      metronomeContractId,
+    }),
+  ]);
 
   if (balancesResult.isErr()) {
     return new Err(
@@ -347,6 +357,7 @@ async function getAwuPoolCurrentCycleUncached(
       currentCycleEndMs: null,
       currentCycleConsumedCredits,
       programmaticConsumedCredits,
+      otherConsumedCredits: null,
     });
   }
 
@@ -405,6 +416,18 @@ async function getAwuPoolCurrentCycleUncached(
         awuCreditTypeId,
       });
 
+  const otherConsumedCredits =
+    currentCycleConsumedCredits !== null &&
+    programmaticConsumedCredits !== null &&
+    membersPoolConsumedCredits !== null
+      ? Math.max(
+          0,
+          currentCycleConsumedCredits -
+            programmaticConsumedCredits -
+            membersPoolConsumedCredits
+        )
+      : null;
+
   return new Ok({
     totalRemainingCredits,
     totalActiveCredits,
@@ -415,5 +438,6 @@ async function getAwuPoolCurrentCycleUncached(
     currentCycleEndMs,
     currentCycleConsumedCredits,
     programmaticConsumedCredits,
+    otherConsumedCredits,
   });
 }

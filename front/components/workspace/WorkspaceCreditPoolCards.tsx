@@ -49,6 +49,7 @@ interface WorkspaceCreditUsageValueCardsProps {
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   programmaticConsumedCredits: number | null;
+  otherConsumedCredits: number | null;
   isLoading: boolean;
 }
 
@@ -59,6 +60,7 @@ export function WorkspaceCreditUsageValueCards({
   currentCycleStartMs,
   currentCycleEndMs,
   programmaticConsumedCredits,
+  otherConsumedCredits,
   isLoading,
 }: WorkspaceCreditUsageValueCardsProps) {
   const cycleDayLabel = formatCycleDayLabel(
@@ -86,13 +88,17 @@ export function WorkspaceCreditUsageValueCards({
         hint={cycleDayLabel}
       />
       <SummaryCard
-        label="Programmatic usage this cycle"
+        label="Programmatic / Other usage this cycle"
         value={
           typeof programmaticConsumedCredits === "number"
             ? formatCredits(programmaticConsumedCredits)
             : "—"
         }
-        hint={null}
+        hint={`Other: ${
+          typeof otherConsumedCredits === "number"
+            ? formatCredits(otherConsumedCredits)
+            : "—"
+        }`}
       />
     </div>
   );
@@ -107,6 +113,7 @@ interface WorkspaceCreditPoolSectionProps {
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   programmaticConsumedCredits: number | null;
+  otherConsumedCredits: number | null;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -118,6 +125,7 @@ export function WorkspaceCreditPoolSection({
   currentCycleStartMs,
   currentCycleEndMs,
   programmaticConsumedCredits,
+  otherConsumedCredits,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -147,6 +155,7 @@ export function WorkspaceCreditPoolSection({
           currentCycleStartMs={currentCycleStartMs}
           currentCycleEndMs={currentCycleEndMs}
           programmaticConsumedCredits={programmaticConsumedCredits}
+          otherConsumedCredits={otherConsumedCredits}
           isLoading={false}
         />
       )}
