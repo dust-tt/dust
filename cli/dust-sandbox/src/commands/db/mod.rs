@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn databases_dir_defaults_to_the_image_constant() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         std::env::remove_var(SANDBOX_DATABASES_DIR_ENV);
         std::env::remove_var(LEGACY_POD_DATABASES_DIR_ENV);
         assert_eq!(
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn databases_dir_honors_the_env_override() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         std::env::set_var(SANDBOX_DATABASES_DIR_ENV, "/tmp/sandbox-dbs");
         assert_eq!(databases_dir(), PathBuf::from("/tmp/sandbox-dbs"));
         std::env::remove_var(SANDBOX_DATABASES_DIR_ENV);
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn empty_env_override_falls_back_to_the_constant() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         std::env::set_var(SANDBOX_DATABASES_DIR_ENV, "");
         std::env::remove_var(LEGACY_POD_DATABASES_DIR_ENV);
         assert_eq!(
@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn db_file_path_joins_name_and_dir() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         std::env::set_var(SANDBOX_DATABASES_DIR_ENV, "/tmp/sandbox-dbs");
         assert_eq!(
             db_file_path("chat").unwrap(),
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn databases_dir_falls_back_to_the_legacy_env_key() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         std::env::remove_var(SANDBOX_DATABASES_DIR_ENV);
         std::env::set_var(LEGACY_POD_DATABASES_DIR_ENV, "/tmp/legacy-dbs");
         assert_eq!(databases_dir(), PathBuf::from("/tmp/legacy-dbs"));
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn canonical_database_dir_wins_over_the_legacy_key() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         std::env::set_var(SANDBOX_DATABASES_DIR_ENV, "/tmp/sandbox-dbs");
         std::env::set_var(LEGACY_POD_DATABASES_DIR_ENV, "/tmp/legacy-dbs");
         assert_eq!(databases_dir(), PathBuf::from("/tmp/sandbox-dbs"));
