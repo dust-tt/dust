@@ -99,8 +99,8 @@ describe("GLM-5.3 Flash model configuration", () => {
         forceTool: "calculator",
       }).success
     ).toBe(false);
-    expect(FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG.availableIfOneOf).toEqual({
-      featureFlag: "fireworks_new_model_feature",
-    });
+    expect(
+      FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG.availableIfOneOf
+    ).toBeUndefined();
   });
 });
