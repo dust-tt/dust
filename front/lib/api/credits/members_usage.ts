@@ -229,7 +229,17 @@ export const MembersUsagePaginationSchema = z.object({
   // the search index; every other column is sorted in-app over the full
   // matching set (see resolveMembersUsagePageUsers).
   orderColumn: z
-    .enum(["name", "email", "consumedAwuCredits", "seatType", "creditState"])
+    .enum([
+      "name",
+      "email",
+      // Legacy usage page only: sorts by total consumed credits. Kept
+      // alongside `consumedFromPoolAwuCredits`, which sorts by pool-only
+      // consumption for the compact (Poke) variant.
+      "consumedAwuCredits",
+      "consumedFromPoolAwuCredits",
+      "seatType",
+      "creditState",
+    ])
     .catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
   // Optional seat-type filter. A base seat type (e.g. "pro") matches its
@@ -691,6 +701,43 @@ async function fetchPerUserUsageCreditsForMembersTable({
     );
     return new Map();
   }
+}
+
+async function fetchConsumedAwuCreditsFromMetronomeByUserId({
+  workspaceId,
+  metronomeCustomerId,
+  metronomeContractId,
+  users,
+}: {
+  workspaceId: string;
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
+  users: { sId: string; seatType: MembershipSeatType | null }[];
+}): Promise<Map<string, number>> {
+  if (users.length === 0) {
+    return new Map();
+  }
+  const metronomeUserIdBySId = new Map(
+    users.map((u) => [
+      u.sId,
+      u.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId,
+    ])
+  );
+  const usageByMetronomeUserId = await fetchPerUserUsageCreditsForMembersTable({
+    workspaceId,
+    metronomeCustomerId,
+    metronomeContractId,
+    userIds: [...metronomeUserIdBySId.values()],
+  });
+  const consumedByUserId = new Map<string, number>();
+  for (const u of users) {
+    const metronomeUserId = metronomeUserIdBySId.get(u.sId)!;
+    consumedByUserId.set(
+      u.sId,
+      usageByMetronomeUserId.get(metronomeUserId) ?? 0
+    );
+  }
+  return consumedByUserId;
 }
 
 /** Exported for testing. */
@@ -1788,6 +1835,7 @@ async function resolveMembersUsagePageUsers({
   );
 
   const sortKeyByUserId = new Map<string, number | string>();
+  const overageLimitByUserId = new Map<string, number>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
@@ -1803,6 +1851,94 @@ async function resolveMembersUsagePageUsers({
       });
       for (const u of allUsers) {
         sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
+      }
+      break;
+    }
+    case "consumedFromPoolAwuCredits": {
+      const freeSeatUserIds = allUsers.flatMap((u) =>
+        membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
+      );
+      const creditUsageConfig =
+        await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const [
+        consumedByUserId,
+        { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
+        freeSeatCredits,
+        groupCapByUserModelId,
+      ] = await Promise.all([
+        fetchConsumedAwuCreditsFromMetronomeByUserId({
+          workspaceId: workspace.sId,
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
+          users: allUsers.map((u) => ({
+            sId: u.sId,
+            seatType: membershipByUserModelId.get(u.id)?.seatType ?? null,
+          })),
+        }),
+        fetchEffectivePerUserSpendLimits({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          workspaceId: workspace.sId,
+          defaultPoolCapAwuCredits:
+            creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
+          includeAlertLinks: false,
+        }),
+        freeSeatUserIds.length > 0
+          ? fetchFreeSeatCreditsForMembersTable({
+              metronomeCustomerId: workspace.metronomeCustomerId,
+            })
+          : Promise.resolve({
+              freeBalanceByUserId: new Map<string, number>(),
+              freeStartingByUserId: new Map<string, number>(),
+            }),
+        GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+          workspace,
+          userModelIds: allUsers.map((u) => u.id),
+        }),
+      ]);
+      const { freeStartingByUserId } = freeSeatCredits;
+      for (const u of allUsers) {
+        const membership = membershipByUserModelId.get(u.id);
+        const seatType = membership?.seatType ?? null;
+        const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+        const seatAllowance = normalizedSeatType
+          ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+          : 0;
+        const totalConsumed = consumedByUserId.get(u.sId) ?? 0;
+        const freeStartingBalanceAwu =
+          seatType === "free"
+            ? (freeStartingByUserId.get(u.sId) ?? null)
+            : null;
+        const effectiveAllocationAwu = freeStartingBalanceAwu ?? seatAllowance;
+        const consumedFromPoolAwuCredits = Math.max(
+          0,
+          totalConsumed - effectiveAllocationAwu
+        );
+        sortKeyByUserId.set(u.sId, consumedFromPoolAwuCredits);
+
+        const overrideAwuCredits =
+          membership?.poolCapOverrideAwuCredits !== null &&
+          membership?.poolCapOverrideAwuCredits !== undefined &&
+          seatType !== "none"
+            ? membership.poolCapOverrideAwuCredits + seatAllowance
+            : null;
+        const groupPoolCapAwuCredits = groupCapByUserModelId.get(u.id) ?? null;
+        const groupCapAwuCredits =
+          groupPoolCapAwuCredits !== null && normalizedSeatType !== null
+            ? groupPoolCapAwuCredits + seatAllowance
+            : null;
+        const defaultAwuCredits = normalizedSeatType
+          ? (defaultCapAwuCreditsBySeatType[normalizedSeatType] ?? 0)
+          : 0;
+        const effectiveSpendLimitAwuCredits =
+          resolveEffectiveSpendLimitAwuCredits({
+            overrideAwuCredits,
+            groupCapAwuCredits,
+            defaultAwuCredits,
+          });
+        overageLimitByUserId.set(
+          u.sId,
+          effectiveSpendLimitAwuCredits - seatAllowance
+        );
       }
       break;
     }
@@ -1838,6 +1974,12 @@ async function resolveMembersUsagePageUsers({
         : String(keyA).localeCompare(String(keyB));
     if (cmp !== 0) {
       return cmp * directionFactor;
+    }
+    // Tiebreak on the highest overage limit, always descending
+    const overageLimitA = overageLimitByUserId.get(a.sId) ?? 0;
+    const overageLimitB = overageLimitByUserId.get(b.sId) ?? 0;
+    if (overageLimitA !== overageLimitB) {
+      return overageLimitB - overageLimitA;
     }
     // Stable, direction-independent tiebreaker so pages don't reshuffle.
     const nameA = (a.fullName() || a.name).toLowerCase();

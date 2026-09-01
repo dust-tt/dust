@@ -26,8 +26,8 @@ export const MUTED_BAR_CLASSES = {
   fill: SEAT_TIER_STYLES.muted.barFill,
 };
 
-// Overage bar colors (spend beyond the seat allowance + pool limit) — red, to
-// signal the user is over their cap.
+// Overage bar colors (spend beyond the seat allowance + pool limit) —
+// warning/orange, to signal the user is over their cap.
 export const OVERAGE_BAR_CLASSES = {
   track: "bg-warning-200",
   fill: "bg-warning-700",
