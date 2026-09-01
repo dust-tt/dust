@@ -1519,6 +1519,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       const skill = await SkillFactory.create(adminAuth, {
         name: "Test Skill With Tool And Additional Space",
         requestedSpaceIds: [toolSpace!.id, additionalSpace!.id],
+        // Only the additional space was picked by hand; the tool space comes from the server view.
+        manuallyRequestedSpaceIds: [additionalSpace!.id],
         mcpServerViews: [serverView],
       });
 
@@ -1533,6 +1535,87 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(skillAfter).not.toBeNull();
       expect(skillAfter!.requestedSpaceIds).not.toContain(toolSpace!.id);
       expect(skillAfter!.requestedSpaceIds).toEqual([additionalSpace!.id]);
+    });
+
+    it("should preserve a nested skill's spaces when deleting a dependency space", async () => {
+      // The parent requests two spaces for two different reasons: a tool of its own, and a child
+      // skill it references. Deleting the tool's space must not drop the child's.
+      const toolSpaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Parent Tool",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(toolSpaceResult.isOk()).toBe(true);
+      const toolSpace = toolSpaceResult.isOk() ? toolSpaceResult.value : null;
+
+      const childSpaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Child Tool",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(childSpaceResult.isOk()).toBe(true);
+      const childSpace = childSpaceResult.isOk()
+        ? childSpaceResult.value
+        : null;
+
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "Test Server",
+      });
+      const parentServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        toolSpace!
+      );
+      const childServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        childSpace!
+      );
+
+      const { parentSkill } = await SkillFactory.createWithNestedSkill(
+        adminAuth,
+        {
+          childOverrides: {
+            name: "Nested Child Skill",
+            requestedSpaceIds: [childSpace!.id],
+            mcpServerViews: [childServerView],
+          },
+          parentOverrides: {
+            name: "Nested Parent Skill",
+            requestedSpaceIds: [toolSpace!.id, childSpace!.id],
+            mcpServerViews: [parentServerView],
+          },
+        }
+      );
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        toolSpace!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      const parentAfter = await SkillResource.fetchById(
+        adminAuth,
+        parentSkill.sId
+      );
+      expect(parentAfter).not.toBeNull();
+      expect(parentAfter!.requestedSpaceIds).not.toContain(toolSpace!.id);
+      // Requested through the child skill reference, not by hand.
+      expect(parentAfter!.requestedSpaceIds).toContain(childSpace!.id);
+      expect(parentAfter!.manuallyRequestedSpaceIds).toEqual([]);
     });
 
     it("should only remove deleted space from agent requestedSpaceIds, keeping other spaces", async () => {

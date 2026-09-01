@@ -11,6 +11,7 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
+import { getReferencedSkillSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -383,23 +384,8 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
         );
 
-        // TODO(skills-manual-spaces): read `manuallyRequestedSpaceIds` here once every skill has
-        // been backfilled, and drop this inference.
-        const previousComputedRequestedSpaceIds =
-          await SkillResource.computeRequestedSpaceIds(auth, {
-            mcpServerViews: skill.mcpServerViews,
-            attachedKnowledge,
-          });
-        const previousComputedRequestedSpaceIdSet = new Set(
-          previousComputedRequestedSpaceIds
-        );
-        const additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
-          (spaceId) =>
-            spaceId !== space.id &&
-            !previousComputedRequestedSpaceIdSet.has(spaceId)
-        );
-
-        // A deleted space cannot stay a manual choice: nothing can grant access to it any more
+        // A deleted space cannot stay a manual choice: nothing can grant access to it any more,
+        // and an id pointing at a missing space would hide the skill from everyone.
         const manuallyRequestedSpaceIds =
           skill.manuallyRequestedSpaceIds.filter(
             (spaceId) => spaceId !== space.id
@@ -411,9 +397,25 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
             mcpServerViews: filteredMCPServerViews,
             attachedKnowledge: filteredAttachedKnowledge,
           });
+
+        // The skills this one references keep requesting their own spaces: deleting an unrelated
+        // space must not drop them. A child may still request the space being deleted and the
+        // cleanup order across skills is not guaranteed, so drop it here rather than let it come
+        // back through a reference.
+        const referencedSkillSpaceIds = (
+          await getReferencedSkillSpaceModelIds(
+            auth,
+            skill.instructions,
+            skill.sId
+          )
+        ).filter((spaceId) => spaceId !== space.id);
+
+        // Rebuilt from the same four reasons a skill requests a space as when it is saved, with
+        // the deleted space stripped from each of them.
         const requestedSpaceIds = uniq([
-          ...computedRequestedSpaceIds,
-          ...additionalRequestedSpaceIds,
+          ...computedRequestedSpaceIds, // Tools and attached knowledge.
+          ...referencedSkillSpaceIds, // Nested skills.
+          ...manuallyRequestedSpaceIds, // Picked by hand.
         ]);
 
         // Log an error if the deleted space is still in requestedSpaceIds.

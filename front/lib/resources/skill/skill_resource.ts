@@ -4441,12 +4441,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   toJSON(auth: Authenticator): SkillType {
-    const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
+    const toSpaceId = (spaceId: ModelId) =>
       SpaceResource.modelIdToSId({
         id: spaceId,
         workspaceId: this.workspaceId,
-      })
-    );
+      });
+
+    const requestedSpaceIds = this.requestedSpaceIds.map(toSpaceId);
+    const manuallyRequestedSpaceIds =
+      this.manuallyRequestedSpaceIds.map(toSpaceId);
 
     // Code-defined (global) skills hide their instructions from the front-end by
     // default; a skill opts in via `exposeInstructions` in its definition (e.g.
@@ -4471,6 +4474,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: hideInstructions ? null : this.instructions,
       instructionsHtml: hideInstructions ? null : this.instructionsHtml,
       requestedSpaceIds,
+      manuallyRequestedSpaceIds,
       icon: this.icon ?? null,
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
