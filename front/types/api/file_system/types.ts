@@ -22,6 +22,8 @@ export type FileSystemFileEntry = FileSystemEntryBase & {
   contentType: string;
   /** sId of the corresponding FileResource record, or null when none exists. */
   fileId: string | null;
+  /** Semantic type of the linked FileResource, when it differs from the source bytes. */
+  fileResourceContentType?: string;
   thumbnailUrl: string | null;
   /** Present when the caller requested signed URLs. */
   signedDownloadUrl?: string | null;
