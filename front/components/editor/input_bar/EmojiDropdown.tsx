@@ -179,8 +179,10 @@ export const EmojiDropdown = forwardRef<
     return null;
   }
 
-  const contentKey =
-    filteredEmojis.length === 0 ? "empty" : `results-${filteredEmojis.length}`;
+  // Keyed on the panel's shape only: keying on the result count remounted the
+  // menu — replaying its enter animation — on every keystroke, and Radix already
+  // repositions on its own when the content resizes.
+  const contentKey = filteredEmojis.length === 0 ? "empty" : "results";
 
   const virtualTriggerStyle: React.CSSProperties = {
     position: "fixed",

@@ -255,7 +255,7 @@ const MultiPageDialogContent = React.forwardRef<
                 )}
                 <div
                   className={cn(
-                    "flex items-center gap-3 transition-all duration-200 ease-out",
+                    "flex items-center gap-3 transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none",
                     {
                       "transform opacity-0": isTransitioning,
                       "translate-x-1":
@@ -300,7 +300,7 @@ const MultiPageDialogContent = React.forwardRef<
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div
               className={cn(
-                "h-full transition-all duration-200 ease-out",
+                "h-full transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none",
                 {
                   "transform opacity-0": isTransitioning,
                   "translate-x-2":

@@ -1,8 +1,9 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { ConversationMessageNavigation } from "@app/components/assistant/conversation/input_bar/ConversationMessageNavigation";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
+import { InputBarScrollCollapseWatcher } from "@app/components/assistant/conversation/input_bar/InputBarScrollCollapseWatcher";
 import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useInputBarCompactMode } from "@app/components/assistant/conversation/input_bar/useInputBarCompactMode";
 import type {
@@ -13,7 +14,6 @@ import {
   isAgentMessageWithStreaming,
   isCompactionMessage,
   isHandoverUserMessage,
-  isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
@@ -44,15 +44,11 @@ import {
   MOTION_DURATIONS,
   MOTION_EASINGS,
 } from "@dust-tt/sparkle";
-import {
-  useVirtuosoLocation,
-  useVirtuosoMethods,
-} from "@virtuoso.dev/message-list";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import type { MotionProps, Transition } from "framer-motion";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 const DOUBLE_ESC_WINDOW_MS = 300;
 
 // Offsets in px
@@ -122,17 +118,15 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     workspaceId: context.owner.sId,
   });
   const methods = useVirtuosoMethods<VirtuosoMessage>();
-  const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
+  const isCompactModeEnabled = isMobile && !agentBuilderContext;
   const {
     effectiveIsCompact,
     expandInputBar,
+    onListOffsetChange,
     onEditorFocusChange,
     onOverlayOpenChange,
     onVoiceActiveChange,
-  } = useInputBarCompactMode({
-    enabled: isMobile && !agentBuilderContext,
-    listOffset,
-  });
+  } = useInputBarCompactMode({ enabled: isCompactModeEnabled });
 
   const allMessages = methods.data.get();
 
@@ -250,94 +244,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     accessibleAgentIds,
     agentBuilderContext,
   ]);
-
-  // Calculate positions and determine which user messages are navigable.
-  const {
-    canScrollUp,
-    canScrollDown,
-    scrollToPreviousUserMessage,
-    scrollToNextUserMessage,
-  } = useMemo(() => {
-    const allMessages = methods.data.get();
-
-    // Find indices of visible (non-hidden) user messages.
-    const userMessageIndices: number[] = [];
-    for (let i = 0; i < allMessages.length; i++) {
-      const msg = allMessages[i];
-      if (isUserMessage(msg) && !isHiddenMessage(msg)) {
-        userMessageIndices.push(i);
-      }
-    }
-
-    // Calculate positions by accumulating heights.
-    const positions: { top: number; bottom: number }[] = [];
-    let accumulatedHeight = 0;
-    for (const msg of allMessages) {
-      const height = methods.height(msg);
-      positions.push({
-        top: accumulatedHeight,
-        bottom: accumulatedHeight + height,
-      });
-      accumulatedHeight += height;
-    }
-
-    // Convert listOffset to positive scroll position.
-    // listOffset is negative when scrolled down (distance from list top to viewport top).
-    const viewportTop = -listOffset;
-    const viewportTopQuarter = viewportTop + visibleListHeight / 4;
-
-    // Find user messages fully above viewport (for arrow up).
-    const fullyAboveIndices = userMessageIndices.filter(
-      (idx) => positions[idx] && positions[idx].bottom <= viewportTop
-    );
-
-    // Find user messages whose top is below the top quarter of viewport (for arrow down).
-    const belowTopQuarterIndices = userMessageIndices.filter(
-      (idx) => positions[idx] && positions[idx].top >= viewportTopQuarter
-    );
-
-    const canUp = fullyAboveIndices.length > 0;
-    const canDown =
-      (belowTopQuarterIndices.length > 0 || bottomOffset > 0) &&
-      !methods.getScrollLocation().isAtBottom;
-
-    return {
-      canScrollUp: canUp,
-      canScrollDown: canDown,
-      scrollToPreviousUserMessage: () => {
-        if (fullyAboveIndices.length > 0) {
-          // Scroll to the last user message that's fully above (closest to current view).
-          const targetIndex = fullyAboveIndices[fullyAboveIndices.length - 1];
-          methods.scrollToItem({
-            index: targetIndex,
-            align: "start",
-            behavior: "smooth",
-          });
-        }
-      },
-      scrollToNextUserMessage: () => {
-        if (belowTopQuarterIndices.length > 0) {
-          // Scroll to the first user message below top quarter.
-          const targetIndex = belowTopQuarterIndices[0];
-          methods.scrollToItem({
-            index: targetIndex,
-            align: "start",
-            behavior: "smooth",
-          });
-        } else if (bottomOffset > 0) {
-          // No more user messages below, but there's content - scroll to bottom.
-          methods.scrollToItem({
-            index: "LAST",
-            align: "end",
-            behavior:
-              bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL
-                ? "smooth"
-                : "instant",
-          });
-        }
-      },
-    };
-  }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
   const blockedActionItems = getBlockedActionItems(context.user.sId);
   const blockedActions = blockedActionItems.map((item) => item.blockedAction);
@@ -550,10 +456,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     hasPendingMessages,
     pendingAction,
     onStopClick: handleStopClick,
-    canScrollUp,
-    canScrollDown,
-    onScrollUp: scrollToPreviousUserMessage,
-    onScrollDown: scrollToNextUserMessage,
   };
 
   if (context.projectId && context.isProjectArchived) {
@@ -576,10 +478,15 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         "relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1"
       )}
     >
+      {isCompactModeEnabled && (
+        <InputBarScrollCollapseWatcher
+          onListOffsetChange={onListOffsetChange}
+        />
+      )}
       <div className="flex w-full justify-center gap-2">
         {showNavigationContainer &&
           (!effectiveIsCompact || !!userAnswerRequiredItem) && (
-            <InputBarMessageNavigation
+            <ConversationMessageNavigation
               variant="floating"
               {...messageNavigationProps}
             />
@@ -742,7 +649,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           showNavigationContainer && (
             <div className="shrink-0">
               <div className={INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES}>
-                <InputBarMessageNavigation
+                <ConversationMessageNavigation
                   variant="compact"
                   {...messageNavigationProps}
                 />

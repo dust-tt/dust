@@ -138,7 +138,6 @@ function narrowToKnownSlashCommand(
   return null;
 }
 
-const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
@@ -1748,12 +1747,7 @@ const InputBarContainer = ({
               </Toolbar>
             )}
           </EditorSelectionToolbar>
-          <div
-            className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}
-            style={{
-              transition: `padding ${COLLAPSE_TRANSITION}`,
-            }}
-          >
+          <div className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}>
             <div className="mb-1 flex flex-wrap items-center px-3">
               {selectedMCPServerViews.map((msv) => (
                 <React.Fragment key={msv.sId}>

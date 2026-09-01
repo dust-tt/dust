@@ -28,5 +28,11 @@ export const INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES =
 export const INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES =
   "motion-safe:origin-center motion-safe:animate-input-bar-compact-nav-in";
 
+/**
+ * Composite/paint-only morph between the expanded and compact surfaces. The
+ * padding and box-shadow swap instantly: this transition runs while the list is
+ * being scrolled, and a layout property here would re-lay-out the editor on
+ * every frame of it — under the 480ms compact entrance neither reads as a snap.
+ */
 export const INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES =
-  "transition-[background-color,padding,border-color,box-shadow,opacity] duration-300 ease-out";
+  "transition-[background-color,border-color,opacity] duration-300 ease-out motion-reduce:transition-none";

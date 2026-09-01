@@ -118,13 +118,11 @@ export const MentionDropdown = forwardRef<
       return null;
     }
 
-    // Generate a key based on content state to force remount when content size changes significantly.
-    // This ensures Radix UI recalculates collision detection and positioning.
-    const contentKey = isLoading
-      ? "loading"
-      : suggestions.length === 0
-        ? "empty"
-        : `results-${suggestions.length}`;
+    // Remount so Radix re-runs collision detection when the panel changes shape.
+    // Keyed on the shape only, not on the result count: keying on the count
+    // remounted the menu — and replayed its enter animation — on every keystroke,
+    // while Radix already repositions on its own when the content resizes.
+    const contentKey = isLoading ? "loading" : "results";
 
     // Don't render the dropdown if there are no results
     if (suggestions.length === 0 && !isLoading) {

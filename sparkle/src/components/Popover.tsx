@@ -2,7 +2,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 const PopoverRoot = PopoverPrimitive.Root;
 const PopoverTrigger = PopoverPrimitive.Trigger;
@@ -60,6 +60,7 @@ const PopoverContent = React.forwardRef<
         align={align}
         sideOffset={sideOffset}
         className={cn(
+          "duration-200 ease-enter data-[state=closed]:duration-150 motion-reduce:animate-none",
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
           "data-[side=bottom]:slide-in-from-top-2",
@@ -145,64 +146,64 @@ function AnchoredPopover({
   className,
   ...props
 }: AnchoredPopoverProps) {
-  const [position, setPosition] = useState({
-    top: "50%",
-    left: "50%",
-    width: "0px",
-    height: "0px",
-  });
+  const anchorElementRef = useRef<HTMLDivElement>(null);
 
+  // The anchor tracks its target on every scroll frame, so its position is
+  // written straight to the node as a transform: state would re-render the
+  // whole popover per frame, and top/left would re-run layout per frame.
   useEffect(() => {
-    if (!open) {
+    const anchorElement = anchorElementRef.current;
+    const target = anchorRef?.current;
+    if (!open || !anchorElement || !target) {
       return;
     }
 
-    const updatePosition = () => {
-      if (!anchorRef?.current) {
-        setPosition({
-          top: "50%",
-          left: "50%",
-          width: "0px",
-          height: "0px",
-        });
-        return;
-      }
+    let frame = 0;
 
-      const rect = anchorRef.current.getBoundingClientRect();
-      setPosition({
-        top: `${rect.top}px`,
-        left: `${rect.left}px`,
-        width: `${rect.width}px`,
-        height: `${rect.height}px`,
-      });
+    const writePosition = () => {
+      frame = 0;
+      const rect = target.getBoundingClientRect();
+      anchorElement.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
+      anchorElement.style.width = `${rect.width}px`;
+      anchorElement.style.height = `${rect.height}px`;
     };
 
-    updatePosition();
+    // Coalesce bursts of scroll and resize notifications into one write per frame.
+    const schedulePosition = () => {
+      if (frame === 0) {
+        frame = requestAnimationFrame(writePosition);
+      }
+    };
 
-    const resizeObserver = new ResizeObserver(updatePosition);
-    if (anchorRef?.current) {
-      resizeObserver.observe(anchorRef.current);
-    }
+    writePosition();
 
-    window.addEventListener("scroll", updatePosition, true);
+    const resizeObserver = new ResizeObserver(schedulePosition);
+    resizeObserver.observe(target);
+    window.addEventListener("scroll", schedulePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
+      if (frame !== 0) {
+        cancelAnimationFrame(frame);
+      }
       resizeObserver.disconnect();
-      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("scroll", schedulePosition, true);
     };
   }, [open, anchorRef]);
 
   return (
     <PopoverRoot open={open} modal={false}>
-      <PopoverAnchor
-        className="fixed transition-all duration-300 ease-in-out"
-        style={{
-          top: position.top,
-          left: position.left,
-          width: position.width,
-          height: position.height,
-        }}
-      />
+      <PopoverAnchor asChild>
+        <div
+          ref={anchorElementRef}
+          className={cn(
+            "fixed",
+            anchorRef ? "top-0 left-0" : "top-1/2 left-1/2"
+          )}
+        />
+      </PopoverAnchor>
       <PopoverContent
         {...props}
         onOpenAutoFocus={(e) => e.preventDefault()}

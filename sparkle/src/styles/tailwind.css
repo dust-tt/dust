@@ -216,9 +216,12 @@
   .glint-sweep,
   .glint-sweep-hover {
     transform: translateX(-100%);
-    will-change: transform;
   }
 
+  /* Only the layers driven by the always-running timeline are promoted up
+     front: a resting layer still costs GPU memory, and the hover sweep is
+     promoted when its own animation starts. */
+  .glint-sweep,
   .glint-ring {
     will-change: transform;
   }
@@ -226,6 +229,7 @@
   @media (hover: hover) and (pointer: fine) {
     .glint-host:hover .glint-sweep-hover {
       animation: glint-pass 840ms cubic-bezier(0.645, 0.045, 0.355, 1) 1;
+      will-change: transform;
     }
   }
 

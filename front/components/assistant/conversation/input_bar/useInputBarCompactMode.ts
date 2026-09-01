@@ -6,12 +6,10 @@ const EXPAND_SCROLL_GRACE_MS = 300;
 
 interface UseInputBarCompactModeOptions {
   enabled: boolean;
-  listOffset: number;
 }
 
 export function useInputBarCompactMode({
   enabled,
-  listOffset,
 }: UseInputBarCompactModeOptions) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
@@ -21,9 +19,13 @@ export function useInputBarCompactMode({
   const isInteractingRef = useRef(false);
   isInteractingRef.current = isEditorFocused || isOverlayOpen || isVoiceActive;
 
-  const listOffsetRef = useRef(listOffset);
-  listOffsetRef.current = listOffset;
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
+  const isExpandedRef = useRef(isExpanded);
+  isExpandedRef.current = isExpanded;
+
+  const listOffsetRef = useRef(0);
   const prevListOffsetRef = useRef<number | null>(null);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ignoreScrollUntilRef = useRef(0);
@@ -39,8 +41,19 @@ export function useInputBarCompactMode({
   useEffect(() => {
     if (!enabled) {
       setIsExpanded(true);
-      prevListOffsetRef.current = listOffset;
+      // Re-seed the baseline off the first offset seen once scroll matters again.
+      prevListOffsetRef.current = null;
       ignoreScrollUntilRef.current = 0;
+    }
+  }, [enabled]);
+
+  // Called on every scroll frame by InputBarScrollCollapseWatcher, so it stays a
+  // stable callback reading its inputs from refs: nothing here may re-render the
+  // input bar until the debounce actually fires.
+  const onListOffsetChange = useCallback((listOffset: number) => {
+    listOffsetRef.current = listOffset;
+
+    if (!enabledRef.current) {
       return;
     }
 
@@ -51,7 +64,7 @@ export function useInputBarCompactMode({
 
     // Only use scroll to enter compact while the bar is expanded. While compact,
     // keep the baseline in sync but ignore deltas (layout noise from footer size).
-    if (!isExpanded) {
+    if (!isExpandedRef.current) {
       prevListOffsetRef.current = listOffset;
       return;
     }
@@ -83,7 +96,7 @@ export function useInputBarCompactMode({
         setIsExpanded(false);
       }
     }, SCROLL_COMPACT_DEBOUNCE_MS);
-  }, [enabled, isExpanded, listOffset]);
+  }, []);
 
   const isScrolledCompactIntent = enabled && !isExpanded;
   const effectiveIsCompact =
@@ -102,6 +115,7 @@ export function useInputBarCompactMode({
   return {
     effectiveIsCompact,
     expandInputBar,
+    onListOffsetChange,
     onEditorFocusChange: setIsEditorFocused,
     onOverlayOpenChange: setIsOverlayOpen,
     onVoiceActiveChange: setIsVoiceActive,
