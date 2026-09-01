@@ -85,11 +85,12 @@ export const LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV =
 export function sandboxDatabaseMaxSizeBytes(): Result<number, DbCommandError> {
   const canonicalValue = process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV];
   const legacyValue = process.env[LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV];
-  const [envName, raw] = canonicalValue
-    ? [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV, canonicalValue]
-    : legacyValue
-      ? [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV, legacyValue]
-      : [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV, canonicalValue];
+  const [envName, raw] =
+    canonicalValue !== undefined
+      ? [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV, canonicalValue]
+      : legacyValue !== undefined
+        ? [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV, legacyValue]
+        : [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV, canonicalValue];
   const parsed =
     raw !== undefined && /^[0-9]+$/.test(raw) ? Number(raw) : Number.NaN;
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {

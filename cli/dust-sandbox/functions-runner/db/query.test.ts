@@ -392,18 +392,25 @@ describe("runner db-query envelope", () => {
   async function run(
     args: string[],
     stdin?: string,
-    env?: Record<string, string>
+    env?: Record<string, string | undefined>
   ) {
+    const childEnv = {
+      ...process.env,
+      [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(1024 * 1024 * 1024),
+    };
+    for (const [key, value] of Object.entries(env ?? {})) {
+      if (value === undefined) {
+        delete childEnv[key];
+      } else {
+        childEnv[key] = value;
+      }
+    }
     const proc = Bun.spawn(["bun", runner, ...args], {
       stdin: stdin === undefined ? "ignore" : new Blob([stdin]),
       stdout: "pipe",
       stderr: "pipe",
       // Bun.spawn replaces the environment; carry the parent env and default the quota.
-      env: {
-        ...process.env,
-        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(1024 * 1024 * 1024),
-        ...env,
-      },
+      env: childEnv,
     });
     const [stdout, code] = await Promise.all([
       new Response(proc.stdout).text(),
@@ -438,8 +445,8 @@ describe("runner db-query envelope", () => {
       const dbPath = join(dir, "chat.db");
       await run(["db-reconcile", dbPath, fx("chat.db.ts")]);
       const { stdout, code } = await run(["db-query", dbPath], "SELECT 1", {
-        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: "",
-        [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV]: "",
+        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: undefined,
+        [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV]: undefined,
       });
       expect(code).toBe(1);
       const envelope = JSON.parse(stdout.trim());
@@ -453,7 +460,7 @@ describe("runner db-query envelope", () => {
       const dbPath = join(dir, "chat.db");
       await run(["db-reconcile", dbPath, fx("chat.db.ts")]);
       const { stdout, code } = await run(["db-query", dbPath], "SELECT 1", {
-        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: "",
+        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: undefined,
         [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(1024 * 1024 * 1024),
       });
       expect(code).toBe(0);
@@ -461,12 +468,12 @@ describe("runner db-query envelope", () => {
     });
   });
 
-  test("db-query prefers the canonical size quota env", async () => {
+  test("db-query treats an empty canonical quota as invalid", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "chat.db");
       await run(["db-reconcile", dbPath, fx("chat.db.ts")]);
       const { stdout, code } = await run(["db-query", dbPath], "SELECT 1", {
-        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: "invalid",
+        [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: "",
         [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(1024 * 1024 * 1024),
       });
       expect(code).toBe(1);
