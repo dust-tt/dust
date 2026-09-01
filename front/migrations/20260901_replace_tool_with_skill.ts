@@ -10,17 +10,10 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import {
-  getResourceNameAndIdFromSId,
-  isResourceSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types/shared/model_id";
-
-type SkillLinkTarget =
-  | { customSkillId: ModelId; globalSkillId: null }
-  | { customSkillId: null; globalSkillId: string };
 
 interface AgentChange {
   agentConfigurationModelId: ModelId;
@@ -32,19 +25,13 @@ interface AgentChange {
   toolConfigurationIds: string[];
 }
 
-function getSkillLinkTarget(skill: SkillResource): SkillLinkTarget {
-  return isResourceSId("skill", skill.sId)
-    ? { customSkillId: skill.id, globalSkillId: null }
-    : { customSkillId: null, globalSkillId: skill.sId };
-}
-
 async function buildReplacementPlan({
+  customSkillModelId,
   mcpServerViewModelId,
-  skillLinkTarget,
   workspaceModelId,
 }: {
+  customSkillModelId: ModelId;
   mcpServerViewModelId: ModelId;
-  skillLinkTarget: SkillLinkTarget;
   workspaceModelId: ModelId;
 }): Promise<AgentChange[]> {
   const agents = await AgentConfigurationModel.findAll({
@@ -79,7 +66,7 @@ async function buildReplacementPlan({
     attributes: ["agentConfigurationId"],
     where: {
       agentConfigurationId: { [Op.in]: agents.map((agent) => agent.id) },
-      ...skillLinkTarget,
+      customSkillId: customSkillModelId,
       workspaceId: workspaceModelId,
     },
   });
@@ -105,11 +92,11 @@ async function createReplacementVersion(
   {
     change,
     mcpServerViewId,
-    skill,
+    skillId,
   }: {
     change: AgentChange;
     mcpServerViewId: string;
-    skill: SkillResource;
+    skillId: string;
   }
 ): Promise<number> {
   const contextResult = await getAgentConfigurationContext(
@@ -153,10 +140,7 @@ async function createReplacementVersion(
   }
 
   const skillIds = [
-    ...new Set([
-      ...skills.map((existingSkill) => existingSkill.sId),
-      skill.sId,
-    ]),
+    ...new Set([...skills.map((existingSkill) => existingSkill.sId), skillId]),
   ];
   const authorId = agentConfiguration.versionAuthorId;
   if (authorId === null) {
@@ -243,7 +227,7 @@ makeScript(
     },
     skillId: {
       demandOption: true,
-      describe: "Custom (skl_...) or global skill sId to add to agents",
+      describe: "Custom skill sId (skl_...) to add to agents",
       type: "string" as const,
     },
   },
@@ -259,13 +243,12 @@ makeScript(
     }
 
     const parsedSkillId = getResourceNameAndIdFromSId(skillId);
-    if (parsedSkillId && parsedSkillId.resourceName !== "skill") {
+    if (!parsedSkillId || parsedSkillId.resourceName !== "skill") {
       throw new Error(
-        `Invalid skill sId: ${skillId}. Expected a custom skl_... or global skill ID.`
+        `Invalid skill sId: ${skillId}. Expected a custom skl_... ID.`
       );
     }
     if (
-      parsedSkillId?.resourceName === "skill" &&
       parsedSkillId.workspaceModelId !== parsedMCPServerViewId.workspaceModelId
     ) {
       throw new Error(
@@ -292,21 +275,21 @@ makeScript(
       throw new Error(`MCP server view not found: ${mcpServerViewId}.`);
     }
 
-    const [skill] = await SkillResource.fetchByIds(auth, [skillId], {
+    const [customSkill] = await SkillResource.fetchByIds(auth, [skillId], {
       onlyActive: true,
       withFileAttachments: false,
       withInstructions: false,
       withTools: false,
     });
-    if (!skill) {
+    if (!customSkill) {
       throw new Error(
-        `Active skill not found in workspace ${workspace.sId}: ${skillId}.`
+        `Active custom skill not found in workspace ${workspace.sId}: ${skillId}.`
       );
     }
 
     const plan = await buildReplacementPlan({
+      customSkillModelId: customSkill.id,
       mcpServerViewModelId: mcpServerView.id,
-      skillLinkTarget: getSkillLinkTarget(skill),
       workspaceModelId: workspace.id,
     });
 
@@ -316,7 +299,7 @@ makeScript(
         ? await createReplacementVersion(auth, {
             change,
             mcpServerViewId,
-            skill,
+            skillId: customSkill.sId,
           })
         : change.targetVersion;
 
@@ -328,7 +311,7 @@ makeScript(
           change,
           execute,
           mcpServerViewId,
-          skillId: skill.sId,
+          skillId: customSkill.sId,
           targetVersion,
           workspaceId: workspace.sId,
         },
@@ -344,7 +327,7 @@ makeScript(
         agentVersionsToCreate: execute ? 0 : plan.length,
         execute,
         mcpServerViewId,
-        skillId: skill.sId,
+        skillId: customSkill.sId,
         toolConfigurationsNotCopied: plan.reduce(
           (count, change) => count + change.toolConfigurationIds.length,
           0
