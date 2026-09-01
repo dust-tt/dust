@@ -3,13 +3,13 @@ import {
   validateTailwindCode,
   validateTypeScriptSyntax,
 } from "@app/lib/api/files/content_validation";
+import { withLegacyFrameMutationLock } from "@app/lib/api/frames/operation_lock";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
 import { validateFramePodFunctionReferences } from "@app/lib/api/viz/validate_frame_pod_functions";
 import type { Authenticator } from "@app/lib/auth";
-import { executeWithLock } from "@app/lib/lock";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -96,7 +96,17 @@ export async function publishFrame(
   }
 
   try {
-    return await executeWithLock(`file:edit:${file.sId}`, async () => {
+    return await withLegacyFrameMutationLock(file.sId, async () => {
+      const currentFile = await FileResource.fetchById(auth, file.sId);
+      if (!currentFile?.isInteractiveContent) {
+        return new Err(
+          new PublishFrameError(
+            "not_interactive_content",
+            `File '${file.sId}' is not interactive content.`
+          )
+        );
+      }
+
       // 1. Bundle from the entry. The bundler walks the import graph and reads each module
       //    lazily. This wrapper validates and caches every file as it is pulled, so only the
       //    frame's actual sources are read and checked, never unrelated files in the mount.
@@ -170,7 +180,7 @@ export async function publishFrame(
       const podFunctionValidation = await validateFramePodFunctionReferences(
         auth,
         {
-          file,
+          file: currentFile,
           sources: cache,
         }
       );
@@ -187,15 +197,15 @@ export async function publishFrame(
       //    stay in sync with what was published (the entry is always read during the build).
       const entrySource = cache.get(entryRelPath);
       if (entrySource !== undefined) {
-        await file.uploadContent(auth, entrySource);
+        await currentFile.uploadContent(auth, entrySource);
       }
 
       // 4. Store the bundle as the rendered version and mark the frame published.
-      await file.uploadProcessed(auth, buildResult.value.code);
+      await currentFile.uploadProcessed(auth, buildResult.value.code);
       // frameBundleRootPath and frameEntryRelPath flip rendering to the bundle and let live
       // edits rebuild later without a model in the loop.
-      await file.setUseCaseMetadata(auth, {
-        ...(file.useCaseMetadata ?? {}),
+      await currentFile.setUseCaseMetadata(auth, {
+        ...(currentFile.useCaseMetadata ?? {}),
         frameBundleRootPath: rootScopedPath,
         frameEntryRelPath: entryRelPath,
         ...(publishedByAgentConfigurationId
@@ -206,7 +216,10 @@ export async function publishFrame(
       });
 
       // 5. Recompute the allowlist against the rendered bundle.
-      const allowlist = await ensureAuthorizedFileAccessForShare(auth, file);
+      const allowlist = await ensureAuthorizedFileAccessForShare(
+        auth,
+        currentFile
+      );
       if (allowlist.isErr()) {
         return new Err(
           new PublishFrameError("allowlist_failed", allowlist.error.message)

@@ -5,7 +5,10 @@ import {
   getConvertedFrameMetadata,
   getFrameSourceOwner,
 } from "@app/lib/api/frames/conversion_primitives";
-import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
+import {
+  withFrameSourceLock,
+  withLegacyFrameMutationLock,
+} from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import {
   captureFrameV2SourceSnapshot,
@@ -13,6 +16,7 @@ import {
 } from "@app/lib/api/frames/publish_from_source";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
+import type { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -147,10 +151,7 @@ export async function convertLegacyFrameToV2(
     );
   }
 
-  const conversion = await withFrameSourceLock<
-    ConvertLegacyFrameToV2Result,
-    ConvertLegacyFrameToV2Error
-  >(legacyFrame.sId, async () => {
+  const convertWithSourceLock = async () => {
     const frame = await FileResource.fetchById(auth, legacyFrame.sId);
     if (!frame || frame.mountFilePath !== sourceMountPath) {
       return conversionError(
@@ -280,7 +281,30 @@ export async function convertLegacyFrameToV2(
           : "Frame conversion failed and its legacy source binding could not be restored."
       );
     }
-  });
+  };
+  let conversion: Result<
+    ConvertLegacyFrameToV2Result,
+    ConvertLegacyFrameToV2Error | LockAcquisitionTimeoutError
+  >;
+  try {
+    conversion = await withLegacyFrameMutationLock(legacyFrame.sId, () =>
+      withFrameSourceLock<
+        ConvertLegacyFrameToV2Result,
+        ConvertLegacyFrameToV2Error
+      >(legacyFrame.sId, convertWithSourceLock)
+    );
+  } catch (error) {
+    if (isLockAcquisitionTimeoutError(error)) {
+      return conversionError(
+        "conflict",
+        "Another source operation is in progress for this Frame; retry shortly."
+      );
+    }
+    return conversionError(
+      "internal",
+      `Frame conversion failed: ${normalizeError(error).message}`
+    );
+  }
   if (conversion.isErr()) {
     if (isLockAcquisitionTimeoutError(conversion.error)) {
       return conversionError(
