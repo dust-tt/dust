@@ -10,7 +10,6 @@ import type {
   ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
-  agentTagIdsFilter,
   buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
@@ -273,13 +272,11 @@ async function fetchConsumptionPreviousCredits(
     dimension,
     previousPeriod,
     filter,
-    agentTagIds,
     keys,
   }: {
     dimension: ConsumptionTopDimension;
     previousPeriod: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
-    agentTagIds?: string[];
     keys: string[];
   }
 ): Promise<Result<Map<string, number>, ElasticsearchError>> {
@@ -292,7 +289,6 @@ async function fetchConsumptionPreviousCredits(
     startDate: previousPeriod.startDate,
     endDate: previousPeriod.endDate,
     filter,
-    extraFilters: agentTagIdsFilter(agentTagIds ?? []),
   });
 
   const result = await searchConsumptionAnalytics<never, PreviousCreditsAggs>(
@@ -343,7 +339,6 @@ export async function fetchConsumptionTopGroups(
     offset = 0,
     search,
     filter,
-    agentTagIds,
     sortOrder = "desc",
     rankBy = "credits",
     includePreviousCredits = true,
@@ -355,7 +350,6 @@ export async function fetchConsumptionTopGroups(
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
-    agentTagIds?: string[];
     sortOrder?: ConsumptionTopSortOrder;
     rankBy?: ConsumptionTopRankBy;
     includePreviousCredits?: boolean;
@@ -372,7 +366,6 @@ export async function fetchConsumptionTopGroups(
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
-    extraFilters: agentTagIdsFilter(agentTagIds ?? []),
   });
 
   const requestedBucketCount = offset + limit;
@@ -437,7 +430,6 @@ export async function fetchConsumptionTopGroups(
     dimension,
     previousPeriod: previousConsumptionPeriod(period),
     filter,
-    agentTagIds,
     keys: includePreviousCredits ? pagedGroups.map((group) => group.key) : [],
   });
   // The prior-period lookup only feeds the vs-prev display column: a failure

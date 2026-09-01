@@ -19,6 +19,8 @@ import {
   toConsumptionPeriod,
   toConsumptionScope,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
+import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
 import type {
   ConsumptionTopDimension,
   ConsumptionTopRankBy,
@@ -37,7 +39,6 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import {
   fetchCreditTimeseries,
   fetchCreditTimeseriesBreakdown,
-  fetchCreditUsage,
 } from "@app/lib/api/assistant/observability/credit_usage";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
@@ -196,14 +197,13 @@ async function renderRanking(
   if (window.isErr()) {
     return new Err(new MCPError(window.error, { tracked: false }));
   }
-  const { filter, agentTagIds } = toConsumptionScope(input);
+  const filter = toConsumptionScope(input);
 
   const result = await fetchConsumptionTopGroups(auth, {
     dimension,
     period: toConsumptionPeriod(window.value),
     limit: limit ?? DEFAULT_RESULTS,
     filter,
-    agentTagIds,
     rankBy,
     includePreviousCredits: false,
     includeTotalCount: false,
@@ -295,84 +295,55 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_credit_usage: async (
-    {
-      limit,
-      groupBy,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
-    { auth }
-  ) => {
+  get_consumption_overview: async (input, { auth }) => {
     const deniedError = workspaceManagerGuard(auth);
     if (deniedError) {
       return new Err(deniedError);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
+    const filter = toConsumptionScope(input);
+    const periodInput = toConsumptionPeriodInput(input);
 
-    const selectedGroupBy = groupBy ?? "none";
-    const result = await fetchCreditUsage(auth, {
-      startDate: window.value.startDate,
-      endDate: window.value.endDate,
-      limit: limit ?? DEFAULT_RESULTS,
-      groupBy: selectedGroupBy,
-      contextOrigin: source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
+    const result = await fetchConsumptionOverview(auth, {
+      periodInput,
+      filter,
     });
 
     if (result.isErr()) {
       return new Err(
-        new MCPError(`Failed to estimate credit usage: ${result.error.message}`)
+        new MCPError(
+          `Failed to retrieve the consumption overview: ${result.error.message}`
+        )
       );
     }
 
-    const { label, timezone: tz } = window.value;
-    const { totalCredits, rows } = result.value;
-
-    if (totalCredits === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No credit usage recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const header =
-      `Estimated credit usage for ${label} (${tz}): ${totalCredits} credits. ` +
-      "These are estimates — point the user to the workspace Usage page for " +
-      "exact billed credits.";
-
-    if (selectedGroupBy === "none" || rows.length === 0) {
-      return new Ok([{ type: "text" as const, text: header }]);
-    }
-
-    const lines = rows.map(
-      (row, index) =>
-        `${index + 1}. ${row.name} [${row.groupKey}] — ` +
-        `${row.totalCredits} credits`
-    );
+    const overview = result.value;
+    const label =
+      periodInput.kind === "cycle"
+        ? "the current billing cycle"
+        : `the last ${periodInput.days} days`;
+    const topAgent = overview.topAgent
+      ? `${overview.topAgent.name} [${overview.topAgent.agentId}] ` +
+        `(${overview.topAgent.credits.toFixed(2)} credits)`
+      : "none";
+    const creditCapLine = overview.creditUsage
+      ? `\n- Credit cap: ${overview.creditUsage.status.usedPercentage}% of ` +
+        `${overview.creditUsage.capCredits} used, resets ` +
+        `${overview.creditUsage.status.resetAt}`
+      : "";
 
     return new Ok([
       {
         type: "text" as const,
         text:
-          `${header}\nTop ${selectedGroupBy}s by estimated credits:\n` +
-          lines.join("\n"),
+          `Workspace consumption for ${label}:\n` +
+          `- Credits consumed: ${overview.totalCredits.toFixed(2)}\n` +
+          `- Messages: ${overview.messageCount ?? 0}\n` +
+          `- Active members: ${overview.members.active} of ` +
+          `${overview.members.total}\n` +
+          `- Top agent by credits: ${topAgent}\n` +
+          `- Last recorded consumption: ${overview.lastRecordAt ?? "none"}` +
+          creditCapLine,
       },
     ]);
   },

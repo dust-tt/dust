@@ -8,6 +8,7 @@ import {
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { ConsumptionPeriodSchema } from "@app/lib/api/analytics/consumption/schema";
 import {
   CONSUMPTION_INVOCATION_DIMENSIONS,
   CONSUMPTION_MESSAGE_DIMENSIONS,
@@ -26,27 +27,9 @@ const getAgentDetailsSchema = {
     ),
 };
 
-const getCreditUsageSchema = {
-  ...timeWindowSchemaShape,
-  ...usageFilterSchema,
-  groupBy: z
-    .enum(["agent", "user", "model", "none"])
-    .optional()
-    .describe(
-      "Break the estimated credits down by top 'agent', 'user' or 'model' " +
-        "(the model that answered the message), or 'none' (default) for the " +
-        "workspace total only."
-    ),
-  limit: z
-    .number()
-    .int()
-    .positive()
-    .max(MAX_RESULTS)
-    .optional()
-    .describe(
-      `When grouping, the maximum number of rows to return ` +
-        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
-    ),
+const getConsumptionOverviewSchema = {
+  ...ConsumptionPeriodSchema.shape,
+  ...consumptionFilterSchema,
 };
 
 const getCreditTimeseriesSchema = {
@@ -100,6 +83,8 @@ export const GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME =
   "get_top_entities_by_message_count" as const;
 export const GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME =
   "get_top_entities_by_execution_count" as const;
+export const GET_CONSUMPTION_OVERVIEW_TOOL_NAME =
+  "get_consumption_overview" as const;
 
 const rankingLimitSchema = z
   .number()
@@ -200,24 +185,19 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
-    name: "get_credit_usage",
+    name: GET_CONSUMPTION_OVERVIEW_TOOL_NAME,
     description:
-      "Estimate AWU credit consumption over a time window (defaults to the " +
-      "current calendar month), optionally broken down by the top agents, " +
-      "users or models. Credits combine model compute and tool usage, " +
-      "mirroring how billing computes them. IMPORTANT: these figures are " +
-      "ESTIMATES derived from usage logs — always tell the user they are " +
-      "approximate and point them to the workspace Usage page for exact, " +
-      "billed credit amounts. Optionally filter by source (context_origin), " +
-      "agent, user, tag, or model — e.g. filter by tag to attribute credits " +
-      "to all agents with a given tag, or group by model to see which models " +
-      "drive spend. Admin-only.",
-    schema: getCreditUsageSchema,
+      "Summarize the workspace's headline figures for the current billing " +
+      "cycle, or the last N days: total credits consumed, messages, active " +
+      "and total members, and the top agent. Use this to answer 'how are we " +
+      "doing this cycle' or 'how many credits did we consume' in one call, " +
+      `and ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} to attribute that total.`,
+    schema: getConsumptionOverviewSchema,
     stake: "never_ask",
     eager: true,
     displayLabels: {
-      running: "Estimating credit usage",
-      done: "Estimated credit usage",
+      running: "Retrieving consumption overview",
+      done: "Retrieved consumption overview",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -225,14 +205,15 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: "get_credit_timeseries",
     description:
-      "Return estimated AWU credit consumption as a time series over a window " +
+      "Return estimated credit consumption as a time series over a window " +
       "(defaults to the last 30 days), bucketed by day, week, or month. Set " +
       "breakdownBy to split each " +
       "bucket into the top agents, users or models plus an 'other' series (a " +
-      "stacked trend). Use this for credit/spend TRENDS over time; use " +
-      "get_credit_usage for a single window's totals and top " +
-      "agent/user/model attribution. IMPORTANT: " +
-      "these figures are ESTIMATES — always tell the user they are approximate " +
+      "stacked trend). Use this for credit/spend TRENDS over time. Use " +
+      `${GET_CONSUMPTION_OVERVIEW_TOOL_NAME} for a single window's total ` +
+      `and ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} to attribute it. ` +
+      "These figures are ESTIMATES. Always tell the user they are " +
+      "approximate " +
       "and point them to the workspace Usage page for exact, billed credit " +
       "amounts. Chart the result. Optionally filter by source (context_origin), " +
       "agent, user, tag, or model. Admin-only.",
@@ -269,10 +250,11 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     description:
       "Rank the workspace's credit consumption by entity " +
       "over a time window (defaults to the current calendar month). Use " +
-      "this to answer 'which agent costs the most' or 'which " +
-      "conversation was most expensive', or to attribute credit spend by " +
-      "API key, tag, or model. Figures are billed credits. Rows may " +
-      "overlap, so don't sum them for a workspace total.",
+      "this to break credit spending down by agent, or to answer 'which " +
+      "agent costs the most' or 'which conversation was most expensive', " +
+      "or to attribute credit spend by API key, tag, or model. Figures " +
+      "are billed credits. Rows may overlap, so don't sum them for a " +
+      "workspace total.",
     schema: getTopEntitiesByCreditsSchema,
     stake: "never_ask",
     eager: true,

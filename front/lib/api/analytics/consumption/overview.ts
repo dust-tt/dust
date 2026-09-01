@@ -166,7 +166,12 @@ export async function fetchConsumptionOverview(
   const [searchResult, totalMembers, capCredits] = await Promise.all([
     searchConsumptionAnalytics<never, OverviewAggs>(query, {
       aggregations: {
-        active_members: { cardinality: { field: "user.id" } },
+        active_members: {
+          cardinality: {
+            field: CONSUMPTION_DIMENSION_FIELDS.user,
+            precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+          },
+        },
         message_count: {
           cardinality: {
             field: AGENT_MESSAGE_ID_FIELD,

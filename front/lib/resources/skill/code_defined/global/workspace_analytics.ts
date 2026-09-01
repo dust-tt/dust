@@ -1,4 +1,5 @@
 import {
+  GET_CONSUMPTION_OVERVIEW_TOOL_NAME,
   GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME,
   GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME,
   GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME,
@@ -40,13 +41,14 @@ export const workspaceAnalyticsSkill = {
     "call: get_credit_timeseries for credit/spend trends, or " +
     "get_usage_timeseries for activity, skill, or tool trends. They return the " +
     "whole series bucketed by day/week/month in one call.\n" +
-    "- Never build a trend by calling a snapshot tool (get_credit_usage, " +
-    "get_top_*) once per day or in parallel per period — it is slower and " +
-    "unnecessary, the timeseries tools already bucket over time.\n" +
+    "- Never build a trend by calling a snapshot tool once per day or in " +
+    "parallel per period — it is slower and unnecessary, the timeseries " +
+    "tools already bucket over time.\n" +
     "- To attribute spend (which agents, users, models, tools, skills, " +
-    "sources, API keys, groups, tags or conversations cost the most). Call " +
-    `${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} with that dimension. Use get_credit_usage ` +
-    "only for a single window's total credits.\n" +
+    "sources, API keys, groups, tags or conversations cost the most), call " +
+    `${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} with that dimension. Use ` +
+    `${GET_CONSUMPTION_OVERVIEW_TOOL_NAME} for a window's totals: credits, messages, ` +
+    "active members and the top agent in one call.\n" +
     "- For a credit trend split by agent, user or model (e.g. 'how did each " +
     "agent's spend evolve'), set breakdownBy on get_credit_timeseries — one " +
     "call returns the top groups plus an 'other' series. Do not make one " +
@@ -70,7 +72,7 @@ export const workspaceAnalyticsSkill = {
     { name: "workspace_analytics" },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 7,
+  version: 8,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {
