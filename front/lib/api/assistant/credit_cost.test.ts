@@ -1,4 +1,10 @@
-import { computeAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
+import {
+  buildAgentMessageCreditsBreakdownFromConsumptionAnalytics,
+  computeAgentMessageCredits,
+  fetchAgentMessageConsumptionAnalyticsByMessageIds,
+} from "@app/lib/api/assistant/credit_cost";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import { Authenticator } from "@app/lib/auth";
 import {
   awuFromMicroUsd,
   intelligenceAwuFromRunUsages,
@@ -6,10 +12,22 @@ import {
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { describe, expect, it } from "vitest";
+import { Ok } from "@app/types/shared/result";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/elasticsearch")>();
+  return { ...actual, searchConsumptionAnalytics: vi.fn() };
+});
 
 const TEST_CONTEXT_ORIGIN: UserMessageOrigin = "api";
+
+afterEach(() => {
+  vi.mocked(searchConsumptionAnalytics).mockReset();
+});
 
 function usage(
   overrides: Partial<RunUsageType & { runKey: string | null }>
@@ -28,6 +46,176 @@ function usage(
     ...overrides,
   };
 }
+
+describe("fetchAgentMessageConsumptionAnalyticsByMessageIds", () => {
+  it("fetches and groups consumption documents by agent message", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: {
+          total: { value: 2, relation: "eq" },
+          hits: [
+            {
+              _index: "front.agent_message_consumption_analytics",
+              _id: "llm",
+              _source: {
+                workspace_id: workspace.sId,
+                agent_message_id: "message-1",
+                completed_at: "2026-09-01T00:00:00.000Z",
+                consumption_key: "llm-1",
+                consumption_type: "llm",
+                credit_micro: 1_000_000,
+                gross_credit_micro: { direct: 0 },
+                tool: null,
+              },
+              sort: ["2026-09-01T00:00:00.000Z", "message-1", "llm-1"],
+            },
+            {
+              _index: "front.agent_message_consumption_analytics",
+              _id: "tool",
+              _source: {
+                workspace_id: workspace.sId,
+                agent_message_id: "message-1",
+                completed_at: "2026-09-01T00:00:00.000Z",
+                consumption_key: "tool-1",
+                consumption_type: "tool",
+                credit_micro: 3_000_000,
+                gross_credit_micro: { direct: 3_000_000 },
+                tool: { action_id: "action-1" },
+              },
+              sort: ["2026-09-01T00:00:00.000Z", "message-1", "tool-1"],
+            },
+          ],
+        },
+      })
+    );
+
+    const result = await fetchAgentMessageConsumptionAnalyticsByMessageIds(
+      auth,
+      {
+        messageIds: ["message-1", "message-2"],
+      }
+    );
+
+    expect(result.get("message-1")).toHaveLength(2);
+    expect(result.has("message-2")).toBe(false);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledWith(
+      {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspace.sId } },
+            {
+              terms: {
+                agent_message_id: ["message-1", "message-2"],
+              },
+            },
+          ],
+        },
+      },
+      {
+        size: 1_000,
+        sort: [
+          { completed_at: "asc" },
+          { agent_message_id: "asc" },
+          { consumption_key: "asc" },
+        ],
+        search_after: undefined,
+      }
+    );
+  });
+});
+
+describe("buildAgentMessageCreditsBreakdownFromConsumptionAnalytics", () => {
+  it("preserves the direct tool and remaining LLM credit split", () => {
+    const breakdown = buildAgentMessageCreditsBreakdownFromConsumptionAnalytics(
+      {
+        documents: [
+          {
+            workspace_id: "workspace-1",
+            agent_message_id: "message-1",
+            completed_at: "2026-09-01T00:00:00.000Z",
+            consumption_key: "llm-1",
+            consumption_type: "llm",
+            credit_micro: 2_000_000,
+            gross_credit_micro: { direct: 0 },
+            tool: null,
+          },
+          {
+            workspace_id: "workspace-1",
+            agent_message_id: "message-1",
+            completed_at: "2026-09-01T00:00:00.000Z",
+            consumption_key: "tool-free",
+            consumption_type: "tool",
+            credit_micro: 500_000,
+            gross_credit_micro: { direct: 0 },
+            tool: { action_id: "action-free" },
+          },
+          {
+            workspace_id: "workspace-1",
+            agent_message_id: "message-1",
+            completed_at: "2026-09-01T00:00:00.000Z",
+            consumption_key: "tool-paid",
+            consumption_type: "tool",
+            credit_micro: 4_500_000,
+            gross_credit_micro: { direct: 3_000_000 },
+            tool: { action_id: "action-paid" },
+          },
+        ],
+        actions: [
+          {
+            actionId: "action-free",
+            toolName: "retrieve",
+            internalMCPServerName: "agent_memory",
+            status: "succeeded",
+          },
+          {
+            actionId: "action-paid",
+            toolName: "semantic_search",
+            internalMCPServerName: "search",
+            status: "succeeded",
+          },
+        ],
+      }
+    );
+
+    expect(breakdown).toEqual({
+      llmAwu: 4,
+      toolAwu: 3,
+      totalAwu: 7,
+      byTool: [
+        {
+          actionId: "action-free",
+          toolName: "retrieve",
+          internalMCPServerName: "agent_memory",
+          toolCostCategory: "basic",
+          free: true,
+          awu: 0,
+        },
+        {
+          actionId: "action-paid",
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          toolCostCategory: "advanced",
+          free: false,
+          awu: 3,
+        },
+      ],
+    });
+  });
+
+  it("returns no breakdown when consumption analytics are unavailable", () => {
+    expect(
+      buildAgentMessageCreditsBreakdownFromConsumptionAnalytics({
+        documents: undefined,
+        actions: [],
+      })
+    ).toBeUndefined();
+  });
+});
 
 describe("awuFromMicroUsd", () => {
   it("converts at 1 credit = $0.0085 (8500 microUSD), rounding up", () => {

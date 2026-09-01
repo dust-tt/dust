@@ -4,7 +4,8 @@ import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
@@ -16,6 +17,7 @@ import {
   computeRunKey,
   getToolBillingInfo,
 } from "@app/lib/credits/agent_message_billing";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -27,12 +29,37 @@ import {
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type {
-  AgentMessageAnalyticsData,
-  AgentMessageAnalyticsToolUsed,
-} from "@app/types/assistant/analytics";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { estypes } from "@elastic/elasticsearch";
+
+const CONSUMPTION_ANALYTICS_PAGE_SIZE = 1_000;
+
+interface AgentMessageConsumptionCreditAnalyticsBase
+  extends ElasticsearchBaseDocument {
+  agent_message_id: string;
+  completed_at: string;
+  consumption_key: string;
+  credit_micro: number;
+  gross_credit_micro: { direct: number };
+}
+
+interface AgentMessageConsumptionCreditAnalyticsLlm
+  extends AgentMessageConsumptionCreditAnalyticsBase {
+  consumption_type: "llm";
+  tool: null;
+}
+
+interface AgentMessageConsumptionCreditAnalyticsTool
+  extends AgentMessageConsumptionCreditAnalyticsBase {
+  consumption_type: "tool";
+  tool: { action_id: string };
+}
+
+type AgentMessageConsumptionCreditAnalytics =
+  | AgentMessageConsumptionCreditAnalyticsLlm
+  | AgentMessageConsumptionCreditAnalyticsTool;
 
 interface CreditActionMinimalInput {
   toolName: string;
@@ -58,88 +85,129 @@ export interface AgentMessageCreditsBreakdown {
 }
 
 /**
- * Fetches the stored analytics document for each message, keyed by messageId. Returns an empty
- * map (rather than failing) on an Elasticsearch error, since this only feeds a poke-only
- * auditing display, not the billing pipeline itself.
+ * Fetches the stored consumption analytics documents for each message, keyed by messageId.
+ * Returns an empty map (rather than failing) on an Elasticsearch error, since this only feeds a
+ * poke-only auditing display, not the billing pipeline itself.
  */
-export async function fetchAgentMessageCostAnalyticsByMessageIds(
+export async function fetchAgentMessageConsumptionAnalyticsByMessageIds(
   auth: Authenticator,
   { messageIds }: { messageIds: string[] }
-): Promise<Map<string, AgentMessageAnalyticsData>> {
+): Promise<Map<string, AgentMessageConsumptionCreditAnalytics[]>> {
   if (messageIds.length === 0) {
     return new Map();
   }
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const result = await searchAnalytics<AgentMessageAnalyticsData>(
-    {
-      bool: {
-        filter: [
-          { term: { workspace_id: workspaceId } },
-          { terms: { message_id: messageIds } },
-        ],
-      },
+  const query: estypes.QueryDslQueryContainer = {
+    bool: {
+      filter: [
+        { term: { workspace_id: workspaceId } },
+        { terms: { agent_message_id: messageIds } },
+      ],
     },
-    { size: messageIds.length }
-  );
+  };
 
-  if (result.isErr()) {
-    logger.error(
-      { workspaceId, error: result.error },
-      "[Credits] Failed to fetch agent message cost analytics from Elasticsearch."
-    );
-    return new Map();
+  const documents: AgentMessageConsumptionCreditAnalytics[] = [];
+  let searchAfter: estypes.SortResults | undefined;
+  let hitCount: number;
+
+  do {
+    const result =
+      await searchConsumptionAnalytics<AgentMessageConsumptionCreditAnalytics>(
+        query,
+        {
+          size: CONSUMPTION_ANALYTICS_PAGE_SIZE,
+          sort: [
+            { completed_at: "asc" },
+            { agent_message_id: "asc" },
+            { consumption_key: "asc" },
+          ],
+          search_after: searchAfter,
+        }
+      );
+
+    if (result.isErr()) {
+      logger.error(
+        { workspaceId, err: result.error },
+        "[Credits] Failed to fetch agent message consumption analytics from Elasticsearch."
+      );
+      return new Map();
+    }
+
+    const { hits } = result.value.hits;
+    for (const hit of hits) {
+      if (hit._source) {
+        documents.push(hit._source);
+      }
+    }
+
+    hitCount = hits.length;
+    searchAfter = hits[hits.length - 1]?.sort;
+  } while (hitCount === CONSUMPTION_ANALYTICS_PAGE_SIZE);
+
+  const documentsByMessageId = new Map<
+    string,
+    AgentMessageConsumptionCreditAnalytics[]
+  >();
+  for (const document of documents) {
+    const messageDocuments =
+      documentsByMessageId.get(document.agent_message_id) ?? [];
+    messageDocuments.push(document);
+    documentsByMessageId.set(document.agent_message_id, messageDocuments);
   }
 
-  return new Map(
-    result.value.hits.hits
-      .flatMap((hit) => (hit._source ? [hit._source] : []))
-      .map((doc) => [doc.message_id, doc])
-  );
+  return documentsByMessageId;
 }
 
 /**
  * Builds the LLM/tool cost split and per-tool breakdown for display (e.g. in poke) from the
- * message's stored analytics document, rather than recomputing it live from current code: the
- * analytics document is a frozen snapshot of the cost as computed by the billing pipeline at run
- * time, so comparing it against the stored `costCredits` catches genuine billing bugs instead of
- * drifting apart whenever the AWU pricing formulas are later tuned.
- *
- * The analytics document's `tools_used` entries carry no `actionId`, so they are matched back to
- * `actions` by `(step, toolName)`: both lists are built from the same ordered set of actions at
- * analytics-indexing time, so a positional match within that key is reliable in practice.
+ * message's stored consumption analytics documents. Their total reconciles to the authoritative
+ * billed message cost. The tool documents also preserve the direct tool charge and action ID, so
+ * the existing tool-cost split can be reconstructed without recomputing historical prices or
+ * matching tools by step and name.
  */
-export function buildAgentMessageCreditsBreakdownFromAnalytics({
-  analytics,
+export function buildAgentMessageCreditsBreakdownFromConsumptionAnalytics({
+  documents,
   actions,
 }: {
-  analytics: Pick<AgentMessageAnalyticsData, "cost" | "tools_used"> | undefined;
-  actions: (CreditActionMinimalInput & { actionId: string; step: number })[];
+  documents: AgentMessageConsumptionCreditAnalytics[] | undefined;
+  actions: (CreditActionMinimalInput & { actionId: string })[];
 }): AgentMessageCreditsBreakdown | undefined {
-  // `cost` and `tools_used` were added to the analytics document after it first shipped, so
-  // older documents may be missing either (or the document itself may not exist yet for a very
-  // recently sent message) — degrade to no breakdown rather than throwing on missing data.
-  if (!analytics?.cost) {
+  if (!documents || documents.length === 0) {
     return undefined;
   }
 
-  const toolUsageQueueByKey = new Map<
-    string,
-    AgentMessageAnalyticsToolUsed[]
-  >();
-  for (const tool of analytics.tools_used ?? []) {
-    const key = `${tool.step_index}|${tool.tool_name}`;
-    const queue = toolUsageQueueByKey.get(key) ?? [];
-    queue.push(tool);
-    toolUsageQueueByKey.set(key, queue);
+  let totalMicroCredits = 0;
+  let toolDirectMicroCredits = 0;
+  const directMicroCreditsByActionId = new Map<string, number>();
+
+  for (const document of documents) {
+    totalMicroCredits += document.credit_micro;
+
+    switch (document.consumption_type) {
+      case "llm":
+        break;
+      case "tool": {
+        const directMicroCredits = document.gross_credit_micro.direct;
+        toolDirectMicroCredits += directMicroCredits;
+        directMicroCreditsByActionId.set(
+          document.tool.action_id,
+          (directMicroCreditsByActionId.get(document.tool.action_id) ?? 0) +
+            directMicroCredits
+        );
+        break;
+      }
+      default:
+        assertNever(document);
+    }
   }
 
   const byTool: AgentMessageCreditsToolBreakdown[] = [];
   for (const action of actions) {
-    const matched = toolUsageQueueByKey
-      .get(`${action.step}|${action.toolName}`)
-      ?.shift();
-    if (!matched) {
+    const directMicroCredits = directMicroCreditsByActionId.get(
+      action.actionId
+    );
+    if (directMicroCredits === undefined) {
       continue;
     }
 
@@ -154,15 +222,16 @@ export function buildAgentMessageCreditsBreakdownFromAnalytics({
       toolCostCategory,
       // "Free" means the tool ran and its category priced it at zero, not that it never ran.
       free:
-        matched.cost_awu === 0 && isToolExecutionStatusBillable(action.status),
-      awu: matched.cost_awu,
+        directMicroCredits === 0 &&
+        isToolExecutionStatusBillable(action.status),
+      awu: microCreditsToCredits(directMicroCredits),
     });
   }
 
   return {
-    llmAwu: analytics.cost.llm_awu,
-    toolAwu: analytics.cost.tool_awu,
-    totalAwu: analytics.cost.full_awu,
+    llmAwu: microCreditsToCredits(totalMicroCredits - toolDirectMicroCredits),
+    toolAwu: microCreditsToCredits(toolDirectMicroCredits),
+    totalAwu: microCreditsToCredits(totalMicroCredits),
     byTool,
   };
 }

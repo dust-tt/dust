@@ -91,9 +91,9 @@ export type PokeAgentMessageType = Omit<AgentMessageType, "actions"> & {
   runUrls?: { runId: string; url: string; isLLM: boolean }[] | null;
   actions: PokeAgentActionType[];
   // LLM + tool cost breakdown as computed by the billing pipeline at run time,
-  // read back from the message's stored analytics document (as opposed to
+  // read back from the message's stored consumption analytics documents (as opposed to
   // `costCredits`/`subAgentCostCredits`, the values persisted for billing itself).
-  // Poke-only, for auditing. Undefined when no analytics document is available yet.
+  // Poke-only, for auditing. Undefined when no analytics documents are available yet.
   costBreakdown?: AgentMessageCreditsBreakdown;
 };
 

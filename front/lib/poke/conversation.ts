@@ -1,7 +1,7 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
-  buildAgentMessageCreditsBreakdownFromAnalytics,
-  fetchAgentMessageCostAnalyticsByMessageIds,
+  buildAgentMessageCreditsBreakdownFromConsumptionAnalytics,
+  fetchAgentMessageConsumptionAnalyticsByMessageIds,
 } from "@app/lib/api/assistant/credit_cost";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
@@ -48,11 +48,10 @@ export async function getPokeConversation(
       agentMessagesWithRunIds.map((m) => [m.id, m.runIds])
     );
 
-    // Batch-fetch the stored cost analytics document for every agent message in the
-    // conversation in one shot (rather than per message), so each message's cost
-    // breakdown can be attached with zero additional queries per message.
-    const analyticsByMessageId =
-      await fetchAgentMessageCostAnalyticsByMessageIds(auth, {
+    // Batch-fetch the stored consumption analytics documents for every agent message in the
+    // conversation so each message's cost breakdown can be attached with no per-message query.
+    const consumptionAnalyticsByMessageId =
+      await fetchAgentMessageConsumptionAnalyticsByMessageIds(auth, {
         messageIds: agentMessages.map((m) => m.sId),
       });
 
@@ -85,16 +84,16 @@ export async function getPokeConversation(
             }
           }
 
-          m.costBreakdown = buildAgentMessageCreditsBreakdownFromAnalytics({
-            analytics: analyticsByMessageId.get(m.sId),
-            actions: m.actions.map((a) => ({
-              actionId: a.sId,
-              step: a.step,
-              toolName: a.toolName,
-              internalMCPServerName: a.internalMCPServerName,
-              status: a.status,
-            })),
-          });
+          m.costBreakdown =
+            buildAgentMessageCreditsBreakdownFromConsumptionAnalytics({
+              documents: consumptionAnalyticsByMessageId.get(m.sId),
+              actions: m.actions.map((a) => ({
+                actionId: a.sId,
+                toolName: a.toolName,
+                internalMCPServerName: a.internalMCPServerName,
+                status: a.status,
+              })),
+            });
         }
       }
     }
