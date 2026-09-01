@@ -60,8 +60,7 @@ describe("SkillResource", () => {
       // role ("user") must be allowed here — there is no role distinction left to gate on.
       const key = await KeyFactory.readOnly(testContext.globalGroup);
 
-      const auth = (await Authenticator.fromKey(key, testContext.workspace.sId))
-        .workspaceAuth;
+      const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
 
       expect(skill.canWrite(auth)).toBe(true);
       expect(skill.canAdministrate(auth)).toBe(true);

@@ -254,10 +254,7 @@ describe("Authenticator.fromKey permission resolution", () => {
     const listForGroups = vi.spyOn(GroupPermissionResource, "listForGroups");
 
     const key = await KeyFactory.system(systemGroup);
-    const { workspaceAuth, keyAuth } = await Authenticator.fromKey(
-      key,
-      workspace.sId
-    );
+    const workspaceAuth = await Authenticator.fromKey(key, workspace.sId);
 
     // A system key holds every group of its workspace, so its grants are stated, not read.
     expect(listForGroups).not.toHaveBeenCalled();
@@ -277,7 +274,6 @@ describe("Authenticator.fromKey permission resolution", () => {
       "write",
     ]);
     expect(workspaceAuth.getGrantedVerbs("space", 1234)).toContain("admin");
-    expect(keyAuth.getGrantedVerbs("space", 1234)).toContain("admin");
 
     // It survives the Temporal round trip the agent loop puts the auth through.
     const restored = await Authenticator.fromJSON(workspaceAuth.toJSON());
@@ -291,14 +287,9 @@ describe("Authenticator.fromKey permission resolution", () => {
     await GroupFactory.defaults(otherWorkspace);
 
     const key = await KeyFactory.system(systemGroup);
-    const { workspaceAuth, keyAuth } = await Authenticator.fromKey(
-      key,
-      otherWorkspace.sId
-    );
+    const workspaceAuth = await Authenticator.fromKey(key, otherWorkspace.sId);
 
     expect(workspaceAuth.getGrantedVerbs("space", 1234)).toEqual([]);
-    // The key's own workspace still gets the full set.
-    expect(keyAuth.getGrantedVerbs("space", 1234)).toContain("admin");
   });
 
   it("resolves grants for non-system keys", async () => {
@@ -315,7 +306,7 @@ describe("Authenticator.fromKey permission resolution", () => {
     });
 
     const key = await KeyFactory.regular(globalGroup);
-    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
+    const workspaceAuth = await Authenticator.fromKey(key, workspace.sId);
 
     expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
       "read",
@@ -355,7 +346,7 @@ describe("Authenticator.fromKey permission resolution", () => {
     const listForGroups = vi.spyOn(GroupPermissionResource, "listForGroups");
 
     const key = await KeyFactory.system(systemGroup);
-    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId, [
+    const workspaceAuth = await Authenticator.fromKey(key, workspace.sId, [
       includedGroup.sId,
     ]);
 
@@ -385,7 +376,7 @@ describe("Authenticator.refresh permission resolution", () => {
     // A key auth has no user; its grant snapshot is resolved once at build time. The agent loop
     // freezes it at workflow start and refreshes it on every step.
     const key = await KeyFactory.system(systemGroup);
-    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId, [
+    const workspaceAuth = await Authenticator.fromKey(key, workspace.sId, [
       group.sId,
     ]);
     expect(workspaceAuth.getGrantedVerbs("agent", 42)).toEqual([]);

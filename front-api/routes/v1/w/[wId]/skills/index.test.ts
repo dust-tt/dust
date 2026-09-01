@@ -328,10 +328,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     }
     // The permission set is resolved once at Authenticator construction, so build the request auth
     // after the grants above for its snapshot to include them.
-    const { workspaceAuth: auth } = await Authenticator.fromKey(
-      key,
-      workspace.sId
-    );
+    const auth = await Authenticator.fromKey(key, workspace.sId);
 
     const importWithAvailability = async ({
       availability,
@@ -391,10 +388,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     }
     // The permission set is resolved once at Authenticator construction, so build the request auth
     // after the grants above for its snapshot to include them.
-    const { workspaceAuth: auth } = await Authenticator.fromKey(
-      key,
-      workspace.sId
-    );
+    const auth = await Authenticator.fromKey(key, workspace.sId);
 
     const result = await importSkillsFromFiles(auth, {
       uploadedFiles: [
@@ -434,10 +428,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     });
     // The permission set is resolved once at Authenticator construction, so build the request auth
     // after the grant above for its snapshot to include the create/skill capability.
-    const { workspaceAuth: auth } = await Authenticator.fromKey(
-      key,
-      workspace.sId
-    );
+    const auth = await Authenticator.fromKey(key, workspace.sId);
     const firstEditor = await UserFactory.basic();
     const secondEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, firstEditor, {
