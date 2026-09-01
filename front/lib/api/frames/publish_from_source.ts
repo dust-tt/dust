@@ -22,6 +22,7 @@ import {
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
+  contentTypeFromFileName,
   isAllSupportedFileContentType,
   normalizeMimeType,
 } from "@app/types/files";
@@ -250,7 +251,11 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
       );
     }
 
-    const contentType = normalizeMimeType(entry.contentType);
+    // FUSE/GCS metadata is not authoritative for source code. In particular, `.tsx` can be
+    // reported as the unrelated `application/x-tiled-tsx`; the file extension is stable.
+    const contentType =
+      contentTypeFromFileName(relativePath) ??
+      normalizeMimeType(entry.contentType);
     if (!isAllSupportedFileContentType(contentType)) {
       return frameError(
         "invalid_source",

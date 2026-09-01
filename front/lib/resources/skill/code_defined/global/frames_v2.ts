@@ -4,8 +4,8 @@ import { MAX_FRAME_DATABASE_COUNT } from "@app/types/api/frame_manifest";
 export const FRAMES_V2_INSTRUCTIONS = `\
 # Frames v2
 
-Frames are interactive React applications. Use the Computer to edit their source and the
-\`dsbx frame\` CLI for their lifecycle.
+Frames are interactive React applications. Use the Computer to create and edit their source, and
+the \`dsbx frame\` CLI for their lifecycle.
 
 ## Frames v2 vs legacy Frames
 
@@ -19,9 +19,16 @@ Frames are interactive React applications. Use the Computer to edit their source
 - \`dsbx frame publish\` supports both formats. Edit and publish an existing legacy Frame in place;
   do not recreate it just to make it v2.
 
+## Before authoring
+
+Decide whether the Frame is a throwaway visualization or an application with durable state before
+writing source. Chat apps, task lists, trackers, forms, CRUD apps, and anything users can change
+default to durable: declare the database plus the read and mutation functions in the
+manifest. Do not store durable application state in memory; use a Frame database.
+
 ## Create a Frame
 
-Create and register a new Frame folder on the mounted file system:
+Use the Computer to create and register a new Frame folder:
 
 \`\`\`bash
 dsbx frame create /files/conversation-<conversationId>/<frame-folder> --name "<name>"
@@ -30,6 +37,10 @@ dsbx frame create /files/conversation-<conversationId>/<frame-folder> --name "<n
 In a Pod, create it under \`/files/pod-<podId>/...\` instead. The command scaffolds
 \`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Edit the generated
 source before publishing it.
+
+Always pass canonical \`/files/conversation-<conversationId>/...\` or
+\`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
+\`/files/conversation\` or \`/files/pod\`.
 
 ## Register an existing Frame folder
 
@@ -336,5 +347,10 @@ yet. Use \`dsbx frame --help\` as the authority for available operations.
 
 Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this
 initial scope.
+
+## Editing
+
+Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
+read the current file, apply one edit, then start the next edit to that file.
 
 ${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}`;

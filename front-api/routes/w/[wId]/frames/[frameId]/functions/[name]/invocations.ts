@@ -9,6 +9,7 @@ import {
   FrameFunctionInvocationParamsSchema,
   PostFrameFunctionInvocationBodySchema,
 } from "@front-api/lib/api/frame_function_invocation_schemas";
+import { getSandboxFunctionInvocationErrorStatusCode } from "@front-api/lib/api/sandbox_function_invocation_errors";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -47,7 +48,9 @@ app.post(
     if (invocationResult.isErr()) {
       if (isSandboxFunctionInvocationError(invocationResult.error)) {
         return apiError(ctx, {
-          status_code: 401,
+          status_code: getSandboxFunctionInvocationErrorStatusCode(
+            invocationResult.error.code
+          ),
           api_error: {
             type: invocationResult.error.code,
             message: invocationResult.error.message,

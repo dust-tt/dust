@@ -87,6 +87,20 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("legacy Frame");
     expect(instructions).toContain("<frame>.tsx");
     expect(instructions).toContain(
+      "Chat apps, task lists, trackers, forms, CRUD apps"
+    );
+    expect(instructions).toContain(
+      "Do not store durable application state in memory; use a Frame database"
+    );
+    expect(instructions).toContain(
+      "Use the Computer to create and edit their source"
+    );
+    expect(instructions).toContain("Do not pass the convenience aliases");
+    expect(instructions).toContain("`/files/conversation` or `/files/pod`");
+    expect(instructions).toContain(
+      "Never run concurrent file mutations against the same path"
+    );
+    expect(instructions).toContain(
       "Other interactive-content tools remain available"
     );
     expect(framesSkill.mcpServers).toEqual([{ name: "interactive_content" }]);

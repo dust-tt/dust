@@ -892,7 +892,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
     if (!authorization.authorized) {
       return new Err(
-        new SandboxFunctionInvocationError(authorization.errorMessage)
+        new SandboxFunctionInvocationError(
+          authorization.errorMessage,
+          authorization.errorCode
+        )
       );
     }
 

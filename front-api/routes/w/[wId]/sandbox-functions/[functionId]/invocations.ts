@@ -10,6 +10,7 @@ import type {
 } from "@app/types/api/sandbox_functions";
 import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { getSandboxFunctionInvocationErrorStatusCode } from "@front-api/lib/api/sandbox_function_invocation_errors";
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -130,7 +131,9 @@ app.post(
     if (invocationResult.isErr()) {
       if (isSandboxFunctionInvocationError(invocationResult.error)) {
         return apiError(ctx, {
-          status_code: 401,
+          status_code: getSandboxFunctionInvocationErrorStatusCode(
+            invocationResult.error.code
+          ),
           api_error: {
             type: invocationResult.error.code,
             message: invocationResult.error.message,
