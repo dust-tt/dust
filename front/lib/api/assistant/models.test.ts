@@ -2,12 +2,16 @@ import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preference
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { Authenticator } from "@app/lib/auth";
+import { setWorkspaceMaxAllowedTierName } from "@app/lib/model_tiers/allowed_tiers";
 import * as enabledModels from "@app/lib/model_tiers/enabled_models";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
+import { AUTO_MODEL_ID, MODEL_STREAMS } from "@app/types/assistant/models/auto";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import {
   GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
@@ -103,15 +107,17 @@ function makeAgentConfiguration({
   providerId,
   modelId,
   reasoningEffort,
+  sId = "agent_test",
 }: {
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
   reasoningEffort?: ReasoningEffort;
+  sId?: string;
 }): LightAgentConfigurationType {
   return {
     id: 1,
     versionCreatedAt: null,
-    sId: "agent_test",
+    sId,
     version: 0,
     versionAuthorId: null,
     instructions: null,
@@ -296,6 +302,40 @@ describe("resolveModel", () => {
       modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
       reasoningEffort: "high",
     });
+  });
+
+  it("resolves the sidekick's auto stream above the member's tier cap", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await setWorkspaceMaxAllowedTierName(auth, "cost_efficient");
+
+    // A regular agent on `auto` stays within the workspace's Basic cap.
+    const regular = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+      }),
+      featureFlags: [],
+    });
+    expect(
+      getTierForModel(
+        regular.resolvedModel.modelId,
+        regular.resolvedModel.reasoningEffort
+      )
+    ).toBe("cost_efficient");
+
+    // The sidekick ignores the cap and resolves to the stream's first candidate.
+    const sidekick = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+        sId: GLOBAL_AGENTS_SID.SIDEKICK,
+      }),
+      featureFlags: [],
+    });
+    expect(sidekick.modelResolutionMethod).toBe(AUTO_MODEL_ID);
+    expect(sidekick.resolvedModel).toEqual(MODEL_STREAMS[AUTO_MODEL_ID][0]);
   });
 
   it("resolves an auto user selection to a concrete model", async () => {
