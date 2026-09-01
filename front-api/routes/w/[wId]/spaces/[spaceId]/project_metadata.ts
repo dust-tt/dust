@@ -4,11 +4,6 @@ import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import {
-  launchOrSignalProjectTodoWorkflow,
-  startImmediateProjectTodoWorkflowOnce,
-  stopProjectTodoWorkflow,
-} from "@app/temporal/project_task/client";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -235,8 +230,6 @@ app.patch(
 
     let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
-    const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
-    const priorTodoGenerationEnabled = metadata?.todoGenerationEnabled ?? false;
     const priorIsAdminControlled = metadata?.isAdminControlled ?? false;
 
     if (
@@ -277,17 +270,13 @@ app.patch(
       }
     }
 
-    const shouldTriggerFirstImmediateSync =
-      body.todoGenerationEnabled === true &&
-      !priorTodoGenerationEnabled &&
-      priorLastTodoAnalysisAt === null;
-
     if (!metadata) {
       metadata = await ProjectMetadataResource.makeNew(auth, space, {
         description: body.description ?? null,
         archivedAt: body.archive ? new Date() : null,
-        todoGenerationEnabled: body.todoGenerationEnabled ?? false,
-        initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
+        // Automated task generation removed; keep columns with hardcoded defaults.
+        todoGenerationEnabled: false,
+        initialTodoAnalysisLookback: null,
         pinnedFramePath: body.pinnedFramePath ?? null,
         frameTabs: resolvedFileTabs?.fileTabs ?? [],
         tabsOrder: resolvedFileTabs?.tabsOrder ?? [],
@@ -297,48 +286,19 @@ app.patch(
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
       }
-      if (!body.archive) {
-        void launchOrSignalProjectTodoWorkflow({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
-      }
-      if (shouldTriggerFirstImmediateSync && !body.archive) {
-        void startImmediateProjectTodoWorkflowOnce({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
-      }
     } else {
       if (body.archive !== undefined) {
         if (body.archive) {
           await metadata.archive();
-          void stopProjectTodoWorkflow({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: space.sId,
-          });
         } else {
           await metadata.unarchive();
-          void launchOrSignalProjectTodoWorkflow({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: space.sId,
-          });
         }
       }
       if (body.description !== undefined) {
         await metadata.updateDescription(body.description);
       }
-      if (body.todoGenerationEnabled !== undefined) {
-        await metadata.updateTodoGenerationEnabled(body.todoGenerationEnabled);
-        if (!body.todoGenerationEnabled) {
-          await metadata.updateInitialTodoAnalysisLookback(null);
-        }
-      }
-      if (body.initialTodoAnalysisLookback !== undefined) {
-        await metadata.updateInitialTodoAnalysisLookback(
-          body.initialTodoAnalysisLookback
-        );
-      }
+      // todoGenerationEnabled / initialTodoAnalysisLookback are accepted for
+      // backwards compatibility but ignored (hardcoded off).
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
@@ -356,18 +316,6 @@ app.patch(
       }
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
-      }
-      if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
-        void launchOrSignalProjectTodoWorkflow({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
-      }
-      if (shouldTriggerFirstImmediateSync) {
-        void startImmediateProjectTodoWorkflowOnce({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
       }
     }
 

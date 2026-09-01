@@ -1,10 +1,9 @@
 import type { ModelId } from "@app/types/shared/model_id";
 import moment from "moment-timezone";
 
-// Mirrors the `scheduleOffsetMinutes = spaceModelId % 60` pattern in
-// front/temporal/project_task/client.ts: a pod's numeric model id is already
-// a well-distributed, stable integer, so taking it modulo the window size
-// gives a deterministic per-pod offset without hashing anything.
+// A pod's numeric model id is already a well-distributed, stable integer, so
+// taking it modulo the window size gives a deterministic per-pod offset
+// without hashing anything.
 export function getPodNudgeSlotMinutes(
   podModelId: ModelId,
   windowMinutes: number

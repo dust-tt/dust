@@ -7,7 +7,6 @@ import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
-import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
@@ -781,10 +780,6 @@ export function PodSettingsTab({
                 <AdminControlledPodTile owner={owner} pod={pod} />
               </div>
             )}
-
-            <div className="border-t border-border py-4">
-              <SuggestedTasksGenerationTile owner={owner} pod={pod} />
-            </div>
           </div>
         </div>
 

@@ -1425,15 +1425,11 @@ export function useUpdatePodMetadata({
             ? updates.archive
               ? "Pod archived"
               : "Pod unarchived"
-            : updates.todoGenerationEnabled !== undefined
-              ? updates.todoGenerationEnabled
-                ? "Automatic task suggestions turned on"
-                : "Automatic task suggestions turned off"
-              : updates.isAdminControlled !== undefined
-                ? updates.isAdminControlled
-                  ? "Pod is now admin-controlled"
-                  : "Pod is now self-serve"
-                : "Pod updated";
+            : updates.isAdminControlled !== undefined
+              ? updates.isAdminControlled
+                ? "Pod is now admin-controlled"
+                : "Pod is now self-serve"
+              : "Pod updated";
 
     sendNotification({
       type: "success",

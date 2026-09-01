@@ -34,10 +34,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import {
-  launchOrSignalProjectTodoWorkflow,
-  stopProjectTodoWorkflow,
-} from "@app/temporal/project_task/client";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
@@ -510,14 +506,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   logger.info(logContext, "softDeleteSpace: scrub workflow launched");
 
-  if (space.isProject()) {
-    void stopProjectTodoWorkflow({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      spaceId: space.sId,
-      stopReason: "project deleted",
-    });
-  }
-
   return new Ok(undefined);
 }
 
@@ -608,14 +596,6 @@ export async function hardDeleteSpace(
       throw res.error;
     }
   });
-
-  if (space.isProject()) {
-    void stopProjectTodoWorkflow({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      spaceId: space.sId,
-      stopReason: "project hard deleted",
-    });
-  }
 
   return new Ok(undefined);
 }
@@ -920,11 +900,6 @@ export async function createSpaceAndGroup(
         // Don't fail space creation if connector creation fails
         // The connector can be created later if needed
       }
-
-      void launchOrSignalProjectTodoWorkflow({
-        workspaceId: owner.sId,
-        spaceId: space.sId,
-      });
     }
   }
   return result;

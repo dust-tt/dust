@@ -329,8 +329,9 @@ app.get(
         members: currentMembers,
         description: meta?.description ?? null,
         archivedAt: meta?.archivedAt?.getTime() ?? null,
-        todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
-        lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
+        // Automated task generation removed; keep fields hardcoded for API compat.
+        todoGenerationEnabled: false,
+        lastTodoAnalysisAt: null,
         pinnedFramePath: meta?.pinnedFramePath ?? null,
         frameTabs: sortPodFileTabs(meta?.frameTabs ?? []),
         tabsOrder: normalizeTabsOrder(

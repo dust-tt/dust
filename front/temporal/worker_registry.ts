@@ -20,7 +20,6 @@ import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
 import { runMetronomeEventsWorker } from "@app/temporal/metronome_events_queue/worker";
 import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
-import { runProjectTaskWorker } from "@app/temporal/project_task/worker";
 import { runReinforcementWorker } from "@app/temporal/reinforcement/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
@@ -45,7 +44,6 @@ export type WorkerName =
   | "agent_trigger_webhook"
   | "analytics_queue"
   | "conversation_fork_queue"
-  | "project_task"
   | "credit_alerts"
   | "data_retention"
   | "es_indexation_queue"
@@ -92,7 +90,6 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
   reinforcement: runReinforcementWorker,
-  project_task: runProjectTaskWorker,
   relocation: runRelocationWorker,
   sandbox_functions: runSandboxFunctionsWorker,
   sandbox_reaper: runSandboxReaperWorker,

@@ -7,7 +7,6 @@ import { ProjectConversationDataTable } from "@app/components/poke/projects/conv
 import { ProjectPodDatabaseDataTable } from "@app/components/poke/projects/pod_databases/table";
 import { ProjectPodFunctionDataTable } from "@app/components/poke/projects/pod_functions/table";
 import { ProjectTasksDataTable } from "@app/components/poke/projects/tasks/table";
-import { ViewProjectWorkflowTable } from "@app/components/poke/projects/workflow/view";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -55,7 +54,6 @@ export function ProjectPage({ details }: ProjectPageProps) {
             }}
           />
           <ProjectConversationDataTable owner={owner} projectId={space.sId} />
-          <ViewProjectWorkflowTable owner={owner} projectId={space.sId} />
           <ProjectConnectorKnowledgeDataTable
             owner={owner}
             projectId={space.sId}
