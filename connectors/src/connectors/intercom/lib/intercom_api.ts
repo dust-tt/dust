@@ -13,15 +13,8 @@ import {
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
-function isRetryableIntercomFailure(
-  status: number,
-  errorCode?: string
-): boolean {
-  return (
-    status === 429 ||
-    status >= 500 ||
-    (errorCode?.toLowerCase().includes("rate_limit") ?? false)
-  );
+function isRetryableIntercomFailure(status: number): boolean {
+  return status === 429 || status >= 500;
 }
 
 /**
@@ -92,7 +85,7 @@ async function queryIntercomAPI({
         if (error.code.toLowerCase() === "not_found") {
           return null;
         }
-        if (isRetryableIntercomFailure(rawResponse.status, error.code)) {
+        if (isRetryableIntercomFailure(rawResponse.status)) {
           throw new ProviderWorkflowError(
             "intercom",
             `${error.code}: ${error.message ?? "Intercom API error"}`,
