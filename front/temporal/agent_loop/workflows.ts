@@ -14,6 +14,7 @@ import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import {
+  FINALIZE_ACTIVITY_MAX_ATTEMPTS,
   MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
@@ -176,6 +177,10 @@ const {
   finalizeErroredAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
   startToCloseTimeout: "1 minute",
+  retry: {
+    maximumAttempts: FINALIZE_ACTIVITY_MAX_ATTEMPTS,
+    nonRetryableErrorTypes: ["ModelNotFound"],
+  },
 });
 
 const { finalizeErroredSandboxChildToolActivity } = proxyActivities<
