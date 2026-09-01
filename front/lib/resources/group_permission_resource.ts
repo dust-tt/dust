@@ -883,13 +883,15 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Every grant held by one group, across resource types and instances.
   static async listForGroup(
     auth: Authenticator,
-    group: GroupResource
+    group: GroupResource,
+    transaction?: Transaction
   ): Promise<GroupPermissionResource[]> {
     const rows = await GroupPermissionModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         groupId: group.id,
       },
+      transaction,
     });
 
     return rows.map((row) => new this(GroupPermissionModel, row.get()));

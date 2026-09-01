@@ -824,7 +824,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       async (group) => {
         // Ensure the group is not associated with any other space. The grants for this space were
         // just cleared above, so any remaining space grant means the group is used elsewhere.
-        const grants = await GroupPermissionResource.listForGroup(auth, group);
+        const grants = await GroupPermissionResource.listForGroup(
+          auth,
+          group,
+          transaction
+        );
         const hasSpaceGrant = grants.some(
           (grant) => grant.resourceType === "space"
         );
