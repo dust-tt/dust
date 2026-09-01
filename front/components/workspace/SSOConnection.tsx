@@ -1,5 +1,4 @@
 import WorkOSSSOConnection from "@app/components/workspace/sso/WorkOSSSOConnection";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import type { Organization } from "@workos-inc/node";
@@ -15,9 +14,7 @@ export default function SSOConnection({
   owner,
   plan,
 }: SSOConnectionProps) {
-  const { hasFeature } = useFeatureFlags();
-
-  if (!plan.limits.users.isSSOAllowed && !hasFeature("allow_sso")) {
+  if (!plan.limits.users.isSSOAllowed) {
     return null;
   }
 

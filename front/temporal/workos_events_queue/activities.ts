@@ -23,7 +23,7 @@ import {
   getWorkspaceInfos,
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
-import { Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import type { CustomAttributeKey } from "@app/lib/iam/users";
 import {
@@ -127,9 +127,8 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
   ) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    const featureFlags = await getFeatureFlagsForWorkspace(workspace);
     const plan = subscription?.getPlan();
-    if (!plan || !isSCIMEnabled(plan, featureFlags)) {
+    if (!plan || !isSCIMEnabled(plan)) {
       logger.warn(
         { workspaceId: workspace.sId, organizationId },
         "SCIM event received but neither the workspace plan nor a feature flag allows SCIM, skipping"

@@ -57,10 +57,9 @@ export function NewPlanWarningDialog({
             </p>
             <ul className="flex flex-col gap-2 pl-5">
               <li className="list-disc">
-                <span className="font-semibold">SSO / SCIM</span> — enable the{" "}
-                <span className="font-mono">allow_sso</span> /{" "}
-                <span className="font-mono">allow_scim</span> feature flags on
-                the workspace.
+                <span className="font-semibold">SSO / SCIM</span> — use the{" "}
+                <span className="font-semibold">Override Plan Limits</span> poke
+                plugin on the workspace.
               </li>
               <li className="list-disc">
                 <span className="font-semibold">

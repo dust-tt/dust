@@ -1,17 +1,24 @@
 /**
  * For every active subscription on the legacy PRO_PLAN_SEAT_39 plan, check whether the
- * workspace has an active WorkOS SSO connection configured. If it does, enable the
- * `allow_sso` feature flag so the workspace keeps access to its SSO settings even though
- * the plan itself does not grant `isSSOAllowed`.
+ * workspace has an active WorkOS SSO connection configured. If it does, set the
+ * `isSSOAllowed` plan-limit override so the workspace keeps access to its SSO settings
+ * even though the plan itself does not grant `isSSOAllowed`.
+ *
+ * A workspace that already has an explicit `isSSOAllowed` override is left alone, in
+ * either direction: `false` is a deliberate deny, not a missing value.
  *
  * Dry run by default. Run with:
  *   npx tsx scripts/enable_allow_sso_for_pro_plan_seat_39.ts [--concurrency 4] [--execute]
  */
 
+import {
+  getWorkspacePlanLimitOverrides,
+  setWorkspacePlanLimitOverrides,
+} from "@app/lib/api/plan_limit_overrides";
 import { getWorkOSOrganizationSSOConnections } from "@app/lib/api/workos/organization";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
-import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import { EMPTY_PLAN_LIMIT_OVERRIDE } from "@app/lib/plans/plan_limit_overrides";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -37,11 +44,14 @@ async function processWorkspace(
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const hasFlagEnabled = await hasFeatureFlag(auth, "allow_sso");
-  if (hasFlagEnabled) {
+  const existingOverride = await getWorkspacePlanLimitOverrides(auth);
+  if (existingOverride?.isSSOAllowed != null) {
     logger.info(
-      { workspaceId: workspace.sId },
-      "allow_sso already enabled, skipping."
+      {
+        workspaceId: workspace.sId,
+        isSSOAllowed: existingOverride.isSSOAllowed,
+      },
+      "isSSOAllowed override already set, skipping."
     );
     return;
   }
@@ -70,11 +80,25 @@ async function processWorkspace(
 
   logger.info(
     { workspaceId: workspace.sId },
-    execute ? "Enabling allow_sso." : "Would enable allow_sso."
+    execute
+      ? "Setting isSSOAllowed override."
+      : "Would set isSSOAllowed override."
   );
 
   if (execute) {
-    await FeatureFlagResource.enable(workspace, "allow_sso");
+    // The override row holds every overridable limit at once, so the existing
+    // values have to be carried over — a bare `isSSOAllowed` would clear any
+    // negotiated seat or space override this workspace already has.
+    const res = await setWorkspacePlanLimitOverrides(auth, {
+      ...(existingOverride ?? EMPTY_PLAN_LIMIT_OVERRIDE),
+      isSSOAllowed: true,
+    });
+    if (res.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: res.error.message },
+        "Failed to set isSSOAllowed override."
+      );
+    }
   }
 }
 
