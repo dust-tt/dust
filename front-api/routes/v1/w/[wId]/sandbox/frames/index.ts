@@ -18,6 +18,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import register from "./register";
+import share from "./share";
 
 const FramePublishRequestSchema = z.object({
   manifestPath: z.string().min(1),
@@ -70,6 +71,7 @@ const app = sandboxApp();
 
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
 app.route("/register", register);
+app.route("/share", share);
 
 /**
  * @ignoreswagger
