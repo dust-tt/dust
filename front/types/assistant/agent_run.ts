@@ -73,8 +73,6 @@ export function isAgentLoopDataSoftDeleteError(
   );
 }
 
-// Retired or unpublished models (e.g. a removed EAP id) stay on historical agent
-// configurations and messages. Retrying will never recover an endpoint for them.
 class AgentLoopDataModelNotFoundError extends Error {
   readonly type = "model_not_found" as const;
 

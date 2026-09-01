@@ -653,7 +653,7 @@ export async function finalizeCancellation(
       return;
     }
     if (isAgentLoopDataModelNotFoundError(runAgentDataRes.error)) {
-      // The selected model is gone (retired EAP, unpublished id). Retrying the
+      // The selected model no longer exists. Retrying the
       // cancel finalizer cannot recover an endpoint and would loop forever.
       throw ApplicationFailure.nonRetryable(
         `Failed to get run agent data: ${runAgentDataRes.error.message}`,
