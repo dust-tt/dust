@@ -11,7 +11,7 @@ import { podEnv } from "./context.ts";
  * Frame and Pod state databases.
  *
  * `db(name)` returns a cached Drizzle instance over the sandbox owner's live
- * SQLite database at `${DUST_POD_DATABASES_DIR}/{prefix}{name}.db`. Pod names
+ * SQLite database at `${DUST_SANDBOX_DATABASES_DIR}/{prefix}{name}.db`. Pod names
  * may be prefixed; Frame names are unprefixed and must be declared by the
  * selected immutable publication. Databases are created by reconciliation,
  * never here: the file is opened must-exist so a typo'd name errors clearly
@@ -19,7 +19,7 @@ import { podEnv } from "./context.ts";
  * nothing.
  *
  * `name` is the app-relative name the function's source writes, and the app
- * prefix comes from the environment ({@link POD_DATABASE_PREFIX_ENV}) rather
+ * prefix comes from the environment ({@link SANDBOX_DATABASE_PREFIX_ENV}) rather
  * than the source. That is what lets a whole app folder be copied within a pod
  * without editing any source: the copy publishes under its own prefix and
  * therefore resolves `db("chat")` to its own database. See
@@ -33,8 +33,8 @@ import { podEnv } from "./context.ts";
  *   bounding the count is the reconcile path's job.
  * - Each database is capped via `PRAGMA max_page_count` at the byte quota
  *   front chooses and passes per exec (1 GiB in production — see
- *   {@link POD_DATABASE_MAX_SIZE_BYTES_ENV}). Writes past the cap fail with
- *   {@link PodDatabaseFullError}; the database stays readable and rows can
+ *   {@link SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV}). Writes past the cap fail with
+ *   {@link SandboxDatabaseFullError}; the database stays readable and rows can
  *   still be deleted, so the agent recovers in place by reclaiming space.
  * - The WAL is not counted by `max_page_count`: Litestream owns checkpointing
  *   and truncates the WAL as frames are replicated (see `applyPragmas`).
@@ -52,6 +52,9 @@ import { podEnv } from "./context.ts";
  * `dsbx function run`, which forwards it here — no layer below front carries
  * its own copy of the path.
  */
+export const SANDBOX_DATABASES_DIR_ENV = "DUST_SANDBOX_DATABASES_DIR";
+
+/** Legacy env key read for sandboxes launched before the owner-neutral ABI. */
 export const POD_DATABASES_DIR_ENV = "DUST_POD_DATABASES_DIR";
 
 /**
@@ -74,14 +77,18 @@ export const FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV =
  * rewrite it — acceptable because the cap is not a security boundary (see
  * the module doc).
  */
+export const SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV =
+  "DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES";
+
+/** Legacy env key read for sandboxes launched before the owner-neutral ABI. */
 export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
   "DUST_POD_DATABASE_MAX_SIZE_BYTES";
 
 /**
- * Env var carrying the app prefix (separator included, e.g. `"myapp__"`) that
- * namespaces this function's databases inside the pod's flat databases
- * directory. Optional: empty or absent means unprefixed names, which is what
- * functions published outside an app folder get.
+ * Env var carrying the per-invocation database namespace prefix (separator
+ * included, e.g. `"myapp__"`). Optional: empty or absent means unprefixed
+ * names, including Frame functions and Pod functions published outside an app
+ * folder.
  *
  * Front owns the value and derives it from the invoked function's slug, so no
  * layer below front knows how a prefix is built. Read through `podEnv`, so a
@@ -92,62 +99,74 @@ export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
  * can read and write directly, so app prefixing prevents accidental collisions
  * between apps, it does not isolate them.
  */
+export const SANDBOX_DATABASE_PREFIX_ENV = "DUST_SANDBOX_DATABASE_PREFIX";
+
+/** Legacy env key read for sandboxes launched before the owner-neutral ABI. */
 export const POD_DATABASE_PREFIX_ENV = "DUST_POD_DATABASE_PREFIX";
 
 /** How long a connection waits on a locked database before failing. */
-export const POD_DATABASE_BUSY_TIMEOUT_MS = 5000;
+export const SANDBOX_DATABASE_BUSY_TIMEOUT_MS = 5000;
+
+/** Compatibility alias for existing `@dust/pod` consumers. */
+export const POD_DATABASE_BUSY_TIMEOUT_MS = SANDBOX_DATABASE_BUSY_TIMEOUT_MS;
 
 /** Valid database names (also the manifest/publish contract). */
-export const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+export const SANDBOX_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+
+/** Compatibility alias for existing `@dust/pod` consumers. */
+export const POD_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
 export const SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION = 1;
 
 const framePublicationDatabaseContractSchema = z.object({
   schemaVersion: z.literal(SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION),
   manifest: z.object({
     databases: z.array(
-      z.object({ name: z.string().regex(POD_DATABASE_NAME_REGEX) })
+      z.object({ name: z.string().regex(SANDBOX_DATABASE_NAME_REGEX) })
     ),
   }),
 });
 
-export class PodDatabaseError extends Error {
+/**
+ * Compatibility ABI: shared errors keep their legacy `Pod*` `Error.name`
+ * values while the legacy class aliases below remain public.
+ */
+export class SandboxDatabaseError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PodDatabaseError";
   }
 }
 
-export class PodDatabaseInvalidNameError extends PodDatabaseError {
+export class SandboxDatabaseInvalidNameError extends SandboxDatabaseError {
   constructor(name: string) {
     super(
-      `Invalid pod database name ${JSON.stringify(name)}: names must match ` +
-        `${POD_DATABASE_NAME_REGEX.source} (lowercase letter first, then lowercase ` +
+      `Invalid sandbox database name ${JSON.stringify(name)}: names must match ` +
+        `${SANDBOX_DATABASE_NAME_REGEX.source} (lowercase letter first, then lowercase ` +
         `letters, digits or underscores, 64 characters max).`
     );
     this.name = "PodDatabaseInvalidNameError";
   }
 }
 
-export class PodDatabasesUnavailableError extends PodDatabaseError {
+export class SandboxDatabasesUnavailableError extends SandboxDatabaseError {
   constructor() {
     super(
       `Databases are not available in this sandbox: neither ${POD_SPACE_ID_ENV} ` +
-        `nor ${FRAME_ID_ENV} is set, which means this sandbox does not belong ` +
-        `to a Pod or Frame. db() only works in functions running in a Pod or ` +
-        `Frame sandbox.`
+        `nor ${FRAME_ID_ENV} is set, so the sandbox has no database owner. ` +
+        `db() only works in an owner-bound function sandbox.`
     );
     this.name = "PodDatabasesUnavailableError";
   }
 }
 
-export class FramePublicationDescriptorError extends PodDatabaseError {
+export class FramePublicationDescriptorError extends SandboxDatabaseError {
   constructor(message: string) {
     super(message);
     this.name = "FramePublicationDescriptorError";
   }
 }
 
-export class FrameDatabaseNotDeclaredError extends PodDatabaseError {
+export class FrameDatabaseNotDeclaredError extends SandboxDatabaseError {
   constructor(dbName: string) {
     super(
       `Frame database "${dbName}" is not declared in this publication. ` +
@@ -157,7 +176,7 @@ export class FrameDatabaseNotDeclaredError extends PodDatabaseError {
   }
 }
 
-export class FrameDatabaseUnavailableError extends PodDatabaseError {
+export class FrameDatabaseUnavailableError extends SandboxDatabaseError {
   constructor(dbName: string, path: string) {
     super(
       `Frame database "${dbName}" is declared but unavailable (no database ` +
@@ -167,7 +186,7 @@ export class FrameDatabaseUnavailableError extends PodDatabaseError {
   }
 }
 
-export class PodDatabaseNotDeclaredError extends PodDatabaseError {
+export class PodDatabaseNotDeclaredError extends SandboxDatabaseError {
   constructor(dbName: string, path: string) {
     super(
       `Pod database "${dbName}" does not exist (no database file at ${path}). ` +
@@ -179,10 +198,10 @@ export class PodDatabaseNotDeclaredError extends PodDatabaseError {
   }
 }
 
-export class PodDatabaseFullError extends PodDatabaseError {
+export class SandboxDatabaseFullError extends SandboxDatabaseError {
   constructor(dbName: string, maxSizeBytes: number) {
     super(
-      `Pod database "${dbName}" is full: it reached its size quota of ` +
+      `Sandbox database "${dbName}" is full: it reached its size quota of ` +
         `${maxSizeBytes} bytes. Delete unneeded rows to reclaim space before ` +
         `writing more data.`
     );
@@ -191,9 +210,18 @@ export class PodDatabaseFullError extends PodDatabaseError {
 }
 
 /** The Drizzle handle returned by {@link db}. */
-export type PodDatabase = BunSQLiteDatabase<Record<string, never>> & {
+export type SandboxDatabase = BunSQLiteDatabase<Record<string, never>> & {
   $client: Database;
 };
+
+// Keep the original public API working while new callers use owner-neutral names.
+export {
+  SandboxDatabaseError as PodDatabaseError,
+  SandboxDatabaseFullError as PodDatabaseFullError,
+  SandboxDatabaseInvalidNameError as PodDatabaseInvalidNameError,
+  SandboxDatabasesUnavailableError as PodDatabasesUnavailableError,
+};
+export type PodDatabase = SandboxDatabase;
 
 function isSqliteErrorWithCode(err: unknown, code: string): boolean {
   return err instanceof Error && "code" in err && err.code === code;
@@ -218,7 +246,7 @@ function translateSqliteError(
   maxSizeBytes: number
 ): unknown {
   if (isSqliteErrorWithCode(err, "SQLITE_FULL")) {
-    return new PodDatabaseFullError(dbName, maxSizeBytes);
+    return new SandboxDatabaseFullError(dbName, maxSizeBytes);
   }
   return err;
 }
@@ -251,11 +279,11 @@ function wrapStatement<T extends object>(
 
 /**
  * A bun:sqlite Database that translates `SQLITE_FULL` (the quota surface of
- * `PRAGMA max_page_count`) into {@link PodDatabaseFullError} on every
+ * `PRAGMA max_page_count`) into {@link SandboxDatabaseFullError} on every
  * execution path Drizzle uses: `exec`/`run` directly, and statements obtained
  * through `prepare` (which `query()` and `transaction()` also go through).
  */
-class PodSqliteDatabase extends Database {
+class SandboxSqliteDatabase extends Database {
   private readonly dbName: string;
   private readonly maxSizeBytes: number;
 
@@ -305,11 +333,12 @@ class PodSqliteDatabase extends Database {
   }
 }
 
-function podDatabasesDir(): string {
-  const dir = podEnv(POD_DATABASES_DIR_ENV);
+function sandboxDatabasesDir(): string {
+  const dir =
+    podEnv(SANDBOX_DATABASES_DIR_ENV) ?? podEnv(POD_DATABASES_DIR_ENV);
   if (dir === undefined || dir.length === 0) {
-    throw new PodDatabaseError(
-      `${POD_DATABASES_DIR_ENV} is not set: the databases directory is ` +
+    throw new SandboxDatabaseError(
+      `${SANDBOX_DATABASES_DIR_ENV} is not set: the databases directory is ` +
         `chosen by front and passed through dsbx function run, so db() only ` +
         `works in functions launched that way.`
     );
@@ -337,7 +366,10 @@ function resolveDatabasePath(dir: string, name: string): string {
   // concurrent invocations from different apps, and their prefixes differ. Read
   // straight from process.env and every warm invocation would resolve against
   // whichever prefix the cold run happened to leave there.
-  const prefix = podEnv(POD_DATABASE_PREFIX_ENV) ?? "";
+  const prefix =
+    podEnv(SANDBOX_DATABASE_PREFIX_ENV) ??
+    podEnv(POD_DATABASE_PREFIX_ENV) ??
+    "";
   if (prefix.length > 0) {
     // No need to re-check the name contract here: a prefix long enough to push
     // the qualified name past it is one reconcile refuses to create a file for,
@@ -350,11 +382,13 @@ function resolveDatabasePath(dir: string, name: string): string {
   return `${dir}/${name}.db`;
 }
 
-function podDatabaseMaxSizeBytes(): number {
-  const raw = podEnv(POD_DATABASE_MAX_SIZE_BYTES_ENV);
+function sandboxDatabaseMaxSizeBytes(): number {
+  const raw =
+    podEnv(SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV) ??
+    podEnv(POD_DATABASE_MAX_SIZE_BYTES_ENV);
   if (raw === undefined || raw.length === 0) {
-    throw new PodDatabaseError(
-      `${POD_DATABASE_MAX_SIZE_BYTES_ENV} is not set: the per-database size ` +
+    throw new SandboxDatabaseError(
+      `${SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV} is not set: the per-database size ` +
         `quota is chosen by front and passed through dsbx function run, so ` +
         `db() only works in functions launched that way.`
     );
@@ -363,8 +397,8 @@ function podDatabaseMaxSizeBytes(): number {
   const parsed = /^[0-9]+$/.test(raw) ? Number(raw) : Number.NaN;
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     // No default to fall back to; failing loudly beats masking a broken quota.
-    throw new PodDatabaseError(
-      `${POD_DATABASE_MAX_SIZE_BYTES_ENV} is not a positive integer byte ` +
+    throw new SandboxDatabaseError(
+      `${SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV} is not a positive integer byte ` +
         `count: ${JSON.stringify(raw)}.`
     );
   }
@@ -376,13 +410,16 @@ function podDatabaseMaxSizeBytes(): number {
  * not set here: it is a persistent per-database setting, applied once when
  * reconcile creates the file.
  */
-function applyPragmas(sqlite: PodSqliteDatabase, maxSizeBytes: number): void {
+function applyPragmas(
+  sqlite: SandboxSqliteDatabase,
+  maxSizeBytes: number
+): void {
   // WAL allows a single writer at a time: concurrent function invocations —
   // and Litestream, which briefly takes the write lock to checkpoint — must
   // wait for it instead of failing instantly with SQLITE_BUSY. 5s is the
   // value the Litestream docs recommend and comfortably covers the short
   // transactions functions are expected to run.
-  sqlite.exec(`PRAGMA busy_timeout = ${POD_DATABASE_BUSY_TIMEOUT_MS}`);
+  sqlite.exec(`PRAGMA busy_timeout = ${SANDBOX_DATABASE_BUSY_TIMEOUT_MS}`);
   // Under WAL, NORMAL fsyncs at checkpoint time instead of on every commit:
   // a host crash can lose the most recent commits but cannot corrupt the
   // database. Commits happen inside function calls, so FULL's per-commit
@@ -399,7 +436,7 @@ function applyPragmas(sqlite: PodSqliteDatabase, maxSizeBytes: number): void {
   sqlite.exec("PRAGMA wal_autocheckpoint = 0");
   const row = sqlite.query<{ page_size: number }, []>("PRAGMA page_size").get();
   if (row === null) {
-    throw new PodDatabaseError("PRAGMA page_size returned no row");
+    throw new SandboxDatabaseError("PRAGMA page_size returned no row");
   }
   // The per-database size cap (see the module doc). max_page_count counts
   // pages, so the byte quota is converted using this database's actual page
@@ -411,7 +448,7 @@ function applyPragmas(sqlite: PodSqliteDatabase, maxSizeBytes: number): void {
 }
 
 // One instance per resolved database file path, opened lazily on first db().
-const instances = new Map<string, PodDatabase>();
+const instances = new Map<string, SandboxDatabase>();
 
 // Publication descriptors are immutable, so declarations can be cached by
 // their exact mounted path without mixing warm invocations across publications.
@@ -469,7 +506,7 @@ function assertDatabaseOwnerCanUse(name: string): boolean {
 
   const spaceId = podEnv(POD_SPACE_ID_ENV);
   if (!spaceId) {
-    throw new PodDatabasesUnavailableError();
+    throw new SandboxDatabasesUnavailableError();
   }
   return false;
 }
@@ -479,38 +516,38 @@ function assertDatabaseOwnerCanUse(name: string): boolean {
  * resolve app-relative names through {@link resolveDatabasePath}; Frame
  * functions use unprefixed names declared by the selected publication.
  *
- * @throws PodDatabaseInvalidNameError when `name` does not match the contract.
- * @throws PodDatabasesUnavailableError when both SPACE_ID and FRAME_ID are
- *   absent — this sandbox is owned by neither a Pod nor a Frame.
+ * @throws SandboxDatabaseInvalidNameError when `name` does not match the contract.
+ * @throws SandboxDatabasesUnavailableError when both SPACE_ID and FRAME_ID are
+ *   absent, so this sandbox has no database owner.
  * @throws FramePublicationDescriptorError when a Frame invocation has no valid
  *   selected publication descriptor.
  * @throws FrameDatabaseNotDeclaredError when the selected Frame publication
  *   does not declare `name`.
  * @throws FrameDatabaseUnavailableError when declared state was not reconciled.
- * @throws PodDatabaseError when DUST_POD_DATABASES_DIR or
- *   DUST_POD_DATABASE_MAX_SIZE_BYTES is absent or invalid — db() only works
+ * @throws SandboxDatabaseError when DUST_SANDBOX_DATABASES_DIR or
+ *   DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES is absent or invalid. db() only works
  *   in functions launched by `dsbx function run`.
- * @throws PodDatabaseNotDeclaredError when no database file exists — databases
+ * @throws PodDatabaseNotDeclaredError for a Pod function when no database file exists. Databases
  *   are created by their first reconcile.
- * @throws PodDatabaseFullError (from queries) when the database hits its quota.
+ * @throws SandboxDatabaseFullError (from queries) when the database hits its quota.
  */
-export function db(name: string): PodDatabase {
-  if (!POD_DATABASE_NAME_REGEX.test(name)) {
-    throw new PodDatabaseInvalidNameError(name);
+export function db(name: string): SandboxDatabase {
+  if (!SANDBOX_DATABASE_NAME_REGEX.test(name)) {
+    throw new SandboxDatabaseInvalidNameError(name);
   }
   // Recheck before the instance cache: a warm worker may have opened this
   // database for an older publication that declared it.
   const isFrame = assertDatabaseOwnerCanUse(name);
-  const path = resolveDatabasePath(podDatabasesDir(), name);
+  const path = resolveDatabasePath(sandboxDatabasesDir(), name);
   const cached = instances.get(path);
   if (cached !== undefined) {
     return cached;
   }
 
-  const maxSizeBytes = podDatabaseMaxSizeBytes();
-  let sqlite: PodSqliteDatabase;
+  const maxSizeBytes = sandboxDatabaseMaxSizeBytes();
+  let sqlite: SandboxSqliteDatabase;
   try {
-    sqlite = new PodSqliteDatabase(path, name, maxSizeBytes);
+    sqlite = new SandboxSqliteDatabase(path, name, maxSizeBytes);
   } catch (err) {
     if (isSqliteErrorWithCode(err, "SQLITE_CANTOPEN")) {
       if (isFrame) {
