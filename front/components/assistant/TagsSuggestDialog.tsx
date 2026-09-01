@@ -141,7 +141,7 @@ export const TagsSuggestDialog = ({
                       />
                       <ContextItem.Description
                         description={suggestion.agents
-                          .map((agent) => `@${agent.name}`)
+                          .map((agent) => agent.name)
                           .join(", ")}
                       />
                     </ContextItem>

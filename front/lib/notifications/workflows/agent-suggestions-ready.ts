@@ -29,7 +29,7 @@ export const agentSuggestionsReadyWorkflow = workflow(
   async ({ step, payload }) => {
     await step.inApp("send-in-app", async () => {
       return {
-        subject: `@${payload.agentName}`,
+        subject: payload.agentName,
         body: `${payload.suggestionCount} new improvement suggestion${pluralize(payload.suggestionCount)} ready for review.`,
         primaryAction: {
           label: "Review",

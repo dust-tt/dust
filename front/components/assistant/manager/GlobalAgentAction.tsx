@@ -61,7 +61,7 @@ export function GlobalAgentAction({
                 <DialogTitle>Free plan</DialogTitle>
               </DialogHeader>
               <DialogContainer>
-                {`@${agent.name} is only available on our paid plans.`}
+                {`${agent.name} is only available on our paid plans.`}
               </DialogContainer>
               <DialogFooter
                 leftButtonProps={{
