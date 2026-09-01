@@ -87,16 +87,14 @@ export function WorkspaceCreditUsageValueCards({
         }
         hint={cycleDayLabel}
       />
-      <ValueCard
-        title="Programmatic usage this cycle"
-        isLoading={isLoading}
-        content={
-          <div className="truncate text-2xl text-foreground">
-            {typeof programmaticConsumedCredits === "number"
-              ? formatCredits(programmaticConsumedCredits)
-              : "—"}
-          </div>
+      <SummaryCard
+        label="Programmatic usage this cycle"
+        value={
+          typeof programmaticConsumedCredits === "number"
+            ? formatCredits(programmaticConsumedCredits)
+            : "—"
         }
+        hint={null}
       />
     </div>
   );
