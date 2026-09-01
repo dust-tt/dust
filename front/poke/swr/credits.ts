@@ -199,6 +199,7 @@ export function usePokeMembersUsage({
   orderDirection,
   seatType,
   creditState,
+  groupId,
 }: PokeConditionalFetchProps & {
   pageIndex: number;
   pageSize: number;
@@ -212,6 +213,7 @@ export function usePokeMembersUsage({
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType;
   creditState?: UserCreditState;
+  groupId?: string;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetMembersUsageResponseBody> = fetcher;
@@ -232,6 +234,9 @@ export function usePokeMembersUsage({
   if (creditState) {
     params.set("creditState", creditState);
   }
+  if (groupId) {
+    params.set("groupId", groupId);
+  }
   if (orderDirection) {
     params.set("orderDirection", orderDirection);
   }
@@ -247,6 +252,7 @@ export function usePokeMembersUsage({
   return {
     members: data?.members ?? emptyArray(),
     totalMembers: data?.total ?? 0,
+    creditsResetAt: data?.creditsResetAt ?? null,
     isMembersUsageLoading: !error && !data && !disabled,
     isMembersUsageError: error,
     isMembersUsageValidating: isValidating,

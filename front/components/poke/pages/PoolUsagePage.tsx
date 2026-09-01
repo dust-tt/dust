@@ -1,0 +1,406 @@
+import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeDisplayName,
+} from "@app/components/workspace/billing/seatTypeUtils";
+import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
+import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
+import { expandMaxTierName } from "@app/lib/client/model_tiers";
+import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
+import {
+  usePokeAwuPoolSummary,
+  usePokeMembersUsage,
+} from "@app/poke/swr/credits";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import { usePokeGroups } from "@app/poke/swr/groups";
+import { usePokeAllowedModelTiers } from "@app/poke/swr/model_tiers";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
+import { isCapEligibleGroupKind } from "@app/types/groups";
+import type { MembershipSeatType } from "@app/types/memberships";
+import {
+  BILLABLE_SEAT_TYPES,
+  SEAT_TYPE_ORDER,
+  toBaseSeatType,
+} from "@app/types/memberships";
+import {
+  AlertCircle,
+  Button,
+  ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Icon,
+  LinkExternal01,
+  LinkWrapper,
+  Page,
+  SearchInput,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
+import type { PaginationState, SortingState } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+const DEFAULT_PAGE_SIZE = 25;
+
+const EMPTY_PENDING_MEMBER_IDS: ReadonlySet<string> = new Set();
+
+function noopOnMember(_member: MemberUsageType) {}
+
+// Base seat types a workspace can offer (yearly variants collapse into their
+// base tier), ordered lowest to highest. Poke has no per-workspace seat-plan
+// lookup, so — unlike the customer-facing filter — this always offers the
+// full catalog rather than only the plans this workspace actually sells.
+const SEAT_FILTER_OPTIONS: MembershipSeatType[] = Array.from(
+  new Set(BILLABLE_SEAT_TYPES.map(toBaseSeatType))
+).sort((a, b) => SEAT_TYPE_ORDER[a] - SEAT_TYPE_ORDER[b]);
+
+interface PoolCreditCardProps {
+  owner: ReturnType<typeof useWorkspace>;
+}
+
+// Mirrors the "Workspace credit pool" widget on the customer-facing usage
+// page, so Poke shows the same numbers an admin would see.
+function PoolCreditCard({ owner }: PoolCreditCardProps) {
+  const { awuPoolSummary, isAwuPoolSummaryLoading, isAwuPoolSummaryError } =
+    usePokeAwuPoolSummary({ owner });
+
+  const totalRemainingCredits = awuPoolSummary?.totalRemainingCredits ?? 0;
+  const totalActiveCredits = awuPoolSummary?.totalActiveCredits ?? 0;
+  const overageCredits = awuPoolSummary?.overageCredits ?? null;
+  const hasPool = totalActiveCredits > 0;
+  const totalConsumedCredits = Math.max(
+    0,
+    totalActiveCredits - totalRemainingCredits
+  );
+
+  if (!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && !hasPool) {
+    return null;
+  }
+
+  return (
+    <Page.Vertical gap="xs" align="stretch">
+      <Page.H variant="h4">Workspace credit pool</Page.H>
+
+      {isAwuPoolSummaryError ? (
+        <ContentMessage
+          title="Failed to load Workspace Credits Pool"
+          icon={AlertCircle}
+          variant="warning"
+        >
+          An error occurred while loading the workspace&apos;s credit pool data.
+        </ContentMessage>
+      ) : isAwuPoolSummaryLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-1">
+            <span className="heading-mono-4xl text-foreground">
+              {formatCredits(totalConsumedCredits)}
+            </span>
+            <span className="copy-sm text-muted-foreground">
+              /{formatCredits(totalActiveCredits)}
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
+            <div
+              className="h-full rounded-full bg-foreground/80 transition-all"
+              style={{
+                width: `${Math.min(100, totalActiveCredits > 0 ? (totalConsumedCredits / totalActiveCredits) * 100 : 0)}%`,
+              }}
+            />
+          </div>
+          {overageCredits !== null && overageCredits > 0 && (
+            <span className="copy-sm text-muted-foreground">
+              {formatCredits(overageCredits)} overage credits
+            </span>
+          )}
+        </>
+      )}
+    </Page.Vertical>
+  );
+}
+
+export function PoolUsagePage() {
+  const owner = useWorkspace();
+  usePokePageMetadata({ name: owner.name, subtitle: "Pool Usage" });
+
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [seatTypeFilter, setSeatTypeFilter] =
+    useState<MembershipSeatType | null>(null);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
+
+  // Debounce the search input, and reset to the first page on a new query.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setSearch(searchInput);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }, 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
+  const handleSetSorting = useCallback((next: SortingState) => {
+    setSorting(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  const handleSetSeatTypeFilter = useCallback(
+    (next: MembershipSeatType | null) => {
+      setSeatTypeFilter(next);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    },
+    []
+  );
+
+  const handleSetGroupFilter = useCallback((next: string | null) => {
+    setGroupFilter(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  const sort = sorting[0];
+  const orderColumn =
+    sort?.id === "email" || sort?.id === "consumedAwuCredits"
+      ? sort.id
+      : "name";
+  const orderDirection = sort?.desc ? "desc" : "asc";
+
+  const {
+    members,
+    totalMembers,
+    creditsResetAt,
+    isMembersUsageLoading,
+    isMembersUsageValidating,
+    isMembersUsageError,
+  } = usePokeMembersUsage({
+    owner,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+    search,
+    orderColumn,
+    orderDirection,
+    seatType: seatTypeFilter ?? undefined,
+    groupId: groupFilter ?? undefined,
+  });
+
+  const { data: allGroups } = usePokeGroups({ owner });
+  const groups = useMemo(
+    () => allGroups.filter((group) => isCapEligibleGroupKind(group.kind)),
+    [allGroups]
+  );
+  const selectedGroupName = groups.find(
+    (group) => group.sId === groupFilter
+  )?.name;
+
+  const {
+    users: userAllowedModelTiers,
+    groups: groupAllowedModelTiers,
+    maxTierName: workspaceMaxTierName,
+  } = usePokeAllowedModelTiers({ owner });
+
+  const workspaceAllowedModelTiers = useMemo(
+    () => expandMaxTierName(workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER),
+    [workspaceMaxTierName]
+  );
+
+  const userAllowedModelTiersByUserId = useMemo(() => {
+    const map: Record<string, ModelsTierName[]> = {};
+    for (const entry of userAllowedModelTiers) {
+      map[entry.userId] = expandMaxTierName(entry.maxTierName);
+    }
+    return map;
+  }, [userAllowedModelTiers]);
+
+  const groupModelTiersByGroupId = useMemo(() => {
+    const map: Record<string, ModelsTierName[]> = {};
+    for (const entry of groupAllowedModelTiers) {
+      map[entry.groupId] = expandMaxTierName(entry.maxTierName);
+    }
+    return map;
+  }, [groupAllowedModelTiers]);
+
+  const groupNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of allGroups) {
+      map.set(group.name, group.sId);
+    }
+    return map;
+  }, [allGroups]);
+
+  const seatFilterDropdown = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          label={
+            seatTypeFilter ? seatTypeDisplayName(seatTypeFilter) : "All seats"
+          }
+          size="sm"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          label="All seats"
+          onClick={() => handleSetSeatTypeFilter(null)}
+        />
+        {SEAT_FILTER_OPTIONS.map((seatType) => (
+          <DropdownMenuItem
+            key={seatType}
+            label={seatTypeDisplayName(seatType)}
+            icon={
+              <Icon
+                visual={SEAT_TYPE_ICONS[seatType]}
+                size="sm"
+                className={getSeatIconColorClass(seatType)}
+              />
+            }
+            onClick={() => handleSetSeatTypeFilter(seatType)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const groupsFilterDropdown = groups.length > 0 && (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          label={selectedGroupName ?? "All groups"}
+          size="sm"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          label="All groups"
+          onClick={() => handleSetGroupFilter(null)}
+        />
+        {groups.map((group) => (
+          <DropdownMenuItem
+            key={group.sId}
+            label={group.name}
+            onClick={() => handleSetGroupFilter(group.sId)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  return (
+    <main className="mx-auto w-full max-w-7xl">
+      <Page.Header
+        title={
+          <div className="flex w-full items-center justify-between gap-4">
+            <Page.H variant="h3">Pool usage</Page.H>
+            <Button
+              label="Breakdown in analytics"
+              iconRight={LinkExternal01}
+              size="xs"
+              variant="highlight-ghost"
+              href={`/poke/${owner.sId}/analytics`}
+            />
+          </div>
+        }
+        description={
+          <>
+            For workspace{" "}
+            <LinkWrapper
+              href={`/poke/${owner.sId}`}
+              className="text-highlight-500"
+            >
+              {owner.name}
+            </LinkWrapper>
+            . Poke uses workspace-admin visibility, so resolved labels may
+            differ from a customer manager&apos;s view. This is a read-only view
+            — seat and spend-limit changes are disabled.
+          </>
+        }
+      />
+
+      <div className="flex flex-col items-stretch gap-10 py-6 pb-20">
+        <PoolCreditCard owner={owner} />
+
+        <Tabs defaultValue="members">
+          <TabsList className="mb-4">
+            <TabsTrigger value="members" label="Members" />
+            <TabsTrigger value="top-ups" label="Top-ups history" />
+          </TabsList>
+
+          <TabsContent value="members">
+            <Page.Vertical gap="sm" align="stretch">
+              <SearchInput
+                placeholder="Search members"
+                value={searchInput}
+                name="search"
+                onChange={setSearchInput}
+              />
+              <div className="flex flex-row items-center justify-end gap-2">
+                {groupsFilterDropdown}
+                {seatFilterDropdown}
+              </div>
+              {isMembersUsageError ? (
+                <ContentMessage
+                  title="Failed to load members usage"
+                  icon={AlertCircle}
+                  variant="warning"
+                >
+                  Could not load per-member seat and credit pool consumption
+                  data for this workspace.
+                </ContentMessage>
+              ) : (
+                <MembersUsageTable
+                  members={members}
+                  creditsResetAt={creditsResetAt}
+                  isLoading={isMembersUsageLoading}
+                  isRefreshing={
+                    isMembersUsageValidating && !isMembersUsageLoading
+                  }
+                  totalAllowedUsagePendingMemberIds={EMPTY_PENDING_MEMBER_IDS}
+                  seatChangePendingMemberIds={EMPTY_PENDING_MEMBER_IDS}
+                  isSeatBased
+                  showSpendLimit
+                  readOnly
+                  onChangeSeat={noopOnMember}
+                  onRemoveSeat={noopOnMember}
+                  onEditSpendLimit={noopOnMember}
+                  pagination={pagination}
+                  setPagination={setPagination}
+                  totalRowCount={totalMembers}
+                  sorting={sorting}
+                  setSorting={handleSetSorting}
+                  showGroupsColumn={groups.length > 0}
+                  showModelTiersColumn
+                  userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
+                  groupModelTiersByGroupId={groupModelTiersByGroupId}
+                  workspaceAllowedModelTiers={workspaceAllowedModelTiers}
+                  groupNameToId={groupNameToId}
+                />
+              )}
+            </Page.Vertical>
+          </TabsContent>
+
+          <TabsContent value="top-ups">
+            <PokeTopUpsHistoryTable owner={owner} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </main>
+  );
+}
