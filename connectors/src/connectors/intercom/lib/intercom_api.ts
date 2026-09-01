@@ -81,6 +81,11 @@ async function queryIntercomAPI({
         if (error.code.toLowerCase() === "not_found") {
           return null;
         }
+        throw new ProviderWorkflowError(
+          "intercom",
+          `${error.code}: ${error.message ?? "Intercom API error"}`,
+          "transient_upstream_activity_error"
+        );
       }
     }
 
@@ -482,21 +487,7 @@ export async function fetchIntercomConversation({
     method: "GET",
   });
 
-  if (!response) {
-    return null;
-  }
-
-  // queryIntercomAPI returns error.list bodies for non-404 failures (rate
-  // limits, invalid ids). Those must not be treated as conversations.
-  if (response.type === "error.list") {
-    throw new ProviderWorkflowError(
-      "intercom",
-      `Failed to fetch conversation ${conversationId}`,
-      "transient_upstream_activity_error"
-    );
-  }
-
-  if (!response.id) {
+  if (!response?.id) {
     return null;
   }
 

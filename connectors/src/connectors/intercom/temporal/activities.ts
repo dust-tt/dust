@@ -10,7 +10,6 @@ import {
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import {
   getHelpCenterInternalId,
-  getIntercomConversationIds,
   getTeamInternalId,
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
@@ -625,16 +624,7 @@ export async function getNextConversationBatchToSyncActivity({
     );
   }
 
-  const conversationIds = getIntercomConversationIds(result.conversations);
-  if (conversationIds.length !== result.conversations.length) {
-    logger.warn(
-      {
-        connectorId,
-        droppedCount: result.conversations.length - conversationIds.length,
-      },
-      "[Intercom] Dropped conversations with missing id from search results"
-    );
-  }
+  const conversationIds = result.conversations.map((c) => c.id);
   const nextPageCursor = result.pages.next
     ? result.pages.next.starting_after
     : null;

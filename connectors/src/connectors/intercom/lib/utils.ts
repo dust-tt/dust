@@ -42,17 +42,6 @@ export function getConversationInternalId(
   return `intercom-conversation-${connectorId}-${conversationId}`;
 }
 
-export function getIntercomConversationIds(
-  conversations: Array<{ id?: string | number | null }>
-): string[] {
-  return conversations.flatMap((conversation) => {
-    if (conversation.id == null || String(conversation.id).length === 0) {
-      return [];
-    }
-    return [String(conversation.id)];
-  });
-}
-
 /**
  * From internalId to id
  */
