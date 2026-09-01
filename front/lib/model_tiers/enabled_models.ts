@@ -84,9 +84,17 @@ function restrictModelConfigToAllowedTiers(
 
 export async function withModelSelectability(
   auth: Authenticator,
-  { models }: { models: ModelConfigurationType[] }
+  {
+    models,
+    allowedTierNamesOverride,
+  }: {
+    models: ModelConfigurationType[];
+    // Set to bypass the member's own tier grants (see getAgentAllowedTierNamesOverride).
+    allowedTierNamesOverride?: ModelsTierName[] | null;
+  }
 ): Promise<EnabledModelConfigurationType[]> {
-  const { tiers: allowedTierNames } = await resolveAllowedTierNames(auth);
+  const allowedTierNames =
+    allowedTierNamesOverride ?? (await resolveAllowedTierNames(auth)).tiers;
   const allowedTierNamesSet = new Set(allowedTierNames);
 
   return models.map((model) =>
@@ -95,10 +103,16 @@ export async function withModelSelectability(
 }
 
 export async function getEnabledModelsForAuth(
-  auth: Authenticator
+  auth: Authenticator,
+  {
+    allowedTierNamesOverride,
+  }: { allowedTierNamesOverride?: ModelsTierName[] | null } = {}
 ): Promise<EnabledModelConfigurationType[]> {
   const availableModels = await getAvailableModelsForWorkspace(auth);
-  return withModelSelectability(auth, { models: availableModels });
+  return withModelSelectability(auth, {
+    models: availableModels,
+    allowedTierNamesOverride,
+  });
 }
 
 export async function getDefaultStreamConfigForAuth(

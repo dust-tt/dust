@@ -446,6 +446,7 @@ export async function runModel(
     const accessError = await getModelTierAccessErrorForAgentConfiguration(
       auth,
       {
+        agentSId: agentConfiguration.sId,
         agentName: agentConfiguration.name,
         model: modelInfo.endpoint.modelConfig,
         reasoningEffort: modelInfo.reasoningEffort,

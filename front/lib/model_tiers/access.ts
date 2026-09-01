@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { getAgentAllowedTierNamesOverride } from "@app/lib/model_tiers/agent_tier_overrides";
 import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   AgentConfigurationScope,
@@ -34,12 +35,15 @@ function buildModelTierAccessDeniedError(
 export async function getModelTierAccessErrorForAgentConfiguration(
   auth: Authenticator,
   {
+    agentSId,
     agentName,
     model,
     reasoningEffort,
     agentScope,
     modelResolutionMethod,
   }: {
+    // Left out when the agent has no sId yet (creation): no agent override applies.
+    agentSId?: string;
     agentName: string;
     model: ModelConfigurationType;
     reasoningEffort?: ReasoningEffort;
@@ -73,7 +77,11 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     return null;
   }
 
-  const { tiers: allowedTierNames } = await resolveAllowedTierNames(auth);
+  const allowedTierNamesOverride = agentSId
+    ? getAgentAllowedTierNamesOverride(agentSId)
+    : null;
+  const allowedTierNames =
+    allowedTierNamesOverride ?? (await resolveAllowedTierNames(auth)).tiers;
 
   if (allowedTierNames.includes(tierName)) {
     return null;
