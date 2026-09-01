@@ -33,13 +33,9 @@ describe("fetchConsumptionOverview", () => {
     );
 
     const result = await fetchConsumptionOverview(auth, {
-      period: {
-        startDate: "2026-08-21T00:00:00.000Z",
-        endDate: "2026-08-28T00:00:00.000Z",
-      },
+      periodInput: { kind: "days", days: 7 },
       filter: { agents: ["agent-1"] },
       includeWorkspaceContext: false,
-      withCreditCap: false,
     });
 
     expect(result.isOk()).toBe(true);

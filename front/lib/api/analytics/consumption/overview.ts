@@ -1,9 +1,12 @@
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
-import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type {
+  ConsumptionPeriod,
+  ConsumptionPeriodInput,
+} from "@app/lib/api/analytics/consumption/period";
+import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
   AGENT_MESSAGE_ID_FIELD,
-  agentTagIdsFilter,
   buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
   COMPLETED_AT_FIELD,
@@ -76,8 +79,13 @@ function lastRecordAtFromAgg(
 }
 
 async function fetchPoolCapCredits(
-  auth: Authenticator
+  auth: Authenticator,
+  periodInput: ConsumptionPeriodInput
 ): Promise<number | null> {
+  if (periodInput.kind !== "cycle") {
+    return null;
+  }
+
   const poolResult = await getAwuPoolSummary(auth);
   if (poolResult.isErr()) {
     return null;
@@ -136,27 +144,23 @@ async function topAgentFromAgg(
 export async function fetchConsumptionOverview(
   auth: Authenticator,
   {
-    period,
+    periodInput,
     filter,
-    agentTagIds,
     includeWorkspaceContext = true,
-    withCreditCap,
   }: {
-    period: ConsumptionPeriod;
+    periodInput: ConsumptionPeriodInput;
     filter?: ConsumptionScopeFilter;
-    agentTagIds?: string[];
     includeWorkspaceContext?: boolean;
-    withCreditCap: boolean;
   }
 ): Promise<Result<ConsumptionOverview, ElasticsearchError>> {
   const workspace = auth.getNonNullableWorkspace();
+  const period = await resolveConsumptionPeriod(auth, periodInput);
 
   const query = buildConsumptionScopeQuery({
     auth: auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
-    extraFilters: agentTagIdsFilter(agentTagIds ?? []),
   });
 
   const [searchResult, totalMembers, capCredits] = await Promise.all([
@@ -192,8 +196,8 @@ export async function fetchConsumptionOverview(
     includeWorkspaceContext
       ? MembershipResource.countActiveMembersForWorkspace({ workspace })
       : Promise.resolve(0),
-    includeWorkspaceContext && withCreditCap
-      ? fetchPoolCapCredits(auth)
+    includeWorkspaceContext
+      ? fetchPoolCapCredits(auth, periodInput)
       : Promise.resolve(null),
   ]);
 

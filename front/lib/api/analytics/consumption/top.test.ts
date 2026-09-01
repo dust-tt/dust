@@ -935,7 +935,7 @@ describe("fetchConsumptionTopGroups options", () => {
     expect(vi.mocked(searchConsumptionAnalytics)).toHaveBeenCalledTimes(1);
   });
 
-  it("scopes on agentTagIds, which no filter key covers", async () => {
+  it("scopes on the tags filter key", async () => {
     const { auth } = await setup();
     mockAggs({ buckets: [], totalMicro: 0 });
 
@@ -943,7 +943,7 @@ describe("fetchConsumptionTopGroups options", () => {
       dimension: "agent",
       period: PERIOD,
       limit: 5,
-      agentTagIds: ["tag_1"],
+      filter: { tags: ["tag_1"] },
       includePreviousCredits: false,
     });
 

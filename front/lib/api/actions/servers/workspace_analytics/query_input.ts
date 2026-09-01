@@ -149,26 +149,19 @@ export type ConsumptionFilterInput = z.input<
   typeof consumptionFilterInputSchema
 >;
 
-export type ConsumptionScope = {
-  filter: ConsumptionScopeFilter;
-  agentTagIds: string[];
-};
-
 export function toConsumptionScope(
   input: ConsumptionFilterInput
-): ConsumptionScope {
+): ConsumptionScopeFilter {
   return {
-    filter: {
-      sources: input.sources,
-      agents: input.agentIds,
-      users: input.userIds,
-      models: input.modelIds,
-      api_keys: input.apiKeyNames,
-      groups: input.groupIds,
-      tools: input.toolNames,
-      skills: input.skillIds,
-    },
-    agentTagIds: input.agentTagIds ?? [],
+    sources: input.sources,
+    agents: input.agentIds,
+    users: input.userIds,
+    models: input.modelIds,
+    api_keys: input.apiKeyNames,
+    groups: input.groupIds,
+    tools: input.toolNames,
+    skills: input.skillIds,
+    tags: input.agentTagIds,
   };
 }
 
