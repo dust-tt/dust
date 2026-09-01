@@ -4,10 +4,12 @@ import tracer from "@app/logger/tracer";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 
+type LockRedisClient = Pick<RedisClientType, "eval" | "set">;
+
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
 export async function distributedLock(
-  redisCli: RedisClientType,
+  redisCli: LockRedisClient,
   key: string,
   lockTtlMs: number = 5_000
 ): Promise<string | undefined> {
@@ -30,7 +32,7 @@ export async function distributedLock(
 }
 
 export async function distributedUnlock(
-  redisCli: RedisClientType,
+  redisCli: LockRedisClient,
   key: string,
   lockValue: string
 ): Promise<void> {
@@ -49,6 +51,28 @@ export async function distributedUnlock(
     keys: [lockKey],
     arguments: [lockValue],
   });
+}
+
+export async function distributedRefresh(
+  redisCli: LockRedisClient,
+  key: string,
+  lockValue: string,
+  lockTtlMs: number
+): Promise<boolean> {
+  const lockKey = `lock:${key}`;
+  const luaScript = `
+    if redis.call("get", KEYS[1]) == ARGV[1] then
+      return redis.call("pexpire", KEYS[1], ARGV[2])
+    else
+      return 0
+    end
+  `;
+  const refreshed = await redisCli.eval(luaScript, {
+    keys: [lockKey],
+    arguments: [lockValue, String(lockTtlMs)],
+  });
+
+  return refreshed === 1;
 }
 
 const DEFAULT_RETRY_INTERVAL_MS = 100;
