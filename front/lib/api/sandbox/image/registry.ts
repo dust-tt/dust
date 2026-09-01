@@ -593,7 +593,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       name: SANDBOX_PACKAGE_NAME,
       version: SANDBOX_PACKAGE_VERSION,
       description:
-        "Frame and Pod database access: db(name) returns a Drizzle instance over the sandbox owner's SQLite database",
+        "Sandbox database access: db(name) returns a Drizzle instance over the owner's SQLite database",
       runtime: "node",
     },
     {

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Build the @dust/pod runtime package and push it to an e2b sandbox.
+# Build the @dust/sandbox runtime package and push it to an e2b sandbox.
 #
-# @dust/pod is vendored into the sandbox image at build time (see
-# front/lib/api/sandbox/image/pod_package.ts), and published function bundles keep it as an
+# @dust/sandbox is vendored into the sandbox image at build time (see
+# front/lib/api/sandbox/image/sandbox_package.ts), and published function bundles keep it as an
 # external import, so neither republishing a function nor pushing a new dsbx picks up a change
 # to it. This script is the dev loop for iterating on it without rebuilding the image.
 #
@@ -16,8 +16,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUNDLE="$SCRIPT_DIR/pod/dist/index.js"
-# Mirrors POD_PACKAGE_IMAGE_DIR in front/lib/api/sandbox/image/pod_package.ts. Only index.js is
-# pushed: the package.json the image generates alongside it does not change.
+# Push through the legacy path so this works before and after dust-base 0.8.102;
+# new images symlink it to the canonical @dust/sandbox package.
 REMOTE_PATH="/opt/npm-global/lib/node_modules/@dust/pod/index.js"
 # $HOME of the agent-proxied user, where warm servers keep their sockets (warm_dir in
 # src/commands/function/warm.rs).
@@ -35,7 +35,7 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       echo "Usage: $0 [--no-build] [sandbox-id]"
       echo ""
-      echo "Build the @dust/pod package and push it to a running e2b sandbox."
+      echo "Build the @dust/sandbox package and push it to a running e2b sandbox."
       echo ""
       echo "Options:"
       echo "  --no-build    Skip the build step (use existing bundle)"
@@ -54,13 +54,13 @@ done
 # --- Build ---
 if [[ "$NO_BUILD" == false ]]; then
   if ! command -v bun &>/dev/null; then
-    echo "Error: 'bun' is not installed (needed to build the @dust/pod bundle)."
+    echo "Error: 'bun' is not installed (needed to build the @dust/sandbox bundle)."
     echo "Install it from https://bun.com/ (or: curl -fsSL https://bun.sh/install | bash)"
     exit 1
   fi
-  # Same bun flags the image build uses (buildPodPackage), so what lands here is byte-identical
+  # Same bun flags the image build uses (buildSandboxPackage), so what lands here is byte-identical
   # to what a rebuilt image would ship.
-  echo "==> Building @dust/pod bundle..."
+  echo "==> Building @dust/sandbox bundle..."
   (cd "$SCRIPT_DIR/pod" && bun install --frozen-lockfile && bun run build)
   echo "==> Build complete: $BUNDLE"
 else
@@ -105,7 +105,7 @@ if [[ -z "${SANDBOX_ID:-}" ]]; then
   fi
 fi
 
-echo "==> Pushing @dust/pod to sandbox $SANDBOX_ID at $REMOTE_PATH..."
+echo "==> Pushing @dust/sandbox to sandbox $SANDBOX_ID at $REMOTE_PATH..."
 
 BUNDLE_SIZE=$(wc -c < "$BUNDLE" | tr -d ' ')
 echo "    Bundle size: $(( BUNDLE_SIZE / 1024 ))KB"
@@ -128,4 +128,4 @@ LOCAL_SHA=$(shasum -a 256 "$BUNDLE" | cut -d' ' -f1)
 e2b sandbox exec "$SANDBOX_ID" -u root \
   "echo '$LOCAL_SHA  $REMOTE_PATH' | sha256sum -c -" 2>&1 || true
 
-echo "==> Done! @dust/pod deployed to sandbox $SANDBOX_ID"
+echo "==> Done! @dust/sandbox deployed to sandbox $SANDBOX_ID"

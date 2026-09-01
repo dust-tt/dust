@@ -96,15 +96,15 @@ jobs:
         working-directory: cli/dust-sandbox/functions-runner
         run: bun test
 
-      - name: Test pod package
-        # @dust/pod ships into the sandbox image as a bun bundle; its bun:test
+      - name: Test sandbox package
+        # @dust/sandbox ships into the sandbox image as a bun bundle; its bun:test
         # suite is the only coverage of db()'s open/pragma/quota/error logic.
         working-directory: cli/dust-sandbox/pod
         run: |
           bun install --frozen-lockfile
           bun test
 
-      - name: Build pod package bundle
+      - name: Build sandbox package bundle
         # Mirrors the sandbox-image vendor step (bun build index.ts --bundle
         # --target=bun --packages=external) so bundle regressions surface here
         # instead of at image build time.

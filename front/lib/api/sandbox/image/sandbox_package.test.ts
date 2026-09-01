@@ -12,7 +12,6 @@ describe("sandbox package build paths", () => {
     // Assert the walk through stable repo-root markers instead of its number
     // of parent directories.
     const srcDir = getSandboxPackageSrcDir();
-    // pod → dust-sandbox → cli → repo root.
     const repoRoot = path.dirname(path.dirname(path.dirname(srcDir)));
 
     expect(srcDir.endsWith("cli/dust-sandbox/pod")).toBe(true);
