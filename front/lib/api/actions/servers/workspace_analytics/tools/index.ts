@@ -375,7 +375,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
-    const { filter, agentTagIds } = toConsumptionScope(input);
+    const filter = toConsumptionScope(input);
 
     const result = await fetchConsumptionTimeseries(auth, {
       period: toConsumptionPeriod(window.value),
@@ -384,7 +384,6 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       breakdownBy,
       breakdownCount: breakdownLimit ?? DEFAULT_CREDIT_GROUPS,
       filter,
-      agentTagIds,
       timezone: window.value.timezone,
     });
 

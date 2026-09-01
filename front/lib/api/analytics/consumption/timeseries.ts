@@ -7,7 +7,6 @@ import type {
   ConsumptionScopeFilter,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
-  agentTagIdsFilter,
   buildConsumptionScopeQuery,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
@@ -105,7 +104,6 @@ export async function fetchConsumptionTimeseries(
     breakdownBy,
     breakdownCount = DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
     filter,
-    agentTagIds,
     timezone = "UTC",
   }: {
     period: ConsumptionPeriod;
@@ -115,7 +113,6 @@ export async function fetchConsumptionTimeseries(
     breakdownBy?: ConsumptionBreakdownDimension | null;
     breakdownCount?: number;
     filter?: ConsumptionScopeFilter;
-    agentTagIds?: string[];
     timezone?: string;
   }
 ): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
@@ -124,7 +121,6 @@ export async function fetchConsumptionTimeseries(
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
-    extraFilters: agentTagIdsFilter(agentTagIds ?? []),
   });
   const scope = { period, granularity, mode, metric, timezone };
 
