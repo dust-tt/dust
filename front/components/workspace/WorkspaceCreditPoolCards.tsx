@@ -28,10 +28,6 @@ interface WorkspaceCreditPoolSectionProps {
   poolSecondaryContent?: ReactNode;
 }
 
-// Single source of truth for the "Credit usage" block so the customer-facing
-// usage page and its Poke mirror can't drift from each other on this
-// section's structure. Accounts with and without a credit pool render the
-// same cards; the pool remaining-balance card is the only thing that differs.
 export function WorkspaceCreditPoolSection({
   cardsStatus,
   showPoolCard,
