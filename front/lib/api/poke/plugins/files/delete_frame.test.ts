@@ -5,7 +5,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -81,5 +81,31 @@ describe("deleteFramePlugin", () => {
         },
       })
     );
+  });
+
+  it("leaves Frames v2 deletion to the package-aware flow", async () => {
+    const {
+      authenticator: auth,
+      user,
+      workspace,
+    } = await createResourceTest({ role: "admin" });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const frame = await ProjectFileFactory.create(auth, user, pod, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 100,
+      status: "ready",
+    });
+
+    expect(deleteFramePlugin.isApplicableTo(auth, frame)).toBe(false);
+    const result = await deleteFramePlugin.execute(auth, frame, {
+      confirmation: "DELETE",
+    });
+
+    expect(result.isErr()).toBe(true);
+    await expect(
+      FileResource.fetchById(auth, frame.sId)
+    ).resolves.not.toBeNull();
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 });
