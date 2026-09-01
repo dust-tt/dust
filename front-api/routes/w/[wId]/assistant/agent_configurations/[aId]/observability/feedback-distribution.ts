@@ -1,8 +1,9 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import type { GetAgentFeedbackDistributionResponseBody } from "@app/types/api/assistant/observability/feedback-distribution";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { apiError } from "@front-api/middlewares/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -22,7 +23,7 @@ app.get(
   "/",
   validate("param", ParamsSchema),
   validate("query", QuerySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetAgentFeedbackDistributionResponseBody> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
