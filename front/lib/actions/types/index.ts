@@ -65,6 +65,18 @@ export const UserQuestionSchema = z.object({
   question: z
     .string()
     .describe("The question text. Should be clear and specific."),
+  content: z
+    .string()
+    .nullish()
+    .describe(
+      "The exact content this question is about, rendered as markdown, so " +
+        "the user can review it before answering. Set this whenever the " +
+        "question asks the user to review, confirm, or validate specific " +
+        "content you have prepared (e.g. a draft message, email, post, or " +
+        "payload) — put the full content here rather than only referring to " +
+        "it in the question. Leave null for pure clarification questions " +
+        "that have no content to show."
+    ),
   options: z
     .array(UserQuestionOptionSchema)
     .describe(

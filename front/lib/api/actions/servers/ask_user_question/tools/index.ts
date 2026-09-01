@@ -16,7 +16,7 @@ import assert from "assert";
 
 const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
   ask_user_question: async (
-    { question, options, multiSelect },
+    { question, content, options, multiSelect },
     { runContext }
   ) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
@@ -52,7 +52,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
         resource: {
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
           type: "tool_user_answer_required",
-          question: { question, options, multiSelect },
+          question: { question, content, options, multiSelect },
           text: `Asking user: ${question}`,
           uri: "",
         },

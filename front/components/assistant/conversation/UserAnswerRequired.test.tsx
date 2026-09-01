@@ -181,6 +181,7 @@ vi.mock("@dust-tt/sparkle", () => {
 
   const Spinner = () => <div>Loading</div>;
   const ArrowUp = () => null;
+  const Markdown = ({ content }: { content: string }) => <div>{content}</div>;
 
   return {
     ArrowUp,
@@ -189,6 +190,7 @@ vi.mock("@dust-tt/sparkle", () => {
     Counter,
     cn,
     Input,
+    Markdown,
     OptionCard,
     Spinner,
   };
@@ -209,8 +211,10 @@ const owner: LightWorkspaceType = {
 
 function makeBlockedAction({
   multiSelect = false,
+  content,
 }: {
   multiSelect?: boolean;
+  content?: string | null;
 } = {}): AgentLoopBlockedToolExecution & {
   status: "blocked_user_answer_required";
 } {
@@ -231,6 +235,7 @@ function makeBlockedAction({
     authorizationInfo: null,
     question: {
       question: "Choose an option",
+      content,
       multiSelect,
       options: [
         {
@@ -275,6 +280,38 @@ describe("UserAnswerRequired", () => {
     vi.clearAllMocks();
     shouldReduceMotionMock = false;
     answerQuestionMock.mockResolvedValue({ success: true });
+  });
+
+  it("renders the content being confirmed when provided", () => {
+    render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction({
+          content: "Here is the draft message to confirm.",
+        })}
+        triggeringUser={null}
+        owner={owner}
+        retryHandler={retryHandlerMock}
+      />
+    );
+
+    expect(
+      screen.getByText("Here is the draft message to confirm.")
+    ).toBeInTheDocument();
+  });
+
+  it("does not render a content block when content is absent", () => {
+    render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        retryHandler={retryHandlerMock}
+      />
+    );
+
+    expect(
+      screen.queryByText("Here is the draft message to confirm.")
+    ).not.toBeInTheDocument();
   });
 
   it("highlights the first option by default and moves the highlight with arrow keys", async () => {

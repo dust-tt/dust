@@ -25,7 +25,11 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = [
       "- The user always gets an automatic option for free-text input\n" +
       "- Use multiSelect: true to allow multiple answers to be selected for a question\n" +
       '- If a specific option is recommended, it should be the first option in the list and have "(Recommended)" ' +
-      "at the end of its label",
+      "at the end of its label\n" +
+      "- When the question asks the user to review, confirm, or validate specific content you have " +
+      "prepared (e.g. a draft message, email, Slack post, or payload), you MUST put that full content in " +
+      'the "content" field (as markdown) so it is displayed to the user before they answer. Do not ask the ' +
+      'user to confirm something (e.g. "Does this look right?") without providing the content it refers to.',
     schema: {
       ...UserQuestionSchema.shape,
     },

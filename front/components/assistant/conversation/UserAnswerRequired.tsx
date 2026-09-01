@@ -6,7 +6,14 @@ import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
+import {
+  ArrowUp,
+  Button,
+  cn,
+  Markdown,
+  OptionCard,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useReducedMotion } from "framer-motion";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -295,6 +302,15 @@ export function UserAnswerRequired({
         isKeyboardNavigating && "cursor-none"
       )}
     >
+      {question.content && (
+        <div className="max-h-96 overflow-y-auto rounded-xl bg-muted-background p-4">
+          <Markdown
+            content={question.content}
+            forcedTextSize="text-sm"
+            isLastMessage={false}
+          />
+        </div>
+      )}
       <div className="text-base font-medium leading-tight text-foreground">
         {question.question}
       </div>
