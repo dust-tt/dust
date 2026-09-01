@@ -72,6 +72,11 @@ export async function deleteFrameV2Package(
   if (!frame.isFrameV2) {
     return new Err(new Error("Frame deletion requires a Frames v2 file."));
   }
+  if (frame.workspaceId !== auth.getNonNullableWorkspace().id) {
+    return new Err(
+      new Error("The Frame must belong to the authenticated workspace.")
+    );
+  }
 
   return withFramePublishLock(frame.sId, async () => {
     const sourceResult = await deleteSource();

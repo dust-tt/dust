@@ -1798,4 +1798,24 @@ describe("FileResource", () => {
     );
     expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
   });
+
+  it("rejects package deletion from another workspace before deleting source", async () => {
+    const { authenticator: frameAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const { authenticator: otherAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await createFrameWithFunction(frameAuth, "frame-delete");
+    const deleteSource = vi.fn(async () => new Ok(undefined));
+
+    const result = await deleteFrameV2Package(otherAuth, {
+      deleteSource,
+      frame,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(deleteSource).not.toHaveBeenCalled();
+    expect(await FileResource.fetchById(frameAuth, frame.sId)).not.toBeNull();
+  });
 });
