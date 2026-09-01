@@ -492,7 +492,7 @@ async function getAwuPoolCurrentCycleUncached(
     listMetronomeDraftInvoices(metronomeCustomerId),
     getPoolLedgerData({ metronomeCustomerId, cycleHistoryLimit: 1 }),
     sumActiveMembersPoolConsumedCredits({
-      workspace,
+      auth,
       metronomeCustomerId,
       metronomeContractId,
     }),

@@ -799,11 +799,11 @@ async function fetchFreeSeatCreditsForMembersTable({
 }
 
 export async function sumActiveMembersPoolConsumedCredits({
-  workspace,
+  auth,
   metronomeCustomerId,
   metronomeContractId,
 }: {
-  workspace: LightWorkspaceType;
+  auth: Authenticator;
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
 }): Promise<number | null> {
@@ -812,7 +812,7 @@ export async function sumActiveMembersPoolConsumedCredits({
   }
 
   const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace,
+    workspace: auth.getNonNullableWorkspace(),
   });
   if (memberships.length === 0) {
     return 0;
@@ -826,10 +826,14 @@ export async function sumActiveMembersPoolConsumedCredits({
     return user ? [{ sId: user.sId, seatType: m.seatType ?? null }] : [];
   });
 
+  // This function itself runs inside an outer Promise.all (getAwuPoolCurrentCycleUncached)
+  // alongside pure external calls, so the three fetchers below must stay Metronome/Redis-only.
+  // If one of them ever needs a DB read, pull it out and sequence it before this Promise.all
+  // instead of adding it here.
   const [usageByMetronomeUserId, { freeStartingByUserId }, seatDataByUserId] =
     await Promise.all([
       fetchPerUserUsageCreditsForMembersTable({
-        workspaceId: workspace.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
         metronomeCustomerId,
         metronomeContractId,
         userIds: members.map((m) =>

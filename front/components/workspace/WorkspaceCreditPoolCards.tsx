@@ -95,7 +95,7 @@ export function WorkspaceCreditUsageValueCards({
             : "—"
         }
         hint={`Other: ${
-          typeof otherConsumedCredits === "number"
+          otherConsumedCredits !== null
             ? formatCredits(otherConsumedCredits)
             : "—"
         }`}
