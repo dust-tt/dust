@@ -8,6 +8,7 @@ import {
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { ConsumptionPeriodSchema } from "@app/lib/api/analytics/consumption/schema";
 import {
   CONSUMPTION_INVOCATION_DIMENSIONS,
   CONSUMPTION_MESSAGE_DIMENSIONS,
@@ -27,7 +28,7 @@ const getAgentDetailsSchema = {
 };
 
 const getConsumptionOverviewSchema = {
-  ...timeWindowSchemaShape,
+  ...ConsumptionPeriodSchema.shape,
   ...consumptionFilterSchema,
 };
 
@@ -186,13 +187,11 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: GET_CONSUMPTION_OVERVIEW_TOOL_NAME,
     description:
-      "Summarize the workspace's headline figures for a time window " +
-      "(defaults to the current calendar month): total credits consumed, " +
-      "messages, active and total members, and the top agent. Use this to " +
-      "answer 'how are we doing this month' or 'how many credits did we " +
-      `consume' in one call, and ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} to ` +
-      "attribute that total. For the credit cap and how much of it is left, " +
-      "point the admin at the workspace Usage page.",
+      "Summarize the workspace's headline figures for the current billing " +
+      "cycle, or the last N days: total credits consumed, messages, active " +
+      "and total members, and the top agent. Use this to answer 'how are we " +
+      "doing this cycle' or 'how many credits did we consume' in one call, " +
+      `and ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} to attribute that total.`,
     schema: getConsumptionOverviewSchema,
     stake: "never_ask",
     eager: true,

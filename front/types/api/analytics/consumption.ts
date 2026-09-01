@@ -31,6 +31,7 @@ export const CONSUMPTION_SCOPE_FILTER_KEYS = [
   "tools",
   "skills",
   "sources",
+  "tags",
 ] as const;
 
 export type ConsumptionScopeFilterKey =

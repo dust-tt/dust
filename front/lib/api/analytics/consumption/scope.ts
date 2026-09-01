@@ -200,12 +200,6 @@ function termFilter(
   ];
 }
 
-export function agentTagIdsFilter(
-  agentTagIds: string[]
-): estypes.QueryDslQueryContainer[] {
-  return termFilter(AGENT_TAG_IDS_FIELD, agentTagIds);
-}
-
 /**
  * Workspace-scoped query over a half-open [startDate, endDate) window.
  */
@@ -236,6 +230,7 @@ export function buildConsumptionScopeQuery({
       )
     );
   }
+  filters.push(...termFilter(AGENT_TAG_IDS_FIELD, filter.tags));
 
   return { bool: { filter: [...filters, ...extraFilters] } };
 }
