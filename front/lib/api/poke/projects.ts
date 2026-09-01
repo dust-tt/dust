@@ -30,13 +30,13 @@ export type PokeListProjectTasks = {
   tasks: PodTaskType[];
 };
 
-export type PokePodDatabase = {
+export type PokeProjectDatabase = {
   name: string;
   sizeBytes: number;
 };
 
-export type PokeListProjectPodDatabases = {
-  items: PokePodDatabase[];
+export type PokeListProjectDatabases = {
+  items: PokeProjectDatabase[];
 };
 
 export type PokePodFunction = {
