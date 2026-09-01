@@ -56,6 +56,7 @@ export async function setupFrameSourceStorageTest() {
         name,
         metadata: {
           contentType: "text/plain",
+          generation: fileStorageMock.getObjectGeneration(name),
           size: objectSizes.get(name) ?? "10",
         },
       }))

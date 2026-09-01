@@ -22,7 +22,9 @@ describe("Frame source storage copies", () => {
     vi.mocked(getPrivateUploadBucket)
       .mockReturnValueOnce(storage)
       .mockReturnValueOnce(storage);
-    const copyFile = vi.spyOn(storage, "copyFile").mockResolvedValue(undefined);
+    const copyFile = vi
+      .spyOn(storage, "copyFile")
+      .mockResolvedValue({ destinationGeneration: "mock" });
     const destinationMountPath = c.sourceObjects[0].replace(
       "/Status/",
       "/Archive/"
@@ -45,7 +47,12 @@ describe("Frame source storage copies", () => {
     for (const objectPath of c.listedObjects) {
       expect(copyFile).toHaveBeenCalledWith(
         objectPath,
-        objectPath.replace("/Status/", "/Archive/")
+        objectPath.replace("/Status/", "/Archive/"),
+        undefined,
+        {
+          destinationGenerationMatch: 0,
+          sourceGeneration: expect.any(String),
+        }
       );
     }
   });
