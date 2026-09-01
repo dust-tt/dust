@@ -12,6 +12,7 @@ import {
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
+import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
@@ -534,54 +535,12 @@ export async function removeFileFromProject(
     return file.delete(auth);
   }
 
-  // Best-effort cleanup of the project content fragments for this file.
   const workspaceId = auth.getNonNullableWorkspace().id;
-  const projectFragmentIds = await ContentFragmentModel.findAll({
-    attributes: ["id"],
-    where: {
-      workspaceId,
-      spaceId: space.id,
-      fileId: file.id,
-    },
-  }).then((rows) => rows.map((r) => r.id));
-
-  if (projectFragmentIds.length > 0) {
-    const messagesReferencing = await MessageModel.findAll({
-      attributes: ["contentFragmentId"],
-      where: {
-        workspaceId,
-        contentFragmentId: {
-          [Op.in]: projectFragmentIds,
-        },
-      },
-    });
-
-    const referencedIds = new Set(
-      removeNulls(messagesReferencing.map((m) => m.contentFragmentId))
-    );
-    const orphanIds = projectFragmentIds.filter((id) => !referencedIds.has(id));
-
-    if (orphanIds.length > 0) {
-      await ContentFragmentModel.destroy({
-        where: {
-          workspaceId,
-          id: { [Op.in]: orphanIds },
-        },
-      });
-    }
-
-    if (referencedIds.size > 0) {
-      await ContentFragmentModel.update(
-        { spaceId: null, expiredReason: "file_deleted" },
-        {
-          where: {
-            workspaceId,
-            id: { [Op.in]: Array.from(referencedIds) },
-          },
-        }
-      );
-    }
-  }
+  await cleanupProjectFileFragments({
+    fileModelId: file.id,
+    spaceModelId: space.id,
+    workspaceModelId: workspaceId,
+  });
 
   const deleteRes = await file.delete(auth);
   if (deleteRes.isErr()) {

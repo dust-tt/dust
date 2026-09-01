@@ -16,6 +16,7 @@ import {
 } from "@app/lib/api/files/processing";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
+import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import {
   getDefaultFrameShareScope,
@@ -38,7 +39,6 @@ import {
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -46,7 +46,6 @@ import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
   AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
@@ -676,58 +675,6 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  private async cleanupProjectFrameFragments(
-    auth: Authenticator,
-    space: SpaceResource
-  ): Promise<void> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const fragmentModelIds = await ContentFragmentModel.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId: workspaceModelId,
-        spaceId: space.id,
-        fileId: this.id,
-      },
-    }).then((rows) => rows.map(({ id }) => id));
-    if (fragmentModelIds.length === 0) {
-      return;
-    }
-
-    const messages = await MessageModel.findAll({
-      attributes: ["contentFragmentId"],
-      where: {
-        workspaceId: workspaceModelId,
-        contentFragmentId: { [Op.in]: fragmentModelIds },
-      },
-    });
-    const referencedModelIds = new Set(
-      removeNulls(messages.map(({ contentFragmentId }) => contentFragmentId))
-    );
-    const orphanModelIds = fragmentModelIds.filter(
-      (id) => !referencedModelIds.has(id)
-    );
-
-    if (orphanModelIds.length > 0) {
-      await ContentFragmentModel.destroy({
-        where: {
-          workspaceId: workspaceModelId,
-          id: { [Op.in]: orphanModelIds },
-        },
-      });
-    }
-    if (referencedModelIds.size > 0) {
-      await ContentFragmentModel.update(
-        { spaceId: null, expiredReason: "file_deleted" },
-        {
-          where: {
-            workspaceId: workspaceModelId,
-            id: { [Op.in]: [...referencedModelIds] },
-          },
-        }
-      );
-    }
-  }
-
   private async deleteAfterSandboxCleanup(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
@@ -901,7 +848,11 @@ export class FileResource extends BaseResource<FileModel> {
       try {
         if (projectSpace) {
           await projectMetadata?.removeFramePath(manifestPath);
-          await frame.cleanupProjectFrameFragments(auth, projectSpace);
+          await cleanupProjectFileFragments({
+            fileModelId: frame.id,
+            spaceModelId: projectSpace.id,
+            workspaceModelId: owner.id,
+          });
           requestDustProjectIncrementalSync(auth, projectSpace);
         }
       } catch (error) {
