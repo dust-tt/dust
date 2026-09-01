@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 
 use super::{db_file_path, emit_error, spawn_runner};
 
-/// Reconcile the pod database `name` with the drizzle schema file at
+/// Reconcile the sandbox database `name` with the drizzle schema file at
 /// `schema_file`: the runner plans via drizzle-kit, applies ADDITIVE statements
 /// only (CREATE TABLE / ADD COLUMN / CREATE [UNIQUE] INDEX / DROP INDEX) in one
 /// transaction, and rejects anything destructive with a typed error. The
