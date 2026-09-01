@@ -18,6 +18,7 @@ export type AwuPoolCurrentCycleResponseBody = {
   currentCycleConsumedCredits: number | null;
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
+  programmaticConsumedCredits: number | null;
 };
 
 export type AwuPoolSummaryResponseBody = AwuPoolCurrentCycleResponseBody;

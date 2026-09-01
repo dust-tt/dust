@@ -9,8 +9,11 @@ import {
   CREDIT_TYPE_GBP_ID,
   CREDIT_TYPE_USD_ID,
   getCreditTypeAwuId,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
@@ -159,6 +162,52 @@ function extractOverageFromInvoice(invoice: Invoice): {
   };
 }
 
+// Programmatic AWU spend against the pool, read straight from the current
+// draft invoice's own usage line items
+function sumProgrammaticPoolConsumedFromInvoice({
+  invoice,
+  poolCommitIds,
+  awuCreditTypeId,
+}: {
+  invoice: Invoice;
+  poolCommitIds: Set<string>;
+  awuCreditTypeId: string;
+}): number {
+  return invoice.line_items
+    .filter(
+      (item) =>
+        item.type === "usage" &&
+        item.commit_id != null &&
+        poolCommitIds.has(item.commit_id) &&
+        item.credit_type.id === awuCreditTypeId &&
+        item.pricing_group_values?.[USAGE_TYPE_GROUP_KEY] ===
+          USAGE_TYPE_PROGRAMMATIC
+    )
+    .reduce((sum, item) => sum + item.total, 0);
+}
+
+// Read live from Metronome
+async function fetchProgrammaticConsumedCreditsOrNull({
+  workspace,
+  metronomeCustomerId,
+}: {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string;
+}): Promise<number | null> {
+  const result = await fetchProgrammaticAwuSpend({
+    workspaceId: workspace.sId,
+    metronomeCustomerId,
+  });
+  if (result.isErr()) {
+    logger.warn(
+      { workspaceId: workspace.sId, error: result.error },
+      "[AwuPoolSummary] Failed to fetch programmatic AWU spend from Metronome"
+    );
+    return null;
+  }
+  return result.value;
+}
+
 export class AwuPoolSummaryError extends Error {
   constructor(
     readonly type:
@@ -223,7 +272,8 @@ async function getAwuPoolCurrentCycleUncached(
   if (contextResult.isErr()) {
     return contextResult;
   }
-  const { metronomeCustomerId, metronomeContractId } = contextResult.value;
+  const { workspace, metronomeCustomerId, metronomeContractId } =
+    contextResult.value;
   const awuCreditTypeId = getCreditTypeAwuId();
 
   const [balancesResult, invoicesResult, poolLedgerDataResult] =
@@ -244,6 +294,7 @@ async function getAwuPoolCurrentCycleUncached(
     );
   }
 
+  let poolCommitIds = new Set<string>();
   // `null` means the ledger couldn't be read (fetch failure)
   let ledgerEntries: PoolLedgerEntry[] | null = null;
   if (poolLedgerDataResult.isErr()) {
@@ -256,6 +307,7 @@ async function getAwuPoolCurrentCycleUncached(
       "[AwuPoolSummary] Failed to read pool ledger for the current cycle"
     );
   } else {
+    poolCommitIds = poolLedgerDataResult.value.poolCommitIds;
     ledgerEntries = poolLedgerDataResult.value.ledgerEntries;
   }
 
@@ -280,6 +332,11 @@ async function getAwuPoolCurrentCycleUncached(
       : null;
 
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
+    const programmaticConsumedCredits =
+      await fetchProgrammaticConsumedCreditsOrNull({
+        workspace,
+        metronomeCustomerId,
+      });
     return new Ok({
       totalRemainingCredits: 0,
       totalActiveCredits: 0,
@@ -289,6 +346,7 @@ async function getAwuPoolCurrentCycleUncached(
       currentCycleStartMs: null,
       currentCycleEndMs: null,
       currentCycleConsumedCredits,
+      programmaticConsumedCredits,
     });
   }
 
@@ -306,9 +364,7 @@ async function getAwuPoolCurrentCycleUncached(
   //
   // A pool grant under a superseded contract can still cover `now`,
   // so it must not be excluded.
-  const activeContract = await getActiveContract(
-    auth.getNonNullableWorkspace().sId
-  );
+  const activeContract = await getActiveContract(workspace.sId);
   const productSeatTypes = await getProductSeatTypes();
   const seatProductIds = activeContract
     ? new Set(
@@ -341,6 +397,14 @@ async function getAwuPoolCurrentCycleUncached(
     }
   }
 
+  const programmaticConsumedCredits = poolLedgerDataResult.isErr()
+    ? null
+    : sumProgrammaticPoolConsumedFromInvoice({
+        invoice: currentInvoice,
+        poolCommitIds,
+        awuCreditTypeId,
+      });
+
   return new Ok({
     totalRemainingCredits,
     totalActiveCredits,
@@ -350,5 +414,6 @@ async function getAwuPoolCurrentCycleUncached(
     currentCycleStartMs,
     currentCycleEndMs,
     currentCycleConsumedCredits,
+    programmaticConsumedCredits,
   });
 }
