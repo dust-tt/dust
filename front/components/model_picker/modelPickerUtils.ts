@@ -137,13 +137,21 @@ export function getDefaultTierId(
   return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
+// The reasoning effort on its own, for surfaces that show it apart from the
+// model name (e.g. the picker trigger's chip). `none` has no effort to show.
+export function getReasoningEffortLabel(
+  effort: ReasoningEffort
+): string | null {
+  return effort === "none" ? null : capitalize(effort);
+}
+
 export function formatModelEffortLabel(
   displayName: string,
   effort: ReasoningEffort
 ): string {
-  return effort === "none"
-    ? displayName
-    : `${displayName} ${capitalize(effort)}`;
+  const effortLabel = getReasoningEffortLabel(effort);
+
+  return effortLabel ? `${displayName} ${effortLabel}` : displayName;
 }
 
 export function getTierResolvedModelLabel(
