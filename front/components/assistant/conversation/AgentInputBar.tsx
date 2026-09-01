@@ -326,6 +326,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           });
         } else if (bottomOffset > 0) {
           // No more user messages below, but there's content - scroll to bottom.
+          context.enableAutoScroll();
           methods.scrollToItem({
             index: "LAST",
             align: "end",
@@ -337,7 +338,13 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         }
       },
     };
-  }, [methods, listOffset, visibleListHeight, bottomOffset]);
+  }, [
+    methods,
+    listOffset,
+    visibleListHeight,
+    bottomOffset,
+    context.enableAutoScroll,
+  ]);
 
   const blockedActionItems = getBlockedActionItems(context.user.sId);
   const blockedActions = blockedActionItems.map((item) => item.blockedAction);

@@ -26,8 +26,12 @@ export function useConversationAutoScroll({
   messageListRef,
 }: UseConversationAutoScrollProps) {
   const isAutoScrollEnabledRef = useRef(true);
+  // A gesture can produce several scroll events. Keep its direction until the
+  // user changes direction or auto-scroll is explicitly re-enabled.
+  const userScrollDirectionRef = useRef<UserScrollDirection | null>(null);
   const enableAutoScroll = useCallback(() => {
     isAutoScrollEnabledRef.current = true;
+    userScrollDirectionRef.current = null;
   }, []);
 
   // Track gestures separately from their resulting scroll movement so
@@ -45,7 +49,6 @@ export function useConversationAutoScroll({
     let previousScrollHeight = scrollElement.scrollHeight;
     let previousScrollTop = scrollElement.scrollTop;
     let lastTouchY: number | null = null;
-    let pendingUserScrollDirection: UserScrollDirection | null = null;
 
     const captureScrollPosition = () => {
       previousScrollHeight = scrollElement.scrollHeight;
@@ -76,6 +79,7 @@ export function useConversationAutoScroll({
         !isHeightCompensation &&
         !location.isAtBottom
       ) {
+        userScrollDirectionRef.current = "up";
         detachFromAutoScroll();
       }
 
@@ -86,11 +90,15 @@ export function useConversationAutoScroll({
         0,
         viewportHeight - location.visibleListHeight
       );
+      const bottomOffset = Math.max(
+        0,
+        scrollHeight - scrollTop - viewportHeight
+      );
       const isNearBottom =
-        location.isAtBottom || location.bottomOffset <= stickyFooterHeight;
+        location.isAtBottom || bottomOffset <= stickyFooterHeight;
       const isUserScrollingDown =
-        pendingUserScrollDirection === "down" ||
-        (pendingUserScrollDirection === null &&
+        userScrollDirectionRef.current === "down" ||
+        (userScrollDirectionRef.current === null &&
           scrollTopDelta > 0 &&
           scrollHeightDelta === 0);
 
@@ -112,7 +120,6 @@ export function useConversationAutoScroll({
 
       previousScrollHeight = scrollHeight;
       previousScrollTop = scrollElement.scrollTop;
-      pendingUserScrollDirection = null;
     };
 
     const onWheel = (event: WheelEvent) => {
@@ -120,8 +127,8 @@ export function useConversationAutoScroll({
         return;
       }
 
-      pendingUserScrollDirection = event.deltaY < 0 ? "up" : "down";
-      if (pendingUserScrollDirection === "up") {
+      userScrollDirectionRef.current = event.deltaY < 0 ? "up" : "down";
+      if (userScrollDirectionRef.current === "up") {
         detachFromAutoScroll();
       }
     };
@@ -137,8 +144,8 @@ export function useConversationAutoScroll({
       }
 
       if (lastTouchY !== null && touchY !== lastTouchY) {
-        pendingUserScrollDirection = touchY > lastTouchY ? "up" : "down";
-        if (pendingUserScrollDirection === "up") {
+        userScrollDirectionRef.current = touchY > lastTouchY ? "up" : "down";
+        if (userScrollDirectionRef.current === "up") {
           detachFromAutoScroll();
         }
       }

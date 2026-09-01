@@ -203,6 +203,10 @@ describe("useConversationAutoScroll", () => {
         scrollTop: 520,
         location: { bottomOffset: 20, isAtBottom: false },
       });
+      harness.dispatchScroll({
+        scrollTop: 530,
+        location: { bottomOffset: 0, isAtBottom: true },
+      });
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
       expect(harness.methods.cancelSmoothScroll).toHaveBeenCalledOnce();
@@ -252,7 +256,7 @@ describe("useConversationAutoScroll", () => {
       harness.dispatchScroll({
         scrollTop: 600,
         scrollHeight: 1100,
-        location: { bottomOffset: 0, isAtBottom: true },
+        location: { bottomOffset: 200, isAtBottom: false },
       });
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
@@ -279,13 +283,20 @@ describe("useConversationAutoScroll", () => {
       expect(harness.methods.scrollToItem).toHaveBeenCalledOnce();
     });
 
-    it("reattaches after a stable native downward scroll", () => {
+    it("keeps a downward gesture until a later scroll event reaches the bottom", () => {
       const harness = setupAutoScroll();
       detach(harness);
 
+      harness.dispatchWheel(100);
+      harness.dispatchScroll({
+        scrollTop: 410,
+        location: { bottomOffset: 200, isAtBottom: false },
+      });
+      expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
+
       harness.dispatchScroll({
         scrollTop: 450,
-        location: { bottomOffset: 20, isAtBottom: false },
+        location: { bottomOffset: 200, isAtBottom: false },
       });
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
@@ -298,7 +309,7 @@ describe("useConversationAutoScroll", () => {
 
       harness.dispatchWheel(100);
       harness.dispatchScroll({
-        scrollTop: 450,
+        scrollTop: 420,
         location: { bottomOffset: 80, isAtBottom: false },
       });
 
@@ -311,7 +322,7 @@ describe("useConversationAutoScroll", () => {
 
       harness.dispatchWheel(100);
       harness.dispatchScroll({
-        scrollTop: 450,
+        scrollTop: 419,
         location: { bottomOffset: 81, isAtBottom: false },
       });
 
@@ -324,26 +335,7 @@ describe("useConversationAutoScroll", () => {
       detach(harness);
 
       harness.dispatchScroll({
-        scrollTop: 500,
-        scrollHeight: 1100,
-        location: { bottomOffset: 20, isAtBottom: false },
-      });
-
-      expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
-      expect(harness.methods.scrollToItem).not.toHaveBeenCalled();
-    });
-
-    it("does not reuse a downward gesture after its scroll event", () => {
-      const harness = setupAutoScroll();
-      detach(harness);
-
-      harness.dispatchWheel(100);
-      harness.dispatchScroll({
-        scrollTop: 450,
-        location: { bottomOffset: 200, isAtBottom: false },
-      });
-      harness.dispatchScroll({
-        scrollTop: 550,
+        scrollTop: 520,
         scrollHeight: 1100,
         location: { bottomOffset: 20, isAtBottom: false },
       });

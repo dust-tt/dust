@@ -1445,6 +1445,7 @@ export const ConversationViewer = ({
       isProjectArchived: !!spaceInfo?.archivedAt,
       projectId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
+      enableAutoScroll,
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
@@ -1467,6 +1468,7 @@ export const ConversationViewer = ({
     spaceInfo?.name,
     limitReachedCode,
     setLimitReachedCode,
+    enableAutoScroll,
     isAutoScrollEnabledRef,
   ]);
 
