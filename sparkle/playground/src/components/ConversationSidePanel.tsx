@@ -1,5 +1,5 @@
 import { File02, ListSelect, Markdown, Spinner } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 
 import { type CreditsUsage, CreditUsageGauge } from "./CreditUsageGauge";
@@ -106,6 +106,13 @@ function FilesTab({
   );
 }
 
+/**
+ * How long the staggered task reveal is allowed to run. After this, rows render
+ * without animation so the per-task `edit_plan` remounts (keyed on the content
+ * hash) do not replay the whole stagger on every tick.
+ */
+const REVEAL_WINDOW_MS = 1200;
+
 function PlanBody({
   content,
   isLoading,
@@ -115,6 +122,17 @@ function PlanBody({
   isLoading: boolean;
   isRunning: boolean;
 }) {
+  // Mount-scoped: showing the plan again (opening the panel on this tab) remounts
+  // PlanBody and replays the reveal, which is the intent.
+  const [isRevealing, setIsRevealing] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setIsRevealing(false),
+      REVEAL_WINDOW_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const markdownKey = useMemo(
     () => (content ? contentHash(content) : ""),
     [content]
@@ -142,12 +160,13 @@ function PlanBody({
           className={className}
           index={index}
           states={taskStates}
+          isRevealing={isRevealing}
         >
           {children}
         </PlanMarkdownListItem>
       ),
     }),
-    [taskStates]
+    [taskStates, isRevealing]
   );
 
   if (isLoading && !content) {

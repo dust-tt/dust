@@ -150,3 +150,41 @@ export function planTaskStates(
     return "upcoming";
   });
 }
+
+/**
+ * Each task row leads with a short bold title, taken from the start of the task's
+ * own text — nothing new is written, the first few words are just set in bold and
+ * the remainder stays regular.
+ *
+ * Prefers a break the author already put in (an em/en dash or a colon) when it
+ * lands inside the word budget, so the bold run ends on a phrase rather than
+ * mid-sentence; otherwise it hard-caps at `MAX_LEAD_WORDS`.
+ *
+ * `lead + rest` always reproduces the input exactly (`rest` keeps its leading
+ * separator and whitespace).
+ */
+const MAX_LEAD_WORDS = 6;
+
+export function splitTaskLead(raw: string): { lead: string; rest: string } {
+  const text = raw.trimStart();
+
+  const separator = text.match(/\s[—–]\s|:\s/);
+  if (separator?.index !== undefined) {
+    const head = text.slice(0, separator.index);
+    if (head.trim().split(/\s+/).length <= MAX_LEAD_WORDS) {
+      return { lead: head, rest: text.slice(separator.index) };
+    }
+  }
+
+  const words = /\S+\s*/g;
+  let end = 0;
+  for (let i = 0; i < MAX_LEAD_WORDS; i++) {
+    const match = words.exec(text);
+    if (!match) {
+      return { lead: text, rest: "" };
+    }
+    end = match.index + match[0].trimEnd().length;
+  }
+
+  return { lead: text.slice(0, end), rest: text.slice(end) };
+}

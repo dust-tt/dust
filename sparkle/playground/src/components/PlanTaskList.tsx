@@ -1,7 +1,8 @@
-import { Check, cn, Icon, Spinner } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
+import { Check, cn, Icon, Spinner, XClose } from "@dust-tt/sparkle";
+import type { CSSProperties, ReactNode } from "react";
+import { Children, isValidElement } from "react";
 
-import type { PlanTaskState } from "./planUtils";
+import { type PlanTaskState, splitTaskLead } from "./planUtils";
 
 /**
  * Plan task rows — Figma 14800:126251.
@@ -18,16 +19,72 @@ import type { PlanTaskState } from "./planUtils";
  * Done rows strike their text through in #A6A09B (text-faint).
  *
  * `blocked` is not in the frame; it is this file's extension for production's
- * `- [!]` marker, kept in the same visual language (warning tint).
+ * `- [!]` marker: grey, with a cross in place of the number.
+ *
+ * Rows also lead with a bold run taken from the start of their own text (see
+ * `splitTaskLead`) and stagger in when the plan is first shown.
  *
  * Exports are components only, so Fast Refresh keeps working — the pure helpers
  * (`planTaskStates`, `normalizePlanMarkdown`) live in `planUtils.ts`.
  */
 
+/** Per-row offset for the staggered reveal, and each row's own fade duration. */
+const STAGGER_MS = 70;
+const REVEAL_MS = 280;
+
+/**
+ * `CSSProperties` does not model custom properties, so declare the two this row
+ * sets rather than casting the object.
+ */
+interface RevealStyle extends CSSProperties {
+  "--tw-animation-delay": string;
+  "--tw-animation-duration": string;
+}
+
+function revealStyle(index: number): RevealStyle {
+  return {
+    "--tw-animation-delay": `${index * STAGGER_MS}ms`,
+    "--tw-animation-duration": `${REVEAL_MS}ms`,
+  };
+}
+
+/**
+ * The task's text as a plain string, or null when the row holds richer inline
+ * markdown (bold, code, a link) — in that case the row renders its children
+ * untouched rather than risk dropping formatting for the sake of a bold lead.
+ *
+ * The checkbox element is skipped: it is still in `children`, rendering null.
+ */
+function isCheckbox(node: ReactNode): boolean {
+  return (
+    isValidElement<{ type?: string }>(node) && node.props.type === "checkbox"
+  );
+}
+
+function taskPlainText(children: ReactNode): string | null {
+  let text = "";
+
+  for (const node of Children.toArray(children)) {
+    if (typeof node === "string" || typeof node === "number") {
+      text += String(node);
+      continue;
+    }
+    if (isCheckbox(node)) {
+      continue;
+    }
+    return null;
+  }
+
+  return text;
+}
+
 const BADGE_STYLES: Record<PlanTaskState, string> = {
   done: "bg-highlight-50 text-highlight-500",
   running: "bg-highlight-50 text-highlight-500",
-  blocked: "bg-warning-100 text-warning-600",
+  // Blocked is grey rather than a warning tint, and drops the number for a
+  // cross: the step is terminal, not pending. A slightly stronger grey than
+  // `upcoming`'s number so the two do not read as the same state.
+  blocked: "bg-primary-200 text-muted-foreground",
   upcoming: "bg-primary-200 text-faint",
 };
 
@@ -41,20 +98,25 @@ export function PlanTaskBadge({
   return (
     <div
       className={cn(
-        "relative flex size-8 shrink-0 items-center justify-center rounded-full",
+        "relative flex size-7 shrink-0 items-center justify-center rounded-full",
         BADGE_STYLES[state]
       )}
     >
-      {state === "done" ? (
-        <Icon visual={Check} size="xs" />
-      ) : (
+      {state === "done" && <Icon visual={Check} size="xs" />}
+      {state === "blocked" && <Icon visual={XClose} size="xs" />}
+      {(state === "running" || state === "upcoming") && (
         <span className="text-base font-medium leading-none">{number}</span>
       )}
       {state === "running" && (
-        // The frame draws a static ~130° arc inscribed in the 32px badge — a
-        // spinner caught mid-rotation. sparkle's 32px worm spinner is that arc,
-        // animated (2px stroke where the frame has 3px, plus a faint track).
-        <span className="pointer-events-none absolute inset-0">
+        // The frame draws a static ~130° arc on the badge — a spinner caught
+        // mid-rotation. sparkle's worm spinner is that arc, animated.
+        //
+        // Its ring is `r="9"` in a 24 viewBox, so the 32px `lg` spinner puts the
+        // centerline at radius 12 — inside the badge's 14px radius. The flex
+        // centring lines the 32px SVG up on the 28px badge, then scaling by
+        // 14/12 lands the centerline exactly on the badge's border. The stroke
+        // scales with it (2px -> 2.3px) and straddles the edge.
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center scale-[1.1667]">
           <Spinner size="lg" variant="blue500" />
         </span>
       )}
@@ -98,29 +160,52 @@ export function PlanMarkdownListItem({
   className,
   index,
   states,
+  isRevealing = false,
 }: {
   children?: ReactNode;
   className?: string;
   index: number;
   states: PlanTaskState[];
+  /** Staggers the row in when the plan is first shown. */
+  isRevealing?: boolean;
 }) {
   if (!className?.includes("task-list-item")) {
     return <li className={cn("break-words", className)}>{children}</li>;
   }
 
   const state = states[index] ?? "upcoming";
+  const plainText = taskPlainText(children);
+  const lead = plainText ? splitTaskLead(plainText) : null;
 
   return (
-    <li className="flex list-none items-start gap-2.5">
+    <li
+      className={cn(
+        "flex list-none items-start gap-2.5",
+        // Rows arrive one after the other. `animate-in` reads its delay and
+        // duration from the --tw-animation-* custom properties below (an inline
+        // `animationDelay` would lose to the shorthand), and fill-mode-backwards
+        // holds the row at opacity 0 until its turn comes.
+        isRevealing &&
+          "animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards ease-enter"
+      )}
+      style={isRevealing ? revealStyle(index) : undefined}
+    >
       <PlanTaskBadge state={state} number={index + 1} />
-      {/* pt-1.5 centres the first 20px line against the 32px badge. */}
+      {/* pt-1 centres the first 20px line against the 28px badge (4 + 10 = 14). */}
       <div
         className={cn(
-          "min-w-0 flex-1 break-words pt-1.5 text-sm leading-5 tracking-[-0.28px]",
+          "min-w-0 flex-1 break-words pt-1 text-sm leading-5 tracking-[-0.28px]",
           state === "done" ? "text-faint line-through" : "text-foreground"
         )}
       >
-        {children}
+        {lead ? (
+          <>
+            <span className="font-semibold">{lead.lead}</span>
+            {lead.rest}
+          </>
+        ) : (
+          children
+        )}
       </div>
     </li>
   );

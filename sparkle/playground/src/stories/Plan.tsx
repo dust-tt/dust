@@ -84,11 +84,11 @@ const INITIAL_PLAN = `# Q3 enterprise churn-risk brief
 Emma asked for a churn-risk brief on every enterprise deal closed in Q3 — 38 accounts, $6.2M ARR. The signals live in four places: Salesforce (deal data), Notion (account notes), Zendesk (support history) and the shared deal-room channels in Slack. Deliverable is one page per account: risk score, the signals behind it, and a recommended next step.
 
 ## Tasks
-- [ ] List the Q3 enterprise deals from Salesforce (closed-won, above $50k ARR)
-- [ ] Read the Notion account page for each deal, keeping renewal dates and open commitments
-- [ ] Count Zendesk tickets per account since close date and flag escalations
-- [ ] Check the shared deal-room channels for stalled conversations
-- [ ] Write one brief per account: risk score, signals, recommended next step
+- [ ] Pull the Q3 deals — closed-won enterprise opportunities above $50k ARR, from Salesforce
+- [ ] Read the account notes — the Notion page for each deal, keeping renewal dates and open commitments
+- [ ] Review the support history — Zendesk tickets per account since the close date, flagging escalations
+- [ ] Check the deal rooms — shared Slack channels that have gone quiet since close
+- [ ] Write the briefs — one page per account: risk score, the signals behind it, a recommended next step
 `;
 
 // Each `edit_plan` call: one exact string replacement, as in production.
@@ -99,52 +99,55 @@ interface PlanEdit {
   durationMs: number;
 }
 
+// Each task's text leads with a short phrase before an em dash; the panel sets
+// that lead in bold as the row's title (see `splitTaskLead`). Results are
+// appended as a sentence so the lead stays put.
 const PLAN_EDITS: PlanEdit[] = [
   {
-    label: "listing the Q3 enterprise deals",
+    label: "pulling the Q3 deals",
     oldString:
-      "- [ ] List the Q3 enterprise deals from Salesforce (closed-won, above $50k ARR)",
+      "- [ ] Pull the Q3 deals — closed-won enterprise opportunities above $50k ARR, from Salesforce",
     newString:
-      "- [x] List the Q3 enterprise deals from Salesforce (closed-won, above $50k ARR) — 38 accounts, $6.2M ARR",
+      "- [x] Pull the Q3 deals — closed-won enterprise opportunities above $50k ARR, from Salesforce. 38 accounts, $6.2M ARR.",
     durationMs: 2000,
   },
   {
     label: "reading the account notes",
     oldString:
-      "- [ ] Read the Notion account page for each deal, keeping renewal dates and open commitments",
+      "- [ ] Read the account notes — the Notion page for each deal, keeping renewal dates and open commitments",
     newString:
-      "- [x] Read the Notion account page for each deal, keeping renewal dates and open commitments — 38 pages read, 11 renewals inside 90 days",
+      "- [x] Read the account notes — the Notion page for each deal, keeping renewal dates and open commitments. 38 pages read, 11 renewals inside 90 days.",
     durationMs: 3000,
   },
   {
     label: "reviewing the support history",
     oldString:
-      "- [ ] Count Zendesk tickets per account since close date and flag escalations",
+      "- [ ] Review the support history — Zendesk tickets per account since the close date, flagging escalations",
     newString:
-      "- [x] Count Zendesk tickets per account since close date and flag escalations — 412 tickets, 17 escalations",
+      "- [x] Review the support history — Zendesk tickets per account since the close date, flagging escalations. 412 tickets, 17 escalations.",
     durationMs: 2600,
   },
   {
     // `[!]` — blocked. Counts toward total, not toward done.
-    label: "checking the deal-room channels",
+    label: "checking the deal rooms",
     oldString:
-      "- [ ] Check the shared deal-room channels for stalled conversations",
+      "- [ ] Check the deal rooms — shared Slack channels that have gone quiet since close",
     newString:
-      "- [!] Check the shared deal-room channels for stalled conversations — 9 channels quiet for 30+ days, 3 more are private and I have no access",
+      "- [!] Check the deal rooms — shared Slack channels that have gone quiet since close. 9 quiet for 30+ days; 3 more are private and I have no access.",
     durationMs: 2200,
   },
   {
     label: "writing the briefs",
     oldString:
-      "- [ ] Write one brief per account: risk score, signals, recommended next step",
+      "- [ ] Write the briefs — one page per account: risk score, the signals behind it, a recommended next step",
     newString:
-      "- [x] Write one brief per account: risk score, signals, recommended next step — 38 briefs drafted",
+      "- [x] Write the briefs — one page per account: risk score, the signals behind it, a recommended next step. 38 briefs drafted.",
     durationMs: 3200,
   },
 ];
 
 const APPROVAL_QUESTION: UserQuestion = {
-  question: "Approve this plan?",
+  question: "The research plan is ready. Shall we continue?",
   options: [
     {
       label: "Approve",
