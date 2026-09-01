@@ -12,10 +12,10 @@ interface ReasoningEffortSliderProps {
 }
 
 // A stepped slider for reasoning effort. It always shows the three canonical
-// levels (Light/Medium/High); efforts the model does not support or the
-// workspace's tier does not grant are rendered locked (padlock) and skipped
-// when snapping. When at most one level is selectable there is nothing to
-// choose, so the whole slider is disabled.
+// levels (Light/Medium/High). Unsupported efforts render with a slash; efforts
+// outside the member's access render with a padlock. Both are skipped when
+// snapping. When at most one level is selectable there is nothing to choose,
+// so the whole slider is disabled.
 export function ReasoningEffortSlider({
   stops,
   value,
@@ -26,15 +26,27 @@ export function ReasoningEffortSlider({
     0
   );
   const lockedSteps = stops.flatMap((stop, index) =>
-    stop.locked ? [index] : []
+    stop.unavailabilityReason !== null &&
+    stop.unavailabilityReason !== "unsupported"
+      ? [index]
+      : []
+  );
+  const unavailableSteps = stops.flatMap((stop, index) =>
+    stop.unavailabilityReason === "unsupported" ? [index] : []
   );
   const lastIndex = Math.max(stops.length - 1, 1);
-  const unlockedStops = stops.filter((stop) => !stop.locked);
+  const availableStops = stops.filter(
+    (stop) => stop.unavailabilityReason === null
+  );
   // With a single (or no) selectable level there is nothing to slide.
-  const isDisabled = unlockedStops.length <= 1;
+  const isDisabled = availableStops.length <= 1;
 
   const selectStop = (stop: EffortStop) => {
-    if (!isDisabled && !stop.locked && stop.effort !== value) {
+    if (
+      !isDisabled &&
+      stop.unavailabilityReason === null &&
+      stop.effort !== value
+    ) {
       onChange(stop.effort);
     }
   };
@@ -50,6 +62,7 @@ export function ReasoningEffortSlider({
         stepCount={stops.length}
         value={valueIndex}
         lockedSteps={lockedSteps}
+        unavailableSteps={unavailableSteps}
         disabled={isDisabled}
         stepTooltips={stops.map(getEffortStopTooltip)}
         onChange={(index) => {
@@ -65,7 +78,8 @@ export function ReasoningEffortSlider({
         {stops.map((stop, index) => {
           const isFirst = index === 0;
           const isLast = index === stops.length - 1;
-          const buttonDisabled = stop.locked || isDisabled;
+          const buttonDisabled =
+            stop.unavailabilityReason !== null || isDisabled;
           return (
             <button
               key={stop.effort}
@@ -81,7 +95,7 @@ export function ReasoningEffortSlider({
                 stop.effort === value
                   ? "font-medium text-foreground"
                   : "text-muted-foreground",
-                stop.locked ? "opacity-50" : ""
+                stop.unavailabilityReason !== null ? "opacity-50" : ""
               )}
               style={{
                 left: `${(index / lastIndex) * 100}%`,
