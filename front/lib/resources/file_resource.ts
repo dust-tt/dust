@@ -35,6 +35,7 @@ import {
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import type { LockLeaseGuard } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -640,11 +641,21 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   private async deleteAfterSandboxCleanup(
-    auth: Authenticator
+    auth: Authenticator,
+    lease?: LockLeaseGuard
   ): Promise<Result<undefined, Error>> {
     try {
+      const checkLease = () => {
+        const held = lease?.check();
+        if (held?.isErr()) {
+          throw held.error;
+        }
+      };
+
       if (this.isFrameV2) {
+        checkLease();
         await this.deleteFrameFunctions(auth);
+        checkLease();
         await getPrivateUploadBucket().deleteByPrefix(
           getFrameBasePath({
             workspaceId: auth.getNonNullableWorkspace().sId,
@@ -654,35 +665,43 @@ export class FileResource extends BaseResource<FileModel> {
       }
 
       if (this.isReady) {
+        checkLease();
         await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
 
         // Delete mount file copies if set.
+        checkLease();
         await this.deleteMountFileCopies();
 
+        checkLease();
         await this.getBucketForVersion("original")
           .file(this.getCloudStoragePath(auth, "original"))
           .delete();
 
         // Delete the processed file if it exists.
+        checkLease();
         await this.getBucketForVersion("processed")
           .file(this.getCloudStoragePath(auth, "processed"))
           .delete({ ignoreNotFound: true });
         // Delete the public file if it exists.
+        checkLease();
         await this.getBucketForVersion("public")
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
 
         // Delete sharing grants and access snapshots before shareable file (FK constraint).
+        checkLease();
         const shareableFile = await FileResource.shareableFileModel.findOne({
           where: { fileId: this.id, workspaceId: this.workspaceId },
         });
         if (shareableFile) {
+          checkLease();
           await SharingGrantModel.destroy({
             where: {
               shareableFileId: shareableFile.id,
               workspaceId: this.workspaceId,
             },
           });
+          checkLease();
           await FileResource.authorizedFileAccessModel.destroy({
             where: {
               shareableFileId: shareableFile.id,
@@ -692,6 +711,7 @@ export class FileResource extends BaseResource<FileModel> {
         }
 
         // Delete the shareable file record.
+        checkLease();
         await FileResource.shareableFileModel.destroy({
           where: {
             fileId: this.id,
@@ -700,6 +720,7 @@ export class FileResource extends BaseResource<FileModel> {
         });
       }
 
+      checkLease();
       await this.model.destroy({
         where: {
           id: this.id,
@@ -718,11 +739,16 @@ export class FileResource extends BaseResource<FileModel> {
       return this.deleteAfterSandboxCleanup(auth);
     }
 
-    return withFramePublishLock(this.sId, () =>
-      FrameSandboxAdapter.deleteSandbox(auth, this, {
-        afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
-      })
-    );
+    return withFramePublishLock(this.sId, async (lease) => {
+      const held = lease.check();
+      if (held.isErr()) {
+        return held;
+      }
+      return FrameSandboxAdapter.deleteSandbox(auth, this, {
+        afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth, lease),
+        beforeSandboxCleanup: () => lease.check(),
+      });
+    });
   }
 
   get sId(): string {

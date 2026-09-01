@@ -15,7 +15,11 @@ import {
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
+import type { LockLeaseGuard, LockLeaseLostError } from "@app/lib/lock";
+import {
+  isLockAcquisitionTimeoutError,
+  isLockLeaseLostError,
+} from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -456,12 +460,14 @@ export async function activateFramePublication(
   auth: Authenticator,
   {
     frame,
+    lease,
     publicationId,
   }: {
     frame: FileResource;
+    lease?: LockLeaseGuard;
     publicationId: string;
   }
-): Promise<Result<void, FramePublicationError>> {
+): Promise<Result<void, FramePublicationError | LockLeaseLostError>> {
   const descriptor = await loadFramePublicationDescriptor(auth, {
     frame,
     publicationId,
@@ -522,21 +528,40 @@ export async function activateFramePublication(
   }
   const shareScope = await frame.getShareScope();
 
-  await withTransaction(async (transaction) => {
-    // Updating the Frame first serializes concurrent activations. None of the
-    // new publication state becomes visible until the transaction commits.
-    await frame.setActiveFramePublication(publicationId, transaction);
-    await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
-    await SandboxFunctionResource.createForFramePublication(
-      auth,
-      {
-        frame,
-        functions: functionDefinitions.value,
-        publicationId,
-      },
-      transaction
-    );
-  });
+  try {
+    await withTransaction(async (transaction) => {
+      const heldBeforeActivation = lease?.check();
+      if (heldBeforeActivation?.isErr()) {
+        throw heldBeforeActivation.error;
+      }
+
+      // Updating the Frame first serializes concurrent activations. None of the
+      // new publication state becomes visible until the transaction commits.
+      await frame.setActiveFramePublication(publicationId, transaction);
+      await frame.persistAuthorizedFileAccess(allowlist.value, {
+        transaction,
+      });
+      await SandboxFunctionResource.createForFramePublication(
+        auth,
+        {
+          frame,
+          functions: functionDefinitions.value,
+          publicationId,
+        },
+        transaction
+      );
+
+      const heldBeforeCommit = lease?.check();
+      if (heldBeforeCommit?.isErr()) {
+        throw heldBeforeCommit.error;
+      }
+    });
+  } catch (error) {
+    if (isLockLeaseLostError(error)) {
+      return new Err(error);
+    }
+    throw error;
+  }
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
     auth,
@@ -589,7 +614,7 @@ export async function publishFramePublication(
   const publication = await withFramePublishLock<
     { publicationId: string },
     FramePublicationError | SandboxFunctionError
-  >(frame.sId, async () => {
+  >(frame.sId, async (lease) => {
     const storedPublication = await storeFramePublication(auth, {
       frame,
       functionArtifacts,
@@ -601,6 +626,10 @@ export async function publishFramePublication(
       return storedPublication;
     }
 
+    const heldBeforeReconciliation = lease.check();
+    if (heldBeforeReconciliation.isErr()) {
+      return heldBeforeReconciliation;
+    }
     const reconciliation = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
@@ -610,8 +639,13 @@ export async function publishFramePublication(
       return reconciliation;
     }
 
+    const heldBeforeActivation = lease.check();
+    if (heldBeforeActivation.isErr()) {
+      return heldBeforeActivation;
+    }
     const activation = await activateFramePublication(auth, {
       frame,
+      lease,
       publicationId: storedPublication.value.publicationId,
     });
     if (activation.isErr()) {
@@ -622,7 +656,7 @@ export async function publishFramePublication(
   });
   if (publication.isErr()) {
     const error = publication.error;
-    if (isLockAcquisitionTimeoutError(error)) {
+    if (isLockAcquisitionTimeoutError(error) || isLockLeaseLostError(error)) {
       return new Err(
         new SandboxFunctionError(
           "publish_conflict",
