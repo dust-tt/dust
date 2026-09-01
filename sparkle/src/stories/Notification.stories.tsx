@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { fn } from "storybook/test";
 
-import type { NotificationType } from "@sparkle/components/Notification";
 import {
   NotificationContent,
   useSendNotification,
@@ -128,52 +127,6 @@ export const SendNotificationHook: StoryObj = {
   ),
 };
 
-/**
- * Toasts collapse into a stack: only the front one shows its content while the
- * queued ones peek behind it. Hovering the stack expands it back to a list.
- * @summary Collapsed stack of queued toasts, expanding on hover.
- */
-export const StackedToasts: StoryObj = {
-  render: () => (
-    <Notification.Area>
-      <StackTrigger />
-    </Notification.Area>
-  ),
-};
-
-const STACKED_NOTIFICATIONS: NotificationType[] = [
-  {
-    type: "success",
-    title: "Workspace saved",
-    description: "All changes were applied",
-  },
-  {
-    type: "info",
-    title: "Sync started",
-    description: "Indexing 4 data sources",
-  },
-  {
-    type: "warning",
-    title: "Storage nearly full",
-    description: "94% of your quota used",
-  },
-];
-
-const StackTrigger = () => {
-  const sendNotification = useSendNotification();
-
-  return (
-    <Button
-      label="Show a stack of toasts"
-      onClick={() =>
-        STACKED_NOTIFICATIONS.forEach((notification) =>
-          sendNotification(notification)
-        )
-      }
-    />
-  );
-};
-
 const NotificationTriggers = () => {
   const sendNotification = useSendNotification();
 
@@ -228,6 +181,14 @@ const NotificationTriggers = () => {
           })
         }
         label="Show Hello"
+      />
+      <Button
+        onClick={() => {
+          sendNotification({ title: "Workspace saved", type: "success" });
+          sendNotification({ title: "Sync started", type: "info" });
+          sendNotification({ title: "Storage nearly full", type: "warning" });
+        }}
+        label="Show three at once (stack)"
       />
     </div>
   );

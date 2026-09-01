@@ -88,21 +88,21 @@ export function NotificationContent({
   return (
     <div
       className={cn(
-        "pointer-events-auto relative flex w-[246px] flex-col overflow-clip",
-        "rounded-xl bg-primary p-2",
+        "pointer-events-auto relative flex w-[264px] flex-col overflow-clip",
+        "rounded-xl bg-primary p-3",
         "shadow-[inset_0px_1px_4px_0px_rgba(255,255,255,0.10)]",
         "dark:shadow-none"
       )}
     >
       <div
         className={cn(
-          "flex flex-col gap-1",
+          "flex flex-col gap-2",
           "transition-opacity duration-400 ease-enter",
           "[[data-expanded=false][data-front=false]_&]:opacity-0"
         )}
       >
-        <div className="flex items-start justify-between gap-1">
-          <div className="flex min-w-0 flex-1 items-start gap-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
             <div className="mt-[2px] shrink-0">
               <Icon
                 visual={icon}
@@ -111,7 +111,7 @@ export function NotificationContent({
                 aria-hidden="true"
               />
             </div>
-            <div className="flex min-w-0 flex-col">
+            <div className="flex min-w-0 flex-col gap-0.5">
               {title && (
                 <span className="label-sm text-primary-50">{title}</span>
               )}
@@ -132,7 +132,7 @@ export function NotificationContent({
           )}
         </div>
         {action && (
-          <div className="pl-5">
+          <div className="pl-6">
             <Button
               size="xs"
               variant="ghost"
