@@ -1,6 +1,7 @@
 import {
   MAX_QUERY_WINDOW_DAYS,
   resolveTimeWindow,
+  toConsumptionPeriod,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -105,5 +106,20 @@ describe("resolveTimeWindow", () => {
         expect(r.value.label).toBe("the last 30 days");
       }
     });
+  });
+});
+
+describe("toConsumptionPeriod", () => {
+  it("nudges the inclusive endDate forward one millisecond so the last instant is not dropped by a half-open query", () => {
+    const r = resolveTimeWindow({
+      startDate: "2026-01-01",
+      endDate: "2026-01-31",
+    });
+    expect(r.isOk()).toBe(true);
+    if (r.isOk()) {
+      const period = toConsumptionPeriod(r.value);
+      expect(period.startDate).toBe(r.value.startDate);
+      expect(period.endDate).toBe("2026-02-01T00:00:00.000Z");
+    }
   });
 });

@@ -98,6 +98,36 @@ describe("fetchConsumptionActivityTimeseries", () => {
     }
   });
 
+  it("counts one skill execution per attributed skill, not per document", async () => {
+    const auth = await setup();
+    mockBuckets([
+      {
+        key: BUCKET_MS,
+        doc_count: 40,
+        // One tool call attributed to two skills: one document, two executions.
+        executions: {
+          doc_count: 1,
+          count: { value: 2 },
+          activeUsers: { value: 1 },
+        },
+      },
+    ]);
+
+    const result = await fetchConsumptionActivityTimeseries(auth, {
+      period: PERIOD,
+      granularity: "day",
+      metric: "skills",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.points[0].values).toEqual({
+        executions: 2,
+        activeUsers: 1,
+      });
+    }
+  });
+
   it("counts a skill execution only where a skill is attributed", async () => {
     const auth = await setup();
     mockBuckets([]);

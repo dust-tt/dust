@@ -130,7 +130,7 @@ async function renderRanking(
 
   const result = await fetchConsumptionTopGroups(auth, {
     dimension,
-    period: window.value,
+    period: toConsumptionPeriod(window.value),
     limit: limit ?? DEFAULT_RESULTS,
     filter,
     rankBy,
@@ -316,7 +316,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const filter = toConsumptionScope(input);
 
     const result = await fetchConsumptionTimeseries(auth, {
-      period: window.value,
+      period: toConsumptionPeriod(window.value),
       granularity,
       mode: "daily",
       breakdownBy,
@@ -376,7 +376,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const filter = toConsumptionScope(input);
 
     const result = await fetchConsumptionActivityTimeseries(auth, {
-      period: window.value,
+      period: toConsumptionPeriod(window.value),
       granularity,
       metric,
       filter,

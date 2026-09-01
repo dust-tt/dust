@@ -111,7 +111,14 @@ function metricSubAggs(
               ],
             },
           },
-          aggs: { activeUsers: cardinality(CONSUMPTION_DIMENSION_FIELDS.user) },
+          aggs: {
+            activeUsers: cardinality(CONSUMPTION_DIMENSION_FIELDS.user),
+            // A tool call attributed to several skills is one document but
+            // several executions, one per skill — value_count over doc_count.
+            count: {
+              value_count: { field: CONSUMPTION_DIMENSION_FIELDS.skill },
+            },
+          },
         },
       };
     default:
@@ -126,6 +133,7 @@ type ActivityBucket = {
   activeUsers?: estypes.AggregationsCardinalityAggregate;
   executions?: estypes.AggregationsSingleBucketAggregateBase & {
     activeUsers?: estypes.AggregationsCardinalityAggregate;
+    count?: estypes.AggregationsValueCountAggregate;
   };
 };
 
@@ -145,9 +153,13 @@ function valuesFromBucket(
         activeUsers: Math.round(bucket.activeUsers?.value ?? 0),
       };
     case "tools":
-    case "skills":
       return {
         executions: bucket.executions?.doc_count ?? 0,
+        activeUsers: Math.round(bucket.executions?.activeUsers?.value ?? 0),
+      };
+    case "skills":
+      return {
+        executions: Math.round(bucket.executions?.count?.value ?? 0),
         activeUsers: Math.round(bucket.executions?.activeUsers?.value ?? 0),
       };
     default:
