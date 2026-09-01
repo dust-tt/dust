@@ -47,6 +47,8 @@ export async function cleanupOrphanedPodGroups(
   }
 
   return withTransaction(async (transaction) => {
+    // Archiving only sets ProjectMetadata.archivedAt, so archived Pods still have an active Space
+    // row and are returned here.
     const existingSpace = await SpaceResource.fetchByName(
       auth,
       podName,
@@ -65,11 +67,10 @@ export async function cleanupOrphanedPodGroups(
     const groups: GroupResource[] = [];
 
     for (const groupName of expectedGroupNames) {
-      const group = await GroupResource.fetchByName(
-        auth,
-        groupName,
-        transaction
-      );
+      const group = await GroupResource.fetchByName(auth, groupName, {
+        forUpdate: execute,
+        transaction,
+      });
       if (!group) {
         continue;
       }

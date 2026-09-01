@@ -967,7 +967,10 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchByName(
     auth: Authenticator,
     name: string,
-    transaction?: Transaction
+    {
+      forUpdate = false,
+      transaction,
+    }: { forUpdate?: boolean; transaction?: Transaction } = {}
   ): Promise<GroupResource | null> {
     const [group] = await this.baseFetch(
       auth,
@@ -975,6 +978,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         where: {
           name,
         },
+        ...(transaction && forUpdate ? { lock: transaction.LOCK.UPDATE } : {}),
       },
       transaction
     );
