@@ -110,6 +110,14 @@ function isValidPayloadForTopic(
       return CustomerRedactPayloadSchema.safeParse(payload).success;
     case "shop/redact":
       return BasePayloadSchema.safeParse(payload).success;
+    default: {
+      const exhaustiveTopic: never = topic;
+      error("Unhandled Shopify compliance webhook topic", {
+        component: "shopify-verification",
+        topic: exhaustiveTopic,
+      });
+      return false;
+    }
   }
 }
 
