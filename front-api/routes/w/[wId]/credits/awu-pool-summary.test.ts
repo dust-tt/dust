@@ -26,6 +26,9 @@ const EMPTY_POOL_SUMMARY = {
   overageCredits: null,
   overageAmountCents: null,
   overageCurrency: null,
+  currentCycleStartMs: null,
+  currentCycleEndMs: null,
+  currentCycleConsumedCredits: null,
 };
 
 beforeEach(() => {
