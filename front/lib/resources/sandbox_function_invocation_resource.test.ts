@@ -18,6 +18,7 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -37,6 +38,41 @@ import {
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const tracerMocks = vi.hoisted(() => {
+  const setTag = vi.fn();
+  return {
+    setTag,
+    trace: vi.fn(
+      (
+        _name: string,
+        optionsOrCallback: unknown,
+        maybeCallback?: (span: { setTag: typeof setTag }) => unknown
+      ) => {
+        const callback =
+          typeof optionsOrCallback === "function"
+            ? optionsOrCallback
+            : maybeCallback;
+        return callback?.({ setTag });
+      }
+    ),
+  };
+});
+
+vi.mock("@app/logger/tracer", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/logger/tracer")>();
+  return {
+    default: new Proxy(actual.default, {
+      get(target, property) {
+        if (property === "trace") {
+          return tracerMocks.trace;
+        }
+        const value = Reflect.get(target, property);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }),
+  };
+});
 
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
   ensureFrameSandboxReady: vi.fn(),
@@ -765,6 +801,9 @@ describe("SandboxFunctionInvocationResource", () => {
     const { authenticator, space, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();
     const updateLastActivityAtSpy = vi.spyOn(sandbox, "updateLastActivityAt");
+    const loggerInfoSpy = vi
+      .spyOn(logger, "info")
+      .mockImplementation(() => undefined);
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
@@ -816,6 +855,25 @@ describe("SandboxFunctionInvocationResource", () => {
       }
     );
     expect(execSpy).toHaveBeenCalledTimes(1);
+    expect(tracerMocks.trace).toHaveBeenCalledWith(
+      "sandbox.function.execute",
+      { resource: "pod" },
+      expect.any(Function)
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith(
+      "function.owner_kind",
+      "pod"
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith("pod.space_id", space.sId);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionOwnerKind: "pod",
+        functionName: sandboxFunction.slug,
+        invocationId: invocation.sId,
+        spaceId: space.sId,
+      }),
+      "Sandbox function stdout result delivery"
+    );
 
     const execCall = execSpy.mock.calls[0];
     expect(execCall).toBeDefined();
@@ -884,6 +942,9 @@ describe("SandboxFunctionInvocationResource", () => {
       .mockResolvedValue(
         new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
       );
+    const loggerInfoSpy = vi
+      .spyOn(logger, "info")
+      .mockImplementation(() => undefined);
 
     const result = await invocation.execute(authenticator);
 
@@ -914,6 +975,36 @@ describe("SandboxFunctionInvocationResource", () => {
     });
     expect(invocation.gcsPath).toBe(
       `w/${authenticator.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${invocation.sId}`
+    );
+    expect(tracerMocks.trace).toHaveBeenCalledWith(
+      "sandbox.function.execute",
+      { resource: "frame" },
+      expect.any(Function)
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith("frame.id", frame.sId);
+    expect(tracerMocks.setTag).toHaveBeenCalledWith(
+      "frame.publication_id",
+      publicationId
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith(
+      "frame.source_scope",
+      "pod"
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith(
+      "frame.source_scope_id",
+      space.sId
+    );
+    expect(loggerInfoSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frameId: frame.sId,
+        frameSourceScope: "pod",
+        frameSourceScopeId: space.sId,
+        functionOwnerKind: "frame",
+        functionName: sandboxFunction.slug,
+        invocationId: invocation.sId,
+        publicationId,
+      }),
+      "Sandbox function stdout result delivery"
     );
   });
 
