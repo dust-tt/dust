@@ -17,7 +17,10 @@ export interface ResizableSidePanelProps {
   defaultSize?: number;
   /** Smallest width the panel can be dragged to, as a percentage. */
   minSize?: number;
-  /** Called when the panel is collapsed by dragging it shut. */
+  /**
+   * Called once a collapse settles: on release of a drag that closed the
+   * panel, or when the closing animation finishes.
+   */
   onCollapse?: () => void;
   /**
    * Width below which the main content is considered too cramped. Paired with
@@ -58,6 +61,8 @@ export function ResizableSidePanel({
 }: ResizableSidePanelProps) {
   const panelRef = React.useRef<ImperativePanelHandle>(null);
   const rowRef = React.useRef<HTMLDivElement>(null);
+  const [panelContentSizePercent, setPanelContentSizePercent] =
+    React.useState(defaultSize);
 
   React.useEffect(() => {
     if (!panelRef.current) {
@@ -70,8 +75,11 @@ export function ResizableSidePanel({
     }
   }, [isOpen, defaultSize]);
 
-  const reportIfContentSqueezed = React.useCallback(
+  const handlePanelResize = React.useCallback(
     (panelSizePercent: number) => {
+      if (panelSizePercent > 0) {
+        setPanelContentSizePercent(panelSizePercent);
+      }
       if (!onContentSqueezed || !minContentWidthPx || !rowRef.current) {
         return;
       }
@@ -91,7 +99,7 @@ export function ResizableSidePanel({
   return (
     <div
       ref={rowRef}
-      className={cn("relative flex h-full w-full flex-1", className)}
+      className={cn("relative flex h-full w-full flex-1 @container", className)}
     >
       <ResizablePanelGroup
         animateLayoutChanges
@@ -106,6 +114,12 @@ export function ResizableSidePanel({
           withHandle={isOpen}
           disabled={!isOpen}
           className="hidden md:flex"
+          onDragging={(isDragging) => {
+            // Pointer resizing skips transitions, so release completes a drag collapse.
+            if (!isDragging && panelRef.current?.isCollapsed()) {
+              onCollapse?.();
+            }
+          }}
         />
 
         <ResizablePanel
@@ -114,8 +128,17 @@ export function ResizableSidePanel({
           minSize={isOpen ? minSize : 0}
           collapsedSize={0}
           collapsible
-          onCollapse={onCollapse}
-          onResize={reportIfContentSqueezed}
+          onResize={handlePanelResize}
+          onTransitionEnd={(event) => {
+            // Programmatic and keyboard collapses settle when the motion completes.
+            if (
+              event.target === event.currentTarget &&
+              event.propertyName === "flex-grow" &&
+              panelRef.current?.isCollapsed()
+            ) {
+              onCollapse?.();
+            }
+          }}
           className={cn(
             "overflow-hidden",
             isOpen
@@ -123,7 +146,14 @@ export function ResizableSidePanel({
               : "hidden md:block"
           )}
         >
-          <div className="h-full w-full overflow-hidden bg-background">
+          <div
+            className={cn(
+              "h-full min-w-full overflow-hidden bg-panel-background @container md:min-w-0",
+              isOpen && "border-l border-border"
+            )}
+            // Keep content width and container queries stable during animation.
+            style={{ width: `${panelContentSizePercent}cqw` }}
+          >
             {panel}
           </div>
         </ResizablePanel>

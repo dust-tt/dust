@@ -2,7 +2,7 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
-import { useSetRightPanel } from "@app/components/sparkle/AppLayoutContext";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { AnalyticsConversationPanel } from "@app/components/workspace/analytics/AnalyticsConversationPanel";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
@@ -28,7 +28,7 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
-import { useAnalyticsConversationPanel } from "@app/hooks/useAnalyticsConversationPanel";
+
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
@@ -60,15 +60,18 @@ import {
   cn,
   LoadingBlock,
   Page,
+  ResizableSidePanel,
   Robot,
   SafeSuspense,
   safeLazy,
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
+
+const MIN_CONTENT_WIDTH_WITH_PANEL_PX = 720;
 
 const LazyConsumptionChart = safeLazy(
   () =>
@@ -174,7 +177,8 @@ export function AnalyticsConsumptionPage() {
     filter: state.filter,
   });
 
-  const conversationPanel = useAnalyticsConversationPanel();
+  const [isOpen, setIsOpen] = useState(false);
+
   const { hasFeature } = useFeatureFlags();
   const analyticsAssistantEnabled =
     hasFeature("analytics_conversation_panel") &&
@@ -189,16 +193,49 @@ export function AnalyticsConsumptionPage() {
     });
   }, [owner.sId]);
 
-  useSetRightPanel(
-    analyticsAssistantEnabled ? (
-      <AnalyticsConversationPanel
+  const { isNavigationBarOpen, setIsNavigationBarOpen } =
+    useDesktopNavigation();
+  const didFoldNavigationForPanelRef = useRef(false);
+
+  const foldNavigationForPanel = useCallback(() => {
+    if (isNavigationBarOpen) {
+      didFoldNavigationForPanelRef.current = true;
+      setIsNavigationBarOpen(false);
+    }
+  }, [isNavigationBarOpen, setIsNavigationBarOpen]);
+
+  useEffect(() => {
+    if (!isOpen && didFoldNavigationForPanelRef.current) {
+      didFoldNavigationForPanelRef.current = false;
+      setIsNavigationBarOpen(true);
+    }
+  }, [isOpen, setIsNavigationBarOpen]);
+
+  useEffect(() => {
+    if (isNavigationBarOpen) {
+      didFoldNavigationForPanelRef.current = false;
+    }
+  }, [isNavigationBarOpen]);
+
+  const content = (
+    <AdminPageContainer className="relative">
+      {analyticsAssistantEnabled && !isOpen && (
+        <div className="absolute right-4 top-4 z-10 sm:right-10 sm:top-8">
+          <Button
+            variant="outline"
+            icon={Robot}
+            label="Ask @analyst"
+            onClick={() => setIsOpen(true)}
+          />
+        </div>
+      )}
+      <AnalyticsConsumptionContent
         owner={owner}
-        user={user}
-        onClose={conversationPanel.closePanel}
-        disabled={!conversationPanel.isOpen}
+        state={{ ...state, filter }}
+        onAgentClick={setAgentDetailsId}
+        onSkillClick={setSkillDetailsId}
       />
-    ) : undefined,
-    conversationPanel.isOpen
+    </AdminPageContainer>
   );
 
   return (
@@ -215,24 +252,27 @@ export function AnalyticsConsumptionPage() {
         skillId={skillDetailsId}
         onClose={() => setSkillDetailsId(null)}
       />
-      <AdminPageContainer>
-        {analyticsAssistantEnabled && !conversationPanel.isOpen && (
-          <div className="flex justify-end pb-4">
-            <Button
-              variant="outline"
-              icon={Robot}
-              label="Ask @analyst"
-              onClick={conversationPanel.openPanel}
+      {analyticsAssistantEnabled ? (
+        <ResizableSidePanel
+          isOpen={isOpen}
+          onCollapse={() => setIsOpen(false)}
+          minContentWidthPx={MIN_CONTENT_WIDTH_WITH_PANEL_PX}
+          onContentSqueezed={foldNavigationForPanel}
+          className="min-h-0 flex-1"
+          panel={
+            <AnalyticsConversationPanel
+              owner={owner}
+              user={user}
+              onClose={() => setIsOpen(false)}
+              disabled={!isOpen}
             />
-          </div>
-        )}
-        <AnalyticsConsumptionContent
-          owner={owner}
-          state={{ ...state, filter }}
-          onAgentClick={setAgentDetailsId}
-          onSkillClick={setSkillDetailsId}
-        />
-      </AdminPageContainer>
+          }
+        >
+          <div className="h-full w-full overflow-y-auto">{content}</div>
+        </ResizableSidePanel>
+      ) : (
+        content
+      )}
     </>
   );
 }

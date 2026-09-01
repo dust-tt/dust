@@ -85,33 +85,6 @@ export const Open: Story = {
 };
 
 /**
- * Toggling the panel while it stays mounted, so its content keeps state.
- *
- * @summary Open and close without unmounting.
- */
-export const Toggleable: Story = {
-  args: {
-    panel: <PanelBody />,
-    children: <MainContent />,
-  },
-  render: (args) => {
-    const [isOpen, setIsOpen] = React.useState(false);
-    return (
-      <div className="flex h-[560px] w-full flex-col gap-2">
-        <Button
-          variant="outline"
-          label={isOpen ? "Close panel" : "Open panel"}
-          onClick={() => setIsOpen((v) => !v)}
-        />
-        <div className="min-h-0 flex-1 border border-border">
-          <ResizableSidePanel {...args} isOpen={isOpen} />
-        </div>
-      </div>
-    );
-  },
-};
-
-/**
  * Below the md breakpoint a docked column would be unusably narrow, so the
  * panel covers the content instead of splitting the row. Use Storybook's
  * viewport switcher (or narrow the window) to see it take over.
