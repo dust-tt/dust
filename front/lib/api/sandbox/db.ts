@@ -24,11 +24,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Sandbox state runtime plumbing: SQLite databases under /pod-state/databases,
+ * Sandbox state runtime plumbing: SQLite databases under the live database directory,
  * continuously replicated by a litestream daemon (running as dust-state) to a
  * gcsfuse-mounted GCS prefix at /sandbox-state/replica.
  *
- * The daemon runs litestream's directory watcher over /pod-state/databases
+ * The daemon runs litestream's directory watcher over that directory
  * (static /etc/litestream.yml baked at image build): databases created at any
  * point — including publish-time `dsbx db reconcile` — are discovered and
  * replicated automatically within seconds. Replica subdirectories are named
@@ -428,7 +428,7 @@ async function startLitestreamDaemon(
 /**
  * Restart the litestream daemon: re-derive the managed set from what is live on disk right now.
  *
- * The directory watcher only enumerates /pod-state/databases at start, so a database whose live
+ * The directory watcher only enumerates the live database directory at start, so a database whose
  * files were just deleted stays open in the running daemon — free to keep writing to, and so
  * recreate, the replica prefix a delete is about to wipe. A restart is what makes the daemon let go
  * of it, and the static config (baked at image build) brings back every database that IS still live.
@@ -712,7 +712,7 @@ async function listLiveDatabases(
 
 /**
  * Live databases whose file content starts with the SQLite header magic.
- * /pod-state/databases is workload-writable by design, so enumeration output
+ * The live database directory is workload-writable by design, so enumeration output
  * must be treated as untrusted: non-SQLite files are excluded from the
  * managed set (with a warning log) instead of being handed to litestream,
  * where they would fail every sync and wedge the pod's lifecycle. A valid
