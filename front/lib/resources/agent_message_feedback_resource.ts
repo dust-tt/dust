@@ -288,14 +288,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         // IMPORTANT: Necessary for global models who share ids across workspaces.
         workspaceId: workspace.id,
         createdAt: {
-          [Op.and]: [{ [Op.lt]: endDate }, { [Op.gt]: startDate }],
+          [Op.and]: [{ [Op.lt]: endDate }, { [Op.gte]: startDate }],
         },
       },
       include: [
         {
           model: UserResource.model,
           as: "user",
-          attributes: ["name", "email"],
+          attributes: ["sId", "name", "email"],
         },
       ],
       order: [["id", "ASC"]],
@@ -318,14 +318,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       conversations.map((c) => [c.id, c.sId])
     );
 
-    return feedbackRows
-      .filter((feedback) => Boolean(feedback.user))
-      .map((feedback) => {
-        return new this(this.model, feedback.get(), {
-          user: feedback.user,
-          conversationId: conversationIdByModelId.get(feedback.conversationId),
-        });
+    return feedbackRows.map((feedback) => {
+      return new this(this.model, feedback.get(), {
+        user: feedback.user ?? undefined,
+        conversationId: conversationIdByModelId.get(feedback.conversationId),
       });
+    });
   }
 
   static async getFeedbackCountForAssistants(
