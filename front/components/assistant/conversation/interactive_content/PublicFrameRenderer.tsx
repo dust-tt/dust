@@ -16,6 +16,7 @@ import { useCookies } from "react-cookie";
 
 interface PublicFrameRendererProps {
   fileId: string;
+  frameId?: string;
   fileName?: string;
   hideHeader?: boolean;
   logoUrl?: string | null;
@@ -62,6 +63,7 @@ export function getPublicFrameUserIdentity(
 
 export function PublicFrameRenderer({
   fileId,
+  frameId,
   fileName,
   hideHeader = false,
   logoUrl,
@@ -161,6 +163,7 @@ export function PublicFrameRenderer({
             scopedUserIdentity={publicUserIdentity}
             viewer={viewer}
             framePath={framePath}
+            frameId={frameId}
             isInDrawer
           />
         </div>
