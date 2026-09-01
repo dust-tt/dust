@@ -267,9 +267,11 @@ class FileStorageMock {
     return {
       copy: vi.fn().mockResolvedValue(undefined),
       createReadStream: vi.fn(() => {
-        this._readStreamCalls.push(filePath ?? "unknown");
-        const content = this._contentForPath(filePath ?? "");
-        if (content !== null) {
+        const path = filePath ?? "unknown";
+        this._readStreamCalls.push(path);
+        const content =
+          this._objectStore.get(path) ?? this._contentForPath(path);
+        if (content !== null && content !== undefined) {
           return Readable.from([Buffer.from(content, "utf8")]);
         }
         return new PassThrough();
@@ -438,6 +440,10 @@ class FileStorageMock {
           return Promise.reject(
             new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
           );
+        }
+        const content = this._objectStore.get(src) ?? this._contentForPath(src);
+        if (content !== null && content !== undefined) {
+          this._objectStore.set(dest, content);
         }
         return Promise.resolve(undefined);
       }),
