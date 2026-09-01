@@ -79,6 +79,7 @@ import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
+  onlyRootConversations?: boolean; // Exclude sub-conversations (depth > 0)
   dangerouslySkipPermissionFiltering?: boolean;
   includeForkingData?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
@@ -1036,6 +1037,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (options?.updatedSince !== undefined) {
       where.updatedAt = { [Op.gte]: new Date(options.updatedSince) };
+    }
+
+    if (options?.onlyRootConversations) {
+      where.depth = { [Op.eq]: 0 };
     }
 
     return {
