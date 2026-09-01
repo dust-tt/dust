@@ -118,8 +118,8 @@ async function getPoolLedgerData({
 }
 
 // O(invoices x ledgerEntries) via computeCycleBreakdown's .map, but invoices
-// are capped at MAX_CYCLE_HISTORY_LIMIT (24) and ledgerEntries is bounded to
-// the same history window, so this stays cheap.
+// are capped at MAX_CYCLE_HISTORY_LIMIT and ledgerEntries is bounded to
+// the same history window.
 function sumPoolLedgerEntriesForInvoice(
   ledgerEntries: PoolLedgerEntry[],
   invoiceId: string
@@ -330,8 +330,6 @@ const getCachedAwuPoolCurrentCycleOutcome = cacheWithRedis(
   }
 );
 
-// Header-card data only — cheap, meant to render before cycle history is
-// available. See `getAwuPoolCycleHistory` for the history table.
 export async function getAwuPoolCurrentCycle(
   auth: Authenticator
 ): Promise<Result<AwuPoolCurrentCycleResponseBody, AwuPoolSummaryError>> {
@@ -382,8 +380,6 @@ const getCachedAwuPoolCycleHistoryOutcome = cacheWithRedis(
   }
 );
 
-// History-table data only — slower (scans the full ledger window). See
-// `getAwuPoolCurrentCycle` for the header-card figures.
 export async function getAwuPoolCycleHistory(
   auth: Authenticator,
   {
@@ -402,9 +398,6 @@ export async function getAwuPoolCycleHistory(
   return new Ok(outcome.body);
 }
 
-// Past-cycle breakdown for the history table. Scans the full
-// `cycleHistoryLimit` ledger window, so it's slower than the current-cycle
-// figures above — kept separate so the header cards don't wait on it.
 async function getAwuPoolCycleHistoryUncached(
   auth: Authenticator,
   { cycleHistoryLimit }: { cycleHistoryLimit: number }
