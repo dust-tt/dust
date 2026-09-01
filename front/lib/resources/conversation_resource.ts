@@ -4234,7 +4234,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: messageId,
-        ...(version ? { version } : {}),
+        // A truthiness check would silently drop the filter for version 0, matching an arbitrary
+        // version of the message instead of the first one.
+        ...(version !== undefined ? { version } : {}),
       },
       include: [
         {

@@ -12,7 +12,7 @@ import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,
-  isAgentLoopDataSoftDeleteError,
+  isAgentLoopDataTerminalError,
 } from "@app/types/assistant/agent_run";
 import type {
   ConversationType,
@@ -71,9 +71,10 @@ export async function ensureConversationTitleFromAgentLoop(
     agentLoopArgs
   );
   if (runAgentDataRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+    if (isAgentLoopDataTerminalError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },

@@ -30,7 +30,7 @@ import type {
   AgentLoopArgsWithTiming,
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
-import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
+import { isAgentLoopDataTerminalError } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -135,9 +135,10 @@ async function _runModelAndCreateActionsActivity({
       })
   );
   if (contextProviderRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(contextProviderRes.error)) {
+    if (isAgentLoopDataTerminalError(contextProviderRes.error)) {
       logger.info(
         {
+          reason: contextProviderRes.error.type,
           conversationId: runAgentArgs.conversationId,
           agentMessageId: runAgentArgs.agentMessageId,
         },

@@ -26,7 +26,7 @@ import type {
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,
-  isAgentLoopDataSoftDeleteError,
+  isAgentLoopDataTerminalError,
 } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageStatus,
@@ -527,8 +527,8 @@ function toUserFriendlyMessage(error: {
 }
 
 // Returns the errored agent message's model id (already resolved here) so the caller can
-// attribute the failure without refetching the conversation, or null when the conversation is
-// gone.
+// attribute the failure without refetching the conversation, or null when the conversation or
+// the message is gone.
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
@@ -551,14 +551,25 @@ export async function notifyWorkflowError(
     agentMessageVersion
   );
 
+  // This runs on the workflow's error path: a failed lookup must degrade (no user-facing event)
+  // rather than throw, which would fail the finalize activity and skip its remaining side
+  // effects (billing, analytics, email).
   if (messageRes.isErr()) {
-    throw new Error(`Agent message not found: ${agentMessageId}`);
+    logger.warn(
+      { conversationId, agentMessageId, agentMessageVersion },
+      "Agent message not found while notifying a workflow error"
+    );
+    return null;
   }
 
   const messageRow = messageRes.value;
 
   if (!messageRow.agentMessage) {
-    throw new Error(`Agent message not found: ${agentMessageId}`);
+    logger.warn(
+      { conversationId, agentMessageId, agentMessageVersion },
+      "Agent message not found while notifying a workflow error"
+    );
+    return null;
   }
 
   const errorEvent: AgentMessageEvents = {
@@ -640,9 +651,10 @@ export async function finalizeCancellation(
     agentLoopArgs
   );
   if (runAgentDataRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+    if (isAgentLoopDataTerminalError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },
@@ -710,9 +722,10 @@ export async function finalizeInterruption(
     agentLoopArgs
   );
   if (runAgentDataRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+    if (isAgentLoopDataTerminalError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },
@@ -797,9 +810,10 @@ export async function finalizeGracefulStop(
     agentLoopArgs
   );
   if (runAgentDataRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+    if (isAgentLoopDataTerminalError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },
@@ -861,9 +875,10 @@ export async function finalizeCreditStop(
     agentLoopArgs
   );
   if (runAgentDataRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+    if (isAgentLoopDataTerminalError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },
