@@ -1,3 +1,4 @@
+import { TOOL_EXECUTION_BLOCKED_STATUSES } from "@app/lib/actions/statuses";
 import {
   ANALYTICS_ALIAS_NAME,
   bucketsToArray,
@@ -9,13 +10,22 @@ import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
+import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
+import type { AgentMessageAnalyticsData } from "@app/types/assistant/analytics";
 import type { estypes } from "@elastic/elasticsearch";
+import { Op } from "sequelize";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const MAX_API_KEY_NAMES = 10_000;
+const MAX_DIAGNOSTIC_SAMPLES = 20;
+const ES_PAGE_SIZE = 1_000;
 const DEFAULT_DAYS = 90;
 const DAY_DURATION_MS = 24 * 60 * 60 * 1000;
 const DaysSchema = z.number().int().positive();
@@ -40,6 +50,14 @@ type ApiKeyCreditsTermsAggregate =
 type ApiKeyCreditsAggs = {
   by_api_key_name?: ApiKeyCreditsTermsAggregate;
 };
+
+type LegacyCreatedDocument = AgentMessageAnalyticsData & {
+  api_key_name?: string;
+};
+
+const BLOCKED_ACTION_STATUSES = new Set<string>(
+  TOOL_EXECUTION_BLOCKED_STATUSES
+);
 
 function parseDays(value: number): number {
   const result = DaysSchema.safeParse(value);
@@ -72,6 +90,65 @@ function totalMicroCredits(creditsByApiKeyName: Map<string, number>): number {
     (total, creditsMicro) => total + creditsMicro,
     0
   );
+}
+
+async function fetchLegacyCreatedDocuments({
+  apiKeyNames,
+  workspaceId,
+  windowEnd,
+  windowStart,
+}: {
+  apiKeyNames: string[];
+  workspaceId: string;
+  windowEnd: Date;
+  windowStart: Date;
+}): Promise<LegacyCreatedDocument[]> {
+  const documents: LegacyCreatedDocument[] = [];
+  let searchAfter: estypes.SortResults | undefined;
+
+  while (true) {
+    const result = await searchAnalytics<LegacyCreatedDocument>(
+      {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspaceId } },
+            { term: { status: "created" } },
+            { terms: { api_key_name: apiKeyNames } },
+            {
+              range: {
+                timestamp: {
+                  gte: windowStart.toISOString(),
+                  lte: windowEnd.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        size: ES_PAGE_SIZE,
+        sort: [{ timestamp: "asc" }, { message_id: "asc" }],
+        search_after: searchAfter,
+      }
+    );
+    if (result.isErr()) {
+      throw new Error(
+        `Failed to query created documents in ${ANALYTICS_ALIAS_NAME}: ${result.error.message}`
+      );
+    }
+
+    const { hits } = result.value.hits;
+    for (const hit of hits) {
+      if (hit._source) {
+        documents.push(hit._source);
+      }
+    }
+
+    if (hits.length < ES_PAGE_SIZE) {
+      return documents;
+    }
+    searchAfter = hits[hits.length - 1]?.sort;
+  }
 }
 
 makeScript(
@@ -242,6 +319,203 @@ makeScript(
 
     for (const mismatch of mismatches) {
       logger.warn(mismatch, "API key usage differs between analytics indices");
+    }
+
+    const apiKeyNamesWithLegacyCreatedCredits = mismatches.flatMap(
+      ({ apiKeyName, legacyCreditsByStatus }) =>
+        (legacyCreditsByStatus.created ?? 0) > 0 ? [apiKeyName] : []
+    );
+    if (apiKeyNamesWithLegacyCreatedCredits.length > 0) {
+      const legacyCreatedDocuments = await fetchLegacyCreatedDocuments({
+        apiKeyNames: apiKeyNamesWithLegacyCreatedCredits,
+        workspaceId: workspace.sId,
+        windowEnd,
+        windowStart,
+      });
+      const legacyCreatedMessageIds = [
+        ...new Set(legacyCreatedDocuments.map(({ message_id }) => message_id)),
+      ];
+
+      const currentMessageRows = await MessageModel.findAll({
+        attributes: ["sId", "version", "agentMessageId"],
+        where: {
+          sId: { [Op.in]: legacyCreatedMessageIds },
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            attributes: [
+              "id",
+              "status",
+              "completedAt",
+              "costCredits",
+              "updatedAt",
+            ],
+            required: true,
+          },
+        ],
+      });
+
+      const currentMessageByMessageId = new Map<
+        string,
+        {
+          agentMessageModelId: number;
+          completedAt: Date | null;
+          costCredits: number | null;
+          status: AgentMessageModel["status"];
+          updatedAt: Date;
+          version: number;
+        }
+      >();
+      for (const messageRow of currentMessageRows) {
+        if (messageRow.agentMessage) {
+          currentMessageByMessageId.set(messageRow.sId, {
+            agentMessageModelId: messageRow.agentMessage.id,
+            completedAt: messageRow.agentMessage.completedAt,
+            costCredits: messageRow.agentMessage.costCredits,
+            status: messageRow.agentMessage.status,
+            updatedAt: messageRow.agentMessage.updatedAt,
+            version: messageRow.version,
+          });
+        }
+      }
+
+      const agentMessageModelIds = currentMessageRows.flatMap(
+        ({ agentMessage }) => (agentMessage ? [agentMessage.id] : [])
+      );
+      const actionRows = await AgentMCPActionModel.findAll({
+        attributes: [
+          "agentMessageId",
+          "status",
+          "toolConfiguration",
+          "updatedAt",
+        ],
+        where: {
+          agentMessageId: { [Op.in]: agentMessageModelIds },
+          workspaceId: workspace.id,
+        },
+      });
+      const blockedActionsByAgentMessageModelId = new Map<
+        number,
+        Array<{ status: string; toolName: string; updatedAt: Date }>
+      >();
+      for (const actionRow of actionRows) {
+        if (!BLOCKED_ACTION_STATUSES.has(actionRow.status)) {
+          continue;
+        }
+        const blockedActions =
+          blockedActionsByAgentMessageModelId.get(actionRow.agentMessageId) ??
+          [];
+        blockedActions.push({
+          status: actionRow.status,
+          toolName: actionRow.toolConfiguration.name,
+          updatedAt: actionRow.updatedAt,
+        });
+        blockedActionsByAgentMessageModelId.set(
+          actionRow.agentMessageId,
+          blockedActions
+        );
+      }
+
+      const legacyCreatedDocumentsByApiKeyName = new Map<
+        string,
+        LegacyCreatedDocument[]
+      >();
+      for (const document of legacyCreatedDocuments) {
+        if (!document.api_key_name) {
+          continue;
+        }
+        const documents =
+          legacyCreatedDocumentsByApiKeyName.get(document.api_key_name) ?? [];
+        documents.push(document);
+        legacyCreatedDocumentsByApiKeyName.set(
+          document.api_key_name,
+          documents
+        );
+      }
+
+      for (const apiKeyName of apiKeyNamesWithLegacyCreatedCredits) {
+        const documents =
+          legacyCreatedDocumentsByApiKeyName.get(apiKeyName) ?? [];
+        const legacyMicroCreditsByCurrentState = new Map<string, number>();
+        let legacyCreatedMicroCredits = 0;
+
+        const samples = documents
+          .map((document) => {
+            const legacyMicroCredits = roundCreditsToMicroCredits(
+              document.cost.billable_awu
+            );
+            legacyCreatedMicroCredits += legacyMicroCredits;
+
+            const currentMessage = currentMessageByMessageId.get(
+              document.message_id
+            );
+            const blockedActions = currentMessage
+              ? (blockedActionsByAgentMessageModelId.get(
+                  currentMessage.agentMessageModelId
+                ) ?? [])
+              : [];
+            const blockingState =
+              [...new Set(blockedActions.map(({ status }) => status))]
+                .sort()
+                .join("+") || "no_blocked_action";
+            let currentState = "missing";
+            if (currentMessage) {
+              currentState =
+                currentMessage.status === "created"
+                  ? `created:${blockingState}`
+                  : `terminal:${currentMessage.status}`;
+            }
+            legacyMicroCreditsByCurrentState.set(
+              currentState,
+              (legacyMicroCreditsByCurrentState.get(currentState) ?? 0) +
+                legacyMicroCredits
+            );
+
+            return {
+              messageId: document.message_id,
+              legacyTimestamp: document.timestamp,
+              legacyVersion: document.version,
+              legacyCredits: microCreditsToCredits(legacyMicroCredits),
+              currentState,
+              currentVersion: currentMessage?.version ?? null,
+              currentUpdatedAt: currentMessage?.updatedAt.toISOString() ?? null,
+              currentCompletedAt:
+                currentMessage?.completedAt?.toISOString() ?? null,
+              currentCostCredits: currentMessage?.costCredits ?? null,
+              blockedActions: blockedActions.map(
+                ({ status, toolName, updatedAt }) => ({
+                  status,
+                  toolName,
+                  updatedAt: updatedAt.toISOString(),
+                })
+              ),
+            };
+          })
+          .slice(0, MAX_DIAGNOSTIC_SAMPLES);
+
+        logger.warn(
+          {
+            apiKeyName,
+            legacyCreatedMessageCount: documents.length,
+            legacyCreatedCredits: microCreditsToCredits(
+              legacyCreatedMicroCredits
+            ),
+            legacyCreatedCreditsByCurrentState: Object.fromEntries(
+              [...legacyMicroCreditsByCurrentState.entries()]
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([currentState, creditsMicro]) => [
+                  currentState,
+                  microCreditsToCredits(creditsMicro),
+                ])
+            ),
+            samples,
+          },
+          "Diagnosed legacy created API key usage"
+        );
+      }
     }
 
     const legacyTotalMicroCredits = totalMicroCredits(legacyByApiKeyName);
