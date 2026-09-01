@@ -74,7 +74,7 @@ app.get(
             ...webhookSource.toJSON(),
             payloadsGcsUrl: makeWebhookRequestsGcsUrl({
               workspaceId: auth.getNonNullableWorkspace().sId,
-              webhookSourceId: webhookSource.id,
+              webhookSourceModelId: webhookSource.id,
             }),
           }
         : null,

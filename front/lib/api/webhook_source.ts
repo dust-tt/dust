@@ -99,7 +99,7 @@ export async function deleteWebhookSource(
   return new Ok(undefined);
 }
 
-type WebhookSourceWithCounts = WebhookSourceType & {
+export type WebhookSourceWithCounts = WebhookSourceType & {
   viewCount: number;
   triggerCount: number;
 };
@@ -142,7 +142,7 @@ export async function listWebhookSourcesWithCounts(
   return results;
 }
 
-type WebhookSourceAdminDetails = {
+export type WebhookSourceAdminDetails = {
   webhookSource: WebhookSourceForAdminType;
   views: WebhookSourceViewForAdminType[];
   triggers: Array<TriggerType & { editorUser: UserType | null }>;
@@ -152,14 +152,14 @@ type WebhookSourceAdminDetails = {
 
 export function makeWebhookRequestsGcsUrl({
   workspaceId,
-  webhookSourceId,
+  webhookSourceModelId,
 }: {
   workspaceId: string;
-  webhookSourceId: ModelId;
+  webhookSourceModelId: ModelId;
 }): string {
   const directory = WebhookRequestResource.getGcsDirectory({
     workspaceId,
-    webhookSourceId,
+    webhookSourceModelId,
   });
 
   return `https://console.cloud.google.com/storage/browser/${fileStorageConfig.getWebhookRequestsBucket()}/${directory}`;
@@ -214,7 +214,7 @@ export async function getWebhookSourceAdminDetails(
     requestStats,
     payloadsGcsUrl: makeWebhookRequestsGcsUrl({
       workspaceId: auth.getNonNullableWorkspace().sId,
-      webhookSourceId: source.id,
+      webhookSourceModelId: source.id,
     }),
   };
 }
