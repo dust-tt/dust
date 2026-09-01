@@ -15,13 +15,10 @@ import { formatCredits } from "@app/lib/client/credits";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
-import { useKeyScopableGroups } from "@app/lib/swr/groups";
 import { useKeyScopableSpaces } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
-import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
-import type { ModelId } from "@app/types/shared/model_id";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
@@ -125,21 +122,9 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
   const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
 
   const { isKeysError, isKeysLoading, keys } = useKeys(owner);
-  const { groups, isGroupsError, isGroupsLoading } = useKeyScopableGroups({
-    owner,
-  });
   const { spaces, isSpacesError, isSpacesLoading } = useKeyScopableSpaces({
     owner,
   });
-  const isDataLoading = isKeysLoading || isGroupsLoading;
-  const isDataError = !!isKeysError || isGroupsError;
-
-  const groupsById = useMemo(() => {
-    return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
-      acc[group.id] = group;
-      return acc;
-    }, {});
-  }, [groups]);
 
   const sendNotification = useSendNotification();
 
@@ -313,9 +298,8 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
           keys={keys}
           workspaceId={owner.sId}
           period={period}
-          groupsById={groupsById}
-          isLoading={isDataLoading}
-          isError={isDataError}
+          isLoading={isKeysLoading}
+          isError={!!isKeysError}
           showAnalyticsConsumption
           isRevoking={isRevoking}
           isGenerating={isGenerating}

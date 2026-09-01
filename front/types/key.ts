@@ -1,4 +1,5 @@
 import type { ModelId } from "@app/types/shared/model_id";
+import type { SpaceType } from "@app/types/space";
 import type { RoleType } from "@app/types/user";
 
 // Per-API-key credit state, mirroring the per-user `memberships.creditState`
@@ -28,6 +29,7 @@ export type KeyType = {
   status: string;
   name: string;
   groupIds: ModelId[];
+  spaces: SpaceType[];
   role: RoleType;
   monthlyCapMicroUsd: number | null;
   monthlyCapAwuCredits: number | null;

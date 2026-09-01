@@ -3,7 +3,9 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import type { KeyType } from "@app/types/key";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import type { SpaceType } from "@app/types/space";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -198,6 +200,45 @@ describe("POST /api/w/:wId/keys — space scoping", () => {
     expect(key.groupIds.toSorted()).toEqual(
       [globalGroup.id, ...podGroups.map((group) => group.id)].toSorted()
     );
+  });
+
+  it("returns the scoped space when the key is created and when it is listed", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const space = await SpaceFactory.regular(workspace);
+
+    const res = await createKey(workspace, {
+      name: "space-echo-key",
+      space_ids: [space.sId],
+    });
+    expect(res.status).toBe(201);
+
+    const { key } = await res.json();
+    expect(key.spaces.map((s: SpaceType) => s.sId)).toEqual([space.sId]);
+
+    const listRes = await honoApp.request(`/api/w/${workspace.sId}/keys`);
+    expect(listRes.status).toBe(200);
+
+    const { keys } = await listRes.json();
+    const listed = keys.find((k: KeyType) => k.name === "space-echo-key");
+    expect(listed.spaces.map((s: SpaceType) => s.sId)).toEqual([space.sId]);
+  });
+
+  it("returns a scoped pod once even though the key holds both of its groups", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const pod = await SpaceFactory.project(workspace);
+
+    // An admin key carries the pod's member *and* editor group, each with its own grant on the pod.
+    const res = await createKey(workspace, {
+      name: "pod-echo-key",
+      space_ids: [pod.sId],
+      role: "admin",
+    });
+    expect(res.status).toBe(201);
+
+    const { key } = await res.json();
+    expect(key.spaces.map((s: SpaceType) => s.sId)).toEqual([pod.sId]);
   });
 
   it("rejects scoping to an open space", async () => {

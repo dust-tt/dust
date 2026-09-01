@@ -40,7 +40,7 @@ app.get(
     const keys = await KeyResource.listNonSystemKeysByWorkspace(owner);
 
     return ctx.json({
-      keys: keys.map((k) => k.toJSON(user.id)),
+      keys: await KeyResource.toJSONWithSpaces(auth, keys, user.id),
     });
   }
 );
@@ -105,7 +105,7 @@ app.post(
 
     return ctx.json(
       {
-        key: keyRes.value.toJSON(user.id),
+        key: await keyRes.value.toJSONWithSpaces(auth, user.id),
       },
       201
     );
