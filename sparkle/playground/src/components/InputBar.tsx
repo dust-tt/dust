@@ -1,6 +1,8 @@
 import {
   ArrowUp,
   Attachment01,
+  Avatar,
+  BarHalf,
   Button,
   cn,
   File02,
@@ -10,15 +12,20 @@ import {
   Microphone01,
   Plus,
   Robot,
+  ShapesPlus,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
   Tool02,
+  VoicePicker,
   XClose,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { ContextUsageIndicator } from "./ContextUsageIndicator";
 
 import {
   NewCitation,
@@ -49,7 +56,24 @@ interface InputBarProps {
   variant?: "default" | "embedded";
   onInstructionInserted?: () => void;
   onClose?: () => void;
-  onSend?: () => void;
+  /** Receives the composer's text; the composer is cleared after it fires. */
+  onSend?: (text: string) => void;
+  /**
+   * "production" reproduces front's input bar: the `rounded-2xl
+   * bg-muted-background` box from `InputBar.tsx` and the toolbar row from
+   * `InputBarButtons.tsx` (agent pill, model picker, capabilities, attachment
+   * on the left; context-usage gauge, voice, round send on the right).
+   */
+  toolbarStyle?: "playground" | "production";
+  /** Agent pill shown in the production toolbar. */
+  agent?: { name: string; emoji?: string; backgroundColor?: string };
+  /** Renders the context-usage gauge in the production toolbar when set. */
+  contextUsagePercentage?: number;
+  /**
+   * Slot above the composer box, inside the input-bar wrapper. This is where
+   * production mounts the usage banner and the plan pill.
+   */
+  aboveComposer?: ReactNode;
 }
 
 export function InputBar({
@@ -61,8 +85,13 @@ export function InputBar({
   onInstructionInserted,
   onClose,
   onSend,
+  toolbarStyle = "playground",
+  agent,
+  contextUsagePercentage,
+  aboveComposer,
 }: InputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [text, setText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [dismissedContextAttachmentIds, setDismissedContextAttachmentIds] =
@@ -97,6 +126,37 @@ export function InputBar({
   const handleFocus = () => {
     setIsFocused(true);
   };
+
+  const handleSend = useCallback(() => {
+    onSend?.(text);
+    richTextAreaRef.current?.clear();
+    setText("");
+  }, [onSend, text]);
+
+  // Enter sends, Shift+Enter inserts a newline. The capture-phase handler runs
+  // before ProseMirror's own listener on the contenteditable, so the keystroke
+  // never reaches the editor. Skipped while a suggestion popup (mentions, the
+  // "/" menu) is open, since Enter picks an item there.
+  const handleKeyDownCapture = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!onSend || event.key !== "Enter" || event.shiftKey) {
+        return;
+      }
+      if (
+        !(event.target instanceof HTMLElement) ||
+        !event.target.closest(".tiptap")
+      ) {
+        return;
+      }
+      if (document.querySelector(".tippy-box")) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      handleSend();
+    },
+    [handleSend, onSend]
+  );
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -196,6 +256,24 @@ export function InputBar({
       (attachment) => !dismissedContextAttachmentIds.has(attachment.id)
     ) ?? [];
 
+  const isProductionToolbar = toolbarStyle === "production";
+
+  // front `InputBar.tsx`: the composer box itself.
+  const boxClassName = isProductionToolbar
+    ? cn(
+        "w-full rounded-2xl",
+        "bg-muted-background",
+        "border",
+        "border-border-dark",
+        "md:border-border-dark/50 md:has-[.tiptap:focus]:border-border-dark",
+        "has-[.tiptap:focus]:border-highlight-300"
+      )
+    : cn(
+        variant === "default" && "bg-primary-50/70 backdrop-blur-md",
+        variant === "embedded" && "bg-primary-50",
+        variant === "default" && (showFocusStyle ? "" : "border-border")
+      );
+
   return (
     <div
       ref={containerRef}
@@ -204,12 +282,8 @@ export function InputBar({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={cn(
-        variant === "default" && "bg-primary-50/70 backdrop-blur-md",
-        variant === "embedded" && "bg-primary-50",
-        variant === "default" && (showFocusStyle ? "" : "border-border"),
-        className
-      )}
+      onKeyDownCapture={handleKeyDownCapture}
+      className="flex w-full flex-col"
     >
       {onClose && (
         <Button
@@ -224,7 +298,8 @@ export function InputBar({
           }}
         />
       )}
-      <div className="flex w-full flex-col">
+      {aboveComposer}
+      <div className={cn("flex w-full flex-col", boxClassName, className)}>
         {(visibleContextAttachments.length > 0 || droppedFiles.length > 0) && (
           <NewCitationGrid className="pt-2 px-2 pb-0 w-full" justify="start">
             {visibleContextAttachments.map((attachment) => (
@@ -272,6 +347,7 @@ export function InputBar({
           ref={richTextAreaRef}
           placeholder={placeholder}
           onFocus={handleFocus}
+          onTextChange={setText}
           defaultValue={taskCommand ? "Let's start working on this task." : ""}
           variant="compact"
           topBar={
@@ -301,53 +377,132 @@ export function InputBar({
           showAskSidekickMenu={false}
           className="placeholder:text-muted-foreground"
         />
-        <div className="flex w-full gap-2 p-2 pl-4">
-          <Button
-            variant="outline"
-            icon={Plus}
-            size="sm"
-            tooltip="Attach a document"
-            className="md:hidden"
-          />
-          <div className="hidden gap-0 md:flex">
+        {isProductionToolbar ? (
+          // front `InputBarContainer.tsx` + `InputBarButtons.tsx`.
+          <div className="flex min-h-7 w-full items-center px-2 pb-2 pt-1.5">
+            <div className="flex items-center gap-1">
+              {agent ? (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Selected agent: ${agent.name}`}
+                  className={cn(
+                    "box-border inline-flex h-7 items-center gap-1.5 rounded-lg px-2",
+                    "heading-xs bg-muted-background border-border text-primary-900",
+                    "cursor-pointer transition-colors duration-200 hover:bg-hover"
+                  )}
+                >
+                  <Avatar
+                    size="xxs"
+                    emoji={agent.emoji}
+                    backgroundColor={agent.backgroundColor}
+                    name={agent.name}
+                  />
+                  <span className="grow truncate">{agent.name}</span>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost-secondary"
+                  size="sm"
+                  icon={Robot}
+                  label="Agent"
+                />
+              )}
+              <Button
+                className="px-2"
+                variant="ghost-secondary"
+                size="sm"
+                icon={BarHalf}
+                tooltip="Standard"
+              />
+              <Button
+                variant="ghost-secondary"
+                size="sm"
+                icon={ShapesPlus}
+                tooltip="Capabilities"
+              />
+              <Button
+                variant="ghost-secondary"
+                size="sm"
+                icon={Attachment01}
+                tooltip="Attach a document"
+              />
+            </div>
+            <div className="grow" />
+            <div className="flex items-center gap-1">
+              {contextUsagePercentage !== undefined && (
+                <ContextUsageIndicator
+                  buttonSize="sm"
+                  percentage={contextUsagePercentage}
+                />
+              )}
+              <VoicePicker
+                status="idle"
+                level={0}
+                elapsedSeconds={0}
+                onRecordStart={() => {}}
+                onRecordStop={() => {}}
+                size="sm"
+                showStopLabel
+              />
+              <Button
+                size="sm"
+                icon={ArrowUp}
+                variant="highlight"
+                className="rounded-full"
+                onClick={handleSend}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex w-full gap-2 p-2 pl-4">
             <Button
-              variant="ghost-secondary"
-              icon={Robot}
-              size="xs"
-              label="Dust"
-              tooltip="Mention an Agent"
-            />
-            <Button
-              variant="ghost-secondary"
-              icon={Attachment01}
-              size="xs"
+              variant="outline"
+              icon={Plus}
+              size="sm"
               tooltip="Attach a document"
+              className="md:hidden"
             />
-            <Button
-              variant="ghost-secondary"
-              icon={Tool02}
-              size="xs"
-              tooltip="Add functionality"
-            />
+            <div className="hidden gap-0 md:flex">
+              <Button
+                variant="ghost-secondary"
+                icon={Robot}
+                size="xs"
+                label="Dust"
+                tooltip="Mention an Agent"
+              />
+              <Button
+                variant="ghost-secondary"
+                icon={Attachment01}
+                size="xs"
+                tooltip="Attach a document"
+              />
+              <Button
+                variant="ghost-secondary"
+                icon={Tool02}
+                size="xs"
+                tooltip="Add functionality"
+              />
+            </div>
+            <div className="grow" />
+            <div className="flex items-center gap-2 md:gap-1">
+              <Button
+                variant="ghost-secondary"
+                icon={Microphone01}
+                size="xs"
+                isRounded
+              />
+              <Button
+                variant="highlight"
+                icon={ArrowUp}
+                size="xs"
+                tooltip="Send message"
+                isRounded
+                onClick={handleSend}
+              />
+            </div>
           </div>
-          <div className="grow" />
-          <div className="flex items-center gap-2 md:gap-1">
-            <Button
-              variant="ghost-secondary"
-              icon={Microphone01}
-              size="xs"
-              isRounded
-            />
-            <Button
-              variant="highlight"
-              icon={ArrowUp}
-              size="xs"
-              tooltip="Send message"
-              isRounded
-              onClick={onSend}
-            />
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Image preview dialog */}

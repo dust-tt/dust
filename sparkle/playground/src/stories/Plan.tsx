@@ -1,0 +1,703 @@
+import {
+  Button,
+  Chip,
+  ListSelect,
+  Markdown,
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@dust-tt/sparkle";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
+
+import {
+  ConversationSidePanel,
+  type SidePanelTab,
+} from "../components/ConversationSidePanel";
+import { ConversationTopBar } from "../components/ConversationTopBar";
+import {
+  AskUserQuestion,
+  type UserQuestion,
+  type UserQuestionAnswer,
+} from "../components/AskUserQuestion";
+import { InputBar } from "../components/InputBar";
+import { MessageNavigationPill } from "../components/MessageNavigationPill";
+import {
+  NewConversationActiveIndicator,
+  NewConversationAgentMessage,
+  NewConversationContainer,
+  NewConversationMessageGroup,
+  NewConversationUserMessage,
+} from "../components/NewConversationMessages";
+import { PlanPill } from "../components/PlanPill";
+import {
+  editPlan,
+  type PlanPresence,
+  planPanelDecision,
+} from "../components/planUtils";
+import { mockAgents, mockUsers } from "../data";
+
+/**
+ * Plan mode — production behaviour.
+ *
+ * How it actually works in front (see `front/components/assistant/conversation/
+ * plan_mode/` and `front/lib/resources/skill/code_defined/system/plan_mode.ts`):
+ *
+ *  - The plan is a markdown file, `plan.md`, with a `# title`, a `## Context`
+ *    section and a `## Tasks` checklist. The agent writes it with `create_plan`
+ *    and mutates it with `edit_plan` (one exact string replacement per call).
+ *    Markers: `- [ ]` open, `- [x]` done, `- [!]` blocked.
+ *  - It surfaces as a pill above the input bar (`PlanCard`) showing the title
+ *    and `done/total`. `[!]` counts toward total but not toward done, so blocked
+ *    work stays visible in the counter.
+ *  - The panel auto-opens the first time a plan appears (never on load, never on
+ *    mobile) and auto-closes when the plan is closed — see `planPanelDecision`.
+ *
+ * Two deliberate divergences from production, both from Figma:
+ *  - the approval question replaces the composer instead of sitting in the chat
+ *    (14800:126108), and task rows carry status badges instead of checkboxes
+ *    (14800:126251);
+ *  - `Credit usage` / `Files` / `Plan` live in the full-width top bar and become
+ *    the side panel's tab strip in place when it opens, so the panel slides open
+ *    underneath them (14800:125175 + 14797:120638). The plan has its own tab
+ *    rather than a panel of its own.
+ *  - **There is no plan-approval UI.** Plan mode has no approval tool: when the
+ *    agent needs sign-off it must call `ask_user_question` as the last thing in
+ *    the turn, which renders the standard `UserAnswerRequired` card. If the user
+ *    does not approve, the agent must stop and ask what to change.
+ *  - Exactly one active plan per conversation. `close_plan` retires it.
+ */
+
+const locutor = mockUsers[0]; // Emma Andersson
+const agent = mockAgents[11]; // StrategyPlanner 🎯
+
+const CONVERSATION_TITLE = "Q3 enterprise churn risk";
+
+const USER_REQUEST = `Go through every enterprise deal we closed in Q3, cross-check the account notes and the support history, and give me a churn-risk brief for each one.`;
+
+const PLAN_INTRO = `38 accounts and four sources — this is worth planning before I touch anything. I've written it up in \`plan.md\`.`;
+
+// What `create_plan` writes. Structure follows PLAN_MODE_SKELETON in front.
+const INITIAL_PLAN = `# Q3 enterprise churn-risk brief
+
+## Context
+Emma asked for a churn-risk brief on every enterprise deal closed in Q3 — 38 accounts, $6.2M ARR. The signals live in four places: Salesforce (deal data), Notion (account notes), Zendesk (support history) and the shared deal-room channels in Slack. Deliverable is one page per account: risk score, the signals behind it, and a recommended next step.
+
+## Tasks
+- [ ] List the Q3 enterprise deals from Salesforce (closed-won, above $50k ARR)
+- [ ] Read the Notion account page for each deal, keeping renewal dates and open commitments
+- [ ] Count Zendesk tickets per account since close date and flag escalations
+- [ ] Check the shared deal-room channels for stalled conversations
+- [ ] Write one brief per account: risk score, signals, recommended next step
+`;
+
+// Each `edit_plan` call: one exact string replacement, as in production.
+interface PlanEdit {
+  label: string;
+  oldString: string;
+  newString: string;
+  durationMs: number;
+}
+
+const PLAN_EDITS: PlanEdit[] = [
+  {
+    label: "listing the Q3 enterprise deals",
+    oldString:
+      "- [ ] List the Q3 enterprise deals from Salesforce (closed-won, above $50k ARR)",
+    newString:
+      "- [x] List the Q3 enterprise deals from Salesforce (closed-won, above $50k ARR) — 38 accounts, $6.2M ARR",
+    durationMs: 2000,
+  },
+  {
+    label: "reading the account notes",
+    oldString:
+      "- [ ] Read the Notion account page for each deal, keeping renewal dates and open commitments",
+    newString:
+      "- [x] Read the Notion account page for each deal, keeping renewal dates and open commitments — 38 pages read, 11 renewals inside 90 days",
+    durationMs: 3000,
+  },
+  {
+    label: "reviewing the support history",
+    oldString:
+      "- [ ] Count Zendesk tickets per account since close date and flag escalations",
+    newString:
+      "- [x] Count Zendesk tickets per account since close date and flag escalations — 412 tickets, 17 escalations",
+    durationMs: 2600,
+  },
+  {
+    // `[!]` — blocked. Counts toward total, not toward done.
+    label: "checking the deal-room channels",
+    oldString:
+      "- [ ] Check the shared deal-room channels for stalled conversations",
+    newString:
+      "- [!] Check the shared deal-room channels for stalled conversations — 9 channels quiet for 30+ days, 3 more are private and I have no access",
+    durationMs: 2200,
+  },
+  {
+    label: "writing the briefs",
+    oldString:
+      "- [ ] Write one brief per account: risk score, signals, recommended next step",
+    newString:
+      "- [x] Write one brief per account: risk score, signals, recommended next step — 38 briefs drafted",
+    durationMs: 3200,
+  },
+];
+
+const APPROVAL_QUESTION: UserQuestion = {
+  question: "Approve this plan?",
+  options: [
+    {
+      label: "Approve",
+      description: "Run the five tasks and report back.",
+    },
+    {
+      label: "Revise the plan",
+      description: "Tell me what to change before anything runs.",
+    },
+    {
+      label: "Drop the plan",
+      description: "Close plan.md and forget about it.",
+    },
+  ],
+  multiSelect: false,
+};
+
+const REVISION_QUESTION: UserQuestion = {
+  question: "What should I change before I start?",
+  options: [
+    {
+      label: "Narrow it to the 11 accounts renewing inside 90 days",
+      description: "Faster, and covers the renewals that are actually at risk.",
+    },
+    {
+      label: "Drop the Slack deal-room pass",
+      description: "Three of the channels are private anyway.",
+    },
+    {
+      label: "Proceed anyway without approval",
+      description: "Run the plan as drafted.",
+    },
+  ],
+  multiSelect: true,
+};
+
+const DECLINED_QUESTION: UserQuestion = {
+  question:
+    "I won't start without a decision. How do you want to handle the plan?",
+  options: [
+    { label: "Approve it as drafted" },
+    { label: "Revise it first" },
+    { label: "Drop the plan" },
+  ],
+  multiSelect: false,
+};
+
+const FINAL_SUMMARY = `**Churn-risk brief — Q3 enterprise cohort**
+
+- **High risk (6 accounts)** — Northwind, Bellamy Group, Kestrel Labs, Arden Health, Pallas, Vertiz. All six pair a support escalation with a deal room that has gone quiet.
+- **Watch (11 accounts)** — renewal inside 90 days, no exec sponsor contact since close.
+- **Healthy (21 accounts)** — no escalations, active usage, sponsor engaged.
+
+The six high-risk accounts are **$1.4M ARR** renewing before December. Recommended next step: sponsor check-in this week, starting with Northwind (renews Nov 12).
+
+One task is left blocked in the plan: three deal-room channels are private, so those accounts were scored on Salesforce, Notion and Zendesk signals only.`;
+
+// ---------------------------------------------------------------------------
+
+type Phase =
+  | "creating_plan"
+  | "awaiting_approval"
+  | "revising"
+  | "declined"
+  | "running"
+  | "done"
+  | "dropped";
+
+const CREATE_PLAN_MS = 2200;
+
+export default function PlanStory() {
+  const [runId, setRunId] = useState(0);
+  const [phase, setPhase] = useState<Phase>("creating_plan");
+  const [planContent, setPlanContent] = useState<string | null>(null);
+  const [appliedEdits, setAppliedEdits] = useState(0);
+  const [runningLabel, setRunningLabel] = useState<string | null>(null);
+  const [panel, setPanel] = useState<SidePanelTab | null>(null);
+  const [answerLog, setAnswerLog] = useState<string[]>([]);
+
+  const timers = useRef<number[]>([]);
+  const planPresenceRef = useRef<PlanPresence>("unknown");
+  const panelRef = useRef<ImperativePanelHandle | null>(null);
+
+  const clearTimers = useCallback(() => {
+    timers.current.forEach((id) => window.clearTimeout(id));
+    timers.current = [];
+  }, []);
+
+  const closePanel = useCallback(() => setPanel(null), []);
+  const openPlanTab = useCallback(() => setPanel("plan"), []);
+
+  /**
+   * Clicking a CTA opens the panel on that tab; clicking the active one again
+   * closes it. The CTAs are the panel's only open/close control now, so there is
+   * no X inside the panel.
+   */
+  const selectPanelTab = useCallback(
+    (tab: SidePanelTab) =>
+      setPanel((current) => (current === tab ? null : tab)),
+    []
+  );
+
+  /**
+   * The last non-null tab, kept for one collapse so the panel body stays mounted
+   * while the width animates out.
+   */
+  const [renderedPanel, setRenderedPanel] = useState<SidePanelTab | null>(null);
+  useEffect(() => {
+    if (panel) {
+      setRenderedPanel(panel);
+    }
+  }, [panel]);
+  /** The plan pill toggles the panel on the Plan tab. */
+  const togglePlanTab = useCallback(
+    () => setPanel((current) => (current === "plan" ? null : "plan")),
+    []
+  );
+
+  // The agent's first turn: create_plan, then ask for approval.
+  useEffect(() => {
+    clearTimers();
+    setPhase("creating_plan");
+    setPlanContent(null);
+    setAppliedEdits(0);
+    setRunningLabel(null);
+    setPanel(null);
+    setAnswerLog([]);
+    planPresenceRef.current = "unknown";
+
+    timers.current.push(
+      window.setTimeout(() => {
+        setPlanContent(INITIAL_PLAN);
+        setPhase("awaiting_approval");
+      }, CREATE_PLAN_MS)
+    );
+
+    return clearTimers;
+  }, [runId, clearTimers]);
+
+  // Single owner of the plan panel: open when the plan appears, close when it
+  // goes away — ported from front's `PlanCard`.
+  useEffect(() => {
+    const { next, action } = planPanelDecision({
+      isLoading: false,
+      hasContent: !!planContent,
+      isMobile: false,
+      isPanelOpen: panel === "plan",
+      prev: planPresenceRef.current,
+    });
+    planPresenceRef.current = next;
+    if (action === "open") {
+      openPlanTab();
+    } else if (action === "close") {
+      closePanel();
+    }
+  }, [planContent, panel, openPlanTab, closePanel]);
+
+  // Keep the resizable panel in sync with the panel state, like production.
+  useEffect(() => {
+    if (!panelRef.current) {
+      return;
+    }
+    if (panel) {
+      panelRef.current.expand(34);
+    } else {
+      panelRef.current.collapse();
+    }
+  }, [panel]);
+
+  const runPlan = useCallback(() => {
+    setPhase("running");
+
+    let elapsed = 0;
+    PLAN_EDITS.forEach((edit, index) => {
+      timers.current.push(
+        window.setTimeout(() => setRunningLabel(edit.label), elapsed)
+      );
+
+      elapsed += edit.durationMs;
+
+      timers.current.push(
+        window.setTimeout(() => {
+          setPlanContent((current) => {
+            if (!current) {
+              return current;
+            }
+            // edit_plan: exactly-once replacement, or the edit fails.
+            return editPlan(current, edit.oldString, edit.newString) ?? current;
+          });
+          setAppliedEdits(index + 1);
+          if (index === PLAN_EDITS.length - 1) {
+            setRunningLabel(null);
+            setPhase("done");
+          }
+        }, elapsed)
+      );
+    });
+  }, []);
+
+  const handleApprovalAnswer = useCallback(
+    (answer: UserQuestionAnswer) => {
+      const picked =
+        answer.customResponse ??
+        APPROVAL_QUESTION.options[answer.selectedOptions[0]]?.label ??
+        "";
+      setAnswerLog((log) => [...log, picked]);
+
+      if (picked === "Approve") {
+        runPlan();
+        return;
+      }
+      if (picked === "Drop the plan") {
+        setPlanContent(null);
+        setPhase("dropped");
+        return;
+      }
+      // Anything else — including free text — is not an approval: stop and ask.
+      setPhase("revising");
+    },
+    [runPlan]
+  );
+
+  const handleRevisionAnswer = useCallback(
+    (answer: UserQuestionAnswer) => {
+      const labels = answer.customResponse
+        ? [answer.customResponse]
+        : answer.selectedOptions.map(
+            (i) => REVISION_QUESTION.options[i]?.label ?? ""
+          );
+      setAnswerLog((log) => [...log, labels.join(" · ")]);
+
+      if (labels.includes("Proceed anyway without approval")) {
+        runPlan();
+        return;
+      }
+      // A revision: production edits the plan and asks for approval again.
+      setPhase("awaiting_approval");
+    },
+    [runPlan]
+  );
+
+  const handleDeclinedAnswer = useCallback(
+    (answer: UserQuestionAnswer) => {
+      const picked =
+        answer.customResponse ??
+        DECLINED_QUESTION.options[answer.selectedOptions[0]]?.label ??
+        "";
+      setAnswerLog((log) => [...log, picked]);
+
+      if (picked === "Approve it as drafted") {
+        runPlan();
+      } else if (picked === "Drop the plan") {
+        setPlanContent(null);
+        setPhase("dropped");
+      } else {
+        setPhase("revising");
+      }
+    },
+    [runPlan]
+  );
+
+  // The only way to replay the scenario: type "restart" and send it.
+  const handleSend = useCallback((message: string) => {
+    if (message.trim().toLowerCase() === "restart") {
+      setRunId((n) => n + 1);
+    }
+  }, []);
+
+  const closePlan = useCallback(() => {
+    clearTimers();
+    setPlanContent(null);
+    setRunningLabel(null);
+    setPhase("dropped");
+  }, [clearTimers]);
+
+  // Which question, if any, currently owns the composer slot.
+  const pendingQuestion = useMemo(() => {
+    switch (phase) {
+      case "awaiting_approval":
+        return {
+          actionId: `approval-${answerLog.length}`,
+          question: APPROVAL_QUESTION,
+          onAnswer: handleApprovalAnswer,
+          onSkip: () => setPhase("declined"),
+        };
+      case "declined":
+        return {
+          actionId: `declined-${answerLog.length}`,
+          question: DECLINED_QUESTION,
+          onAnswer: handleDeclinedAnswer,
+          // Re-asking: bump the log so the card resets rather than staying
+          // stuck in its submitting state.
+          onSkip: () => setAnswerLog((log) => [...log, "skipped"]),
+        };
+      case "revising":
+        return {
+          actionId: `revision-${answerLog.length}`,
+          question: REVISION_QUESTION,
+          onAnswer: handleRevisionAnswer,
+          onSkip: () => setPhase("declined"),
+        };
+      default:
+        return null;
+    }
+  }, [
+    phase,
+    answerLog.length,
+    handleApprovalAnswer,
+    handleDeclinedAnswer,
+    handleRevisionAnswer,
+  ]);
+
+  const agentAvatar = useMemo(
+    () => ({ emoji: agent.emoji, backgroundColor: agent.backgroundColor }),
+    []
+  );
+
+  return (
+    <div className="flex h-screen w-full flex-col bg-background">
+      {/* Spans both columns: the CTAs sit above the panel column, so the panel
+          opens under them and they become its tab strip in place. */}
+      <ConversationTopBar
+        title={CONVERSATION_TITLE}
+        activeTab={panel}
+        onSelectTab={selectPanelTab}
+      />
+
+      <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1">
+        <ResizablePanel minSize={30}>
+          <div className="flex h-full flex-col overflow-hidden">
+            <div className="relative flex flex-1 flex-col overflow-hidden">
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                <NewConversationContainer>
+                  <div className="h-6 shrink-0" />
+
+                  <NewConversationMessageGroup
+                    type="locutor"
+                    name={locutor.fullName}
+                    timestamp="09:14"
+                  >
+                    <NewConversationUserMessage isLastMessage>
+                      {USER_REQUEST}
+                    </NewConversationUserMessage>
+                  </NewConversationMessageGroup>
+
+                  {phase === "creating_plan" ? (
+                    <NewConversationActiveIndicator
+                      type="agent"
+                      name={agent.name}
+                      action="creating plan"
+                      avatar={agentAvatar}
+                    />
+                  ) : (
+                    <NewConversationMessageGroup
+                      type="agent"
+                      name={agent.name}
+                      timestamp="09:14"
+                      avatar={agentAvatar}
+                    >
+                      <NewConversationAgentMessage isLastMessage>
+                        <div className="flex flex-col gap-3">
+                          <ToolRow label="Plan created" />
+                          <span>{PLAN_INTRO}</span>
+                        </div>
+                      </NewConversationAgentMessage>
+                    </NewConversationMessageGroup>
+                  )}
+
+                  {/* The question itself is NOT in the chat — it replaces the
+                      composer at the bottom (Figma 14800:126108). Only the
+                      agent's accompanying line stays in the thread. */}
+                  {phase === "declined" && (
+                    <NewConversationMessageGroup
+                      type="agent"
+                      name={agent.name}
+                      timestamp="09:15"
+                      avatar={agentAvatar}
+                    >
+                      <NewConversationAgentMessage isLastMessage>
+                        You skipped the question, so nothing has run.
+                      </NewConversationAgentMessage>
+                    </NewConversationMessageGroup>
+                  )}
+
+                  {phase === "revising" && (
+                    <NewConversationMessageGroup
+                      type="agent"
+                      name={agent.name}
+                      timestamp="09:16"
+                      avatar={agentAvatar}
+                    >
+                      <NewConversationAgentMessage isLastMessage>
+                        Understood — I haven't started. Pick what to change and
+                        I'll redraft <code>plan.md</code>, then ask again.
+                      </NewConversationAgentMessage>
+                    </NewConversationMessageGroup>
+                  )}
+
+                  {(phase === "running" || phase === "done") && (
+                    <NewConversationMessageGroup
+                      type="agent"
+                      name={agent.name}
+                      timestamp="09:16"
+                      avatar={agentAvatar}
+                      completionStatus={
+                        phase === "done" ? "Completed in 4 min" : undefined
+                      }
+                    >
+                      <NewConversationAgentMessage isLastMessage>
+                        <div className="flex flex-col gap-3">
+                          <span>
+                            Approved — starting now. I'll tick tasks off in{" "}
+                            <code>plan.md</code> as I go.
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {PLAN_EDITS.slice(0, appliedEdits).map((edit) => (
+                              <ToolRow key={edit.label} label="Plan updated" />
+                            ))}
+                          </div>
+                        </div>
+                      </NewConversationAgentMessage>
+                    </NewConversationMessageGroup>
+                  )}
+
+                  {phase === "running" && runningLabel && (
+                    <NewConversationActiveIndicator
+                      type="agent"
+                      name={agent.name}
+                      action={runningLabel}
+                      avatar={agentAvatar}
+                    />
+                  )}
+
+                  {phase === "done" && (
+                    <NewConversationMessageGroup
+                      type="agent"
+                      name={agent.name}
+                      timestamp="09:20"
+                      avatar={agentAvatar}
+                      completionStatus="Completed in 4 min"
+                    >
+                      <NewConversationAgentMessage isLastMessage>
+                        <Markdown content={FINAL_SUMMARY} />
+                      </NewConversationAgentMessage>
+                    </NewConversationMessageGroup>
+                  )}
+
+                  {phase === "dropped" && (
+                    <NewConversationMessageGroup
+                      type="agent"
+                      name={agent.name}
+                      timestamp="09:16"
+                      avatar={agentAvatar}
+                    >
+                      <NewConversationAgentMessage isLastMessage>
+                        <div className="flex flex-col gap-3">
+                          <ToolRow label="Plan closed" />
+                          <span>
+                            Dropped the plan — nothing ran and nothing was
+                            written. Say the word and I'll draft a new one.
+                          </span>
+                        </div>
+                      </NewConversationAgentMessage>
+                    </NewConversationMessageGroup>
+                  )}
+
+                  <div className="h-6 shrink-0" />
+                </NewConversationContainer>
+              </div>
+
+              {/* front: `AgentInputBar` is a sticky footer under the message
+                  column, not a floating overlay. */}
+              {/* Width matches NewConversationContainer so the composer lines
+                  up with the message column. */}
+              <div className="flex w-full justify-center">
+                <div className="relative z-20 flex w-full max-w-4xl flex-col px-4 pt-4 pb-6">
+                  <div className="flex w-full justify-center gap-2">
+                    <MessageNavigationPill />
+                  </div>
+                  {pendingQuestion ? (
+                    <AskUserQuestion
+                      actionId={pendingQuestion.actionId}
+                      question={pendingQuestion.question}
+                      onAnswer={pendingQuestion.onAnswer}
+                      onSkip={pendingQuestion.onSkip}
+                    />
+                  ) : (
+                    <InputBar
+                      toolbarStyle="production"
+                      agent={{
+                        name: agent.name,
+                        emoji: agent.emoji,
+                        backgroundColor: agent.backgroundColor,
+                      }}
+                      contextUsagePercentage={62}
+                      onSend={handleSend}
+                      aboveComposer={
+                        <PlanPill
+                          content={planContent}
+                          onToggle={togglePlanTab}
+                          onClose={closePlan}
+                        />
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle
+          withHandle={!!panel}
+          disabled={!panel}
+          className="z-50"
+        />
+
+        <ResizablePanel
+          ref={panelRef}
+          minSize={20}
+          defaultSize={0}
+          collapsible
+          collapsedSize={0}
+          // Production's transition (ConversationSidePanelContainer): the panel's
+          // flex-grow animates, and overflow-hidden + min-w-0 keep the retained
+          // content from pushing the group around while it is collapsed.
+          className="flex-0 min-w-0 overflow-hidden bg-panel-background transition-all duration-300 ease-out"
+        >
+          {/* Rendered from the retained state, so the content does not unmount
+              mid-collapse and pop out of the transition. */}
+          {renderedPanel && (
+            <ConversationSidePanel
+              tab={renderedPanel}
+              onTabChange={setPanel}
+              creditsUsage={{
+                count: 8420,
+                limit: 10000,
+                timeframe: "this month",
+              }}
+              planContent={planContent}
+              isPlanRunning={phase === "running"}
+            />
+          )}
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/** The `create_plan` / `edit_plan` / `close_plan` tool rows, using the exact
+ * `displayLabels` from front's `PLAN_MODE_TOOLS_METADATA`. */
+function ToolRow({ label }: { label: string }) {
+  return <Chip size="mini" icon={ListSelect} label={label} />;
+}
