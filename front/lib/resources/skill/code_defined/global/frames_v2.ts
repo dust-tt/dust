@@ -178,7 +178,7 @@ schemas once in that folder and import them into each function that uses them. P
 each entry point and its relative imports from one source snapshot. Editing any source or helper
 changes nothing for viewers until the whole Frame is published again.
 
-\`zod\`, \`drizzle-orm\`, and \`@dust/pod\` are available to function source. Other npm packages are
+\`zod\`, \`drizzle-orm\`, and \`@dust/sandbox\` are available to function source. Other npm packages are
 not guaranteed at build time.
 
 ## Persisting state in a Frame database
@@ -208,7 +208,7 @@ export const comments = sqliteTable(
 );
 
 // functions/post-comment.ts
-import { db } from "@dust/pod";
+import { db } from "@dust/sandbox";
 import { comments } from "../databases/comments.db.ts";
 
 const inserted = db("comments")
@@ -278,7 +278,7 @@ The \`schema.userIdentity\` policy decides whether the function may run:
 Frame UI calls are available only to authenticated members of the owning workspace; guest or link
 viewers must get a typed authorization error. A function policy can impose a stricter requirement.
 
-Use \`currentUser()\` from \`@dust/pod\` for the trusted caller. It returns
+Use \`currentUser()\` from \`@dust/sandbox\` for the trusted caller. It returns
 \`{ sId, firstName, lastName, fullName, image, isPodMember, isPodEditor }\`, or \`null\` under the
 optional policy when there is no user. Never accept a caller \`userId\` as function input: the caller
 can forge it. The frontend's \`useUserIdentity\` hook is for presentation only; authorization belongs
