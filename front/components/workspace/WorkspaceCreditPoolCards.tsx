@@ -1,7 +1,6 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatCredits } from "@app/lib/client/credits";
 import { AlertCircle, ContentMessage, Page, Spinner } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
@@ -20,7 +19,6 @@ interface WorkspaceCreditPoolSectionProps {
   showPoolCard: boolean;
   isVisible: boolean;
   totalRemainingCredits: number;
-  poolSecondaryContent?: ReactNode;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -28,7 +26,6 @@ export function WorkspaceCreditPoolSection({
   showPoolCard,
   isVisible,
   totalRemainingCredits,
-  poolSecondaryContent,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -51,16 +48,13 @@ export function WorkspaceCreditPoolSection({
           <Spinner />
         </div>
       ) : (
-        <>
-          {showPoolCard && (
-            <SummaryCard
-              label="Remaining credits pool"
-              value={formatCredits(totalRemainingCredits)}
-              hint={null}
-            />
-          )}
-          {poolSecondaryContent}
-        </>
+        showPoolCard && (
+          <SummaryCard
+            label="Remaining credits pool"
+            value={formatCredits(totalRemainingCredits)}
+            hint={null}
+          />
+        )
       )}
     </Page.Vertical>
   );

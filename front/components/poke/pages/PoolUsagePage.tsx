@@ -11,7 +11,6 @@ import {
 } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
 import { expandMaxTierName } from "@app/lib/client/model_tiers";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
@@ -74,7 +73,6 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
 
   const totalRemainingCredits = awuPoolSummary?.totalRemainingCredits ?? 0;
   const totalActiveCredits = awuPoolSummary?.totalActiveCredits ?? 0;
-  const overageCredits = awuPoolSummary?.overageCredits ?? null;
   const hasPool = totalActiveCredits > 0;
 
   return (
@@ -86,14 +84,6 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
       showPoolCard={hasPool}
       isVisible={hasPool}
       totalRemainingCredits={totalRemainingCredits}
-      poolSecondaryContent={
-        overageCredits !== null &&
-        overageCredits > 0 && (
-          <span className="copy-sm text-muted-foreground">
-            {formatCredits(overageCredits)} overage credits
-          </span>
-        )
-      }
     />
   );
 }
