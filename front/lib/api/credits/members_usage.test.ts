@@ -1,9 +1,20 @@
-import { fetchSeatDataForMembersTable } from "@app/lib/api/credits/members_usage";
+import {
+  fetchConsumedAwuCreditsByApiKeyName,
+  fetchSeatDataForMembersTable,
+} from "@app/lib/api/credits/members_usage";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import {
   buildSeatDataByUserId,
   getCachedSeatDataByUserId,
 } from "@app/lib/metronome/seats";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { Ok } from "@app/types/shared/result";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
+  const mod = await orig();
+  return { ...mod, searchConsumptionAnalytics: vi.fn() };
+});
 
 vi.mock("@app/lib/metronome/seats", async () => {
   const actual = await vi.importActual<
@@ -14,6 +25,76 @@ vi.mock("@app/lib/metronome/seats", async () => {
     getCachedSeatDataByUserId: vi.fn(),
     buildSeatDataByUserId: vi.fn(),
   };
+});
+
+function esResponse(aggregations: unknown) {
+  return new Ok({ aggregations }) as Awaited<
+    ReturnType<typeof searchConsumptionAnalytics>
+  >;
+}
+
+describe("fetchConsumedAwuCreditsByApiKeyName", () => {
+  afterEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("sums consumption-index microcredits by API key name for the billing cycle", async () => {
+    const workspace = await WorkspaceFactory.creditPriced();
+    const cycle = {
+      cycleStart: new Date("2026-08-01T00:00:00.000Z"),
+      cycleEnd: new Date("2026-09-01T00:00:00.000Z"),
+    };
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({
+        by_api_key_name: {
+          buckets: [
+            { key: "Production", credits: { value: 2_000_000 } },
+            { key: "Automation", credits: { value: 3_000_000 } },
+          ],
+        },
+      })
+    );
+
+    const result = await fetchConsumedAwuCreditsByApiKeyName({
+      workspace,
+      apiKeyNames: ["Production", "Automation"],
+      cycle,
+    });
+
+    expect(result).toEqual(
+      new Map([
+        ["Production", 2],
+        ["Automation", 3],
+      ])
+    );
+    expect(searchConsumptionAnalytics).toHaveBeenCalledWith(
+      {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspace.sId } },
+            { terms: { api_key_name: ["Production", "Automation"] } },
+            {
+              range: {
+                completed_at: {
+                  gte: cycle.cycleStart.toISOString(),
+                  lte: cycle.cycleEnd.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        aggregations: {
+          by_api_key_name: {
+            terms: { field: "api_key_name", size: 2 },
+            aggs: { credits: { sum: { field: "credit_micro" } } },
+          },
+        },
+        size: 0,
+      }
+    );
+  });
 });
 
 // Regression tests for the Metronome 429 storm of 2026-08: a failing cached
