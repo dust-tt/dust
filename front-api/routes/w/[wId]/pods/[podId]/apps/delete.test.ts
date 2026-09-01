@@ -157,12 +157,14 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix", () => {
       command.includes("/bin/rm -f --")
     );
     expect(removeCommand).toBeDefined();
-    expect(removeCommand).toContain("/pod-state/databases/tasklist__tasks.db");
     expect(removeCommand).toContain(
-      "/pod-state/databases/tasklist__tasks.db-wal"
+      "/sandbox-state/databases/tasklist__tasks.db"
     );
     expect(removeCommand).toContain(
-      "/pod-state/databases/tasklist__tasks.db-shm"
+      "/sandbox-state/databases/tasklist__tasks.db-wal"
+    );
+    expect(removeCommand).toContain(
+      "/sandbox-state/databases/tasklist__tasks.db-shm"
     );
   });
 
