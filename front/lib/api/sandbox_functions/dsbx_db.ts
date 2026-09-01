@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { isValidPodDatabaseName } from "@app/lib/api/sandbox/db";
+import { isValidSandboxDatabaseName } from "@app/lib/api/sandbox/db";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import {
@@ -272,7 +272,7 @@ async function reconcileDatabaseOnSandbox(
         created: result.value.created,
         statements: result.value.statements,
       },
-      "Pod database reconciled: applied DDL"
+      "Sandbox database reconciled: applied DDL"
     );
   }
   return result;
@@ -378,7 +378,7 @@ const RM_BIN_PATH = "/bin/rm";
  * `wal_autocheckpoint=0`, so recent rows can live entirely in `-wal`: leaving it behind would let a
  * later reconcile of the same name recover data this delete was meant to destroy.
  */
-const POD_DATABASE_SIDECAR_SUFFIXES = ["-wal", "-shm"];
+const SANDBOX_DATABASE_SIDECAR_SUFFIXES = ["-wal", "-shm"];
 
 // `rm` prints nothing on success, so the command appends the envelope itself. Under `set -euo
 // pipefail` a failed `rm` never reaches the echo, leaving no envelope for parseDbEnvelope to find —
@@ -389,7 +389,7 @@ const deleteEnvelopeSchema = z.union([
 ]);
 
 /**
- * Remove a live pod database and its SQLite sidecars from the databases directory.
+ * Remove a live sandbox database and its SQLite sidecars from the databases directory.
  *
  * Deliberately NOT a dsbx subcommand: dsbx is the agent-facing CLI, and a destructive database
  * primitive there would be discoverable from inside the sandbox. Front builds the command instead, so
@@ -410,11 +410,11 @@ export async function deleteDatabaseOnSandbox(
 ): Promise<Result<{ sandbox: SandboxResource }, SandboxFunctionError>> {
   // The name contract (`^[a-z][a-z0-9_]{0,63}$`) admits no separator or dot, so a validated name
   // cannot escape the databases directory. The same guard runs on the replica path.
-  if (!isValidPodDatabaseName(database)) {
+  if (!isValidSandboxDatabaseName(database)) {
     return new Err(
       new SandboxFunctionError(
         "internal",
-        `Invalid pod database name: '${database}'.`
+        `Invalid sandbox database name: '${database}'.`
       )
     );
   }
@@ -424,7 +424,7 @@ export async function deleteDatabaseOnSandbox(
   // workload-writable databases dir cannot make this reach a foreign file.
   const paths = [
     dbPath,
-    ...POD_DATABASE_SIDECAR_SUFFIXES.map((suffix) => `${dbPath}${suffix}`),
+    ...SANDBOX_DATABASE_SIDECAR_SUFFIXES.map((suffix) => `${dbPath}${suffix}`),
   ].map((path) => shellEscape(path));
 
   const result = await execDbCommand(auth, space, {
@@ -435,7 +435,7 @@ export async function deleteDatabaseOnSandbox(
       `echo '{"ok":true}'`,
     ].join("\n"),
     schema: deleteEnvelopeSchema,
-    what: `remove pod database ${database}`,
+    what: `remove sandbox database ${database}`,
   });
   if (result.isErr()) {
     return result;
@@ -449,7 +449,7 @@ export async function deleteDatabaseOnSandbox(
         podId: space.sId,
         database,
       },
-      "Pod database deleted: removed live files"
+      "Sandbox database deleted: removed live files"
     );
     return new Ok({ sandbox });
   }
