@@ -33,11 +33,6 @@ export const FEEDBACK_EXPORT_HEADERS: (keyof FeedbackExportRow)[] = [
   "dismissed",
 ];
 
-/**
- * Feedback (thumb, content, dismissed) lives entirely in Postgres — it was
- * never in the consumption index, so this reads straight from
- * AgentMessageFeedbackResource instead of Elasticsearch.
- */
 export async function fetchFeedbackExportRows({
   owner,
   startDate,
@@ -56,9 +51,6 @@ export async function fetchFeedbackExportRows({
     .startOf("day")
     .toDate();
 
-  // Note: getFeedbackUsageDataForWorkspace filters out feedback whose author
-  // user record can no longer be resolved (e.g. deleted user), so those rows
-  // are silently excluded from the export.
   const feedbacks =
     await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
       startDate: startInstant,
