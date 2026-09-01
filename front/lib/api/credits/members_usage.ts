@@ -752,26 +752,26 @@ export async function fetchSeatDataForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId) {
     return new Map();
   }
-  try {
-    const seatData = await getCachedSeatDataByUserId({
-      metronomeCustomerId,
-      contractId: metronomeContractId,
-    });
-    // null: another process holds the fetch lock (skipIfLocked). Degrade
-    // rather than piling a duplicate Metronome fan-out on top.
-    if (!seatData) {
-      return new Map();
-    }
-    return new Map(Object.entries(seatData));
-  } catch (err) {
+  const seatDataResult = await getCachedSeatDataByUserId({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+  });
+  if (seatDataResult.isErr()) {
     // No uncached fallback: a failing loader means Metronome is already under
     // pressure, and refetching would amplify it (see the 429 storm of 2026-08).
     logger.warn(
-      { err: normalizeError(err), metronomeCustomerId },
+      { err: seatDataResult.error, metronomeCustomerId },
       "[MembersUsage] Failed to read cached seat data, degrading to empty map"
     );
     return new Map();
   }
+  const seatData = seatDataResult.value;
+  // null: another process holds the fetch lock (skipIfLocked). Degrade
+  // rather than piling a duplicate Metronome fan-out on top.
+  if (!seatData) {
+    return new Map();
+  }
+  return new Map(Object.entries(seatData));
 }
 
 // Live per-seat AWU balance remaining for paid (seat-managed) seats, keyed by
@@ -793,20 +793,19 @@ async function fetchSeatBalancesForMembersTable({
     return new Map();
   }
   const balanceByUserId = new Map<string, number>();
-  let balances;
-  try {
-    balances = await getCachedSeatBalances({
-      metronomeCustomerId,
-      metronomeContractId,
-      seatIds: userIds,
-    });
-  } catch (err) {
+  const balancesResult = await getCachedSeatBalances({
+    metronomeCustomerId,
+    metronomeContractId,
+    seatIds: userIds,
+  });
+  if (balancesResult.isErr()) {
     logger.warn(
-      { err: normalizeError(err), metronomeCustomerId },
+      { err: balancesResult.error, metronomeCustomerId },
       "[MembersUsage] Failed to fetch seat balances, degrading to empty map"
     );
     return balanceByUserId;
   }
+  const balances = balancesResult.value;
   if (balances === null) {
     return balanceByUserId;
   }

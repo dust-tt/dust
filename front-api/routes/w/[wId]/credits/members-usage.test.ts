@@ -35,6 +35,7 @@ const MEMBER_USAGE = {
   seatType: "max" as const,
   seatUsageTarget: null,
   seatBalanceAwu: 100,
+  seatUsageTarget: null,
   spendLimitAlertId: null,
   spendLimitAwuCredits: null,
   rateLimiterSpendAwuCredits: null,
