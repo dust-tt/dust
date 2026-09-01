@@ -14,8 +14,10 @@ import type { CreationOptional } from "sequelize";
  * `SubscriptionResource.determinePlanFromSubscription`), so every consumer of
  * `PlanType.limits` — enforcement and UI alike — sees the effective value.
  *
- * `null` means "not overridden, use the plan value". `-1` keeps its plan meaning
- * (unlimited), so raising a workspace to unlimited is expressible.
+ * `null` means "not overridden, use the plan value". For numeric limits `-1`
+ * keeps its plan meaning (unlimited), so raising a workspace to unlimited is
+ * expressible. Boolean columns are tri-state for the same reason: `true` grants
+ * a feature the plan does not include, `false` denies one it does.
  *
  * Columns are named exactly like their `PlanModel` counterparts so that the
  * merge in `applyPlanLimitOverrides` stays mechanical.
@@ -30,6 +32,9 @@ export class WorkspacePlanLimitOverrideModel extends WorkspaceAwareModel<Workspa
   declare maxVaultsInWorkspace: CreationOptional<number | null>;
   declare maxDataSourcesCount: CreationOptional<number | null>;
   declare maxConnectionsCount: CreationOptional<number | null>;
+
+  declare isSSOAllowed: CreationOptional<boolean | null>;
+  declare isSCIMAllowed: CreationOptional<boolean | null>;
 }
 
 WorkspacePlanLimitOverrideModel.init(
@@ -73,6 +78,16 @@ WorkspacePlanLimitOverrideModel.init(
     },
     maxConnectionsCount: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    isSSOAllowed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    isSCIMAllowed: {
+      type: DataTypes.BOOLEAN,
       allowNull: true,
       defaultValue: null,
     },
