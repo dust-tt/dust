@@ -52,6 +52,7 @@ import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sand
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import {
   SandboxModel,
   SandboxOwnerModel,
@@ -62,6 +63,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 import { encrypt } from "@app/types/shared/utils/encryption";
@@ -479,6 +481,74 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping", () =>
       }),
     ]);
     expect([linkCount, sandboxCount]).toEqual([0, 0]);
+  });
+
+  it("rolls back sandbox rows when the lease is lost before commit", async () => {
+    const sandbox = await SandboxFactory.create(
+      authenticator,
+      conversationResource.toJSON()
+    );
+    const workspaceModelId = authenticator.getNonNullableWorkspace().id;
+    const leaseError = new Error("lease lost");
+    let leaseChecks = 0;
+    const parentTransaction =
+      getNamespace("test-namespace")?.get("transaction");
+    expect(parentTransaction).toBeDefined();
+
+    await expect(
+      frontSequelize.transaction(
+        { transaction: parentTransaction },
+        async () => {
+          const result = await SandboxResource.deleteByOwner(
+            authenticator,
+            {
+              lockKey: conversationResource.sId,
+              fetchSandbox: () =>
+                ConversationSandboxAdapter.fetchSandbox(
+                  authenticator,
+                  conversationResource.toJSON()
+                ),
+              deleteSandbox: async (sandboxToDelete, transaction) => {
+                await SandboxOwnerModel.destroy({
+                  where: {
+                    conversationId: conversationResource.id,
+                    sandboxId: sandboxToDelete.id,
+                    workspaceId: workspaceModelId,
+                  },
+                  transaction,
+                });
+              },
+            },
+            {
+              beforeSandboxCleanup: () => {
+                leaseChecks += 1;
+                return leaseChecks === 3
+                  ? new Err(leaseError)
+                  : new Ok(undefined);
+              },
+            }
+          );
+          throw result.isErr()
+            ? result.error
+            : new Error("Expected the sandbox deletion lease to be lost.");
+        }
+      )
+    ).rejects.toBe(leaseError);
+
+    const [linkCount, sandboxCount] = await Promise.all([
+      SandboxOwnerModel.count({
+        where: {
+          conversationId: conversationResource.id,
+          sandboxId: sandbox.id,
+          workspaceId: workspaceModelId,
+        },
+      }),
+      SandboxModel.count({
+        where: { id: sandbox.id, workspaceId: workspaceModelId },
+      }),
+    ]);
+    expect(leaseChecks).toBe(3);
+    expect([linkCount, sandboxCount]).toEqual([1, 1]);
   });
 });
 
