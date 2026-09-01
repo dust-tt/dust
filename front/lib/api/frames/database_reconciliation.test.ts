@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import { getFrameSourceLockName } from "@app/lib/api/frames/operation_lock";
 import {
   computeFrameSourcePathSetSha256,
   FRAME_SOURCE_STAGING_ROOT,
@@ -9,9 +10,11 @@ import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { reconcileDatabaseOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { LockLeaseLostError } from "@app/lib/lock";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { makeAlwaysHeldLockLease } from "@app/tests/utils/LockLeaseFactory";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
@@ -126,6 +129,7 @@ describe("reconcileFramePublicationDatabases", () => {
         name: "Static",
         description: "Static Frame.",
       }),
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: sourceFiles.slice(0, 1),
     });
 
@@ -139,6 +143,7 @@ describe("reconcileFramePublicationDatabases", () => {
     const result = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
@@ -170,6 +175,38 @@ describe("reconcileFramePublicationDatabases", () => {
     );
   });
 
+  it("stops before the second database when the source lease is lost", async () => {
+    const { auth, frame } = await setup();
+    const leaseError = new LockLeaseLostError(
+      getFrameSourceLockName(frame.sId)
+    );
+    const sourceLease = {
+      check: vi
+        .fn()
+        .mockReturnValueOnce(new Ok(undefined))
+        .mockReturnValueOnce(new Err(leaseError)),
+    };
+
+    const result = await reconcileFramePublicationDatabases(auth, {
+      frame,
+      manifest: FrameManifestSchema.parse({
+        version: 1,
+        name: "Tasks",
+        description: "Track tasks.",
+        databases: [
+          { name: "tasks", schema: "databases/tasks.db.ts" },
+          { name: "archive", schema: "databases/tasks.db.ts" },
+        ],
+      }),
+      sourceLease,
+      sourceFiles,
+    });
+
+    expect(result.isErr() && result.error).toEqual(leaseError);
+    expect(reconcileDatabaseOnReadySandbox).toHaveBeenCalledOnce();
+    expect(sourceLease.check).toHaveBeenCalledTimes(2);
+  });
+
   it("returns a reconciliation error and still removes the staged source", async () => {
     const { auth, frame, sandbox } = await setup();
     vi.mocked(reconcileDatabaseOnReadySandbox).mockResolvedValueOnce(
@@ -184,10 +221,13 @@ describe("reconcileFramePublicationDatabases", () => {
     const result = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
-    expect(result.isErr() && result.error.code).toBe("reconcile_blocked");
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "reconcile_blocked",
+    });
     expect(sandbox.execRoot).toHaveBeenCalledTimes(3);
   });
 
@@ -200,10 +240,11 @@ describe("reconcileFramePublicationDatabases", () => {
     const result = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
-    expect(result.isErr() && result.error.code).toBe("internal");
+    expect(result.isErr() && result.error).toMatchObject({ code: "internal" });
     expect(reconcileDatabaseOnReadySandbox).not.toHaveBeenCalled();
     expect(sandbox.execRoot).toHaveBeenCalledTimes(3);
   });
@@ -227,6 +268,7 @@ describe("reconcileFramePublicationDatabases", () => {
     const result = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
@@ -260,6 +302,7 @@ describe("reconcileFramePublicationDatabases", () => {
     const result = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 
@@ -289,6 +332,7 @@ describe("reconcileFramePublicationDatabases", () => {
     const result = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
     });
 

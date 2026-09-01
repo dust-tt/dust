@@ -527,8 +527,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     owner: SandboxDeleteOwner,
     {
       afterSandboxCleanup,
+      beforeSandboxCleanup,
     }: {
       afterSandboxCleanup?: () => Promise<Result<undefined, Error>>;
+      beforeSandboxCleanup?: () => Result<void, Error>;
     } = {}
   ): Promise<Result<undefined, Error>> {
     return this.withLifecycleLockWithOptionalProvider(
@@ -543,6 +545,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         if (sandbox.status !== "deleted") {
+          const heldBeforeProviderCleanup = beforeSandboxCleanup?.();
+          if (heldBeforeProviderCleanup?.isErr()) {
+            return heldBeforeProviderCleanup;
+          }
           const tracingOpts = {
             workspaceId: auth.getNonNullableWorkspace().sId,
           };
@@ -561,16 +567,34 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           }
         }
 
-        await withTransaction(async (transaction) => {
-          await owner.deleteSandbox(sandbox, transaction);
-          await SandboxModel.destroy({
-            where: {
-              id: sandbox.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-            },
-            transaction,
+        const heldBeforeDatabaseCleanup = beforeSandboxCleanup?.();
+        if (heldBeforeDatabaseCleanup?.isErr()) {
+          return heldBeforeDatabaseCleanup;
+        }
+        let leaseError: Error | undefined;
+        try {
+          await withTransaction(async (transaction) => {
+            await owner.deleteSandbox(sandbox, transaction);
+            await SandboxModel.destroy({
+              where: {
+                id: sandbox.id,
+                workspaceId: auth.getNonNullableWorkspace().id,
+              },
+              transaction,
+            });
+
+            const heldBeforeDatabaseCommit = beforeSandboxCleanup?.();
+            if (heldBeforeDatabaseCommit?.isErr()) {
+              leaseError = heldBeforeDatabaseCommit.error;
+              throw leaseError;
+            }
           });
-        });
+        } catch (error) {
+          if (leaseError && error === leaseError) {
+            return new Err(leaseError);
+          }
+          throw error;
+        }
 
         return afterSandboxCleanup?.() ?? new Ok(undefined);
       }
