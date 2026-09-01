@@ -15,6 +15,7 @@ import {
   IconButton,
   LinkWrapper,
   Star01,
+  StarFilled,
   XClose,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
@@ -93,7 +94,7 @@ export function PokeFavoriteButton() {
 
   return (
     <IconButton
-      icon={isCurrentlyFavorite ? Star01 : Star01}
+      icon={isCurrentlyFavorite ? StarFilled : Star01}
       onClick={handleToggle}
       disabled={currentForPath === null}
       variant="outline"
