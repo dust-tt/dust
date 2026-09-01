@@ -11,8 +11,6 @@ export type AgentOverview = {
   activeUsers: number;
   conversationCount: number;
   messageCount: number;
-  positiveFeedbacks: number;
-  negativeFeedbacks: number;
 };
 
 type OverviewAggs = {
@@ -29,30 +27,13 @@ type OverviewAggs = {
 };
 
 export async function fetchAgentOverview(
-  baseQuery: estypes.QueryDslQueryContainer,
-  days: number
+  baseQuery: estypes.QueryDslQueryContainer
 ): Promise<Result<AgentOverview, Error>> {
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
     {
       active_users: { cardinality: { field: "user_id" } },
       conversations: { cardinality: { field: "conversation_id" } },
       total_messages: { value_count: { field: "message_id" } },
-      feedbacks: {
-        nested: { path: "feedbacks" },
-        aggs: {
-          recent: {
-            filter: {
-              range: { "feedbacks.created_at": { gte: `now-${days}d/d` } },
-            },
-            aggs: {
-              up: { filter: { term: { "feedbacks.thumb_direction": "up" } } },
-              down: {
-                filter: { term: { "feedbacks.thumb_direction": "down" } },
-              },
-            },
-          },
-        },
-      },
     };
 
   const result = await searchAnalytics<never, OverviewAggs>(baseQuery, {
@@ -70,10 +51,6 @@ export async function fetchAgentOverview(
     activeUsers: Math.round(aggs?.active_users?.value ?? 0),
     conversationCount: Math.round(aggs?.conversations?.value ?? 0),
     messageCount: Math.round(aggs?.total_messages?.value ?? 0),
-    positiveFeedbacks: Math.round(aggs?.feedbacks?.recent?.up?.doc_count ?? 0),
-    negativeFeedbacks: Math.round(
-      aggs?.feedbacks?.recent?.down?.doc_count ?? 0
-    ),
   });
 }
 

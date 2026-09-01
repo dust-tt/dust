@@ -6,6 +6,7 @@ import {
   getAgentCostStats,
 } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -59,8 +60,13 @@ app.get(
       version,
     });
 
-    const [overview, costStatsResult] = await Promise.all([
-      fetchAgentOverview(baseQuery, days),
+    const [feedbackCounts, overview, costStatsResult] = await Promise.all([
+      AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+        auth,
+        assistant.sId,
+        days
+      ),
+      fetchAgentOverview(baseQuery),
       fetchAgentCostStats(auth, {
         agentIds: [assistant.sId],
         days,
@@ -82,13 +88,7 @@ app.get(
       });
     }
 
-    const {
-      activeUsers,
-      conversationCount,
-      messageCount,
-      positiveFeedbacks,
-      negativeFeedbacks,
-    } = overview.value;
+    const { activeUsers, conversationCount, messageCount } = overview.value;
 
     return ctx.json({
       activeUsers,
@@ -98,8 +98,8 @@ app.get(
         timePeriodSec: days * 24 * 60 * 60,
       },
       feedbacks: {
-        positiveFeedbacks,
-        negativeFeedbacks,
+        positiveFeedbacks: feedbackCounts.positive,
+        negativeFeedbacks: feedbackCounts.negative,
         timePeriodSec: days * 24 * 60 * 60,
       },
       costs,
