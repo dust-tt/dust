@@ -1,7 +1,9 @@
 // @vitest-environment node
 
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { getFrameSourceLockName } from "@app/lib/api/frames/operation_lock";
 import {
+  captureFrameV2SourceSnapshot,
   publishFrameFromSource,
   publishFrameV2FromSource,
 } from "@app/lib/api/frames/publish_from_source";
@@ -188,6 +190,24 @@ describe("publishFrameFromSource", () => {
 });
 
 describe("publishFrameV2FromSource", () => {
+  it("captures a reusable snapshot of the validated source", async () => {
+    const { auth, conversation, manifestPath } = await setup();
+    const fsResult = await DustFileSystem.forConversation(auth, conversation);
+    assert(fsResult.isOk());
+
+    const snapshot = await captureFrameV2SourceSnapshot(
+      fsResult.value,
+      manifestPath
+    );
+
+    assert(snapshot.isOk());
+    expect(snapshot.value.manifestPath).toBe(manifestPath);
+    expect(snapshot.value.manifestSizeBytes).toBe(Buffer.byteLength(manifest));
+    expect(
+      snapshot.value.sourceFiles.map(({ relativePath }) => relativePath)
+    ).toEqual([FRAME_MANIFEST_FILE, "index.tsx"]);
+  });
+
   it("publishes artifacts without copying source and activates one publication", async () => {
     const {
       auth,

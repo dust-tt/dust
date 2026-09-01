@@ -68,6 +68,13 @@ export type ValidateFrameFromSourceResult = {
   warnings: ValidationWarning[];
 };
 
+export type FrameV2SourceSnapshot = {
+  manifest: FrameManifest;
+  manifestPath: string;
+  manifestSizeBytes: number;
+  sourceFiles: FramePublicationSourceFile[];
+};
+
 async function resolveFrameFromSource(
   auth: Authenticator,
   {
@@ -234,16 +241,13 @@ async function readFrameV2SourceWithSourceLockHeld(
   {
     frame,
     manifestPath,
+    sourceSnapshot,
   }: {
     frame: FileResource;
     manifestPath: string;
+    sourceSnapshot?: FrameV2SourceSnapshot;
   }
-): Promise<
-  Result<
-    { manifest: FrameManifest; sourceFiles: FramePublicationSourceFile[] },
-    FramePublicationError
-  >
-> {
+): Promise<Result<FrameV2SourceSnapshot, FramePublicationError>> {
   const canonicalManifestPath = frame.toScopedPath(auth);
   if (
     !canonicalManifestPath ||
@@ -278,6 +282,23 @@ async function readFrameV2SourceWithSourceLockHeld(
     return frameError("unauthorized", writeAccess.error.message);
   }
 
+  if (sourceSnapshot) {
+    if (sourceSnapshot.manifestPath !== canonicalManifestPath) {
+      return frameError(
+        "invalid_source",
+        `Frame '${frame.sId}' must be published from '${canonicalManifestPath}'.`
+      );
+    }
+    return new Ok(sourceSnapshot);
+  }
+
+  return captureFrameV2SourceSnapshot(dustFs, canonicalManifestPath);
+}
+
+export async function captureFrameV2SourceSnapshot(
+  dustFs: DustFileSystem,
+  canonicalManifestPath: string
+): Promise<Result<FrameV2SourceSnapshot, FramePublicationError>> {
   const manifestBufferResult = await dustFs.readBuffer(canonicalManifestPath);
   if (manifestBufferResult.isErr()) {
     return frameError("invalid_source", manifestBufferResult.error.message);
@@ -393,19 +414,30 @@ async function readFrameV2SourceWithSourceLockHeld(
     sourceFiles.push({ content: content.value, contentType, relativePath });
   }
 
-  return new Ok({ manifest: manifestResult.value, sourceFiles });
+  return new Ok({
+    manifest: manifestResult.value,
+    manifestPath: canonicalManifestPath,
+    manifestSizeBytes: manifestBuffer.length,
+    sourceFiles,
+  });
 }
 
-async function publishFrameV2FromSourceWithSourceLockHeld(
+/**
+ * Publish a Frames v2 FileResource from its current source folder. The FileResource path is the
+ * authority: callers cannot point a Frame identity at a different manifest or source tree.
+ */
+export async function publishFrameV2FromSourceWithLockHeld(
   auth: Authenticator,
   {
     conversation,
     frame,
     manifestPath,
+    sourceSnapshot,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
+    sourceSnapshot?: FrameV2SourceSnapshot;
   }
 ): Promise<
   Result<
@@ -413,9 +445,17 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     FramePublicationError | SandboxFunctionError
   >
 > {
+  if (!frame.isFrameV2) {
+    return frameError(
+      "invalid_frame",
+      `File '${frame.sId}' is not a Frames v2 manifest.`
+    );
+  }
+
   const source = await readFrameV2SourceWithSourceLockHeld(auth, {
     frame,
     manifestPath,
+    sourceSnapshot,
   });
   if (source.isErr()) {
     return source;
@@ -424,7 +464,8 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
   return buildAndPublishFramePublication(auth, {
     conversation,
     frame,
-    ...source.value,
+    manifest: source.value.manifest,
+    sourceFiles: source.value.sourceFiles,
   });
 }
 
@@ -461,7 +502,7 @@ export async function publishFrameV2FromSource(
       );
     }
 
-    return publishFrameV2FromSourceWithSourceLockHeld(auth, {
+    return publishFrameV2FromSourceWithLockHeld(auth, {
       conversation,
       frame: freshFrame,
       manifestPath,
