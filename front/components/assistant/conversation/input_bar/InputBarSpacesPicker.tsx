@@ -1,4 +1,4 @@
-import { DropdownPanel } from "@app/components/assistant/conversation/input_bar/DropdownPanel";
+import { DropdownPanelContent } from "@app/components/assistant/conversation/input_bar/DropdownPanel";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import {
@@ -52,6 +52,8 @@ export function InputBarSpacesPicker({
     );
   }, [searchText, spaces]);
 
+  const label = getSpacesPickerLabel(selectedSpaceIds);
+
   const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
     if (!checked && !canDeselectSelectedSpaces) {
       return;
@@ -70,11 +72,11 @@ export function InputBarSpacesPicker({
   };
 
   return (
-    <DropdownPanel
-      title={getSpacesPickerLabel(selectedSpaceIds)}
-      onBack={onBack}
+    <DropdownPanelContent
       className="h-80 w-full xs:h-96"
-      headers={
+      title={label}
+      onBack={onBack}
+      dropdownHeaders={
         <>
           <DropdownMenuSearchbar
             autoFocus
@@ -124,6 +126,6 @@ export function InputBarSpacesPicker({
           })}
         </div>
       )}
-    </DropdownPanel>
+    </DropdownPanelContent>
   );
 }

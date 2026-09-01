@@ -45,11 +45,11 @@ const PLUS_BUTTON_CLASSNAME = cn(
 const PANEL_SWAP_OFFSET_PX = 8;
 const PANEL_EASE_ENTER = [0.215, 0.61, 0.355, 1] as const;
 const PANEL_ENTER_TRANSITION: Transition = {
-  duration: 0.2,
+  duration: 0.14,
   ease: PANEL_EASE_ENTER,
 };
 const PANEL_EXIT_TRANSITION: Transition = {
-  duration: 0.15,
+  duration: 0.1,
   ease: PANEL_EASE_ENTER,
 };
 
@@ -347,7 +347,7 @@ export function InputBarPlusMenu({
           className="w-80 max-w-[calc(100vw-1rem)] overflow-hidden p-0"
         >
           <div
-            className="relative w-full overflow-hidden transition-[height] duration-200 ease-enter motion-reduce:transition-none"
+            className="relative w-full overflow-hidden transition-[height] duration-150 ease-enter motion-reduce:transition-none"
             style={
               panelHeights[page] === undefined
                 ? undefined

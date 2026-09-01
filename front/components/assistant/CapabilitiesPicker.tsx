@@ -1,5 +1,8 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import { DropdownPanel } from "@app/components/assistant/conversation/input_bar/DropdownPanel";
+import {
+  DropdownPanelContent,
+  DropdownPanelRoot,
+} from "@app/components/assistant/conversation/input_bar/DropdownPanel";
 import type { CapabilitySearchIndexItem } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { searchCapabilityIndex } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
@@ -196,6 +199,7 @@ export function CapabilitiesPicker({
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const isPanel = type === "panel";
 
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
@@ -239,7 +243,7 @@ export function CapabilitiesPicker({
     !isServerViewsLoading && (!isAdmin || !isAvailableMCPServersLoading);
 
   const closePicker = () => {
-    if (type === "panel") {
+    if (isPanel) {
       onClose?.();
       return;
     }
@@ -415,71 +419,12 @@ export function CapabilitiesPicker({
   const shouldShowCapabilityDropdownList =
     capabilityPickerItems.length > 0 || hasNoVisibleItems;
 
-  const headers = (
-    <>
-      <DropdownMenuSearchbar
-        autoFocus={!isMobile}
-        name="search-capabilities"
-        placeholder="Search capabilities"
-        value={searchText}
-        onChange={setSearchText}
-      />
-      <DropdownMenuSeparator />
-    </>
-  );
-
-  const items = (
-    <>
-      {(!isSkillsDataReady || !isToolsDataReady) && (
-        <CapabilitiesPickerLoading />
-      )}
-
-      {shouldShowCapabilityDropdownList && (
-        <CapabilitiesPickerItemsList
-          emptyMessage={
-            normalizedSearchText.length > 0
-              ? "No capabilities found"
-              : "No more capabilities to select"
-          }
-          items={capabilityPickerItems}
-          onItemSelect={selectCapabilityPickerItem}
-          onSkillDetails={(skillId) => {
-            if (onShowSkillDetails) {
-              onShowSkillDetails(skillId);
-            } else {
-              setSelectedSkillIdForDetails(skillId);
-            }
-            closePicker();
-          }}
-          onToolDetails={(serverView) => {
-            if (onShowToolDetails) {
-              onShowToolDetails(serverView);
-            } else {
-              setSelectedServerViewForDetails(serverView);
-            }
-            closePicker();
-          }}
-        />
-      )}
-    </>
-  );
-
-  if (type === "panel") {
-    return (
-      <DropdownPanel
-        title="Capabilities"
-        onBack={() => onBack?.()}
-        className="h-80 w-full xs:h-96"
-        headers={headers}
-      >
-        {items}
-      </DropdownPanel>
-    );
-  }
+  const Wrapper = isPanel ? DropdownPanelRoot : DropdownMenu;
+  const ContentWrapper = isPanel ? DropdownPanelContent : DropdownMenuContent;
 
   return (
     <>
-      <DropdownMenu
+      <Wrapper
         open={isOpen}
         onOpenChange={(open) => {
           setIsOpen(open);
@@ -494,34 +439,79 @@ export function CapabilitiesPicker({
           }
         }}
       >
-        <DropdownMenuTrigger asChild>
-          <Button
-            icon={ShapesPlus}
-            variant="ghost-secondary"
-            size={buttonSize}
-            tooltip="Capabilities"
-            disabled={disabled || isLoading}
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          className="w-80 max-w-[calc(100vw-1rem)]"
-          collisionPadding={8}
-          align="start"
-          onInteractOutside={() => setIsOpen(false)}
-          dropdownHeaders={headers}
+        {!isPanel && (
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={ShapesPlus}
+              variant="ghost-secondary"
+              size={buttonSize}
+              tooltip="Capabilities"
+              disabled={disabled || isLoading}
+            />
+          </DropdownMenuTrigger>
+        )}
+        <ContentWrapper
+          className={
+            isPanel ? "h-80 w-full xs:h-96" : "w-80 max-w-[calc(100vw-1rem)]"
+          }
+          {...(isPanel
+            ? { title: "Capabilities", onBack: () => onBack?.() }
+            : {
+                collisionPadding: 8,
+                align: "start" as const,
+                onInteractOutside: () => setIsOpen(false),
+              })}
+          dropdownHeaders={
+            <>
+              <DropdownMenuSearchbar
+                autoFocus={!isMobile}
+                name="search-capabilities"
+                placeholder="Search capabilities"
+                value={searchText}
+                onChange={setSearchText}
+              />
+              <DropdownMenuSeparator />
+            </>
+          }
         >
-          {items}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          {(!isSkillsDataReady || !isToolsDataReady) && (
+            <CapabilitiesPickerLoading />
+          )}
 
-      <CapabilityDetailsSheets
-        owner={owner}
-        user={user}
-        selectedSkillId={selectedSkillIdForDetails}
-        selectedMCPServerView={selectedServerViewForDetails}
-        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
-        onCloseTool={() => setSelectedServerViewForDetails(null)}
-      />
+          {shouldShowCapabilityDropdownList && (
+            <CapabilitiesPickerItemsList
+              emptyMessage={
+                normalizedSearchText.length > 0
+                  ? "No capabilities found"
+                  : "No more capabilities to select"
+              }
+              items={capabilityPickerItems}
+              onItemSelect={selectCapabilityPickerItem}
+              onSkillDetails={(skillId) => {
+                (onShowSkillDetails ?? setSelectedSkillIdForDetails)(skillId);
+                closePicker();
+              }}
+              onToolDetails={(serverView) => {
+                (onShowToolDetails ?? setSelectedServerViewForDetails)(
+                  serverView
+                );
+                closePicker();
+              }}
+            />
+          )}
+        </ContentWrapper>
+      </Wrapper>
+
+      {!isPanel && (
+        <CapabilityDetailsSheets
+          owner={owner}
+          user={user}
+          selectedSkillId={selectedSkillIdForDetails}
+          selectedMCPServerView={selectedServerViewForDetails}
+          onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+          onCloseTool={() => setSelectedServerViewForDetails(null)}
+        />
+      )}
     </>
   );
 }

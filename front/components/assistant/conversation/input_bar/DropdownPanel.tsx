@@ -7,26 +7,31 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 
-export interface DropdownPanelNavigation {
-  onBack: () => void;
-  onClose: () => void;
+interface DropdownPanelRootProps {
+  children: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-interface DropdownPanelProps {
+export function DropdownPanelRoot({ children }: DropdownPanelRootProps) {
+  return <>{children}</>;
+}
+
+interface DropdownPanelContentProps {
   children: React.ReactNode;
   className?: string;
-  headers?: React.ReactNode;
-  onBack: () => void;
-  title: string;
+  dropdownHeaders?: React.ReactNode;
+  onBack?: () => void;
+  title?: string;
 }
 
-export function DropdownPanel({
+export function DropdownPanelContent({
   children,
   className,
-  headers,
+  dropdownHeaders,
   onBack,
   title,
-}: DropdownPanelProps) {
+}: DropdownPanelContentProps) {
   return (
     <div className={cn("flex flex-col p-1", className)}>
       <div className="flex shrink-0 flex-col">
@@ -44,7 +49,7 @@ export function DropdownPanel({
           </span>
         </div>
         <DropdownMenuSeparator />
-        {headers}
+        {dropdownHeaders}
       </div>
       <ScrollArea
         className="w-full flex-1"

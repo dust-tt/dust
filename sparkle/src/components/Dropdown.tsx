@@ -50,7 +50,7 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "relative flex gap-2 cursor-pointer select-none items-center outline-hidden rounded-lg heading-sm transition-colors duration-150 motion-reduce:transition-none data-[disabled]:pointer-events-none",
+      "relative flex gap-2 cursor-pointer select-none items-center outline-hidden rounded-lg heading-sm transition-colors duration-75 motion-reduce:transition-none data-[disabled]:pointer-events-none",
       "data-[disabled]:text-primary-400"
     ),
     {

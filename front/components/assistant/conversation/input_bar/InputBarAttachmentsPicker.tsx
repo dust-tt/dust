@@ -1,5 +1,8 @@
 import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
-import { DropdownPanel } from "@app/components/assistant/conversation/input_bar/DropdownPanel";
+import {
+  DropdownPanelContent,
+  DropdownPanelRoot,
+} from "@app/components/assistant/conversation/input_bar/DropdownPanel";
 import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
@@ -38,6 +41,7 @@ import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
   Attachment01,
   Button,
+  cn,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -556,217 +560,11 @@ export const InputBarAttachmentsPicker = ({
 
   const allUnselected = selectedFilterKeys.length === 0;
 
-  const headers = (
-    <>
-      <Input
-        type="file"
-        ref={fileInputRef}
-        containerClassName="hidden"
-        onChange={async (e) => {
-          setIsOpen(false);
-          await fileUploaderService.handleFileChange(e);
-          onFileChange?.();
-          if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-          }
-        }}
-        multiple={true}
-      />
-      <DropdownMenuSearchbar
-        autoFocus={!isMobile}
-        name="search-files"
-        placeholder="Search"
-        value={search}
-        onChange={setSearch}
-        disabled={false}
-        isLoading={showLoader}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            const firstMenuItem = itemsContainerRef.current?.querySelector(
-              '[role="menuitemcheckbox"]'
-            );
-            (firstMenuItem as HTMLElement)?.focus();
-          }
-        }}
-        button={
-          <Button
-            icon={UploadCloud02}
-            label="Upload File"
-            onClick={() => fileInputRef.current?.click()}
-            className="ml-4"
-          />
-        }
-      />
-      <DropdownMenuSeparator />
-    </>
-  );
-
-  const items = (
-    <>
-      {searchQuery ? (
-        <div ref={itemsContainerRef}>
-          <div className="flex flex-wrap items-center">
-            <DropdownMenuFilters
-              filters={availableSources}
-              selectedValues={selectedFilterKeys}
-              onSelectFilter={handleFilterClick}
-            />
-
-            {availableSources.length === 0 && showLoader && (
-              <LoadingBlock
-                // LoadingBlock defaults to, same as the menu
-                // surface, so skeletons read as invisible; match menu row hover contrast.
-
-                className="h-7 w-20 bg-muted-background p-2 mt-2"
-              />
-            )}
-          </div>
-
-          {showSearchResultPlaceholders ? (
-            <div className="flex flex-col gap-2 px-2 py-2">
-              {Array.from(
-                { length: SEARCH_RESULTS_PLACEHOLDER_COUNT },
-                (_, i) => (
-                  <LoadingBlock
-                    key={i}
-                    // LoadingBlock defaults to, same as the menu
-                    // surface, so skeletons read as invisible; match menu row hover contrast.
-
-                    className="h-11 w-full bg-muted-background"
-                  />
-                )
-              )}
-            </div>
-          ) : (
-            <>
-              {(allUnselected ||
-                selectedDataSourcesAndTools[PROJECT_FILTER_KEY]) &&
-                projectFilesWithResults.map((f) => (
-                  <ProjectFileItem
-                    key={`project-file-${f.fileId}`}
-                    item={f}
-                    projectName={projectName}
-                    isAttached={attachedFileIds.has(f.fileId)}
-                    isDisabled={isLoading || disabled}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        fileUploaderService.addUploadedFile({
-                          fileId: f.fileId,
-                          filename: f.title,
-                          // We only fetch `type=file` from the project context endpoint.
-                          contentType: f.contentType as any,
-                          size: 0,
-                          id: f.fileId,
-                        });
-                      } else {
-                        fileUploaderService.removeFile(f.fileId);
-                      }
-                      onFileChange?.();
-                    }}
-                  />
-                ))}
-              {Object.keys(serversWithResults).length === 0 ? (
-                // No tools results, show knowledge nodes as returned by the search.
-                dataSourcesNodes
-                  .filter(
-                    (item) =>
-                      allUnselected ||
-                      selectedDataSourcesAndTools[
-                        getKeyForDataSource(item.dataSource)
-                      ]
-                  )
-                  .map((item) => (
-                    <KnowledgeNodeCheckboxItem
-                      key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
-                      item={item}
-                      owner={owner}
-                      attachedNodes={attachedNodes}
-                      onNodeSelect={onNodeSelect}
-                      onNodeUnselect={onNodeUnselect}
-                      spacesMap={spacesMap}
-                    />
-                  ))
-              ) : (
-                // Show grouped knowledge nodes, then tools (project files are rendered above).
-                <>
-                  {Object.entries(dataSourcesWithResults).map(([key, r]) => {
-                    const isSelected =
-                      allUnselected || selectedDataSourcesAndTools[key];
-                    return isSelected
-                      ? r.results.map((item) => (
-                          <KnowledgeNodeCheckboxItem
-                            key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
-                            item={item}
-                            owner={owner}
-                            attachedNodes={attachedNodes}
-                            onNodeSelect={onNodeSelect}
-                            onNodeUnselect={onNodeUnselect}
-                            spacesMap={spacesMap}
-                          />
-                        ))
-                      : null;
-                  })}
-                  {Object.entries(serversWithResults).map(([key, r]) => {
-                    const isSelected =
-                      allUnselected || selectedDataSourcesAndTools[key];
-                    return isSelected
-                      ? r.results.map((item) => (
-                          <ToolFileCheckboxItem
-                            key={`tool-${getToolFileKey(item)}`}
-                            item={item}
-                            isLoading={isLoading}
-                            isToolFileAttached={isToolFileAttached}
-                            isToolFileUploading={isToolFileUploading}
-                            uploadToolFile={uploadToolFile}
-                            removeToolFile={removeToolFile}
-                          />
-                        ))
-                      : null;
-                  })}
-                </>
-              )}
-            </>
-          )}
-          {availableSources.length === 0 && !showLoader && (
-            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-              No results found
-            </div>
-          )}
-
-          <InfiniteScroll
-            nextPage={nextPage}
-            hasMore={hasMore}
-            showLoader={showLoader}
-            loader={<div />}
-          />
-        </div>
-      ) : (
-        <div className="flex h-full w-full items-center justify-center">
-          <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
-            <Icon visual={SearchMd} size="sm" />
-            Search knowledge
-          </div>
-        </div>
-      )}
-    </>
-  );
-
-  if (isPanel) {
-    return (
-      <DropdownPanel
-        title="Attach knowledge"
-        onBack={() => onBack?.()}
-        className="h-80 w-full xs:h-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
-        headers={headers}
-      >
-        {items}
-      </DropdownPanel>
-    );
-  }
+  const Wrapper = isPanel ? DropdownPanelRoot : DropdownMenu;
+  const ContentWrapper = isPanel ? DropdownPanelContent : DropdownMenuContent;
 
   return (
-    <DropdownMenu
+    <Wrapper
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
@@ -775,7 +573,7 @@ export const InputBarAttachmentsPicker = ({
         }
       }}
     >
-      {isExternallyControlled ? (
+      {isPanel ? null : isExternallyControlled ? (
         <DropdownAnchorTrigger anchorRef={anchorRef} />
       ) : (
         <DropdownMenuTrigger asChild>
@@ -790,16 +588,216 @@ export const InputBarAttachmentsPicker = ({
           />
         </DropdownMenuTrigger>
       )}
-      <DropdownMenuContent
-        className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
-        collisionPadding={15}
-        onEscapeKeyDown={() => setIsOpen(false)}
-        align={isExternallyControlled ? "end" : "start"}
-        onInteractOutside={() => setIsOpen(false)}
-        dropdownHeaders={headers}
+      <ContentWrapper
+        // Radix ScrollArea wraps content in a content-height `display:table` div. Force it to fill
+        // the viewport so the empty-state's `h-full` centering resolves against the full height.
+        className={cn(
+          "h-80 xs:h-96 [&_[data-radix-scroll-area-viewport]>div]:h-full",
+          isPanel ? "w-full" : "w-80 xs:w-96"
+        )}
+        {...(isPanel
+          ? { title: "Attach knowledge", onBack: () => onBack?.() }
+          : {
+              collisionPadding: 15,
+              onEscapeKeyDown: () => setIsOpen(false),
+              align: isExternallyControlled
+                ? ("end" as const)
+                : ("start" as const),
+              onInteractOutside: () => setIsOpen(false),
+            })}
+        dropdownHeaders={
+          <>
+            <Input
+              type="file"
+              ref={fileInputRef}
+              containerClassName="hidden"
+              onChange={async (e) => {
+                setIsOpen(false);
+                await fileUploaderService.handleFileChange(e);
+                onFileChange?.();
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
+              }}
+              multiple={true}
+            />
+            <DropdownMenuSearchbar
+              autoFocus={!isMobile}
+              name="search-files"
+              placeholder="Search"
+              value={search}
+              onChange={setSearch}
+              disabled={false}
+              isLoading={showLoader}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const firstMenuItem =
+                    itemsContainerRef.current?.querySelector(
+                      '[role="menuitemcheckbox"]'
+                    );
+                  (firstMenuItem as HTMLElement)?.focus();
+                }
+              }}
+              button={
+                <Button
+                  icon={UploadCloud02}
+                  label="Upload File"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="ml-2"
+                />
+              }
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
       >
-        {items}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        {searchQuery ? (
+          <div ref={itemsContainerRef}>
+            <div className="flex flex-wrap items-center">
+              <DropdownMenuFilters
+                filters={availableSources}
+                selectedValues={selectedFilterKeys}
+                onSelectFilter={handleFilterClick}
+              />
+
+              {availableSources.length === 0 && showLoader && (
+                <LoadingBlock
+                  // LoadingBlock defaults to, same as the menu
+                  // surface, so skeletons read as invisible; match menu row hover contrast.
+
+                  className="h-7 w-20 bg-muted-background p-2 mt-2"
+                />
+              )}
+            </div>
+
+            {showSearchResultPlaceholders ? (
+              <div className="flex flex-col gap-2 px-2 py-2">
+                {Array.from(
+                  { length: SEARCH_RESULTS_PLACEHOLDER_COUNT },
+                  (_, i) => (
+                    <LoadingBlock
+                      key={i}
+                      // LoadingBlock defaults to, same as the menu
+                      // surface, so skeletons read as invisible; match menu row hover contrast.
+
+                      className="h-11 w-full bg-muted-background"
+                    />
+                  )
+                )}
+              </div>
+            ) : (
+              <>
+                {(allUnselected ||
+                  selectedDataSourcesAndTools[PROJECT_FILTER_KEY]) &&
+                  projectFilesWithResults.map((f) => (
+                    <ProjectFileItem
+                      key={`project-file-${f.fileId}`}
+                      item={f}
+                      projectName={projectName}
+                      isAttached={attachedFileIds.has(f.fileId)}
+                      isDisabled={isLoading || disabled}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          fileUploaderService.addUploadedFile({
+                            fileId: f.fileId,
+                            filename: f.title,
+                            // We only fetch `type=file` from the project context endpoint.
+                            contentType: f.contentType as any,
+                            size: 0,
+                            id: f.fileId,
+                          });
+                        } else {
+                          fileUploaderService.removeFile(f.fileId);
+                        }
+                        onFileChange?.();
+                      }}
+                    />
+                  ))}
+                {Object.keys(serversWithResults).length === 0 ? (
+                  // No tools results, show knowledge nodes as returned by the search.
+                  dataSourcesNodes
+                    .filter(
+                      (item) =>
+                        allUnselected ||
+                        selectedDataSourcesAndTools[
+                          getKeyForDataSource(item.dataSource)
+                        ]
+                    )
+                    .map((item) => (
+                      <KnowledgeNodeCheckboxItem
+                        key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
+                        item={item}
+                        owner={owner}
+                        attachedNodes={attachedNodes}
+                        onNodeSelect={onNodeSelect}
+                        onNodeUnselect={onNodeUnselect}
+                        spacesMap={spacesMap}
+                      />
+                    ))
+                ) : (
+                  // Show grouped knowledge nodes, then tools (project files are rendered above).
+                  <>
+                    {Object.entries(dataSourcesWithResults).map(([key, r]) => {
+                      const isSelected =
+                        allUnselected || selectedDataSourcesAndTools[key];
+                      return isSelected
+                        ? r.results.map((item) => (
+                            <KnowledgeNodeCheckboxItem
+                              key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
+                              item={item}
+                              owner={owner}
+                              attachedNodes={attachedNodes}
+                              onNodeSelect={onNodeSelect}
+                              onNodeUnselect={onNodeUnselect}
+                              spacesMap={spacesMap}
+                            />
+                          ))
+                        : null;
+                    })}
+                    {Object.entries(serversWithResults).map(([key, r]) => {
+                      const isSelected =
+                        allUnselected || selectedDataSourcesAndTools[key];
+                      return isSelected
+                        ? r.results.map((item) => (
+                            <ToolFileCheckboxItem
+                              key={`tool-${getToolFileKey(item)}`}
+                              item={item}
+                              isLoading={isLoading}
+                              isToolFileAttached={isToolFileAttached}
+                              isToolFileUploading={isToolFileUploading}
+                              uploadToolFile={uploadToolFile}
+                              removeToolFile={removeToolFile}
+                            />
+                          ))
+                        : null;
+                    })}
+                  </>
+                )}
+              </>
+            )}
+            {availableSources.length === 0 && !showLoader && (
+              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                No results found
+              </div>
+            )}
+
+            <InfiniteScroll
+              nextPage={nextPage}
+              hasMore={hasMore}
+              showLoader={showLoader}
+              loader={<div />}
+            />
+          </div>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
+              <Icon visual={SearchMd} size="sm" />
+              Search knowledge
+            </div>
+          </div>
+        )}
+      </ContentWrapper>
+    </Wrapper>
   );
 };
