@@ -664,7 +664,8 @@ function buildColumns({
         case "legacy":
           return [seatTypeColumn];
         default:
-          return assertNever(variant);
+          assertNeverAndIgnore(variant);
+          return [seatTypeColumn];
       }
     })(),
     {
