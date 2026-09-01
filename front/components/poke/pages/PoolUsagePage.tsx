@@ -5,7 +5,10 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
-import { WorkspaceCreditPoolSection } from "@app/components/workspace/WorkspaceCreditPoolCards";
+import {
+  toCreditPoolFetchStatus,
+  WorkspaceCreditPoolSection,
+} from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
@@ -74,8 +77,10 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
 
   return (
     <WorkspaceCreditPoolSection
-      isCardsLoading={isAwuPoolSummaryLoading}
-      isCardsError={!!isAwuPoolSummaryError}
+      cardsStatus={toCreditPoolFetchStatus(
+        isAwuPoolSummaryLoading,
+        !!isAwuPoolSummaryError
+      )}
       showPoolCard={hasPool}
       isVisible={hasPool}
       totalRemainingCredits={totalRemainingCredits}

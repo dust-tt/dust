@@ -8,9 +8,20 @@ import {
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
+export type CreditPoolFetchStatus = "loading" | "error" | "ready";
+
+export function toCreditPoolFetchStatus(
+  isLoading: boolean,
+  isError: boolean
+): CreditPoolFetchStatus {
+  if (isError) {
+    return "error";
+  }
+  return isLoading ? "loading" : "ready";
+}
+
 interface WorkspaceCreditPoolSectionProps {
-  isCardsLoading: boolean;
-  isCardsError: boolean;
+  cardsStatus: CreditPoolFetchStatus;
   showPoolCard: boolean;
   isVisible: boolean;
   totalRemainingCredits: number;
@@ -22,14 +33,13 @@ interface WorkspaceCreditPoolSectionProps {
 // section's structure. Accounts with and without a credit pool render the
 // same cards; the pool remaining-balance card is the only thing that differs.
 export function WorkspaceCreditPoolSection({
-  isCardsLoading,
-  isCardsError,
+  cardsStatus,
   showPoolCard,
   isVisible,
   totalRemainingCredits,
   poolSecondaryContent,
 }: WorkspaceCreditPoolSectionProps) {
-  if (!isCardsLoading && !isCardsError && !isVisible) {
+  if (cardsStatus === "ready" && !isVisible) {
     return null;
   }
 
@@ -37,7 +47,7 @@ export function WorkspaceCreditPoolSection({
     <Page.Vertical gap="xs" align="stretch">
       <Page.H variant="h4">Credit usage</Page.H>
 
-      {isCardsError ? (
+      {cardsStatus === "error" ? (
         <ContentMessage
           title="Failed to load Workspace Credits Pool"
           icon={AlertCircle}
@@ -45,7 +55,7 @@ export function WorkspaceCreditPoolSection({
         >
           An error occurred while loading the workspace&apos;s credit pool data.
         </ContentMessage>
-      ) : isCardsLoading ? (
+      ) : cardsStatus === "loading" ? (
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
