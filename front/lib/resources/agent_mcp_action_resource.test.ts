@@ -649,7 +649,7 @@ describe("Output items with GCS storage", () => {
     auth = setup.authenticator;
 
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
-    vi.mocked(redis.set).mockClear();
+    vi.mocked(redis.eval).mockClear();
 
     agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
@@ -825,21 +825,31 @@ describe("Output items with GCS storage", () => {
   });
 
   it("warms Redis cache for each item after createOutputItems succeeds", async () => {
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    vi.mocked(redis.eval).mockClear();
+
     const { outputItemRows } = await createActionWithOutputItems([
       { type: "text", text: "first" },
       { type: "text", text: "second" },
     ]);
 
-    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
-    const setCalls = vi.mocked(redis.set).mock.calls;
+    const evalCalls = vi.mocked(redis.eval).mock.calls;
 
     expect(outputItemRows).toHaveLength(2);
+    expect(evalCalls).toHaveLength(2);
 
     for (const item of outputItemRows) {
-      expect(setCalls).toContainEqual([
-        `cacheWithRedis-fetchGcsContent-${gcsContentCacheKey(auth, "", item.id)}`,
-        JSON.stringify(item.content),
-        { PX: GCS_CONTENT_CACHE_TTL_MS },
+      const cacheKey = `cacheWithRedis-fetchGcsContent-${gcsContentCacheKey(auth, "", item.id)}`;
+      expect(evalCalls).toContainEqual([
+        expect.stringContaining("current ~= ARGV[1]"),
+        {
+          keys: [cacheKey, `${cacheKey}:generation`],
+          arguments: [
+            "",
+            JSON.stringify(item.content),
+            String(GCS_CONTENT_CACHE_TTL_MS),
+          ],
+        },
       ]);
     }
   });
@@ -847,7 +857,7 @@ describe("Output items with GCS storage", () => {
   it("succeeds when Redis cache warming fails", async () => {
     const action = await createAction();
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
-    vi.mocked(redis.set).mockRejectedValueOnce(new Error("redis down"));
+    vi.mocked(redis.eval).mockRejectedValueOnce(new Error("redis down"));
 
     const result = await action.createOutputItems(auth, [
       { content: { type: "text", text: "persisted" } },
@@ -1170,14 +1180,14 @@ describe("warmGcsContentCache", () => {
     auth = setup.authenticator;
 
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
-    vi.mocked(redis.set).mockClear();
+    vi.mocked(redis.eval).mockClear();
   });
 
   it("is a no-op for empty items", async () => {
     await warmGcsContentCache(auth, []);
 
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
-    expect(redis.set).not.toHaveBeenCalled();
+    expect(redis.eval).not.toHaveBeenCalled();
   });
 
   it("warms each item with the correct key, value, and TTL", async () => {
@@ -1197,22 +1207,29 @@ describe("warmGcsContentCache", () => {
     await warmGcsContentCache(auth, items);
 
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
-    const setCalls = vi.mocked(redis.set).mock.calls;
+    const evalCalls = vi.mocked(redis.eval).mock.calls;
 
-    expect(setCalls).toHaveLength(2);
+    expect(evalCalls).toHaveLength(2);
 
     for (const item of items) {
-      expect(setCalls).toContainEqual([
-        `cacheWithRedis-fetchGcsContent-${gcsContentCacheKey(auth, "", item.itemId)}`,
-        JSON.stringify(item.content),
-        { PX: GCS_CONTENT_CACHE_TTL_MS },
+      const cacheKey = `cacheWithRedis-fetchGcsContent-${gcsContentCacheKey(auth, "", item.itemId)}`;
+      expect(evalCalls).toContainEqual([
+        expect.stringContaining("current ~= ARGV[1]"),
+        {
+          keys: [cacheKey, `${cacheKey}:generation`],
+          arguments: [
+            "",
+            JSON.stringify(item.content),
+            String(GCS_CONTENT_CACHE_TTL_MS),
+          ],
+        },
       ]);
     }
   });
 
   it("propagates Redis errors", async () => {
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
-    vi.mocked(redis.set).mockRejectedValueOnce(new Error("redis down"));
+    vi.mocked(redis.eval).mockRejectedValueOnce(new Error("redis down"));
 
     await expect(
       warmGcsContentCache(auth, [

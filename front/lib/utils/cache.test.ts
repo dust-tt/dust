@@ -5,6 +5,8 @@ const mockRedisClient = vi.hoisted(() => ({
   get: vi.fn(),
   set: vi.fn(),
   del: vi.fn(),
+  eval: vi.fn(),
+  incr: vi.fn(),
 }));
 
 const mockDistributedLock = vi.hoisted(() => vi.fn());
@@ -38,6 +40,83 @@ import {
   invalidateCacheWithRedis,
   warmCacheWithRedis,
 } from "@app/lib/utils/cache";
+
+function generationKey(valueKey: string): string {
+  return `${valueKey}:generation`;
+}
+
+/**
+ * Default eval mock: generation-guarded SET delegates to get/set; invalidate
+ * deletes value keys and increments `:generation` companions via get/set.
+ */
+function installDefaultEvalMock(store?: Map<string, string>) {
+  mockRedisClient.eval.mockImplementation(
+    async (
+      script: string,
+      { keys, arguments: argv }: { keys: string[]; arguments: string[] }
+    ) => {
+      if (script.includes("INCR")) {
+        for (const key of keys) {
+          if (store) {
+            store.delete(key);
+            const genKey = generationKey(key);
+            const next = String(Number(store.get(genKey) ?? "0") + 1);
+            store.set(genKey, next);
+          } else {
+            await mockRedisClient.del(key);
+            const genKey = generationKey(key);
+            const current = await mockRedisClient.get(genKey);
+            await mockRedisClient.set(
+              genKey,
+              String(Number(current ?? "0") + 1)
+            );
+          }
+        }
+        return keys.length;
+      }
+
+      const [valueKey, genKey] = keys;
+      const [expectedGen, value, ttl] = argv;
+      const current = store
+        ? (store.get(genKey) ?? null)
+        : await mockRedisClient.get(genKey);
+      if ((current ?? "") !== expectedGen) {
+        return 0;
+      }
+      if (store) {
+        store.set(valueKey, value);
+      } else if (ttl) {
+        await mockRedisClient.set(valueKey, value, { PX: Number(ttl) });
+      } else {
+        await mockRedisClient.set(valueKey, value);
+      }
+      return 1;
+    }
+  );
+}
+
+function installInMemoryRedis() {
+  const store = new Map<string, string>();
+  mockRedisClient.get.mockImplementation(
+    async (key: string) => store.get(key) ?? null
+  );
+  mockRedisClient.set.mockImplementation(async (key: string, value: string) => {
+    store.set(key, value);
+    return "OK";
+  });
+  mockRedisClient.del.mockImplementation(async (key: string | string[]) => {
+    const keys = Array.isArray(key) ? key : [key];
+    let deleted = 0;
+    for (const k of keys) {
+      if (store.delete(k)) {
+        deleted++;
+      }
+    }
+    return deleted;
+  });
+  installDefaultEvalMock(store);
+  return store;
+}
 
 describe("invalidateCacheAfterCommit", () => {
   beforeEach(() => {
@@ -137,8 +216,10 @@ describe("cacheWithRedis", () => {
     mockRedisClient.get.mockReset();
     mockRedisClient.set.mockReset();
     mockRedisClient.del.mockReset();
+    mockRedisClient.eval.mockReset();
     mockDistributedLock.mockReset();
     mockDistributedUnlock.mockReset();
+    installDefaultEvalMock();
   });
 
   describe("basic caching behavior", () => {
@@ -581,19 +662,32 @@ describe("invalidateCacheWithRedis", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRedisClient.del.mockReset();
+    mockRedisClient.eval.mockReset();
+    mockRedisClient.get.mockReset();
+    mockRedisClient.set.mockReset();
+    installDefaultEvalMock();
   });
 
-  it("deletes the correct cache key from Redis", async () => {
+  it("deletes the cache key and bumps its generation", async () => {
     const mockFn = vi.fn();
     Object.defineProperty(mockFn, "name", { value: "testFn" });
-
-    mockRedisClient.del.mockResolvedValue(1);
 
     const invalidateFn = invalidateCacheWithRedis(mockFn, (arg: string) => arg);
     await invalidateFn("key1");
 
+    expect(mockRedisClient.eval).toHaveBeenCalledWith(
+      expect.stringContaining("INCR"),
+      {
+        keys: ["cacheWithRedis-testFn-key1"],
+        arguments: [],
+      }
+    );
     expect(mockRedisClient.del).toHaveBeenCalledWith(
       "cacheWithRedis-testFn-key1"
+    );
+    expect(mockRedisClient.set).toHaveBeenCalledWith(
+      "cacheWithRedis-testFn-key1:generation",
+      "1"
     );
   });
 
@@ -601,23 +695,24 @@ describe("invalidateCacheWithRedis", () => {
     const mockFn = vi.fn();
     Object.defineProperty(mockFn, "name", { value: "myFunc" });
 
-    mockRedisClient.del.mockResolvedValue(1);
-
     const invalidateFn = invalidateCacheWithRedis(
       mockFn,
       (a: string, b: number) => `${a}-${b}`
     );
     await invalidateFn("foo", 42);
 
-    expect(mockRedisClient.del).toHaveBeenCalledWith(
-      "cacheWithRedis-myFunc-foo-42"
+    expect(mockRedisClient.eval).toHaveBeenCalledWith(
+      expect.stringContaining("INCR"),
+      {
+        keys: ["cacheWithRedis-myFunc-foo-42"],
+        arguments: [],
+      }
     );
   });
 
   it("uses the same explicit stable cache id for invalidation", async () => {
     const mockFn = vi.fn();
     Object.defineProperty(mockFn, "name", { value: "renamableLoader" });
-    mockRedisClient.del.mockResolvedValue(1);
 
     const invalidateFn = invalidateCacheWithRedis(
       mockFn,
@@ -626,14 +721,17 @@ describe("invalidateCacheWithRedis", () => {
     );
     await invalidateFn("workspace-1");
 
-    expect(mockRedisClient.del).toHaveBeenCalledWith(
-      "cacheWithRedis-workspace_by_sid-workspace-1"
+    expect(mockRedisClient.eval).toHaveBeenCalledWith(
+      expect.stringContaining("INCR"),
+      {
+        keys: ["cacheWithRedis-workspace_by_sid-workspace-1"],
+        arguments: [],
+      }
     );
   });
 
   it("invalidates both keys during a key migration", async () => {
     const mockFn = vi.fn();
-    mockRedisClient.del.mockResolvedValue(2);
 
     const invalidateFn = invalidateCacheWithRedis(
       mockFn,
@@ -652,10 +750,65 @@ describe("invalidateCacheWithRedis", () => {
     );
     await invalidateFn("workspace-1");
 
-    expect(mockRedisClient.del).toHaveBeenCalledWith([
-      "cacheWithRedis-workspace_by_sid-v3:workspace-1",
-      "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1",
-    ]);
+    expect(mockRedisClient.eval).toHaveBeenCalledWith(
+      expect.stringContaining("INCR"),
+      {
+        keys: [
+          "cacheWithRedis-workspace_by_sid-v3:workspace-1",
+          "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1",
+        ],
+        arguments: [],
+      }
+    );
+  });
+
+  it("rejects a stale write that races with invalidation", async () => {
+    const store = installInMemoryRedis();
+    let dbValue: string[] = [];
+    let releaseStaleLoad: (() => void) | undefined;
+    const staleLoadGate = new Promise<void>((resolve) => {
+      releaseStaleLoad = resolve;
+    });
+    let loadCount = 0;
+
+    const mockFn = vi.fn().mockImplementation(async () => {
+      loadCount++;
+      // Snapshot at load start: the first call is the stale pre-invalidate read.
+      const snapshot = [...dbValue];
+      if (loadCount === 1) {
+        await staleLoadGate;
+      }
+      return snapshot;
+    });
+    Object.defineProperty(mockFn, "name", { value: "featureFlags" });
+
+    const resolver = (workspaceId: string) => workspaceId;
+    const cachedFn = cacheWithRedis(mockFn, resolver, {
+      cacheId: "feature_flags_by_workspace",
+    });
+    const invalidateFn = invalidateCacheWithRedis(mockFn, resolver, {
+      cacheId: "feature_flags_by_workspace",
+    });
+
+    const staleRead = cachedFn("1");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    dbValue = ["pod_frame_tabs"];
+    await invalidateFn("1");
+
+    releaseStaleLoad?.();
+    await expect(staleRead).resolves.toEqual([]);
+
+    // Stale empty snapshot must not land in Redis after the invalidate.
+    expect(
+      store.get("cacheWithRedis-feature_flags_by_workspace-1")
+    ).toBeUndefined();
+
+    const fresh = await cachedFn("1");
+    expect(fresh).toEqual(["pod_frame_tabs"]);
+    expect(store.get("cacheWithRedis-feature_flags_by_workspace-1")).toBe(
+      JSON.stringify(["pod_frame_tabs"])
+    );
   });
 });
 
@@ -664,11 +817,14 @@ describe("warmCacheWithRedis", () => {
     vi.clearAllMocks();
     mockRedisClient.get.mockReset();
     mockRedisClient.set.mockReset();
+    mockRedisClient.eval.mockReset();
+    installDefaultEvalMock();
   });
 
   it("writes JSON-stringified value at the same key cacheWithRedis would read", async () => {
     const fn = vi.fn().mockResolvedValue("data");
     Object.defineProperty(fn, "name", { value: "testFn" });
+    mockRedisClient.get.mockResolvedValue(null);
     mockRedisClient.set.mockResolvedValue("OK");
 
     const warm = warmCacheWithRedis(fn, (arg: string) => arg, {
@@ -686,6 +842,7 @@ describe("warmCacheWithRedis", () => {
   it("omits TTL when ttlMs is not provided", async () => {
     const fn = vi.fn().mockResolvedValue("data");
     Object.defineProperty(fn, "name", { value: "testFn" });
+    mockRedisClient.get.mockResolvedValue(null);
     mockRedisClient.set.mockResolvedValue("OK");
 
     const warm = warmCacheWithRedis(fn, (arg: string) => arg);
@@ -701,22 +858,15 @@ describe("warmCacheWithRedis", () => {
     const fn = vi.fn().mockResolvedValue("fresh");
     Object.defineProperty(fn, "name", { value: "testFn" });
 
-    const cache = new Map<string, string>();
-    mockRedisClient.get.mockImplementation(
-      async (key: string) => cache.get(key) ?? null
-    );
-    mockRedisClient.set.mockImplementation(
-      async (key: string, value: string) => {
-        cache.set(key, value);
-        return "OK";
-      }
-    );
-
+    const store = installInMemoryRedis();
     const resolver = (arg: string) => arg;
     const warm = warmCacheWithRedis(fn, resolver, { ttlMs: 60000 });
     const cached = cacheWithRedis(fn, resolver, { ttlMs: 60000 });
 
     await warm("warmed", "key1");
+    expect(store.get("cacheWithRedis-testFn-key1")).toBe(
+      JSON.stringify("warmed")
+    );
     const result = await cached("key1");
 
     expect(result).toBe("warmed");
@@ -737,13 +887,15 @@ describe("batchInvalidateCacheWithRedis", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRedisClient.del.mockReset();
+    mockRedisClient.eval.mockReset();
+    mockRedisClient.get.mockReset();
+    mockRedisClient.set.mockReset();
+    installDefaultEvalMock();
   });
 
   it("deletes multiple cache keys in single Redis call", async () => {
     const mockFn = vi.fn();
     Object.defineProperty(mockFn, "name", { value: "testFn" });
-
-    mockRedisClient.del.mockResolvedValue(3);
 
     const batchInvalidateFn = batchInvalidateCacheWithRedis(
       mockFn,
@@ -751,12 +903,18 @@ describe("batchInvalidateCacheWithRedis", () => {
     );
     await batchInvalidateFn([["key1"], ["key2"], ["key3"]]);
 
-    expect(mockRedisClient.del).toHaveBeenCalledWith([
-      "cacheWithRedis-testFn-key1",
-      "cacheWithRedis-testFn-key2",
-      "cacheWithRedis-testFn-key3",
-    ]);
-    expect(mockRedisClient.del).toHaveBeenCalledTimes(1);
+    expect(mockRedisClient.eval).toHaveBeenCalledWith(
+      expect.stringContaining("INCR"),
+      {
+        keys: [
+          "cacheWithRedis-testFn-key1",
+          "cacheWithRedis-testFn-key2",
+          "cacheWithRedis-testFn-key3",
+        ],
+        arguments: [],
+      }
+    );
+    expect(mockRedisClient.eval).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing when argsList is empty", async () => {
@@ -769,14 +927,12 @@ describe("batchInvalidateCacheWithRedis", () => {
     );
     await batchInvalidateFn([]);
 
-    expect(mockRedisClient.del).not.toHaveBeenCalled();
+    expect(mockRedisClient.eval).not.toHaveBeenCalled();
   });
 
   it("uses correct key format for all keys", async () => {
     const mockFn = vi.fn();
     Object.defineProperty(mockFn, "name", { value: "myFunc" });
-
-    mockRedisClient.del.mockResolvedValue(2);
 
     const batchInvalidateFn = batchInvalidateCacheWithRedis(
       mockFn,
@@ -787,10 +943,13 @@ describe("batchInvalidateCacheWithRedis", () => {
       ["bar", 2],
     ]);
 
-    expect(mockRedisClient.del).toHaveBeenCalledWith([
-      "cacheWithRedis-myFunc-foo-1",
-      "cacheWithRedis-myFunc-bar-2",
-    ]);
+    expect(mockRedisClient.eval).toHaveBeenCalledWith(
+      expect.stringContaining("INCR"),
+      {
+        keys: ["cacheWithRedis-myFunc-foo-1", "cacheWithRedis-myFunc-bar-2"],
+        arguments: [],
+      }
+    );
   });
 
   it("deletes canonical and previous keys in one Redis call", async () => {
@@ -813,12 +972,18 @@ describe("batchInvalidateCacheWithRedis", () => {
     );
     await batchInvalidateFn([["key1"], ["key2"]]);
 
-    expect(mockRedisClient.del).toHaveBeenCalledWith([
-      "cacheWithRedis-canonical-v2:key1",
-      "cacheWithRedis-previous-v1:key1",
-      "cacheWithRedis-canonical-v2:key2",
-      "cacheWithRedis-previous-v1:key2",
-    ]);
-    expect(mockRedisClient.del).toHaveBeenCalledTimes(1);
+    expect(mockRedisClient.eval).toHaveBeenCalledWith(
+      expect.stringContaining("INCR"),
+      {
+        keys: expect.arrayContaining([
+          "cacheWithRedis-canonical-v2:key1",
+          "cacheWithRedis-previous-v1:key1",
+          "cacheWithRedis-canonical-v2:key2",
+          "cacheWithRedis-previous-v1:key2",
+        ]),
+        arguments: [],
+      }
+    );
+    expect(mockRedisClient.eval).toHaveBeenCalledTimes(1);
   });
 });
