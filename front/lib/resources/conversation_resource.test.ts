@@ -5082,6 +5082,48 @@ describe("Space Handling", () => {
         expect(result.error.message).toBe("Message not found");
       }
     });
+
+    it("enforces the version filter for version 0", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        ownerAuth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const [messageRecord] = await MessageModel.findAll({
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: workspace.id,
+        },
+        limit: 1,
+      });
+      assert(messageRecord, "No message found");
+
+      // Make the stored version differ from 0: a falsy check on `version` would silently drop
+      // the filter for version 0 and return this row anyway.
+      await messageRecord.update({ version: 2 });
+
+      const wrongVersion =
+        await ConversationResource.getMessageByIdInConversation(
+          ownerAuth,
+          conversation,
+          messageRecord.sId,
+          0
+        );
+      expect(wrongVersion.isErr()).toBe(true);
+
+      const exactVersion =
+        await ConversationResource.getMessageByIdInConversation(
+          ownerAuth,
+          conversation,
+          messageRecord.sId,
+          2
+        );
+      expect(exactVersion.isOk()).toBe(true);
+      if (exactVersion.isOk()) {
+        expect(exactVersion.value.id).toBe(messageRecord.id);
+      }
+    });
   });
 
   describe("getPendingUserMessagesInConversation", () => {

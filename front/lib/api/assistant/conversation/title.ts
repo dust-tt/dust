@@ -74,6 +74,7 @@ export async function ensureConversationTitleFromAgentLoop(
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },

@@ -643,6 +643,7 @@ export async function finalizeCancellation(
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },
@@ -713,6 +714,7 @@ export async function finalizeInterruption(
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },
@@ -800,6 +802,7 @@ export async function finalizeGracefulStop(
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },
@@ -864,6 +867,7 @@ export async function finalizeCreditStop(
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },

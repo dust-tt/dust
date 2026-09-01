@@ -1,7 +1,10 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { getAgentLoopRuntimeDataWithAuth } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopRuntimeDataWithAuth,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { describe, expect, it } from "vitest";
 
@@ -57,5 +60,48 @@ describe("getAgentLoopRuntimeDataWithAuth", () => {
     expect(result.value.modelInfo.endpoint.modelConfig.modelId).not.toBe(
       AUTO_MODEL_ID
     );
+  });
+
+  it("returns a terminal error when the agent message version does not exist", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    const result = await getAgentLoopRuntimeDataWithAuth(auth, {
+      agentMessageId: agentMessage.sId,
+      // A version that was never created: a workflow referencing it can never make progress.
+      agentMessageVersion: agentMessage.version + 1,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      // Terminal: callers exit gracefully instead of retrying an error that cannot resolve.
+      expect(isAgentLoopDataSoftDeleteError(result.error)).toBe(true);
+    }
   });
 });

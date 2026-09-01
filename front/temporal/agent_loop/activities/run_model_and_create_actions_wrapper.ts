@@ -138,6 +138,7 @@ async function _runModelAndCreateActionsActivity({
     if (isAgentLoopDataSoftDeleteError(contextProviderRes.error)) {
       logger.info(
         {
+          reason: contextProviderRes.error.type,
           conversationId: runAgentArgs.conversationId,
           agentMessageId: runAgentArgs.agentMessageId,
         },

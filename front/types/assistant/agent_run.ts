@@ -15,6 +15,7 @@ import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_st
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentConfigurationWithoutModelType,
@@ -47,6 +48,9 @@ const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "conversation_deleted",
   "agent_message_deleted",
   "user_message_deleted",
+  // The message row is absent at the exact sId + version the workflow references, verified with a
+  // direct lookup rather than just missing from a rendered conversation.
+  "agent_message_not_found",
 ] as const;
 
 // Cache for 200 seconds, which maps to P95 execution time of the agent loop.
@@ -216,7 +220,9 @@ export async function getAgentLoopRuntimeDataWithAuth(
       message.agentMessage
   );
   if (!agentMessageRow) {
-    return new Err(new Error("Agent message not found"));
+    // Direct lookup: the row is genuinely absent at this exact sId + version, retrying will not
+    // make it appear.
+    return new Err(new AgentLoopDataError("agent_message_not_found"));
   }
   if (agentMessageRow.visibility === "deleted") {
     return new Err(new AgentLoopDataError("agent_message_deleted"));
@@ -371,7 +377,33 @@ export async function buildAgentLoopDataFromConversation(
   }
 
   if (!agentMessage) {
-    return new Err(new Error("Agent message not found"));
+    // The rendered conversation does not contain the message. Either the row is genuinely gone,
+    // in which case retrying will not help, or rendering dropped a row that exists, which is
+    // retryable and worth a precise log since it means the conversation fetch lost a message.
+    const messageRes = await ConversationResource.getMessageByIdInConversation(
+      auth,
+      conversation,
+      agentMessageId,
+      agentMessageVersion
+    );
+    if (messageRes.isErr()) {
+      return new Err(new AgentLoopDataError("agent_message_not_found"));
+    }
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        agentMessageId,
+        agentMessageVersion,
+        messageRank: messageRes.value.rank,
+        messageVisibility: messageRes.value.visibility,
+        renderedGroupCount: conversation.content.length,
+      },
+      "Agent message exists but is missing from the rendered conversation"
+    );
+    return new Err(
+      new Error("Agent message not found in rendered conversation")
+    );
   }
 
   // Check if the agent message was soft-deleted.

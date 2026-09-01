@@ -155,6 +155,7 @@ export async function runToolActivity(
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
         {
+          reason: runAgentDataRes.error.type,
           actionId,
           runIds,
         },
