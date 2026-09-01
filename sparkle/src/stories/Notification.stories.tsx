@@ -22,8 +22,7 @@ const meta: Meta<typeof Notification> = {
 **Guidelines**
 - Mount a single **Notification.Area** high in the tree, then call **useSendNotification** wherever an action resolves.
 - Match \`type\` to the outcome and keep \`title\`/\`description\` concise — long copy is line-clamped.
-- For persistent, inline status attached to a region, use a **ContentMessage** instead.
-- Up to three toasts are shown at once; beyond the front one they collapse into a stack that expands on hover.`,
+- For persistent, inline status attached to a region, use a **ContentMessage** instead.`,
       },
     },
   },
@@ -181,14 +180,6 @@ const NotificationTriggers = () => {
           })
         }
         label="Show Hello"
-      />
-      <Button
-        onClick={() => {
-          sendNotification({ title: "Workspace saved", type: "success" });
-          sendNotification({ title: "Sync started", type: "info" });
-          sendNotification({ title: "Storage nearly full", type: "warning" });
-        }}
-        label="Show three at once (stack)"
       />
     </div>
   );
