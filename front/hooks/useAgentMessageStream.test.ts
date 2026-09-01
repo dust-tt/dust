@@ -289,6 +289,23 @@ describe("appendThinkingStep", () => {
   });
 });
 
+describe("makeInitialMessageStreamState", () => {
+  it("hydrates persisted activity steps for a paused (created) message", () => {
+    const step = {
+      type: "content" as const,
+      content: "Draft to confirm",
+      id: "content-1-0",
+      step: 1,
+    };
+    const message = makeInitialMessageStreamState(
+      makeLightAgentMessage({ status: "created", activitySteps: [step] })
+    );
+
+    expect(message.streaming.agentState).toBe("thinking");
+    expect(message.streaming.inlineActivitySteps).toEqual([step]);
+  });
+});
+
 describe("useAgentMessageStream", () => {
   it("clears stale database content before replaying fresh-mount tokens", () => {
     let currentMessage = makeInitialMessageStreamState(makeLightAgentMessage());
@@ -358,6 +375,80 @@ describe("useAgentMessageStream", () => {
     });
     expect(currentMessage.content).toBe("Hello ");
     expect(currentMessage.chainOfThought).toBe("");
+  });
+
+  it("clears hydrated activity steps on the first replayed event to avoid duplication", () => {
+    const hydratedStep = {
+      type: "content" as const,
+      content: "Old draft",
+      id: "content-0-0",
+      step: 0,
+    };
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({
+        status: "created",
+        content: null,
+        chainOfThought: null,
+        activitySteps: [hydratedStep],
+      })
+    );
+
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual([
+      hydratedStep,
+    ]);
+
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    act(() => {
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "1-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "Fresh ",
+            classification: "tokens",
+          },
+        })
+      );
+    });
+
+    // The hydrated step is dropped so the live replay rebuilds without
+    // duplicating it.
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual([]);
   });
 
   it("does not restore stale thinking text from a pending throttled update after tool_params", () => {

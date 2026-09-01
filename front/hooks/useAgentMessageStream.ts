@@ -371,6 +371,16 @@ export function useAgentMessageStream({
     shouldStream && (!!agentMessage.content || !!agentMessage.chainOfThought)
   );
 
+  // When a "created" message is reloaded, its persisted activity steps are
+  // hydrated into streaming.inlineActivitySteps (see makeInitialMessageStreamState).
+  // If a live SSE stream is still available it replays from the start and would
+  // rebuild those same steps, so we clear the hydrated steps once, on the first
+  // replayed step-bearing event (tokens or tool_params). An expired stream
+  // never emits such an event, so the hydrated steps are preserved.
+  const isFreshMountWithSteps = useRef(
+    shouldStream && agentMessage.streaming.inlineActivitySteps.length > 0
+  );
+
   const chainOfThought = useRef(agentMessage.chainOfThought ?? "");
   // content.current tracks the current text segment only
   // (cleared on each flush to inline activity steps).
@@ -426,6 +436,21 @@ export function useAgentMessageStream({
         }
         seenEventIds.current.add(eventPayload.eventId);
       }
+      // On a fresh mount the persisted activity steps were hydrated into
+      // streaming.inlineActivitySteps. The live replay is about to rebuild them,
+      // so clear the hydrated copy exactly once, on the first replayed
+      // step-bearing event, to avoid duplicated steps.
+      const clearHydratedStepsOnce = () => {
+        if (!isFreshMountWithSteps.current) {
+          return;
+        }
+        isFreshMountWithSteps.current = false;
+        mapMessagesWithAutoScroll((m) =>
+          isAgentMessageWithStreaming(m) && m.sId === sId
+            ? { ...m, streaming: { ...m.streaming, inlineActivitySteps: [] } }
+            : m
+        );
+      };
       const eventType = eventPayload.data.type;
       switch (eventType) {
         case "end-of-stream":
@@ -441,6 +466,12 @@ export function useAgentMessageStream({
           break;
 
         case "generation_tokens":
+          if (
+            eventPayload.data.classification === "tokens" ||
+            eventPayload.data.classification === "chain_of_thought"
+          ) {
+            clearHydratedStepsOnce();
+          }
           if (
             isFreshMountWithContent.current &&
             (eventPayload.data.classification === "tokens" ||
@@ -644,6 +675,7 @@ export function useAgentMessageStream({
           break;
 
         case "tool_params":
+          clearHydratedStepsOnce();
           updateMessageThrottled.cancel();
           const toolParams = eventPayload.data;
           mapMessagesWithAutoScroll((m) => {
