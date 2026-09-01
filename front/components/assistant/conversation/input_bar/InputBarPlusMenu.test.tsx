@@ -25,9 +25,29 @@ const owner = {
 } satisfies WorkspaceType;
 
 const spaces = [
-  { sId: "space-1", name: "Engineering", kind: "regular" },
-  { sId: "space-2", name: "Marketing", kind: "regular" },
-] as SelectableConversationSpaceType[];
+  {
+    sId: "space-1",
+    name: "Engineering",
+    kind: "regular",
+    managementMode: "manual",
+    createdAt: 0,
+    updatedAt: 0,
+    groupIds: [],
+    isRestricted: false,
+    selected: false,
+  },
+  {
+    sId: "space-2",
+    name: "Marketing",
+    kind: "regular",
+    managementMode: "manual",
+    createdAt: 0,
+    updatedAt: 0,
+    groupIds: [],
+    isRestricted: false,
+    selected: false,
+  },
+] satisfies SelectableConversationSpaceType[];
 
 function renderPlusMenu() {
   return render(

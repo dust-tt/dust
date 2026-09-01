@@ -17,6 +17,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Attachment01,
@@ -324,6 +325,9 @@ export function InputBarPlusMenu({
         );
       case "root":
         return rootPage;
+      default:
+        assertNeverAndIgnore(page);
+        return null;
     }
   };
 
