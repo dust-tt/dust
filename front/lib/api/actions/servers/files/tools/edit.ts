@@ -19,12 +19,7 @@ import {
   isReadableAsText,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
-import { DustFileSystem } from "@app/lib/api/file_system";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
-import {
-  executeWithLockResult,
-  isLockAcquisitionTimeoutError,
-} from "@app/lib/lock";
 import {
   isInteractiveContentType,
   stripMimeParameters,
@@ -32,19 +27,18 @@ import {
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
-const FILE_EDIT_LOCK_ACQUISITION_TIMEOUT_MS = 5_000;
-const FILE_EDIT_LOCK_TTL_MS = 30_000;
-const FILE_EDIT_LOCK_RETRY_INTERVAL_MS = 25;
-
-type EditHandlerArgs = {
-  path: string;
-  old_string: string;
-  new_string: string;
-  expected_replacements?: number;
-};
-
-async function editHandlerUnlocked(
-  { path, old_string, new_string, expected_replacements }: EditHandlerArgs,
+export async function editHandler(
+  {
+    path,
+    old_string,
+    new_string,
+    expected_replacements,
+  }: {
+    path: string;
+    old_string: string;
+    new_string: string;
+    expected_replacements?: number;
+  },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const conversationRes = requireAgentLoopConversation({ runContext });
@@ -62,6 +56,7 @@ async function editHandlerUnlocked(
   }
 
   const dustFs = fsResult.value;
+
   const statResult = await dustFs.stat(path);
   if (statResult.isErr()) {
     return new Err(new MCPError(statResult.error.message, { tracked: false }));
@@ -176,43 +171,4 @@ async function editHandlerUnlocked(
   }
 
   return new Ok([{ type: "text", text }]);
-}
-
-export async function editHandler(
-  args: EditHandlerArgs,
-  extra: ToolHandlerExtra
-): Promise<ToolHandlerResult> {
-  const normalizedPath = DustFileSystem.normalizeScopedPath(args.path);
-  if (!normalizedPath) {
-    return new Err(
-      new MCPError(`Invalid path: \`${args.path}\`.`, { tracked: false })
-    );
-  }
-
-  const editResult = await executeWithLockResult(
-    `file:edit:${extra.auth.getNonNullableWorkspace().sId}:${normalizedPath}`,
-    () => editHandlerUnlocked(args, extra),
-    FILE_EDIT_LOCK_ACQUISITION_TIMEOUT_MS,
-    {
-      lockTtlMs: FILE_EDIT_LOCK_TTL_MS,
-      retryIntervalMs: FILE_EDIT_LOCK_RETRY_INTERVAL_MS,
-    }
-  );
-
-  if (editResult.isOk()) {
-    return new Ok(editResult.value);
-  }
-  if (editResult.error instanceof MCPError) {
-    return new Err(editResult.error);
-  }
-  if (isLockAcquisitionTimeoutError(editResult.error)) {
-    return new Err(
-      new MCPError(
-        `Another edit is still in progress for \`${normalizedPath}\`. Re-read the file and retry.`,
-        { tracked: false }
-      )
-    );
-  }
-
-  throw editResult.error;
 }

@@ -79,38 +79,6 @@ describe("editHandler", () => {
     );
   });
 
-  it("serializes concurrent edits to the same file", async () => {
-    const { auth, conversation } = await setupProjectConversation();
-    mockStoredFile("const first = 1;\nconst second = 2;\n", "text/plain");
-    const path = `conversation-${conversation.sId}/notes.txt`;
-
-    const [firstResult, secondResult] = await Promise.all([
-      editHandler(
-        {
-          path,
-          old_string: "first = 1",
-          new_string: "first = 10",
-        },
-        makeExtra(auth, conversation)
-      ),
-      editHandler(
-        {
-          path,
-          old_string: "second = 2",
-          new_string: "second = 20",
-        },
-        makeExtra(auth, conversation)
-      ),
-    ]);
-
-    assert(firstResult.isOk());
-    assert(secondResult.isOk());
-    expect(fileStorageMock.saveFileCalls).toHaveLength(2);
-    expect(fileStorageMock.saveFileCalls.at(-1)?.content.toString("utf8")).toBe(
-      "const first = 10;\nconst second = 20;\n"
-    );
-  });
-
   it("appends a publish reminder when editing a Frame source file", async () => {
     const { auth, conversation } = await setupProjectConversation();
     mockStoredFile(

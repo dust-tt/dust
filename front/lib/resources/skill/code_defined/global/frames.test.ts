@@ -101,6 +101,8 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(
       "Never run concurrent file mutations against the same path"
     );
+    expect(instructions).toContain("Do not use Files MCP");
+    expect(instructions).toContain("mutation tools for Frame authoring");
     expect(instructions).toContain(
       "exercise at least one read and one representative mutation"
     );

@@ -4,8 +4,8 @@ import { MAX_FRAME_DATABASE_COUNT } from "@app/types/api/frame_manifest";
 export const FRAMES_V2_INSTRUCTIONS = `\
 # Frames v2
 
-Frames are interactive React applications. Use the Computer to edit their source and the
-\`dsbx frame\` CLI for their lifecycle.
+Frames are interactive React applications. Use \`bash\` on the Computer to create and edit their
+source on the mounted file system, and the \`dsbx frame\` CLI for their lifecycle.
 
 ## Frames v2 vs legacy Frames
 
@@ -354,8 +354,9 @@ initial scope.
 
 ## Editing and verification
 
-Never run concurrent file mutations against the same path. Read the current file, apply one edit,
-then start the next edit to that file.
+Edit Frame source through \`bash\` on the Computer's mounted file system. Do not use Files MCP
+mutation tools for Frame authoring. Never run concurrent file mutations against the same path:
+read the current file, apply one edit, then start the next edit to that file.
 
 After publishing, verify the published Frame rather than only the source or build result:
 
