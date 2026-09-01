@@ -413,10 +413,15 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "frame.deleted",
+        context: { location: "internal" },
         metadata: {
           active_publication_id: "",
           source_path: `conversation-${conversationId}/Status`,
         },
+        targets: [
+          expect.objectContaining({ id: workspace.sId, type: "workspace" }),
+          { id: frame.sId, name: "Status", type: "frame" },
+        ],
       })
     );
   });
@@ -451,6 +456,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     });
 
     expect(response.status).toBe(400);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
     await expect(
       FileResource.fetchById(auth, parent.sId)
     ).resolves.not.toBeNull();
