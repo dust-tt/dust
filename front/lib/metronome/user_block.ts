@@ -1,5 +1,11 @@
 // Redis fast-path cache for credit-state-driven access control.
 //
+// This is the Metronome-credit-state layer. When the
+// `enforce_user_spend_limit_rate_cap` flag is on, callers should instead go
+// through the flag-aware readers in `lib/api/credits/access_control.ts`, which
+// enforce from the Redis rate-limiter counters and fall back to the functions
+// here when the flag is off.
+//
 // Four keys back the credit state machines:
 //   - `metronome:user_credit_state:<ws>:<user>`: fine-grained user credit state
 //     (mirrors `memberships.creditState`). Replaces the legacy boolean cap and
@@ -320,7 +326,13 @@ function deriveBlockedReason({
 
 export async function isUserBlocked(
   workspace: LightWorkspaceType,
-  user: UserResource
+  user: UserResource,
+  // When set, overrides the Metronome-credit-state user-cap signal
+  // (`userCreditState === "capped"`). The flag-aware wrapper in
+  // `lib/api/credits/access_control.ts` passes the Redis rate-limiter result
+  // here so the pool/seat logic (no_seat, pool depletion, personal-seat
+  // carve-out) stays defined in one place.
+  opts?: { userCapBlockedOverride?: boolean }
 ): Promise<UserBlockedReason | null> {
   const workspaceId = workspace.sId;
   const userId = user.sId;
@@ -364,7 +376,8 @@ export async function isUserBlocked(
   }
 
   return deriveBlockedReason({
-    userCapBlocked: userCreditState === "capped",
+    userCapBlocked:
+      opts?.userCapBlockedOverride ?? userCreditState === "capped",
     workspacePoolDepleted,
   });
 }

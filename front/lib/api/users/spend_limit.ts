@@ -21,6 +21,7 @@ import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import {
   clearMetronomePerUserCapAlert,
   clearMetronomePerUserWarningAlert,
+  USER_AWU_WARNING_PERCENTAGE,
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
@@ -617,6 +618,38 @@ export async function isUserSpendLimitRateCapReached(
   return isSpendCapCounterReached(auth, {
     user,
     thresholdAwuCredits: threshold,
+    bounds,
+  });
+}
+
+/**
+ * Synchronous, Metronome-independent "near limit" (warning) signal for the
+ * per-user spend cap. Same Redis fixed-window counter and effective-cap
+ * resolution as `isUserSpendLimitRateCapReached`, but compares against
+ * `USER_AWU_WARNING_PERCENTAGE` (80%) of the cap instead of the full cap. This
+ * is the rate-limiter counterpart of the Metronome-driven `isUserAwuWarned`
+ * flag. Returns `false` when there is no cap, the billing period can't be
+ * resolved, or on a Redis read error (fail-open).
+ */
+export async function isUserSpendLimitRateWarningReached(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const threshold = await getEffectiveSpendCapAwuCreditsForUser(auth, { user });
+  if (threshold === null) {
+    return false;
+  }
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return false;
+  }
+
+  return isSpendCapCounterReached(auth, {
+    user,
+    thresholdAwuCredits: threshold * USER_AWU_WARNING_PERCENTAGE,
     bounds,
   });
 }
