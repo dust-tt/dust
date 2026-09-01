@@ -137,13 +137,19 @@ export function getDefaultTierId(
   return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
+export function getReasoningEffortLabel(
+  effort: ReasoningEffort
+): string | null {
+  return effort === "none" ? null : capitalize(effort);
+}
+
 export function formatModelEffortLabel(
   displayName: string,
   effort: ReasoningEffort
 ): string {
-  return effort === "none"
-    ? displayName
-    : `${displayName} ${capitalize(effort)}`;
+  const effortLabel = getReasoningEffortLabel(effort);
+
+  return effortLabel ? `${displayName} ${effortLabel}` : displayName;
 }
 
 export function getTierResolvedModelLabel(

@@ -19,6 +19,7 @@ import {
   getInitialEffort,
   getModelTier,
   getModelWithReasoningEffortLabel,
+  getReasoningEffortLabel,
   getTierLockReason,
   isPremiumModel,
   isSameSelection,
@@ -38,7 +39,12 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  DropdownMenu,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -50,6 +56,9 @@ export interface ModelPickerProps {
   buttonVariant: "outline" | "ghost-secondary";
   buttonSize: "xs" | "sm";
   showLabel: boolean;
+  // Appends the dropdown chevron to the trigger. Only meaningful alongside
+  // `showLabel`: icon-only triggers stay a single glyph.
+  showDropdownArrow?: boolean;
   // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
   // active conversation (input bar pinned to the bottom), "bottom" on the new
   // conversation screen where there is room below.
@@ -82,6 +91,7 @@ export function ModelPicker({
   buttonVariant,
   buttonSize,
   showLabel,
+  showDropdownArrow = false,
   side = "top",
   disabled,
   selectionRef,
@@ -260,10 +270,20 @@ export function ModelPicker({
       ? MODEL_TIER_ICON[shown.display.tierId]
       : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
 
-  const label =
+  // Model name and reasoning effort read as one string for the tooltip and the
+  // accessible name, but the visible trigger splits the effort into its own
+  // chip so it reads as a modifier rather than part of the model's name.
+  const label = getModelWithReasoningEffortLabel(shown.display);
+
+  const triggerLabel =
     shown.display.kind === "tier"
       ? getModelTier(shown.display.tierId).name
-      : getModelWithReasoningEffortLabel(shown.display);
+      : shown.display.model.displayName;
+
+  const effortLabel =
+    shown.display.kind === "model"
+      ? getReasoningEffortLabel(shown.display.effort)
+      : null;
 
   return (
     <DropdownMenu
@@ -282,8 +302,19 @@ export function ModelPicker({
           variant={buttonVariant}
           size={buttonSize}
           icon={buttonIcon}
-          label={showLabel ? label : undefined}
+          label={showLabel ? triggerLabel : undefined}
+          iconRight={
+            showLabel && effortLabel ? (
+              <Chip
+                size="mini"
+                label={effortLabel}
+                className="bg-primary-150"
+              />
+            ) : undefined
+          }
+          isSelect={showLabel && showDropdownArrow}
           tooltip={showLabel ? undefined : `Model picker: ${label}`}
+          aria-label={`Model picker: ${label}`}
           disabled={disabled}
         />
       </DropdownMenuTrigger>
