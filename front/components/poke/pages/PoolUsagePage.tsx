@@ -5,6 +5,7 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
+import { WorkspaceCreditPoolSection } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
@@ -26,9 +27,7 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import {
-  AlertCircle,
   Button,
-  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -38,7 +37,6 @@ import {
   LinkWrapper,
   Page,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -65,8 +63,6 @@ interface PoolCreditCardProps {
   owner: ReturnType<typeof useWorkspace>;
 }
 
-// Mirrors the "Workspace credit pool" widget on the customer-facing usage
-// page, so Poke shows the same numbers an admin would see.
 function PoolCreditCard({ owner }: PoolCreditCardProps) {
   const { awuPoolSummary, isAwuPoolSummaryLoading, isAwuPoolSummaryError } =
     usePokeAwuPoolSummary({ owner });
@@ -75,57 +71,23 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
   const totalActiveCredits = awuPoolSummary?.totalActiveCredits ?? 0;
   const overageCredits = awuPoolSummary?.overageCredits ?? null;
   const hasPool = totalActiveCredits > 0;
-  const totalConsumedCredits = Math.max(
-    0,
-    totalActiveCredits - totalRemainingCredits
-  );
-
-  if (!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && !hasPool) {
-    return null;
-  }
 
   return (
-    <Page.Vertical gap="xs" align="stretch">
-      <Page.H variant="h4">Workspace credit pool</Page.H>
-
-      {isAwuPoolSummaryError ? (
-        <ContentMessage
-          title="Failed to load Workspace Credits Pool"
-          icon={AlertCircle}
-          variant="warning"
-        >
-          An error occurred while loading the workspace&apos;s credit pool data.
-        </ContentMessage>
-      ) : isAwuPoolSummaryLoading ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
-      ) : (
-        <>
-          <div className="flex items-baseline gap-1">
-            <span className="heading-mono-4xl text-foreground">
-              {formatCredits(totalConsumedCredits)}
-            </span>
-            <span className="copy-sm text-muted-foreground">
-              /{formatCredits(totalActiveCredits)}
-            </span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
-            <div
-              className="h-full rounded-full bg-foreground/80 transition-all"
-              style={{
-                width: `${Math.min(100, totalActiveCredits > 0 ? (totalConsumedCredits / totalActiveCredits) * 100 : 0)}%`,
-              }}
-            />
-          </div>
-          {overageCredits !== null && overageCredits > 0 && (
-            <span className="copy-sm text-muted-foreground">
-              {formatCredits(overageCredits)} overage credits
-            </span>
-          )}
-        </>
-      )}
-    </Page.Vertical>
+    <WorkspaceCreditPoolSection
+      isCardsLoading={isAwuPoolSummaryLoading}
+      isCardsError={!!isAwuPoolSummaryError}
+      showPoolCard={hasPool}
+      isVisible={hasPool}
+      totalRemainingCredits={totalRemainingCredits}
+      poolSecondaryContent={
+        overageCredits !== null &&
+        overageCredits > 0 && (
+          <span className="copy-sm text-muted-foreground">
+            {formatCredits(overageCredits)} overage credits
+          </span>
+        )
+      }
+    />
   );
 }
 
