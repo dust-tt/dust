@@ -25,7 +25,7 @@ export type AppType = {
 };
 
 // An app serialized with its space's `groupIds` (part of the public app contract). Produced by
-// `AppResource.toJSONEnriched` for the public API; the internal `AppType` omits them so app
+// `AppResource.enrichWithSpaceAccess` for the public API; the internal `AppType` omits them so app
 // serialization does not depend on the space's eagerly-loaded grants.
 export type EnrichedAppType = Omit<AppType, "space"> & {
   space: EnrichedSpaceType;
