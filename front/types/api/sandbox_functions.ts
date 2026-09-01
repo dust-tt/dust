@@ -135,6 +135,9 @@ export function isValidSandboxFunctionSlug(value: unknown): value is string {
   return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);
 }
 
+/**
+ * @swaggerschema PrivateSandboxFunctionInvocation (swagger_private_schemas.ts)
+ */
 export type SandboxFunctionInvocationType = {
   sId: string;
   functionId: string;
@@ -178,6 +181,9 @@ export type SandboxFunctionCallErrorCode =
   | SandboxFunctionFrontErrorCode
   | APIErrorType;
 
+/**
+ * @swaggerschema PrivateSandboxFunctionCallError (swagger_private_schemas.ts)
+ */
 export type SandboxFunctionCallError = {
   code: SandboxFunctionCallErrorCode;
   message: string;
@@ -241,6 +247,9 @@ export type SandboxFunctionInvocationContext = {
   timezone?: string;
 };
 
+/**
+ * @swaggerschema PrivateFrameFunctionInvocationRequest (swagger_private_schemas.ts)
+ */
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
   context?: SandboxFunctionInvocationContext;
@@ -252,6 +261,9 @@ export type SandboxFunctionInvocationOutcome =
   | { status: "succeeded"; result: unknown }
   | { status: "errored"; error: SandboxFunctionCallError };
 
+/**
+ * @swaggerschema PrivateFrameFunctionInvocationResponse (swagger_private_schemas.ts)
+ */
 export type PostSandboxFunctionInvocationResponseBody = {
   invocation: SandboxFunctionInvocationType;
   // Set when the invocation settled before the response was sent. Callers that get an outcome are

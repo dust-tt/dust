@@ -1,5 +1,7 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 
+import invocations from "./invocations";
+
 const app = workspaceApp();
 
 /**
@@ -49,5 +51,7 @@ const app = workspaceApp();
  *       500:
  *         description: Invocation failed before it could be created.
  */
+
+app.route("/invocations", invocations);
 
 export default app;
