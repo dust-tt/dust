@@ -26,7 +26,7 @@ import type {
 } from "@app/types/assistant/agent_run";
 import {
   getFullAgentLoopDataWithAuth,
-  isAgentLoopDataSoftDeleteError,
+  isAgentLoopDataTerminalError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -152,7 +152,7 @@ export async function runToolActivity(
     }
   );
   if (runAgentDataRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+    if (isAgentLoopDataTerminalError(runAgentDataRes.error)) {
       logger.info(
         {
           reason: runAgentDataRes.error.type,

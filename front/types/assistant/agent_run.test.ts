@@ -3,7 +3,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import {
   getAgentLoopRuntimeDataWithAuth,
-  isAgentLoopDataSoftDeleteError,
+  isAgentLoopDataTerminalError,
 } from "@app/types/assistant/agent_run";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { describe, expect, it } from "vitest";
@@ -101,7 +101,7 @@ describe("getAgentLoopRuntimeDataWithAuth", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       // Terminal: callers exit gracefully instead of retrying an error that cannot resolve.
-      expect(isAgentLoopDataSoftDeleteError(result.error)).toBe(true);
+      expect(isAgentLoopDataTerminalError(result.error)).toBe(true);
     }
   });
 });

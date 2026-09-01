@@ -44,7 +44,7 @@ import { ConversationError } from "./conversation";
  * Error types for getAgentLoopRuntimeData that indicate deleted or unavailable resources.
  * These are safe to ignore in callers since retrying won't make the data available.
  */
-const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
+const AGENT_LOOP_DATA_TERMINAL_ERROR_TYPES = [
   "conversation_deleted",
   "agent_message_deleted",
   "user_message_deleted",
@@ -56,24 +56,24 @@ const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
 // Cache for 200 seconds, which maps to P95 execution time of the agent loop.
 const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
 
-type AgentLoopDataSoftDeleteErrorType =
-  (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
+type AgentLoopDataTerminalErrorType =
+  (typeof AGENT_LOOP_DATA_TERMINAL_ERROR_TYPES)[number];
 
 class AgentLoopDataError extends Error {
-  readonly type: AgentLoopDataSoftDeleteErrorType;
+  readonly type: AgentLoopDataTerminalErrorType;
 
-  constructor(type: AgentLoopDataSoftDeleteErrorType) {
+  constructor(type: AgentLoopDataTerminalErrorType) {
     super(`Agent loop data unavailable: ${type}`);
     this.type = type;
   }
 }
 
-export function isAgentLoopDataSoftDeleteError(
+export function isAgentLoopDataTerminalError(
   error: Error
 ): error is AgentLoopDataError {
   return (
     error instanceof AgentLoopDataError &&
-    AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES.includes(error.type)
+    AGENT_LOOP_DATA_TERMINAL_ERROR_TYPES.includes(error.type)
   );
 }
 
@@ -220,8 +220,8 @@ export async function getAgentLoopRuntimeDataWithAuth(
       message.agentMessage
   );
   if (!agentMessageRow) {
-    // Direct lookup: the row is genuinely absent at this exact sId + version, retrying will not
-    // make it appear.
+    // Direct lookup: the row is absent or unreadable at this exact sId + version, retrying will
+    // not make it appear.
     return new Err(new AgentLoopDataError("agent_message_not_found"));
   }
   if (agentMessageRow.visibility === "deleted") {
