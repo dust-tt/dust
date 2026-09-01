@@ -1,5 +1,10 @@
 import path from "node:path";
 
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import {
   getConvertedFrameMetadata,
@@ -62,6 +67,34 @@ function conversionError(
   message: string
 ) {
   return new Err(new FrameV2ConversionError(code, message));
+}
+
+function emitFrameConvertedAuditEvent(
+  auth: Authenticator,
+  {
+    frameId,
+    manifestPath,
+    publicationId,
+    sourcePath,
+  }: ConvertLegacyFrameToV2Result & { sourcePath: string }
+) {
+  void emitAuditLogEvent({
+    auth,
+    action: "frame.converted",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("frame", {
+        sId: frameId,
+        name: path.posix.basename(path.posix.dirname(manifestPath)),
+      }),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      manifest_path: manifestPath,
+      publication_id: publicationId,
+      source_path: sourcePath,
+    },
+  });
 }
 
 /** Convert a legacy Frame in place, preserving its stable identity and use-rights rows. */
@@ -271,6 +304,7 @@ export async function convertLegacyFrameToV2(
         manifestPath: manifest,
         publicationId: publication.value.publicationId,
       };
+      emitFrameConvertedAuditEvent(auth, { ...result, sourcePath: source });
       return new Ok(result);
     } catch (error) {
       const restored = await restore();

@@ -19,6 +19,16 @@ import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
+
 vi.mock("@app/lib/lock", async (importActual) => {
   const actual = await importActual<typeof import("@app/lib/lock")>();
   return {
@@ -233,6 +243,7 @@ async function setupLegacyFrameConversion({
 
 beforeEach(() => {
   fileStorageMock.reset();
+  mockEmitAuditLogEvent.mockClear();
 });
 
 describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
@@ -261,6 +272,16 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       converted.publicationId
     );
     expect(await frame?.getShareInfo()).toEqual(shareInfo);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.converted",
+        metadata: {
+          manifest_path: context.manifestPath,
+          publication_id: converted.publicationId,
+          source_path: context.sourcePath,
+        },
+      })
+    );
   });
 
   it("publishes the same source snapshot that conversion validates", async () => {
