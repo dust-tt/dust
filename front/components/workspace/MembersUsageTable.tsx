@@ -45,6 +45,7 @@ import {
   Icon,
   LoadingBlock,
   ProgressBar,
+  ProgressRing,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -576,45 +577,6 @@ function computeSeatUsage({
   };
 }
 
-interface SeatUsageRingProps {
-  percent: number;
-  colorClassName: string;
-}
-
-function SeatUsageRing({ percent, colorClassName }: SeatUsageRingProps) {
-  const radius = 6;
-  const circumference = 2 * Math.PI * radius;
-  const clamped = Math.min(100, Math.max(0, percent));
-  const dashOffset = circumference * (1 - clamped / 100);
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" className="-rotate-90">
-      <circle
-        cx="8"
-        cy="8"
-        r={radius}
-        strokeWidth="2"
-        fill="none"
-        stroke="currentColor"
-        className="text-muted-background"
-      />
-      {clamped > 0 && (
-        <circle
-          cx="8"
-          cy="8"
-          r={radius}
-          strokeWidth="2"
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          className={colorClassName}
-        />
-      )}
-    </svg>
-  );
-}
-
 const seatUsageColumn: ColumnDef<RowData, string> = {
   id: "seatUsage" as const,
   header: "Seat usage",
@@ -671,9 +633,10 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
               <span className={cn("text-xs font-medium", colorClassName)}>
                 {Math.round(percent)}%
               </span>
-              <SeatUsageRing
-                percent={percent}
-                colorClassName={colorClassName}
+              <ProgressRing
+                percentage={percent}
+                label="Seat usage"
+                className={colorClassName}
               />
             </div>
           }

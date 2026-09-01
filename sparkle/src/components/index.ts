@@ -244,6 +244,7 @@ export {
 } from "./Popover";
 export { PriceTable } from "./PriceTable";
 export { ProgressBar } from "./ProgressBar";
+export { ProgressRing } from "./ProgressRing";
 export { PuzzleSpinner } from "./PuzzleSpinner";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
