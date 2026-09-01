@@ -5,6 +5,7 @@ import {
   FrameManifestSchema,
   isSafeFrameRelativePath,
 } from "@app/types/api/frame_manifest";
+import { FRAME_PUBLICATION_FILE } from "@app/types/api/frame_storage";
 import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -13,7 +14,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export const FRAME_PUBLICATION_FILE = "publication.json";
+export { FRAME_PUBLICATION_FILE };
 export const FRAME_PUBLICATION_SCHEMA_VERSION = 1;
 
 const Sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);

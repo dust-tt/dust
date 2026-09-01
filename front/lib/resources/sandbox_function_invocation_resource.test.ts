@@ -894,6 +894,9 @@ describe("SandboxFunctionInvocationResource", () => {
       DUST_SANDBOX_TOKEN: "sbt-function-token",
       DUST_FUNCTION_WARM_ENABLED: "0",
     });
+    expect(opts?.envVars).not.toHaveProperty(
+      "DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH"
+    );
     expect(
       JSON.parse(opts?.envVars?.DUST_POD_USER_IDENTITY ?? "")
     ).toMatchObject({
@@ -967,6 +970,7 @@ describe("SandboxFunctionInvocationResource", () => {
     );
     const execOptions = execSpy.mock.calls[0]?.[2];
     expect(execOptions?.envVars).toMatchObject({
+      DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH: `/frames/${frame.sId}/publications/${publicationId}/publication.json`,
       DUST_POD_DATABASES_DIR: "/pod-state/databases",
       DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
       DUST_POD_DATABASE_PREFIX: "",

@@ -63,6 +63,7 @@ import type {
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import {
+  getFramePublicationDescriptorMountPoint,
   getFramePublicationFunctionsMountPoint,
   getPodSandboxFunctionsMountPoint,
   sandboxDatabaseExecEnvVars,
@@ -818,6 +819,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       );
 
       let functionsDirectory: string;
+      let databaseEnvVars: ReturnType<typeof sandboxDatabaseExecEnvVars>;
       if (frame) {
         if (!publicationId) {
           return new Err(
@@ -828,16 +830,21 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           frameId: frame.sId,
           publicationId,
         });
+        databaseEnvVars = sandboxDatabaseExecEnvVars({
+          framePublicationDescriptorPath:
+            getFramePublicationDescriptorMountPoint({
+              frameId: frame.sId,
+              publicationId,
+            }),
+        });
       } else {
         functionsDirectory = getPodSandboxFunctionsMountPoint(
           sandboxFunction.space.sId
         );
+        databaseEnvVars = sandboxDatabaseExecEnvVars({
+          databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
+        });
       }
-      const databaseEnvVars = frame
-        ? sandboxDatabaseExecEnvVars()
-        : sandboxDatabaseExecEnvVars({
-            databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
-          });
 
       const execStartedAtMs = Date.now();
       const execResult = await tracer.trace(
