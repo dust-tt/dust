@@ -20,9 +20,6 @@ export const CONFIG = {
   // Notion environment secrets.
   NOTION_SIGNING_SECRET: process.env.NOTION_SIGNING_SECRET,
 
-  // Shopify environment secrets.
-  OAUTH_SHOPIFY_CLIENT_SECRET: process.env.OAUTH_SHOPIFY_CLIENT_SECRET,
-
   // Endpoints.
   US_CONNECTOR_URL:
     process.env.US_CONNECTOR_URL ?? "https://connectors.dust.tt",
@@ -40,9 +37,6 @@ export const CONFIG = {
 
   // Notion related secrets.
   NOTION_SIGNING_SECRET_NAME: "NOTION_SIGNING_SECRET",
-
-  // Shopify related secrets.
-  OAUTH_SHOPIFY_CLIENT_SECRET_NAME: "OAUTH_SHOPIFY_CLIENT_SECRET",
 
   DUST_WEBHOOK_ROUTER_CONFIG_FILE_PATH: "webhook-router-config.json",
 } as const;
