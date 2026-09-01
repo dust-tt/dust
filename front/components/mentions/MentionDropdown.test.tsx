@@ -113,10 +113,10 @@ describe("MentionDropdown", () => {
 
     // Items are rendered directly by our mock.
     expect(
-      screen.getByRole("button", { name: "New conversation with Alice" })
+      screen.getByRole("button", { name: "New conversation with @Alice" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "About Alice" })
+      screen.getByRole("button", { name: "About @Alice" })
     ).toBeInTheDocument();
   });
 
@@ -129,7 +129,7 @@ describe("MentionDropdown", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: "New conversation with Alice" })
+      screen.getByRole("button", { name: "New conversation with @Alice" })
     );
 
     expect(getConversationRouteMock).toHaveBeenCalledWith(
@@ -148,7 +148,7 @@ describe("MentionDropdown", () => {
       </MentionDropdown>
     );
 
-    await user.click(screen.getByRole("button", { name: "About Alice" }));
+    await user.click(screen.getByRole("button", { name: "About @Alice" }));
 
     expect(openChangeMock).toHaveBeenCalledWith(true);
     expect(setQueryParamMock).toHaveBeenCalled();
