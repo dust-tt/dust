@@ -2739,6 +2739,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       pagination,
       extraWhereClause: {
         title: { [Op.iLike]: `%${query}%` },
+        depth: { [Op.eq]: 0 }, // Only fetch root conversations
       },
     });
   }

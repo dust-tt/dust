@@ -2,7 +2,6 @@ import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { SearchConversationsResponseBody } from "@app/types/api/projects/search";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -72,10 +71,16 @@ app.get(
     const conversationMap = new Map(conversations.map((ctx) => [ctx.sId, ctx]));
 
     const results = filteredResults
-      .map((r) => conversationMap.get(r.conversationId)?.toJSON())
-      .filter(
-        (ctx): ctx is ConversationWithoutContentType => ctx !== undefined
-      );
+      .map((r) => {
+        const conv = conversationMap.get(r.conversationId);
+        // Sub-conversations (depth > 0) are indexed for agent search but must
+        // not surface in user-facing search.
+        if (!conv || conv.depth > 0) {
+          return null;
+        }
+        return conv.toJSON();
+      })
+      .filter((conv) => conv !== null);
 
     return ctx.json({ conversations: results });
   }

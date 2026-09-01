@@ -26,6 +26,9 @@ interface ConversationSearchResult {
   spaceId: string;
 }
 
+// TODO(2026-09-01 SEARCH): sub-conversations (depth > 0) are indexed and consume
+// the topK budget; callers filter them out post-fetch. Exclude them at sync time
+// instead (listSpaceConversationsForSync) and clean up already-indexed documents.
 export async function searchProjectConversations(
   auth: Authenticator,
   options: SearchProjectConversationsOptions
