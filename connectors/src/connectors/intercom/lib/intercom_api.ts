@@ -472,11 +472,33 @@ export async function fetchIntercomConversation({
   accessToken: string;
   conversationId: string;
 }): Promise<IntercomConversationWithPartsType | null> {
+  if (!conversationId) {
+    return null;
+  }
+
   const response = await queryIntercomAPI({
     accessToken,
     path: `conversations/${conversationId}`,
     method: "GET",
   });
+
+  if (!response) {
+    return null;
+  }
+
+  // queryIntercomAPI returns error.list bodies for non-404 failures (rate
+  // limits, invalid ids). Those must not be treated as conversations.
+  if (response.type === "error.list") {
+    throw new ProviderWorkflowError(
+      "intercom",
+      `Failed to fetch conversation ${conversationId}`,
+      "transient_upstream_activity_error"
+    );
+  }
+
+  if (!response.id) {
+    return null;
+  }
 
   return response;
 }

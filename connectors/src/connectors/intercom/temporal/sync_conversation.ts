@@ -107,13 +107,20 @@ export async function fetchAndSyncConversation({
   syncType: "incremental" | "batch";
   loggerArgs: Record<string, string | number | null>;
 }) {
+  if (!conversationId) {
+    logger.error("[Intercom] Missing conversationId, skipping sync", {
+      loggerArgs,
+    });
+    return;
+  }
+
   const accessToken = await getIntercomAccessToken(connectionId);
   const conversation = await fetchIntercomConversation({
     accessToken,
     conversationId,
   });
 
-  if (!conversation) {
+  if (!conversation?.id) {
     logger.error("[Intercom] Failed to fetch conversation", {
       conversationId,
       loggerArgs,
@@ -146,6 +153,14 @@ export async function syncConversation({
   syncType: "incremental" | "batch";
   loggerArgs: Record<string, string | number | null>;
 }) {
+  if (!conversation.id) {
+    logger.error("[Intercom] Conversation has no id, skipping sync", {
+      connectorId,
+      loggerArgs,
+    });
+    return;
+  }
+
   const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: {
       connectorId,
