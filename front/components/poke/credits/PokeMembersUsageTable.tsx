@@ -3,6 +3,7 @@ import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLog
 import { GrantFreeCreditsButton } from "@app/components/poke/credits/GrantFreeCreditsButton";
 import { MemberConsumptionExportButton } from "@app/components/poke/credits/MemberConsumptionExportButton";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
+import { ResetFairUseButton } from "@app/components/poke/credits/ResetFairUseButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
@@ -401,6 +402,13 @@ function makeColumns({
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-2">
+          {row.original.fairUse && row.original.email && (
+            <ResetFairUseButton
+              owner={owner}
+              userEmail={row.original.email}
+              onReset={onReconciled}
+            />
+          )}
           {row.original.seatType === "free" && (
             <GrantFreeCreditsButton
               owner={owner}
