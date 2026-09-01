@@ -2,27 +2,29 @@ import { runCachedBunBuild } from "@app/lib/api/sandbox/image/bun_build";
 import fs from "fs";
 import path from "path";
 
-// @dust/pod is the sandbox-state runtime package exposed to sandbox function
+// @dust/sandbox is the sandbox-state runtime package exposed to sandbox function
 // code: db(name) returns a handle on one of the owner's SQLite databases
 // (bun:sqlite). The @dust scope is never published to npm, so the package is
 // vendored at image build time: bun-bundle the entrypoint (dependencies stay
 // external and resolve through NODE_PATH, like zod) and copy a flat
 // {package.json, index.js} into the image's global node_modules.
-export const POD_PACKAGE_NAME = "@dust/pod";
-export const POD_PACKAGE_VERSION = "0.3.2";
-export const POD_PACKAGE_IMAGE_DIR = `/opt/npm-global/lib/node_modules/${POD_PACKAGE_NAME}`;
+export const SANDBOX_PACKAGE_NAME = "@dust/sandbox";
+export const SANDBOX_PACKAGE_VERSION = "0.3.3";
+export const SANDBOX_PACKAGE_IMAGE_DIR = `/opt/npm-global/lib/node_modules/${SANDBOX_PACKAGE_NAME}`;
+export const LEGACY_POD_PACKAGE_NAME = "@dust/pod";
+export const LEGACY_POD_PACKAGE_IMAGE_DIR = `/opt/npm-global/lib/node_modules/${LEGACY_POD_PACKAGE_NAME}`;
 
-let podPackageSrcDir: string | undefined;
+let sandboxPackageSrcDir: string | undefined;
 
 /**
- * The @dust/pod source lives at cli/dust-sandbox/pod, resolved by walking up
+ * The @dust/sandbox source lives at cli/dust-sandbox/pod, resolved by walking up
  * from this file to the first ancestor containing cli/dust-sandbox instead of
  * counting `..` segments. Lazy on purpose: the repo layout exists where
  * images are built, not necessarily where front is deployed.
  */
-export function getPodPackageSrcDir(): string {
-  if (podPackageSrcDir) {
-    return podPackageSrcDir;
+export function getSandboxPackageSrcDir(): string {
+  if (sandboxPackageSrcDir) {
+    return sandboxPackageSrcDir;
   }
 
   let dir = __dirname;
@@ -36,15 +38,15 @@ export function getPodPackageSrcDir(): string {
     dir = parent;
   }
 
-  podPackageSrcDir = path.join(dir, "cli", "dust-sandbox", "pod");
-  return podPackageSrcDir;
+  sandboxPackageSrcDir = path.join(dir, "cli", "dust-sandbox", "pod");
+  return sandboxPackageSrcDir;
 }
 
 function buildPackageJson(): string {
   return `${JSON.stringify(
     {
-      name: POD_PACKAGE_NAME,
-      version: POD_PACKAGE_VERSION,
+      name: SANDBOX_PACKAGE_NAME,
+      version: SANDBOX_PACKAGE_VERSION,
       private: true,
       type: "module",
       main: "index.js",
@@ -54,15 +56,14 @@ function buildPackageJson(): string {
   )}\n`;
 }
 
-export function buildPodPackage(): Map<string, Buffer | string> {
-  const srcDir = getPodPackageSrcDir();
+export function buildSandboxPackage(): Map<string, Buffer | string> {
+  const srcDir = getSandboxPackageSrcDir();
   const entrypoint = path.join(srcDir, "index.ts");
 
-  // The source dir lands in a parallel PR. This generator only runs at image
-  // build time (content generators are lazy), so a missing dir must fail the
-  // build loudly rather than ship an image without the package.
+  // Content generators are lazy and run only at image build time, so a
+  // missing entrypoint must fail loudly rather than ship an incomplete image.
   if (!fs.existsSync(entrypoint)) {
-    throw new Error(`@dust/pod source not found at ${entrypoint}`);
+    throw new Error(`@dust/sandbox source not found at ${entrypoint}`);
   }
 
   return new Map<string, Buffer | string>([
@@ -70,7 +71,7 @@ export function buildPodPackage(): Map<string, Buffer | string> {
     [
       "index.js",
       runCachedBunBuild({
-        name: "the sandbox @dust/pod package",
+        name: "the @dust/sandbox package",
         entrypoint,
         srcDir,
         cwd: srcDir,

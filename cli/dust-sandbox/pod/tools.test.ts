@@ -11,7 +11,7 @@ import {
   ToolCallError,
   ToolCallResult,
   tools,
-} from "@dust/pod";
+} from "@dust/sandbox";
 
 const BASE_URL = "https://front.test/api/v1/w/w_test";
 const TOKEN = "sandbox-token";

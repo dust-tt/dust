@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PodDatabase, SandboxDatabase } from "@dust/pod";
+import type { PodDatabase, SandboxDatabase } from "@dust/sandbox";
 import {
   db,
   FRAME_ID_ENV,
@@ -33,7 +33,7 @@ import {
   SandboxDatabaseInvalidNameError,
   SandboxDatabasesUnavailableError,
   SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION,
-} from "@dust/pod";
+} from "@dust/sandbox";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // The production quota front passes per exec.

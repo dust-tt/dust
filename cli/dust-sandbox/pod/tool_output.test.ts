@@ -6,7 +6,7 @@ import {
   resolveToolTextContent,
   TOOL_OUTPUT_OFFLOAD_META_KEY,
   ToolOutputResolutionError,
-} from "@dust/pod";
+} from "@dust/sandbox";
 
 let mountRootDir: string;
 

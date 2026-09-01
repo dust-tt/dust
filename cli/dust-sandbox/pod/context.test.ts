@@ -5,7 +5,7 @@ import {
   INVOCATION_CONTEXT_KEY,
   podEnv,
   runWithInvocationEnv,
-} from "@dust/pod";
+} from "@dust/sandbox";
 
 const MARKER = "POD_CONTEXT_TEST_MARKER";
 

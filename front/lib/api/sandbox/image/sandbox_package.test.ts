@@ -1,18 +1,17 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import {
-  getPodPackageSrcDir,
-  POD_PACKAGE_IMAGE_DIR,
-} from "@app/lib/api/sandbox/image/pod_package";
+  getSandboxPackageSrcDir,
+  LEGACY_POD_PACKAGE_IMAGE_DIR,
+  SANDBOX_PACKAGE_IMAGE_DIR,
+} from "@app/lib/api/sandbox/image/sandbox_package";
 import { describe, expect, test } from "vitest";
 
-describe("pod package build paths", () => {
-  test("resolves the @dust/pod source dir under the repo root", () => {
-    // cli/dust-sandbox/pod itself lands in a parallel stack, so assert the
-    // resolution through markers that exist in every checkout: the repo root
-    // must contain front/ (where this test runs from) and cli/dust-sandbox/
-    // (the parent of the pod package).
-    const srcDir = getPodPackageSrcDir();
+describe("sandbox package build paths", () => {
+  test("resolves the @dust/sandbox source dir under the repo root", () => {
+    // Assert the walk through stable repo-root markers instead of its number
+    // of parent directories.
+    const srcDir = getSandboxPackageSrcDir();
     // pod → dust-sandbox → cli → repo root.
     const repoRoot = path.dirname(path.dirname(path.dirname(srcDir)));
 
@@ -22,7 +21,10 @@ describe("pod package build paths", () => {
   });
 
   test("targets the @dust scope inside the global node_modules", () => {
-    expect(POD_PACKAGE_IMAGE_DIR).toBe(
+    expect(SANDBOX_PACKAGE_IMAGE_DIR).toBe(
+      "/opt/npm-global/lib/node_modules/@dust/sandbox"
+    );
+    expect(LEGACY_POD_PACKAGE_IMAGE_DIR).toBe(
       "/opt/npm-global/lib/node_modules/@dust/pod"
     );
   });
