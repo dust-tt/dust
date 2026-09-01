@@ -120,6 +120,7 @@ export function UserMenu({
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuModal = router.query[USER_MENU_MODAL_QUERY_PARAM];
 
   const isFirefox =
     typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
@@ -139,12 +140,11 @@ export function UserMenu({
   }, []);
 
   useEffect(() => {
-    const modal = router.query[USER_MENU_MODAL_QUERY_PARAM];
-    if (!router.isReady || !isUserMenuModal(modal)) {
+    if (!router.isReady || !isUserMenuModal(userMenuModal)) {
       return;
     }
 
-    switch (modal) {
+    switch (userMenuModal) {
       case "personal-usage":
         setAnalyticsOpen(true);
         break;
@@ -152,11 +152,11 @@ export function UserMenu({
         setAutomationsOpen(true);
         break;
       default:
-        assertNeverAndIgnore(modal);
+        assertNeverAndIgnore(userMenuModal);
     }
 
     void removeParamFromRouter(router, USER_MENU_MODAL_QUERY_PARAM);
-  }, [router, router.isReady, router.query[USER_MENU_MODAL_QUERY_PARAM]]);
+  }, [router, userMenuModal]);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
