@@ -16,117 +16,24 @@ import type {
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
 import {
-  readFromRelocationStorage,
   withJSONSerializationRetry,
   writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import { getUserReferencingColumns } from "@app/temporal/relocation/lib/sql/schema/introspection";
-import type { UserIdMapping } from "@app/temporal/relocation/lib/sql/user_mappings";
-import { mapUserIdsInRows } from "@app/temporal/relocation/lib/sql/user_mappings";
 import type { RegionType } from "@app/types/region";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { Op, QueryTypes } from "sequelize";
 
-const userIdMappingCache = new Map<string, UserIdMapping>();
-
-async function loadUserIdMapping(
-  userIdMappingPath?: string | null
-): Promise<UserIdMapping> {
-  if (!userIdMappingPath) {
-    return new Map();
-  }
-
-  const cached = userIdMappingCache.get(userIdMappingPath);
-  if (cached) {
-    return cached;
-  }
-
-  const mappingRecord =
-    await readFromRelocationStorage<Record<string, ModelId>>(userIdMappingPath);
-  const mappingEntries = Object.entries(mappingRecord).map(
-    ([sourceId, destId]) => [Number(sourceId), destId] as const
-  );
-  const mapping = new Map<ModelId, ModelId>(mappingEntries);
-  userIdMappingCache.set(userIdMappingPath, mapping);
-  return mapping;
-}
-
-export async function collectWorkspaceUsersForMapping({
-  destRegion,
-  sourceRegion,
-  workspaceId,
-}: {
-  destRegion: RegionType;
-  sourceRegion: RegionType;
-  workspaceId: string;
-}): Promise<string | null> {
-  const localLogger = logger.child({
-    destRegion,
-    sourceRegion,
-    workspaceId,
-  });
-
-  localLogger.info("[SQL Users] Collecting users for mapping.");
-
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: workspaceId,
-    },
-    raw: true,
-  });
-  if (!workspace) {
-    throw new Error("Workspace not found.");
-  }
-
-  const { memberships } = await MembershipResource.getMembershipsForWorkspace({
-    workspace: renderLightWorkspaceType({ workspace }),
-  });
-  const userIds = Array.from(new Set(memberships.map((m) => m.userId)));
-
-  if (userIds.length === 0) {
-    localLogger.info("[SQL Users] No users associated with workspace.");
-    return null;
-  }
-
-  const users = await UserModel.findAll({
-    attributes: ["id", "workOSUserId"],
-    where: {
-      id: {
-        [Op.in]: userIds,
-      },
-    },
-    raw: true,
-  });
-
-  const payload = users.map((user) => ({
-    id: user.id,
-    workOSUserId: user.workOSUserId,
-  }));
-
-  const dataPath = await writeToRelocationStorage(payload, {
-    workspaceId,
-    type: "front",
-    operation: "collect_workspace_users_for_mapping",
-  });
-
-  localLogger.info({ dataPath }, "[SQL Users] Collected users for mapping.");
-
-  return dataPath;
-}
-
 export async function readCoreEntitiesFromSourceRegion({
   destRegion,
   sourceRegion,
   workspaceId,
-  userIdMappingPath,
 }: {
   destRegion: RegionType;
   sourceRegion: RegionType;
   workspaceId: string;
-  userIdMappingPath?: string | null;
 }) {
   const localLogger = logger.child({
     destRegion,
@@ -135,14 +42,6 @@ export async function readCoreEntitiesFromSourceRegion({
   });
 
   localLogger.info("[SQL Core Entities] Reading core entities.");
-
-  const userIdMapping = await loadUserIdMapping(userIdMappingPath);
-  if (userIdMapping.size > 0) {
-    localLogger.info(
-      { mappingSize: userIdMapping.size },
-      "[SQL Core Entities] Applying user ID mapping to source data."
-    );
-  }
 
   // Find the raw workspace.
   const workspace = await WorkspaceModel.findOne({
@@ -171,11 +70,6 @@ export async function readCoreEntitiesFromSourceRegion({
     raw: true,
   });
 
-  const usersForInsertion =
-    userIdMapping.size > 0
-      ? users.filter((user) => !userIdMapping.has(user.id))
-      : users;
-
   // Fetch all associated users metadata of the workspace.
   // Only fetch metadata where workspaceId is null (global) or matches the workspace being
   // relocated. This avoids FK violations when inserting into destination region for metadata
@@ -191,20 +85,6 @@ export async function readCoreEntitiesFromSourceRegion({
     },
     raw: true,
   });
-
-  const userMetadataForInsertion =
-    userIdMapping.size > 0
-      ? userMetadata.map((metadata) => {
-          const mappedUserId = userIdMapping.get(metadata.userId);
-          if (mappedUserId !== undefined && mappedUserId !== metadata.userId) {
-            return {
-              ...metadata,
-              userId: mappedUserId,
-            };
-          }
-          return metadata;
-        })
-      : userMetadata;
 
   const subscriptions = await frontSequelize.query<{ planId: ModelId }>(
     'SELECT * FROM subscriptions WHERE "workspaceId" = :workspaceId',
@@ -229,12 +109,12 @@ export async function readCoreEntitiesFromSourceRegion({
       plans: generateParameterizedInsertStatements("plans", plans, {
         onConflict: "ignore",
       }),
-      users: generateParameterizedInsertStatements("users", usersForInsertion, {
+      users: generateParameterizedInsertStatements("users", users, {
         onConflict: "ignore",
       }),
       user_metadata: generateParameterizedInsertStatements(
         "user_metadata",
-        userMetadataForInsertion,
+        userMetadata,
         {
           onConflict: "ignore",
         }
@@ -273,10 +153,6 @@ export async function getTablesWithWorkspaceIdOrder() {
   });
 }
 
-export async function getUserIdColumnsByTable() {
-  return getUserReferencingColumns(frontSequelize);
-}
-
 export async function readFrontTableChunk({
   destRegion,
   lastId,
@@ -285,9 +161,7 @@ export async function readFrontTableChunk({
   tableName,
   workspaceId,
   fileName,
-  userIdColumns,
-  userIdMappingPath,
-}: ReadTableChunkParams & { userIdMappingPath?: string | null }) {
+}: ReadTableChunkParams) {
   const localLogger = logger.child({
     destRegion,
     lastId,
@@ -321,21 +195,11 @@ export async function readFrontTableChunk({
     }
   );
 
-  const userIdMapping = await loadUserIdMapping(userIdMappingPath);
-  const normalizedRows =
-    userIdMapping.size > 0
-      ? mapUserIdsInRows(rows, userIdMapping, userIdColumns ?? [])
-      : rows;
-
   const blob: RelocationBlob = {
     statements: {
-      [tableName]: generateParameterizedInsertStatements(
-        tableName,
-        normalizedRows,
-        {
-          onConflict: "ignore",
-        }
-      ),
+      [tableName]: generateParameterizedInsertStatements(tableName, rows, {
+        onConflict: "ignore",
+      }),
     },
   };
 

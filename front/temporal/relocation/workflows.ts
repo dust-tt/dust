@@ -120,42 +120,25 @@ export async function workspaceRelocateFrontWorkflow({
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // 1) Prepare user ID mapping between source and destination regions.
-  const usersForMappingDataPath =
-    await sourceRegionActivities.collectWorkspaceUsersForMapping({
-      destRegion,
-      sourceRegion,
-      workspaceId,
-    });
-
-  const userIdMappingPath =
-    await destinationRegionActivities.prepareDestinationUserMapping({
-      destRegion,
-      sourceRegion,
-      workspaceId,
-      usersDataPath: usersForMappingDataPath,
-    });
-
-  // 2) Relocate the workspace, users and plan in the destination region.
+  // 1) Relocate the workspace, users and plan in the destination region.
   const coreEntitiesDataPath =
     await sourceRegionActivities.readCoreEntitiesFromSourceRegion({
       destRegion,
       sourceRegion,
       workspaceId,
-      userIdMappingPath,
     });
 
-  await destinationRegionActivities.writeCoreEntitiesToDestinationRegion({
-    dataPath: coreEntitiesDataPath,
-    destRegion,
-    sourceRegion,
-    workspaceId,
-  });
+  await destinationRegionActivities.writeCoreEntitiesToDestinationRegionWithIdNormalization(
+    {
+      dataPath: coreEntitiesDataPath,
+      destRegion,
+      sourceRegion,
+      workspaceId,
+    }
+  );
 
-  const [tablesOrder, userIdColumnsByTable] = await Promise.all([
-    sourceRegionActivities.getTablesWithWorkspaceIdOrder(),
-    sourceRegionActivities.getUserIdColumnsByTable(),
-  ]);
+  const tablesOrder =
+    await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
 
   // 2) Relocate front tables to the destination region.
   for (const tableName of tablesOrder) {
@@ -168,8 +151,6 @@ export async function workspaceRelocateFrontWorkflow({
           tableName,
           destRegion,
           workspaceId,
-          userIdMappingPath,
-          userIdColumns: userIdColumnsByTable[tableName] ?? [],
         },
       ],
       memo,
@@ -210,13 +191,9 @@ export async function workspaceRelocateFrontTableWorkflow({
   tableName,
   destRegion,
   workspaceId,
-  userIdMappingPath,
-  userIdColumns,
 }: RelocationWorkflowBase & {
   tableName: string;
   lastProcessedId?: ModelId;
-  userIdMappingPath?: string | null;
-  userIdColumns?: string[];
 }) {
   // Create activity proxies with dynamic task queues.
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
@@ -235,8 +212,6 @@ export async function workspaceRelocateFrontTableWorkflow({
         workspaceId,
         tableName,
         lastProcessedId: currentId,
-        userIdMappingPath,
-        userIdColumns,
       });
     }
 
@@ -252,20 +227,20 @@ export async function workspaceRelocateFrontTableWorkflow({
         tableName,
         sourceRegion,
         destRegion,
-        userIdMappingPath,
-        userIdColumns,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CHUNK_SIZE,
       });
 
     if (dataPath) {
-      await destinationRegionActivities.processFrontTableChunk({
-        dataPath,
-        destRegion,
-        sourceRegion,
-        tableName,
-        workspaceId,
-      });
+      await destinationRegionActivities.processFrontTableChunkWithIdNormalization(
+        {
+          dataPath,
+          destRegion,
+          sourceRegion,
+          tableName,
+          workspaceId,
+        }
+      );
     }
 
     hasMoreRows = hasMore;

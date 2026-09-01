@@ -8,8 +8,15 @@ import type { RegionType } from "@app/types/region";
 import type { ModelId } from "@app/types/shared/model_id";
 import isPlainObject from "lodash/isPlainObject";
 
+export interface RelocationStatement {
+  sql: string;
+  params: any[];
+  /** Absent when a previous source worker produces the blob during a rolling deployment. */
+  columns?: string[];
+}
+
 export interface RelocationBlob<T extends string = string> {
-  statements: Record<T, { sql: string; params: any[] }[]>;
+  statements: Record<T, RelocationStatement[]>;
 }
 
 export type CoreEntitiesRelocationBlob = RelocationBlob<
@@ -24,8 +31,6 @@ export interface ReadTableChunkParams {
   tableName: string;
   workspaceId: string;
   fileName?: string;
-  userIdColumns?: string[];
-  userIdMappingPath?: string | null;
 }
 
 export const CORE_API_CONCURRENCY_LIMIT = 48;
