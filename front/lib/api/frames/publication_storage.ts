@@ -5,7 +5,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  getFrameSourceLockName,
+  withFramePublishLock,
+} from "@app/lib/api/frames/operation_lock";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
@@ -87,6 +90,26 @@ export class FramePublicationError extends Error {
 
 function sha256(content: string | Buffer): string {
   return createHash("sha256").update(content).digest("hex");
+}
+
+function checkPublicationLeases({
+  publishLease,
+  sourceLease,
+}: {
+  publishLease?: LockLeaseGuard;
+  sourceLease: LockLeaseGuard;
+}): Result<void, LockLeaseLostError> {
+  const sourceHeld = sourceLease.check();
+  if (sourceHeld.isErr()) {
+    return sourceHeld;
+  }
+
+  const publishHeld = publishLease?.check();
+  if (publishHeld?.isErr()) {
+    return publishHeld;
+  }
+
+  return new Ok(undefined);
 }
 export function isFramePublicationError(
   error: unknown
@@ -462,10 +485,12 @@ export async function activateFramePublication(
     frame,
     lease,
     publicationId,
+    sourceLease,
   }: {
     frame: FileResource;
     lease?: LockLeaseGuard;
     publicationId: string;
+    sourceLease: LockLeaseGuard;
   }
 ): Promise<Result<void, FramePublicationError | LockLeaseLostError>> {
   const descriptor = await loadFramePublicationDescriptor(auth, {
@@ -530,8 +555,11 @@ export async function activateFramePublication(
 
   try {
     await withTransaction(async (transaction) => {
-      const heldBeforeActivation = lease?.check();
-      if (heldBeforeActivation?.isErr()) {
+      const heldBeforeActivation = checkPublicationLeases({
+        publishLease: lease,
+        sourceLease,
+      });
+      if (heldBeforeActivation.isErr()) {
         throw heldBeforeActivation.error;
       }
 
@@ -551,8 +579,11 @@ export async function activateFramePublication(
         transaction
       );
 
-      const heldBeforeCommit = lease?.check();
-      if (heldBeforeCommit?.isErr()) {
+      const heldBeforeCommit = checkPublicationLeases({
+        publishLease: lease,
+        sourceLease,
+      });
+      if (heldBeforeCommit.isErr()) {
         throw heldBeforeCommit.error;
       }
     });
@@ -596,12 +627,14 @@ export async function publishFramePublication(
     frame,
     functionArtifacts,
     manifest,
+    sourceLease,
     sourceFiles,
     uiBundleCode,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
+    sourceLease: LockLeaseGuard;
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
   }
@@ -626,20 +659,27 @@ export async function publishFramePublication(
       return storedPublication;
     }
 
-    const heldBeforeReconciliation = lease.check();
+    const heldBeforeReconciliation = checkPublicationLeases({
+      publishLease: lease,
+      sourceLease,
+    });
     if (heldBeforeReconciliation.isErr()) {
       return heldBeforeReconciliation;
     }
     const reconciliation = await reconcileFramePublicationDatabases(auth, {
       frame,
       manifest,
+      sourceLease,
       sourceFiles,
     });
     if (reconciliation.isErr()) {
       return reconciliation;
     }
 
-    const heldBeforeActivation = lease.check();
+    const heldBeforeActivation = checkPublicationLeases({
+      publishLease: lease,
+      sourceLease,
+    });
     if (heldBeforeActivation.isErr()) {
       return heldBeforeActivation;
     }
@@ -647,6 +687,7 @@ export async function publishFramePublication(
       frame,
       lease,
       publicationId: storedPublication.value.publicationId,
+      sourceLease,
     });
     if (activation.isErr()) {
       return activation;
@@ -656,6 +697,17 @@ export async function publishFramePublication(
   });
   if (publication.isErr()) {
     const error = publication.error;
+    if (
+      isLockLeaseLostError(error) &&
+      error.lockName === getFrameSourceLockName(frame.sId)
+    ) {
+      return new Err(
+        new SandboxFunctionError(
+          "publish_conflict",
+          "Another source operation is in progress for this Frame; retry shortly."
+        )
+      );
+    }
     if (isLockAcquisitionTimeoutError(error) || isLockLeaseLostError(error)) {
       return new Err(
         new SandboxFunctionError(
