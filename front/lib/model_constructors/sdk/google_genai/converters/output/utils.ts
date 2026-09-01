@@ -13,6 +13,10 @@ import type {
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import {
+  buildHttpStatusErrorEvent,
+  httpErrorMessage,
+} from "@app/lib/model_constructors/utils/classify_http_status";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   GenerateContentResponse,
@@ -242,69 +246,22 @@ function apiErrorToErrorEvent(
       errorSource: "dust",
       metadata,
       type: "authentication_error",
-      message: `Authentication failed for Google: ${error.message}`,
+      message: httpErrorMessage({
+        type: "authentication_error",
+        provider: "Google",
+        detail: error.message,
+      }),
       originalError: error,
     });
   }
-  switch (status) {
-    case 400:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "invalid_request_error",
-        message: `Invalid request to Google: ${error.message}`,
-        originalError: error,
-      });
-    case 403:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "permission_error",
-        message: `Permission denied for Google: ${error.message}`,
-        originalError: error,
-      });
-    case 404:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "not_found_error",
-        message: `Resource not found for Google: ${error.message}`,
-        originalError: error,
-      });
-    case 429:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "rate_limit_error",
-        message: `Rate limit exceeded for Google/${metadata.model}: ${error.message}`,
-        originalError: error,
-      });
-    case 503:
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "overloaded_error",
-        message: `Google is overloaded: ${error.message}`,
-        originalError: error,
-      });
-    default:
-      if (status >= 500 && status < 600) {
-        return buildErrorEvent({
-          errorSource: "provider",
-          metadata,
-          type: "server_error",
-          message: `Server error from Google (${status}): ${error.message}`,
-          originalError: error,
-        });
-      }
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "unknown_error",
-        message: `Error from Google (${status}): ${error.message}`,
-        originalError: error,
-      });
-  }
+
+  return buildHttpStatusErrorEvent({
+    metadata,
+    status: error.status,
+    provider: "Google",
+    detail: error.message,
+    originalError: error,
+  });
 }
 
 // Maps any error thrown by the Google SDK while streaming into a unified

@@ -41,6 +41,10 @@ import type {
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import {
+  buildHttpStatusErrorEvent,
+  httpErrorMessage,
+} from "@app/lib/model_constructors/utils/classify_http_status";
 import logger from "@app/logger/logger";
 import {
   assertNever,
@@ -435,94 +439,35 @@ function classifyStreamError(error: unknown): ClassifiedStreamError {
   return { kind: "unknown" };
 }
 
-// HTTP status is a number, not a union, so the 5xx range stays an `if` in the
-// default branch.
 function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: APIError
 ): ErrorEvent {
+  // Anthropic can intermittently fail to download a signed image URL included in a long agent run and returns HTTP 400 with "Unable to download the file".
+  // Classify only this exact Anthropic diagnostic as a retryable server error.
   if (isAnthropicFileDownloadError(error)) {
     return buildErrorEvent({
-      errorSource: "provider",
+      errorSource: "dust",
       metadata,
       type: "server_error",
-      message: `Server error from Anthropic: ${error.message}`,
+      message: httpErrorMessage({
+        type: "server_error",
+        provider: "Anthropic",
+        detail: error.message,
+      }),
       originalError: error,
     });
   }
 
   // Mid-stream SSE `error` events surface as an `APIError` with no HTTP status;
   // the old router defaulted those to 500, so mirror that here.
-  const status = error.status ?? 500;
-  switch (status) {
-    case 400:
-    case 422:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "invalid_request_error",
-        message: `Invalid request to Anthropic: ${error.message}`,
-        originalError: error,
-      });
-    case 401:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "authentication_error",
-        message: `Authentication failed for Anthropic: ${error.message}`,
-        originalError: error,
-      });
-    case 403:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "permission_error",
-        message: `Permission denied for Anthropic: ${error.message}`,
-        originalError: error,
-      });
-    case 404:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "not_found_error",
-        message: `Resource not found for Anthropic: ${error.message}`,
-        originalError: error,
-      });
-    case 429:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "rate_limit_error",
-        message: `Rate limit exceeded for Anthropic/${metadata.model}: ${error.message}`,
-        originalError: error,
-      });
-    case 503:
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "overloaded_error",
-        message: `Anthropic is overloaded: ${error.message}`,
-        originalError: error,
-      });
-    default:
-      if (status !== undefined && status >= 500 && status < 600) {
-        return buildErrorEvent({
-          errorSource: "provider",
-          metadata,
-          type: "server_error",
-          message: `Server error from Anthropic (${status}): ${error.message}`,
-          originalError: error,
-        });
-      }
-
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "unknown_error",
-        message: `Error from Anthropic (${status}): ${error.message}`,
-        originalError: error,
-      });
-  }
+  return buildHttpStatusErrorEvent({
+    metadata,
+    status: error.status ?? 500,
+    provider: "Anthropic",
+    detail: error.message,
+    originalError: error,
+  });
 }
 
 // Maps any error thrown by the Anthropic SDK while streaming into a unified
@@ -1256,6 +1201,30 @@ export function messageToEvents(
   return events;
 }
 
+function classifyAnthropicApiErrorType(errorType: string): {
+  errorSource: ErrorSource;
+  type: ErrorType;
+} {
+  switch (errorType) {
+    case "invalid_request_error":
+      return { errorSource: "dust", type: "invalid_request_error" };
+    case "authentication_error":
+      return { errorSource: "dust", type: "authentication_error" };
+    case "permission_error":
+      return { errorSource: "dust", type: "permission_error" };
+    case "not_found_error":
+      return { errorSource: "dust", type: "not_found_error" };
+    case "rate_limit_error":
+      return { errorSource: "dust", type: "rate_limit_error" };
+    case "overloaded_error":
+      return { errorSource: "provider", type: "overloaded_error" };
+    case "api_error":
+      return { errorSource: "provider", type: "server_error" };
+    default:
+      return { errorSource: "unknown", type: "unknown_error" };
+  }
+}
+
 // Converts a single Anthropic batch result into unified events.
 export function batchResultToEvents(
   result: BetaMessageBatchResult,
@@ -1265,16 +1234,25 @@ export function batchResultToEvents(
   switch (result.type) {
     case "succeeded":
       return messageToEvents(result.message, metadata, converters);
-    case "errored":
+    case "errored": {
+      const { errorSource, type } = classifyAnthropicApiErrorType(
+        result.error.error.type
+      );
       return [
         buildErrorEvent({
-          errorSource: "provider",
+          errorSource,
           metadata,
-          type: "server_error",
-          message: result.error.error.message,
+          type,
+          message: httpErrorMessage({
+            type,
+            provider: "Anthropic",
+            detail: result.error.error.message,
+            model: metadata.model,
+          }),
           originalError: result.error,
         }),
       ];
+    }
     case "canceled":
       return [
         buildErrorEvent({
