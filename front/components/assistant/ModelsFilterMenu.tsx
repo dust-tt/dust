@@ -99,8 +99,6 @@ export function ModelsFilterMenu({
           icon={CpuChip01}
           label={isCompact ? undefined : "Models"}
           tooltip={isCompact ? "Models" : undefined}
-          counterValue={selectedModels.length.toString()}
-          isCounter={selectedModels.length > 0}
         />
       </DropdownMenuTrigger>
       <ModelPickerContent
