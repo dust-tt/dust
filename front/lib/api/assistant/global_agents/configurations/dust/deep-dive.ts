@@ -36,10 +36,8 @@ import {
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
-import {
-  GPT_5_6_LUNA_MODEL_CONFIG,
-  GPT_5_6_SOL_MODEL_CONFIG,
-} from "@app/types/assistant/models/openai";
+import { AUTO_FAST_MODEL_CONFIG } from "@app/types/assistant/models/auto";
+import { GPT_5_6_SOL_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -415,54 +413,6 @@ function getDeepDiveModelConfig(
   );
 }
 
-function getDustTaskModelConfig(
-  auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  excludeProviders: ReadonlySet<ModelProviderIdType>
-): ModelConfigWithReasoning | null {
-  return (
-    getEnabledModelConfig(
-      auth,
-      GPT_5_6_LUNA_MODEL_CONFIG,
-      "high",
-      featureFlags,
-      excludeProviders
-    ) ??
-    getEnabledModelConfig(
-      auth,
-      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
-      "light",
-      featureFlags,
-      excludeProviders
-    ) ??
-    getLargeModelFallback(auth, featureFlags, excludeProviders)
-  );
-}
-
-function getPlanningModelConfig(
-  auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  excludeProviders: ReadonlySet<ModelProviderIdType>
-): ModelConfigWithReasoning | null {
-  return (
-    getEnabledModelConfig(
-      auth,
-      GPT_5_6_SOL_MODEL_CONFIG,
-      "high",
-      featureFlags,
-      excludeProviders
-    ) ??
-    getEnabledModelConfig(
-      auth,
-      CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-      "high",
-      featureFlags,
-      excludeProviders
-    ) ??
-    getLargeModelFallback(auth, featureFlags, excludeProviders)
-  );
-}
-
 export function _getDeepDiveGlobalAgent(
   auth: Authenticator,
   {
@@ -627,22 +577,19 @@ export function _getDeepDiveGlobalAgent(
   };
 }
 
-export function _getDustTaskGlobalAgent(
-  auth: Authenticator,
-  {
-    settings,
-    preFetchedDataSources,
-    mcpServerViews,
-    excludeProviders,
-    featureFlags,
-  }: {
-    settings: GlobalAgentSettingsModel | null;
-    preFetchedDataSources: PrefetchedDataSourcesType | null;
-    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    excludeProviders: ReadonlySet<ModelProviderIdType>;
-    featureFlags: WhitelistableFeature[];
-  }
-): AgentConfigurationType | null {
+export function _getDustTaskGlobalAgent({
+  settings,
+  preFetchedDataSources,
+  mcpServerViews,
+  autoDefaultModelConfig,
+}: {
+  settings: GlobalAgentSettingsModel | null;
+  preFetchedDataSources: PrefetchedDataSourcesType | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  // The stream meta-model the @dust agent defaults to: the highest one the
+  // member's model-tier cap allows (Standard, or Basic when capped).
+  autoDefaultModelConfig: ModelConfigurationType | null;
+}): AgentConfigurationType | null {
   const name = "dust-task";
   const description = `Focused research sub-agent. Same data/web tools as ${DEEP_DIVE_NAME}, without Interactive Content or spawning sub-agents.`;
 
@@ -674,13 +621,7 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
-  const modelConfig = getDustTaskModelConfig(
-    auth,
-    featureFlags,
-    excludeProviders
-  );
-
-  if (!modelConfig || settings?.status === "disabled_by_admin") {
+  if (settings?.status === "disabled_by_admin") {
     return {
       ...dustTaskAgent,
       status: "disabled_by_admin",
@@ -689,11 +630,15 @@ export function _getDustTaskGlobalAgent(
     };
   }
 
+  // Same default stream as the @dust agent. The sentinel is resolved to a
+  // concrete model + effort at message-send time by resolveModel().
+  const modelConfiguration = autoDefaultModelConfig ?? AUTO_FAST_MODEL_CONFIG;
+
   const model: AgentModelConfigurationType = {
-    providerId: modelConfig.modelConfiguration.providerId,
-    modelId: modelConfig.modelConfiguration.modelId,
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
     temperature: 1.0,
-    reasoningEffort: modelConfig.reasoningEffort,
+    reasoningEffort: modelConfiguration.defaultReasoningEffort,
   };
 
   dustTaskAgent.model = model;
@@ -751,18 +696,15 @@ export function _getDustTaskGlobalAgent(
   };
 }
 
-export function _getPlanningAgent(
-  auth: Authenticator,
-  {
-    settings,
-    excludeProviders,
-    featureFlags,
-  }: {
-    settings: GlobalAgentSettingsModel | null;
-    excludeProviders: ReadonlySet<ModelProviderIdType>;
-    featureFlags: WhitelistableFeature[];
-  }
-): AgentConfigurationType | null {
+export function _getPlanningAgent({
+  settings,
+  autoDefaultModelConfig,
+}: {
+  settings: GlobalAgentSettingsModel | null;
+  // The stream meta-model the @dust agent defaults to: the highest one the
+  // member's model-tier cap allows (Standard, or Basic when capped).
+  autoDefaultModelConfig: ModelConfigurationType | null;
+}): AgentConfigurationType | null {
   const name = "dust-planning";
   const description = "A agent that plans research tasks.";
 
@@ -794,12 +736,7 @@ export function _getPlanningAgent(
     canEdit: false,
   };
 
-  const modelConfig = getPlanningModelConfig(
-    auth,
-    featureFlags,
-    excludeProviders
-  );
-  if (!modelConfig || settings?.status === "disabled_by_admin") {
+  if (settings?.status === "disabled_by_admin") {
     return {
       ...planningAgent,
       status: "disabled_by_admin",
@@ -808,11 +745,15 @@ export function _getPlanningAgent(
     };
   }
 
+  // Same default stream as the @dust agent. The sentinel is resolved to a
+  // concrete model + effort at message-send time by resolveModel().
+  const modelConfiguration = autoDefaultModelConfig ?? AUTO_FAST_MODEL_CONFIG;
+
   const model: AgentModelConfigurationType = {
-    providerId: modelConfig.modelConfiguration.providerId,
-    modelId: modelConfig.modelConfiguration.modelId,
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
     temperature: 1.0,
-    reasoningEffort: modelConfig.reasoningEffort,
+    reasoningEffort: modelConfiguration.defaultReasoningEffort,
   };
   planningAgent.model = model;
 
