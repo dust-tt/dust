@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -33,9 +34,7 @@ vi.mock("@app/lib/lock", () => ({
   executeWithLockResult: mockExecuteWithLock,
 }));
 
-import { deleteFrameV2Package } from "@app/lib/api/frames/delete";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FrameResource } from "@app/lib/resources/frame_resource";
 import {
   FrameGoneError,
   FrameSandboxAdapter,
@@ -49,9 +48,11 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
+import { getPodFilesBasePath } from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 function createDeferred() {
   let resolvePromise: (() => void) | undefined;
@@ -117,7 +118,10 @@ describe("FrameSandboxAdapter", () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
+    const pod = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id
+    );
     const podEnvResult = await SandboxEnvVarResource.makeNew(
       auth,
       { kind: "pod", pod },
@@ -132,6 +136,10 @@ describe("FrameSandboxAdapter", () => {
       status: "created",
       useCase: "project_context",
       useCaseMetadata: { spaceId: pod.sId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: workspace.sId,
+        podId: pod.sId,
+      })}Frame/${FRAME_MANIFEST_FILE}`,
     });
 
     const first = await FrameSandboxAdapter.ensureSandboxActive(auth, frame);
@@ -163,10 +171,14 @@ describe("FrameSandboxAdapter", () => {
   });
 
   it("deletes the owned sandbox before deleting the Frame", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({
+    const { user, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
     const frame = await FileFactory.create(auth, null, {
       contentType: frameV2ContentType,
       fileName: "manifest.json",
@@ -174,6 +186,10 @@ describe("FrameSandboxAdapter", () => {
       status: "created",
       useCase: "project_context",
       useCaseMetadata: { spaceId: pod.sId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: workspace.sId,
+        podId: pod.sId,
+      })}Frame/${FRAME_MANIFEST_FILE}`,
     });
     const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
       auth,
@@ -188,21 +204,7 @@ describe("FrameSandboxAdapter", () => {
       deletedPrefixes.push(prefix)
     );
 
-    const failedDeleteResult = await deleteFrameV2Package(auth, {
-      deleteSource: async () => new Err(new Error("source unavailable")),
-      frame,
-    });
-
-    expect(failedDeleteResult.isErr()).toBe(true);
-    expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).not.toBeNull();
-    expect(await FileResource.fetchById(auth, frame.sId)).not.toBeNull();
-    expect(mockProviderDestroy).not.toHaveBeenCalled();
-    expect(deletedPrefixes).toEqual([]);
-
-    const deleteResult = await deleteFrameV2Package(auth, {
-      deleteSource: async () => new Ok(undefined),
-      frame,
-    });
+    const deleteResult = await frame.delete(auth);
 
     expect(
       deleteResult.isOk(),
@@ -221,10 +223,14 @@ describe("FrameSandboxAdapter", () => {
   });
 
   it("keeps sandbox creation blocked until Frame deletion completes", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({
+    const { user, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
     const frame = await FileFactory.create(auth, null, {
       contentType: frameV2ContentType,
       fileName: "manifest.json",
@@ -232,6 +238,10 @@ describe("FrameSandboxAdapter", () => {
       status: "created",
       useCase: "project_context",
       useCaseMetadata: { spaceId: pod.sId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: workspace.sId,
+        podId: pod.sId,
+      })}Frame/${FRAME_MANIFEST_FILE}`,
     });
     const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
       auth,
@@ -282,10 +292,7 @@ describe("FrameSandboxAdapter", () => {
 
     try {
       mockExecuteWithLock.mockClear();
-      const deletionPromise = deleteFrameV2Package(auth, {
-        deleteSource: async () => new Ok(undefined),
-        frame,
-      });
+      const deletionPromise = frame.delete(auth);
       await deletionReachedFunctionCleanup.promise;
       expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).toBeNull();
 
@@ -359,7 +366,6 @@ describe("FrameSandboxAdapter", () => {
       sandboxModelIds.push(sandboxResult.value.sandbox.id);
     }
 
-    await FrameResource.deleteAllOwnedResourcesForWorkspace(auth);
     await FileResource.deleteAllForWorkspace(auth);
 
     expect(mockProviderDestroy).toHaveBeenCalledTimes(2);

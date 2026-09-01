@@ -528,6 +528,12 @@ export async function removeFileFromProject(
     return new Err(new Error("File not found."));
   }
 
+  // Frames v2 own their source package and project-fragment cleanup. Let the canonical Frame
+  // deletion path run before this function mutates any fragments so source failures are retryable.
+  if (file.isFrameV2) {
+    return file.delete(auth);
+  }
+
   // Best-effort cleanup of the project content fragments for this file.
   const workspaceId = auth.getNonNullableWorkspace().id;
   const projectFragmentIds = await ContentFragmentModel.findAll({

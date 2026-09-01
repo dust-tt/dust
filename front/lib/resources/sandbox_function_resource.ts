@@ -51,7 +51,6 @@ import assert from "assert";
 import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
@@ -69,7 +68,6 @@ export interface FramePublicationFunctionDefinition {
 }
 
 export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
-const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
 
 /**
  * Sha256 hex of a published bundle's utf8 bytes — the same bytes uploadContent writes and the
@@ -776,78 +774,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
 
     return new Ok(sandboxFunctions.length);
-  }
-
-  private static async deleteByModelIdsForWorkspace(
-    workspaceModelId: ModelId,
-    sandboxFunctionModelIds: ModelId[]
-  ): Promise<number> {
-    if (sandboxFunctionModelIds.length === 0) {
-      return 0;
-    }
-
-    await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
-      { workspaceModelId, sandboxFunctionModelIds }
-    );
-
-    return this.model.destroy({
-      where: {
-        id: sandboxFunctionModelIds,
-        workspaceId: workspaceModelId,
-      },
-    });
-  }
-
-  static async deleteAllForFrame(
-    auth: Authenticator,
-    frame: Pick<FileResource, "id" | "isFrameV2" | "workspaceId">
-  ): Promise<number> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    assert(
-      frame.isFrameV2,
-      "Frame function cleanup requires a Frames v2 file."
-    );
-    assert(
-      frame.workspaceId === workspaceModelId,
-      "The Frame must belong to the authenticated workspace."
-    );
-
-    const sandboxFunctions = await this.model.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId: workspaceModelId,
-        fileId: frame.id,
-        publicationId: { [Op.ne]: null },
-      },
-    });
-
-    return this.deleteByModelIdsForWorkspace(
-      workspaceModelId,
-      sandboxFunctions.map(({ id }) => id)
-    );
-  }
-
-  static async deleteAllFrameFunctionsForWorkspace(
-    workspaceModelId: ModelId
-  ): Promise<void> {
-    for (;;) {
-      const sandboxFunctions = await this.model.findAll({
-        attributes: ["id"],
-        where: {
-          workspaceId: workspaceModelId,
-          publicationId: { [Op.ne]: null },
-        },
-        limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
-      });
-      if (sandboxFunctions.length === 0) {
-        return;
-      }
-
-      await this.deleteByModelIdsForWorkspace(
-        workspaceModelId,
-        sandboxFunctions.map(({ id }) => id)
-      );
-    }
   }
 
   /**
