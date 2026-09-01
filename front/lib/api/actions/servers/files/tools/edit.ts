@@ -32,7 +32,7 @@ import {
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
-const FILE_EDIT_LOCK_ACQUISITION_TIMEOUT_MS = 30_000;
+const FILE_EDIT_LOCK_ACQUISITION_TIMEOUT_MS = 5_000;
 const FILE_EDIT_LOCK_TTL_MS = 30_000;
 const FILE_EDIT_LOCK_RETRY_INTERVAL_MS = 25;
 
