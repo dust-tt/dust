@@ -176,7 +176,9 @@ export function PoolUsagePage() {
 
   const sort = sorting[0];
   const orderColumn =
-    sort?.id === "email" || sort?.id === "consumedFromPoolAwuCredits"
+    sort?.id === "email" ||
+    sort?.id === "consumedFromPoolAwuCredits" ||
+    sort?.id === "seatUsage"
       ? sort.id
       : "name";
   const orderDirection = sort?.desc ? "desc" : "asc";

@@ -243,6 +243,7 @@ export const MembersUsagePaginationSchema = z.object({
       "consumedFromPoolAwuCredits",
       "seatType",
       "creditState",
+      "seatUsage",
     ])
     .catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
@@ -1967,6 +1968,66 @@ async function resolveMembersUsagePageUsers({
         sortKeyByUserId.set(
           u.sId,
           membershipByUserModelId.get(u.id)?.creditState ?? ""
+        );
+      }
+      break;
+    }
+    case "seatUsage": {
+      const freeSeatUserIds = allUsers.flatMap((u) =>
+        membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
+      );
+      const [consumedByUserId, seatDataByUserId, freeSeatCredits] =
+        await Promise.all([
+          fetchConsumedAwuCreditsFromMetronomeByUserId({
+            workspaceId: workspace.sId,
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            metronomeContractId:
+              auth.subscription()?.metronomeContractId ?? null,
+            users: allUsers.map((u) => ({
+              sId: u.sId,
+              seatType: membershipByUserModelId.get(u.id)?.seatType ?? null,
+            })),
+          }),
+          fetchSeatDataForMembersTable({
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            metronomeContractId:
+              auth.subscription()?.metronomeContractId ?? null,
+          }),
+          freeSeatUserIds.length > 0
+            ? fetchFreeSeatCreditsForMembersTable({
+                metronomeCustomerId: workspace.metronomeCustomerId,
+              })
+            : Promise.resolve({
+                freeBalanceByUserId: new Map<string, number>(),
+                freeStartingByUserId: new Map<string, number>(),
+              }),
+        ]);
+      const { freeBalanceByUserId, freeStartingByUserId } = freeSeatCredits;
+      for (const u of allUsers) {
+        const seatType = membershipByUserModelId.get(u.id)?.seatType ?? null;
+        const awuAllocation = seatDataByUserId.get(u.sId)?.awuAllocation ?? 0;
+        const freeStartingBalanceAwu =
+          seatType === "free"
+            ? (freeStartingByUserId.get(u.sId) ?? null)
+            : null;
+        const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
+        const consumed =
+          seatType === "free"
+            ? Math.max(
+                0,
+                effectiveAllocationAwu - (freeBalanceByUserId.get(u.sId) ?? 0)
+              )
+            : Math.min(
+                consumedByUserId.get(u.sId) ?? 0,
+                effectiveAllocationAwu
+              );
+        sortKeyByUserId.set(
+          u.sId,
+          effectiveAllocationAwu > 0
+            ? Math.min(100, (consumed / effectiveAllocationAwu) * 100)
+            : consumed > 0
+              ? 100
+              : 0
         );
       }
       break;
