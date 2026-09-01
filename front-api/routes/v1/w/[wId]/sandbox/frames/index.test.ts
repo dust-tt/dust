@@ -4,6 +4,7 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -596,6 +597,112 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     ).resolves.toBeNull();
   });
 
+  it("does not overwrite an existing registered destination", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = context.manifestPath
+      .replace("/Status/", "/Taken/")
+      .replace(`/${FRAME_MANIFEST_FILE}`, "");
+    await FileFactory.create(context.auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: context.conversation.sId },
+      mountFilePath: `${context.mountDirectoryPath.replace(/Status$/, "Taken")}/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath.replace(`/${FRAME_MANIFEST_FILE}`, ""),
+      destinationDirectoryPath
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message: "A registered file already uses the destination path.",
+      },
+    });
+  });
+
+  it("does not overwrite a destination containing only hidden objects", async () => {
+    const context = await setup();
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = sourceDirectoryPath.replace(
+      "/Status",
+      "/Hidden"
+    );
+    const destinationMountDirectoryPath = context.mountDirectoryPath.replace(
+      /Status$/,
+      "Hidden"
+    );
+    const hiddenPath = `${destinationMountDirectoryPath}/.cache/data.json`;
+    configureCloneStorage(
+      context.mountDirectoryPath,
+      destinationMountDirectoryPath,
+      context.sourceByPath,
+      { destinationByPath: new Map([[hiddenPath, "keep"]]) }
+    );
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { message: "A file or folder already exists at the destination." },
+    });
+    expect(fileStorageMock.getObject(hiddenPath)).toBe("keep");
+    expect(
+      fileStorageMock.getObject(
+        `${destinationMountDirectoryPath}/${FRAME_MANIFEST_FILE}`
+      )
+    ).toBeUndefined();
+  });
+
+  it("bounds the raw source object count before copying", async () => {
+    const context = await setup();
+    const sourceByPath = new Map(context.sourceByPath);
+    const overLimitFileCount = 1025;
+    const extraFileCount = overLimitFileCount - sourceByPath.size;
+    for (let i = 0; i < extraFileCount; i++) {
+      sourceByPath.set(`${context.mountDirectoryPath}/extra-${i}.txt`, "x");
+    }
+    const destinationMountDirectoryPath = context.mountDirectoryPath.replace(
+      /Status$/,
+      "Too Many"
+    );
+    configureCloneStorage(
+      context.mountDirectoryPath,
+      destinationMountDirectoryPath,
+      sourceByPath
+    );
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath.replace(`/${FRAME_MANIFEST_FILE}`, ""),
+      context.manifestPath
+        .replace("/Status/", "/Too Many/")
+        .replace(`/${FRAME_MANIFEST_FILE}`, "")
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message: "Frame source exceeds the copy size or file count limit.",
+      },
+    });
+  });
+
   it("bounds the raw source byte size before copying", async () => {
     const context = await setup();
     const destinationMountDirectoryPath = context.mountDirectoryPath.replace(
@@ -627,6 +734,90 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       error: {
         message: "Frame source exceeds the copy size or file count limit.",
       },
+    });
+  });
+
+  it("rejects a source containing another registered file", async () => {
+    const context = await setup();
+    const nestedManifestPath = `${context.mountDirectoryPath}/Nested/${FRAME_MANIFEST_FILE}`;
+    const sourceByPath = new Map(context.sourceByPath);
+    sourceByPath.set(nestedManifestPath, manifest);
+    await FileFactory.create(context.auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: context.conversation.sId },
+      mountFilePath: nestedManifestPath,
+    });
+    const destinationMountDirectoryPath = context.mountDirectoryPath.replace(
+      /Status$/,
+      "With Nested"
+    );
+    configureCloneStorage(
+      context.mountDirectoryPath,
+      destinationMountDirectoryPath,
+      sourceByPath
+    );
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath.replace(`/${FRAME_MANIFEST_FILE}`, ""),
+      context.manifestPath
+        .replace("/Status/", "/With Nested/")
+        .replace(`/${FRAME_MANIFEST_FILE}`, "")
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message:
+          "Clone nested registered files separately before cloning this Frame.",
+      },
+    });
+  });
+
+  it("clones into another writable conversation", async () => {
+    const context = await setup();
+    const destinationConversation = await ConversationFactory.create(
+      context.auth,
+      {
+        agentConfigurationId: context.agentConfig.sId,
+        messagesCreatedAt: [],
+      }
+    );
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = `conversation-${destinationConversation.sId}/Status Copy`;
+    const destinationMountDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: destinationConversation.sId,
+    })}Status Copy`;
+    configureCloneStorage(
+      context.mountDirectoryPath,
+      destinationMountDirectoryPath,
+      context.sourceByPath
+    );
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    const cloned = await response.json();
+    expect(response.status, JSON.stringify(cloned)).toBe(200);
+    const clonedFrame = await FileResource.fetchById(
+      context.auth,
+      cloned.frameId
+    );
+    expect(clonedFrame?.useCaseMetadata).toMatchObject({
+      conversationId: destinationConversation.sId,
     });
   });
 
