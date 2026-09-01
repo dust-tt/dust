@@ -33,10 +33,7 @@ interface UsageQuerySegment {
  * segments the usage endpoint can query directly: a single segment covering
  * the interior days (the bulk of a typical month-long billing period),
  * queried with `windowSize: "NONE"` so it comes back as one aggregate bucket
- * per group instead of one per day — callers here only ever sum rows into a
- * per-group total, so the daily breakdown would just multiply page count for
- * no benefit — plus HOUR-granularity segments only for the partial
- * first/last day when a boundary isn't already UTC midnight.
+ * per group instead of one per day.
  *
  * Segments are contiguous and non-overlapping by construction, so summing
  * their results is safe.
@@ -383,15 +380,8 @@ function perUserAwuUsageCacheKey(
   return `per-user-awu-usage:${metronomeCustomerId}:${metronomeContractId}:${userId}`;
 }
 
-// In-process single-flight registry, keyed by the same string as the Redis
-// cache key. Closes the gap between "checked Redis" and "wrote Redis": two
-// concurrent callers requesting overlapping users (e.g. the pool summary card
-// and the members table both fetching "all active members" at page load)
-// would otherwise both see a cache miss and both fire their own Metronome
-// batch. A caller that finds an in-flight entry here awaits it instead of
-// starting a second fetch. Only dedupes within this process — a second
-// request landing on a different replica still fetches independently, same
-// as before this registry existed.
+// In-process single-flight registry, keyed by the same string as the Redis cache key.
+// Concurrent overlapping callers await one fetch instead of each firing their own Metronome batch.
 const inFlightPerUserAwuUsage = new Map<string, Promise<number>>();
 
 /**
