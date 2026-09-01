@@ -1,15 +1,16 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
+import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { triggerActivationNewConversationEmail } from "@app/lib/notifications/workflows/activation-new-conversation";
 import { shouldSkipConversationExternalNotification } from "@app/lib/notifications/workflows/conversation-unread";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
@@ -30,7 +31,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import uniqBy from "lodash/uniqBy";
 import { Op } from "sequelize";
 
 const NOTIFICATION_DELAY_MS = 15_000; // 15 seconds
@@ -141,22 +141,30 @@ const triggerProjectNewConversationNotifications = async (
     return new Ok(undefined);
   }
 
-  const { groupsToProcess } = await space.fetchManualGroupsMemberships(auth);
+  const { allGroupMemberships } =
+    await space.fetchManualGroupsMemberships(auth);
 
-  const projectMembers = uniqBy(
-    (
-      await concurrentExecutor(
-        groupsToProcess,
-        async (group) => {
-          return group.getActiveMembers(auth);
-        },
-        { concurrency: 8 }
-      )
-    ).flat(),
-    "sId"
+  const memberModelIds = [
+    ...new Set(allGroupMemberships.map((membership) => membership.userId)),
+  ];
+  if (memberModelIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const projectMembers = await UserResource.fetchByModelIds(memberModelIds);
+  const { memberships: workspaceMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users: projectMembers,
+      workspace: auth.getNonNullableWorkspace(),
+    });
+  const activeUserIds = new Set(
+    workspaceMemberships.map((membership) => membership.userId)
+  );
+  const activeProjectMembers = projectMembers.filter((member) =>
+    activeUserIds.has(member.id)
   );
 
-  const otherProjectMembers = projectMembers.filter(
+  const otherProjectMembers = activeProjectMembers.filter(
     (member) => member.sId !== userThatCreatedConversation.sId
   );
 
@@ -228,16 +236,13 @@ export function notifyNewProjectConversation(
     conversation: ConversationWithoutContentType;
   }
 ): void {
-  void triggerProjectNewConversationNotifications(auth, {
-    conversation,
-  }).then((notifRes) => {
-    if (notifRes.isErr()) {
-      logger.error(
-        { error: notifRes.error, conversationId: conversation.sId },
-        "Failed to trigger project new conversation notification"
-      );
+  fireAndForgetNotification(
+    triggerProjectNewConversationNotifications(auth, { conversation }),
+    {
+      message: "Failed to trigger project new conversation notification",
+      context: { conversationId: conversation.sId },
     }
-  });
+  );
 }
 
 export async function areForYouNotificationsEnabled(

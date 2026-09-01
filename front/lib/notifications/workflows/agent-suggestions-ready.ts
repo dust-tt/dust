@@ -2,6 +2,7 @@ import { getEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
+import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -137,18 +138,14 @@ export function notifyAgentSuggestionsReady(
     suggestionCount: number;
   }
 ): void {
-  void triggerAgentSuggestionsReadyNotifications(auth, {
-    agentConfiguration,
-    suggestionCount,
-  }).then((notifRes) => {
-    if (notifRes.isErr()) {
-      logger.error(
-        {
-          error: notifRes.error,
-          agentConfigurationId: agentConfiguration.sId,
-        },
-        "Failed to trigger agent suggestions ready notification"
-      );
+  fireAndForgetNotification(
+    triggerAgentSuggestionsReadyNotifications(auth, {
+      agentConfiguration,
+      suggestionCount,
+    }),
+    {
+      message: "Failed to trigger agent suggestions ready notification",
+      context: { agentConfigurationId: agentConfiguration.sId },
     }
-  });
+  );
 }
