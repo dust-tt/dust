@@ -1108,25 +1108,45 @@ const InputBarContainer = ({
     }
   };
 
+  // Runs on every keystroke, so it derives everything it needs from a single
+  // direct walk of the ProseMirror document and serializes to markdown only on
+  // the branch that actually writes a draft. It used to call
+  // getMarkdownAndMentions() unconditionally, which allocates a full JSON copy
+  // of the document *and* renders it to markdown — twice over the whole
+  // document, per keypress, to feed a debounced save that keeps only the last.
   const handleEditorUpdate = useCallback(() => {
     const currentEditor = editorRef.current;
     const currentEditorService = editorServiceRef.current;
     const editorIsEmpty = currentEditorService.isEmpty();
     setIsEmpty(editorIsEmpty);
 
+    const tracksDataSourceChips = attachedNodesRef.current.length > 0;
+    let userMentioned = false;
+    const chipNodeIds = new Set<string>();
+    if (currentEditor) {
+      currentEditor.state.doc.descendants((node) => {
+        if (node.type.name === "mention" && node.attrs?.type === "user") {
+          userMentioned = true;
+        } else if (
+          tracksDataSourceChips &&
+          node.type.name === "dataSourceLink" &&
+          node.attrs?.nodeId
+        ) {
+          chipNodeIds.add(String(node.attrs.nodeId));
+        }
+      });
+    }
+
     // Auto-save draft when content changes and track user mentions.
     // Include the selected single agent so the debounced save doesn't
     // overwrite the agent mention saved by the single-agent effect.
-    const { markdown, mentions: editorMentions } =
-      currentEditorService.getMarkdownAndMentions();
     if (hasCompletedInitialContentRestoreRef.current) {
       saveDraftRef.current(
-        editorIsEmpty ? "" : markdown,
+        editorIsEmpty ? "" : currentEditorService.getMarkdown(),
         selectedSingleAgentRef.current,
         selectedSpaceIdsRef.current
       );
     }
-    const userMentioned = editorMentions.some((m) => m.type === "user");
 
     // Check if the very first content node in the editor is a user mention.
     let editorStartsWithUserMention = false;
@@ -1144,14 +1164,7 @@ const InputBarContainer = ({
 
     // Sync: when a dataSourceLink chip is deleted from the editor, remove
     // the corresponding attached node so the attachment card disappears.
-    if (currentEditor && attachedNodesRef.current.length > 0) {
-      const chipNodeIds = new Set<string>();
-      currentEditor.state.doc.descendants((node) => {
-        if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
-          chipNodeIds.add(String(node.attrs.nodeId));
-        }
-      });
-
+    if (currentEditor && tracksDataSourceChips) {
       // Update the tracked set and unselect nodes whose chip was removed.
       const prevIds = dataSourceLinkNodeIdsRef.current;
       for (const prevId of prevIds) {

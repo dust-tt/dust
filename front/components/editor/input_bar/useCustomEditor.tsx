@@ -246,6 +246,12 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
         return editor?.isEmpty ?? true;
       },
 
+      // Markdown only, for callers that do not need the mention/skill walk —
+      // notably the per-keystroke draft autosave.
+      getMarkdown() {
+        return editor?.getMarkdown() ?? "";
+      },
+
       getMarkdownAndMentions() {
         if (!editor?.state.doc) {
           return {
