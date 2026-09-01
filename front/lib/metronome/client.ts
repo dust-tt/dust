@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import config from "@app/lib/api/config";
 import type { ContractCreditType } from "@app/lib/metronome/constants";
 import {
@@ -1650,13 +1652,38 @@ export async function updateSubscriptionSeats({
       continue;
     }
 
+    // Seat updates are cumulative DELTAS (`add/remove_seat_ids`,
+    // `add/remove_unassigned_seats`), and the edit endpoint returns 504s that
+    // still apply server-side — so the SDK's retry-on-5xx (client maxRetries: 5)
+    // would blindly re-send the delta and stack it (an add of 137 unassigned
+    // landing 4× → 548). A fresh per-edit `uniqueness_key` makes the retry safe:
+    // Metronome rejects a duplicate key with a 409, so a retry of an
+    // already-applied edit is a no-op we treat as success — the edit becomes
+    // idempotent against retries instead of stacking.
+    const uniquenessKey = randomUUID();
     try {
       await getMetronomeClient().v2.contracts.edit({
         customer_id: metronomeCustomerId,
         contract_id: contractId,
         update_subscriptions: updateSubscriptions,
+        uniqueness_key: uniquenessKey,
       });
     } catch (err) {
+      if (err instanceof ConflictError) {
+        // Duplicate uniqueness_key → this exact edit already landed (a retry
+        // after a 504 that applied server-side). Idempotent success.
+        logger.info(
+          {
+            metronomeCustomerId,
+            contractId,
+            fromSubscriptionId,
+            toSubscriptionId,
+            uniquenessKey,
+          },
+          "[Metronome] Subscription seat edit already applied (duplicate uniqueness_key) — treating as success"
+        );
+        continue;
+      }
       const error = normalizeError(err);
       logger.error(
         {
@@ -3769,18 +3796,27 @@ export async function adjustSeatCreditBalances({
   );
 
   try {
-    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
-      id: creditId,
-      customer_id: metronomeCustomerId,
-      contract_id: metronomeContractId,
-      segment_id: segmentId,
-      amount: totalAmount,
-      per_group_amounts: perSeatAmounts,
-      reason,
-      timestamp: alignToHour
-        ? floorToHourISO(timestamp)
-        : timestamp.toISOString(),
-    });
+    // A manual ledger entry is a cumulative DELTA and the endpoint 504s while
+    // still applying server-side — so an SDK retry would post the entry twice and
+    // over-adjust the balance. Unlike `contracts.edit`, `addManualBalanceEntry`
+    // has no `uniqueness_key`, so we can't dedup a retry; `maxRetries: 0` is the
+    // mitigation. On failure callers get `Err` and retry at their own (bounded,
+    // spaced) level instead.
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry(
+      {
+        id: creditId,
+        customer_id: metronomeCustomerId,
+        contract_id: metronomeContractId,
+        segment_id: segmentId,
+        amount: totalAmount,
+        per_group_amounts: perSeatAmounts,
+        reason,
+        timestamp: alignToHour
+          ? floorToHourISO(timestamp)
+          : timestamp.toISOString(),
+      },
+      { maxRetries: 0 }
+    );
     logger.info(
       {
         metronomeCustomerId,
