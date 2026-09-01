@@ -31,10 +31,7 @@ import {
   USER_AWU_WARNING_PERCENTAGE,
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
-import {
-  getCachedCustomerPerUserCreditBalances,
-  listMetronomeSeatBalances,
-} from "@app/lib/metronome/client";
+import { getCachedCustomerPerUserCreditBalances } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   getCreditTypeAwuId,
@@ -45,7 +42,10 @@ import { getPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { SeatData } from "@app/lib/metronome/seats";
-import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
+import {
+  getCachedSeatBalances,
+  getCachedSeatDataByUserId,
+} from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   getFairUseAwuCreditsStatus,
@@ -792,21 +792,26 @@ async function fetchSeatBalancesForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId || userIds.length === 0) {
     return new Map();
   }
-  const result = await listMetronomeSeatBalances({
-    metronomeCustomerId,
-    metronomeContractId,
-    seatIds: userIds,
-  });
   const balanceByUserId = new Map<string, number>();
-  if (result.isErr()) {
+  let balances;
+  try {
+    balances = await getCachedSeatBalances({
+      metronomeCustomerId,
+      metronomeContractId,
+      seatIds: userIds,
+    });
+  } catch (err) {
     logger.warn(
-      { err: result.error, metronomeCustomerId },
+      { err: normalizeError(err), metronomeCustomerId },
       "[MembersUsage] Failed to fetch seat balances, degrading to empty map"
     );
     return balanceByUserId;
   }
+  if (balances === null) {
+    return balanceByUserId;
+  }
   const awuCreditTypeId = getCreditTypeAwuId();
-  for (const seat of result.value) {
+  for (const seat of balances) {
     const awu = seat.balances.find((b) => b.credit_type_id === awuCreditTypeId);
     if (awu) {
       balanceByUserId.set(seat.seat_id, awu.balance);
