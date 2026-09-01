@@ -43,6 +43,10 @@ const PLUS_BUTTON_CLASSNAME = cn(
   INPUT_BAR_PILL_HOVER_CLASSNAME
 );
 
+const DRILL_IN_CHEVRON = (
+  <Icon size="xs" visual={ChevronRight} className="text-primary-400" />
+);
+
 const PANEL_SWAP_OFFSET_PX = 8;
 const PANEL_EASE_ENTER = [0.215, 0.61, 0.355, 1] as const;
 const PANEL_ENTER_TRANSITION: Transition = {
@@ -215,13 +219,7 @@ export function InputBarPlusMenu({
             />
           }
           disabled={disabled}
-          endComponent={
-            <Icon
-              size="xs"
-              visual={ChevronRight}
-              className="text-primary-400"
-            />
-          }
+          endComponent={DRILL_IN_CHEVRON}
           onSelect={(event) => event.preventDefault()}
           onClick={() => openPage("capabilities")}
         />
@@ -237,13 +235,7 @@ export function InputBarPlusMenu({
             />
           }
           disabled={disabled}
-          endComponent={
-            <Icon
-              size="xs"
-              visual={ChevronRight}
-              className="text-primary-400"
-            />
-          }
+          endComponent={DRILL_IN_CHEVRON}
           onSelect={(event) => event.preventDefault()}
           onClick={() => openPage("attachments")}
         />
@@ -255,13 +247,7 @@ export function InputBarPlusMenu({
             <Icon size="xs" visual={Planet} className="text-muted-foreground" />
           }
           disabled={disabled}
-          endComponent={
-            <Icon
-              size="xs"
-              visual={ChevronRight}
-              className="text-primary-400"
-            />
-          }
+          endComponent={DRILL_IN_CHEVRON}
           onSelect={(event) => event.preventDefault()}
           onClick={() => openPage("spaces")}
         />
