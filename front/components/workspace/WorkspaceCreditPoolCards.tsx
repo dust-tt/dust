@@ -1,11 +1,6 @@
+import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatCredits } from "@app/lib/client/credits";
-import {
-  AlertCircle,
-  ContentMessage,
-  Page,
-  Spinner,
-  ValueCard,
-} from "@dust-tt/sparkle";
+import { AlertCircle, ContentMessage, Page, Spinner } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
@@ -58,14 +53,10 @@ export function WorkspaceCreditPoolSection({
       ) : (
         <>
           {showPoolCard && (
-            <ValueCard
-              title="Remaining credits pool"
-              isLoading={false}
-              content={
-                <div className="truncate text-2xl text-foreground">
-                  {formatCredits(totalRemainingCredits)}
-                </div>
-              }
+            <SummaryCard
+              label="Remaining credits pool"
+              value={formatCredits(totalRemainingCredits)}
+              hint={null}
             />
           )}
           {poolSecondaryContent}
