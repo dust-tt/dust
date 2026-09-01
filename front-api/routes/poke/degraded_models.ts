@@ -1,6 +1,6 @@
 import type { GetDegradedModelsResponseBody } from "@app/lib/api/poke/degraded_models";
 import {
-  listDegradableEndpoints,
+  listDegradableEndpointsWithStatus,
   resolveDegradedEndpointUpdates,
   UpdateDegradedModelsSchema,
 } from "@app/lib/api/poke/degraded_models";
@@ -18,8 +18,7 @@ app.get(
   "/",
   async (ctx): HandlerResult<GetDegradedModelsResponseBody> =>
     ctx.json({
-      degradableEndpoints: listDegradableEndpoints(),
-      degradedEndpoints: await ModelDegradationResource.listDegradedEndpoints(),
+      endpoints: await listDegradableEndpointsWithStatus(),
     })
 );
 

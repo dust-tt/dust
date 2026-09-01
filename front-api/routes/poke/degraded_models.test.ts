@@ -38,25 +38,36 @@ function sortByModelId<T extends { modelId: string }>(endpoints: T[]) {
 async function getDegradedEndpoints() {
   const response = await honoApp.request("/api/poke/degraded_models");
   expect(response.status).toBe(200);
-  return sortByModelId((await response.json()).degradedEndpoints);
+  const body = await response.json();
+  const degraded = body.endpoints
+    .filter((endpoint: { degraded: boolean }) => endpoint.degraded)
+    .map((endpoint: { modelId: string; providerId: string; host: string }) => ({
+      modelId: endpoint.modelId,
+      providerId: endpoint.providerId,
+      host: endpoint.host,
+    }));
+  return sortByModelId(degraded);
 }
 
 describe("GET /api/poke/degraded_models", () => {
-  it("returns the degradable catalog and an empty degraded set", async () => {
+  it("returns the degradable catalog with nothing degraded", async () => {
     await createPrivateApiMockRequest({ isSuperUser: true });
 
     const response = await honoApp.request("/api/poke/degraded_models");
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.degradedEndpoints).toEqual([]);
-    expect(body.degradableEndpoints.length).toBeGreaterThan(0);
-    expect(body.degradableEndpoints[0]).toEqual({
+    expect(body.endpoints.length).toBeGreaterThan(0);
+    expect(body.endpoints[0]).toEqual({
       modelId: expect.any(String),
       providerId: expect.any(String),
       host: expect.any(String),
       displayName: expect.any(String),
+      degraded: false,
     });
+    expect(
+      body.endpoints.every(({ degraded }: { degraded: boolean }) => !degraded)
+    ).toBe(true);
   });
 
   it("returns 401 when the user is not a super user", async () => {

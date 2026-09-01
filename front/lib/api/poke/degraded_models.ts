@@ -5,17 +5,21 @@ import type {
 } from "@app/lib/model_constructors/types/degradations";
 import { degradedModelEndpointKey } from "@app/lib/model_constructors/types/degradations";
 import { NOOP_HOST } from "@app/lib/model_constructors/types/hosts";
+import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
-export type DegradableModelEndpointType = DegradedModelEndpointType & {
+type DegradableModelEndpointType = DegradedModelEndpointType & {
   displayName: string;
 };
 
+export type DegradedModelEndpointStatusType = DegradableModelEndpointType & {
+  degraded: boolean;
+};
+
 export type GetDegradedModelsResponseBody = {
-  degradableEndpoints: DegradableModelEndpointType[];
-  degradedEndpoints: DegradedModelEndpointType[];
+  endpoints: DegradedModelEndpointStatusType[];
 };
 
 export const UpdateDegradedModelsSchema = z.object({
@@ -48,6 +52,21 @@ export function listDegradableEndpoints(): DegradableModelEndpointType[] {
   }
 
   return [...byKey.values()];
+}
+
+export async function listDegradableEndpointsWithStatus(): Promise<
+  DegradedModelEndpointStatusType[]
+> {
+  const degradedKeys = new Set(
+    (await ModelDegradationResource.listDegradedEndpoints()).map(
+      degradedModelEndpointKey
+    )
+  );
+
+  return listDegradableEndpoints().map((endpoint) => ({
+    ...endpoint,
+    degraded: degradedKeys.has(degradedModelEndpointKey(endpoint)),
+  }));
 }
 
 // Endpoints come off the wire as plain strings: matching them against the
