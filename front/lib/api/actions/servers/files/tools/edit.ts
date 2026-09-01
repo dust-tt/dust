@@ -21,7 +21,10 @@ import {
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
-import { executeWithLock, isLockAcquisitionTimeoutError } from "@app/lib/lock";
+import {
+  executeWithLockResult,
+  isLockAcquisitionTimeoutError,
+} from "@app/lib/lock";
 import {
   isInteractiveContentType,
   stripMimeParameters,
@@ -186,26 +189,30 @@ export async function editHandler(
     );
   }
 
-  try {
-    return await executeWithLock(
-      `file:edit:${extra.auth.getNonNullableWorkspace().sId}:${normalizedPath}`,
-      () => editHandlerUnlocked(args, extra),
-      FILE_EDIT_LOCK_ACQUISITION_TIMEOUT_MS,
-      {
-        lockTtlMs: FILE_EDIT_LOCK_TTL_MS,
-        retryIntervalMs: FILE_EDIT_LOCK_RETRY_INTERVAL_MS,
-      }
-    );
-  } catch (error) {
-    if (isLockAcquisitionTimeoutError(error)) {
-      return new Err(
-        new MCPError(
-          `Another edit is still in progress for \`${normalizedPath}\`. Re-read the file and retry.`,
-          { tracked: false }
-        )
-      );
+  const editResult = await executeWithLockResult(
+    `file:edit:${extra.auth.getNonNullableWorkspace().sId}:${normalizedPath}`,
+    () => editHandlerUnlocked(args, extra),
+    FILE_EDIT_LOCK_ACQUISITION_TIMEOUT_MS,
+    {
+      lockTtlMs: FILE_EDIT_LOCK_TTL_MS,
+      retryIntervalMs: FILE_EDIT_LOCK_RETRY_INTERVAL_MS,
     }
+  );
 
-    throw error;
+  if (editResult.isOk()) {
+    return new Ok(editResult.value);
   }
+  if (editResult.error instanceof MCPError) {
+    return new Err(editResult.error);
+  }
+  if (isLockAcquisitionTimeoutError(editResult.error)) {
+    return new Err(
+      new MCPError(
+        `Another edit is still in progress for \`${normalizedPath}\`. Re-read the file and retry.`,
+        { tracked: false }
+      )
+    );
+  }
+
+  throw editResult.error;
 }

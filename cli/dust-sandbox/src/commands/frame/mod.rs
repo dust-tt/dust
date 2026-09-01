@@ -50,6 +50,13 @@ fn scoped_path(path: &Path) -> anyhow::Result<String> {
     scoped_path_under(path, Path::new(FILES_ROOT))
 }
 
+fn validate_scoped_path(path: &Path) -> anyhow::Result<()> {
+    let relative = path
+        .strip_prefix(FILES_ROOT)
+        .with_context(|| format!("path must be under {FILES_ROOT}: {}", path.display()))?;
+    validate_relative_scoped_path(relative).map(|_| ())
+}
+
 fn scoped_path_under(path: &Path, files_root: &Path) -> anyhow::Result<String> {
     let canonical_root = files_root
         .canonicalize()
@@ -60,6 +67,11 @@ fn scoped_path_under(path: &Path, files_root: &Path) -> anyhow::Result<String> {
     let relative = canonical_path
         .strip_prefix(&canonical_root)
         .with_context(|| format!("path must be under /files: {}", path.display()))?;
+
+    validate_relative_scoped_path(relative)
+}
+
+fn validate_relative_scoped_path(relative: &Path) -> anyhow::Result<String> {
     if relative.as_os_str().is_empty()
         || relative
             .components()
@@ -148,5 +160,7 @@ mod tests {
 
         assert!(scoped_path_under(&outside, &files_root).is_err());
         assert!(scoped_path_under(&files_root.join("missing.json"), &files_root).is_err());
+        assert!(validate_scoped_path(Path::new("/tmp/manifest.json")).is_err());
+        assert!(validate_scoped_path(Path::new("/files/../tmp/manifest.json")).is_err());
     }
 }
