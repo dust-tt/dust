@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockExecuteWithLock,
+  mockExecuteWithRenewingLockResult,
   mockGetSandboxImage,
   mockGetSandboxProvider,
   mockProviderCreate,
@@ -9,6 +10,7 @@ const {
   mockRevokeAllExecTokensForSandbox,
 } = vi.hoisted(() => ({
   mockExecuteWithLock: vi.fn(),
+  mockExecuteWithRenewingLockResult: vi.fn(),
   mockGetSandboxImage: vi.fn(),
   mockGetSandboxProvider: vi.fn(),
   mockProviderCreate: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("@app/lib/api/sandbox/image", () => ({
 vi.mock("@app/lib/lock", () => ({
   executeWithLock: mockExecuteWithLock,
   executeWithLockResult: mockExecuteWithLock,
+  executeWithRenewingLockResult: mockExecuteWithRenewingLockResult,
 }));
 
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -89,6 +92,10 @@ describe("FrameSandboxAdapter", () => {
           }
         }
       }
+    );
+    mockExecuteWithRenewingLockResult.mockImplementation(
+      async (key: string, fn: (lease: unknown) => Promise<unknown>) =>
+        mockExecuteWithLock(key, () => fn({ check: () => new Ok(undefined) }))
     );
     mockGetSandboxImage.mockReturnValue(
       new Ok({

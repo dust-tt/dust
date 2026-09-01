@@ -5,6 +5,7 @@ import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { reconcileDatabaseOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
+import type { LockLeaseGuard, LockLeaseLostError } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
@@ -21,13 +22,15 @@ export async function reconcileFramePublicationDatabases(
   {
     frame,
     manifest,
+    sourceLease,
     sourceFiles,
   }: {
     frame: FileResource;
     manifest: FrameManifest;
+    sourceLease: LockLeaseGuard;
     sourceFiles: ReadonlyArray<{ relativePath: string; content: Buffer }>;
   }
-): Promise<Result<void, SandboxFunctionError>> {
+): Promise<Result<void, LockLeaseLostError | SandboxFunctionError>> {
   if (manifest.databases.length === 0) {
     return new Ok(undefined);
   }
@@ -42,11 +45,15 @@ export async function reconcileFramePublicationDatabases(
     );
   }
   const { sandbox } = ensureResult.value;
-  return withStagedFrameSource(
+  return withStagedFrameSource<void, LockLeaseLostError | SandboxFunctionError>(
     auth,
     { sandbox, sourceFiles },
     async (stagingDirectory) => {
       for (const database of manifest.databases) {
+        const heldBeforeReconciliation = sourceLease.check();
+        if (heldBeforeReconciliation.isErr()) {
+          return heldBeforeReconciliation;
+        }
         const reconcileResult = await reconcileDatabaseOnReadySandbox(auth, {
           sandbox,
           database: database.name,
@@ -55,6 +62,10 @@ export async function reconcileFramePublicationDatabases(
             database.schema
           ),
         });
+        const heldAfterReconciliation = sourceLease.check();
+        if (heldAfterReconciliation.isErr()) {
+          return heldAfterReconciliation;
+        }
         if (reconcileResult.isErr()) {
           return reconcileResult;
         }
