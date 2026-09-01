@@ -10,6 +10,8 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -35,7 +37,13 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
+
+export type AgentFeedbackDayPoint = {
+  day: Date;
+  positive: number;
+  negative: number;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -589,6 +597,52 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return feedbacks.map((feedback) => {
       return new this(this.model, feedback.get());
     });
+  }
+
+  static async getFeedbackDistributionForAssistantByDay(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    days: number
+  ): Promise<AgentFeedbackDayPoint[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const replicaDb = getFrontReplicaDbConnection();
+
+    // biome-ignore lint/plugin/noRawSql: Aggregation query with GROUP BY day
+    const rows = await replicaDb.query<{
+      day: string;
+      positive: string;
+      negative: string;
+    }>(
+      `
+      SELECT
+        "createdAt"::date AS day,
+        SUM(CASE WHEN "thumbDirection" = 'up' THEN 1 ELSE 0 END) AS positive,
+        SUM(CASE WHEN "thumbDirection" = 'down' THEN 1 ELSE 0 END) AS negative
+      FROM agent_message_feedbacks
+      WHERE "workspaceId" = :workspaceId
+        AND "agentConfigurationId" = :agentConfigurationId
+        AND "createdAt" >= :cutoffDate
+      GROUP BY 1
+      ORDER BY 1 ASC
+      `,
+      {
+        replacements: {
+          workspaceId: workspace.id,
+          agentConfigurationId,
+          cutoffDate: cutoffDate.toISOString(),
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    return rows.map((row) => ({
+      day: new Date(row.day),
+      positive: parseInt(row.positive, 10),
+      negative: parseInt(row.negative, 10),
+    }));
   }
 
   toJSON() {
