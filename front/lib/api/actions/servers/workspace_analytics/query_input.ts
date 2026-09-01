@@ -85,15 +85,14 @@ export const usageFilterSchema = {
     .array(z.string())
     .optional()
     .describe(
-      "Restrict to messages from agents carrying any of these agent tag " +
-        "sIds, as returned by get_top_agent_tags."
+      "Restrict to messages from agents carrying any of these agent tag sIds"
     ),
   modelIds: z
     .array(z.string())
     .optional()
     .describe(
       "Restrict to messages answered by these models, identified by their " +
-        "model id (e.g. 'claude-sonnet-4-5'), as returned by get_top_models."
+        "model id (e.g. 'claude-sonnet-4-5')."
     ),
 };
 
@@ -185,7 +184,7 @@ export function toConsumptionPeriod(
   };
 }
 
-type TimeWindowInput = z.input<typeof timeWindowInputSchema>;
+export type TimeWindowInput = z.input<typeof timeWindowInputSchema>;
 
 export type ResolvedTimeWindow = {
   startDate: string;

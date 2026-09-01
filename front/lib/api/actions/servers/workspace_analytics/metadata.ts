@@ -8,41 +8,15 @@ import {
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
-import { CONSUMPTION_TOP_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CONSUMPTION_INVOCATION_DIMENSIONS,
+  CONSUMPTION_MESSAGE_DIMENSIONS,
+  CONSUMPTION_TOP_DIMENSIONS,
+} from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
 export const GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME =
   "get_top_entities_by_credits" as const;
-
-const topListSchema = (entityPlural: string) => ({
-  ...timeWindowSchemaShape,
-  ...usageFilterSchema,
-  limit: z
-    .number()
-    .int()
-    .positive()
-    .max(MAX_RESULTS)
-    .optional()
-    .describe(
-      `Maximum number of ${entityPlural} to return ` +
-        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
-    ),
-});
-
-const getTopAgentsSchema = topListSchema("agents");
-const getTopUsersSchema = topListSchema("users");
-const getTopSkillsSchema = topListSchema("skills");
-const getTopToolsSchema = topListSchema("tools");
-const getTopAgentTagsSchema = topListSchema("agent tags");
-const getTopModelsSchema = topListSchema("models");
-
-const getSourceBreakdownSchema = {
-  ...timeWindowSchemaShape,
-  agentIds: usageFilterSchema.agentIds,
-  userIds: usageFilterSchema.userIds,
-  agentTagIds: usageFilterSchema.agentTagIds,
-  modelIds: usageFilterSchema.modelIds,
-};
 
 const getAgentDetailsSchema = {
   agentId: z
@@ -122,99 +96,88 @@ const getUsageTimeseriesSchema = {
     ),
 };
 
+export const GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME =
+  "get_top_entities_by_message_count" as const;
+export const GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME =
+  "get_top_entities_by_execution_count" as const;
+
+const rankingLimitSchema = z
+  .number()
+  .int()
+  .positive()
+  .max(MAX_RESULTS)
+  .optional()
+  .describe(
+    `Maximum number of rows to return ` +
+      `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
+  );
+
+const GROUP_BY_DESCRIPTION = "What to group results by.";
+
 const getTopEntitiesByCreditsSchema = {
-  dimension: z
-    .enum(CONSUMPTION_TOP_DIMENSIONS)
-    .describe("What to group results by."),
+  dimension: z.enum(CONSUMPTION_TOP_DIMENSIONS).describe(GROUP_BY_DESCRIPTION),
   ...timeWindowSchemaShape,
   ...consumptionFilterSchema,
-  limit: z
-    .number()
-    .int()
-    .positive()
-    .max(MAX_RESULTS)
-    .optional()
-    .describe(
-      `Maximum number of rows to return ` +
-        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
-    ),
+  limit: rankingLimitSchema,
+};
+
+const getTopEntitiesByMessageCountSchema = {
+  dimension: z
+    .enum(CONSUMPTION_MESSAGE_DIMENSIONS)
+    .describe(GROUP_BY_DESCRIPTION),
+  ...timeWindowSchemaShape,
+  ...consumptionFilterSchema,
+  limit: rankingLimitSchema,
+};
+
+const getTopEntitiesByExecutionCountSchema = {
+  dimension: z
+    .enum(CONSUMPTION_INVOCATION_DIMENSIONS)
+    .describe(GROUP_BY_DESCRIPTION),
+  ...timeWindowSchemaShape,
+  ...consumptionFilterSchema,
+  limit: rankingLimitSchema,
 };
 
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
-    name: "get_top_agents",
+    name: GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME,
     description:
-      "Return the workspace's most-used and most active agents over a time " +
-      "window (defaults to the current calendar month), ranked by message " +
-      "count, with unique user count for each. Each row includes the agent's " +
-      "id. Use this to answer which agents are most popular, most used, or " +
-      "most active. Admin-only.",
-    schema: getTopAgentsSchema,
+      "Rank the workspace's entities by message volume over a " +
+      "time window (defaults to the current calendar month). Use this to " +
+      "answer 'which user is most active this month', 'which agent is " +
+      "used most', 'where do our messages come from, by source', or " +
+      "'list the agent tags, most-used tags first'. Every value it " +
+      "returns, including tag ids, can be fed back in as a filter on " +
+      `any of these tools. Use ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} ` +
+      "to rank by cost.",
+    schema: getTopEntitiesByMessageCountSchema,
     stake: "never_ask",
     eager: true,
     displayLabels: {
-      running: "Retrieving top agents",
-      done: "Retrieved top agents",
+      running: "Retrieving top entities by message count",
+      done: "Retrieved top entities by message count",
     },
     toolCostCategory: "basic",
     freeUsage: true,
   },
   {
-    name: "get_top_users",
+    name: GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME,
     description:
-      "Return the workspace's most active users and members over a time " +
-      "window (defaults to the current calendar month), ranked by number of " +
-      "messages sent, with the count of distinct agents each used. Each row " +
-      "includes the user's id. Use this to answer who the most active users " +
-      "are, rank members by usage, or find your top contributors. Admin-only.",
-    schema: getTopUsersSchema,
+      "Rank the workspace's skills, or its MCP tools and integrations, by how " +
+      "many times they were executed over a time window (defaults to the " +
+      "current calendar month). Use this to answer 'which are the top " +
+      "tools agents used most' or 'which skill runs most often'. One " +
+      "run attributed to several skills counts for each, so skill rows " +
+      "overlap. Use " +
+      `${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} to rank the same ` +
+      "entities by cost instead.",
+    schema: getTopEntitiesByExecutionCountSchema,
     stake: "never_ask",
     eager: true,
     displayLabels: {
-      running: "Retrieving top users",
-      done: "Retrieved top users",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "get_top_agent_tags",
-    description:
-      "List the agent tags applied across the workspace over a time window " +
-      "(defaults to the current calendar month), ranked by message volume, " +
-      "with the number of distinct agents bearing each tag. Each row includes " +
-      "the tag's id. Use this to enumerate which agent tags exist and obtain " +
-      "their ids, then supply those ids as the agentTagIds filter on the " +
-      "other analytics tools. Because an agent can bear several tags, per-tag " +
-      "counts overlap and may exceed the workspace total. Tags are fetched " +
-      "based on historical message data and may not reflect current agent tags. Admin-only.",
-    schema: getTopAgentTagsSchema,
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Retrieving top agent tags",
-      done: "Retrieved top agent tags",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "get_top_models",
-    description:
-      "List which LLM models (Claude, GPT, Gemini, ...) answered messages over " +
-      "a time window (defaults to the current calendar month), ranked by " +
-      "message volume, with each model's provider and its distinct agent and " +
-      "user counts. Use this to answer which model is used most, and to " +
-      "discover the model ids to pass as the modelIds filter of the other " +
-      "analytics tools; for credits per model use get_credit_usage with " +
-      "groupBy 'model'. Models come from historical message data, so retired " +
-      "models may appear. Admin-only.",
-    schema: getTopModelsSchema,
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Retrieving top models",
-      done: "Retrieved top models",
+      running: "Retrieving top entities by execution count",
+      done: "Retrieved top entities by execution count",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -232,65 +195,6 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving agent details",
       done: "Retrieved agent details",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "get_top_skills",
-    description:
-      "Return the workspace's most-used skills over a time window (defaults " +
-      "to the current calendar month), ranked by execution count. Optionally " +
-      "filter by source (context_origin), agent, user, tag, or model. Use this " +
-      "to answer which skills are executed or used most. Admin-only.",
-    schema: getTopSkillsSchema,
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Retrieving top skills",
-      done: "Retrieved top skills",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "get_top_tools",
-    description:
-      "Return the workspace's most-used MCP tools and integrations over a " +
-      "time window (defaults to the current calendar month), ranked by " +
-      "execution count. Shows which MCP server tools are called most. Optionally " +
-      "filter by source (context_origin), agent, user, tag, or model. Use this " +
-      "to answer which tools are used most or which integrations agents " +
-      "rely on. Admin-only.",
-    schema: getTopToolsSchema,
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Retrieving top tools",
-      done: "Retrieved top tools",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "get_source_breakdown",
-    description:
-      "Return the workspace's message volume broken down by source — where " +
-      "messages originate (Conversation, Slack, API, Trigger, extension, and " +
-      "more) — over a time window (defaults to the current calendar month), " +
-      "most used first. Sources are labeled and merged exactly as the " +
-      "workspace Usage page's source chart, so the values line up with the " +
-      "dashboard. Use this to discover and compare which channels or " +
-      "integrations drive usage (including programmatic ones like API and " +
-      "triggers) — the source filter on the other tools only narrows to one " +
-      "source, this enumerates them all. Optionally filter by agent, user, " +
-      "tag, or model. Admin-only.",
-    schema: getSourceBreakdownSchema,
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Retrieving source breakdown",
-      done: "Retrieved source breakdown",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -365,9 +269,10 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     description:
       "Rank the workspace's credit consumption by entity " +
       "over a time window (defaults to the current calendar month). Use " +
-      "this to answer 'which agent is most expensive', or to attribute " +
-      "credit spend by API key, tag, or model. Figures are billed " +
-      "credits. Rows may overlap, so don't sum them for a workspace total.",
+      "this to answer 'which agent costs the most' or 'which " +
+      "conversation was most expensive', or to attribute credit spend by " +
+      "API key, tag, or model. Figures are billed credits. Rows may " +
+      "overlap, so don't sum them for a workspace total.",
     schema: getTopEntitiesByCreditsSchema,
     stake: "never_ask",
     eager: true,

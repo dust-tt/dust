@@ -878,10 +878,44 @@ describe("consumption top rankings", () => {
   });
 });
 
-// The two options the analytics tools rely on and the page never sets.
 describe("fetchConsumptionTopGroups options", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    {
+      name: "credits sort on the credit sum",
+      dimension: "agent" as const,
+      rankBy: "credits" as const,
+      order: { credit_micro: "desc" },
+    },
+    {
+      name: "a message dimension counted sorts on distinct messages",
+      dimension: "agent" as const,
+      rankBy: "count" as const,
+      order: { messages: "desc" },
+    },
+    {
+      name: "an invocation dimension counted sorts on the bucket's own docs",
+      dimension: "tool" as const,
+      rankBy: "count" as const,
+      order: { _count: "desc" },
+    },
+  ])("$name", async ({ dimension, rankBy, order }) => {
+    const { auth } = await setup();
+    mockAggs({ buckets: [], totalMicro: 0 });
+
+    await fetchConsumptionTopGroupBuckets(auth, {
+      dimension,
+      period: PERIOD,
+      limit: 5,
+      rankBy,
+      includePreviousCredits: false,
+    });
+
+    const [, options] = lastSearchCall();
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({ order });
   });
 
   it("skips the previous-period search when the caller opts out", async () => {

@@ -122,6 +122,24 @@ export const CONSUMPTION_TOP_DIMENSION_UNIT: Record<
   reasoning_effort: "message",
 };
 
+export const CONSUMPTION_TOP_RANK_BY = ["credits", "count"] as const;
+
+export type ConsumptionTopRankBy = (typeof CONSUMPTION_TOP_RANK_BY)[number];
+
+export const CONSUMPTION_MESSAGE_DIMENSIONS = [
+  "agent",
+  "user",
+  "api_key",
+  "group",
+  "model",
+  "source",
+  "conversation",
+  "tag",
+  "reasoning_effort",
+] as const;
+
+export const CONSUMPTION_INVOCATION_DIMENSIONS = ["tool", "skill"] as const;
+
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 
 export type ConsumptionMetric = (typeof CONSUMPTION_METRICS)[number];

@@ -1,4 +1,9 @@
 import {
+  GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME,
+  GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME,
+  GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME,
+} from "@app/lib/api/actions/servers/workspace_analytics/metadata";
+import {
   GET_AGENT_DETAILS_TOOL_NAME,
   GET_SKILL_DETAILS_TOOL_NAME,
   LIST_AGENTS_TOOL_NAME,
@@ -38,17 +43,21 @@ export const workspaceAnalyticsSkill = {
     "- Never build a trend by calling a snapshot tool (get_credit_usage, " +
     "get_top_*) once per day or in parallel per period — it is slower and " +
     "unnecessary, the timeseries tools already bucket over time.\n" +
-    "- To attribute spend — which agents, users, models, tools, skills, " +
-    "sources, API keys, groups, tags or conversations cost the most — call " +
-    "get_top_entities_by_credits with that dimension. Use get_credit_usage " +
+    "- To attribute spend (which agents, users, models, tools, skills, " +
+    "sources, API keys, groups, tags or conversations cost the most). Call " +
+    `${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} with that dimension. Use get_credit_usage ` +
     "only for a single window's total credits.\n" +
     "- For a credit trend split by agent, user or model (e.g. 'how did each " +
     "agent's spend evolve'), set breakdownBy on get_credit_timeseries — one " +
     "call returns the top groups plus an 'other' series. Do not make one " +
     "filtered call per agent, user or model.\n" +
-    "- To scope any tool to specific models, call get_top_models first to get " +
-    "the exact model ids in use, then pass them as modelIds — never guess a " +
-    "model id from its display name.\n" +
+    "- For volume rather than spend: who is most active, which agents or " +
+    "models get used most, where messages come from. Call " +
+    `${GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME} with that dimension, and ` +
+    `${GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME} for how often tools and skills ran.\n` +
+    "- The rankings return each row's id. Feed those ids back in as filters " +
+    "(agentIds, userIds, modelIds, agentTagIds, sources, ...) to narrow any " +
+    "other call — never guess an id from a display name.\n" +
     `- To inventory what EXISTS rather than what is used — which agents or ` +
     `skills the workspace has, whether they are published or discoverable, ` +
     `which ones nobody uses — call ${LIST_AGENTS_TOOL_NAME} or ` +
@@ -61,7 +70,7 @@ export const workspaceAnalyticsSkill = {
     { name: "workspace_analytics" },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 6,
+  version: 7,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {

@@ -2598,35 +2598,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
-    "get_source_breakdown": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "get_top_agent_tags": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "get_top_agents": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
     "get_top_entities_by_credits": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
-    "get_top_models": {
+    "get_top_entities_by_execution_count": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
-    "get_top_skills": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "get_top_tools": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "get_top_users": {
+    "get_top_entities_by_message_count": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -3457,14 +3437,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_agent_details": "never_ask",
     "get_credit_timeseries": "never_ask",
     "get_credit_usage": "never_ask",
-    "get_source_breakdown": "never_ask",
-    "get_top_agent_tags": "never_ask",
-    "get_top_agents": "never_ask",
     "get_top_entities_by_credits": "never_ask",
-    "get_top_models": "never_ask",
-    "get_top_skills": "never_ask",
-    "get_top_tools": "never_ask",
-    "get_top_users": "never_ask",
+    "get_top_entities_by_execution_count": "never_ask",
+    "get_top_entities_by_message_count": "never_ask",
     "get_usage_timeseries": "never_ask",
   },
   "workspace_management": {

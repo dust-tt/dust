@@ -1075,24 +1075,22 @@ const QUERIES: LabeledQuery[] = [
   // --- workspace_analytics ---
   {
     query: "which agents are used most in the workspace",
-    expected: "workspace_analytics.get_top_agents",
-    maxRank: 2, // get_top_tools collides on "most used"
-  },
-  {
-    query: "show me the top 10 most active agents this month",
-    expected: "workspace_analytics.get_top_agents",
+    expected: "workspace_analytics.get_top_entities_by_message_count",
+    maxRank: 2,
   },
   {
     query: "who are the most active users this month",
-    expected: "workspace_analytics.get_top_users",
+    expected: "workspace_analytics.get_top_entities_by_message_count",
   },
   {
-    query: "rank workspace members by messages sent",
-    expected: "workspace_analytics.get_top_users",
+    query: "where do workspace messages come from - slack, api, or browser",
+    expected: "workspace_analytics.get_top_entities_by_message_count",
+    maxRank: 10,
   },
   {
-    query: "list the agent tags",
-    expected: "workspace_analytics.get_top_agent_tags",
+    query: "which models did the workspace use most this month",
+    expected: "workspace_analytics.get_top_entities_by_message_count",
+    maxRank: 5,
   },
   {
     query:
@@ -1104,30 +1102,24 @@ const QUERIES: LabeledQuery[] = [
     expected: "workspace_analytics.get_agent_details",
   },
   {
-    query: "which skills are executed most in the workspace",
-    expected: "workspace_analytics.get_top_skills",
-  },
-  {
-    query: "what are the top MCP tools used by agents",
-    expected: "workspace_analytics.get_top_tools",
-  },
-  {
-    query: "where do workspace messages come from - slack, api, or browser",
-    expected: "workspace_analytics.get_source_breakdown",
-    maxRank: 10,
-  },
-  {
-    query: "which models did the workspace use most this month",
-    expected: "workspace_analytics.get_top_models",
-    maxRank: 5,
-  },
-  {
     query: "how many AWU credits did the workspace consume this month",
     expected: "workspace_analytics.get_credit_usage",
   },
   {
     query: "break down credit spending by agent",
     expected: "workspace_analytics.get_credit_usage",
+  },
+  {
+    query: "which skills are executed most in the workspace",
+    expected: "workspace_analytics.get_top_entities_by_execution_count",
+  },
+  {
+    query: "what are the top MCP tools used by agents",
+    expected: "workspace_analytics.get_top_entities_by_execution_count",
+  },
+  {
+    query: "how many times did each integration run",
+    expected: "workspace_analytics.get_top_entities_by_execution_count",
   },
   {
     query: "which agents cost the most credits this month",
@@ -1139,6 +1131,10 @@ const QUERIES: LabeledQuery[] = [
   },
   {
     query: "attribute credit spend to our API keys",
+    expected: "workspace_analytics.get_top_entities_by_credits",
+  },
+  {
+    query: "rank credit spend by tool",
     expected: "workspace_analytics.get_top_entities_by_credits",
   },
   {
@@ -1205,6 +1201,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "search the web for the latest AI research papers",
     expected: "web_search_&_browse.websearch",
+    maxRank: 2, // clari_copilot.get_call_details dilutes shared-token IDF
   },
   {
     query: "google this topic for me",
