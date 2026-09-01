@@ -16,19 +16,39 @@ import {
   useState,
   type ReactElement,
   type ReactNode,
+  type UIEvent,
 } from "react";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MOBILE_BREAKPOINT = 768;
+const WIDE_BREAKPOINT = 1800;
+const COMFORTABLE_PANEL = 520;
 const MIN_NAV = 160,
   MAX_NAV = 320;
 const MIN_P2 = 260,
   MAX_P2 = 960;
 const MIN_P3 = 260,
   MAX_P3 = 1200;
+const MIN_P4 = 260;
 const MIN_MAIN = 320;
 const P3_OPEN_HIDE_NAV_BELOW = 1280;
+const NAV_CARD_GAP = 6;
+const SPLIT_HANDLE = 1;
+const CARD_EDGES = 2;
+
+function lockHorizontalScroll(e: UIEvent<HTMLElement>) {
+  if (e.currentTarget.scrollLeft !== 0) {
+    e.currentTarget.scrollLeft = 0;
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) {
+    return min;
+  }
+  return Math.max(min, Math.min(max, value));
+}
 
 // ── Drag-resize factory ───────────────────────────────────────────────────────
 
@@ -75,19 +95,24 @@ interface PanelTopBarProps {
   right?: ReactNode;
   /** When false, the bottom border fades out (used until content scrolls). */
   hasBorder?: boolean;
+  /** Extra horizontal inset so titles clear the rounded card’s 12px corner. */
+  inCard?: boolean;
 }
 
 export function PanelTopBar({
   left,
   right,
   hasBorder = true,
+  inCard = false,
 }: PanelTopBarProps) {
   return (
     <header
       className={[
-        "group/topbar flex h-[52px] flex-none items-center justify-between gap-2 overflow-hidden whitespace-nowrap border-b px-2 transition-colors duration-200",
+        "group/topbar flex h-[52px] flex-none items-center justify-between gap-2 overflow-x-clip whitespace-nowrap border-b transition-colors duration-200",
+        inCard ? "px-4" : "px-2",
         hasBorder ? "border-separator" : "border-transparent",
       ].join(" ")}
+      onScroll={lockHorizontalScroll}
     >
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         {left}
@@ -165,33 +190,23 @@ function PanelSection({
     </div>
   );
 
-  // Nav (P1) is flush against the muted canvas; content panels (P2+) float as
-  // rounded white cards on that same muted canvas.
-  const inner = isNav ? (
-    <>
-      {cloneElement(topBar, { hasBorder: isScrolled })}
-      {contentArea}
-    </>
-  ) : (
-    <div className="my-1 mr-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border bg-background shadow-sm">
-      {cloneElement(topBar, { hasBorder: isScrolled })}
-      {contentArea}
-    </div>
-  );
-
+  // Nav (P1) is flush against the muted canvas. Content panels (P2+) are
+  // columns inside the shared white card in PanelLayout.
   return (
     <section
       className={[
-        "relative flex h-full min-w-0 flex-none flex-col overflow-hidden",
-        isNav ? "mt-1 bg-app-background" : "",
+        "relative flex h-full min-w-0 flex-none flex-col overflow-x-clip overflow-y-hidden",
+        isNav ? "bg-app-background" : "",
         dragging
           ? ""
           : "transition-[width] duration-[260ms] ease-[cubic-bezier(.4,0,.2,1)]",
       ].join(" ")}
       style={{ width }}
+      onScroll={lockHorizontalScroll}
       {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
     >
-      {inner}
+      {cloneElement(topBar, { hasBorder: isScrolled })}
+      {contentArea}
     </section>
   );
 }
@@ -201,26 +216,46 @@ function PanelSection({
 function ResizeHandle({
   visible,
   onPointerDown,
+  variant = "gap",
 }: {
   visible: boolean;
   onPointerDown: (e: React.PointerEvent) => void;
+  variant?: "gap" | "split";
 }) {
+  if (variant === "split") {
+    return (
+      <div
+        className={[
+          "group relative z-[5] flex flex-none items-stretch",
+          visible
+            ? "w-px cursor-col-resize"
+            : "pointer-events-none w-0 overflow-hidden",
+        ].join(" ")}
+        onPointerDown={visible ? onPointerDown : undefined}
+      >
+        {visible ? (
+          <>
+            <div className="absolute inset-y-0 -left-[3px] -right-[3px]" />
+            <div className="relative z-[1] w-px bg-separator transition-all duration-[120ms] group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]" />
+          </>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div
       className={[
-        "group relative z-[5] flex w-[6px] flex-none cursor-col-resize items-stretch -mx-[3px] transition-opacity duration-200",
-        visible ? "opacity-100" : "pointer-events-none opacity-0",
+        "group relative z-[5] flex flex-none items-stretch",
+        visible
+          ? "w-[6px] cursor-col-resize"
+          : "pointer-events-none w-0 overflow-hidden",
       ].join(" ")}
       onPointerDown={visible ? onPointerDown : undefined}
     >
-      <div
-        className={[
-          "mx-auto w-px bg-transparent transition-all duration-[120ms]",
-          visible
-            ? "group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]"
-            : "",
-        ].join(" ")}
-      />
+      {visible ? (
+        <div className="mx-auto w-px bg-transparent transition-all duration-[120ms] group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]" />
+      ) : null}
     </div>
   );
 }
@@ -326,6 +361,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   }, []);
 
   const isMobile = stageW > 0 && stageW < MOBILE_BREAKPOINT;
+  const isWide = stageW >= WIDE_BREAKPOINT;
 
   // Restore nav when transitioning from mobile to desktop
   const prevIsMobile = useRef(isMobile);
@@ -335,6 +371,8 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   }
 
   // ── Derived visibility ──────────────────────────────────────────────────
+  // Standard (14" laptop): hide nav when P3 is open below 1280, and whenever
+  // P4 is open. Wide: keep nav inline whenever the user wants it.
   const spaceTight =
     stageW > 0
       ? p3Open
@@ -342,7 +380,8 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         : navW + MIN_MAIN > stageW
       : false;
 
-  const showNavInline = navIntent && !spaceTight && !p4Open && !isMobile;
+  const showNavInline =
+    navIntent && !isMobile && (isWide || (!spaceTight && !p4Open));
   const navHidden = !showNavInline;
 
   const prevNavHidden = useRef(navHidden);
@@ -359,6 +398,10 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   const isPeek = !navOverlay && navPeek && navHidden;
 
   // ── Layout widths ───────────────────────────────────────────────────────
+  // Panel pixel widths must fit the column row: nav + optional 6px gap +
+  // card (panels + 1px splits). Overflowing that row lets overflow:hidden
+  // ancestors take a scrollLeft, which clips the left inset of the top bar
+  // and the conversation list together.
   const layout = (() => {
     const W = Math.max(0, stageW);
     const resolvedP2W = p2W ?? Math.max(MIN_P2, Math.round(W * 0.3));
@@ -374,15 +417,42 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       else if (navIntent) nav = W;
       else w2 = W;
     } else if (p4Open) {
-      w3 = Math.min(resolvedP3W, Math.max(MIN_P3, W - 1));
-      w4 = Math.max(0, W - w3);
+      nav = showNavInline ? navW : 0;
+      const showP2WithP4 = isWide && W - nav >= 3 * COMFORTABLE_PANEL;
+      const gap = nav > 0 && showP2WithP4 ? NAV_CARD_GAP : 0;
+      const splits = showP2WithP4 ? 2 * SPLIT_HANDLE : SPLIT_HANDLE;
+      const available = Math.max(0, W - nav - gap - splits - CARD_EDGES);
+
+      if (showP2WithP4) {
+        const minP4Share = Math.min(
+          COMFORTABLE_PANEL,
+          Math.max(MIN_P4, available - MIN_P2 - MIN_P3)
+        );
+        w2 = clamp(
+          resolvedP2W,
+          MIN_P2,
+          Math.min(MAX_P2, available - MIN_P3 - minP4Share)
+        );
+        w3 = clamp(
+          resolvedP3W,
+          MIN_P3,
+          Math.min(MAX_P3, available - w2 - minP4Share)
+        );
+        w4 = available - w2 - w3;
+      } else {
+        w3 = clamp(resolvedP3W, MIN_P3, Math.min(MAX_P3, available - MIN_P4));
+        w4 = Math.max(0, available - w3);
+      }
     } else if (p3Open) {
       nav = showNavInline ? navW : 0;
-      w2 = Math.min(resolvedP2W, Math.max(MIN_P2, W - nav - MIN_P3));
-      w3 = Math.max(0, W - nav - w2);
+      const gap = nav > 0 ? NAV_CARD_GAP : 0;
+      const available = Math.max(0, W - nav - gap - SPLIT_HANDLE - CARD_EDGES);
+      w2 = Math.min(resolvedP2W, Math.max(MIN_P2, available - MIN_P3));
+      w3 = Math.max(0, available - w2);
     } else {
       nav = showNavInline ? navW : 0;
-      w2 = Math.max(0, W - nav);
+      const gap = nav > 0 ? NAV_CARD_GAP : 0;
+      w2 = Math.max(0, W - nav - gap - CARD_EDGES);
     }
     return { nav, p2: w2, p3: w3, p4: w4 };
   })();
@@ -409,7 +479,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       setNavIntent(false);
       return;
     }
-    if (!spaceTight && !p4Open) {
+    if (!isMobile && (isWide || (!spaceTight && !p4Open))) {
       setNavIntent(true);
       return;
     }
@@ -437,254 +507,281 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     : null;
 
   return (
-    <div
-      ref={stageRef}
-      className="relative flex w-full h-[100vh] overflow-hidden"
-    >
+    <div className="relative flex h-[100vh] w-full overflow-hidden">
       <style>{`
         :root {
           --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.blue[400]}00, ${customColors.blue[400]}00, ${customColors.blue[400]}80, ${customColors.blue[400]}99, ${customColors.blue[400]}80, ${customColors.blue[400]}00, ${customColors.blue[400]}00);
         }
       `}</style>
-      <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-app-background">
-        {/* ── Nav panel (P1) ── */}
-        {navChild && (
-          <PanelSection
-            width={layout.nav}
-            isNav
-            resetKey="nav"
-            dragging={dragging}
-            topBar={
-              <PanelTopBar
-                left={navChild.props.topBarLeft}
-                right={
-                  <>
-                    {navChild.props.topBarRight}
-                    {!isMobile && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={LayoutLeft}
-                        onClick={() => setNavIntent(false)}
-                        tooltip="Hide navigation"
-                      />
-                    )}
-                  </>
-                }
-              />
-            }
-            // Only mount the nav content when the inline nav is actually
-            // visible. The overlay below renders its own copy when shown;
-            // mounting both at once would duplicate portaled content such as
-            // open dropdown menus.
-            content={layout.nav > 0 ? resolvedNavChildren : null}
-          />
-        )}
-
-        <ResizeHandle
-          visible={layout.nav > 0 && layout.p2 > 0}
-          onPointerDown={drag({
-            getCurrent: () => navW,
-            set: setNavW,
-            min: MIN_NAV,
-            max: MAX_NAV,
-          })}
-        />
-
-        {/* ── P2 ── */}
-        {p2 && (
-          <PanelSection
-            width={layout.p2}
-            isNav={false}
-            resetKey={p2.props.label}
-            dragging={dragging}
-            topBar={
-              <PanelTopBar
-                left={
-                  <>
-                    {navHidden && navToggleButton}
-                    {p2.props.topBarLeft}
-                  </>
-                }
-                right={p2.props.topBarRight}
-              />
-            }
-            content={p2.props.children}
-          />
-        )}
-
-        <ResizeHandle
-          visible={layout.p2 > 0 && layout.p3 > 0}
-          onPointerDown={drag({
-            getCurrent: () => p2W ?? Math.max(MIN_P2, Math.round(stageW * 0.3)),
-            set: setP2W,
-            min: MIN_P2,
-            max: MAX_P2,
-          })}
-        />
-
-        {/* ── P3 ── */}
-        {p3 && (
-          <PanelSection
-            width={layout.p3}
-            isNav={false}
-            resetKey={p3.props.label}
-            dragging={dragging}
-            topBar={
-              <PanelTopBar
-                left={
-                  isMobile ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={ArrowLeft}
-                      onClick={p3.props.onClose}
-                      tooltip="Back"
-                    />
-                  ) : (
-                    <>
-                      {p4Open && navHidden && navToggleButton}
-                      {p3.props.topBarLeft}
-                    </>
-                  )
-                }
-                right={
-                  <>
-                    {!isMobile && p3.props.topBarRight}
-                    {!isMobile && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={XClose}
-                        onClick={p3.props.onClose}
-                        tooltip="Close"
-                      />
-                    )}
-                  </>
-                }
-              />
-            }
-            content={p3.props.children}
-          />
-        )}
-
-        <ResizeHandle
-          visible={layout.p3 > 0 && layout.p4 > 0}
-          onPointerDown={drag({
-            getCurrent: () => p3W ?? Math.max(MIN_P3, Math.round(stageW * 0.5)),
-            set: setP3W,
-            min: MIN_P3,
-            max: MAX_P3,
-          })}
-        />
-
-        {/* ── P4 ── */}
-        {p4 && (
-          <PanelSection
-            width={layout.p4}
-            isNav={false}
-            resetKey={p4.props.label}
-            dragging={dragging}
-            topBar={
-              <PanelTopBar
-                left={
-                  isMobile ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={ArrowLeft}
-                      onClick={p4.props.onClose}
-                      tooltip="Back"
-                    />
-                  ) : (
-                    p4.props.topBarLeft
-                  )
-                }
-                right={
-                  <>
-                    {!isMobile && p4.props.topBarRight}
-                    {!isMobile && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={XClose}
-                        onClick={p4.props.onClose}
-                        tooltip="Close"
-                      />
-                    )}
-                  </>
-                }
-              />
-            }
-            content={p4.props.children}
-          />
-        )}
-
-        {/* ── Scrim ── */}
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-app-background py-1 pr-1">
         <div
-          className={[
-            "absolute inset-0 z-40 bg-black/20 transition-opacity duration-200",
-            showNavOverlay && !isPeek
-              ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0",
-          ].join(" ")}
-          onClick={() => setNavOverlay(false)}
-        />
+          ref={stageRef}
+          className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden"
+        >
+          {/* ── Nav panel (P1) ── */}
+          {navChild && (
+            <PanelSection
+              width={layout.nav}
+              isNav
+              resetKey="nav"
+              dragging={dragging}
+              topBar={
+                <PanelTopBar
+                  left={navChild.props.topBarLeft}
+                  right={
+                    <>
+                      {navChild.props.topBarRight}
+                      {!isMobile && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={LayoutLeft}
+                          onClick={() => setNavIntent(false)}
+                          tooltip="Hide navigation"
+                        />
+                      )}
+                    </>
+                  }
+                />
+              }
+              // Only mount the nav content when the inline nav is actually
+              // visible. The overlay below renders its own copy when shown;
+              // mounting both at once would duplicate portaled content such as
+              // open dropdown menus.
+              content={layout.nav > 0 ? resolvedNavChildren : null}
+            />
+          )}
 
-        {/* ── Nav overlay (desktop only) ── */}
-        {!isMobile && (
+          <ResizeHandle
+            visible={layout.nav > 0 && layout.p2 > 0}
+            onPointerDown={drag({
+              getCurrent: () => navW,
+              set: setNavW,
+              min: MIN_NAV,
+              max: MAX_NAV,
+            })}
+          />
+
+          {/* ── Content card (P2–P4) ── */}
+          <div
+            className="flex min-h-0 min-w-0 flex-1 overflow-x-clip overflow-y-hidden rounded-xl border bg-background shadow-sm"
+            onScroll={lockHorizontalScroll}
+          >
+            {p2 && (
+              <PanelSection
+                width={layout.p2}
+                isNav={false}
+                resetKey={p2.props.label}
+                dragging={dragging}
+                topBar={
+                  <PanelTopBar
+                    inCard
+                    left={
+                      <>
+                        {navHidden && navToggleButton}
+                        {p2.props.topBarLeft}
+                      </>
+                    }
+                    right={p2.props.topBarRight}
+                  />
+                }
+                content={p2.props.children}
+              />
+            )}
+
+            <ResizeHandle
+              variant="split"
+              visible={layout.p2 > 0 && layout.p3 > 0}
+              onPointerDown={drag({
+                getCurrent: () =>
+                  p2W ?? Math.max(MIN_P2, Math.round(stageW * 0.3)),
+                set: setP2W,
+                min: MIN_P2,
+                max: Math.min(
+                  MAX_P2,
+                  Math.max(
+                    MIN_P2,
+                    stageW -
+                      layout.nav -
+                      (layout.p3 > 0 ? MIN_P3 : 0) -
+                      (layout.p4 > 0 ? MIN_P4 : 0)
+                  )
+                ),
+              })}
+            />
+
+            {p3 && (
+              <PanelSection
+                width={layout.p3}
+                isNav={false}
+                resetKey={p3.props.label}
+                dragging={dragging}
+                topBar={
+                  <PanelTopBar
+                    inCard
+                    left={
+                      isMobile ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={ArrowLeft}
+                          onClick={p3.props.onClose}
+                          tooltip="Back"
+                        />
+                      ) : (
+                        <>
+                          {p4Open &&
+                            navHidden &&
+                            layout.p2 === 0 &&
+                            navToggleButton}
+                          {p3.props.topBarLeft}
+                        </>
+                      )
+                    }
+                    right={
+                      <>
+                        {!isMobile && p3.props.topBarRight}
+                        {!isMobile && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={XClose}
+                            onClick={p3.props.onClose}
+                            tooltip="Close"
+                          />
+                        )}
+                      </>
+                    }
+                  />
+                }
+                content={p3.props.children}
+              />
+            )}
+
+            <ResizeHandle
+              variant="split"
+              visible={layout.p3 > 0 && layout.p4 > 0}
+              onPointerDown={drag({
+                getCurrent: () =>
+                  p3W ?? Math.max(MIN_P3, Math.round(stageW * 0.5)),
+                set: setP3W,
+                min: MIN_P3,
+                max: Math.min(
+                  MAX_P3,
+                  Math.max(MIN_P3, stageW - layout.nav - layout.p2 - MIN_P4)
+                ),
+              })}
+            />
+
+            {p4 && (
+              <PanelSection
+                width={layout.p4}
+                isNav={false}
+                resetKey={p4.props.label}
+                dragging={dragging}
+                topBar={
+                  <PanelTopBar
+                    inCard
+                    left={
+                      isMobile ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={ArrowLeft}
+                          onClick={p4.props.onClose}
+                          tooltip="Back"
+                        />
+                      ) : (
+                        p4.props.topBarLeft
+                      )
+                    }
+                    right={
+                      <>
+                        {!isMobile && p4.props.topBarRight}
+                        {!isMobile && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={XClose}
+                            onClick={p4.props.onClose}
+                            tooltip="Close"
+                          />
+                        )}
+                      </>
+                    }
+                  />
+                }
+                content={p4.props.children}
+              />
+            )}
+          </div>
+
+          {/* ── Scrim ── */}
           <div
             className={[
-              "absolute bottom-0 left-0 top-0 z-50 flex flex-col",
-              "bg-app-background",
-              "border-r border-separator",
-              "transition-[transform,opacity] duration-[220ms] ease-[cubic-bezier(.4,0,.2,1)]",
-              showNavOverlay
-                ? "translate-x-0 opacity-100 pointer-events-auto"
-                : "-translate-x-full opacity-0 pointer-events-none",
-              isPeek
-                ? "shadow-[4px_0_16px_rgba(0,0,0,0.08)]"
-                : "shadow-[8px_0_24px_rgba(0,0,0,0.10)]",
+              "absolute inset-0 z-40 bg-black/20 transition-opacity duration-200",
+              showNavOverlay && !isPeek
+                ? "pointer-events-auto opacity-100"
+                : "pointer-events-none opacity-0",
             ].join(" ")}
-            style={{ width: navW }}
-            aria-hidden={!showNavOverlay}
-            onMouseEnter={() => {
-              if (navHidden) setNavPeek(true);
-            }}
-            onMouseLeave={() => setNavPeek(false)}
-          >
-            <PanelTopBar
-              left={navChild?.props.topBarLeft}
-              right={
-                <>
-                  {navChild?.props.topBarRight}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={XClose}
-                    onClick={() => {
-                      setNavOverlay(false);
-                      setNavPeek(false);
-                    }}
-                    tooltip="Dismiss"
-                  />
-                </>
-              }
-            />
-            <div className="flex-1 bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
-              {showNavOverlay ? resolvedNavChildren : null}
-            </div>
-          </div>
-        )}
-
-        {/* ── Edge peek trigger (desktop only) ── */}
-        {!isMobile && navHidden && !navOverlay && (
-          <div
-            className="absolute bottom-0 left-0 top-0 z-[35] w-2 cursor-pointer"
-            onMouseEnter={() => setNavPeek(true)}
-            onMouseLeave={() => setNavPeek(false)}
+            onClick={() => setNavOverlay(false)}
           />
-        )}
+
+          {/* ── Nav overlay (desktop only) ── */}
+          {!isMobile && (
+            <div
+              className={[
+                "absolute bottom-0 left-0 top-0 z-50 flex flex-col",
+                "bg-app-background",
+                "border-r border-separator",
+                "transition-[transform,opacity] duration-[220ms] ease-[cubic-bezier(.4,0,.2,1)]",
+                showNavOverlay
+                  ? "translate-x-0 opacity-100 pointer-events-auto"
+                  : "-translate-x-full opacity-0 pointer-events-none",
+                isPeek
+                  ? "shadow-[4px_0_16px_rgba(0,0,0,0.08)]"
+                  : "shadow-[8px_0_24px_rgba(0,0,0,0.10)]",
+              ].join(" ")}
+              style={{ width: navW }}
+              aria-hidden={!showNavOverlay}
+              onMouseEnter={() => {
+                if (navHidden) setNavPeek(true);
+              }}
+              onMouseLeave={() => setNavPeek(false)}
+            >
+              <PanelTopBar
+                left={navChild?.props.topBarLeft}
+                right={
+                  <>
+                    {navChild?.props.topBarRight}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={XClose}
+                      onClick={() => {
+                        setNavOverlay(false);
+                        setNavPeek(false);
+                      }}
+                      tooltip="Dismiss"
+                    />
+                  </>
+                }
+              />
+              <div className="flex-1 bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
+                {showNavOverlay ? resolvedNavChildren : null}
+              </div>
+            </div>
+          )}
+
+          {/* ── Edge peek trigger (desktop only) ── */}
+          {!isMobile && navHidden && !navOverlay && (
+            <div
+              className="absolute bottom-0 left-0 top-0 z-[35] w-2 cursor-pointer"
+              onMouseEnter={() => setNavPeek(true)}
+              onMouseLeave={() => setNavPeek(false)}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

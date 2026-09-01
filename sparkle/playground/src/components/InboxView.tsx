@@ -981,7 +981,7 @@ export function InboxView({
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-background">
+    <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 pt-8 pb-8">
         {greeting && (
           <div className="heading-2xl text-center text-foreground">
