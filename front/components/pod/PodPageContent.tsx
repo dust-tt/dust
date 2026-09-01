@@ -5,7 +5,7 @@ import { PodConnectedDataTab } from "@app/components/pod/connected_data/PodConne
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
 import { GoalPodOverview } from "@app/components/pod/GoalPodOverview";
-import { PodFrameTabContent } from "@app/components/pod/PodFrameTabContent";
+import { PodFileTabContent } from "@app/components/pod/PodFileTabContent";
 import { PodSettingsTab } from "@app/components/pod/settings/PodSettingsTab";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
 import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
@@ -23,8 +23,8 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
-import { makePodFrameTabValue } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
+import { makePodFileTabValue } from "@app/types/pod_file_tab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { NavTabPillContent } from "@dust-tt/sparkle";
@@ -40,7 +40,7 @@ interface PodPageContentProps {
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
   mutatePodInfo: () => Promise<unknown>;
   clientSideMCPServerIds?: string[];
-  frameTabs?: PodFrameTab[];
+  fileTabs?: PodFileTab[];
   hasApps: boolean;
 }
 
@@ -52,7 +52,7 @@ export function PodPageContent({
   setPodUiPreferences,
   mutatePodInfo,
   clientSideMCPServerIds,
-  frameTabs = [],
+  fileTabs = [],
   hasApps,
 }: PodPageContentProps) {
   const owner = useWorkspace();
@@ -243,12 +243,9 @@ export function PodPageContent({
           <PodConnectedDataTab owner={owner} pod={podInfo} />
         </NavTabPillContent>
       )}
-      {frameTabs.map((tab) => (
-        <NavTabPillContent
-          key={tab.path}
-          value={makePodFrameTabValue(tab.path)}
-        >
-          <PodFrameTabContent owner={owner} podInfo={podInfo} tab={tab} />
+      {fileTabs.map((tab) => (
+        <NavTabPillContent key={tab.path} value={makePodFileTabValue(tab.path)}>
+          <PodFileTabContent owner={owner} podInfo={podInfo} tab={tab} />
         </NavTabPillContent>
       ))}
       <NavTabPillContent value="settings">

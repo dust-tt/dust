@@ -34,10 +34,7 @@ import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { isInteractiveContentType } from "@app/types/files";
-import {
-  MAX_POD_FRAME_TABS,
-  normalizeTabsOrder,
-} from "@app/types/pod_frame_tab";
+import { MAX_POD_FILE_TABS, normalizeTabsOrder } from "@app/types/pod_file_tab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -605,7 +602,7 @@ export async function importPodApp(
   const frameByFileName = new Map(
     manifest.frames.map((frame) => [frame.fileName, frame])
   );
-  // Fetched once: updateFrameTabs mutates this same instance, so successive pins in the loop see
+  // Fetched once: updateFileTabs mutates this same instance, so successive pins in the loop see
   // each other's appended tabs without refetching.
   const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
   for (const created of createdFrames) {
@@ -631,9 +628,9 @@ export async function importPodApp(
     if (frame.pinnedTab) {
       const framePath = `${destFolderPath}/${created.fileName}`;
       const currentTabs = metadata?.frameTabs ?? [];
-      if (!metadata || currentTabs.length >= MAX_POD_FRAME_TABS) {
+      if (!metadata || currentTabs.length >= MAX_POD_FILE_TABS) {
         warnings.push(
-          `Frame ${created.fileName}: not pinned as a tab (the Pod already has ${MAX_POD_FRAME_TABS}).`
+          `Frame ${created.fileName}: not pinned as a tab (the Pod already has ${MAX_POD_FILE_TABS}).`
         );
         continue;
       }
@@ -645,7 +642,7 @@ export async function importPodApp(
           icon: frame.pinnedTab.icon,
         },
       ];
-      await metadata.updateFrameTabs(
+      await metadata.updateFileTabs(
         frameTabs,
         normalizeTabsOrder(
           [...(metadata.tabsOrder ?? []), framePath],

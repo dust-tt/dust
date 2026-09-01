@@ -45,8 +45,8 @@ vi.mock("@app/components/pod/files/PinPodBannerButton", () => ({
   PinPodBannerButton: () => null,
 }));
 
-vi.mock("@app/components/pod/files/PodFrameTabButton", () => ({
-  PodFrameTabButton: () => null,
+vi.mock("@app/components/pod/files/PodFileTabButton", () => ({
+  PodFileTabButton: () => null,
 }));
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
@@ -108,7 +108,7 @@ describe("PodFrameSheet", () => {
       fileId: "fil_frame",
       fileName: "app.frame.json",
       framePath: "pod-vlt_project/App/app.frame.json",
-      frameTabs: [],
+      fileTabs: [],
       isArchived: false,
       isEditor: true,
       isMember: true,

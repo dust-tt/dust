@@ -24,11 +24,11 @@ import { MAX_POD_APP_ARCHIVE_SIZE_BYTES } from "@app/types/api/pod_app_archive";
 import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
 import { DEFAULT_SANDBOX_FUNCTION_STAKE } from "@app/types/api/sandbox_functions";
 import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
-  DEFAULT_POD_FRAME_TAB_ICON,
-  MAX_POD_FRAME_TABS,
-} from "@app/types/pod_frame_tab";
+  DEFAULT_POD_FILE_TAB_ICON,
+  MAX_POD_FILE_TABS,
+} from "@app/types/pod_file_tab";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
@@ -208,7 +208,7 @@ function taskListManifestWithPinnedTab(): PodAppManifest {
     ...manifest,
     frames: manifest.frames.map((frame) => ({
       ...frame,
-      pinnedTab: { title: "Tasks", icon: DEFAULT_POD_FRAME_TAB_ICON },
+      pinnedTab: { title: "Tasks", icon: DEFAULT_POD_FILE_TAB_ICON },
     })),
   };
 }
@@ -554,7 +554,7 @@ describe("POST /api/w/:wId/pods/:podId/apps/import", () => {
 
     const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
     expect(metadata?.frameTabs).toEqual([
-      { path: expectedPath, title: "Tasks", icon: DEFAULT_POD_FRAME_TAB_ICON },
+      { path: expectedPath, title: "Tasks", icon: DEFAULT_POD_FILE_TAB_ICON },
     ]);
     expect(metadata?.tabsOrder).toContain(expectedPath);
   });
@@ -562,12 +562,12 @@ describe("POST /api/w/:wId/pods/:podId/apps/import", () => {
   it("warns instead of pinning when the Pod is already at the frame-tab cap", async () => {
     const { workspace, pod, auth } = await setupPod();
     mockSandboxLeaves();
-    const existingTabs: PodFrameTab[] = Array.from(
-      { length: MAX_POD_FRAME_TABS },
+    const existingTabs: PodFileTab[] = Array.from(
+      { length: MAX_POD_FILE_TABS },
       (_, i) => ({
         path: `existing-${i}`,
         title: `Existing ${i}`,
-        icon: DEFAULT_POD_FRAME_TAB_ICON,
+        icon: DEFAULT_POD_FILE_TAB_ICON,
       })
     );
     await ProjectMetadataResource.makeNew(auth, pod, {
@@ -586,7 +586,7 @@ describe("POST /api/w/:wId/pods/:podId/apps/import", () => {
     const body = await res.json();
     expect(body.app.pinnedTabPaths).toEqual([]);
     expect(body.app.warnings).toEqual([
-      `Frame TaskList.tsx: not pinned as a tab (the Pod already has ${MAX_POD_FRAME_TABS}).`,
+      `Frame TaskList.tsx: not pinned as a tab (the Pod already has ${MAX_POD_FILE_TABS}).`,
     ]);
 
     const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);

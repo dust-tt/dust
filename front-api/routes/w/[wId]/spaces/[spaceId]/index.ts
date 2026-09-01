@@ -17,7 +17,7 @@ import type {
   PatchSpaceResponseBody,
 } from "@app/types/api/spaces";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
-import { normalizeTabsOrder, sortPodFrameTabs } from "@app/types/pod_frame_tab";
+import { normalizeTabsOrder, sortPodFileTabs } from "@app/types/pod_file_tab";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -332,7 +332,7 @@ app.get(
         todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
         lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
         pinnedFramePath: meta?.pinnedFramePath ?? null,
-        frameTabs: sortPodFrameTabs(meta?.frameTabs ?? []),
+        frameTabs: sortPodFileTabs(meta?.frameTabs ?? []),
         tabsOrder: normalizeTabsOrder(
           meta?.tabsOrder ?? [],
           (meta?.frameTabs ?? []).map((tab) => tab.path)

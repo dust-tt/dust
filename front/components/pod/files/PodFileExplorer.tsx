@@ -12,17 +12,20 @@ import type {
   FolderEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
-import { joinMountRelativePath } from "@app/components/file_explorer/utils";
+import {
+  isFilePreviewableContentType,
+  joinMountRelativePath,
+} from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
-import { EditPodFrameTabDialog } from "@app/components/pod/files/EditPodFrameTabDialog";
+import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
-import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
+import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -47,12 +50,12 @@ import {
   getSupportedFileExtensions,
   isInteractiveContentType,
 } from "@app/types/files";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
-  DEFAULT_POD_FRAME_TAB_ICON,
-  MAX_POD_FRAME_TAB_TITLE_LENGTH,
-  podFrameTabBasename,
-} from "@app/types/pod_frame_tab";
+  DEFAULT_POD_FILE_TAB_ICON,
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+  podFileTabBasename,
+} from "@app/types/pod_file_tab";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -266,64 +269,61 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   const isArchived = !!pod.archivedAt;
   const isEditor = pod.isEditor;
   const { hasFeature } = useFeatureFlags();
-  const hasFrameTabs = hasFeature("pod_frame_tabs");
+  const hasFileTabs = hasFeature("pod_frame_tabs");
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
     podId: pod.sId,
     pinnedFramePath: pod.pinnedFramePath ?? null,
     isEditor,
   });
-  const { removeFrameTab, isFrameTab } = usePodFrameTabs({
+  const { removeFileTab, isFileTab } = usePodFileTabs({
     owner,
     podId: pod.sId,
-    frameTabs: pod.frameTabs ?? [],
+    fileTabs: pod.frameTabs ?? [],
     tabsOrder: pod.tabsOrder ?? [],
     isEditor,
   });
-  const [createFrameTabDraft, setCreateFrameTabDraft] =
-    useState<PodFrameTab | null>(null);
+  const [createFileTabDraft, setCreateFileTabDraft] =
+    useState<PodFileTab | null>(null);
 
   const getExtraFileMenuItems = useCallback(
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
-      if (
-        !isEditor ||
-        isArchived ||
-        entry.kind !== "file" ||
-        !isInteractiveContentType(entry.contentType)
-      ) {
+      if (!isEditor || isArchived || entry.kind !== "file") {
         return [];
       }
 
-      const pinned = isPinned(entry.path);
-      const items: FileExplorerMenuAction[] = [
-        {
+      const items: FileExplorerMenuAction[] = [];
+
+      if (isInteractiveContentType(entry.contentType)) {
+        const pinned = isPinned(entry.path);
+        items.push({
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
           icon: Pin02,
           onClick: (e) => {
             e.stopPropagation();
             void togglePin(entry.path, { fileName: entry.fileName });
           },
-        },
-      ];
+        });
+      }
 
-      if (hasFrameTabs) {
-        const asTab = isFrameTab(entry.path);
+      if (hasFileTabs && isFilePreviewableContentType(entry.contentType)) {
+        const asTab = isFileTab(entry.path);
         items.push({
           label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
           icon: LayoutAlt02,
           onClick: (e) => {
             e.stopPropagation();
             if (asTab) {
-              void removeFrameTab(entry.path, { fileName: entry.fileName });
+              void removeFileTab(entry.path, { fileName: entry.fileName });
               return;
             }
-            setCreateFrameTabDraft({
+            setCreateFileTabDraft({
               path: entry.path,
-              title: podFrameTabBasename(entry.fileName).slice(
+              title: podFileTabBasename(entry.fileName).slice(
                 0,
-                MAX_POD_FRAME_TAB_TITLE_LENGTH
+                MAX_POD_FILE_TAB_TITLE_LENGTH
               ),
-              icon: DEFAULT_POD_FRAME_TAB_ICON,
+              icon: DEFAULT_POD_FILE_TAB_ICON,
             });
           },
         });
@@ -332,12 +332,12 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       return items;
     },
     [
-      hasFrameTabs,
+      hasFileTabs,
       isArchived,
       isEditor,
-      isFrameTab,
+      isFileTab,
       isPinned,
-      removeFrameTab,
+      removeFileTab,
       togglePin,
     ]
   );
@@ -757,7 +757,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         fileName={framePreview?.fileName}
         podId={pod.sId}
         pinnedFramePath={pod.pinnedFramePath ?? null}
-        frameTabs={pod.frameTabs ?? []}
+        fileTabs={pod.frameTabs ?? []}
         tabsOrder={pod.tabsOrder ?? []}
         isEditor={isEditor}
         isMember={pod.isMember}
@@ -766,18 +766,18 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         onClose={() => setFramePreview(null)}
       />
 
-      {createFrameTabDraft && (
-        <EditPodFrameTabDialog
-          key={createFrameTabDraft.path}
+      {createFileTabDraft && (
+        <EditPodFileTabDialog
+          key={createFileTabDraft.path}
           owner={owner}
           podId={pod.sId}
-          frameTabs={pod.frameTabs ?? []}
+          fileTabs={pod.frameTabs ?? []}
           tabsOrder={pod.tabsOrder ?? []}
           isEditor={isEditor}
-          tab={createFrameTabDraft}
+          tab={createFileTabDraft}
           mode="create"
           isOpen
-          onClose={() => setCreateFrameTabDraft(null)}
+          onClose={() => setCreateFileTabDraft(null)}
         />
       )}
 

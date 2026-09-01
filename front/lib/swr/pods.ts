@@ -1415,8 +1415,8 @@ export function useUpdatePodMetadata({
     const title =
       updates.frameTabs !== undefined || updates.tabsOrder !== undefined
         ? updates.frameTabs?.length === 0
-          ? "Frame tabs cleared"
-          : "Pod frame tabs updated"
+          ? "Pod tabs cleared"
+          : "Pod tabs updated"
         : updates.pinnedFramePath !== undefined
           ? updates.pinnedFramePath
             ? "Frame pinned as Pod banner"

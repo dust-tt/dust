@@ -1,13 +1,13 @@
 import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { getIcon } from "@app/components/resources/resources_icons";
-import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
-import type { PodFrameTab, PodNavVisibility } from "@app/types/pod_frame_tab";
+import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
+import type { PodFileTab, PodNavVisibility } from "@app/types/pod_file_tab";
 import {
   buildPodNavItemsBeforeSettings,
-  DEFAULT_POD_FRAME_TAB_ICON,
+  DEFAULT_POD_FILE_TAB_ICON,
   DEFAULT_POD_NAV_VISIBILITY,
-  MAX_POD_FRAME_TAB_TITLE_LENGTH,
-} from "@app/types/pod_frame_tab";
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+} from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
@@ -28,23 +28,23 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-interface EditPodFrameTabDialogProps {
+interface EditPodFileTabDialogProps {
   owner: LightWorkspaceType;
   podId: string;
-  frameTabs: PodFrameTab[];
+  fileTabs: PodFileTab[];
   tabsOrder?: string[];
   isEditor: boolean;
   navVisibility?: PodNavVisibility;
-  tab: PodFrameTab;
+  tab: PodFileTab;
   mode?: "create" | "edit";
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function EditPodFrameTabDialog({
+export function EditPodFileTabDialog({
   owner,
   podId,
-  frameTabs,
+  fileTabs,
   tabsOrder,
   isEditor,
   navVisibility = DEFAULT_POD_NAV_VISIBILITY,
@@ -52,18 +52,18 @@ export function EditPodFrameTabDialog({
   mode = "edit",
   isOpen,
   onClose,
-}: EditPodFrameTabDialogProps) {
+}: EditPodFileTabDialogProps) {
   const isCreate = mode === "create";
   const {
-    addFrameTab,
-    updateFrameTab,
-    removeFrameTab,
-    moveFrameTab,
+    addFileTab,
+    updateFileTab,
+    removeFileTab,
+    moveFileTab,
     tabsOrder: navOrder,
-  } = usePodFrameTabs({
+  } = usePodFileTabs({
     owner,
     podId,
-    frameTabs,
+    fileTabs,
     tabsOrder,
     isEditor,
   });
@@ -75,11 +75,11 @@ export function EditPodFrameTabDialog({
   const [isMoving, setIsMoving] = useState(false);
 
   const navItems = useMemo(
-    () => buildPodNavItemsBeforeSettings(frameTabs, navOrder, navVisibility),
-    [frameTabs, navVisibility, navOrder]
+    () => buildPodNavItemsBeforeSettings(fileTabs, navOrder, navVisibility),
+    [fileTabs, navVisibility, navOrder]
   );
   const tabIndex = navItems.findIndex(
-    (item) => item.kind === "frame" && item.tab.path === tab.path
+    (item) => item.kind === "file" && item.tab.path === tab.path
   );
   const canMoveLeft = !isCreate && isEditor && tabIndex > 0;
   const canMoveRight =
@@ -87,7 +87,7 @@ export function EditPodFrameTabDialog({
 
   const selectedIcon = isCustomResourceIconType(icon)
     ? icon
-    : DEFAULT_POD_FRAME_TAB_ICON;
+    : DEFAULT_POD_FILE_TAB_ICON;
   const IconComponent = getIcon(selectedIcon);
 
   const handleSave = async () => {
@@ -97,12 +97,12 @@ export function EditPodFrameTabDialog({
     setIsSaving(true);
     const nextTitle = title.trim() || tab.title;
     const ok = isCreate
-      ? await addFrameTab(tab.path, {
+      ? await addFileTab(tab.path, {
           title: nextTitle,
           icon: selectedIcon,
           skipConfirm: true,
         })
-      : await updateFrameTab(tab.path, {
+      : await updateFileTab(tab.path, {
           title: nextTitle,
           icon: selectedIcon,
         });
@@ -117,7 +117,7 @@ export function EditPodFrameTabDialog({
       return;
     }
     setIsSaving(true);
-    const ok = await removeFrameTab(tab.path, {
+    const ok = await removeFileTab(tab.path, {
       fileName: tab.title,
       skipConfirm: true,
     });
@@ -132,7 +132,7 @@ export function EditPodFrameTabDialog({
       return;
     }
     setIsMoving(true);
-    await moveFrameTab(tab.path, direction, navVisibility);
+    await moveFileTab(tab.path, direction, navVisibility);
     setIsMoving(false);
   };
 
@@ -149,7 +149,7 @@ export function EditPodFrameTabDialog({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
-            {isCreate ? "Add frame tab" : "Edit frame tab"}
+            {isCreate ? "Add file tab" : "Edit file tab"}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
@@ -191,10 +191,10 @@ export function EditPodFrameTabDialog({
               </PopoverContent>
             </PopoverRoot>
             <Input
-              id="frame-tab-title"
+              id="file-tab-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              maxLength={MAX_POD_FRAME_TAB_TITLE_LENGTH}
+              maxLength={MAX_POD_FILE_TAB_TITLE_LENGTH}
               disabled={!isEditor}
               placeholder="Tab title"
               containerClassName="flex-1"

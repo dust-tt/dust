@@ -6,7 +6,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
-import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
+import { DEFAULT_POD_FILE_TAB_ICON } from "@app/types/pod_file_tab";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
@@ -55,7 +55,7 @@ describe("deleteFramePlugin", () => {
         {
           path: framePath,
           title: "Dashboard",
-          icon: DEFAULT_POD_FRAME_TAB_ICON,
+          icon: DEFAULT_POD_FILE_TAB_ICON,
         },
       ],
       tabsOrder: [framePath],

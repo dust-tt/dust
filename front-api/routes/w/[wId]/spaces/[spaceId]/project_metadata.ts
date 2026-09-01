@@ -1,5 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { validatePodFrameTabs } from "@app/lib/api/projects/frame_tabs";
+import { validatePodFileTabs } from "@app/lib/api/projects/file_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -133,8 +133,8 @@ app.patch(
       }
     }
 
-    let resolvedFrameTabs: {
-      frameTabs: NonNullable<typeof body.frameTabs>;
+    let resolvedFileTabs: {
+      fileTabs: NonNullable<typeof body.frameTabs>;
       tabsOrder: string[];
     } | null = null;
     if (body.frameTabs !== undefined || body.tabsOrder !== undefined) {
@@ -153,7 +153,7 @@ app.patch(
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message: "Pod frame tabs are not enabled for this workspace.",
+            message: "Pod file tabs are not enabled for this workspace.",
           },
         });
       }
@@ -162,7 +162,7 @@ app.patch(
         auth,
         space
       );
-      const existingFrameTabPaths = new Set(
+      const existingFileTabPaths = new Set(
         (existingMetadata?.frameTabs ?? [])
           .map((tab) =>
             resolveCanonicalScopedPath(tab.path, {
@@ -173,12 +173,12 @@ app.patch(
           .filter((path): path is string => path !== null)
       );
 
-      const validation = await validatePodFrameTabs(
+      const validation = await validatePodFileTabs(
         auth,
         space,
         body.frameTabs,
         body.tabsOrder,
-        { existingFrameTabPaths }
+        { existingFileTabPaths }
       );
       if (validation.isErr()) {
         return apiError(ctx, {
@@ -189,7 +189,7 @@ app.patch(
           },
         });
       }
-      resolvedFrameTabs = validation.value;
+      resolvedFileTabs = validation.value;
     }
 
     // Validate the default agent exists and is usable (handles both global agents like
@@ -289,8 +289,8 @@ app.patch(
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         pinnedFramePath: body.pinnedFramePath ?? null,
-        frameTabs: resolvedFrameTabs?.frameTabs ?? [],
-        tabsOrder: resolvedFrameTabs?.tabsOrder ?? [],
+        frameTabs: resolvedFileTabs?.fileTabs ?? [],
+        tabsOrder: resolvedFileTabs?.tabsOrder ?? [],
         defaultAgentId: body.defaultAgentId ?? null,
         isAdminControlled: body.isAdminControlled ?? false,
       });
@@ -342,10 +342,10 @@ app.patch(
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
-      if (resolvedFrameTabs) {
-        await metadata.updateFrameTabs(
-          resolvedFrameTabs.frameTabs,
-          resolvedFrameTabs.tabsOrder
+      if (resolvedFileTabs) {
+        await metadata.updateFileTabs(
+          resolvedFileTabs.fileTabs,
+          resolvedFileTabs.tabsOrder
         );
       }
       if (body.defaultAgentId !== undefined) {

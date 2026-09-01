@@ -1,10 +1,10 @@
 import { DEFAULT_TASK_OWNER_FILTER } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";
 import {
-  isPodFrameTabValue,
-  makePodFrameTabValue,
-  parsePodFrameTabPath,
-} from "@app/types/pod_frame_tab";
+  isPodFileTabValue,
+  makePodFileTabValue,
+  parsePodFileTabPath,
+} from "@app/types/pod_file_tab";
 import { useCallback, useEffect, useRef } from "react";
 
 export type SystemPodTab =
@@ -52,7 +52,7 @@ function parsePodTabFromLocationHash(fallbackTab: PodTab): PodTab {
     try {
       const path = decodeURIComponent(hash.slice("frame/".length));
       if (path.length > 0) {
-        return makePodFrameTabValue(path);
+        return makePodFileTabValue(path);
       }
     } catch {
       return fallbackTab;
@@ -81,7 +81,7 @@ function hasConnectedDataQueryParams(): boolean {
 }
 
 function tabToHash(tab: PodTab): string {
-  const framePath = parsePodFrameTabPath(tab);
+  const framePath = parsePodFileTabPath(tab);
   return framePath ? `frame/${encodeURIComponent(framePath)}` : tab;
 }
 
@@ -191,5 +191,5 @@ export function usePodTabs({
 }
 
 export function isValidPodTabValue(value: string): value is PodTab {
-  return isSystemPodTab(value) || isPodFrameTabValue(value);
+  return isSystemPodTab(value) || isPodFileTabValue(value);
 }

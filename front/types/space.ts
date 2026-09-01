@@ -1,4 +1,4 @@
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 
 const UNIQUE_SPACE_KINDS = [
   "global", // Also known as "company data", by definition, this space is shared by all users in the workspace.
@@ -50,7 +50,7 @@ export type PodType = EnrichedSpaceType & {
   isEditor: boolean;
   archivedAt: number | null;
   pinnedFramePath?: string | null;
-  frameTabs?: PodFrameTab[];
+  frameTabs?: PodFileTab[];
   tabsOrder?: string[];
   isAdminControlled?: boolean;
 };

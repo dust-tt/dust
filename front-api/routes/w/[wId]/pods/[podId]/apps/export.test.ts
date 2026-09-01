@@ -16,7 +16,7 @@ import {
   PodAppManifestSchema,
 } from "@app/types/api/pod_app_archive";
 import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
-import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
+import { DEFAULT_POD_FILE_TAB_ICON } from "@app/types/pod_file_tab";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -117,7 +117,7 @@ async function publishAndPinFrame(
   await ProjectMetadataResource.makeNew(auth, pod, {
     description: null,
     frameTabs: [
-      { path: framePath, title: "Tasks", icon: DEFAULT_POD_FRAME_TAB_ICON },
+      { path: framePath, title: "Tasks", icon: DEFAULT_POD_FILE_TAB_ICON },
     ],
     tabsOrder: [framePath],
   });
@@ -209,7 +209,7 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
         fileName: "TaskList.tsx",
         contentType: frameContentType,
         wasPublished: true,
-        pinnedTab: { title: "Tasks", icon: DEFAULT_POD_FRAME_TAB_ICON },
+        pinnedTab: { title: "Tasks", icon: DEFAULT_POD_FILE_TAB_ICON },
       },
     ]);
     // The Frame is read through its FileResource, not as a plain file: no entry for it here.
