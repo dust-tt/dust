@@ -23,8 +23,8 @@ export function useConversationAutoScroll({
     isAutoScrollEnabledRef.current = true;
   }, []);
 
-  // Virtuoso's public onScroll fires before its row-height compensation, so a
-  // native listener restores the detached position after Virtuoso updates it.
+  // Compare native scroll movement with list height changes so Virtuoso's row
+  // remeasurement is not mistaken for user scroll intent.
   useEffect(() => {
     const methods = messageListRef.current;
     const scrollElement = isMobile
@@ -35,7 +35,6 @@ export function useConversationAutoScroll({
     }
 
     const scrollTarget = isMobile ? window : scrollElement;
-    const listElement = methods.scrollerElement()?.firstElementChild;
     let previousScrollHeight = scrollElement.scrollHeight;
     let previousScrollTop = scrollElement.scrollTop;
     let lastTouchY: number | null = null;
@@ -52,19 +51,6 @@ export function useConversationAutoScroll({
         methods.cancelSmoothScroll();
       }
     };
-
-    const resizeObserver = new ResizeObserver(() => {
-      // Advance the height baseline when content grows without scrolling.
-      if (
-        !isAutoScrollEnabledRef.current &&
-        scrollElement.scrollTop === previousScrollTop
-      ) {
-        previousScrollHeight = scrollElement.scrollHeight;
-      }
-    });
-    if (listElement) {
-      resizeObserver.observe(listElement);
-    }
 
     const onScroll = () => {
       const scrollHeight = scrollElement.scrollHeight;
@@ -95,13 +81,12 @@ export function useConversationAutoScroll({
       const isNearBottom =
         location.isAtBottom || location.bottomOffset <= stickyFooterHeight;
 
-      // The sticky input bar hides the last part of the viewport. Reattach as
-      // soon as the user scrolls back down into that area, rather than making
-      // them catch a moving 4px target while the answer keeps growing.
+      // The sticky input bar hides the last part of the viewport. Reattach on
+      // downward user movement into that area, but ignore list height changes.
       if (
         !isAutoScrollEnabledRef.current &&
         scrollTopDelta > 0 &&
-        !isHeightCompensation &&
+        scrollHeightDelta === 0 &&
         isNearBottom
       ) {
         enableAutoScroll();
@@ -110,10 +95,6 @@ export function useConversationAutoScroll({
           align: "end",
           behavior: "instant",
         });
-      }
-
-      if (!isAutoScrollEnabledRef.current && isHeightCompensation) {
-        scrollElement.scrollTop = previousScrollTop;
       }
 
       previousScrollHeight = scrollHeight;
@@ -143,7 +124,6 @@ export function useConversationAutoScroll({
     scrollElement.addEventListener("touchstart", onTouchStart, passiveOptions);
     scrollElement.addEventListener("touchmove", onTouchMove, passiveOptions);
     return () => {
-      resizeObserver.disconnect();
       scrollTarget.removeEventListener("scroll", onScroll);
       scrollElement.removeEventListener("touchstart", onTouchStart);
       scrollElement.removeEventListener("touchmove", onTouchMove);
