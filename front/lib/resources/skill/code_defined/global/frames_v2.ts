@@ -53,6 +53,18 @@ dsbx frame register /files/<scope>/<frame-folder>/manifest.json
 Registration validates the manifest and assigns its stable Frame identity. Repeating the command
 for the same manifest path returns the same Frame. Registration does not publish the source.
 
+## Convert a legacy Frame
+
+To migrate an existing legacy Frame without changing its identity or use rights, prepare a Frames
+v2 folder in the same conversation or Pod mount, then run:
+
+\`\`\`bash
+dsbx frame convert /files/<scope>/<legacy-entry>.tsx /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+The command validates and publishes one snapshot before switching the existing Frame to the new
+manifest. The first v2 manifest cannot declare databases. Add them and publish again afterward.
+
 ## Retrieve a registered Frame's share link
 
 Frame sharing and use rights are configured by the user in the Dust UI. Agents must not change

@@ -10,9 +10,9 @@ use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
     CallToolResponse, CallToolResult, FrameCallByIdRequest, FrameCallFromSourceRequest,
-    FrameCallResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
-    FrameRegisterResponse, FrameShareLinkResponse, FrameValidateRequest, FrameValidateResponse,
-    MCPServerView, SandboxServerViewsResponse,
+    FrameCallResponse, FrameConvertRequest, FrameConvertResponse, FramePublishRequest,
+    FramePublishResponse, FrameRegisterRequest, FrameRegisterResponse, FrameShareLinkResponse,
+    FrameValidateRequest, FrameValidateResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -211,6 +211,22 @@ impl DustApiClient {
         self.get(
             "sandbox/frames/share",
             &[("sourceDirectoryPath", source_directory_path)],
+        )
+        .await
+    }
+
+    pub async fn convert_frame(
+        &self,
+        source_path: &str,
+        manifest_path: &str,
+    ) -> anyhow::Result<FrameConvertResponse> {
+        self.post_with_timeout(
+            "sandbox/frames/convert",
+            &FrameConvertRequest {
+                source_path,
+                manifest_path,
+            },
+            POLL_MAX_DURATION,
         )
         .await
     }
