@@ -12,6 +12,7 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -129,29 +130,49 @@ vi.mock(
   })
 );
 
-// Mirrors how the input bar composes the picker: inside the "+" menu, with the configuration
-// dialog it asks for hosted outside of the menu.
+// Mirrors how the input bar composes the picker: as a page of the "+" menu, with the
+// configuration dialog it asks for hosted outside of the menu.
 function PlusMenuHarness() {
   const [serverToSetup, setServerToSetup] = useState<MCPServerType | null>(
     null
   );
+  const [isOpen, setIsOpen] = useState(false);
+  const [page, setPage] = useState<"root" | "capabilities">("root");
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) {
+            setPage("root");
+          }
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button label="More" />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <CapabilitiesPicker
-            type="subdropdown"
-            owner={owner}
-            user={null}
-            selectedMCPServerViews={[]}
-            onSelect={vi.fn()}
-            onSkillSelect={vi.fn()}
-            onSetupServer={setServerToSetup}
-          />
+          {page === "root" ? (
+            <DropdownMenuItem
+              label="Capabilities"
+              onSelect={(event) => event.preventDefault()}
+              onClick={() => setPage("capabilities")}
+            />
+          ) : (
+            <CapabilitiesPicker
+              type="panel"
+              owner={owner}
+              user={null}
+              selectedMCPServerViews={[]}
+              onSelect={vi.fn()}
+              onSkillSelect={vi.fn()}
+              onSetupServer={setServerToSetup}
+              onBack={() => setPage("root")}
+              onClose={() => setIsOpen(false)}
+            />
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       {serverToSetup && (

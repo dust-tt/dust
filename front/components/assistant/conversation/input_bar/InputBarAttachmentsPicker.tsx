@@ -1,4 +1,5 @@
 import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
+import { DropdownPanel } from "@app/components/assistant/conversation/input_bar/DropdownPanel";
 import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
@@ -44,9 +45,6 @@ import {
   DropdownMenuFilters,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Icon,
   Input,
@@ -91,7 +89,7 @@ interface InputBarAttachmentsPickerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
-  type: "dropdown" | "subdropdown";
+  type: "dropdown" | "panel";
   isLoading?: boolean;
   buttonLabel?: string;
   buttonVariant?: ButtonVariantType;
@@ -106,9 +104,9 @@ interface InputBarAttachmentsPickerProps {
   onFileChange?: () => void;
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
-  onOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
-  prefetch?: boolean;
+  onBack?: () => void;
+  onClose?: () => void;
 }
 
 const PAGE_SIZE = 25;
@@ -277,20 +275,32 @@ export const InputBarAttachmentsPicker = ({
   onFileChange,
   externalOpen,
   onExternalOpenChange,
-  onOpenChange,
   anchorRef,
-  prefetch = false,
+  onBack,
+  onClose,
 }: InputBarAttachmentsPickerProps) => {
   const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [internalOpen, setInternalOpen] = useState(false);
 
+  const isPanel = type === "panel";
   const isExternallyControlled = externalOpen !== undefined;
-  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
-  const setIsOpen = isExternallyControlled
-    ? (open: boolean) => onExternalOpenChange?.(open)
-    : setInternalOpen;
+  const isOpen =
+    isPanel || (isExternallyControlled ? externalOpen : internalOpen);
+  const setIsOpen = (open: boolean) => {
+    if (isPanel) {
+      if (!open) {
+        onClose?.();
+      }
+      return;
+    }
+    if (isExternallyControlled) {
+      onExternalOpenChange?.(open);
+      return;
+    }
+    setInternalOpen(open);
+  };
   const [selectedDataSourcesAndTools, setSelectedDataSourcesAndTools] =
     useState<Record<string, boolean>>({});
   const {
@@ -306,7 +316,7 @@ export const InputBarAttachmentsPicker = ({
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global", "regular", "project"],
-    disabled: !isOpen && !prefetch,
+    disabled: !isOpen,
   });
 
   const spacesMap = useMemo(
@@ -546,22 +556,228 @@ export const InputBarAttachmentsPicker = ({
 
   const allUnselected = selectedFilterKeys.length === 0;
 
-  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
-  const ContentWrapper =
-    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+  const headers = (
+    <>
+      <Input
+        type="file"
+        ref={fileInputRef}
+        containerClassName="hidden"
+        onChange={async (e) => {
+          setIsOpen(false);
+          await fileUploaderService.handleFileChange(e);
+          onFileChange?.();
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }}
+        multiple={true}
+      />
+      <DropdownMenuSearchbar
+        autoFocus={!isMobile}
+        name="search-files"
+        placeholder="Search"
+        value={search}
+        onChange={setSearch}
+        disabled={false}
+        isLoading={showLoader}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            const firstMenuItem = itemsContainerRef.current?.querySelector(
+              '[role="menuitemcheckbox"]'
+            );
+            (firstMenuItem as HTMLElement)?.focus();
+          }
+        }}
+        button={
+          <Button
+            icon={UploadCloud02}
+            label="Upload File"
+            onClick={() => fileInputRef.current?.click()}
+            className="ml-4"
+          />
+        }
+      />
+      <DropdownMenuSeparator />
+    </>
+  );
+
+  const items = (
+    <>
+      {searchQuery ? (
+        <div ref={itemsContainerRef}>
+          <div className="flex flex-wrap items-center">
+            <DropdownMenuFilters
+              filters={availableSources}
+              selectedValues={selectedFilterKeys}
+              onSelectFilter={handleFilterClick}
+            />
+
+            {availableSources.length === 0 && showLoader && (
+              <LoadingBlock
+                // LoadingBlock defaults to, same as the menu
+                // surface, so skeletons read as invisible; match menu row hover contrast.
+
+                className="h-7 w-20 bg-muted-background p-2 mt-2"
+              />
+            )}
+          </div>
+
+          {showSearchResultPlaceholders ? (
+            <div className="flex flex-col gap-2 px-2 py-2">
+              {Array.from(
+                { length: SEARCH_RESULTS_PLACEHOLDER_COUNT },
+                (_, i) => (
+                  <LoadingBlock
+                    key={i}
+                    // LoadingBlock defaults to, same as the menu
+                    // surface, so skeletons read as invisible; match menu row hover contrast.
+
+                    className="h-11 w-full bg-muted-background"
+                  />
+                )
+              )}
+            </div>
+          ) : (
+            <>
+              {(allUnselected ||
+                selectedDataSourcesAndTools[PROJECT_FILTER_KEY]) &&
+                projectFilesWithResults.map((f) => (
+                  <ProjectFileItem
+                    key={`project-file-${f.fileId}`}
+                    item={f}
+                    projectName={projectName}
+                    isAttached={attachedFileIds.has(f.fileId)}
+                    isDisabled={isLoading || disabled}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        fileUploaderService.addUploadedFile({
+                          fileId: f.fileId,
+                          filename: f.title,
+                          // We only fetch `type=file` from the project context endpoint.
+                          contentType: f.contentType as any,
+                          size: 0,
+                          id: f.fileId,
+                        });
+                      } else {
+                        fileUploaderService.removeFile(f.fileId);
+                      }
+                      onFileChange?.();
+                    }}
+                  />
+                ))}
+              {Object.keys(serversWithResults).length === 0 ? (
+                // No tools results, show knowledge nodes as returned by the search.
+                dataSourcesNodes
+                  .filter(
+                    (item) =>
+                      allUnselected ||
+                      selectedDataSourcesAndTools[
+                        getKeyForDataSource(item.dataSource)
+                      ]
+                  )
+                  .map((item) => (
+                    <KnowledgeNodeCheckboxItem
+                      key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
+                      item={item}
+                      owner={owner}
+                      attachedNodes={attachedNodes}
+                      onNodeSelect={onNodeSelect}
+                      onNodeUnselect={onNodeUnselect}
+                      spacesMap={spacesMap}
+                    />
+                  ))
+              ) : (
+                // Show grouped knowledge nodes, then tools (project files are rendered above).
+                <>
+                  {Object.entries(dataSourcesWithResults).map(([key, r]) => {
+                    const isSelected =
+                      allUnselected || selectedDataSourcesAndTools[key];
+                    return isSelected
+                      ? r.results.map((item) => (
+                          <KnowledgeNodeCheckboxItem
+                            key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
+                            item={item}
+                            owner={owner}
+                            attachedNodes={attachedNodes}
+                            onNodeSelect={onNodeSelect}
+                            onNodeUnselect={onNodeUnselect}
+                            spacesMap={spacesMap}
+                          />
+                        ))
+                      : null;
+                  })}
+                  {Object.entries(serversWithResults).map(([key, r]) => {
+                    const isSelected =
+                      allUnselected || selectedDataSourcesAndTools[key];
+                    return isSelected
+                      ? r.results.map((item) => (
+                          <ToolFileCheckboxItem
+                            key={`tool-${getToolFileKey(item)}`}
+                            item={item}
+                            isLoading={isLoading}
+                            isToolFileAttached={isToolFileAttached}
+                            isToolFileUploading={isToolFileUploading}
+                            uploadToolFile={uploadToolFile}
+                            removeToolFile={removeToolFile}
+                          />
+                        ))
+                      : null;
+                  })}
+                </>
+              )}
+            </>
+          )}
+          {availableSources.length === 0 && !showLoader && (
+            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+              No results found
+            </div>
+          )}
+
+          <InfiniteScroll
+            nextPage={nextPage}
+            hasMore={hasMore}
+            showLoader={showLoader}
+            loader={<div />}
+          />
+        </div>
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
+            <Icon visual={SearchMd} size="sm" />
+            Search knowledge
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  if (isPanel) {
+    return (
+      <DropdownPanel
+        title="Attach knowledge"
+        onBack={() => onBack?.()}
+        className="h-80 w-80 max-w-[calc(100vw-1rem)] xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
+        headers={headers}
+      >
+        {items}
+      </DropdownPanel>
+    );
+  }
 
   return (
-    <Wrapper
+    <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        onOpenChange?.(open);
         if (open) {
           setSearch("");
         }
       }}
     >
-      {type === "dropdown" && !isExternallyControlled ? (
+      {isExternallyControlled ? (
+        <DropdownAnchorTrigger anchorRef={anchorRef} />
+      ) : (
         <DropdownMenuTrigger asChild>
           <Button
             variant={buttonVariant}
@@ -573,233 +789,17 @@ export const InputBarAttachmentsPicker = ({
             onClick={() => setIsOpen(!isOpen)}
           />
         </DropdownMenuTrigger>
-      ) : type === "dropdown" && isExternallyControlled ? (
-        <DropdownAnchorTrigger anchorRef={anchorRef} />
-      ) : (
-        <DropdownMenuSubTrigger
-          label="Attach knowledge"
-          icon={
-            <Icon
-              size="xs"
-              visual={Attachment01}
-              className="text-muted-foreground"
-            />
-          }
-          disabled={disabled || isLoading || isAnyToolFileUploading}
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            setIsOpen(true);
-          }}
-        />
       )}
-      <ContentWrapper
-        // Radix ScrollArea wraps content in a content-height `display:table` div. Force it to fill
-        // the viewport so the empty-state's `h-full` centering resolves against the full height.
+      <DropdownMenuContent
         className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
         collisionPadding={15}
         onEscapeKeyDown={() => setIsOpen(false)}
-        {...(type === "subdropdown"
-          ? {
-              onClick: (e) => e.stopPropagation(),
-            }
-          : {
-              align: isExternallyControlled ? "end" : "start",
-              onInteractOutside: () => setIsOpen(false),
-            })}
-        dropdownHeaders={
-          <>
-            <Input
-              type="file"
-              ref={fileInputRef}
-              containerClassName="hidden"
-              onChange={async (e) => {
-                setIsOpen(false);
-                await fileUploaderService.handleFileChange(e);
-                onFileChange?.();
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = "";
-                }
-              }}
-              multiple={true}
-            />
-            <DropdownMenuSearchbar
-              autoFocus={!isMobile}
-              name="search-files"
-              placeholder="Search"
-              value={search}
-              onChange={setSearch}
-              disabled={false}
-              isLoading={showLoader}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  const firstMenuItem =
-                    itemsContainerRef.current?.querySelector(
-                      '[role="menuitemcheckbox"]'
-                    );
-                  (firstMenuItem as HTMLElement)?.focus();
-                }
-              }}
-              button={
-                <Button
-                  icon={UploadCloud02}
-                  label="Upload File"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="ml-4"
-                />
-              }
-            />
-            <DropdownMenuSeparator />
-          </>
-        }
+        align={isExternallyControlled ? "end" : "start"}
+        onInteractOutside={() => setIsOpen(false)}
+        dropdownHeaders={headers}
       >
-        {searchQuery ? (
-          <div ref={itemsContainerRef}>
-            <div className="flex flex-wrap items-center">
-              <DropdownMenuFilters
-                filters={availableSources}
-                selectedValues={selectedFilterKeys}
-                onSelectFilter={handleFilterClick}
-              />
-
-              {availableSources.length === 0 && showLoader && (
-                <LoadingBlock
-                  // LoadingBlock defaults to, same as the menu
-                  // surface, so skeletons read as invisible; match menu row hover contrast.
-
-                  className="h-7 w-20 bg-muted-background p-2 mt-2"
-                />
-              )}
-            </div>
-
-            {showSearchResultPlaceholders ? (
-              <div className="flex flex-col gap-2 px-2 py-2">
-                {Array.from(
-                  { length: SEARCH_RESULTS_PLACEHOLDER_COUNT },
-                  (_, i) => (
-                    <LoadingBlock
-                      key={i}
-                      // LoadingBlock defaults to, same as the menu
-                      // surface, so skeletons read as invisible; match menu row hover contrast.
-
-                      className="h-11 w-full bg-muted-background"
-                    />
-                  )
-                )}
-              </div>
-            ) : (
-              <>
-                {(allUnselected ||
-                  selectedDataSourcesAndTools[PROJECT_FILTER_KEY]) &&
-                  projectFilesWithResults.map((f) => (
-                    <ProjectFileItem
-                      key={`project-file-${f.fileId}`}
-                      item={f}
-                      projectName={projectName}
-                      isAttached={attachedFileIds.has(f.fileId)}
-                      isDisabled={isLoading || disabled}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          fileUploaderService.addUploadedFile({
-                            fileId: f.fileId,
-                            filename: f.title,
-                            // We only fetch `type=file` from the project context endpoint.
-                            contentType: f.contentType as any,
-                            size: 0,
-                            id: f.fileId,
-                          });
-                        } else {
-                          fileUploaderService.removeFile(f.fileId);
-                        }
-                        onFileChange?.();
-                      }}
-                    />
-                  ))}
-                {Object.keys(serversWithResults).length === 0 ? (
-                  // No tools results, show knowledge nodes as returned by the search.
-                  dataSourcesNodes
-                    .filter(
-                      (item) =>
-                        allUnselected ||
-                        selectedDataSourcesAndTools[
-                          getKeyForDataSource(item.dataSource)
-                        ]
-                    )
-                    .map((item) => (
-                      <KnowledgeNodeCheckboxItem
-                        key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
-                        item={item}
-                        owner={owner}
-                        attachedNodes={attachedNodes}
-                        onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
-                        spacesMap={spacesMap}
-                      />
-                    ))
-                ) : (
-                  // Show grouped knowledge nodes, then tools (project files are rendered above).
-                  <>
-                    {Object.entries(dataSourcesWithResults).map(([key, r]) => {
-                      const isSelected =
-                        allUnselected || selectedDataSourcesAndTools[key];
-                      return isSelected
-                        ? r.results.map((item) => (
-                            <KnowledgeNodeCheckboxItem
-                              key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
-                              item={item}
-                              owner={owner}
-                              attachedNodes={attachedNodes}
-                              onNodeSelect={onNodeSelect}
-                              onNodeUnselect={onNodeUnselect}
-                              spacesMap={spacesMap}
-                            />
-                          ))
-                        : null;
-                    })}
-                    {Object.entries(serversWithResults).map(([key, r]) => {
-                      const isSelected =
-                        allUnselected || selectedDataSourcesAndTools[key];
-                      return isSelected
-                        ? r.results.map((item) => (
-                            <ToolFileCheckboxItem
-                              key={`tool-${getToolFileKey(item)}`}
-                              item={item}
-                              isLoading={isLoading}
-                              isToolFileAttached={isToolFileAttached}
-                              isToolFileUploading={isToolFileUploading}
-                              uploadToolFile={uploadToolFile}
-                              removeToolFile={removeToolFile}
-                            />
-                          ))
-                        : null;
-                    })}
-                  </>
-                )}
-              </>
-            )}
-            {availableSources.length === 0 && !showLoader && (
-              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                No results found
-              </div>
-            )}
-
-            <InfiniteScroll
-              nextPage={nextPage}
-              hasMore={hasMore}
-              showLoader={showLoader}
-              loader={<div />}
-            />
-          </div>
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
-              <Icon visual={SearchMd} size="sm" />
-              Search knowledge
-            </div>
-          </div>
-        )}
-      </ContentWrapper>
-    </Wrapper>
+        {items}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
