@@ -20,6 +20,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { FrameV2SourceDeletion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -43,6 +44,7 @@ import {
 } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Op } from "sequelize";
 import { z } from "zod";
@@ -513,12 +515,70 @@ export async function addContentNodeToProject(
  * - If some fragments are referenced by messages, we keep them but detach them from the space
  *   and mark them expired so conversation rendering can display an appropriate placeholder.
  */
+async function cleanupProjectFileFragments(
+  auth: Authenticator,
+  {
+    file,
+    space,
+  }: {
+    file: FileResource;
+    space: SpaceResource;
+  }
+): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const projectFragmentModelIds = await ContentFragmentModel.findAll({
+    attributes: ["id"],
+    where: {
+      workspaceId,
+      spaceId: space.id,
+      fileId: file.id,
+    },
+  }).then((rows) => rows.map((r) => r.id));
+  if (projectFragmentModelIds.length === 0) {
+    return;
+  }
+
+  const messagesReferencing = await MessageModel.findAll({
+    attributes: ["contentFragmentId"],
+    where: {
+      workspaceId,
+      contentFragmentId: { [Op.in]: projectFragmentModelIds },
+    },
+  });
+  const referencedModelIds = new Set(
+    removeNulls(messagesReferencing.map((m) => m.contentFragmentId))
+  );
+  const orphanModelIds = projectFragmentModelIds.filter(
+    (id) => !referencedModelIds.has(id)
+  );
+
+  if (orphanModelIds.length > 0) {
+    await ContentFragmentModel.destroy({
+      where: { workspaceId, id: { [Op.in]: orphanModelIds } },
+    });
+  }
+
+  if (referencedModelIds.size > 0) {
+    await ContentFragmentModel.update(
+      { spaceId: null, expiredReason: "file_deleted" },
+      {
+        where: {
+          workspaceId,
+          id: { [Op.in]: Array.from(referencedModelIds) },
+        },
+      }
+    );
+  }
+}
+
 export async function removeFileFromProject(
   auth: Authenticator,
   {
+    deleteFrameSource,
     space,
     fileId,
   }: {
+    deleteFrameSource?: FrameV2SourceDeletion;
     space: SpaceResource;
     fileId: string; // file sId
   }
@@ -528,56 +588,42 @@ export async function removeFileFromProject(
     return new Err(new Error("File not found."));
   }
 
-  // Best-effort cleanup of the project content fragments for this file.
-  const workspaceId = auth.getNonNullableWorkspace().id;
-  const projectFragmentIds = await ContentFragmentModel.findAll({
-    attributes: ["id"],
-    where: {
-      workspaceId,
-      spaceId: space.id,
-      fileId: file.id,
-    },
-  }).then((rows) => rows.map((r) => r.id));
-
-  if (projectFragmentIds.length > 0) {
-    const messagesReferencing = await MessageModel.findAll({
-      attributes: ["contentFragmentId"],
-      where: {
-        workspaceId,
-        contentFragmentId: {
-          [Op.in]: projectFragmentIds,
-        },
-      },
-    });
-
-    const referencedIds = new Set(
-      removeNulls(messagesReferencing.map((m) => m.contentFragmentId))
+  if (file.isFrameV2 && !deleteFrameSource) {
+    return new Err(
+      new Error(
+        "Frames v2 must be deleted through the package-aware Frame deletion flow."
+      )
     );
-    const orphanIds = projectFragmentIds.filter((id) => !referencedIds.has(id));
-
-    if (orphanIds.length > 0) {
-      await ContentFragmentModel.destroy({
-        where: {
-          workspaceId,
-          id: { [Op.in]: orphanIds },
-        },
-      });
-    }
-
-    if (referencedIds.size > 0) {
-      await ContentFragmentModel.update(
-        { spaceId: null, expiredReason: "file_deleted" },
-        {
-          where: {
-            workspaceId,
-            id: { [Op.in]: Array.from(referencedIds) },
-          },
-        }
-      );
-    }
   }
 
-  const deleteRes = await file.delete(auth);
+  const deleteSourceAndFragments: FrameV2SourceDeletion | undefined =
+    deleteFrameSource
+      ? async () => {
+          const sourceResult = await deleteFrameSource();
+          if (sourceResult.isErr()) {
+            return sourceResult;
+          }
+          try {
+            await cleanupProjectFileFragments(auth, {
+              file,
+              space,
+            });
+            return new Ok(undefined);
+          } catch (error) {
+            return new Err(normalizeError(error));
+          }
+        }
+      : undefined;
+
+  // Legacy project files have no separately-owned source package, so preserve their existing
+  // cleanup order. Frames v2 run this only after their retryable source deletion succeeds.
+  if (!deleteFrameSource) {
+    await cleanupProjectFileFragments(auth, { file, space });
+  }
+
+  const deleteRes = await file.delete(auth, {
+    deleteFrameSource: deleteSourceAndFragments,
+  });
   if (deleteRes.isErr()) {
     return new Err(deleteRes.error);
   }
