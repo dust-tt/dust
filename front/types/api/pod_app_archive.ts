@@ -5,7 +5,7 @@ import {
 } from "@app/types/api/sandbox_functions";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import { isInteractiveContentType } from "@app/types/files";
-import { PodFrameTabSchema } from "@app/types/pod_frame_tab";
+import { PodFileTabSchema } from "@app/types/pod_file_tab";
 import { z } from "zod";
 
 /**
@@ -39,7 +39,7 @@ const PodAppManifestFrameSchema = z.object({
   ),
   wasPublished: z.boolean(),
   /** The nav-tab metadata to re-pin with, when the Frame was pinned at export time. */
-  pinnedTab: PodFrameTabSchema.omit({ path: true }).optional(),
+  pinnedTab: PodFileTabSchema.omit({ path: true }).optional(),
 });
 
 const PodAppManifestFunctionSchema = z.object({

@@ -1,64 +1,64 @@
-import { EditPodFrameTabDialog } from "@app/components/pod/files/EditPodFrameTabDialog";
-import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
+import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
-  DEFAULT_POD_FRAME_TAB_ICON,
-  MAX_POD_FRAME_TAB_TITLE_LENGTH,
-  podFrameTabBasename,
-} from "@app/types/pod_frame_tab";
+  DEFAULT_POD_FILE_TAB_ICON,
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+  podFileTabBasename,
+} from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, LayoutAlt02 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-interface PodFrameTabButtonProps {
+interface PodFileTabButtonProps {
   owner: LightWorkspaceType;
   spaceId: string;
-  frameTabs: PodFrameTab[];
+  fileTabs: PodFileTab[];
   tabsOrder?: string[];
   isEditor: boolean;
-  framePath: string | null;
+  filePath: string | null;
   fileName?: string;
   hidden?: boolean;
 }
 
-export function PodFrameTabButton({
+export function PodFileTabButton({
   owner,
   spaceId,
-  frameTabs,
+  fileTabs,
   tabsOrder,
   isEditor,
-  framePath,
+  filePath,
   fileName,
   hidden,
-}: PodFrameTabButtonProps) {
-  const { removeFrameTab, isFrameTab } = usePodFrameTabs({
+}: PodFileTabButtonProps) {
+  const { removeFileTab, isFileTab } = usePodFileTabs({
     owner,
     podId: spaceId,
-    frameTabs,
+    fileTabs,
     tabsOrder,
     isEditor,
   });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const draftTab = useMemo((): PodFrameTab | null => {
-    if (!framePath) {
+  const draftTab = useMemo((): PodFileTab | null => {
+    if (!filePath) {
       return null;
     }
     return {
-      path: framePath,
-      title: podFrameTabBasename(fileName ?? framePath).slice(
+      path: filePath,
+      title: podFileTabBasename(fileName ?? filePath).slice(
         0,
-        MAX_POD_FRAME_TAB_TITLE_LENGTH
+        MAX_POD_FILE_TAB_TITLE_LENGTH
       ),
-      icon: DEFAULT_POD_FRAME_TAB_ICON,
+      icon: DEFAULT_POD_FILE_TAB_ICON,
     };
-  }, [fileName, framePath]);
+  }, [fileName, filePath]);
 
-  if (hidden || !isEditor || !framePath || !draftTab) {
+  if (hidden || !isEditor || !filePath || !draftTab) {
     return null;
   }
 
-  const addedAsTab = isFrameTab(framePath);
+  const addedAsTab = isFileTab(filePath);
 
   return (
     <>
@@ -69,18 +69,18 @@ export function PodFrameTabButton({
         tooltip={addedAsTab ? "Remove from Pod tabs" : "Add as Pod tab"}
         onClick={() => {
           if (addedAsTab) {
-            void removeFrameTab(framePath, { fileName });
+            void removeFileTab(filePath, { fileName });
             return;
           }
           setIsCreateDialogOpen(true);
         }}
       />
       {isCreateDialogOpen && (
-        <EditPodFrameTabDialog
+        <EditPodFileTabDialog
           key={draftTab.path}
           owner={owner}
           podId={spaceId}
-          frameTabs={frameTabs}
+          fileTabs={fileTabs}
           tabsOrder={tabsOrder}
           isEditor={isEditor}
           tab={draftTab}

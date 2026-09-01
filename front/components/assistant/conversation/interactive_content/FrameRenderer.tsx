@@ -8,7 +8,7 @@ import { ShareFrameSheet } from "@app/components/assistant/conversation/interact
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
-import { PodFrameTabButton } from "@app/components/pod/files/PodFrameTabButton";
+import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -68,7 +68,7 @@ export function FrameRenderer({
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
   const { hasFeature } = useFeatureFlags();
-  const hasFrameTabs = hasFeature("pod_frame_tabs");
+  const hasFileTabs = hasFeature("pod_frame_tabs");
   const isMobile = useIsMobile();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
@@ -399,14 +399,14 @@ export function FrameRenderer({
                 fileName={fileMetadata?.fileName}
                 hidden={!isFrameInPod}
               />
-              {hasFrameTabs && (
-                <PodFrameTabButton
+              {hasFileTabs && (
+                <PodFileTabButton
                   owner={owner}
                   spaceId={projectId ?? ""}
-                  frameTabs={projectInfo?.frameTabs ?? []}
+                  fileTabs={projectInfo?.frameTabs ?? []}
                   tabsOrder={projectInfo?.tabsOrder ?? []}
                   isEditor={projectInfo?.isEditor ?? false}
-                  framePath={framePath}
+                  filePath={framePath}
                   fileName={fileMetadata?.fileName}
                   hidden={!isFrameInPod}
                 />

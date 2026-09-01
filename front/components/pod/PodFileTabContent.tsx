@@ -8,21 +8,21 @@ import {
   isInteractiveContentType,
   stripMimeParameters,
 } from "@app/types/files";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 
-interface PodFrameTabContentProps {
+interface PodFileTabContentProps {
   owner: WorkspaceType;
   podInfo: RichSpaceType;
-  tab: PodFrameTab;
+  tab: PodFileTab;
 }
 
-export function PodFrameTabContent({
+export function PodFileTabContent({
   owner,
   podInfo,
   tab,
-}: PodFrameTabContentProps) {
+}: PodFileTabContentProps) {
   const { vizUrl } = useAuth();
   const { metadata, isFileMetadataLoading, isFileMetadataNotFound } =
     useFileMetadataFromPath({
@@ -63,7 +63,7 @@ export function PodFrameTabContent({
   }
 
   return (
-    <PodFrameTabVisualization
+    <PodFileTabVisualization
       owner={owner}
       podInfo={podInfo}
       framePath={tab.path}
@@ -72,7 +72,7 @@ export function PodFrameTabContent({
   );
 }
 
-function PodFrameTabVisualization({
+function PodFileTabVisualization({
   owner,
   podInfo,
   framePath,

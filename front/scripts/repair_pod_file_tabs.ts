@@ -1,18 +1,18 @@
 /**
- * Repair stale Pod frame-tab paths (including the pinned frame path) after
- * Frames are moved or renamed.
+ * Repair stale Pod file-tab paths (including the pinned frame path) after
+ * files are moved or renamed.
  *
  * Dry run for one Pod:
- *   npx tsx scripts/repair_pod_frame_tabs.ts \
+ *   npx tsx scripts/repair_pod_file_tabs.ts \
  *     --workspaceId <workspace-sId> --podId <pod-sId>
  *
  * Remove missing tabs:
- *   npx tsx scripts/repair_pod_frame_tabs.ts \
+ *   npx tsx scripts/repair_pod_file_tabs.ts \
  *     --workspaceId <workspace-sId> --podId <pod-sId> \
  *     --dropMissing --execute
  *
  * Remap moved tabs, repeat --map for multiple paths:
- *   npx tsx scripts/repair_pod_frame_tabs.ts \
+ *   npx tsx scripts/repair_pod_file_tabs.ts \
  *     --workspaceId <workspace-sId> --podId <pod-sId> \
  *     --map <old-path>=<new-path> --execute
  *
@@ -27,30 +27,30 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { isInteractiveContentType } from "@app/types/files";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
-  MAX_POD_FRAME_TABS,
+  MAX_POD_FILE_TABS,
   normalizeTabsOrder,
-  sortPodFrameTabs,
-} from "@app/types/pod_frame_tab";
+  sortPodFileTabs,
+} from "@app/types/pod_file_tab";
 
 import { makeScript } from "./helpers";
 
-type FrameTabRepairStat = { contentType: string } | null;
+type FileTabRepairStat = { contentType: string } | null;
 
-type RepairPodFrameTabsParams = {
+type RepairPodFileTabsParams = {
   spaceId: string;
-  frameTabs: PodFrameTab[];
+  frameTabs: PodFileTab[];
   tabsOrder: string[];
   pinnedFramePath: string | null;
   pathMappings: ReadonlyMap<string, string>;
   dropMissing: boolean;
   canonicalizePath: (path: string) => string | null;
-  stat: (path: string) => Promise<FrameTabRepairStat>;
+  stat: (path: string) => Promise<FileTabRepairStat>;
 };
 
-type RepairPodFrameTabsResult = {
-  frameTabs: PodFrameTab[];
+type RepairPodFileTabsResult = {
+  frameTabs: PodFileTab[];
   tabsOrder: string[];
   pinnedFramePath: string | null;
   removedPaths: string[];
@@ -58,13 +58,13 @@ type RepairPodFrameTabsResult = {
 };
 
 /**
- * Repairs persisted Pod frame-tab metadata (frame tabs, tabs order and pinned
+ * Repairs persisted Pod file-tab metadata (file tabs, tabs order and pinned
  * frame path) after files have been moved or renamed. Missing paths are only
  * removed when explicitly requested with dropMissing. Throws when a --map
- * source matches neither a frame tab nor the pinned frame, so operator typos
+ * source matches neither a file tab nor the pinned frame, so operator typos
  * never silently no-op.
  */
-async function repairPodFrameTabs({
+async function repairPodFileTabs({
   spaceId,
   frameTabs,
   tabsOrder,
@@ -73,8 +73,8 @@ async function repairPodFrameTabs({
   dropMissing,
   canonicalizePath,
   stat,
-}: RepairPodFrameTabsParams): Promise<RepairPodFrameTabsResult> {
-  const repairedTabs: PodFrameTab[] = [];
+}: RepairPodFileTabsParams): Promise<RepairPodFileTabsResult> {
+  const repairedTabs: PodFileTab[] = [];
   const removedPaths: string[] = [];
   const remappedPaths: Array<{ oldPath: string; newPath: string }> = [];
   const seenPaths = new Set<string>();
@@ -84,7 +84,7 @@ async function repairPodFrameTabs({
   for (const tab of frameTabs) {
     const canonicalPath = canonicalizePath(tab.path);
     if (!canonicalPath) {
-      throw new Error(`Invalid frame tab path: ${tab.path}`);
+      throw new Error(`Invalid file tab path: ${tab.path}`);
     }
 
     if (pathMappings.has(canonicalPath)) {
@@ -96,7 +96,7 @@ async function repairPodFrameTabs({
 
     if (!statResult) {
       if (!dropMissing) {
-        throw new Error(`Frame tab file not found: ${newPath}`);
+        throw new Error(`File tab file not found: ${newPath}`);
       }
 
       removedPaths.push(tab.path);
@@ -104,11 +104,11 @@ async function repairPodFrameTabs({
     }
 
     if (!isFilePreviewableContentType(statResult.contentType)) {
-      throw new Error(`Frame tab path is not a previewable file: ${newPath}`);
+      throw new Error(`File tab path is not a previewable file: ${newPath}`);
     }
 
     if (seenPaths.has(newPath)) {
-      throw new Error(`Duplicate frame tab path after repair: ${newPath}`);
+      throw new Error(`Duplicate file tab path after repair: ${newPath}`);
     }
     seenPaths.add(newPath);
 
@@ -128,9 +128,9 @@ async function repairPodFrameTabs({
   // Checked on the output rather than the input so the script can repair a Pod
   // whose persisted metadata is already over the limit, as long as the repair
   // brings it back under.
-  if (repairedTabs.length > MAX_POD_FRAME_TABS) {
+  if (repairedTabs.length > MAX_POD_FILE_TABS) {
     throw new Error(
-      `Repair would leave ${repairedTabs.length} frame tabs on Pod ${spaceId}, exceeding the maximum of ${MAX_POD_FRAME_TABS}.`
+      `Repair would leave ${repairedTabs.length} file tabs on Pod ${spaceId}, exceeding the maximum of ${MAX_POD_FILE_TABS}.`
     );
   }
 
@@ -175,7 +175,7 @@ async function repairPodFrameTabs({
   );
   if (unusedMappingSources.length > 0) {
     throw new Error(
-      `--map source paths matched no frame tab or pinned frame: ${unusedMappingSources.join(", ")}`
+      `--map source paths matched no file tab or pinned frame: ${unusedMappingSources.join(", ")}`
     );
   }
 
@@ -192,7 +192,7 @@ async function repairPodFrameTabs({
   });
 
   return {
-    frameTabs: sortPodFrameTabs(repairedTabs),
+    frameTabs: sortPodFileTabs(repairedTabs),
     tabsOrder: normalizeTabsOrder(
       remappedTabsOrder,
       repairedTabs.map((tab) => tab.path)
@@ -296,7 +296,7 @@ makeScript(
     const fs = fsResult.value;
     const pathMappings = parsePathMappings(map, pod.sId);
 
-    const repaired = await repairPodFrameTabs({
+    const repaired = await repairPodFileTabs({
       spaceId: pod.sId,
       frameTabs: metadata.frameTabs ?? [],
       tabsOrder: metadata.tabsOrder ?? [],
@@ -358,7 +358,7 @@ makeScript(
     // /!\ No lock is taken against concurrent tab edits — run against a
     // quiet Pod.
     await frontSequelize.transaction(async (transaction) => {
-      await metadata.updateFrameTabs(
+      await metadata.updateFileTabs(
         repaired.frameTabs,
         repaired.tabsOrder,
         transaction

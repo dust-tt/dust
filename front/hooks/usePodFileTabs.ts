@@ -2,36 +2,36 @@ import { ConfirmContext } from "@app/components/Confirm";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
-import type { PodFrameTab, PodNavVisibility } from "@app/types/pod_frame_tab";
+import type { PodFileTab, PodNavVisibility } from "@app/types/pod_file_tab";
 import {
-  DEFAULT_POD_FRAME_TAB_ICON,
-  MAX_POD_FRAME_TAB_TITLE_LENGTH,
-  MAX_POD_FRAME_TABS,
-  moveFrameTabInTabsOrder,
+  DEFAULT_POD_FILE_TAB_ICON,
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+  MAX_POD_FILE_TABS,
+  moveFileTabInTabsOrder,
   normalizeTabsOrder,
-  podFrameTabBasename,
-  sortPodFrameTabs,
-} from "@app/types/pod_frame_tab";
+  podFileTabBasename,
+  sortPodFileTabs,
+} from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext, useMemo } from "react";
 
-type FrameTabOptions = {
+type FileTabOptions = {
   fileName?: string;
   title?: string;
   icon?: CustomResourceIconType;
   skipConfirm?: boolean;
 };
 
-export function usePodFrameTabs({
+export function usePodFileTabs({
   owner,
   podId,
-  frameTabs,
+  fileTabs,
   tabsOrder,
   isEditor,
 }: {
   owner: LightWorkspaceType;
   podId: string;
-  frameTabs: PodFrameTab[];
+  fileTabs: PodFileTab[];
   tabsOrder?: string[];
   isEditor: boolean;
 }) {
@@ -42,7 +42,7 @@ export function usePodFrameTabs({
     podId,
   });
 
-  const sortedTabs = useMemo(() => sortPodFrameTabs(frameTabs), [frameTabs]);
+  const sortedTabs = useMemo(() => sortPodFileTabs(fileTabs), [fileTabs]);
   const navOrder = useMemo(
     () =>
       normalizeTabsOrder(
@@ -53,8 +53,8 @@ export function usePodFrameTabs({
   );
 
   const persist = useCallback(
-    async (nextTabs: PodFrameTab[], nextNavOrder: string[]) => {
-      const normalizedTabs = sortPodFrameTabs(nextTabs);
+    async (nextTabs: PodFileTab[], nextNavOrder: string[]) => {
+      const normalizedTabs = sortPodFileTabs(nextTabs);
       const normalizedNavOrder = normalizeTabsOrder(
         nextNavOrder,
         normalizedTabs.map((tab) => tab.path)
@@ -68,33 +68,33 @@ export function usePodFrameTabs({
     [updatePodMetadata]
   );
 
-  const isFrameTab = useCallback(
+  const isFileTab = useCallback(
     (path: string) => sortedTabs.some((tab) => tab.path === path),
     [sortedTabs]
   );
 
-  const addFrameTab = useCallback(
-    async (path: string, options?: FrameTabOptions) => {
+  const addFileTab = useCallback(
+    async (path: string, options?: FileTabOptions) => {
       if (!isEditor) {
         return false;
       }
 
-      if (isFrameTab(path)) {
+      if (isFileTab(path)) {
         return true;
       }
 
-      if (sortedTabs.length >= MAX_POD_FRAME_TABS) {
+      if (sortedTabs.length >= MAX_POD_FILE_TABS) {
         sendNotification({
           type: "error",
           title: "Pod tab limit reached",
-          description: `A pod can have at most ${MAX_POD_FRAME_TABS} custom tabs.`,
+          description: `A pod can have at most ${MAX_POD_FILE_TABS} custom tabs.`,
         });
         return false;
       }
 
       const label = (
-        options?.title?.trim() || podFrameTabBasename(options?.fileName ?? path)
-      ).slice(0, MAX_POD_FRAME_TAB_TITLE_LENGTH);
+        options?.title?.trim() || podFileTabBasename(options?.fileName ?? path)
+      ).slice(0, MAX_POD_FILE_TAB_TITLE_LENGTH);
 
       if (!options?.skipConfirm) {
         const confirmed = await confirm({
@@ -108,12 +108,12 @@ export function usePodFrameTabs({
         }
       }
 
-      const nextTabs: PodFrameTab[] = [
+      const nextTabs: PodFileTab[] = [
         ...sortedTabs,
         {
           path,
           title: label,
-          icon: options?.icon ?? DEFAULT_POD_FRAME_TAB_ICON,
+          icon: options?.icon ?? DEFAULT_POD_FILE_TAB_ICON,
         },
       ];
 
@@ -122,7 +122,7 @@ export function usePodFrameTabs({
     [
       confirm,
       isEditor,
-      isFrameTab,
+      isFileTab,
       navOrder,
       persist,
       sendNotification,
@@ -130,8 +130,8 @@ export function usePodFrameTabs({
     ]
   );
 
-  const removeFrameTab = useCallback(
-    async (path: string, options?: FrameTabOptions) => {
+  const removeFileTab = useCallback(
+    async (path: string, options?: FileTabOptions) => {
       if (!isEditor) {
         return false;
       }
@@ -163,20 +163,20 @@ export function usePodFrameTabs({
     [confirm, isEditor, navOrder, persist, sortedTabs]
   );
 
-  const toggleFrameTab = useCallback(
-    async (path: string, options?: FrameTabOptions) => {
+  const toggleFileTab = useCallback(
+    async (path: string, options?: FileTabOptions) => {
       if (!isEditor) {
         return false;
       }
-      if (isFrameTab(path)) {
-        return removeFrameTab(path, options);
+      if (isFileTab(path)) {
+        return removeFileTab(path, options);
       }
-      return addFrameTab(path, options);
+      return addFileTab(path, options);
     },
-    [addFrameTab, isEditor, isFrameTab, removeFrameTab]
+    [addFileTab, isEditor, isFileTab, removeFileTab]
   );
 
-  const updateFrameTab = useCallback(
+  const updateFileTab = useCallback(
     async (
       path: string,
       updates: {
@@ -204,7 +204,7 @@ export function usePodFrameTabs({
     [isEditor, navOrder, persist, sortedTabs]
   );
 
-  const moveFrameTab = useCallback(
+  const moveFileTab = useCallback(
     async (
       path: string,
       direction: "left" | "right",
@@ -214,7 +214,7 @@ export function usePodFrameTabs({
         return false;
       }
 
-      const nextNavOrder = moveFrameTabInTabsOrder(
+      const nextNavOrder = moveFileTabInTabsOrder(
         navOrder,
         path,
         direction,
@@ -230,13 +230,13 @@ export function usePodFrameTabs({
   );
 
   return {
-    frameTabs: sortedTabs,
+    fileTabs: sortedTabs,
     tabsOrder: navOrder,
-    isFrameTab,
-    addFrameTab,
-    removeFrameTab,
-    toggleFrameTab,
-    updateFrameTab,
-    moveFrameTab,
+    isFileTab,
+    addFileTab,
+    removeFileTab,
+    toggleFileTab,
+    updateFileTab,
+    moveFileTab,
   };
 }

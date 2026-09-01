@@ -59,7 +59,7 @@ type PodAppGridEntry =
       creation: PendingPodAppCreation;
     };
 
-// Not DEFAULT_POD_FRAME_TAB_ICON (a gauge that reads as a clock at tile size): an app is a Frame,
+// Not DEFAULT_POD_FILE_TAB_ICON (a gauge that reads as a clock at tile size): an app is a Frame,
 // so the fallback is the Frame glyph.
 const DEFAULT_POD_APP_ICON = "ActionFrameIcon" satisfies CustomResourceIconType;
 
@@ -339,7 +339,7 @@ export function PodAppsTab({
           fileName={framePreview?.fileName}
           podId={pod.sId}
           pinnedFramePath={pod.pinnedFramePath ?? null}
-          frameTabs={pod.frameTabs ?? []}
+          fileTabs={pod.frameTabs ?? []}
           tabsOrder={pod.tabsOrder ?? []}
           isEditor={pod.isEditor}
           isMember={pod.isMember}

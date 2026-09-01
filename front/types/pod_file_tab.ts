@@ -2,9 +2,9 @@ import type { CustomResourceIconType } from "@app/components/resources/resources
 import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { z } from "zod";
 
-export const MAX_POD_FRAME_TABS = 8;
-export const MAX_POD_FRAME_TAB_TITLE_LENGTH = 64;
-export const DEFAULT_POD_FRAME_TAB_ICON =
+export const MAX_POD_FILE_TABS = 8;
+export const MAX_POD_FILE_TAB_TITLE_LENGTH = 64;
+export const DEFAULT_POD_FILE_TAB_ICON =
   "ActionDashboardIcon" satisfies CustomResourceIconType;
 
 /** System tabs that participate in ordering (Settings is always last and excluded). */
@@ -29,42 +29,42 @@ export function isPodNavSystemTabBeforeSettings(
   return POD_NAV_SYSTEM_TAB_SET.has(value);
 }
 
-export const PodFrameTabSchema = z.object({
+export const PodFileTabSchema = z.object({
   path: z.string().min(1),
-  title: z.string().min(1).max(MAX_POD_FRAME_TAB_TITLE_LENGTH),
+  title: z.string().min(1).max(MAX_POD_FILE_TAB_TITLE_LENGTH),
   icon: z.custom<CustomResourceIconType>(isCustomResourceIconType, {
     message: "Invalid icon.",
   }),
 });
 
-export type PodFrameTab = z.infer<typeof PodFrameTabSchema>;
+export type PodFileTab = z.infer<typeof PodFileTabSchema>;
 
-export const PodFrameTabsSchema = z
-  .array(PodFrameTabSchema)
-  .max(MAX_POD_FRAME_TABS);
+export const PodFileTabsSchema = z
+  .array(PodFileTabSchema)
+  .max(MAX_POD_FILE_TABS);
 
-/** Mixed list of system tab ids and frame paths (Settings is never included). */
+/** Mixed list of system tab ids and file-tab paths (Settings is never included). */
 export const PodTabsOrderSchema = z.array(z.string().min(1));
 
 export type PodTabsOrder = z.infer<typeof PodTabsOrderSchema>;
 
 export type PodNavItemBeforeSettings =
   | { kind: "system"; id: PodNavSystemTabBeforeSettings }
-  | { kind: "frame"; tab: PodFrameTab };
+  | { kind: "file"; tab: PodFileTab };
 
-export function sortPodFrameTabs(tabs: PodFrameTab[]): PodFrameTab[] {
+export function sortPodFileTabs(tabs: PodFileTab[]): PodFileTab[] {
   return [...tabs].sort((a, b) => a.path.localeCompare(b.path));
 }
 
 /**
- * Ensure tabsOrder contains every system tab + every frame path exactly once.
+ * Ensure tabsOrder contains every system tab + every file-tab path exactly once.
  * Unknown entries are dropped; missing ones are appended.
  */
 export function normalizeTabsOrder(
   tabsOrder: string[] | null | undefined,
-  framePaths: string[]
+  fileTabPaths: string[]
 ): string[] {
-  const framePathSet = new Set(framePaths);
+  const fileTabPathSet = new Set(fileTabPaths);
   const seen = new Set<string>();
   const result: string[] = [];
 
@@ -72,7 +72,7 @@ export function normalizeTabsOrder(
     if (seen.has(entry)) {
       continue;
     }
-    if (isPodNavSystemTabBeforeSettings(entry) || framePathSet.has(entry)) {
+    if (isPodNavSystemTabBeforeSettings(entry) || fileTabPathSet.has(entry)) {
       result.push(entry);
       seen.add(entry);
     }
@@ -85,7 +85,7 @@ export function normalizeTabsOrder(
     }
   }
 
-  for (const path of framePaths) {
+  for (const path of fileTabPaths) {
     if (!seen.has(path)) {
       result.push(path);
       seen.add(path);
@@ -98,7 +98,7 @@ export function normalizeTabsOrder(
 /**
  * Which conditional system tabs this Pod currently shows. Connected Data depends on the Pod being
  * admin-controlled, Apps on a workspace feature flag. Both must be honoured everywhere tab order is
- * computed, so neighbour-swapping never moves a frame past a tab the user cannot see.
+ * computed, so neighbour-swapping never moves a file tab past a tab the user cannot see.
  */
 export type PodNavVisibility = {
   includeConnectedData: boolean;
@@ -127,14 +127,14 @@ export function visibleTabsOrder(
 }
 
 export function buildPodNavItemsBeforeSettings(
-  frameTabs: PodFrameTab[],
+  fileTabs: PodFileTab[],
   tabsOrder: string[],
   visibility: PodNavVisibility
 ): PodNavItemBeforeSettings[] {
-  const byPath = new Map(frameTabs.map((tab) => [tab.path, tab]));
+  const byPath = new Map(fileTabs.map((tab) => [tab.path, tab]));
   const normalized = normalizeTabsOrder(
     tabsOrder,
-    frameTabs.map((tab) => tab.path)
+    fileTabs.map((tab) => tab.path)
   );
   const visible = visibleTabsOrder(normalized, visibility);
 
@@ -146,14 +146,14 @@ export function buildPodNavItemsBeforeSettings(
     }
     const tab = byPath.get(entry);
     if (tab) {
-      items.push({ kind: "frame", tab });
+      items.push({ kind: "file", tab });
     }
   }
   return items;
 }
 
-/** Swap a frame with its visible neighbor (system or frame). */
-export function moveFrameTabInTabsOrder(
+/** Swap a file tab with its visible neighbor (system or file tab). */
+export function moveFileTabInTabsOrder(
   tabsOrder: string[],
   path: string,
   direction: "left" | "right",
@@ -183,17 +183,18 @@ export function moveFrameTabInTabsOrder(
   return next;
 }
 
-export function podFrameTabBasename(path: string): string {
+export function podFileTabBasename(path: string): string {
   const base = path.split("/").pop() ?? path;
   // Strip the last extension for any previewable file (frames, .md, etc.).
   return base.replace(/\.[^.]+$/, "") || base;
 }
 
-export function makePodFrameTabValue(path: string): string {
+/** Tab value / hash prefix remains `frame:` / `#frame/...` for existing deep links. */
+export function makePodFileTabValue(path: string): string {
   return `frame:${path}`;
 }
 
-export function parsePodFrameTabPath(tab: string): string | null {
+export function parsePodFileTabPath(tab: string): string | null {
   if (!tab.startsWith("frame:")) {
     return null;
   }
@@ -201,6 +202,6 @@ export function parsePodFrameTabPath(tab: string): string | null {
   return path.length > 0 ? path : null;
 }
 
-export function isPodFrameTabValue(tab: string): boolean {
-  return parsePodFrameTabPath(tab) !== null;
+export function isPodFileTabValue(tab: string): boolean {
+  return parsePodFileTabPath(tab) !== null;
 }
