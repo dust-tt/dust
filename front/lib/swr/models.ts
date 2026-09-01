@@ -10,6 +10,12 @@ import type { Fetcher } from "swr";
 
 const EMPTY_DEGRADED_MODEL_IDS: ReadonlySet<string> = new Set();
 
+// The catalog itself barely moves, but the degraded models it reports do: an
+// operator flagging a model mid-incident must reach tabs that stay open for
+// hours without a reload. Polling pauses while the tab is hidden, and focus
+// revalidation (throttled to the same cadence) covers coming back to it.
+const MODELS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
 export function useModels({
   owner,
   disabled,
@@ -23,7 +29,11 @@ export function useModels({
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/models`,
     modelsFetcher,
-    { disabled, revalidateOnFocus: false }
+    {
+      disabled,
+      refreshInterval: MODELS_REFRESH_INTERVAL_MS,
+      focusThrottleInterval: MODELS_REFRESH_INTERVAL_MS,
+    }
   );
 
   const degradedModelIds = useMemo(
