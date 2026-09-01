@@ -98,9 +98,9 @@ let originalFramePublicationDescriptorPath: string | undefined;
 
 beforeEach(() => {
   databasesDir = mkdtempSync(join(tmpdir(), "dust-pod-test-"));
-  process.env[POD_DATABASES_DIR_ENV] = databasesDir;
+  process.env[SANDBOX_DATABASES_DIR_ENV] = databasesDir;
   // Both env vars are required and normally set by front through dsbx.
-  process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = String(ONE_GIB_BYTES);
+  process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV] = String(ONE_GIB_BYTES);
   // Pod sandboxes carry SPACE_ID as a sandbox-global env var.
   originalSpaceId = process.env[POD_SPACE_ID_ENV];
   process.env[POD_SPACE_ID_ENV] = "spc_test_pod";
@@ -112,6 +112,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  delete process.env[SANDBOX_DATABASES_DIR_ENV];
+  delete process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV];
   delete process.env[POD_DATABASES_DIR_ENV];
   delete process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
   delete process.env[SANDBOX_DATABASE_PREFIX_ENV];
@@ -136,10 +138,14 @@ afterEach(() => {
 });
 
 describe("legacy database compatibility aliases", () => {
-  test("constants reference their owner-neutral counterparts", () => {
-    expect(POD_DATABASES_DIR_ENV).toBe(SANDBOX_DATABASES_DIR_ENV);
+  test("legacy environment keys remain exported", () => {
+    expect(SANDBOX_DATABASES_DIR_ENV).toBe("DUST_SANDBOX_DATABASES_DIR");
+    expect(POD_DATABASES_DIR_ENV).toBe("DUST_POD_DATABASES_DIR");
+    expect(SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV).toBe(
+      "DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES"
+    );
     expect(POD_DATABASE_MAX_SIZE_BYTES_ENV).toBe(
-      SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV
+      "DUST_POD_DATABASE_MAX_SIZE_BYTES"
     );
     expect(POD_DATABASE_BUSY_TIMEOUT_MS).toBe(SANDBOX_DATABASE_BUSY_TIMEOUT_MS);
     expect(POD_DATABASE_NAME_REGEX).toBe(SANDBOX_DATABASE_NAME_REGEX);
@@ -162,6 +168,19 @@ describe("legacy database compatibility aliases", () => {
     );
     expect(new SandboxDatabaseFullError("test", 1)).toBeInstanceOf(
       PodDatabaseFullError
+    );
+
+    // Error.name is part of the legacy compatibility ABI, including when the
+    // same constructor is reached through its canonical export.
+    expect(new SandboxDatabaseError("test").name).toBe("PodDatabaseError");
+    expect(new SandboxDatabaseInvalidNameError("invalid").name).toBe(
+      "PodDatabaseInvalidNameError"
+    );
+    expect(new SandboxDatabasesUnavailableError().name).toBe(
+      "PodDatabasesUnavailableError"
+    );
+    expect(new SandboxDatabaseFullError("test", 1).name).toBe(
+      "PodDatabaseFullError"
     );
   });
 
@@ -213,8 +232,8 @@ describe("sandbox database owner guard", () => {
 describe("Frame publication database contract", () => {
   function frameInvocationEnv(descriptorPath?: string) {
     return {
-      [POD_DATABASES_DIR_ENV]: databasesDir,
-      [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
+      [SANDBOX_DATABASES_DIR_ENV]: databasesDir,
+      [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
       [FRAME_ID_ENV]: "fil_test_frame",
       ...(descriptorPath
         ? { [FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV]: descriptorPath }
@@ -311,7 +330,7 @@ describe("name validation", () => {
   });
 
   test("validates the name before touching the filesystem", () => {
-    delete process.env[POD_DATABASES_DIR_ENV];
+    delete process.env[SANDBOX_DATABASES_DIR_ENV];
     expect(() => db("NOT_VALID")).toThrow(PodDatabaseInvalidNameError);
   });
 });
@@ -337,19 +356,20 @@ describe("must-exist open", () => {
   test("throws when the databases dir env var is absent", () => {
     // No fallback path lives here: front owns the location and passes it
     // through dsbx. Unset means a broken launch context, not an empty pod.
-    delete process.env[POD_DATABASES_DIR_ENV];
+    delete process.env[SANDBOX_DATABASES_DIR_ENV];
     const name = uniqueName("nodir");
     expect(() => db(name)).toThrow(PodDatabaseError);
-    expect(() => db(name)).toThrow(/DUST_POD_DATABASES_DIR is not set/);
+    expect(() => db(name)).toThrow(/DUST_SANDBOX_DATABASES_DIR is not set/);
   });
 
   test("an empty databases dir env var is treated as absent", () => {
     // dsbx passes env through verbatim; empty means the same broken launch
     // context as unset, and this is the one layer that normalizes it.
-    process.env[POD_DATABASES_DIR_ENV] = "";
+    process.env[SANDBOX_DATABASES_DIR_ENV] = "";
+    process.env[POD_DATABASES_DIR_ENV] = databasesDir;
     const name = uniqueName("nodir");
     expect(() => db(name)).toThrow(PodDatabaseError);
-    expect(() => db(name)).toThrow(/DUST_POD_DATABASES_DIR is not set/);
+    expect(() => db(name)).toThrow(/DUST_SANDBOX_DATABASES_DIR is not set/);
   });
 });
 
@@ -474,8 +494,8 @@ describe("app prefix resolution", () => {
   // touching process.env, so the prefix has to come from the invocation context.
   describe("inside an invocation context", () => {
     const contextEnv = (prefix: string) => ({
-      [POD_DATABASES_DIR_ENV]: databasesDir,
-      [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
+      [SANDBOX_DATABASES_DIR_ENV]: databasesDir,
+      [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
       [POD_SPACE_ID_ENV]: "spc_test_pod",
       [SANDBOX_DATABASE_PREFIX_ENV]: prefix,
     });
@@ -497,8 +517,8 @@ describe("app prefix resolution", () => {
       expect(
         runWithInvocationEnv(
           {
-            [POD_DATABASES_DIR_ENV]: databasesDir,
-            [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
+            [SANDBOX_DATABASES_DIR_ENV]: databasesDir,
+            [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
             [FRAME_ID_ENV]: "fil_test_frame",
             [FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV]: descriptorPath,
             [SANDBOX_DATABASE_PREFIX_ENV]: "",
@@ -620,7 +640,7 @@ describe("pragmas", () => {
   test("the quota env var drives max_page_count", () => {
     const name = uniqueName("quota");
     createDatabaseFile(name);
-    process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = "20480"; // 5 pages of 4096.
+    process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV] = "20480"; // 5 pages of 4096.
 
     const client = db(name).$client;
     expect(
@@ -633,7 +653,9 @@ describe("pragmas", () => {
   test("quotas above 1 GiB are honored, not clamped", () => {
     const name = uniqueName("quota");
     createDatabaseFile(name);
-    process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = String(2 * ONE_GIB_BYTES);
+    process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV] = String(
+      2 * ONE_GIB_BYTES
+    );
 
     const client = db(name).$client;
     const pageSize = client
@@ -651,10 +673,10 @@ describe("pragmas", () => {
     // No default lives here: front owns the quota and passes it through dsbx.
     const name = uniqueName("quota");
     createDatabaseFile(name);
-    delete process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+    delete process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV];
     expect(() => db(name)).toThrow(PodDatabaseError);
     expect(() => db(name)).toThrow(
-      /DUST_POD_DATABASE_MAX_SIZE_BYTES is not set/
+      /DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES is not set/
     );
   });
 
@@ -663,9 +685,10 @@ describe("pragmas", () => {
     createDatabaseFile(name);
     // Canonical decimal digits only: Number() alone would accept "1e3",
     // "0x10" or " 42 ".
+    process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = String(ONE_GIB_BYTES);
     const invalid = ["0", "-1", "1.5", "abc", "1e100", "1e3", "0x10", " 42 "];
     for (const raw of invalid) {
-      process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = raw;
+      process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV] = raw;
       expect(() => db(name)).toThrow(/not a positive integer byte count/);
     }
   });
@@ -694,7 +717,7 @@ describe("size quota enforcement", () => {
       name,
       "CREATE TABLE blobs (id INTEGER PRIMARY KEY AUTOINCREMENT, data BLOB)"
     );
-    process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = "20480"; // 5 pages of 4096.
+    process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV] = "20480"; // 5 pages of 4096.
 
     const handle = db(name);
     let thrown: unknown;

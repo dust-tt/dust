@@ -11,7 +11,7 @@ import { podEnv } from "./context.ts";
  * Frame and Pod state databases.
  *
  * `db(name)` returns a cached Drizzle instance over the sandbox owner's live
- * SQLite database at `${DUST_POD_DATABASES_DIR}/{prefix}{name}.db`. Pod names
+ * SQLite database at `${DUST_SANDBOX_DATABASES_DIR}/{prefix}{name}.db`. Pod names
  * may be prefixed; Frame names are unprefixed and must be declared by the
  * selected immutable publication. Databases are created by reconciliation,
  * never here: the file is opened must-exist so a typo'd name errors clearly
@@ -52,10 +52,10 @@ import { podEnv } from "./context.ts";
  * `dsbx function run`, which forwards it here — no layer below front carries
  * its own copy of the path.
  */
-export const SANDBOX_DATABASES_DIR_ENV = "DUST_POD_DATABASES_DIR";
+export const SANDBOX_DATABASES_DIR_ENV = "DUST_SANDBOX_DATABASES_DIR";
 
-/** Compatibility alias for existing `@dust/pod` consumers. */
-export const POD_DATABASES_DIR_ENV = SANDBOX_DATABASES_DIR_ENV;
+/** Legacy env key read for sandboxes launched before the owner-neutral ABI. */
+export const POD_DATABASES_DIR_ENV = "DUST_POD_DATABASES_DIR";
 
 /**
  * Sandbox-global env var carrying the Pod sId for Pod-owned sandboxes.
@@ -78,11 +78,11 @@ export const FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV =
  * the module doc).
  */
 export const SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV =
-  "DUST_POD_DATABASE_MAX_SIZE_BYTES";
+  "DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES";
 
-/** Compatibility alias for existing `@dust/pod` consumers. */
+/** Legacy env key read for sandboxes launched before the owner-neutral ABI. */
 export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
-  SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV;
+  "DUST_POD_DATABASE_MAX_SIZE_BYTES";
 
 /**
  * Env var carrying the per-invocation database namespace prefix (separator
@@ -126,10 +126,14 @@ const framePublicationDatabaseContractSchema = z.object({
   }),
 });
 
+/**
+ * Compatibility ABI: shared errors keep their legacy `Pod*` `Error.name`
+ * values while the legacy class aliases below remain public.
+ */
 export class SandboxDatabaseError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "SandboxDatabaseError";
+    this.name = "PodDatabaseError";
   }
 }
 
@@ -140,7 +144,7 @@ export class SandboxDatabaseInvalidNameError extends SandboxDatabaseError {
         `${SANDBOX_DATABASE_NAME_REGEX.source} (lowercase letter first, then lowercase ` +
         `letters, digits or underscores, 64 characters max).`
     );
-    this.name = "SandboxDatabaseInvalidNameError";
+    this.name = "PodDatabaseInvalidNameError";
   }
 }
 
@@ -151,7 +155,7 @@ export class SandboxDatabasesUnavailableError extends SandboxDatabaseError {
         `nor ${FRAME_ID_ENV} is set, so the sandbox has no database owner. ` +
         `db() only works in an owner-bound function sandbox.`
     );
-    this.name = "SandboxDatabasesUnavailableError";
+    this.name = "PodDatabasesUnavailableError";
   }
 }
 
@@ -201,7 +205,7 @@ export class SandboxDatabaseFullError extends SandboxDatabaseError {
         `${maxSizeBytes} bytes. Delete unneeded rows to reclaim space before ` +
         `writing more data.`
     );
-    this.name = "SandboxDatabaseFullError";
+    this.name = "PodDatabaseFullError";
   }
 }
 
@@ -330,7 +334,8 @@ class SandboxSqliteDatabase extends Database {
 }
 
 function sandboxDatabasesDir(): string {
-  const dir = podEnv(SANDBOX_DATABASES_DIR_ENV);
+  const dir =
+    podEnv(SANDBOX_DATABASES_DIR_ENV) ?? podEnv(POD_DATABASES_DIR_ENV);
   if (dir === undefined || dir.length === 0) {
     throw new SandboxDatabaseError(
       `${SANDBOX_DATABASES_DIR_ENV} is not set: the databases directory is ` +
@@ -378,7 +383,9 @@ function resolveDatabasePath(dir: string, name: string): string {
 }
 
 function sandboxDatabaseMaxSizeBytes(): number {
-  const raw = podEnv(SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV);
+  const raw =
+    podEnv(SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV) ??
+    podEnv(POD_DATABASE_MAX_SIZE_BYTES_ENV);
   if (raw === undefined || raw.length === 0) {
     throw new SandboxDatabaseError(
       `${SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV} is not set: the per-database size ` +
@@ -517,8 +524,8 @@ function assertDatabaseOwnerCanUse(name: string): boolean {
  * @throws FrameDatabaseNotDeclaredError when the selected Frame publication
  *   does not declare `name`.
  * @throws FrameDatabaseUnavailableError when declared state was not reconciled.
- * @throws SandboxDatabaseError when DUST_POD_DATABASES_DIR or
- *   DUST_POD_DATABASE_MAX_SIZE_BYTES is absent or invalid — db() only works
+ * @throws SandboxDatabaseError when DUST_SANDBOX_DATABASES_DIR or
+ *   DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES is absent or invalid. db() only works
  *   in functions launched by `dsbx function run`.
  * @throws PodDatabaseNotDeclaredError for a Pod function when no database file exists. Databases
  *   are created by their first reconcile.
