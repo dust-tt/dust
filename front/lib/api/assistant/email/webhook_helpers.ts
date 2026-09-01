@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   EmailAttachment,
   EmailTriggerError,
@@ -20,7 +21,9 @@ import {
   isSendgridParseFormRequest,
 } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
 import apiConfig from "@app/lib/api/config";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import { withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -43,7 +46,14 @@ const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
   "x-dust-email-webhook-source-region";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
   "x-dust-email-webhook-source-error";
+export const EMAIL_WEBHOOK_RELAY_ID_HEADER = "x-dust-email-webhook-relay-id";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
+
+const EMAIL_RELAY_GUARD_PREFIX = "email-webhook-relay";
+const EMAIL_RELAY_GUARD_TTL_SECONDS = 60 * 60;
+const EMAIL_RELAY_MAX_ATTEMPTS = 2;
+const EMAIL_RELAY_RETRY_DELAY_MS = 200;
+const HTTP_SERVER_ERROR_STATUS_MIN = 500;
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
@@ -165,12 +175,35 @@ export function hasValidRelayAuthorization(
   );
 }
 
+export async function claimEmailRelay(
+  headers: EmailWebhookHeaders
+): Promise<boolean> {
+  const relayId = headers[EMAIL_WEBHOOK_RELAY_ID_HEADER];
+  if (!isString(relayId)) {
+    // Keep accepting relays sent by versions deployed before relay retries.
+    return true;
+  }
+
+  const redis = await getRedisStreamClient({ origin: "email_context" });
+  const result = await redis.set(
+    `${EMAIL_RELAY_GUARD_PREFIX}:${relayId}`,
+    "1",
+    {
+      NX: true,
+      EX: EMAIL_RELAY_GUARD_TTL_SECONDS,
+    }
+  );
+
+  return result === "OK";
+}
+
 export async function relayEmailToOtherRegion(
   email: InboundEmail,
   { sourceError }: { sourceError: EmailTriggerError }
 ): Promise<Result<void, Error>> {
   try {
     const { url, name } = regionsConfig.getOtherRegionInfo();
+    const relayId = randomUUID();
     const formData = new FormData();
 
     formData.set("subject", email.subject);
@@ -193,17 +226,54 @@ export async function relayEmailToOtherRegion(
       );
     }
 
-    const response = await fetch(`${url}/api/email/webhook`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
-        [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
-        [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
-          regionsConfig.getCurrentRegion(),
-        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
+    const responseRes = await withRetry(
+      async () => {
+        const response = await fetch(`${url}/api/email/webhook`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+            [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+            [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
+              regionsConfig.getCurrentRegion(),
+            [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
+            [EMAIL_WEBHOOK_RELAY_ID_HEADER]: relayId,
+          },
+          body: formData,
+        });
+
+        if (response.status >= HTTP_SERVER_ERROR_STATUS_MIN) {
+          throw new Error(
+            `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+          );
+        }
+
+        return response;
       },
-      body: formData,
-    });
+      {
+        maxRetries: EMAIL_RELAY_MAX_ATTEMPTS - 1,
+        initialDelayMs: EMAIL_RELAY_RETRY_DELAY_MS,
+        shouldRetry: (error, attempt) => {
+          logger.warn(
+            {
+              error: normalizeError(error),
+              attempt: attempt + 1,
+              maxAttempts: EMAIL_RELAY_MAX_ATTEMPTS,
+              senderEmail: email.sender.email,
+              sourceRegion: regionsConfig.getCurrentRegion(),
+              targetRegion: name,
+            },
+            "[email] Retrying inbound email relay"
+          );
+          return true;
+        },
+      }
+    );
+
+    if (responseRes.isErr()) {
+      return new Err(responseRes.error);
+    }
+
+    const response = responseRes.value;
 
     if (!response.ok) {
       return new Err(

@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import {
   EMAIL_WEBHOOK_RELAY_HEADER,
   EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+  EMAIL_WEBHOOK_RELAY_ID_HEADER,
   EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -133,6 +135,56 @@ describe("POST /api/email/webhook", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("retries a relay after a transient server error", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(user.email, {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      const firstHeaders = fetchMock.mock.calls[0][1].headers;
+      const secondHeaders = fetchMock.mock.calls[1][1].headers;
+      expect(firstHeaders[EMAIL_WEBHOOK_RELAY_ID_HEADER]).toBe(
+        secondHeaders[EMAIL_WEBHOOK_RELAY_ID_HEADER]
+      );
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("ignores a relayed email already claimed by the target region", async () => {
+    const relayId = randomUUID();
+    const headers = {
+      ...RELAY_AUTH_HEADERS,
+      [EMAIL_WEBHOOK_RELAY_ID_HEADER]: relayId,
+    };
+
+    const firstResponse = await postWebhook(
+      "unknown-sender@example.com",
+      headers
+    );
+    expect(firstResponse.status).toBe(200);
+    await vi.waitFor(() =>
+      expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+    );
+
+    const secondResponse = await postWebhook(
+      "unknown-sender@example.com",
+      headers
+    );
+    expect(secondResponse.status).toBe(200);
+    expect(sendEmailToRecipients).toHaveBeenCalledOnce();
   });
 
   it("replies with the source region error on a relayed request when it is more informative", async () => {

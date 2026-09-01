@@ -10,6 +10,7 @@ import { evaluateInboundAuth } from "@app/lib/api/assistant/email/inbound_auth";
 import { validateSendgridParseWebhookSignature } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
 import type { EmailWebhookHeaders } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
+  claimEmailRelay,
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
@@ -140,6 +141,14 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
   }
 
   const email = emailRes.value;
+
+  if (isRelayRequest && !(await claimEmailRelay(headers))) {
+    logger.info(
+      { senderEmail: email.sender.email },
+      "[email] Ignoring duplicate inbound email relay"
+    );
+    return ctx.json({ success: true });
+  }
 
   // Acknowledge the webhook now — from here on, all errors should be sent as
   // a reply to the original sender, not surfaced to SendGrid. We finish the
