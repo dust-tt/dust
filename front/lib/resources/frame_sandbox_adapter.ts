@@ -261,14 +261,16 @@ export class FrameSandboxAdapter {
     frame: FrameSandboxOwner,
     {
       afterSandboxCleanup,
+      beforeSandboxCleanup,
     }: {
       afterSandboxCleanup?: () => Promise<Result<undefined, Error>>;
+      beforeSandboxCleanup?: () => Result<void, Error>;
     } = {}
   ): Promise<Result<undefined, Error>> {
     return SandboxResource.deleteByOwner(
       auth,
       this.toSandboxDeleteOwner(auth, frame),
-      { afterSandboxCleanup }
+      { afterSandboxCleanup, beforeSandboxCleanup }
     );
   }
 
