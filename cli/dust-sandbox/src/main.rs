@@ -212,6 +212,39 @@ mod tests {
         assert_eq!(exit_code_for(&anyhow::anyhow!("boom")), 1);
     }
 
+    #[test]
+    fn parses_frame_call() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "call",
+            "/files/conversation-conv_123/Status/manifest.json",
+            "get-status",
+            "--input",
+            r#"{"scope":"current"}"#,
+        ])
+        .expect("should parse");
+
+        match cli.command {
+            Commands::Frame {
+                command:
+                    commands::frame::FrameCommand::Call {
+                        source,
+                        function_name,
+                        input,
+                    },
+            } => {
+                assert_eq!(
+                    source,
+                    std::path::PathBuf::from("/files/conversation-conv_123/Status/manifest.json")
+                );
+                assert_eq!(function_name, "get-status");
+                assert_eq!(input.as_deref(), Some(r#"{"scope":"current"}"#));
+            }
+            _ => panic!("expected Frame call subcommand"),
+        }
+    }
+
     struct ToolsFields {
         json: bool,
         args_json: Option<String>,
