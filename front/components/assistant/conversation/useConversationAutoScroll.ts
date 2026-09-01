@@ -19,11 +19,8 @@ export function useConversationAutoScroll({
   messageListRef,
 }: UseConversationAutoScrollProps) {
   const isAutoScrollEnabledRef = useRef(true);
-  const hasLeftBottomRef = useRef(false);
-
   const enableAutoScroll = useCallback(() => {
     isAutoScrollEnabledRef.current = true;
-    hasLeftBottomRef.current = false;
   }, []);
 
   // Virtuoso's public onScroll fires before its row-height compensation, so a
@@ -52,7 +49,6 @@ export function useConversationAutoScroll({
       captureScrollPosition();
       if (isAutoScrollEnabledRef.current) {
         isAutoScrollEnabledRef.current = false;
-        hasLeftBottomRef.current = false;
         methods.cancelSmoothScroll();
       }
     };
@@ -78,26 +74,42 @@ export function useConversationAutoScroll({
       const isHeightCompensation =
         scrollHeightDelta !== 0 &&
         Math.abs(scrollTopDelta - scrollHeightDelta) <= 1;
-      const isAtBottom = methods.getScrollLocation().isAtBottom;
+      const location = methods.getScrollLocation();
 
       if (
         isAutoScrollEnabledRef.current &&
         scrollTopDelta < 0 &&
         !isHeightCompensation &&
-        !isAtBottom
+        !location.isAtBottom
       ) {
         detachFromAutoScroll();
-        hasLeftBottomRef.current = true;
       }
 
-      // Reattach before correcting concurrent height compensation. Otherwise
-      // the correction can move the viewport away from the bottom again.
-      if (!isAutoScrollEnabledRef.current) {
-        if (!isAtBottom) {
-          hasLeftBottomRef.current = true;
-        } else if (hasLeftBottomRef.current) {
-          enableAutoScroll();
-        }
+      const viewportHeight = isMobile
+        ? window.innerHeight
+        : scrollElement.clientHeight;
+      const stickyFooterHeight = Math.max(
+        0,
+        viewportHeight - location.visibleListHeight
+      );
+      const isNearBottom =
+        location.isAtBottom || location.bottomOffset <= stickyFooterHeight;
+
+      // The sticky input bar hides the last part of the viewport. Reattach as
+      // soon as the user scrolls back down into that area, rather than making
+      // them catch a moving 4px target while the answer keeps growing.
+      if (
+        !isAutoScrollEnabledRef.current &&
+        scrollTopDelta > 0 &&
+        !isHeightCompensation &&
+        isNearBottom
+      ) {
+        enableAutoScroll();
+        methods.scrollToItem({
+          index: "LAST",
+          align: "end",
+          behavior: "instant",
+        });
       }
 
       if (!isAutoScrollEnabledRef.current && isHeightCompensation) {
