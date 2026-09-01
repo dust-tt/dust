@@ -1,6 +1,8 @@
 import type { SupportedCurrency } from "@app/types/currency";
 
-export type AwuPoolSummaryResponseBody = {
+// Current-cycle figures only — cheap to compute (bounded ledger lookup),
+// meant to render before cycle history is available.
+export type AwuPoolCurrentCycleResponseBody = {
   totalRemainingCredits: number;
   totalActiveCredits: number;
   /**
@@ -13,4 +15,9 @@ export type AwuPoolSummaryResponseBody = {
   overageAmountCents: number | null;
   /** Invoice currency — needed to format `overageAmountCents`. */
   overageCurrency: SupportedCurrency | null;
+  currentCycleConsumedCredits: number | null;
+  currentCycleStartMs: number | null;
+  currentCycleEndMs: number | null;
 };
+
+export type AwuPoolSummaryResponseBody = AwuPoolCurrentCycleResponseBody;
