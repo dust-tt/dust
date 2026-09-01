@@ -44,12 +44,6 @@ export class FrameSharingError extends Error {
   }
 }
 
-export function isFrameSharingError(
-  error: unknown
-): error is FrameSharingError {
-  return error instanceof FrameSharingError;
-}
-
 export type ShareFrameV2FromSourceError =
   | DustFileSystemError
   | FrameSharingError;
