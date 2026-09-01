@@ -70,9 +70,13 @@ export const USER_VISIBLE_GROUP_KINDS = [
   "global",
 ] as const;
 
-export function isUserVisibleGroupKind(kind: GroupKind): boolean {
+export function isUserVisibleGroupKind(
+  kind: GroupKind
+): kind is UserVisibleGroupKind {
   return USER_VISIBLE_GROUP_KINDS.some((k) => k === kind);
 }
+
+export type UserVisibleGroupKind = (typeof USER_VISIBLE_GROUP_KINDS)[number];
 
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);

@@ -25,7 +25,11 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
-import type { GroupKind, GroupType } from "@app/types/groups";
+import type {
+  GroupKind,
+  GroupType,
+  UserVisibleGroupKind,
+} from "@app/types/groups";
 import {
   AGENT_GROUP_PREFIX,
   CAP_ELIGIBLE_GROUP_KINDS,
@@ -1111,10 +1115,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async listAllWorkspaceGroups(
     auth: Authenticator,
-    options: { groupKinds?: GroupKind[] } = {}
+    options: { groupKinds?: UserVisibleGroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    // Default to user-visible kinds only. Internal kinds (regular_auto, system,
-    // agent_editors) must be requested explicitly.
     const { groupKinds = [...USER_VISIBLE_GROUP_KINDS] } = options;
     const groups = await this.baseFetch(auth, {
       where: {
