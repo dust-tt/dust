@@ -1,0 +1,11 @@
+{
+  "action": "frame.deleted",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "active_publication_id": "string",
+    "source_path": "string"
+  }
+}

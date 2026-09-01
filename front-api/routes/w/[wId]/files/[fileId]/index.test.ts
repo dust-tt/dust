@@ -19,6 +19,16 @@ import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
+
 vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
   const mod =
     await importOriginal<typeof import("@app/lib/api/files/processing")>();
@@ -381,10 +391,8 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
       method: "DELETE",
       role: "manager",
     });
-    const { frame, sourceDirectoryPath } = await createConversationFrame(
-      auth,
-      "Status"
-    );
+    const { conversationId, frame, sourceDirectoryPath } =
+      await createConversationFrame(auth, "Status");
     const deletedPrefixes: string[] = [];
     fileStorageMock.setFileExists((path) => path.endsWith("/"));
     fileStorageMock.setOnDeleteByPrefix((prefix) =>
@@ -400,6 +408,16 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     expect(deletedPrefixes).toContain(`${sourceDirectoryPath}/`);
     expect(deletedPrefixes).toContain(
       getFrameBasePath({ workspaceId: workspace.sId, frameId: frame.sId })
+    );
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledOnce();
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.deleted",
+        metadata: {
+          active_publication_id: "",
+          source_path: `conversation-${conversationId}/Status`,
+        },
+      })
     );
   });
 

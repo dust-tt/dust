@@ -2,7 +2,11 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import path from "node:path";
-
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import {
   SCOPED_PREFIX_CONVERSATION,
@@ -933,10 +937,27 @@ export class FileResource extends BaseResource<FileModel> {
         }
       );
       if (deleteResult.isOk()) {
+        const activePublicationId =
+          frame.useCaseMetadata?.activePublicationId ?? "";
+        void emitAuditLogEvent({
+          auth,
+          action: "frame.deleted",
+          targets: [
+            buildAuditLogTarget("workspace", owner),
+            buildAuditLogTarget("frame", {
+              sId: frame.sId,
+              name: path.posix.basename(sourceDirectory),
+            }),
+          ],
+          context: getAuditLogContext(auth),
+          metadata: {
+            active_publication_id: activePublicationId,
+            source_path: sourceDirectory,
+          },
+        });
         logger.info(
           {
-            activePublicationId:
-              frame.useCaseMetadata?.activePublicationId ?? "",
+            activePublicationId,
             frameId: frame.sId,
             source: "api",
             sourceDirectoryPath: sourceDirectory,
