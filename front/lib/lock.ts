@@ -4,7 +4,7 @@ import tracer from "@app/logger/tracer";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 
-type LockRedisClient = Pick<RedisClientType, "eval" | "set">;
+export type LockRedisClient = Pick<RedisClientType, "eval" | "set">;
 
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
