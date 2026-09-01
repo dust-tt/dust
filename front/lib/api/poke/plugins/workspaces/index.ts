@@ -4,6 +4,7 @@ export * from "./apply_coupon";
 export * from "./apply_group_roles";
 export * from "./batch_update_members";
 export * from "./buy_programmatic_usage_credits";
+export * from "./change_subscription_plan";
 export * from "./check_message_usage";
 export * from "./check_seat_count";
 export * from "./clean_outdated_directory_sync_groups";
