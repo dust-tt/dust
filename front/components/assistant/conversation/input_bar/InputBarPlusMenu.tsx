@@ -34,7 +34,13 @@ import {
   ShapesPlus,
 } from "@dust-tt/sparkle";
 import type { Transition, Variants } from "framer-motion";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  domAnimation,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
 import type React from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
@@ -344,25 +350,27 @@ export function InputBarPlusMenu({
                 : { height: panelHeights[page] }
             }
           >
-            <AnimatePresence
-              initial={false}
-              mode="popLayout"
-              custom={direction}
-            >
-              <motion.div
-                key={page}
-                className="w-full"
+            <LazyMotion features={domAnimation}>
+              <AnimatePresence
+                initial={false}
+                mode="popLayout"
                 custom={direction}
-                variants={shouldReduceMotion ? undefined : PAGE_VARIANTS}
-                initial="enter"
-                animate="idle"
-                exit="exit"
               >
-                <PanelSizer page={page} onHeightChange={handleHeightChange}>
-                  {renderPage()}
-                </PanelSizer>
-              </motion.div>
-            </AnimatePresence>
+                <m.div
+                  key={page}
+                  className="w-full"
+                  custom={direction}
+                  variants={shouldReduceMotion ? undefined : PAGE_VARIANTS}
+                  initial="enter"
+                  animate="idle"
+                  exit="exit"
+                >
+                  <PanelSizer page={page} onHeightChange={handleHeightChange}>
+                    {renderPage()}
+                  </PanelSizer>
+                </m.div>
+              </AnimatePresence>
+            </LazyMotion>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
