@@ -484,6 +484,55 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   },
 };
 
+const seatsIconColumn: ColumnDef<RowData, string> = {
+  id: "seatsIcon" as const,
+  header: "Seats",
+  enableSorting: false,
+  accessorFn: (row) => row.seatType ?? "",
+  cell: (info: Info) => {
+    if (info.row.original.isSeatChangePending) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <Spinner size="xs" />
+        </DataTable.CellContent>
+      );
+    }
+    const { seatType, scheduledSeatType, scheduledSeatChangeAt } =
+      info.row.original;
+    if (!seatType) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <span className="text-sm text-muted-foreground">--</span>
+        </DataTable.CellContent>
+      );
+    }
+    const tooltipLabel = scheduledSeatType
+      ? getScheduledSeatChangeLabel(
+          seatType,
+          scheduledSeatType,
+          scheduledSeatChangeAt
+        )
+      : `${seatTypeDisplayName(seatType)} seat`;
+    return (
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={tooltipLabel}
+          trigger={
+            <span className="flex cursor-default items-center justify-center">
+              <SeatTypeIcon seatType={seatType} />
+            </span>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-16",
+    headerAlign: "center",
+  },
+};
+
 function buildConsumedAwuCreditsColumn(
   creditsResetAt: string | null
 ): ColumnDef<RowData, string> {
@@ -608,7 +657,16 @@ function buildColumns({
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
     ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
-    seatTypeColumn,
+    ...(() => {
+      switch (variant) {
+        case "compact":
+          return [seatsIconColumn];
+        case "legacy":
+          return [seatTypeColumn];
+        default:
+          return assertNever(variant);
+      }
+    })(),
     {
       ...buildConsumedAwuCreditsColumn(creditsResetAt),
       meta: { className: "w-64" },
