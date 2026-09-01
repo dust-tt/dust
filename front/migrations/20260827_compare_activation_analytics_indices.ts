@@ -373,7 +373,7 @@ async function fetchLegacyCellEvidence({
     return { documents: [], error: result.error, truncated: false };
   }
 
-  const hits = result.value.hits.hits;
+  const { hits } = result.value.hits;
   return {
     documents: evidenceHits(hits),
     error: null,
@@ -428,7 +428,7 @@ async function fetchConsumptionCellEvidence({
     return { documents: [], error: result.error, truncated: false };
   }
 
-  const hits = result.value.hits.hits;
+  const { hits } = result.value.hits;
   return {
     documents: evidenceHits(hits),
     error: null,
@@ -462,7 +462,7 @@ async function fetchLegacyMessageEvidence({
     return { documents: [], error: result.error, truncated: false };
   }
 
-  const hits = result.value.hits.hits;
+  const { hits } = result.value.hits;
   return {
     documents: evidenceHits(hits),
     error: null,
@@ -497,7 +497,7 @@ async function fetchConsumptionMessageEvidence({
     return { documents: [], error: result.error, truncated: false };
   }
 
-  const hits = result.value.hits.hits;
+  const { hits } = result.value.hits;
   return {
     documents: evidenceHits(hits),
     error: null,
