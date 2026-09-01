@@ -952,7 +952,7 @@ describe("GroupResource", () => {
         },
         { memberIds: [user.id] }
       );
-      await capped500.updatePoolCap(authenticator, 500);
+      await capped500.updatePoolCap(500);
 
       const capped800 = await GroupResource.makeNew(
         {
@@ -963,7 +963,7 @@ describe("GroupResource", () => {
         },
         { memberIds: [user.id] }
       );
-      await capped800.updatePoolCap(authenticator, 800);
+      await capped800.updatePoolCap(800);
 
       const result =
         await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
