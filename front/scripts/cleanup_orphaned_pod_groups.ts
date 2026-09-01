@@ -67,10 +67,7 @@ export async function cleanupOrphanedPodGroups(
     const groups: GroupResource[] = [];
 
     for (const groupName of expectedGroupNames) {
-      const group = await GroupResource.fetchByName(auth, groupName, {
-        forUpdate: execute,
-        transaction,
-      });
+      const group = await GroupResource.fetchByName(auth, groupName);
       if (!group) {
         continue;
       }
