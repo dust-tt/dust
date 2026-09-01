@@ -1,4 +1,9 @@
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  getFramePublishLockName,
+  getFrameSourceLockName,
+  withFramePublishLock,
+  withFrameSourceLock,
+} from "@app/lib/api/frames/operation_lock";
 import type { RedisClientType } from "@app/lib/api/redis";
 import { Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,5 +44,26 @@ describe("Frame operation locks", () => {
     );
 
     expect(result.isOk() && result.value).toBe("published");
+  });
+
+  it("uses a distinct source-mutation lock namespace", async () => {
+    const redis = makeRedisClient();
+    getRedisStreamClientMock.mockResolvedValue(redis);
+
+    const result = await withFrameSourceLock(
+      "frame-123",
+      async () => new Ok("moved")
+    );
+
+    expect(result.isOk() && result.value).toBe("moved");
+    expect(getFrameSourceLockName("frame-123")).toBe("frame:source:frame-123");
+    expect(getFrameSourceLockName("frame-123")).not.toBe(
+      getFramePublishLockName("frame-123")
+    );
+    expect(redis.set).toHaveBeenCalledWith(
+      "lock:frame:source:frame-123",
+      expect.any(String),
+      expect.anything()
+    );
   });
 });
