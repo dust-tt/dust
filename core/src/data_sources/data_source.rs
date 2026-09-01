@@ -2135,9 +2135,10 @@ impl DataSource {
         );
 
         // Delete tables (concurrently).
-        let (tables, total) = store
-            .list_data_source_tables(&self.project, &self.data_source_id, &None, &None, None)
+        let tables = store
+            .list_data_source_table_deletion_candidates(&self.project, &self.data_source_id)
             .await?;
+        let total = tables.len();
 
         info!(
             data_source_internal_id = self.internal_id(),
@@ -2146,12 +2147,10 @@ impl DataSource {
         );
 
         // Process tables deletion with bounded concurrency to avoid monopolizing the SQL pool.
-        stream::iter(tables.into_iter().map(|t| {
+        stream::iter(tables.into_iter().map(|table| {
             let store = store.clone();
             let databases_store = databases_store.clone();
-            // not deleting from search index here, as it's done more efficiently in the
-            // full-nodes deletion below
-            async move { t.delete(store, databases_store, None).await }
+            async move { table.delete(store, databases_store).await }
         }))
         .buffer_unordered(16)
         .try_collect::<Vec<_>>()
@@ -2164,15 +2163,16 @@ impl DataSource {
         );
 
         // Delete folders with bounded concurrency.
-        let (folders, total) = store
-            .list_data_source_folders(&self.project, &self.data_source_id, &None, &None, None)
+        let folder_ids = store
+            .list_data_source_folder_ids_for_deletion(&self.project, &self.data_source_id)
             .await?;
+        let total = folder_ids.len();
 
-        stream::iter(folders.into_iter().map(|f| {
+        stream::iter(folder_ids.into_iter().map(|folder_id| {
             let store = store.clone();
             async move {
                 store
-                    .delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
+                    .delete_data_source_folder(&self.project, &self.data_source_id, &folder_id)
                     .await
             }
         }))

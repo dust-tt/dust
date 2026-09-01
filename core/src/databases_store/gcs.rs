@@ -69,11 +69,23 @@ impl GoogleCloudStorageDatabasesStore {
     }
 
     pub fn get_csv_storage_file_path(table: &Table) -> String {
+        Self::get_csv_storage_file_path_from_ids(
+            table.project(),
+            table.data_source_id(),
+            table.table_id(),
+        )
+    }
+
+    fn get_csv_storage_file_path_from_ids(
+        project: &crate::project::Project,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> String {
         format!(
             "project-{}/{}/{}.csv",
-            table.project().project_id(),
-            table.data_source_id(),
-            table.table_id()
+            project.project_id(),
+            data_source_id,
+            table_id
         )
     }
 
@@ -235,10 +247,15 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
         Ok(())
     }
 
-    async fn delete_table_data(&self, table: &Table) -> Result<()> {
+    async fn delete_table_data(
+        &self,
+        project: &crate::project::Project,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> Result<()> {
         match Object::delete(
             &Self::get_bucket()?,
-            &Self::get_csv_storage_file_path(table),
+            &Self::get_csv_storage_file_path_from_ids(project, data_source_id, table_id),
         )
         .await
         {

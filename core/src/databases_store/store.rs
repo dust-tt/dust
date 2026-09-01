@@ -1,8 +1,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::databases::table::{Row, Table};
 use crate::databases::table_schema::TableSchema;
+use crate::{
+    databases::table::{Row, Table},
+    project::Project,
+};
 
 #[async_trait]
 pub trait DatabasesStore {
@@ -19,7 +22,12 @@ pub trait DatabasesStore {
         rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()>;
-    async fn delete_table_data(&self, table: &Table) -> Result<()>;
+    async fn delete_table_data(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> Result<()>;
     async fn delete_table_row(&self, table: &Table, row_id: &str) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn DatabasesStore + Sync + Send>;

@@ -23,7 +23,7 @@ use crate::{
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
     data_sources::folder::Folder,
     databases::{
-        table::{get_table_unique_id, Table},
+        table::{get_table_unique_id, Table, TableDeletionCandidate},
         table_schema::TableSchema,
         transient_database::TransientDatabase,
     },
@@ -3172,6 +3172,38 @@ impl Store for PostgresStore {
         Ok((tables, total))
     }
 
+    async fn list_data_source_table_deletion_candidates(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+    ) -> Result<Vec<TableDeletionCandidate>> {
+        let project_id = project.project_id();
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let rows = c
+            .query(
+                "SELECT t.table_id, t.remote_database_table_id \
+                   FROM tables t \
+                   INNER JOIN data_sources ds ON ds.id = t.data_source \
+                   WHERE ds.project = $1 AND ds.data_source_id = $2",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| {
+                TableDeletionCandidate::new(
+                    project.clone(),
+                    data_source_id.to_string(),
+                    row.get(0),
+                    row.get(1),
+                )
+            })
+            .collect())
+    }
+
     async fn delete_data_source_table(
         &self,
         project: &Project,
@@ -3469,6 +3501,28 @@ impl Store for PostgresStore {
             })
             .collect::<Result<Vec<_>>>()?;
         Ok((folders, total))
+    }
+
+    async fn list_data_source_folder_ids_for_deletion(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+    ) -> Result<Vec<String>> {
+        let project_id = project.project_id();
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let rows = c
+            .query(
+                "SELECT dsf.folder_id \
+                   FROM data_sources_folders dsf \
+                   INNER JOIN data_sources ds ON ds.id = dsf.data_source \
+                   WHERE ds.project = $1 AND ds.data_source_id = $2",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        Ok(rows.into_iter().map(|row| row.get(0)).collect())
     }
 
     async fn delete_data_source_folder(
@@ -4135,5 +4189,205 @@ impl Store for PostgresStore {
 
     fn clone_box(&self) -> Box<dyn Store + Sync + Send> {
         Box::new(self.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use async_trait::async_trait;
+
+    use crate::{databases::table::Row, databases_store::store::DatabasesStore};
+
+    use super::*;
+
+    #[derive(Clone, Default)]
+    struct RecordingDatabasesStore {
+        deleted_tables: Arc<Mutex<Vec<(i64, String, String)>>>,
+    }
+
+    #[async_trait]
+    impl DatabasesStore for RecordingDatabasesStore {
+        async fn load_table_row(&self, _: &Table, _: &str) -> Result<Option<Row>> {
+            Err(anyhow!("Unexpected load_table_row call"))
+        }
+
+        async fn list_table_rows(
+            &self,
+            _: &Table,
+            _: Option<(usize, usize)>,
+        ) -> Result<(Vec<Row>, usize)> {
+            Err(anyhow!("Unexpected list_table_rows call"))
+        }
+
+        async fn batch_upsert_table_rows(
+            &self,
+            _: &Table,
+            _: &TableSchema,
+            _: &Vec<Row>,
+            _: bool,
+        ) -> Result<()> {
+            Err(anyhow!("Unexpected batch_upsert_table_rows call"))
+        }
+
+        async fn delete_table_data(
+            &self,
+            project: &Project,
+            data_source_id: &str,
+            table_id: &str,
+        ) -> Result<()> {
+            self.deleted_tables
+                .lock()
+                .map_err(|e| anyhow!(e.to_string()))?
+                .push((
+                    project.project_id(),
+                    data_source_id.to_string(),
+                    table_id.to_string(),
+                ));
+            Ok(())
+        }
+
+        async fn delete_table_row(&self, _: &Table, _: &str) -> Result<()> {
+            Err(anyhow!("Unexpected delete_table_row call"))
+        }
+
+        fn clone_box(&self) -> Box<dyn DatabasesStore + Sync + Send> {
+            Box::new(self.clone())
+        }
+    }
+
+    async fn data_source_deletion_test_store() -> Result<PostgresStore> {
+        let database_uri = std::env::var("OAUTH_DATABASE_URI")?;
+        let manager = PostgresConnectionManager::new_from_stringlike(database_uri, NoTls)?;
+        let pool = Pool::builder().max_size(1).build(manager).await?;
+        let store = PostgresStore { pool };
+
+        let connection = store.pool.get().await?;
+        connection
+            .batch_execute(
+                "CREATE TEMP TABLE data_sources (
+                    id BIGINT PRIMARY KEY,
+                    project BIGINT NOT NULL,
+                    data_source_id TEXT NOT NULL
+                );
+                CREATE TEMP TABLE databases (
+                    table_ids_hash TEXT NOT NULL
+                );
+                CREATE TEMP TABLE data_sources_documents (
+                    id BIGINT PRIMARY KEY,
+                    data_source BIGINT NOT NULL REFERENCES data_sources(id)
+                );
+                CREATE TEMP TABLE tables (
+                    id BIGINT PRIMARY KEY,
+                    data_source BIGINT NOT NULL REFERENCES data_sources(id),
+                    table_id TEXT NOT NULL,
+                    remote_database_table_id TEXT
+                );
+                CREATE TEMP TABLE data_sources_folders (
+                    id BIGINT PRIMARY KEY,
+                    data_source BIGINT NOT NULL REFERENCES data_sources(id),
+                    folder_id TEXT NOT NULL
+                );
+                CREATE TEMP TABLE data_sources_nodes (
+                    id BIGINT PRIMARY KEY,
+                    data_source BIGINT NOT NULL REFERENCES data_sources(id),
+                    node_id TEXT NOT NULL,
+                    document BIGINT REFERENCES data_sources_documents(id),
+                    \"table\" BIGINT REFERENCES tables(id),
+                    folder BIGINT REFERENCES data_sources_folders(id)
+                );
+                INSERT INTO data_sources (id, project, data_source_id)
+                VALUES (1, 42, 'data-source');",
+            )
+            .await?;
+        drop(connection);
+
+        Ok(store)
+    }
+
+    #[tokio::test]
+    async fn deletion_candidates_include_table_without_node() -> Result<()> {
+        let store = data_source_deletion_test_store().await?;
+        let databases_store = RecordingDatabasesStore::default();
+        let connection = store.pool.get().await?;
+        connection
+            .execute(
+                "INSERT INTO tables (id, data_source, table_id) VALUES (2, 1, 'orphaned-table')",
+                &[],
+            )
+            .await?;
+        drop(connection);
+
+        let candidates = store
+            .list_data_source_table_deletion_candidates(&Project::new_from_id(42), "data-source")
+            .await?;
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].table_id(), "orphaned-table");
+
+        candidates[0]
+            .delete(Box::new(store.clone()), Box::new(databases_store.clone()))
+            .await?;
+        store
+            .delete_data_source(&Project::new_from_id(42), "data-source")
+            .await?;
+
+        let connection = store.pool.get().await?;
+        let row = connection
+            .query_one(
+                "SELECT (SELECT COUNT(*) FROM data_sources), (SELECT COUNT(*) FROM tables)",
+                &[],
+            )
+            .await?;
+        assert_eq!(row.get::<usize, i64>(0), 0);
+        assert_eq!(row.get::<usize, i64>(1), 0);
+        assert_eq!(
+            *databases_store
+                .deleted_tables
+                .lock()
+                .map_err(|e| anyhow!(e.to_string()))?,
+            vec![(42, "data-source".to_string(), "orphaned-table".to_string())]
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn deletion_candidates_include_folder_without_node() -> Result<()> {
+        let store = data_source_deletion_test_store().await?;
+        let connection = store.pool.get().await?;
+        connection
+            .execute(
+                "INSERT INTO data_sources_folders (id, data_source, folder_id)
+                 VALUES (2, 1, 'orphaned-folder')",
+                &[],
+            )
+            .await?;
+        drop(connection);
+
+        let folder_ids = store
+            .list_data_source_folder_ids_for_deletion(&Project::new_from_id(42), "data-source")
+            .await?;
+        assert_eq!(folder_ids, vec!["orphaned-folder".to_string()]);
+
+        store
+            .delete_data_source_folder(&Project::new_from_id(42), "data-source", &folder_ids[0])
+            .await?;
+        store
+            .delete_data_source(&Project::new_from_id(42), "data-source")
+            .await?;
+
+        let connection = store.pool.get().await?;
+        let row = connection
+            .query_one(
+                "SELECT (SELECT COUNT(*) FROM data_sources),
+                        (SELECT COUNT(*) FROM data_sources_folders)",
+                &[],
+            )
+            .await?;
+        assert_eq!(row.get::<usize, i64>(0), 0);
+        assert_eq!(row.get::<usize, i64>(1), 0);
+
+        Ok(())
     }
 }

@@ -56,6 +56,81 @@ pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &s
     format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
 }
 
+#[derive(Clone)]
+pub struct TableDeletionCandidate {
+    project: Project,
+    data_source_id: String,
+    table_id: String,
+    remote_database_table_id: Option<String>,
+}
+
+impl TableDeletionCandidate {
+    pub fn new(
+        project: Project,
+        data_source_id: String,
+        table_id: String,
+        remote_database_table_id: Option<String>,
+    ) -> Self {
+        Self {
+            project,
+            data_source_id,
+            table_id,
+            remote_database_table_id,
+        }
+    }
+
+    pub fn table_id(&self) -> &str {
+        &self.table_id
+    }
+
+    pub async fn delete(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    ) -> Result<()> {
+        if self.remote_database_table_id.is_none() {
+            try_join_all(
+                (store
+                    .find_databases_using_table(
+                        &self.project,
+                        &self.data_source_id,
+                        &self.table_id,
+                        HEARTBEAT_INTERVAL_MS,
+                    )
+                    .await?)
+                    .into_iter()
+                    .map(|db| {
+                        let store = store.clone();
+                        async move {
+                            db.invalidate(store).await?;
+                            Ok::<_, anyhow::Error>(())
+                        }
+                    }),
+            )
+            .await?;
+
+            databases_store
+                .delete_table_data(&self.project, &self.data_source_id, &self.table_id)
+                .await?;
+        }
+
+        store
+            .delete_data_source_table(&self.project, &self.data_source_id, &self.table_id)
+            .await
+    }
+}
+
+impl From<&Table> for TableDeletionCandidate {
+    fn from(table: &Table) -> Self {
+        Self::new(
+            table.project.clone(),
+            table.data_source_id.clone(),
+            table.table_id.clone(),
+            table.remote_database_table_id.clone(),
+        )
+    }
+}
+
 // Ensures tables are compatible with each other. Tables must be either:
 // - all local
 // - all remote for the same remote database (i.e, same secret_id)
@@ -266,34 +341,8 @@ impl Table {
             "DSSTRUCTSTAT [delete] Deleting table"
         );
         let now = utils::now();
-        if self.remote_database_table_id().is_none() {
-            // Invalidate the databases that use the table.
-            try_join_all(
-                (store
-                    .find_databases_using_table(
-                        &self.project,
-                        &self.data_source_id,
-                        &self.table_id,
-                        HEARTBEAT_INTERVAL_MS,
-                    )
-                    .await?)
-                    .into_iter()
-                    .map(|db| {
-                        let store = store.clone();
-                        async move {
-                            db.invalidate(store).await?;
-                            Ok::<_, anyhow::Error>(())
-                        }
-                    }),
-            )
-            .await?;
-
-            // Delete the table rows.
-            databases_store.delete_table_data(&self).await?;
-        }
-
-        store
-            .delete_data_source_table(&self.project, &self.data_source_id, &self.table_id)
+        TableDeletionCandidate::from(self)
+            .delete(store, databases_store)
             .await?;
 
         // Delete the table node from the search index.

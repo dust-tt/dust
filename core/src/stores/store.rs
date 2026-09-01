@@ -14,7 +14,11 @@ use crate::{
         folder::Folder,
         node::{Node, ProviderVisibility},
     },
-    databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
+    databases::{
+        table::{Table, TableDeletionCandidate},
+        table_schema::TableSchema,
+        transient_database::TransientDatabase,
+    },
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
     project::Project,
@@ -310,6 +314,11 @@ pub trait Store {
         table_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Table>, usize)>;
+    async fn list_data_source_table_deletion_candidates(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+    ) -> Result<Vec<TableDeletionCandidate>>;
     async fn delete_data_source_table(
         &self,
         project: &Project,
@@ -338,6 +347,11 @@ pub trait Store {
         folder_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Folder>, usize)>;
+    async fn list_data_source_folder_ids_for_deletion(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+    ) -> Result<Vec<String>>;
     async fn delete_data_source_folder(
         &self,
         project: &Project,
