@@ -20,6 +20,8 @@ export type FileSystemDirectoryEntry = FileSystemEntryBase & {
 export type FileSystemFileEntry = FileSystemEntryBase & {
   isDirectory: false;
   contentType: string;
+  /** Stable database node identity when the backing filesystem has one. */
+  fileSystemNodeId?: number;
   /** sId of the corresponding FileResource record, or null when none exists. */
   fileId: string | null;
   thumbnailUrl: string | null;

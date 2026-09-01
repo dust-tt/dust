@@ -496,6 +496,42 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     });
   }
 
+  // The node names from the root row down to this node, root name included.
+  // Joined with "/" they form the node's scoped path, since a root row carries
+  // its scoped prefix as its name. Follows parentId with recursive SQL for the
+  // same reason as isAncestorOf below: each row only stores its parent.
+  async pathSegmentsFromRoot(): Promise<string[]> {
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot follow parentId until the root.
+    const rows = await frontSequelize.query<{ name: string; depth: number }>(
+      `
+        WITH RECURSIVE ancestors AS (
+          SELECT "id", "parentId", "name", 0 AS "depth"
+          FROM "file_system_nodes"
+          WHERE "workspaceId" = :workspaceId AND "id" = :nodeId
+
+          UNION ALL
+
+          SELECT parent."id", parent."parentId", parent."name", child."depth" + 1
+          FROM "file_system_nodes" parent
+          JOIN ancestors child ON parent."id" = child."parentId"
+          WHERE parent."workspaceId" = :workspaceId
+        )
+        SELECT "name", "depth"
+        FROM ancestors
+        ORDER BY "depth" DESC
+      `,
+      {
+        type: QueryTypes.SELECT,
+        replacements: {
+          workspaceId: this.workspaceId,
+          nodeId: this.id,
+        },
+      }
+    );
+
+    return rows.map((row) => row.name);
+  }
+
   private async isAncestorOf(
     possibleDescendant: FileSystemNodeResource,
     transaction: Transaction

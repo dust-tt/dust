@@ -1,3 +1,4 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import {
   validateTailwindCode,
@@ -18,6 +19,7 @@ import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import { conversationScopedPath } from "@app/types/file_system";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
   INTERACTIVE_CONTENT_FILE_FORMATS,
@@ -131,6 +133,31 @@ export async function createClientExecutableFile(
         lastEditedByAgentConfigurationId: createdByAgentConfigurationId,
       },
     });
+
+    // The GCS flow below already writes its mount copy from uploadFrameContent.
+    // The database filesystem needs an explicit node for the live source.
+    const scopedPath = conversationScopedPath({
+      conversationId,
+      rel: fileResource.fileName,
+    });
+    const fsResult = await DustFileSystem.fromScopedPath(auth, scopedPath);
+    if (fsResult.isErr()) {
+      return new Err({ message: fsResult.error.message, tracked: true });
+    }
+
+    if (fsResult.value.isDatabaseBacked()) {
+      const written = await fsResult.value.write(scopedPath, content, mimeType);
+      if (written.isErr()) {
+        return new Err({ message: written.error.message, tracked: true });
+      }
+      if (written.value.nodeId === null) {
+        return new Err({
+          message: "The database filesystem did not return a node id.",
+          tracked: true,
+        });
+      }
+      await fileResource.bindToFileSystemNode(written.value.nodeId);
+    }
 
     // Upload content directly.
     const uploadResult = await uploadFrameContent(auth, fileResource, content);
