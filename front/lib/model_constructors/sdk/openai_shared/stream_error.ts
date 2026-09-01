@@ -1,9 +1,9 @@
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ErrorEvent } from "@app/lib/model_constructors/types/output/events";
+import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
 import {
   classificationToErrorEvent,
   classifyStreamError,
-  httpStatusToClassification,
 } from "@app/lib/model_constructors/utils/classify_stream_error";
 import {
   APIConnectionError,
@@ -59,16 +59,13 @@ export function openaiStreamErrorToErrorEvent(
         message: `Error from ${providerName}: ${error.message}`,
       });
     }
-    return classificationToErrorEvent(
+    return buildHttpStatusErrorEvent({
       metadata,
-      error,
-      httpStatusToClassification({
-        providerName,
-        model: metadata.model,
-        status: error.status,
-        detail: error.message,
-      })
-    );
+      status: error.status,
+      provider: providerName,
+      detail: error.message,
+      originalError: error,
+    });
   }
   return classificationToErrorEvent(
     metadata,

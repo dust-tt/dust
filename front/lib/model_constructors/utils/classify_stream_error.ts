@@ -6,7 +6,7 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isNumber, isString } from "@app/types/shared/utils/general";
+import { isString } from "@app/types/shared/utils/general";
 
 export type StreamErrorSdkClass = "connection" | "abort" | "timeout";
 
@@ -189,91 +189,6 @@ export function classifyStreamError({
     type,
     message: `${prefix}: ${details}`,
   };
-}
-
-/**
- * Maps an HTTP status returned by a provider into a classification. The table is
- * identical across every provider adapter: known 4xx are Dust's fault, known
- * 5xx are the provider's, and a status we do not recognize (including a missing
- * one) is not enough to blame either side. Only the provider name and the model
- * differ, so they are passed in. `detail` is appended verbatim (typically
- * `error.message`).
- */
-export function httpStatusToClassification({
-  providerName,
-  model,
-  status,
-  detail,
-}: {
-  providerName: string;
-  model: string;
-  status: number | undefined;
-  detail: string;
-}): StreamErrorClassification {
-  const build = (
-    errorSource: ErrorSource,
-    type: ErrorType,
-    prefix: string
-  ): StreamErrorClassification => ({
-    errorSource,
-    type,
-    message: `${prefix}: ${detail}`,
-  });
-
-  switch (status) {
-    case 400:
-    case 422:
-      return build(
-        "dust",
-        "invalid_request_error",
-        `Invalid request to ${providerName}`
-      );
-    case 401:
-      return build(
-        "dust",
-        "authentication_error",
-        `Authentication failed for ${providerName}`
-      );
-    case 403:
-      return build(
-        "dust",
-        "permission_error",
-        `Permission denied for ${providerName}`
-      );
-    case 404:
-      return build(
-        "dust",
-        "not_found_error",
-        `Resource not found for ${providerName}`
-      );
-    case 429:
-      return build(
-        "dust",
-        "rate_limit_error",
-        `Rate limit exceeded for ${providerName}/${model}`
-      );
-    case 503:
-      return build(
-        "provider",
-        "overloaded_error",
-        `${providerName} is overloaded`
-      );
-    case undefined:
-      return build("unknown", "unknown_error", `Error from ${providerName}`);
-    default:
-      if (isNumber(status) && status >= 500 && status < 600) {
-        return build(
-          "provider",
-          "server_error",
-          `Server error from ${providerName} (${status})`
-        );
-      }
-      return build(
-        "unknown",
-        "unknown_error",
-        `Error from ${providerName} (${status})`
-      );
-  }
 }
 
 // Wraps a classification into the `ErrorEvent` every endpoint emits, attaching

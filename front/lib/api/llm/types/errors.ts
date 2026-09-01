@@ -34,7 +34,6 @@ export interface LLMErrorInfo {
   message: string;
   isRetryable: boolean;
   originalError?: unknown;
-  // Who is at fault, not the SDK or code path that caught the error.
   errorSource: ErrorSource;
 }
 

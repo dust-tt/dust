@@ -9,7 +9,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Maps an HTTP status to fault domain and error type.
- * 4xx is Dust's request; 5xx is the provider; anything else is unknown.
+ * Known 4xx are Dust's request; known 5xx are the provider. A leftover 4xx
+ * (or any non-HTTP status) is not enough to blame either side.
  */
 export function classifyHttpStatus(status: number | undefined): {
   errorSource: ErrorSource;
@@ -34,9 +35,6 @@ export function classifyHttpStatus(status: number | undefined): {
     case 503:
       return { errorSource: "provider", type: "overloaded_error" };
     default:
-      if (status >= 400 && status < 500) {
-        return { errorSource: "dust", type: "invalid_request_error" };
-      }
       if (status >= 500 && status < 600) {
         return { errorSource: "provider", type: "server_error" };
       }
