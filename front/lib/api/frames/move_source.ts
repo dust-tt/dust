@@ -4,7 +4,10 @@ import {
   FrameSourceMoveError,
   resolveFrameSourceMovePaths,
 } from "@app/lib/api/frames/move_source_paths";
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  withFramePublishLock,
+  withFrameSourceLock,
+} from "@app/lib/api/frames/operation_lock";
 import {
   copyFrameSourceStorage,
   deleteFrameSourceStorage,
@@ -102,10 +105,10 @@ export async function moveFrameV2Source(
     );
   }
 
-  const locked = await withFramePublishLock<
-    FrameSourceMove,
-    MoveFrameV2SourceError
-  >(frame.sId, async () => {
+  async function moveWithLocksHeld(
+    lockedSourceMountPath: string,
+    lockedDestinationMountPath: string
+  ) {
     const freshFrame = await frame.fetchFreshFrameV2(auth);
     if (
       !freshFrame ||
@@ -119,7 +122,7 @@ export async function moveFrameV2Source(
 
     const [registeredDestination] = await FileResource.fetchByMountFilePaths(
       auth,
-      [destinationMountPath]
+      [lockedDestinationMountPath]
     );
     if (registeredDestination) {
       return moveError(
@@ -129,8 +132,8 @@ export async function moveFrameV2Source(
     }
 
     const snapshot = await inspectFrameSourceStorage({
-      destinationMountPath,
-      sourceMountPath,
+      destinationMountPath: lockedDestinationMountPath,
+      sourceMountPath: lockedSourceMountPath,
     });
     if (snapshot.isErr()) {
       return moveError(snapshot.error.code, snapshot.error.message);
@@ -154,7 +157,7 @@ export async function moveFrameV2Source(
     try {
       await freshFrame.updateMount({
         destFileName: FRAME_MANIFEST_FILE,
-        destMountFilePath: destinationMountPath,
+        destMountFilePath: lockedDestinationMountPath,
         destUseCase: freshFrame.useCase,
         destUseCaseMetadata: freshFrame.useCaseMetadata ?? undefined,
       });
@@ -193,7 +196,13 @@ export async function moveFrameV2Source(
       frameId: frame.sId,
       sourceDeletionFailed: deleted.isErr(),
     });
-  });
+  }
+
+  const locked = await withFrameSourceLock(frame.sId, () =>
+    withFramePublishLock(frame.sId, () =>
+      moveWithLocksHeld(sourceMountPath, destinationMountPath)
+    )
+  );
 
   if (locked.isErr()) {
     return isLockAcquisitionTimeoutError(locked.error)
