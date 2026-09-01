@@ -590,6 +590,60 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
   }
 
+  /**
+   * Fetch an invocation through its stable Frame identity. The function row is resolved from the
+   * invocation itself rather than from the active publication, so an in-flight stream survives a
+   * republish or removal of the function from a later publication.
+   */
+  static async fetchInvocationByFrameAndId(
+    auth: Authenticator,
+    {
+      frame,
+      invocationId,
+    }: {
+      frame: FileResource;
+      invocationId: string;
+    }
+  ): Promise<SandboxFunctionInvocationResource | null> {
+    if (
+      !frame.isFrameV2 ||
+      !isResourceSId("sandbox_function_invocation", invocationId)
+    ) {
+      return null;
+    }
+    const invocationModelId = getResourceIdFromSId(invocationId);
+    if (invocationModelId === null) {
+      return null;
+    }
+
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      attributes: ["sandboxFunctionId"],
+      where: {
+        id: invocationModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!invocation) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: {
+        id: invocation.sandboxFunctionId,
+        fileId: frame.id,
+      },
+      includeFrameFunctions: true,
+    });
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    return SandboxFunctionInvocationResource.fetchById(auth, {
+      sandboxFunction,
+      invocationId,
+    });
+  }
+
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource
