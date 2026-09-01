@@ -59,6 +59,7 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
+import { getHeaderFromRole } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -90,6 +91,25 @@ function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
     default:
       assertNever(agent.status);
   }
+}
+
+/**
+ * Headers for the public API calls that create and drive the sub-conversation.
+ *
+ * We use a system API key to override the user here (not the groups) so that the sub-agent can
+ * access the same spaces as the user but also as the sub-agent may rely on personal actions that
+ * have to be operated in the name of the user initiating the interaction.
+ *
+ * The role is forwarded too: the system-key exchange otherwise scopes the sub-conversation down to
+ * a plain member, and a sub-agent gated on `managers`/`admins` (e.g. `@analyst`) would then be
+ * invisible to it. The exchange caps the forwarded role by the user's own membership.
+ */
+function subAgentApiHeaders(auth: Authenticator): Record<string, string> {
+  return {
+    ...getHeaderFromUserEmail(auth.user()?.email),
+    ...getApiKeyNameHeader(auth),
+    ...getHeaderFromRole(auth.role()),
+  };
 }
 
 function makeChildAgentUnavailableError(childAgentName: string): MCPError {
@@ -212,8 +232,6 @@ export const runAgent = async (
   }
   const childAgentBlob = configuredChildAgentBlob ?? childAgentRes.value;
 
-  const user = auth.user();
-
   const prodCredentials = await prodAPICredentialsForOwner(
     auth.getNonNullableWorkspace()
   );
@@ -221,14 +239,7 @@ export const runAgent = async (
     config.getDustAPIConfig(),
     {
       ...prodCredentials,
-      extraHeaders: {
-        // We use a system API key to override the user here (not groups and role) so that the
-        // sub-agent can access the same spaces as the user but also as the sub-agent may rely
-        // on personal actions that have to be operated in the name of the user initiating the
-        // interaction.
-        ...getHeaderFromUserEmail(user?.email),
-        ...getApiKeyNameHeader(auth),
-      },
+      extraHeaders: subAgentApiHeaders(auth),
     },
     logger
   );
