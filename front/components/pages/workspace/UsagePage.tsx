@@ -160,6 +160,7 @@ function memberFromUpgradeRequest(
     freeCreditEmptyAlert: null,
     creditState: "capped",
     nearLimit: false,
+    seatUsageTarget: null,
   };
 }
 

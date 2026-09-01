@@ -26,6 +26,7 @@ import {
 import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
+import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -85,6 +86,7 @@ type RowData = {
   consumedAwuCredits: number;
   consumedFromAllowanceAwuCredits: number;
   consumedFromPoolAwuCredits: number;
+  seatUsageTarget: CreditUsageTarget | null;
   spendLimitAwuCredits: number | null;
   spendLimitSource: EffectiveSpendLimitSource;
   scheduledSeatType: MembershipSeatType | null;
@@ -625,8 +627,13 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
       consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
     }).percent.toString(),
   cell: (info: Info) => {
-    const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
-      info.row.original;
+    const {
+      seatType,
+      memberUsageLimit,
+      seatBalanceAwu,
+      seatUsageTarget,
+      isSeatChangePending,
+    } = info.row.original;
     if (
       isSeatChangePending ||
       !seatType ||
@@ -639,16 +646,21 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
         </DataTable.CellContent>
       );
     }
-    const { percent, isOverAllowance, consumed, allowance } = computeSeatUsage({
+    const { percent, consumed, allowance } = computeSeatUsage({
       seatType,
       memberUsageLimit,
       seatBalanceAwu,
       consumedFromAllowanceAwuCredits:
         info.row.original.consumedFromAllowanceAwuCredits,
     });
-    const colorClassName = isOverAllowance
-      ? "text-warning-700"
-      : getSeatIconColorClass(seatType);
+    const isOffPace =
+      seatUsageTarget === "elevated" || seatUsageTarget === "critical";
+    const colorClassName =
+      percent >= 100
+        ? "text-red-500"
+        : isOffPace
+          ? "text-warning-500"
+          : "text-muted-foreground";
     return (
       <DataTable.CellContent className="justify-center">
         <Tooltip
@@ -923,6 +935,7 @@ export function MembersUsageTable({
           consumedAwuCredits: m.consumedAwuCredits,
           consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
           consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
+          seatUsageTarget: m.seatUsageTarget,
           spendLimitAwuCredits: m.spendLimitAwuCredits,
           spendLimitSource: m.spendLimitSource,
           scheduledSeatType: m.scheduledSeatType,
