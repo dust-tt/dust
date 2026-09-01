@@ -190,12 +190,12 @@ export function isGlobalAgentWithFeedback(sId: GLOBAL_AGENTS_SID): boolean {
   return GLOBAL_AGENTS_WITH_FEEDBACK.has(sId);
 }
 
-const AGENT_IDS_RESTRICTED_TO_BUILDER = new Set<string>([
+const AGENT_IDS_WITHOUT_CONVERSATION_ACTIONS = new Set<string>([
   GLOBAL_AGENTS_SID.SIDEKICK,
 ]);
 
 export function canShowAgentConversationActions(agentId: string): boolean {
-  return !AGENT_IDS_RESTRICTED_TO_BUILDER.has(agentId);
+  return !AGENT_IDS_WITHOUT_CONVERSATION_ACTIONS.has(agentId);
 }
 
 export function getGlobalAgentAuthorName(agentId: string): string {

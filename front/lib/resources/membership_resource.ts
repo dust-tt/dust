@@ -1039,9 +1039,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Caller of this method should call `ServerSideTracking.trackCreateMembership` and
-   * `GroupResource.syncBuilderGroupMembership` (builder role deprecation). Prefer
-   * `createAndTrackMembership` from `@app/lib/api/membership` which handles both.
+   * Caller of this method should call `ServerSideTracking.trackCreateMembership`. Prefer
+   * `createAndTrackMembership` from `@app/lib/api/membership` which handles it.
    */
   static async createMembership({
     user,
@@ -1275,9 +1274,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole` and
-   * `GroupResource.syncBuilderGroupMembership` (builder role deprecation). Prefer
-   * `updateMembershipRoleAndTrack` from `@app/lib/api/membership` which handles both.
+   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`. Prefer
+   * `updateMembershipRoleAndTrack` from `@app/lib/api/membership` which handles it.
    */
   static async updateMembershipRole({
     user,

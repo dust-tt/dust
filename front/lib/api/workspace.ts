@@ -306,14 +306,9 @@ async function resolveRoleFilterUserIds({
   workspace: LightWorkspaceType;
   role: ActiveRoleType;
 }): Promise<string[]> {
-  // `builder` is deprecated and surfaced to end users as a regular member, so
-  // filtering on `user` must include both.
-  const roles: ActiveRoleType[] =
-    role === "user" ? ["user", "builder"] : [role];
-
   const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
-    roles,
+    roles: [role],
   });
 
   // The query's filter make sure `user` is never null, so nothing
