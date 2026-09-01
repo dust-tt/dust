@@ -35,6 +35,7 @@ vi.mock("@app/lib/lock", () => ({
 
 import { deleteFrameV2Package } from "@app/lib/api/frames/delete";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameResource } from "@app/lib/resources/frame_resource";
 import {
   FrameGoneError,
   FrameSandboxAdapter,
@@ -50,7 +51,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameV2ContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 function createDeferred() {
   let resolvePromise: (() => void) | undefined;
@@ -186,6 +187,17 @@ describe("FrameSandboxAdapter", () => {
     fileStorageMock.setOnDeleteByPrefix((prefix) =>
       deletedPrefixes.push(prefix)
     );
+
+    const failedDeleteResult = await deleteFrameV2Package(auth, {
+      deleteSource: async () => new Err(new Error("source unavailable")),
+      frame,
+    });
+
+    expect(failedDeleteResult.isErr()).toBe(true);
+    expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).not.toBeNull();
+    expect(await FileResource.fetchById(auth, frame.sId)).not.toBeNull();
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+    expect(deletedPrefixes).toEqual([]);
 
     const deleteResult = await deleteFrameV2Package(auth, {
       deleteSource: async () => new Ok(undefined),
@@ -347,6 +359,7 @@ describe("FrameSandboxAdapter", () => {
       sandboxModelIds.push(sandboxResult.value.sandbox.id);
     }
 
+    await FrameResource.deleteAllOwnedResourcesForWorkspace(auth);
     await FileResource.deleteAllForWorkspace(auth);
 
     expect(mockProviderDestroy).toHaveBeenCalledTimes(2);

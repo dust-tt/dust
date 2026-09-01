@@ -5,6 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameResource } from "@app/lib/resources/frame_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import {
   AuthorizedFileAccessModel,
@@ -32,7 +33,7 @@ import {
   isUnverifiableFrameFileRefsShareError,
   sandboxFunctionContentType,
 } from "@app/types/files";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -1763,6 +1764,7 @@ describe("FileResource", () => {
         })
       ).toHaveLength(1);
 
+      await FrameResource.deleteAllOwnedResourcesForWorkspace(auth);
       const deletedCount = await FileResource.deleteAllForWorkspace(auth);
 
       expect(deletedCount).toBe(1);
@@ -1817,5 +1819,31 @@ describe("FileResource", () => {
     expect(result.isErr()).toBe(true);
     expect(deleteSource).not.toHaveBeenCalled();
     expect(await FileResource.fetchById(frameAuth, frame.sId)).not.toBeNull();
+  });
+
+  it("keeps Frame functions and identity when source deletion fails", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await createFrameWithFunction(auth, "frame-delete-failure");
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) =>
+      deletedPrefixes.push(prefix)
+    );
+
+    const result = await deleteFrameV2Package(auth, {
+      deleteSource: async () => new Err(new Error("source unavailable")),
+      frame,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: "frame-delete-failure",
+      })
+    ).toHaveLength(1);
+    expect(await FileResource.fetchById(auth, frame.sId)).not.toBeNull();
+    expect(deletedPrefixes).toEqual([]);
   });
 });

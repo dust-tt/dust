@@ -37,8 +37,6 @@ import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   AuthorizedFileAccessModel,
@@ -47,7 +45,6 @@ import {
   ShareableFileModel,
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -57,10 +54,7 @@ import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import {
-  getFramePublicationUiBundlePath,
-  getFramesBasePath,
-} from "@app/types/api/frame_storage";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { CoreAPI } from "@app/types/core/core_api";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -128,7 +122,6 @@ const FRAME_CONTENT_TYPES = new Set([
 ]);
 
 const BATCH_DESTROY_SIZE = 10_000;
-const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
 
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
@@ -474,12 +467,6 @@ export class FileResource extends BaseResource<FileModel> {
     const owner = auth.getNonNullableWorkspace();
     const workspaceModelId = owner.id;
 
-    await FrameSandboxAdapter.deleteAllForWorkspace(auth);
-    await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
-    await getPrivateUploadBucket().deleteByPrefix(
-      getFramesBasePath({ workspaceId: owner.sId })
-    );
-
     await AuthorizedFileAccessModel.destroy({
       where: { workspaceId: workspaceModelId },
     });
@@ -544,49 +531,6 @@ export class FileResource extends BaseResource<FileModel> {
     return deletedCount;
   }
 
-  private static async deleteFrameFunctionModelIds(
-    workspaceModelId: ModelId,
-    sandboxFunctionModelIds: ModelId[]
-  ): Promise<number> {
-    if (sandboxFunctionModelIds.length === 0) {
-      return 0;
-    }
-
-    await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
-      { workspaceModelId, sandboxFunctionModelIds }
-    );
-
-    return SandboxFunctionModel.destroy({
-      where: {
-        id: sandboxFunctionModelIds,
-        workspaceId: workspaceModelId,
-      },
-    });
-  }
-
-  private static async deleteAllFrameFunctionsForWorkspace(
-    workspaceModelId: ModelId
-  ): Promise<void> {
-    for (;;) {
-      const sandboxFunctions = await SandboxFunctionModel.findAll({
-        attributes: ["id"],
-        where: {
-          workspaceId: workspaceModelId,
-          publicationId: { [Op.ne]: null },
-        },
-        limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
-      });
-      if (sandboxFunctions.length === 0) {
-        return;
-      }
-
-      await this.deleteFrameFunctionModelIds(
-        workspaceModelId,
-        sandboxFunctions.map(({ id }) => id)
-      );
-    }
-  }
-
   static async deleteAllForUser(
     auth: Authenticator,
     user: UserType,
@@ -625,20 +569,19 @@ export class FileResource extends BaseResource<FileModel> {
    * Deletes the artifacts and database records owned directly by this FileResource.
    * Callers for resource types with additional owned state must remove that state first.
    */
-  async deleteOwnArtifactsAndRecord(
+  protected async deleteOwnArtifactsAndRecord(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
     try {
       if (this.isReady) {
         await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
 
-        // Delete mount file copies if set.
-        await this.deleteMountFileCopies();
-
-        // Frames v2 are contentless identities: their source lives at mountFilePath and their
-        // published/runtime data lives under the Frame prefix deleted above. They never own the
-        // canonical original/processed/public FileResource objects.
+        // Frames v2 are contentless identities. Their lifecycle owner deletes source and runtime
+        // data before reaching this primitive, and they never own canonical file objects.
         if (!this.isFrameV2) {
+          // Delete mount file copies if set.
+          await this.deleteMountFileCopies();
+
           await this.getBucketForVersion("original")
             .file(this.getCloudStoragePath(auth, "original"))
             .delete();

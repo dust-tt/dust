@@ -41,6 +41,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameResource } from "@app/lib/resources/frame_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -822,6 +823,7 @@ export async function deleteWorkspaceActivity({
   });
   await TriggerResource.deleteAllForWorkspace(auth);
   await deleteActivationWorkspaceSchedule({ workspaceId });
+  await FrameResource.deleteAllOwnedResourcesForWorkspace(auth);
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
