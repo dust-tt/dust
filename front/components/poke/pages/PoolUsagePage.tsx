@@ -81,6 +81,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
     currentCycleStartMs,
     currentCycleEndMs,
     programmaticConsumedCredits,
+    otherConsumedCredits,
   } = awuPoolCurrentCycle ?? {
     totalRemainingCredits: 0,
     totalActiveCredits: 0,
@@ -88,6 +89,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
     currentCycleStartMs: null,
     currentCycleEndMs: null,
     programmaticConsumedCredits: null,
+    otherConsumedCredits: null,
   };
 
   const hasPool = totalActiveCredits > 0;
@@ -105,6 +107,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
       currentCycleStartMs={currentCycleStartMs}
       currentCycleEndMs={currentCycleEndMs}
       programmaticConsumedCredits={programmaticConsumedCredits}
+      otherConsumedCredits={otherConsumedCredits}
     />
   );
 }

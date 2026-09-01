@@ -748,6 +748,77 @@ async function fetchFreeSeatCreditsForMembersTable({
   return { freeBalanceByUserId, freeStartingByUserId };
 }
 
+export async function sumActiveMembersPoolConsumedCredits({
+  workspace,
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
+}): Promise<number | null> {
+  if (!metronomeCustomerId || !metronomeContractId) {
+    return null;
+  }
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+  });
+  if (memberships.length === 0) {
+    return 0;
+  }
+  const users = await UserResource.fetchByModelIds(
+    memberships.map((m) => m.userId)
+  );
+  const userByModelId = new Map(users.map((u) => [u.id, u]));
+  const members = memberships.flatMap((m) => {
+    const user = userByModelId.get(m.userId);
+    return user ? [{ sId: user.sId, seatType: m.seatType ?? null }] : [];
+  });
+
+  const [usageByMetronomeUserId, { freeStartingByUserId }, seatDataByUserId] =
+    await Promise.all([
+      fetchPerUserUsageCreditsForMembersTable({
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        metronomeContractId,
+        userIds: members.map((m) =>
+          m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
+        ),
+      }),
+      fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
+      fetchSeatDataForMembersTable({
+        metronomeCustomerId,
+        metronomeContractId,
+      }),
+    ]);
+
+  let sumConsumedFromPoolAwuCredits = 0;
+  for (const member of members) {
+    const metronomeUserId =
+      member.seatType === "free"
+        ? toFreeMetronomeUserId(member.sId)
+        : member.sId;
+    const totalConsumedCredits =
+      usageByMetronomeUserId.get(metronomeUserId) ?? 0;
+    const freeStartingBalanceAwu =
+      member.seatType === "free"
+        ? (freeStartingByUserId.get(member.sId) ?? null)
+        : null;
+    const effectiveAllocationAwu =
+      freeStartingBalanceAwu ??
+      seatDataByUserId.get(member.sId)?.awuAllocation ??
+      0;
+    const consumedFromAllowanceAwuCredits = Math.min(
+      totalConsumedCredits,
+      effectiveAllocationAwu
+    );
+    sumConsumedFromPoolAwuCredits +=
+      totalConsumedCredits - consumedFromAllowanceAwuCredits;
+  }
+  return sumConsumedFromPoolAwuCredits;
+}
+
 /**
  * Resolve the inputs needed to compute the effective per-user spend limit for
  * the members table:
