@@ -8,16 +8,25 @@ import {
 } from "@app/lib/api/assistant/email/email_trigger";
 import { evaluateInboundAuth } from "@app/lib/api/assistant/email/inbound_auth";
 import { validateSendgridParseWebhookSignature } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
-import type { EmailWebhookHeaders } from "@app/lib/api/assistant/email/webhook_helpers";
+import type {
+  EmailRelayStart,
+  EmailRelayStatus,
+  EmailWebhookHeaders,
+} from "@app/lib/api/assistant/email/webhook_helpers";
 import {
-  claimEmailRelay,
+  abandonEmailRelay,
+  completeEmailRelay,
+  getEmailRelayId,
+  getEmailRelayStatus,
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
   relayEmailToOtherRegion,
+  renewEmailRelay,
   replyToError,
   resolveRelayedErrorReply,
   shouldRelayToOtherRegion,
+  startEmailRelay,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
   buildAuditLogTarget,
@@ -39,9 +48,14 @@ export type PostResponseBody = {
   success: boolean;
 };
 
+type GetRelayStatusResponseBody = {
+  status: EmailRelayStatus;
+};
+
 // SendGrid Parse limits inbound mail to ~30MB; matches the original
 // `SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb"` enforced by `raw-body`.
 const SENDGRID_PARSE_WEBHOOK_MAX_SIZE_BYTES = 30 * 1024 * 1024;
+const EMAIL_RELAY_HEARTBEAT_MS = 10 * 1000;
 
 function headersToNodeHeaders(webHeaders: Headers): EmailWebhookHeaders {
   const out: EmailWebhookHeaders = {};
@@ -53,6 +67,36 @@ function headersToNodeHeaders(webHeaders: Headers): EmailWebhookHeaders {
 
 // Mounted at /api/email/webhook.
 const app = createHono();
+
+/** @ignoreswagger */
+app.get(
+  "/relay-status",
+  async (ctx): HandlerResult<GetRelayStatusResponseBody> => {
+    const headers = headersToNodeHeaders(ctx.req.raw.headers);
+    if (!hasValidRelayAuthorization(headers)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_basic_authorization_error",
+          message: "Invalid Authorization header",
+        },
+      });
+    }
+
+    const relayId = getEmailRelayId(headers);
+    if (!relayId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Missing relay ID header",
+        },
+      });
+    }
+
+    return ctx.json({ status: await getEmailRelayStatus(relayId) });
+  }
+);
 
 /** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
@@ -142,7 +186,10 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
   const email = emailRes.value;
 
-  if (isRelayRequest && !(await claimEmailRelay(headers))) {
+  const relayStart: EmailRelayStart = isRelayRequest
+    ? await startEmailRelay(headers)
+    : { status: "legacy" };
+  if (relayStart.status === "duplicate") {
     logger.info(
       { senderEmail: email.sender.email },
       "[email] Ignoring duplicate inbound email relay"
@@ -155,7 +202,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
   // remaining processing in a detached IIFE so the response goes out
   // immediately, matching the Next-side `res.status(200).json(...)` then
   // keep-working pattern.
-  void (async () => {
+  const processing = (async () => {
     try {
       const authDecision = evaluateInboundAuth(email);
       if (!authDecision.authenticated) {
@@ -344,8 +391,48 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         { error: normalizeError(err) },
         "[email] Unhandled error in async email processing"
       );
+      throw err;
     }
   })();
+
+  if (relayStart.status === "started") {
+    const heartbeat = setInterval(() => {
+      void renewEmailRelay(relayStart.lease).catch((error) => {
+        logger.error(
+          { error: normalizeError(error) },
+          "[email] Failed to renew inbound email relay lease"
+        );
+      });
+    }, EMAIL_RELAY_HEARTBEAT_MS);
+
+    const abandonRelay = async () => {
+      try {
+        await abandonEmailRelay(relayStart.lease);
+      } catch (error) {
+        logger.error(
+          { error: normalizeError(error) },
+          "[email] Failed to abandon inbound email relay lease"
+        );
+      }
+    };
+
+    void processing
+      .then(async () => {
+        try {
+          await completeEmailRelay(relayStart.lease);
+        } catch (error) {
+          logger.error(
+            { error: normalizeError(error) },
+            "[email] Failed to complete inbound email relay lease"
+          );
+          await abandonRelay();
+        }
+      })
+      .catch(abandonRelay)
+      .finally(() => clearInterval(heartbeat));
+  } else {
+    void processing.catch(() => undefined);
+  }
 
   return ctx.json({ success: true });
 });

@@ -23,7 +23,7 @@ import {
 import apiConfig from "@app/lib/api/config";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
-import { withRetry } from "@app/lib/utils/async_utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -49,11 +49,26 @@ export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
 export const EMAIL_WEBHOOK_RELAY_ID_HEADER = "x-dust-email-webhook-relay-id";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
-const EMAIL_RELAY_GUARD_PREFIX = "email-webhook-relay";
-const EMAIL_RELAY_GUARD_TTL_SECONDS = 60 * 60;
-const EMAIL_RELAY_MAX_ATTEMPTS = 2;
+const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
+const EMAIL_RELAY_LEASE_TTL_SECONDS = 30;
+const EMAIL_RELAY_PROCESSED_TTL_SECONDS = 60 * 60;
+const EMAIL_RELAY_PROCESSED_VALUE = "processed";
+const EMAIL_RELAY_STATUS_WAIT_MS = 35 * 1000;
+const EMAIL_RELAY_STATUS_POLL_MS = 500;
 const EMAIL_RELAY_RETRY_DELAY_MS = 200;
 const HTTP_SERVER_ERROR_STATUS_MIN = 500;
+
+export type EmailRelayLease = {
+  relayId: string;
+  token: string;
+};
+
+export type EmailRelayStatus = "not_received" | "processing" | "processed";
+
+export type EmailRelayStart =
+  | { status: "legacy" }
+  | { status: "duplicate" }
+  | { status: "started"; lease: EmailRelayLease };
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
@@ -175,26 +190,262 @@ export function hasValidRelayAuthorization(
   );
 }
 
-export async function claimEmailRelay(
+function makeEmailRelayKey(relayId: string): string {
+  return `${EMAIL_RELAY_KEY_PREFIX}:${relayId}`;
+}
+
+export async function startEmailRelay(
   headers: EmailWebhookHeaders
-): Promise<boolean> {
+): Promise<EmailRelayStart> {
   const relayId = headers[EMAIL_WEBHOOK_RELAY_ID_HEADER];
   if (!isString(relayId)) {
     // Keep accepting relays sent by versions deployed before relay retries.
-    return true;
+    return { status: "legacy" };
   }
 
   const redis = await getRedisStreamClient({ origin: "email_context" });
-  const result = await redis.set(
-    `${EMAIL_RELAY_GUARD_PREFIX}:${relayId}`,
-    "1",
+  const token = randomUUID();
+  const result = await redis.set(makeEmailRelayKey(relayId), token, {
+    NX: true,
+    EX: EMAIL_RELAY_LEASE_TTL_SECONDS,
+  });
+
+  return result === "OK"
+    ? { status: "started", lease: { relayId, token } }
+    : { status: "duplicate" };
+}
+
+export function getEmailRelayId(headers: EmailWebhookHeaders): string | null {
+  const relayId = headers[EMAIL_WEBHOOK_RELAY_ID_HEADER];
+  return isString(relayId) ? relayId : null;
+}
+
+export async function getEmailRelayStatus(
+  relayId: string
+): Promise<EmailRelayStatus> {
+  const redis = await getRedisStreamClient({ origin: "email_context" });
+  const value = await redis.get(makeEmailRelayKey(relayId));
+  if (!value) {
+    return "not_received";
+  }
+  return value === EMAIL_RELAY_PROCESSED_VALUE ? "processed" : "processing";
+}
+
+export async function renewEmailRelay(lease: EmailRelayLease): Promise<void> {
+  const redis = await getRedisStreamClient({ origin: "email_context" });
+  const renewed = await redis.eval(
+    `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("expire", KEYS[1], ARGV[2])
+      end
+      return 0
+    `,
     {
-      NX: true,
-      EX: EMAIL_RELAY_GUARD_TTL_SECONDS,
+      keys: [makeEmailRelayKey(lease.relayId)],
+      arguments: [lease.token, String(EMAIL_RELAY_LEASE_TTL_SECONDS)],
     }
   );
+  if (renewed !== 1) {
+    throw new Error(`Lost lease for email relay ${lease.relayId}`);
+  }
+}
 
-  return result === "OK";
+export async function completeEmailRelay(
+  lease: EmailRelayLease
+): Promise<void> {
+  const redis = await getRedisStreamClient({ origin: "email_context" });
+  const completed = await redis.eval(
+    `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        redis.call("set", KEYS[1], ARGV[2], "EX", ARGV[3])
+        return 1
+      end
+      return 0
+    `,
+    {
+      keys: [makeEmailRelayKey(lease.relayId)],
+      arguments: [
+        lease.token,
+        EMAIL_RELAY_PROCESSED_VALUE,
+        String(EMAIL_RELAY_PROCESSED_TTL_SECONDS),
+      ],
+    }
+  );
+  if (completed !== 1) {
+    throw new Error(`Lost lease for email relay ${lease.relayId}`);
+  }
+}
+
+export async function abandonEmailRelay(lease: EmailRelayLease): Promise<void> {
+  const redis = await getRedisStreamClient({ origin: "email_context" });
+  await redis.eval(
+    `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+      end
+      return 0
+    `,
+    {
+      keys: [makeEmailRelayKey(lease.relayId)],
+      arguments: [lease.token],
+    }
+  );
+}
+
+async function getRemoteRelayStatus({
+  url,
+  relayId,
+}: {
+  url: string;
+  relayId: string;
+}): Promise<Result<EmailRelayStatus, Error>> {
+  try {
+    const response = await fetch(`${url}/api/email/webhook/relay-status`, {
+      headers: {
+        Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+        [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+        [EMAIL_WEBHOOK_RELAY_ID_HEADER]: relayId,
+      },
+    });
+    if (!response.ok) {
+      return new Err(
+        new Error(`Relay receipt lookup failed with status ${response.status}`)
+      );
+    }
+
+    const body: unknown = await response.json();
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      !("status" in body) ||
+      (body.status !== "not_received" &&
+        body.status !== "processing" &&
+        body.status !== "processed")
+    ) {
+      return new Err(
+        new Error("Relay receipt lookup returned an invalid body")
+      );
+    }
+
+    return new Ok(body.status);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+async function waitForRemoteRelay({
+  url,
+  relayId,
+}: {
+  url: string;
+  relayId: string;
+}): Promise<Result<boolean, Error>> {
+  const deadline = Date.now() + EMAIL_RELAY_STATUS_WAIT_MS;
+  while (Date.now() < deadline) {
+    const statusRes = await getRemoteRelayStatus({ url, relayId });
+    if (statusRes.isErr()) {
+      return statusRes;
+    }
+    if (statusRes.value === "processed") {
+      return new Ok(true);
+    }
+    if (statusRes.value === "not_received") {
+      return new Ok(false);
+    }
+    await setTimeoutAsync(EMAIL_RELAY_STATUS_POLL_MS);
+  }
+
+  // A lease that stayed active for the whole wait was renewed by the target,
+  // so the relay is still being processed and must not be sent twice.
+  return new Ok(true);
+}
+
+async function postEmailRelay({
+  url,
+  name,
+  headers,
+  formData,
+}: {
+  url: string;
+  name: string;
+  headers: Record<string, string>;
+  formData: FormData;
+}): Promise<Result<Response, Error>> {
+  try {
+    const response = await fetch(`${url}/api/email/webhook`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (response.status >= HTTP_SERVER_ERROR_STATUS_MIN) {
+      return new Err(
+        new Error(
+          `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+        )
+      );
+    }
+    return new Ok(response);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+async function sendEmailRelay({
+  url,
+  name,
+  relayId,
+  senderEmail,
+  headers,
+  formData,
+}: {
+  url: string;
+  name: string;
+  relayId: string;
+  senderEmail: string;
+  headers: Record<string, string>;
+  formData: FormData;
+}): Promise<Result<void, Error>> {
+  let responseRes = await postEmailRelay({ url, name, headers, formData });
+  if (responseRes.isErr()) {
+    const receiptRes = await waitForRemoteRelay({ url, relayId });
+    if (receiptRes.isOk() && receiptRes.value) {
+      return new Ok(undefined);
+    }
+    if (receiptRes.isErr()) {
+      return new Err(responseRes.error);
+    }
+
+    logger.warn(
+      {
+        error: responseRes.error,
+        senderEmail,
+        sourceRegion: regionsConfig.getCurrentRegion(),
+        targetRegion: name,
+      },
+      "[email] Retrying inbound email relay"
+    );
+    await setTimeoutAsync(EMAIL_RELAY_RETRY_DELAY_MS);
+    responseRes = await postEmailRelay({ url, name, headers, formData });
+
+    if (responseRes.isErr()) {
+      const retryReceiptRes = await waitForRemoteRelay({ url, relayId });
+      if (retryReceiptRes.isOk() && retryReceiptRes.value) {
+        return new Ok(undefined);
+      }
+    }
+  }
+
+  if (responseRes.isErr()) {
+    return new Err(responseRes.error);
+  }
+  if (!responseRes.value.ok) {
+    return new Err(
+      new Error(
+        `Relay to ${name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
+      )
+    );
+  }
+  return new Ok(undefined);
 }
 
 export async function relayEmailToOtherRegion(
@@ -226,61 +477,25 @@ export async function relayEmailToOtherRegion(
       );
     }
 
-    const responseRes = await withRetry(
-      async () => {
-        const response = await fetch(`${url}/api/email/webhook`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
-            [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
-            [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
-              regionsConfig.getCurrentRegion(),
-            [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
-            [EMAIL_WEBHOOK_RELAY_ID_HEADER]: relayId,
-          },
-          body: formData,
-        });
+    const relayHeaders = {
+      Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+      [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+      [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
+        regionsConfig.getCurrentRegion(),
+      [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
+      [EMAIL_WEBHOOK_RELAY_ID_HEADER]: relayId,
+    };
 
-        if (response.status >= HTTP_SERVER_ERROR_STATUS_MIN) {
-          throw new Error(
-            `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
-          );
-        }
-
-        return response;
-      },
-      {
-        maxRetries: EMAIL_RELAY_MAX_ATTEMPTS - 1,
-        initialDelayMs: EMAIL_RELAY_RETRY_DELAY_MS,
-        shouldRetry: (error, attempt) => {
-          logger.warn(
-            {
-              error: normalizeError(error),
-              attempt: attempt + 1,
-              maxAttempts: EMAIL_RELAY_MAX_ATTEMPTS,
-              senderEmail: email.sender.email,
-              sourceRegion: regionsConfig.getCurrentRegion(),
-              targetRegion: name,
-            },
-            "[email] Retrying inbound email relay"
-          );
-          return true;
-        },
-      }
-    );
-
-    if (responseRes.isErr()) {
-      return new Err(responseRes.error);
-    }
-
-    const response = responseRes.value;
-
-    if (!response.ok) {
-      return new Err(
-        new Error(
-          `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
-        )
-      );
+    const relayRes = await sendEmailRelay({
+      url,
+      name,
+      relayId,
+      senderEmail: email.sender.email,
+      headers: relayHeaders,
+      formData,
+    });
+    if (relayRes.isErr()) {
+      return relayRes;
     }
 
     logger.info(

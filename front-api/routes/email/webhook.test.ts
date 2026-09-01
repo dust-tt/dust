@@ -142,6 +142,9 @@ describe("POST /api/email/webhook", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(
+        Response.json({ status: "not_received" }, { status: 200 })
+      )
       .mockResolvedValueOnce(new Response("{}"));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -151,9 +154,9 @@ describe("POST /api/email/webhook", () => {
       });
       expect(response.status).toBe(200);
 
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
       const firstHeaders = fetchMock.mock.calls[0][1].headers;
-      const secondHeaders = fetchMock.mock.calls[1][1].headers;
+      const secondHeaders = fetchMock.mock.calls[2][1].headers;
       expect(firstHeaders[EMAIL_WEBHOOK_RELAY_ID_HEADER]).toBe(
         secondHeaders[EMAIL_WEBHOOK_RELAY_ID_HEADER]
       );
@@ -163,7 +166,59 @@ describe("POST /api/email/webhook", () => {
     }
   });
 
-  it("ignores a relayed email already claimed by the target region", async () => {
+  it("waits for a received relay before deciding whether to retry", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(
+        Response.json({ status: "processing" }, { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        Response.json({ status: "processed" }, { status: 200 })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(user.email, {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+      expect(fetchMock.mock.calls[1][0]).toBe(
+        "http://other-region.test/api/email/webhook/relay-status"
+      );
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not retry against a target without receipt support", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(user.email, {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() =>
+        expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("records a relay receipt and ignores a duplicate", async () => {
     const relayId = randomUUID();
     const headers = {
       ...RELAY_AUTH_HEADERS,
@@ -178,6 +233,17 @@ describe("POST /api/email/webhook", () => {
     await vi.waitFor(() =>
       expect(sendEmailToRecipients).toHaveBeenCalledOnce()
     );
+
+    await vi.waitFor(async () => {
+      const statusResponse = await honoApp.request(
+        "/api/email/webhook/relay-status",
+        { headers }
+      );
+      expect(statusResponse.status).toBe(200);
+      await expect(statusResponse.json()).resolves.toEqual({
+        status: "processed",
+      });
+    });
 
     const secondResponse = await postWebhook(
       "unknown-sender@example.com",
