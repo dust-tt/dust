@@ -78,6 +78,8 @@ export async function distributedRefresh(
 }
 
 const DEFAULT_RETRY_INTERVAL_MS = 100;
+const RENEWAL_RETRY_INITIAL_DELAY_MS = 250;
+const RENEWAL_RETRY_MAX_DELAY_MS = 30_000;
 
 export class LockAcquisitionTimeoutError extends Error {
   constructor(readonly lockName: string) {
@@ -137,7 +139,6 @@ async function acquireLock(
   lockValue: string | undefined;
 }> {
   const client = await getRedisStreamClient({ origin: "lock" });
-  let lockAttemptStartedAtMs: number | undefined;
 
   const acquire = async (): Promise<string | undefined> => {
     const startMs = Date.now();
@@ -157,6 +158,8 @@ async function acquireLock(
     }
     return acquired;
   };
+
+  let lockAttemptStartedAtMs: number | undefined;
 
   const lockValue = traceAcquireResource
     ? await tracer.trace(
@@ -215,6 +218,7 @@ function createLockLeaseGuard(
   guard: LockLeaseGuard;
   markLost: () => void;
   markRenewed: (renewedAtMs: number) => void;
+  remainingSafeLifetimeMs: () => number;
 } {
   const safetyMarginMs = Math.max(1, Math.floor(lockTtlMs / 10));
   let confirmedUntilMs = lockAttemptStartedAtMs + lockTtlMs - safetyMarginMs;
@@ -237,6 +241,7 @@ function createLockLeaseGuard(
     markRenewed: (renewedAtMs) => {
       confirmedUntilMs = renewedAtMs + lockTtlMs - safetyMarginMs;
     },
+    remainingSafeLifetimeMs: () => confirmedUntilMs - performance.now(),
   };
 }
 
@@ -251,6 +256,10 @@ async function runWithRenewingLockResult<T, E>(
   lockAttemptStartedAtMs: number
 ): Promise<Result<T, E | LockLeaseLostError>> {
   const renewalIntervalMs = Math.max(1, Math.floor(lockTtlMs / 3));
+  const renewalRetryInitialDelayMs = Math.min(
+    RENEWAL_RETRY_INITIAL_DELAY_MS,
+    renewalIntervalMs
+  );
   const lease = createLockLeaseGuard(
     lockName,
     lockTtlMs,
@@ -261,8 +270,16 @@ async function runWithRenewingLockResult<T, E>(
     const nextRenewalDelayMs = () =>
       renewalIntervalMs * (0.8 + Math.random() * 0.2);
     let waitMs = nextRenewalDelayMs();
+    let retryDelayMs = renewalRetryInitialDelayMs;
+    let lastRefreshError: Error | undefined;
     while (await waitForRenewal(waitMs, stopController.signal)) {
       if (lease.guard.check().isErr()) {
+        if (lastRefreshError) {
+          logger.error(
+            { error: lastRefreshError, lockName },
+            "Lost a distributed lock lease after refresh errors"
+          );
+        }
         return;
       }
       try {
@@ -282,14 +299,32 @@ async function runWithRenewingLockResult<T, E>(
           return;
         }
         lease.markRenewed(refreshStartedAtMs);
+        if (lastRefreshError) {
+          logger.info({ lockName }, "Recovered distributed lock lease renewal");
+        }
+        lastRefreshError = undefined;
+        retryDelayMs = renewalRetryInitialDelayMs;
         waitMs = nextRenewalDelayMs();
       } catch (error) {
-        lease.markLost();
-        logger.warn(
-          { error: normalizeError(error), lockName },
-          "Lost a distributed lock lease after a refresh error"
-        );
-        return;
+        const refreshError = normalizeError(error);
+        if (!lastRefreshError) {
+          logger.warn(
+            { error: refreshError, lockName },
+            "Failed to refresh a distributed lock lease; retrying"
+          );
+        }
+        lastRefreshError = refreshError;
+        const remainingSafeLifetimeMs = lease.remainingSafeLifetimeMs();
+        if (remainingSafeLifetimeMs <= 0) {
+          lease.markLost();
+          logger.error(
+            { error: refreshError, lockName },
+            "Lost a distributed lock lease after refresh errors"
+          );
+          return;
+        }
+        waitMs = Math.min(retryDelayMs, remainingSafeLifetimeMs);
+        retryDelayMs = Math.min(retryDelayMs * 2, RENEWAL_RETRY_MAX_DELAY_MS);
       }
     }
   };
