@@ -1,5 +1,4 @@
 import type { Logger } from "@app/logger/logger";
-import { Op } from "sequelize";
 
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
@@ -7,30 +6,24 @@ import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/config
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { isResourceSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types/shared/model_id";
 
 interface AgentChange {
-  agentConfigurationModelId: ModelId;
   agentId: string;
   agentName: string;
-  hasSkill: boolean;
   sourceVersion: number;
-  targetVersion: number;
   toolConfigurationIds: string[];
 }
 
 async function buildReplacementPlan({
-  customSkillModelId,
   mcpServerViewModelId,
   workspaceModelId,
 }: {
-  customSkillModelId: ModelId;
   mcpServerViewModelId: ModelId;
   workspaceModelId: ModelId;
 }): Promise<AgentChange[]> {
@@ -58,29 +51,10 @@ async function buildReplacementPlan({
     },
   });
 
-  if (agents.length === 0) {
-    return [];
-  }
-
-  const existingSkillLinks = await AgentSkillModel.findAll({
-    attributes: ["agentConfigurationId"],
-    where: {
-      agentConfigurationId: { [Op.in]: agents.map((agent) => agent.id) },
-      customSkillId: customSkillModelId,
-      workspaceId: workspaceModelId,
-    },
-  });
-  const agentConfigurationIdsWithSkill = new Set(
-    existingSkillLinks.map((link) => link.agentConfigurationId)
-  );
-
   return agents.map((agent) => ({
-    agentConfigurationModelId: agent.id,
     agentId: agent.sId,
     agentName: agent.name,
-    hasSkill: agentConfigurationIdsWithSkill.has(agent.id),
     sourceVersion: agent.version,
-    targetVersion: agent.version + 1,
     toolConfigurationIds: agent.mcpServerConfigurations.map(
       (configuration) => configuration.sId
     ),
@@ -91,11 +65,9 @@ async function createReplacementVersion(
   auth: Authenticator,
   {
     change,
-    mcpServerViewId,
     skillId,
   }: {
     change: AgentChange;
-    mcpServerViewId: string;
     skillId: string;
   }
 ): Promise<number> {
@@ -114,10 +86,7 @@ async function createReplacementVersion(
   }
 
   const { agentConfiguration, editorUsers, skills } = contextResult.value;
-  if (
-    agentConfiguration.id !== change.agentConfigurationModelId ||
-    agentConfiguration.version !== change.sourceVersion
-  ) {
+  if (agentConfiguration.version !== change.sourceVersion) {
     throw new Error(
       `Agent ${change.agentId} changed after the replacement plan was built. Run the script again.`
     );
@@ -135,7 +104,7 @@ async function createReplacementVersion(
     toolConfigurationIds.size
   ) {
     throw new Error(
-      `Agent ${change.agentId} no longer contains the planned configurations for MCP server view ${mcpServerViewId}. Run the script again.`
+      `Agent ${change.agentId} no longer contains the planned tool configurations. Run the script again.`
     );
   }
 
@@ -200,13 +169,12 @@ function logAgentChange(
 ): void {
   logger.info(
     {
-      agentConfigurationModelId: change.agentConfigurationModelId,
       agentId: change.agentId,
       agentName: change.agentName,
       changes: {
-        addAgentSkillIdToNewVersion: change.hasSkill ? null : skillId,
         archiveAgentVersion: change.sourceVersion,
         createAgentVersion: targetVersion,
+        skillIdOnNewVersion: skillId,
         toolConfigurationIdsNotCopiedToNewVersion: change.toolConfigurationIds,
       },
       mcpServerViewId,
@@ -242,74 +210,56 @@ makeScript(
       throw new Error(`Workspace not found: ${workspaceId}.`);
     }
 
-    const parsedMCPServerViewId = getResourceNameAndIdFromSId(mcpServerViewId);
-    if (
-      !parsedMCPServerViewId ||
-      parsedMCPServerViewId.resourceName !== "mcp_server_view"
-    ) {
+    if (!isResourceSId("mcp_server_view", mcpServerViewId)) {
       throw new Error(
         `Invalid MCP server view sId: ${mcpServerViewId}. Expected an msv_... ID.`
       );
     }
-    if (parsedMCPServerViewId.workspaceModelId !== workspace.id) {
-      throw new Error(
-        `MCP server view ${mcpServerViewId} does not belong to workspace ${workspaceId}.`
-      );
-    }
-
-    const parsedSkillId = getResourceNameAndIdFromSId(skillId);
-    if (!parsedSkillId || parsedSkillId.resourceName !== "skill") {
+    if (!isResourceSId("skill", skillId)) {
       throw new Error(
         `Invalid skill sId: ${skillId}. Expected a custom skl_... ID.`
       );
     }
-    if (parsedSkillId.workspaceModelId !== workspace.id) {
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    // Both resource fetches are scoped to the authenticated workspace.
+    const [mcpServerView, customSkills] = await Promise.all([
+      MCPServerViewResource.fetchById(auth, mcpServerViewId, {
+        includeDeleted: true,
+      }),
+      SkillResource.fetchByIds(auth, [skillId], {
+        onlyActive: true,
+        withFileAttachments: false,
+        withInstructions: false,
+        withTools: false,
+      }),
+    ]);
+    if (!mcpServerView) {
       throw new Error(
-        `Custom skill ${skillId} does not belong to workspace ${workspaceId}.`
+        `MCP server view not found in workspace ${workspaceId}: ${mcpServerViewId}.`
       );
     }
 
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const mcpServerView = await MCPServerViewResource.fetchById(
-      auth,
-      mcpServerViewId,
-      { includeDeleted: true }
-    );
-    if (!mcpServerView) {
-      throw new Error(`MCP server view not found: ${mcpServerViewId}.`);
-    }
-
-    const [customSkill] = await SkillResource.fetchByIds(auth, [skillId], {
-      onlyActive: true,
-      withFileAttachments: false,
-      withInstructions: false,
-      withTools: false,
-    });
+    const [customSkill] = customSkills;
     if (!customSkill) {
       throw new Error(
-        `Active custom skill not found in workspace ${workspace.sId}: ${skillId}.`
+        `Active custom skill not found in workspace ${workspaceId}: ${skillId}.`
       );
     }
 
     const plan = await buildReplacementPlan({
-      customSkillModelId: customSkill.id,
       mcpServerViewModelId: mcpServerView.id,
       workspaceModelId: workspace.id,
     });
 
-    let createdVersionCount = 0;
     for (const change of plan) {
       const targetVersion = execute
         ? await createReplacementVersion(auth, {
             change,
-            mcpServerViewId,
             skillId: customSkill.sId,
           })
-        : change.targetVersion;
+        : change.sourceVersion + 1;
 
-      if (execute) {
-        createdVersionCount++;
-      }
       logAgentChange(
         {
           change,
@@ -326,8 +276,7 @@ makeScript(
     logger.info(
       {
         agentCount: plan.length,
-        agentSkillLinksToAdd: plan.filter((change) => !change.hasSkill).length,
-        agentVersionsCreated: createdVersionCount,
+        agentVersionsCreated: execute ? plan.length : 0,
         agentVersionsToCreate: execute ? 0 : plan.length,
         execute,
         mcpServerViewId,
