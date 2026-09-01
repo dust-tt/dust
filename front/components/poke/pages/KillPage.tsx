@@ -82,11 +82,11 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
   },
 };
 
-// Kills a whole provider at once, which the per-endpoint degraded models
-// switches below do more precisely.
+// Kills a whole provider at once, with a message that is not explicit.
 const LEGACY_KILL_SWITCH_NOTE =
-  "Superseded by the degraded models section: prefer flagging the affected " +
-  "endpoints there, and reach for this only to take a provider out entirely.";
+  "Replaced by the degraded models section. It was not explicit to the users that " +
+  " providers were down. This also blocked all calls to affected provider, not just the " +
+  "Auto models.";
 
 const PANEL_HEADING_CLASSES =
   "flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-foreground";
