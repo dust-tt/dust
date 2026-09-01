@@ -1,5 +1,6 @@
 import {
   getEsConsumedAwuCreditsForWorkspace,
+  resolveMetronomeCycle,
   sumActiveMembersPoolConsumedCredits,
 } from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
@@ -345,8 +346,12 @@ async function getAwuPoolCurrentCycleUncached(
       : null;
 
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
-    const excessConsumedCredits =
-      await getEsConsumedAwuCreditsForWorkspace(workspace);
+    const fallbackCycle = await resolveMetronomeCycle(workspace);
+    const excessConsumedCredits = fallbackCycle
+      ? await getEsConsumedAwuCreditsForWorkspace(workspace, {
+          cycle: fallbackCycle,
+        })
+      : null;
     const programmaticConsumedCredits =
       await fetchProgrammaticConsumedCreditsOrNull({
         workspace,

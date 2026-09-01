@@ -270,7 +270,7 @@ async function fetchCreditsResetAt(
 
 // The workspace's current Metronome contract billing period, or null when it
 // cannot be resolved (no contract, or a Metronome failure).
-async function resolveMetronomeCycle(
+export async function resolveMetronomeCycle(
   workspace: LightWorkspaceType
 ): Promise<BillingCycle | null> {
   const periodResult = await getCachedMetronomeCurrentBillingPeriod(
@@ -607,15 +607,11 @@ export async function getEsConsumedProgrammaticAwuCredits(
  */
 export async function getEsConsumedAwuCreditsForWorkspace(
   workspace: LightWorkspaceType,
-  { cycle }: { cycle?: BillingCycle } = {}
+  { cycle }: { cycle: BillingCycle }
 ): Promise<number | null> {
-  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
-  if (!resolvedCycle) {
-    return null;
-  }
-  const { cycleStart, cycleEnd } = resolvedCycle;
+  const { cycleStart, cycleEnd } = cycle;
 
-  const result = await searchAnalytics<
+  const result = await searchConsumptionAnalytics<
     never,
     { credits?: estypes.AggregationsSumAggregate }
   >(
@@ -625,7 +621,7 @@ export async function getEsConsumedAwuCreditsForWorkspace(
           { term: { workspace_id: workspace.sId } },
           {
             range: {
-              timestamp: {
+              completed_at: {
                 gte: cycleStart.toISOString(),
                 lte: cycleEnd.toISOString(),
               },
@@ -635,7 +631,7 @@ export async function getEsConsumedAwuCreditsForWorkspace(
       },
     },
     {
-      aggregations: { credits: { sum: { field: "cost.billable_awu" } } },
+      aggregations: { credits: { sum: { field: "credit_micro" } } },
       size: 0,
     }
   );
@@ -649,7 +645,9 @@ export async function getEsConsumedAwuCreditsForWorkspace(
 
   return Math.max(
     0,
-    Math.round(result.value.aggregations?.credits?.value ?? 0)
+    Math.round(
+      microCreditsToCredits(result.value.aggregations?.credits?.value ?? 0)
+    )
   );
 }
 
