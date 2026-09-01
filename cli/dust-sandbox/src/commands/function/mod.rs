@@ -397,6 +397,8 @@ pub(crate) use crate::commands::ENV_LOCK;
 mod tests {
     use super::*;
 
+    use crate::commands::db::SANDBOX_DATABASES_DIR_ENV;
+
     use super::ENV_LOCK;
 
     #[test]
@@ -468,9 +470,6 @@ mod tests {
         std::env::remove_var(FUNCTIONS_DIR_ENV);
         assert!(resolve_existing("../escape").is_err());
     }
-
-    // Front sets this per exec; the database runtime reads it in the Bun child.
-    const SANDBOX_DATABASES_DIR_ENV: &str = "DUST_SANDBOX_DATABASES_DIR";
 
     /// Restore an env var to its captured original value.
     fn restore_env(key: &str, original: Option<std::ffi::OsString>) {
