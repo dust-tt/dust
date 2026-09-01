@@ -1,14 +1,14 @@
 import { awaitSandboxFunctionInvocationOutcome } from "@app/lib/api/sandbox_functions/await_invocation";
-import {
-  FrameFunctionInvocationParamsSchema,
-  PostFrameFunctionInvocationBodySchema,
-} from "@front-api/lib/api/frame_function_invocation_schemas";
 import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { resolveActiveFrameFunctionForUse } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
 } from "@app/types/api/sandbox_functions";
+import {
+  FrameFunctionInvocationParamsSchema,
+  PostFrameFunctionInvocationBodySchema,
+} from "@front-api/lib/api/frame_function_invocation_schemas";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
