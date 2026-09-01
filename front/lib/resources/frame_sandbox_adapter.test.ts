@@ -186,7 +186,9 @@ describe("FrameSandboxAdapter", () => {
       deletedPrefixes.push(prefix)
     );
 
-    const deleteResult = await frame.delete(auth);
+    const deleteResult = await frame.delete(auth, {
+      deleteFrameSource: async () => new Ok(undefined),
+    });
 
     expect(
       deleteResult.isOk(),
@@ -266,7 +268,9 @@ describe("FrameSandboxAdapter", () => {
 
     try {
       mockExecuteWithLock.mockClear();
-      const deletionPromise = frame.delete(auth);
+      const deletionPromise = frame.delete(auth, {
+        deleteFrameSource: async () => new Ok(undefined),
+      });
       await deletionReachedFunctionCleanup.promise;
       expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).toBeNull();
 
