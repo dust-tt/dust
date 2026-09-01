@@ -1,5 +1,7 @@
 import {
   checkReplicaMountLiveness,
+  deletePodDatabaseReplica,
+  deleteProjectDatabaseReplica,
   isFuseStatfsMagic,
   isValidPodDatabaseName,
   isValidSandboxDatabaseName,
@@ -31,6 +33,10 @@ describe("sandbox state helpers", () => {
 
   test("keeps the Pod database validator as a compatibility alias", () => {
     expect(isValidPodDatabaseName).toBe(isValidSandboxDatabaseName);
+  });
+
+  test("keeps the Pod replica deletion helper as a compatibility alias", () => {
+    expect(deletePodDatabaseReplica).toBe(deleteProjectDatabaseReplica);
   });
 
   test("parses replica enumeration output (watcher {db}.db layout), dropping non-conforming entries", () => {

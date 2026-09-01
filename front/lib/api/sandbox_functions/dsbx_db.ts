@@ -401,8 +401,9 @@ const deleteEnvelopeSchema = z.union([
  *
  * Only the LIVE files go. The litestream replica is the durable copy, so a caller deleting a database
  * for good must also restart the daemon (`restartLitestreamDaemon`, which is what makes it let go of
- * the removed files) and wipe the replica prefix (`deletePodDatabaseReplica`), or the next cold-start
- * restore brings the database back. Returns the sandbox so that restart needs no second lookup.
+ * the removed files) and wipe the replica prefix (`deleteProjectDatabaseReplica`), or the next
+ * cold-start restore brings the database back. Returns the sandbox so that restart needs no second
+ * lookup.
  */
 export async function deleteDatabaseOnSandbox(
   auth: Authenticator,

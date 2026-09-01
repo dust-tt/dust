@@ -3,7 +3,7 @@ import { getFileContent } from "@app/lib/api/files/utils";
 import { deleteProjectFile } from "@app/lib/api/projects/context";
 import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import {
-  deletePodDatabaseReplica,
+  deleteProjectDatabaseReplica,
   restartLitestreamDaemon,
 } from "@app/lib/api/sandbox/db";
 import {
@@ -540,7 +540,7 @@ export async function deletePodApp(
 
   // 4. Replicas: the durable copy, and so the step that makes a database deletion stick.
   for (const database of app.databases) {
-    const deleteReplicaResult = await deletePodDatabaseReplica(auth, pod, {
+    const deleteReplicaResult = await deleteProjectDatabaseReplica(auth, pod, {
       database: database.onDiskName,
     });
     if (deleteReplicaResult.isErr()) {
