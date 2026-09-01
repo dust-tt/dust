@@ -138,7 +138,7 @@ export async function streamThumbnail(
 // ---------------------------------------------------------------------------
 
 /**
- * Enrich a list of file entries with their linked FileResource sId (fileId).
+ * Enrich file entries with their linked FileResource identity and semantic content type.
  * A single batch DB query covers all entries; pod files probe the legacy projects/ path too.
  *
  * Intended for endpoints that expose file listings to the client (conversation files,
@@ -176,11 +176,18 @@ export async function enrichListWithFileResourceIds(
     mountPaths
   );
 
-  // Map every known mountFilePath to its FileResource sId.
-  const byMountPath = new Map<string, string>();
+  // Keep raw GCS contentType for source previews. The linked resource can represent a higher-level
+  // object such as a registered Frame package, so expose its semantic type separately.
+  const byMountPath = new Map<
+    string,
+    { contentType: string; fileId: string }
+  >();
   for (const fr of fileResources) {
     if (fr.mountFilePath) {
-      byMountPath.set(fr.mountFilePath, fr.sId);
+      byMountPath.set(fr.mountFilePath, {
+        contentType: fr.contentType,
+        fileId: fr.sId,
+      });
     }
   }
 
@@ -193,9 +200,15 @@ export async function enrichListWithFileResourceIds(
       return entry;
     }
     const legacyPath = gcsPath.replace(/\/pods\//, "/projects/");
-    const fileId =
+    const linkedFile =
       byMountPath.get(gcsPath) ?? byMountPath.get(legacyPath) ?? null;
-    return { ...entry, fileId };
+    return linkedFile
+      ? {
+          ...entry,
+          fileId: linkedFile.fileId,
+          fileResourceContentType: linkedFile.contentType,
+        }
+      : entry;
   });
 }
 
