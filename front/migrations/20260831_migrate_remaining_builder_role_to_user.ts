@@ -2,61 +2,63 @@ import { Op } from "sequelize";
 
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 /**
  * The previous migration only handled currently-active `builder` memberships.
  * This script flips the remaining rows: not-yet-started ones (`startAt` in the
  * future) and already-ended ones (`endAt` in the past).
- *
- * None of these rows are currently active, so their cached role is never
- * `builder` and no cache invalidation is needed.
  */
 
 makeScript({}, async ({ execute }, logger) => {
+  // Single cutoff for the whole run, so the not-yet-started / already-ended
+  // classification stays stable across workspaces regardless of sweep duration.
   const now = new Date();
 
-  const where = {
-    role: "builder" as const,
-    [Op.or]: [{ startAt: { [Op.gt]: now } }, { endAt: { [Op.lt]: now } }],
-  };
+  let totalMatched = 0;
+  let totalMigrated = 0;
 
-  const builderMemberships = await MembershipModel.findAll({
-    attributes: ["id", "userId", "workspaceId", "startAt", "endAt"],
-    where,
-  });
+  await runOnAllWorkspaces(async (workspace) => {
+    const where = {
+      workspaceId: workspace.id,
+      role: "builder" as const,
+      [Op.or]: [{ startAt: { [Op.gt]: now } }, { endAt: { [Op.lt]: now } }],
+    };
 
-  if (builderMemberships.length === 0) {
-    logger.info("No remaining builder memberships to migrate.");
-    return;
-  }
+    if (!execute) {
+      const matched = await MembershipModel.count({ where });
+      if (matched > 0) {
+        totalMatched += matched;
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            workspaceModelId: workspace.id,
+            matched,
+          },
+          "Would flip builder -> user (DB only)"
+        );
+      }
+      return;
+    }
 
-  if (!execute) {
-    for (const m of builderMemberships) {
+    const [migrated] = await MembershipModel.update({ role: "user" }, { where });
+    if (migrated > 0) {
+      totalMigrated += migrated;
       logger.info(
         {
-          membershipId: m.id,
-          userModelId: m.userId,
-          workspaceModelId: m.workspaceId,
-          startAt: m.startAt,
-          endAt: m.endAt,
+          workspaceId: workspace.sId,
+          workspaceModelId: workspace.id,
+          migrated,
         },
-        "Would flip builder -> user (DB only)"
+        "Flipped builder -> user (DB only)"
       );
     }
-    logger.info(
-      { total: builderMemberships.length },
-      "Remaining builder -> user migration dry run complete"
-    );
-    return;
-  }
-
-  const [migrated] = await MembershipModel.update(
-    { role: "user" },
-    { where: { id: { [Op.in]: builderMemberships.map((m) => m.id) } } }
-  );
+  });
 
   logger.info(
-    { migrated, total: builderMemberships.length },
-    "Remaining builder -> user migration complete"
+    execute ? { totalMigrated } : { totalMatched },
+    execute
+      ? "Remaining builder -> user migration complete"
+      : "Remaining builder -> user migration dry run complete"
   );
 });
