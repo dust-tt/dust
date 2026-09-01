@@ -37,11 +37,6 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
     }));
   }
 
-  /**
-   * Clears the rows of every endpoint the request names, then re-adds the ones
-   * it wants degraded. Endpoints the request does not name are left alone, so
-   * two operators working the same incident do not clobber each other.
-   */
   static async updateDegradedEndpoints(
     updates: DegradedModelEndpointUpdateType[]
   ): Promise<void> {
