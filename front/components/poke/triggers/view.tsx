@@ -151,7 +151,7 @@ export function ViewTriggerTable({
                         <PokeTableHead>Webhook Source</PokeTableHead>
                         <PokeTableCellWithLink
                           href={`/poke/${owner.sId}/webhook-sources/${webhookSource.sId}`}
-                          content={`${webhookSource.name} (${webhookSource.sId} / ${webhookSource.id})`}
+                          content={`${webhookSource.name} (${webhookSource.sId})`}
                         />
                       </PokeTableRow>
                       <PokeTableRow>

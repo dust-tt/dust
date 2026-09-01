@@ -71,9 +71,7 @@ app.get(
       editorUser,
       webhookSource: webhookSource
         ? {
-            id: webhookSource.id,
-            sId: webhookSource.sId,
-            name: webhookSource.name,
+            ...webhookSource.toJSON(),
             payloadsGcsUrl: makeWebhookRequestsGcsUrl({
               workspaceId: auth.getNonNullableWorkspace().sId,
               webhookSourceId: webhookSource.id,
