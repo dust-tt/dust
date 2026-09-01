@@ -58,8 +58,6 @@ async function queryIntercomAPI({
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // Read text first so we can log the raw body if JSON.parse fails
-  // (response.json() would consume the body).
   const text = await rawResponse.text();
 
   let response;
