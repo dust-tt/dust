@@ -43,7 +43,7 @@ function buildSandboxInstructionProse({
 
     if (!hasFramesV2) {
       instructions.push(
-        "Frames v2 is not enabled in this workspace. For any Frame task, enable the `Create Frames` skill and use its interactive-content tools; publish or republish with `publish_interactive_content_file`. Never use `dsbx frame`."
+        "For any Frame task, enable the `Create Frames` skill and use its interactive-content tools; publish or republish with `publish_interactive_content_file`. Never use `dsbx frame`."
       );
     }
   }
