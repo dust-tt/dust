@@ -1,4 +1,5 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
+import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
 import { AlertCircle, ContentMessage, Page, Spinner } from "@dust-tt/sparkle";
 
@@ -14,11 +15,78 @@ export function toCreditPoolFetchStatus(
   return isLoading ? "loading" : "ready";
 }
 
+function formatCycleDayLabel(
+  currentCycleStartMs: number | null,
+  currentCycleEndMs: number | null
+): string | null {
+  if (
+    currentCycleStartMs === null ||
+    currentCycleEndMs === null ||
+    currentCycleEndMs <= currentCycleStartMs
+  ) {
+    return null;
+  }
+  const totalDays = Math.round(
+    (currentCycleEndMs - currentCycleStartMs) / ONE_DAY_MS
+  );
+  const elapsedDays = Math.min(
+    totalDays,
+    Math.max(0, Math.ceil((Date.now() - currentCycleStartMs) / ONE_DAY_MS))
+  );
+  return `Day ${elapsedDays}/${totalDays}`;
+}
+
+interface WorkspaceCreditUsageValueCardsProps {
+  showPoolCard: boolean;
+  totalRemainingCredits: number;
+  consumedCredits: number | null;
+  currentCycleStartMs: number | null;
+  currentCycleEndMs: number | null;
+  isLoading: boolean;
+}
+
+export function WorkspaceCreditUsageValueCards({
+  showPoolCard,
+  totalRemainingCredits,
+  consumedCredits,
+  currentCycleStartMs,
+  currentCycleEndMs,
+  isLoading,
+}: WorkspaceCreditUsageValueCardsProps) {
+  const cycleDayLabel = formatCycleDayLabel(
+    currentCycleStartMs,
+    currentCycleEndMs
+  );
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {showPoolCard && (
+        <SummaryCard
+          label="Remaining credits pool"
+          value={formatCredits(totalRemainingCredits)}
+          hint={null}
+        />
+      )}
+      <SummaryCard
+        label="Used this cycle"
+        value={
+          typeof consumedCredits === "number"
+            ? formatCredits(consumedCredits)
+            : "—"
+        }
+        hint={cycleDayLabel}
+      />
+    </div>
+  );
+}
+
 interface WorkspaceCreditPoolSectionProps {
   cardsStatus: CreditPoolFetchStatus;
   showPoolCard: boolean;
   isVisible: boolean;
   totalRemainingCredits: number;
+  consumedCredits: number | null;
+  currentCycleStartMs: number | null;
+  currentCycleEndMs: number | null;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -26,6 +94,9 @@ export function WorkspaceCreditPoolSection({
   showPoolCard,
   isVisible,
   totalRemainingCredits,
+  consumedCredits,
+  currentCycleStartMs,
+  currentCycleEndMs,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -48,13 +119,14 @@ export function WorkspaceCreditPoolSection({
           <Spinner />
         </div>
       ) : (
-        showPoolCard && (
-          <SummaryCard
-            label="Remaining credits pool"
-            value={formatCredits(totalRemainingCredits)}
-            hint={null}
-          />
-        )
+        <WorkspaceCreditUsageValueCards
+          showPoolCard={showPoolCard}
+          totalRemainingCredits={totalRemainingCredits}
+          consumedCredits={consumedCredits}
+          currentCycleStartMs={currentCycleStartMs}
+          currentCycleEndMs={currentCycleEndMs}
+          isLoading={false}
+        />
       )}
     </Page.Vertical>
   );

@@ -2314,7 +2314,9 @@ export async function listMetronomeBalances(
     includeArchived = false,
     coveringDate = new Date(),
     effectiveBefore,
+    startingAt,
     onlyPoolCredits = true,
+    includeLedgers = false,
   }: {
     // Pass `null` to drop the `covering_date` filter and return balances of any
     // date (including expired and, depending on `effectiveBefore`, future ones).
@@ -2322,9 +2324,12 @@ export async function listMetronomeBalances(
     // Restrict to balances with any access before this date — used to hide
     // future-dated balances while still returning expired ones.
     effectiveBefore?: Date;
+    startingAt?: Date;
     includeArchived?: boolean;
     // Restrict to balances related to pool credits
     onlyPoolCredits?: boolean;
+    // Include each entry's full transaction ledger.
+    includeLedgers?: boolean;
   } = {}
 ): Promise<Result<MetronomeBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
@@ -2345,7 +2350,11 @@ export async function listMetronomeBalances(
       ...(effectiveBefore !== undefined
         ? { effective_before: effectiveBefore.toISOString() }
         : {}),
+      ...(startingAt !== undefined
+        ? { starting_at: startingAt.toISOString() }
+        : {}),
       ...(includeArchived ? { include_archived: true } : {}),
+      ...(includeLedgers ? { include_ledgers: true } : {}),
     })) {
       // Mirror the pool balance alert filter for credits: include only
       // credits explicitly tagged DUST_CONTRACT_CREDIT_TYPE=pool. Excess

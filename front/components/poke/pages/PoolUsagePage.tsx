@@ -14,7 +14,7 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { expandMaxTierName } from "@app/lib/client/model_tiers";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
-  usePokeAwuPoolSummary,
+  usePokeAwuPoolCurrentCycle,
   usePokeMembersUsage,
 } from "@app/poke/swr/credits";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
@@ -68,22 +68,40 @@ interface PoolCreditCardProps {
 }
 
 function PoolCreditCard({ owner }: PoolCreditCardProps) {
-  const { awuPoolSummary, isAwuPoolSummaryLoading, isAwuPoolSummaryError } =
-    usePokeAwuPoolSummary({ owner });
+  const {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+  } = usePokeAwuPoolCurrentCycle({ owner });
 
-  const totalRemainingCredits = awuPoolSummary?.totalRemainingCredits ?? 0;
-  const totalActiveCredits = awuPoolSummary?.totalActiveCredits ?? 0;
+  const {
+    totalRemainingCredits,
+    totalActiveCredits,
+    currentCycleConsumedCredits,
+    currentCycleStartMs,
+    currentCycleEndMs,
+  } = awuPoolCurrentCycle ?? {
+    totalRemainingCredits: 0,
+    totalActiveCredits: 0,
+    currentCycleConsumedCredits: null,
+    currentCycleStartMs: null,
+    currentCycleEndMs: null,
+  };
+
   const hasPool = totalActiveCredits > 0;
 
   return (
     <WorkspaceCreditPoolSection
       cardsStatus={toCreditPoolFetchStatus(
-        isAwuPoolSummaryLoading,
-        !!isAwuPoolSummaryError
+        isAwuPoolCurrentCycleLoading,
+        !!isAwuPoolCurrentCycleError
       )}
       showPoolCard={hasPool}
       isVisible={hasPool}
       totalRemainingCredits={totalRemainingCredits}
+      consumedCredits={currentCycleConsumedCredits}
+      currentCycleStartMs={currentCycleStartMs}
+      currentCycleEndMs={currentCycleEndMs}
     />
   );
 }

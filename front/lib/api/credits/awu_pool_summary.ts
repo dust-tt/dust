@@ -15,11 +15,101 @@ import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
-import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import { cacheWithRedis } from "@app/lib/utils/cache";
+import logger from "@app/logger/logger";
+import type { AwuPoolCurrentCycleResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { Invoice } from "@metronome/sdk/resources/v1/customers";
+
+const AUTOMATED_INVOICE_DEDUCTION_LEDGER_TYPES = new Set([
+  "PREPAID_COMMIT_AUTOMATED_INVOICE_DEDUCTION",
+  "POSTPAID_COMMIT_AUTOMATED_INVOICE_DEDUCTION",
+  "CREDIT_AUTOMATED_INVOICE_DEDUCTION",
+]);
+
+type PoolLedgerEntry = {
+  sourceId: string;
+  invoiceId: string;
+  amountCredits: number;
+  timestampMs: number;
+};
+
+type PoolLedgerData = {
+  poolCommitIds: Set<string>;
+  ledgerEntries: PoolLedgerEntry[];
+};
+
+async function getPoolLedgerData({
+  metronomeCustomerId,
+}: {
+  metronomeCustomerId: string;
+}): Promise<Result<PoolLedgerData, Error>> {
+  const balancesResult = await listMetronomeBalances(metronomeCustomerId, {
+    coveringDate: null,
+    onlyPoolCredits: true,
+    includeArchived: true,
+    includeLedgers: true,
+  });
+  if (balancesResult.isErr()) {
+    return new Err(balancesResult.error);
+  }
+
+  const poolCommitIds = new Set<string>();
+  const ledgerEntries: PoolLedgerEntry[] = [];
+  for (const source of balancesResult.value) {
+    poolCommitIds.add(source.id);
+    for (const item of source.ledger ?? []) {
+      if (
+        !AUTOMATED_INVOICE_DEDUCTION_LEDGER_TYPES.has(item.type) ||
+        !("invoice_id" in item)
+      ) {
+        continue;
+      }
+      ledgerEntries.push({
+        sourceId: source.id,
+        invoiceId: item.invoice_id,
+        amountCredits: item.amount,
+        timestampMs: new Date(item.timestamp).getTime(),
+      });
+    }
+  }
+  return new Ok({ poolCommitIds, ledgerEntries });
+}
+
+function sumPoolLedgerEntriesForInvoice(
+  ledgerEntries: PoolLedgerEntry[],
+  invoiceId: string
+): number {
+  return ledgerEntries
+    .filter((entry) => entry.invoiceId === invoiceId)
+    .reduce((sum, entry) => sum + Math.abs(entry.amountCredits), 0);
+}
+
+type MetronomeContext = {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+};
+
+function resolveMetronomeContext(
+  auth: Authenticator
+): Result<MetronomeContext, AwuPoolSummaryError> {
+  const workspace = auth.getNonNullableWorkspace();
+  const subscription = auth.subscription();
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId || !subscription?.metronomeContractId) {
+    return new Err(new AwuPoolSummaryError("not_configured"));
+  }
+  return new Ok({
+    workspace,
+    metronomeCustomerId,
+    metronomeContractId: subscription.metronomeContractId,
+  });
+}
 
 function creditTypeIdToCurrency(
   creditTypeId: string
@@ -36,6 +126,39 @@ function creditTypeIdToCurrency(
   return null;
 }
 
+// PAYG overage on credit-priced contracts shows up as a `cpu_conversion`
+function extractOverageFromInvoice(invoice: Invoice): {
+  overageCredits: number | null;
+  overageAmountCents: number | null;
+  overageCurrency: SupportedCurrency | null;
+} {
+  const overageCurrency = creditTypeIdToCurrency(invoice.credit_type.id);
+  if (!overageCurrency) {
+    return {
+      overageCredits: null,
+      overageAmountCents: null,
+      overageCurrency: null,
+    };
+  }
+  let overageCredits: number | null = null;
+  let overageAmountCents: number | null = null;
+  for (const item of invoice.line_items) {
+    if (item.type !== "cpu_conversion") {
+      continue;
+    }
+    if (isNumber(item.quantity)) {
+      overageCredits = (overageCredits ?? 0) + item.quantity;
+    }
+    overageAmountCents =
+      (overageAmountCents ?? 0) + amountCents(item.total, overageCurrency);
+  }
+  return {
+    overageCredits,
+    overageAmountCents,
+    overageCurrency: overageCredits !== null ? overageCurrency : null,
+  };
+}
+
 export class AwuPoolSummaryError extends Error {
   constructor(
     readonly type:
@@ -48,21 +171,67 @@ export class AwuPoolSummaryError extends Error {
   }
 }
 
+type AwuPoolSummaryErrorType = AwuPoolSummaryError["type"];
+
+type SerializableAwuPoolCurrentCycleOutcome =
+  | { status: "ok"; body: AwuPoolCurrentCycleResponseBody }
+  | { status: "error"; errorType: AwuPoolSummaryErrorType };
+
+async function computeAwuPoolCurrentCycleOutcome(
+  auth: Authenticator
+): Promise<SerializableAwuPoolCurrentCycleOutcome> {
+  const result = await getAwuPoolCurrentCycleUncached(auth);
+  if (result.isErr()) {
+    return { status: "error", errorType: result.error.type };
+  }
+  return { status: "ok", body: result.value };
+}
+
+const AWU_POOL_CURRENT_CYCLE_CACHE_ID = "awuPoolCurrentCycle";
+const AWU_POOL_CURRENT_CYCLE_CACHE_TTL_MS = 60 * 1000;
+
+const getCachedAwuPoolCurrentCycleOutcome = cacheWithRedis(
+  computeAwuPoolCurrentCycleOutcome,
+  (auth) => auth.getNonNullableWorkspace().sId,
+  {
+    cacheId: AWU_POOL_CURRENT_CYCLE_CACHE_ID,
+    ttlMs: AWU_POOL_CURRENT_CYCLE_CACHE_TTL_MS,
+  }
+);
+
+// Header-card data only — cheap, bounded to a single cycle's ledger.
+export async function getAwuPoolCurrentCycle(
+  auth: Authenticator
+): Promise<Result<AwuPoolCurrentCycleResponseBody, AwuPoolSummaryError>> {
+  const outcome = await getCachedAwuPoolCurrentCycleOutcome(auth);
+  if (outcome.status === "error") {
+    return new Err(new AwuPoolSummaryError(outcome.errorType));
+  }
+  return new Ok(outcome.body);
+}
+
 export async function getAwuPoolSummary(
   auth: Authenticator
-): Promise<Result<AwuPoolSummaryResponseBody, AwuPoolSummaryError>> {
-  const workspace = auth.getNonNullableWorkspace();
-  const subscription = auth.subscription();
-  const { metronomeCustomerId } = workspace;
-  if (!metronomeCustomerId || !subscription?.metronomeContractId) {
-    return new Err(new AwuPoolSummaryError("not_configured"));
-  }
-  const { metronomeContractId } = subscription;
+): Promise<Result<AwuPoolCurrentCycleResponseBody, AwuPoolSummaryError>> {
+  return getAwuPoolCurrentCycle(auth);
+}
 
-  const [balancesResult, invoicesResult] = await Promise.all([
-    listMetronomeBalances(metronomeCustomerId),
-    listMetronomeDraftInvoices(metronomeCustomerId),
-  ]);
+async function getAwuPoolCurrentCycleUncached(
+  auth: Authenticator
+): Promise<Result<AwuPoolCurrentCycleResponseBody, AwuPoolSummaryError>> {
+  const contextResult = resolveMetronomeContext(auth);
+  if (contextResult.isErr()) {
+    return contextResult;
+  }
+  const { metronomeCustomerId, metronomeContractId } = contextResult.value;
+  const awuCreditTypeId = getCreditTypeAwuId();
+
+  const [balancesResult, invoicesResult, poolLedgerDataResult] =
+    await Promise.all([
+      listMetronomeBalances(metronomeCustomerId),
+      listMetronomeDraftInvoices(metronomeCustomerId),
+      getPoolLedgerData({ metronomeCustomerId }),
+    ]);
 
   if (balancesResult.isErr()) {
     return new Err(
@@ -73,6 +242,21 @@ export async function getAwuPoolSummary(
     return new Err(
       new AwuPoolSummaryError("invoices_fetch_failed", invoicesResult.error)
     );
+  }
+
+  // `null` means the ledger couldn't be read (fetch failure)
+  let ledgerEntries: PoolLedgerEntry[] | null = null;
+  if (poolLedgerDataResult.isErr()) {
+    logger.error(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        error: poolLedgerDataResult.error,
+      },
+      "[AwuPoolSummary] Failed to read pool ledger for the current cycle"
+    );
+  } else {
+    ledgerEntries = poolLedgerDataResult.value.ledgerEntries;
   }
 
   const now = Date.now();
@@ -90,6 +274,11 @@ export async function getAwuPoolSummary(
     return startMs <= now && now < endMs;
   });
 
+  const currentCycleConsumedCredits =
+    currentInvoice && ledgerEntries
+      ? sumPoolLedgerEntriesForInvoice(ledgerEntries, currentInvoice.id)
+      : null;
+
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
     return new Ok({
       totalRemainingCredits: 0,
@@ -97,39 +286,29 @@ export async function getAwuPoolSummary(
       overageCredits: null,
       overageAmountCents: null,
       overageCurrency: null,
+      currentCycleStartMs: null,
+      currentCycleEndMs: null,
+      currentCycleConsumedCredits,
     });
   }
 
-  // PAYG overage on credit-priced contracts shows up as a `cpu_conversion`
-  // line item (Metronome converts AWU spend that exceeds the prepaid AWU
-  // pool into fiat using the rate-card's `fiat_per_custom_credit`). There is
-  // no dedicated overage product — the line's `type` is the signal.
-  //   - `quantity` is the number of overage AWU credits consumed
-  //   - `total` is the fiat amount in the invoice's native unit (USD in
-  //     cents, other currencies in whole units — normalized via amountCents)
-  const overageCurrency = creditTypeIdToCurrency(currentInvoice.credit_type.id);
-  let overageCredits: number | null = null;
-  let overageAmountCents: number | null = null;
-  if (overageCurrency) {
-    for (const item of currentInvoice.line_items) {
-      if (item.type !== "cpu_conversion") {
-        continue;
-      }
-      if (isNumber(item.quantity)) {
-        overageCredits = (overageCredits ?? 0) + item.quantity;
-      }
-      overageAmountCents =
-        (overageAmountCents ?? 0) + amountCents(item.total, overageCurrency);
-    }
-  }
+  const currentCycleStartMs = new Date(
+    currentInvoice.start_timestamp
+  ).getTime();
+  const currentCycleEndMs = new Date(currentInvoice.end_timestamp).getTime();
+
+  const { overageCredits, overageAmountCents, overageCurrency } =
+    extractOverageFromInvoice(currentInvoice);
 
   // Filter to active, non-seat AWU pool credits and commits. The set of
   // seat product IDs is derived from the contract's tagged subscriptions
   // (via the `DUST_SEAT_TYPE` custom field) rather than a hardcoded list.
-  // The contract filter prevents sandbox prepaid commits on other contracts
-  // from inflating the balance.
-  const awuCreditTypeId = getCreditTypeAwuId();
-  const activeContract = await getActiveContract(workspace.sId);
+  //
+  // A pool grant under a superseded contract can still cover `now`,
+  // so it must not be excluded.
+  const activeContract = await getActiveContract(
+    auth.getNonNullableWorkspace().sId
+  );
   const productSeatTypes = await getProductSeatTypes();
   const seatProductIds = activeContract
     ? new Set(
@@ -142,20 +321,19 @@ export async function getAwuPoolSummary(
   const awuBalances = balancesResult.value.filter(
     (entry) =>
       entry.access_schedule?.credit_type?.id === awuCreditTypeId &&
-      !seatProductIds.has(entry.product.id) &&
-      (entry.contract?.id === metronomeContractId || !entry.contract)
+      !seatProductIds.has(entry.product.id)
   );
 
   let totalRemainingCredits = 0;
   let totalActiveCredits = 0;
   for (const entry of awuBalances) {
     const scheduleItems = entry.access_schedule?.schedule_items ?? [];
-    const isActive = scheduleItems.some((item) => {
+    const activeItems = scheduleItems.filter((item) => {
       const itemStartMs = new Date(item.starting_at).getTime();
       const itemEndMs = new Date(item.ending_before).getTime();
       return itemStartMs <= now && now < itemEndMs;
     });
-    if (isActive) {
+    if (activeItems.length > 0) {
       totalRemainingCredits += entry.balance ?? 0;
       for (const item of scheduleItems) {
         totalActiveCredits += item.amount;
@@ -169,5 +347,8 @@ export async function getAwuPoolSummary(
     overageCredits,
     overageAmountCents,
     overageCurrency: overageCredits !== null ? overageCurrency : null,
+    currentCycleStartMs,
+    currentCycleEndMs,
+    currentCycleConsumedCredits,
   });
 }
