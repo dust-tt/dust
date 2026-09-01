@@ -305,10 +305,6 @@ export function ModelPicker({
           label={showLabel ? triggerLabel : undefined}
           iconRight={
             showLabel && effortLabel ? (
-              // The chip's default `primary` background is stone-50, the same
-              // token as the input bar surface (`bg-muted-background`), so it
-              // reads as invisible there in light mode. One step up on the ramp
-              // separates it from the surface in both themes.
               <Chip
                 size="mini"
                 label={effortLabel}
