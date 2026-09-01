@@ -220,6 +220,11 @@ function logAgentChange(
 
 makeScript(
   {
+    workspaceId: {
+      demandOption: true,
+      describe: "Workspace sId to target",
+      type: "string" as const,
+    },
     mcpServerViewId: {
       demandOption: true,
       describe: "MCP server view sId (msv_...) to replace in active agents",
@@ -231,7 +236,12 @@ makeScript(
       type: "string" as const,
     },
   },
-  async ({ execute, mcpServerViewId, skillId }, logger) => {
+  async ({ execute, workspaceId, mcpServerViewId, skillId }, logger) => {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${workspaceId}.`);
+    }
+
     const parsedMCPServerViewId = getResourceNameAndIdFromSId(mcpServerViewId);
     if (
       !parsedMCPServerViewId ||
@@ -241,6 +251,11 @@ makeScript(
         `Invalid MCP server view sId: ${mcpServerViewId}. Expected an msv_... ID.`
       );
     }
+    if (parsedMCPServerViewId.workspaceModelId !== workspace.id) {
+      throw new Error(
+        `MCP server view ${mcpServerViewId} does not belong to workspace ${workspaceId}.`
+      );
+    }
 
     const parsedSkillId = getResourceNameAndIdFromSId(skillId);
     if (!parsedSkillId || parsedSkillId.resourceName !== "skill") {
@@ -248,20 +263,9 @@ makeScript(
         `Invalid skill sId: ${skillId}. Expected a custom skl_... ID.`
       );
     }
-    if (
-      parsedSkillId.workspaceModelId !== parsedMCPServerViewId.workspaceModelId
-    ) {
+    if (parsedSkillId.workspaceModelId !== workspace.id) {
       throw new Error(
-        "The MCP server view and custom skill belong to different workspaces."
-      );
-    }
-
-    const [workspace] = await WorkspaceResource.fetchByModelIds([
-      parsedMCPServerViewId.workspaceModelId,
-    ]);
-    if (!workspace) {
-      throw new Error(
-        `Workspace ${parsedMCPServerViewId.workspaceModelId} encoded in ${mcpServerViewId} was not found.`
+        `Custom skill ${skillId} does not belong to workspace ${workspaceId}.`
       );
     }
 
