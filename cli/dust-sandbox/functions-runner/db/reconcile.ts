@@ -1,4 +1,4 @@
-// `dsbx db reconcile` runner backend: bring a live pod database in line with its drizzle schema
+// `dsbx db reconcile` runner backend: bring a live sandbox database in line with its drizzle schema
 // file, applying ADDITIVE DDL only. Expected refusals come back as Err (ERR1), never thrown.
 //
 // `reconcile` orchestrates one numbered helper per step:

@@ -22,8 +22,8 @@ export function runQuery(
   sql: string,
   // Omitted only by tests that don't exercise the quota; runner.ts always passes it.
   maxSizeBytes?: number,
-  // Directory the spill file is written to — a pod file, so the caller can read the full result
-  // set. runner.ts passes the pod-files dir from Rust; tests omit it and fall back to a temp dir.
+  // Directory where the spill file is written so the caller can read the full result set.
+  // runner.ts passes the sandbox files directory from Rust; tests fall back to a temp directory.
   spillDir?: string
 ): Result<QueryOutcome, DbCommandError> {
   const trimmed = sql.trim();
@@ -89,7 +89,7 @@ export function runQuery(
     // One statement, one transaction — the same path for reads and writes. The schema_version
     // re-check refuses DDL behaviorally: anything that moved the schema is turned into an Err and
     // never committed; a read leaves the version untouched. BEGIN IMMEDIATE means a read holds the
-    // write lock for its duration — fine for a single-writer per-pod database, and the price of not
+    // write lock for its duration — fine for a single-writer sandbox database, and the price of not
     // branching on a read/write guess that bun gives us no reliable way to make.
     db.exec("BEGIN IMMEDIATE;");
     const versionBefore = schemaVersion(db);
@@ -151,7 +151,7 @@ function openReadwrite(
   }
   applyWritePragmas(db);
   if (maxSizeBytes !== undefined) {
-    // The size cap @dust/pod enforces on workload writes; a write past it fails with SQLITE_FULL
+    // The size cap @dust/sandbox enforces on workload writes; a write past it fails with SQLITE_FULL
     // (-> database_full). page_size is a bigint here (safeIntegers) but small enough for Number().
     const row = db.query<{ page_size: bigint }, []>("PRAGMA page_size").get();
     if (row === null) {
@@ -246,7 +246,7 @@ function collectRows(
           continue;
         }
         const dir = spillDir ?? tmpdir();
-        // The pod-files spill dir (e.g. /files/pod-<id>/.tool_outputs/db) is not pre-created.
+        // The caller-provided spill directory is not pre-created.
         mkdirSync(dir, { recursive: true });
         spillPath = join(dir, `dsbx-query-${crypto.randomUUID()}.jsonl`);
         spillFd = openSync(spillPath, "w");
