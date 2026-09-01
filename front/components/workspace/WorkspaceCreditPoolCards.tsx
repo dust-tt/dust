@@ -1,7 +1,13 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
-import { AlertCircle, ContentMessage, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  ContentMessage,
+  Page,
+  Spinner,
+  ValueCard,
+} from "@dust-tt/sparkle";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
@@ -42,6 +48,7 @@ interface WorkspaceCreditUsageValueCardsProps {
   consumedCredits: number | null;
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
+  programmaticConsumedCredits: number | null;
   isLoading: boolean;
 }
 
@@ -51,6 +58,7 @@ export function WorkspaceCreditUsageValueCards({
   consumedCredits,
   currentCycleStartMs,
   currentCycleEndMs,
+  programmaticConsumedCredits,
   isLoading,
 }: WorkspaceCreditUsageValueCardsProps) {
   const cycleDayLabel = formatCycleDayLabel(
@@ -58,7 +66,11 @@ export function WorkspaceCreditUsageValueCards({
     currentCycleEndMs
   );
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div
+      className={
+        showPoolCard ? "grid grid-cols-3 gap-4" : "grid grid-cols-2 gap-4"
+      }
+    >
       {showPoolCard && (
         <SummaryCard
           label="Remaining credits pool"
@@ -75,6 +87,17 @@ export function WorkspaceCreditUsageValueCards({
         }
         hint={cycleDayLabel}
       />
+      <ValueCard
+        title="Programmatic usage this cycle"
+        isLoading={isLoading}
+        content={
+          <div className="truncate text-2xl text-foreground">
+            {typeof programmaticConsumedCredits === "number"
+              ? formatCredits(programmaticConsumedCredits)
+              : "—"}
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -87,6 +110,7 @@ interface WorkspaceCreditPoolSectionProps {
   consumedCredits: number | null;
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
+  programmaticConsumedCredits: number | null;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -97,6 +121,7 @@ export function WorkspaceCreditPoolSection({
   consumedCredits,
   currentCycleStartMs,
   currentCycleEndMs,
+  programmaticConsumedCredits,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -125,6 +150,7 @@ export function WorkspaceCreditPoolSection({
           consumedCredits={consumedCredits}
           currentCycleStartMs={currentCycleStartMs}
           currentCycleEndMs={currentCycleEndMs}
+          programmaticConsumedCredits={programmaticConsumedCredits}
           isLoading={false}
         />
       )}
