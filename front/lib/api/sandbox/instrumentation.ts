@@ -149,12 +149,15 @@ export function recordToolDuration(
   ]);
 }
 
-// Health of the pod-state pre-sleep flush: a success/failure counter. Datadog
+// Health of the sandbox-state pre-sleep flush. Keep the existing metric name while deployed
+// monitors migrate independently.
 // monitors page on the failure count; the stable logger.error message next to
 // each failing call site carries the cause.
-export function recordPodStateHealth(status: "success" | "failure"): void {
+export function recordSandboxStateHealth(status: "success" | "failure"): void {
   statsDMetrics.increment("sandbox.pod_state.health", 1, [
     regionTag(),
     `status:${status}`,
   ]);
 }
+
+export const recordPodStateHealth = recordSandboxStateHealth;

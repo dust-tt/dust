@@ -1,5 +1,5 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
+import { ensureSandboxStateHealthOnSleep } from "@app/lib/api/sandbox/db";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
@@ -93,7 +93,7 @@ export class PodSandboxAdapter {
     };
   }
 
-  // Pod state pre-sleep flush: every committed SQLite transaction must reach
+  // Sandbox state pre-sleep flush: every committed SQLite transaction must reach
   // the GCS replica before the sandbox may pause or be destroyed. The refresh
   // callback rewrites the root-owned per-mount credentials first — the sync
   // flushes through gcsfuse and the token may have expired while the sandbox sat idle.
@@ -102,7 +102,7 @@ export class PodSandboxAdapter {
     pod: SpaceResource
   ): SandboxPreSleepCheck {
     return (sandbox) =>
-      ensurePodStateHealthOnSleep(auth, sandbox, {
+      ensureSandboxStateHealthOnSleep(auth, sandbox, {
         refreshMountCredential: async () => {
           const imageResult = getSandboxImage(auth);
           if (imageResult.isErr()) {

@@ -2,6 +2,7 @@ import {
   checkReplicaMountLiveness,
   isFuseStatfsMagic,
   isValidPodDatabaseName,
+  isValidSandboxDatabaseName,
   parseLiveDatabaseNames,
   parseReplicaDatabaseNames,
 } from "@app/lib/api/sandbox/db";
@@ -10,22 +11,26 @@ import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, test, vi } from "vitest";
 
-describe("pod state helpers", () => {
+describe("sandbox state helpers", () => {
   test("validates database names against the contract shape", () => {
-    expect(isValidPodDatabaseName("chat")).toBe(true);
-    expect(isValidPodDatabaseName("a")).toBe(true);
-    expect(isValidPodDatabaseName("chat_v2")).toBe(true);
-    expect(isValidPodDatabaseName("a".repeat(64))).toBe(true);
+    expect(isValidSandboxDatabaseName("chat")).toBe(true);
+    expect(isValidSandboxDatabaseName("a")).toBe(true);
+    expect(isValidSandboxDatabaseName("chat_v2")).toBe(true);
+    expect(isValidSandboxDatabaseName("a".repeat(64))).toBe(true);
 
-    expect(isValidPodDatabaseName("a".repeat(65))).toBe(false);
-    expect(isValidPodDatabaseName("")).toBe(false);
-    expect(isValidPodDatabaseName("Chat")).toBe(false);
-    expect(isValidPodDatabaseName("1chat")).toBe(false);
-    expect(isValidPodDatabaseName("_chat")).toBe(false);
-    expect(isValidPodDatabaseName("chat-db")).toBe(false);
-    expect(isValidPodDatabaseName(".restore-chat")).toBe(false);
-    expect(isValidPodDatabaseName("-o")).toBe(false);
-    expect(isValidPodDatabaseName("chat db")).toBe(false);
+    expect(isValidSandboxDatabaseName("a".repeat(65))).toBe(false);
+    expect(isValidSandboxDatabaseName("")).toBe(false);
+    expect(isValidSandboxDatabaseName("Chat")).toBe(false);
+    expect(isValidSandboxDatabaseName("1chat")).toBe(false);
+    expect(isValidSandboxDatabaseName("_chat")).toBe(false);
+    expect(isValidSandboxDatabaseName("chat-db")).toBe(false);
+    expect(isValidSandboxDatabaseName(".restore-chat")).toBe(false);
+    expect(isValidSandboxDatabaseName("-o")).toBe(false);
+    expect(isValidSandboxDatabaseName("chat db")).toBe(false);
+  });
+
+  test("keeps the Pod database validator as a compatibility alias", () => {
+    expect(isValidPodDatabaseName).toBe(isValidSandboxDatabaseName);
   });
 
   test("parses replica enumeration output (watcher {db}.db layout), dropping non-conforming entries", () => {
