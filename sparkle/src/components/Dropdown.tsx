@@ -1114,7 +1114,10 @@ const DropdownTooltipTrigger = React.forwardRef<
         handleOpenChange(false);
       };
 
-      window.addEventListener("scroll", closeTooltip, true);
+      window.addEventListener("scroll", closeTooltip, {
+        capture: true,
+        passive: true,
+      });
       window.visualViewport?.addEventListener("scroll", closeTooltip);
 
       return () => {

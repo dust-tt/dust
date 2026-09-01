@@ -12,6 +12,7 @@ import {
   Stop,
   Zap,
 } from "@dust-tt/sparkle";
+import * as React from "react";
 
 interface InputBarMessageNavigationProps {
   variant: "floating" | "compact";
@@ -27,126 +28,133 @@ interface InputBarMessageNavigationProps {
   onScrollDown: () => void;
 }
 
-export function InputBarMessageNavigation({
-  variant,
-  showStopButton,
-  showMessageNavigation,
-  stopButtonLabel,
-  hasPendingMessages,
-  pendingAction,
-  onStopClick,
-  canScrollUp,
-  canScrollDown,
-  onScrollUp,
-  onScrollDown,
-}: InputBarMessageNavigationProps) {
-  const stopButtonVariant = variant === "compact" ? "ghost-secondary" : "ghost";
-  const isStopActionPending = pendingAction !== null;
-  const stopIcon = hasPendingMessages ? Zap : Stop;
-  const showNavigationArrows =
-    showMessageNavigation && !(variant === "compact" && showStopButton);
+/**
+ * Memoized: ConversationMessageNavigation re-renders on every scroll frame, and
+ * the arrows only change when canScrollUp/canScrollDown flip.
+ */
+export const InputBarMessageNavigation = React.memo(
+  function InputBarMessageNavigation({
+    variant,
+    showStopButton,
+    showMessageNavigation,
+    stopButtonLabel,
+    hasPendingMessages,
+    pendingAction,
+    onStopClick,
+    canScrollUp,
+    canScrollDown,
+    onScrollUp,
+    onScrollDown,
+  }: InputBarMessageNavigationProps) {
+    const stopButtonVariant =
+      variant === "compact" ? "ghost-secondary" : "ghost";
+    const isStopActionPending = pendingAction !== null;
+    const stopIcon = hasPendingMessages ? Zap : Stop;
+    const showNavigationArrows =
+      showMessageNavigation && !(variant === "compact" && showStopButton);
 
-  const renderNavigationArrowButton = (
-    icon: typeof ArrowUp,
-    onClick: () => void,
-    disabled: boolean,
-    ariaLabel: string
-  ) => {
-    if (variant === "compact") {
+    const renderNavigationArrowButton = (
+      icon: typeof ArrowUp,
+      onClick: () => void,
+      disabled: boolean,
+      ariaLabel: string
+    ) => {
+      if (variant === "compact") {
+        return (
+          <Button
+            variant="ghost-secondary"
+            icon={icon}
+            size="mini"
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={ariaLabel}
+          />
+        );
+      }
+
       return (
-        <Button
-          variant="ghost-secondary"
+        <IconButton
           icon={icon}
-          size="mini"
           onClick={onClick}
           disabled={disabled}
+          size="xs"
+          tooltip={ariaLabel}
           aria-label={ariaLabel}
         />
+      );
+    };
+
+    const stopButton =
+      variant === "compact" && isStopActionPending ? (
+        <Button
+          variant={stopButtonVariant}
+          label={stopButtonLabel}
+          onClick={onStopClick}
+          disabled
+          size={variant === "compact" ? "mini" : "xs"}
+        />
+      ) : (
+        <Button
+          variant={stopButtonVariant}
+          label={variant === "compact" ? undefined : stopButtonLabel}
+          icon={stopIcon}
+          aria-label={variant === "compact" ? stopButtonLabel : undefined}
+          onClick={onStopClick}
+          disabled={pendingAction !== null}
+          size={variant === "compact" ? "mini" : "xs"}
+        />
+      );
+
+    const controls = (
+      <>
+        {showStopButton && (
+          <>
+            {stopButton}
+            {showNavigationArrows && variant !== "compact" && (
+              <div className="h-4 w-px bg-border" />
+            )}
+          </>
+        )}
+        {showNavigationArrows && (
+          <>
+            {renderNavigationArrowButton(
+              ArrowUp,
+              onScrollUp,
+              !canScrollUp,
+              "Previous user message"
+            )}
+            {renderNavigationArrowButton(
+              ArrowDown,
+              onScrollDown,
+              !canScrollDown,
+              "Next user message"
+            )}
+          </>
+        )}
+      </>
+    );
+
+    if (variant === "compact") {
+      return (
+        <div className={INPUT_BAR_COMPACT_PILL_CLASSES}>
+          <div className={INPUT_BAR_COMPACT_PILL_INNER_CLASSES}>{controls}</div>
+        </div>
       );
     }
 
     return (
-      <IconButton
-        icon={icon}
-        onClick={onClick}
-        disabled={disabled}
-        size="xs"
-        tooltip={ariaLabel}
-        aria-label={ariaLabel}
-      />
-    );
-  };
-
-  const stopButton =
-    variant === "compact" && isStopActionPending ? (
-      <Button
-        variant={stopButtonVariant}
-        label={stopButtonLabel}
-        onClick={onStopClick}
-        disabled
-        size={variant === "compact" ? "mini" : "xs"}
-      />
-    ) : (
-      <Button
-        variant={stopButtonVariant}
-        label={variant === "compact" ? undefined : stopButtonLabel}
-        icon={stopIcon}
-        aria-label={variant === "compact" ? stopButtonLabel : undefined}
-        onClick={onStopClick}
-        disabled={pendingAction !== null}
-        size={variant === "compact" ? "mini" : "xs"}
-      />
-    );
-
-  const controls = (
-    <>
-      {showStopButton && (
-        <>
-          {stopButton}
-          {showNavigationArrows && variant !== "compact" && (
-            <div className="h-4 w-px bg-border" />
-          )}
-        </>
-      )}
-      {showNavigationArrows && (
-        <>
-          {renderNavigationArrowButton(
-            ArrowUp,
-            onScrollUp,
-            !canScrollUp,
-            "Previous user message"
-          )}
-          {renderNavigationArrowButton(
-            ArrowDown,
-            onScrollDown,
-            !canScrollDown,
-            "Next user message"
-          )}
-        </>
-      )}
-    </>
-  );
-
-  if (variant === "compact") {
-    return (
-      <div className={INPUT_BAR_COMPACT_PILL_CLASSES}>
-        <div className={INPUT_BAR_COMPACT_PILL_INNER_CLASSES}>{controls}</div>
+      <div
+        className={cn(
+          "flex items-center gap-1 rounded-xl p-1",
+          INPUT_BAR_SURFACE_CLASSES
+        )}
+        style={{
+          position: "absolute",
+          top: "-2rem",
+        }}
+      >
+        {controls}
       </div>
     );
   }
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-1 rounded-xl p-1",
-        INPUT_BAR_SURFACE_CLASSES
-      )}
-      style={{
-        position: "absolute",
-        top: "-2rem",
-      }}
-    >
-      {controls}
-    </div>
-  );
-}
+);

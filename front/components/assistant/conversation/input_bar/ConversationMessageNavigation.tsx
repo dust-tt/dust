@@ -8,7 +8,7 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import { useMemo } from "react";
+import { useCallback, useRef } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -26,10 +26,15 @@ interface ConversationMessageNavigationProps {
  * Resolves the previous/next user message from the current scroll position and
  * renders the navigation arrows.
  *
- * useVirtuosoLocation re-renders its host on every scroll frame, and resolving
- * the targets walks the whole message list. Both live here rather than in
- * AgentInputBar so a scroll frame costs this small subtree instead of the whole
- * composer and its Framer Motion layout animation.
+ * useVirtuosoLocation re-renders its host on every scroll frame, so the
+ * subscription lives here rather than in AgentInputBar: a scroll frame costs
+ * this component's body instead of the whole composer and its Framer Motion
+ * layout animation.
+ *
+ * Everything below is shaped around running on each of those frames — the
+ * message list is walked once without allocating, and the two targets are held
+ * in refs so the arrows keep stable props and React bails out of re-rendering
+ * them while the answers do not change.
  */
 export function ConversationMessageNavigation({
   variant,
@@ -38,92 +43,85 @@ export function ConversationMessageNavigation({
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
 
-  const {
-    canScrollUp,
-    canScrollDown,
-    scrollToPreviousUserMessage,
-    scrollToNextUserMessage,
-  } = useMemo(() => {
-    const allMessages = methods.data.get();
+  const targetsRef = useRef({
+    lastFullyAboveIndex: -1,
+    firstBelowTopQuarterIndex: -1,
+    bottomOffset: 0,
+  });
 
-    // Find indices of visible (non-hidden) user messages.
-    const userMessageIndices: number[] = [];
-    for (let i = 0; i < allMessages.length; i++) {
-      const msg = allMessages[i];
-      if (isUserMessage(msg) && !isHiddenMessage(msg)) {
-        userMessageIndices.push(i);
-      }
+  const allMessages = methods.data.get();
+
+  // Convert listOffset to positive scroll position.
+  // listOffset is negative when scrolled down (distance from list top to viewport top).
+  const viewportTop = -listOffset;
+  const viewportTopQuarter = viewportTop + visibleListHeight / 4;
+
+  // Single pass, no intermediate arrays: message tops and bottoms both increase
+  // with the index, so the last user message above the viewport and the first
+  // one below its top quarter are all the arrows need.
+  let accumulatedHeight = 0;
+  let lastFullyAboveIndex = -1;
+  let firstBelowTopQuarterIndex = -1;
+  for (let i = 0; i < allMessages.length; i++) {
+    const msg = allMessages[i];
+    const top = accumulatedHeight;
+    accumulatedHeight += methods.height(msg);
+    const bottom = accumulatedHeight;
+
+    if (!isUserMessage(msg) || isHiddenMessage(msg)) {
+      continue;
     }
+    if (bottom <= viewportTop) {
+      lastFullyAboveIndex = i;
+    }
+    if (firstBelowTopQuarterIndex === -1 && top >= viewportTopQuarter) {
+      firstBelowTopQuarterIndex = i;
+    }
+  }
 
-    // Calculate positions by accumulating heights.
-    const positions: { top: number; bottom: number }[] = [];
-    let accumulatedHeight = 0;
-    for (const msg of allMessages) {
-      const height = methods.height(msg);
-      positions.push({
-        top: accumulatedHeight,
-        bottom: accumulatedHeight + height,
+  targetsRef.current = {
+    lastFullyAboveIndex,
+    firstBelowTopQuarterIndex,
+    bottomOffset,
+  };
+
+  const canScrollUp = lastFullyAboveIndex !== -1;
+  const canScrollDown =
+    (firstBelowTopQuarterIndex !== -1 || bottomOffset > 0) &&
+    !methods.getScrollLocation().isAtBottom;
+
+  const scrollToPreviousUserMessage = useCallback(() => {
+    // Scroll to the last user message that's fully above (closest to current view).
+    const { lastFullyAboveIndex: targetIndex } = targetsRef.current;
+    if (targetIndex !== -1) {
+      methods.scrollToItem({
+        index: targetIndex,
+        align: "start",
+        behavior: "smooth",
       });
-      accumulatedHeight += height;
     }
+  }, [methods]);
 
-    // Convert listOffset to positive scroll position.
-    // listOffset is negative when scrolled down (distance from list top to viewport top).
-    const viewportTop = -listOffset;
-    const viewportTopQuarter = viewportTop + visibleListHeight / 4;
-
-    // Find user messages fully above viewport (for arrow up).
-    const fullyAboveIndices = userMessageIndices.filter(
-      (idx) => positions[idx] && positions[idx].bottom <= viewportTop
-    );
-
-    // Find user messages whose top is below the top quarter of viewport (for arrow down).
-    const belowTopQuarterIndices = userMessageIndices.filter(
-      (idx) => positions[idx] && positions[idx].top >= viewportTopQuarter
-    );
-
-    const canUp = fullyAboveIndices.length > 0;
-    const canDown =
-      (belowTopQuarterIndices.length > 0 || bottomOffset > 0) &&
-      !methods.getScrollLocation().isAtBottom;
-
-    return {
-      canScrollUp: canUp,
-      canScrollDown: canDown,
-      scrollToPreviousUserMessage: () => {
-        if (fullyAboveIndices.length > 0) {
-          // Scroll to the last user message that's fully above (closest to current view).
-          const targetIndex = fullyAboveIndices[fullyAboveIndices.length - 1];
-          methods.scrollToItem({
-            index: targetIndex,
-            align: "start",
-            behavior: "smooth",
-          });
-        }
-      },
-      scrollToNextUserMessage: () => {
-        if (belowTopQuarterIndices.length > 0) {
-          // Scroll to the first user message below top quarter.
-          const targetIndex = belowTopQuarterIndices[0];
-          methods.scrollToItem({
-            index: targetIndex,
-            align: "start",
-            behavior: "smooth",
-          });
-        } else if (bottomOffset > 0) {
-          // No more user messages below, but there's content - scroll to bottom.
-          methods.scrollToItem({
-            index: "LAST",
-            align: "end",
-            behavior:
-              bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL
-                ? "smooth"
-                : "instant",
-          });
-        }
-      },
-    };
-  }, [methods, listOffset, visibleListHeight, bottomOffset]);
+  const scrollToNextUserMessage = useCallback(() => {
+    const { firstBelowTopQuarterIndex: targetIndex, bottomOffset: offset } =
+      targetsRef.current;
+    if (targetIndex !== -1) {
+      // Scroll to the first user message below top quarter.
+      methods.scrollToItem({
+        index: targetIndex,
+        align: "start",
+        behavior: "smooth",
+      });
+    } else if (offset > 0) {
+      // No more user messages below, but there's content - scroll to bottom.
+      methods.scrollToItem({
+        index: "LAST",
+        align: "end",
+        behavior:
+          offset < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
+      });
+    }
+  }, [methods]);
 
   return (
     <InputBarMessageNavigation
