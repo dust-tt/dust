@@ -1,6 +1,9 @@
 import config from "@app/lib/file_storage/config";
 import type { GCSAPIError } from "@app/lib/file_storage/types";
-import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import {
+  isGCSNotFoundError,
+  isGCSPreconditionFailedError,
+} from "@app/lib/file_storage/types";
 import { setTimeoutAsync, withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AllSupportedFileContentType } from "@app/types/files";
@@ -52,6 +55,27 @@ type RawContentSaveOptions = Pick<
   SaveOptions,
   "preconditionOpts" | "resumable"
 >;
+
+export type FileCopyResult = {
+  destinationGeneration: string;
+};
+
+function getCopyResponseGeneration(response: unknown): string | null {
+  if (
+    typeof response !== "object" ||
+    response === null ||
+    !("resource" in response) ||
+    typeof response.resource !== "object" ||
+    response.resource === null ||
+    !("generation" in response.resource)
+  ) {
+    return null;
+  }
+  const { generation } = response.resource;
+  return isString(generation) || isNumber(generation)
+    ? String(generation)
+    : null;
+}
 
 function isRetryableGCSError(err: unknown): boolean {
   // ApiError only adds optional fields on top of Error, so a normalized Error
@@ -481,10 +505,13 @@ export class FileStorage {
 
   async delete(
     filePath: string,
-    { ignoreNotFound }: { ignoreNotFound?: boolean } = {}
+    {
+      ignoreNotFound,
+      ifGenerationMatch,
+    }: { ignoreNotFound?: boolean; ifGenerationMatch?: string } = {}
   ) {
     try {
-      return await this.file(filePath).delete();
+      return await this.file(filePath).delete({ ifGenerationMatch });
     } catch (err) {
       if (ignoreNotFound && isGCSNotFoundError(err)) {
         return;
@@ -505,8 +532,14 @@ export class FileStorage {
     srcPath: string,
     destPath: string,
     destinationStorage: FileStorage = this,
-    { sourceGeneration }: { sourceGeneration?: string } = {}
-  ): Promise<void> {
+    {
+      destinationGenerationMatch,
+      sourceGeneration,
+    }: {
+      destinationGenerationMatch?: number | string;
+      sourceGeneration?: string;
+    } = {}
+  ): Promise<FileCopyResult> {
     const destinationFile = destinationStorage.file(destPath);
     const sourceFile = sourceGeneration
       ? this.bucket.file(srcPath, { generation: sourceGeneration })
@@ -517,10 +550,18 @@ export class FileStorage {
       attempt <= GCS_TRANSIENT_RETRY_MAX_ATTEMPTS;
       attempt++
     ) {
+      let response: unknown;
       try {
-        await sourceFile.copy(destinationFile);
-        return;
+        [, response] = await sourceFile.copy(destinationFile, {
+          preconditionOpts:
+            destinationGenerationMatch !== undefined
+              ? { ifGenerationMatch: destinationGenerationMatch }
+              : undefined,
+        });
       } catch (err) {
+        if (isGCSPreconditionFailedError(err)) {
+          throw err;
+        }
         if (attempt === GCS_TRANSIENT_RETRY_MAX_ATTEMPTS) {
           throw err;
         }
@@ -542,8 +583,17 @@ export class FileStorage {
         );
 
         await setTimeoutAsync(delayMs);
+        continue;
       }
+
+      const destinationGeneration = getCopyResponseGeneration(response);
+      if (!destinationGeneration) {
+        throw new Error("GCS copy response is missing its generation.");
+      }
+      return { destinationGeneration };
     }
+
+    throw new Error("GCS copy retry loop exhausted unexpectedly.");
   }
 
   async deleteByPrefix(prefix: string): Promise<void> {
