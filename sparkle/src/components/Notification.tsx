@@ -135,9 +135,8 @@ export function NotificationContent({
           <div className="pl-6">
             <Button
               size="xs"
-              variant="ghost"
+              variant="outline"
               label={action.label}
-              className="text-primary-50 hover:bg-white/10 active:bg-white/10 dark:hover:bg-black/[0.06] dark:active:bg-black/[0.06]"
               onClick={() => {
                 action.onClick();
                 onDismiss?.();
