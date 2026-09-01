@@ -1,12 +1,13 @@
 # Unified Webhook Router
 
-A secure Firebase Function that routes webhooks from Slack and Microsoft Teams to multiple regional endpoints with platform-specific verification.
+A secure Firebase Function that receives and routes platform webhooks with platform-specific
+verification.
 
 ## Features
 
-- ✅ **Multi-platform support** - Handles Slack and Microsoft Teams webhooks
-- ✅ **Platform-specific verification** - Slack HMAC signatures + Teams JWT validation
-- ✅ **Webhook secret validation** - Double security layer for both platforms
+- ✅ **Multi-platform support** - Handles Slack, Microsoft Teams, Notion, and Shopify webhooks
+- ✅ **Platform-specific verification** - HMAC signatures and Teams JWT validation
+- ✅ **Webhook secret validation** - Additional URL secret on standard platform routes
 - ✅ **Multi-region forwarding** - Routes to US and EU endpoints
 - ✅ **URL verification** - Handles Slack's URL verification challenges
 - ✅ **Form-data preservation** - Maintains original webhook formats
@@ -78,6 +79,7 @@ GCP_WEBHOOK_ROUTER_CONFIG_BUCKET=dust-infra.firebasestorage.app
 SLACK_SIGNING_SECRET="your-slack-signing-secret"
 MICROSOFT_BOT_ID_SECRET="your-bot-app-id"
 NOTION_SIGNING_SECRET="your-notion-signing-secret"
+OAUTH_SHOPIFY_CLIENT_SECRET="your-shopify-client-secret"
 US_CONNECTOR_URL=http://localhost:3002
 EU_CONNECTOR_URL=http://localhost:3002
 ```
@@ -93,6 +95,7 @@ http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/s
 http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/slack/interactions
 http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
 http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/notion
+http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/shopify
 ```
 
 ### Production
@@ -104,6 +107,7 @@ https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SEC
 https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SECRET/slack/interactions
 https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
 https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SECRET/notion
+https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SECRET/shopify
 ```
 
 **Custom Domain (via Firebase Hosting):**
@@ -113,12 +117,13 @@ https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/slack/events
 https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/slack/interactions
 https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
 https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/notion
+https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/shopify
 ```
 
 ## Architecture
 
 ```
-Slack/Teams → Firebase Hosting → Firebase Function → [US Endpoint, EU Endpoint]
+Platforms → Firebase Hosting → Firebase Function → [US Endpoint, EU Endpoint]
                                            ↓
                               Firebase Realtime Database
                                            ↑
@@ -127,10 +132,12 @@ Slack/Teams → Firebase Hosting → Firebase Function → [US Endpoint, EU Endp
 
 **Security Flow:**
 
-1. Validates webhook secret from URL parameter (standard routes) or fetches from config (data sync routes)
+1. Validates the webhook secret from the URL on standard routes
 2. Platform-specific verification:
    - **Slack**: HMAC signature validation using Dust secret (standard) or client secret (data sync)
    - **Teams**: Bot Framework JWT token validation
+   - **Notion**: HMAC signature validation
+   - **Shopify**: Raw-body HMAC validation using the Shopify app client secret
 3. Handles platform-specific challenges (Slack URL verification)
 4. Forwards to regional endpoints based on configuration
 
@@ -153,6 +160,10 @@ Uses GCP Secret Manager for production:
 - `connectors-DUST_CONNECTORS_WEBHOOKS_SECRET` - Webhook secret
 - `SLACK_SIGNING_SECRET` - Slack app signing secret
 - `MICROSOFT_BOT_ID_SECRET` - Microsoft Bot Framework App ID
+- `NOTION_SIGNING_SECRET` - Notion integration signing secret
+- `OAUTH_SHOPIFY_CLIENT_SECRET` - Shopify app client secret
+
+The Shopify client secret must exist in the global GCP project before deploying the router.
 
 For local development, set environment variables:
 
@@ -161,6 +172,7 @@ export DUST_CONNECTORS_WEBHOOKS_SECRET="your-webhook-secret"
 export SLACK_SIGNING_SECRET="your-slack-signing-secret"
 export MICROSOFT_BOT_ID_SECRET="your-bot-app-id"
 export NOTION_SIGNING_SECRET="your-notion-signing-secret"
+export OAUTH_SHOPIFY_CLIENT_SECRET="your-shopify-client-secret"
 ```
 
 ## Firebase Services Used
@@ -198,6 +210,23 @@ export NOTION_SIGNING_SECRET="your-notion-signing-secret"
 ### Notion Endpoint
 
 - `POST /:webhookSecret/notion` - Notion events
+
+### Shopify Compliance Endpoint
+
+- `POST /:webhookSecret/shopify` - Shopify compliance events
+
+The Shopify route accepts `customers/data_request`, `customers/redact`, and `shop/redact`. It
+verifies and acknowledges receipt without logging customer or order data. It currently emits an
+operational warning for the privacy team; fulfilling exports and redactions remains a separate
+privacy workflow.
+
+Configure the Shopify app with:
+
+```toml
+[[webhooks.subscriptions]]
+compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+uri = "https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/shopify"
+```
 
 ## Development
 

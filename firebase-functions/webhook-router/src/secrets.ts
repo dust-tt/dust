@@ -10,6 +10,7 @@ export interface Secrets {
   webhookSecret: string;
   microsoftBotId?: string;
   notionSigningSecret: string;
+  shopifyClientSecret: string;
 }
 
 export class SecretManager {
@@ -47,6 +48,7 @@ export class SecretManager {
         microsoftBotId: CONFIG.MICROSOFT_BOT_ID_SECRET,
         slackSigningSecret: CONFIG.SLACK_SIGNING_SECRET ?? "",
         notionSigningSecret: CONFIG.NOTION_SIGNING_SECRET ?? "",
+        shopifyClientSecret: CONFIG.OAUTH_SHOPIFY_CLIENT_SECRET ?? "",
         usSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         webhookSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
       };
@@ -76,6 +78,7 @@ export class SecretManager {
         slackSigningSecretResponse,
         microsoftBotIdResponse,
         notionSigningSecretResponse,
+        shopifyClientSecretResponse,
       ] = await Promise.all([
         this.client.accessSecretVersion({
           name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
@@ -95,6 +98,9 @@ export class SecretManager {
         this.client.accessSecretVersion({
           name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.NOTION_SIGNING_SECRET_NAME}/versions/latest`,
         }),
+        this.client.accessSecretVersion({
+          name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.OAUTH_SHOPIFY_CLIENT_SECRET_NAME}/versions/latest`,
+        }),
       ]);
 
       return {
@@ -107,6 +113,8 @@ export class SecretManager {
           slackSigningSecretResponse[0].payload?.data?.toString() || "",
         notionSigningSecret:
           notionSigningSecretResponse[0].payload?.data?.toString() || "",
+        shopifyClientSecret:
+          shopifyClientSecretResponse[0].payload?.data?.toString() || "",
       };
     } catch (e) {
       error("Failed to load secrets from Secret Manager", {
