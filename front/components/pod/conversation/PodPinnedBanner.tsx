@@ -143,7 +143,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     isEditor: podInfo.isEditor,
   });
 
-  const { fileId, fileContent, isLoading, isNotFound } =
+  const { fileId, fileContent, functionReferenceKind, isLoading, isNotFound } =
     usePodFrameRenderableContent({
       owner,
       framePath: pinnedFramePath,
@@ -192,7 +192,13 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     );
   }
 
-  if (isNotFound || !fileId || !fileContent || !vizUrl) {
+  if (
+    isNotFound ||
+    !fileId ||
+    !fileContent ||
+    !functionReferenceKind ||
+    !vizUrl
+  ) {
     return null;
   }
 
@@ -202,6 +208,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     fileContent,
     vizUrl,
     identifier: `viz-banner-${fileId}`,
+    frameId: functionReferenceKind === "v2" ? fileId : undefined,
     isPodEditor: podInfo.isEditor,
     isPodMember: podInfo.isMember,
     framePath: pinnedFramePath,
