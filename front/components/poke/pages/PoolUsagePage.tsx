@@ -16,11 +16,7 @@ import {
 } from "@app/poke/swr/credits";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeGroups } from "@app/poke/swr/groups";
-import {
-  usePokeGroupAllowedModelTiers,
-  usePokeUserAllowedModelTiers,
-  usePokeWorkspaceAllowedModelTiers,
-} from "@app/poke/swr/model_tiers";
+import { usePokeAllowedModelTiers } from "@app/poke/swr/model_tiers";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { isCapEligibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -210,14 +206,11 @@ export function PoolUsagePage() {
     (group) => group.sId === groupFilter
   )?.name;
 
-  const { users: userAllowedModelTiers } = usePokeUserAllowedModelTiers({
-    owner,
-  });
-  const { groups: groupAllowedModelTiers } = usePokeGroupAllowedModelTiers({
-    owner,
-  });
-  const { maxTierName: workspaceMaxTierName } =
-    usePokeWorkspaceAllowedModelTiers({ owner });
+  const {
+    users: userAllowedModelTiers,
+    groups: groupAllowedModelTiers,
+    maxTierName: workspaceMaxTierName,
+  } = usePokeAllowedModelTiers({ owner });
   const workspaceAllowedModelTiers = useMemo(
     () => expandMaxTierName(workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER),
     [workspaceMaxTierName]
