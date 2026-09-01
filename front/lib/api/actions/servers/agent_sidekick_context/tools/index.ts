@@ -48,6 +48,7 @@ import {
   DESCRIBE_MCP_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
 } from "@app/lib/reinforcement/types";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -859,7 +860,14 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       days: numberOfDays,
     });
 
-    const overviewResult = await fetchAgentOverview(baseQuery, numberOfDays);
+    const [feedbackCounts, overviewResult] = await Promise.all([
+      AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+        auth,
+        agentConfigurationId,
+        numberOfDays
+      ),
+      fetchAgentOverview(baseQuery),
+    ]);
 
     if (overviewResult.isErr()) {
       return new Err(
@@ -883,9 +891,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         conversationCount: overview.conversationCount,
         messageCount: overview.messageCount,
         feedback: {
-          positive: overview.positiveFeedbacks,
-          negative: overview.negativeFeedbacks,
-          total: overview.positiveFeedbacks + overview.negativeFeedbacks,
+          positive: feedbackCounts.positive,
+          negative: feedbackCounts.negative,
+          total: feedbackCounts.positive + feedbackCounts.negative,
         },
       },
     };

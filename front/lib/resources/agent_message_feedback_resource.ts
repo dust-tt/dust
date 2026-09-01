@@ -361,6 +361,28 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     }[];
   }
 
+  static async getFeedbackCountForAssistant(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    daysOld?: number
+  ): Promise<{ positive: number; negative: number }> {
+    const feedbackCounts = await this.getFeedbackCountForAssistants(
+      auth,
+      [agentConfigurationId],
+      daysOld
+    );
+
+    const positive = feedbackCounts
+      .filter((f) => f.thumbDirection === "up")
+      .reduce((sum, f) => sum + f.count, 0);
+
+    const negative = feedbackCounts
+      .filter((f) => f.thumbDirection === "down")
+      .reduce((sum, f) => sum + f.count, 0);
+
+    return { positive, negative };
+  }
+
   /**
    * Returns feedback counts grouped by conversationId for the given
    * conversation model IDs.

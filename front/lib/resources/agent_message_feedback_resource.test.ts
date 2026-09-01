@@ -25,6 +25,163 @@ async function createConvWithAgentMessage(
   return { conv, agentMessageId: messageRow.agentMessageId! };
 }
 
+describe("AgentMessageFeedbackResource.getFeedbackCountForAssistant", () => {
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({ role: "user" });
+    auth = setup.authenticator;
+  });
+
+  it("returns zeros when no feedback exists for the assistant", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const result =
+      await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+        auth,
+        agent.sId
+      );
+
+    expect(result).toEqual({ positive: 0, negative: 0 });
+  });
+
+  it("counts positive and negative feedback correctly", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+    const userId = auth.getNonNullableUser().id;
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const { conv: conv1, agentMessageId: amId1 } =
+      await createConvWithAgentMessage(auth, agent.sId);
+    const { conv: conv2, agentMessageId: amId2 } =
+      await createConvWithAgentMessage(auth, agent.sId);
+    const { conv: conv3, agentMessageId: amId3 } =
+      await createConvWithAgentMessage(auth, agent.sId);
+
+    await AgentMessageFeedbackResource.makeNew({
+      workspaceId: workspace.id,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      conversationId: conv1.id,
+      agentMessageId: amId1,
+      userId,
+      thumbDirection: "up",
+      content: null,
+      isConversationShared: false,
+      dismissed: false,
+    });
+    await AgentMessageFeedbackResource.makeNew({
+      workspaceId: workspace.id,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      conversationId: conv2.id,
+      agentMessageId: amId2,
+      userId,
+      thumbDirection: "up",
+      content: null,
+      isConversationShared: false,
+      dismissed: false,
+    });
+    await AgentMessageFeedbackResource.makeNew({
+      workspaceId: workspace.id,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      conversationId: conv3.id,
+      agentMessageId: amId3,
+      userId,
+      thumbDirection: "down",
+      content: null,
+      isConversationShared: false,
+      dismissed: false,
+    });
+
+    const result =
+      await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+        auth,
+        agent.sId
+      );
+
+    expect(result).toEqual({ positive: 2, negative: 1 });
+  });
+
+  it("does not count feedback for other assistants", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+    const userId = auth.getNonNullableUser().id;
+    const agent1 = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Agent One",
+    });
+    const agent2 = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Agent Two",
+    });
+
+    const { conv, agentMessageId: amId } = await createConvWithAgentMessage(
+      auth,
+      agent2.sId
+    );
+
+    await AgentMessageFeedbackResource.makeNew({
+      workspaceId: workspace.id,
+      agentConfigurationId: agent2.sId,
+      agentConfigurationVersion: agent2.version,
+      conversationId: conv.id,
+      agentMessageId: amId,
+      userId,
+      thumbDirection: "up",
+      content: null,
+      isConversationShared: false,
+      dismissed: false,
+    });
+
+    const result =
+      await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+        auth,
+        agent1.sId
+      );
+
+    expect(result).toEqual({ positive: 0, negative: 0 });
+  });
+
+  it("includes recent feedback when daysOld covers the current day", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+    const userId = auth.getNonNullableUser().id;
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const { conv, agentMessageId: amId } = await createConvWithAgentMessage(
+      auth,
+      agent.sId
+    );
+
+    await AgentMessageFeedbackResource.makeNew({
+      workspaceId: workspace.id,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      conversationId: conv.id,
+      agentMessageId: amId,
+      userId,
+      thumbDirection: "up",
+      content: null,
+      isConversationShared: false,
+      dismissed: false,
+    });
+
+    // A 30-day window should include feedback created just now.
+    const resultWithinWindow =
+      await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+        auth,
+        agent.sId,
+        30
+      );
+    expect(resultWithinWindow).toEqual({ positive: 1, negative: 0 });
+
+    // Omitting daysOld returns all feedback regardless of age.
+    const resultAllTime =
+      await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+        auth,
+        agent.sId
+      );
+    expect(resultAllTime).toEqual({ positive: 1, negative: 0 });
+  });
+});
+
 describe("AgentMessageFeedbackResource.getFeedbackCountsByConversationIds", () => {
   let auth: Authenticator;
 
