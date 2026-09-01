@@ -2,6 +2,7 @@ import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
   frameSlideshowContentType,
   getFileFormatCategory,
+  isFrameV2ContentType,
   isInteractiveContentType,
   isMarkdownContentType,
   isPdfContentType,
@@ -217,7 +218,10 @@ export function getFileExplorerBucket(
     return null;
   }
 
-  if (isInteractiveContentType(contentType)) {
+  if (
+    isInteractiveContentType(contentType) ||
+    isFrameV2ContentType(contentType)
+  ) {
     return "frames";
   }
 

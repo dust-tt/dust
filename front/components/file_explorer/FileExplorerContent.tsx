@@ -110,6 +110,7 @@ export function FileExplorerContent({
         );
 
       case "folder":
+      case "frame_package":
         return null;
 
       default:
