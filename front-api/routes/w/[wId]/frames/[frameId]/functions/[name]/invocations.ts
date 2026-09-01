@@ -5,6 +5,7 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
 } from "@app/types/api/sandbox_functions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   FrameFunctionInvocationParamsSchema,
   PostFrameFunctionInvocationBodySchema,
@@ -46,11 +47,19 @@ app.post(
     });
     if (invocationResult.isErr()) {
       if (isSandboxFunctionInvocationError(invocationResult.error)) {
+        let statusCode: 401 | 409;
+        switch (invocationResult.error.code) {
+          case "user_authentication_required":
+            statusCode = 401;
+            break;
+          case "frame_runtime_unavailable":
+            statusCode = 409;
+            break;
+          default:
+            assertNever(invocationResult.error.code);
+        }
         return apiError(ctx, {
-          status_code:
-            invocationResult.error.code === "user_authentication_required"
-              ? 401
-              : 409,
+          status_code: statusCode,
           api_error: {
             type: invocationResult.error.code,
             message: invocationResult.error.message,
