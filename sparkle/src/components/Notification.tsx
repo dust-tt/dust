@@ -16,8 +16,6 @@ import { Icon } from "./Icon";
 
 const NOTIFICATION_DELAY_MS = 5000;
 
-const VISIBLE_NOTIFICATIONS = 3;
-
 export type NotificationType = {
   /** Optional action button shown under the message; clicking it also dismisses the toast. */
   action?: {
@@ -62,7 +60,7 @@ function resolveIconColor(type: NotificationType["type"]): string {
     case "warning":
       return "text-info-500";
     case "hello":
-      return "text-primary-400";
+      return "text-primary-500";
     default:
       return assertNever(type);
   }
@@ -88,63 +86,55 @@ export function NotificationContent({
   return (
     <div
       className={cn(
-        "pointer-events-auto relative flex w-[264px] flex-col overflow-clip",
+        "pointer-events-auto relative flex w-[264px] flex-col gap-2 overflow-clip",
         "rounded-xl bg-primary p-3",
         "shadow-[inset_0px_1px_4px_0px_rgba(255,255,255,0.10)]",
-        "dark:shadow-none"
+        "dark:shadow-none",
+        "[&>*]:transition-opacity [&>*]:duration-400 [&>*]:ease-enter",
+        "[[data-expanded=false][data-front=false]_&>*]:opacity-0"
       )}
     >
-      <div
-        className={cn(
-          "flex flex-col gap-2",
-          "transition-opacity duration-400 ease-enter",
-          "[[data-expanded=false][data-front=false]_&]:opacity-0"
-        )}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-start gap-2">
-            <div className="mt-[2px] shrink-0">
-              <Icon
-                visual={icon}
-                size="xs"
-                className={iconColor}
-                aria-hidden="true"
-              />
-            </div>
-            <div className="flex min-w-0 flex-col gap-0.5">
-              {title && (
-                <span className="label-sm text-primary-50">{title}</span>
-              )}
-              {description && (
-                <span className="copy-xs text-primary-400">{description}</span>
-              )}
-            </div>
-          </div>
-          {onDismiss && (
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="mt-[2px] shrink-0 cursor-pointer text-primary-200 transition-colors hover:text-primary-50"
-              aria-label="Dismiss notification"
-            >
-              <Icon visual={XClose} size="xs" />
-            </button>
-          )}
-        </div>
-        {action && (
-          <div className="pl-6">
-            <Button
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-start gap-2">
+          <div className="mt-[2px] shrink-0">
+            <Icon
+              visual={icon}
               size="xs"
-              variant="outline"
-              label={action.label}
-              onClick={() => {
-                action.onClick();
-                onDismiss?.();
-              }}
+              className={iconColor}
+              aria-hidden="true"
             />
           </div>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            {title && <span className="label-sm text-primary-50">{title}</span>}
+            {description && (
+              <span className="copy-xs text-primary-400">{description}</span>
+            )}
+          </div>
+        </div>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="mt-[2px] shrink-0 cursor-pointer text-primary-200 transition-colors hover:text-primary-50"
+            aria-label="Dismiss notification"
+          >
+            <Icon visual={XClose} size="xs" />
+          </button>
         )}
       </div>
+      {action && (
+        <div className="pl-6">
+          <Button
+            size="xs"
+            variant="outline"
+            label={action.label}
+            onClick={() => {
+              action.onClick();
+              onDismiss?.();
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -185,7 +175,7 @@ export const Notification = {
         <Toaster
           className="flex flex-col items-end"
           duration={NOTIFICATION_DELAY_MS}
-          visibleToasts={VISIBLE_NOTIFICATIONS}
+          visibleToasts={3}
           closeButton={false}
           expand={false}
           invert={false}
