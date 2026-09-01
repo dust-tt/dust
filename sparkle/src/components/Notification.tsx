@@ -18,8 +18,6 @@ const NOTIFICATION_DELAY_MS = 5000;
 
 const VISIBLE_NOTIFICATIONS = 3;
 
-const NOTIFICATION_GAP_PX = 14;
-
 export type NotificationType = {
   /** Optional action button shown under the message; clicking it also dismisses the toast. */
   action?: {
@@ -93,13 +91,13 @@ export function NotificationContent({
         "pointer-events-auto relative flex w-[246px] flex-col overflow-clip",
         "rounded-xl bg-primary p-2",
         "shadow-[inset_0px_1px_4px_0px_rgba(255,255,255,0.10)]",
-        "dark:shadow-[inset_0px_1px_4px_0px_rgba(0,0,0,0.06)]"
+        "dark:shadow-none"
       )}
     >
       <div
         className={cn(
           "flex flex-col gap-1",
-          "transition-opacity duration-[400ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+          "transition-opacity duration-400 ease-enter",
           "[[data-expanded=false][data-front=false]_&]:opacity-0"
         )}
       >
@@ -189,7 +187,6 @@ export const Notification = {
           className="flex flex-col items-end"
           duration={NOTIFICATION_DELAY_MS}
           visibleToasts={VISIBLE_NOTIFICATIONS}
-          gap={NOTIFICATION_GAP_PX}
           closeButton={false}
           expand={false}
           invert={false}
