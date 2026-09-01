@@ -68,6 +68,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("stable Frame ID");
     expect(instructions).toContain("additionally requires read access");
     expect(instructions).toContain("does not test the Frame");
+    expect(instructions).toContain("dsbx frame validate");
     expect(instructions).toContain(
       "Frame sharing and use rights are configured by the user in the Dust UI"
     );
@@ -104,6 +105,14 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(
       "Never run concurrent file mutations against the same path"
     );
+    expect(instructions).toContain(
+      "Do not replace an entire UI or function for a localized"
+    );
+    expect(instructions).toContain(
+      "mark required fields in a newly created table as `.notNull()`"
+    );
+    expect(instructions).toContain("shared Zod domain");
+    expect(instructions).toContain("instead of `bun build`");
     expect(instructions).toContain(
       "Other interactive-content tools remain available"
     );

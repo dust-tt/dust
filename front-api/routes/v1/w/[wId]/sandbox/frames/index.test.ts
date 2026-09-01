@@ -64,6 +64,21 @@ function requestFrameRegister(
   });
 }
 
+function requestFrameValidate(
+  workspaceId: string,
+  token: string,
+  manifestPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/validate`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ manifestPath }),
+  });
+}
+
 function requestFrameShare(
   workspaceId: string,
   token: string,
@@ -206,6 +221,48 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       published.publicationId
     );
+  });
+
+  it("validates a registered Frame without activating a publication", async () => {
+    const context = await setup();
+    assert(context.frame);
+
+    const response = await requestFrameValidate(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      frameId: context.frame.sId,
+      manifestPath: context.manifestPath,
+      warnings: [],
+    });
+    expect(
+      (await FileResource.fetchById(context.auth, context.frame.sId))
+        ?.useCaseMetadata?.activePublicationId
+    ).toBeUndefined();
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("does not validate a legacy Frame through the v2-only command", async () => {
+    const context = await setupLegacyFrame();
+
+    const response = await requestFrameValidate(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message:
+          "Pre-publish validation is only available for Frames v2 manifests.",
+      },
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("returns the existing Frame share link without changing use rights", async () => {

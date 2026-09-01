@@ -1,6 +1,9 @@
 // @vitest-environment node
 
-import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import {
+  buildAndPublishFramePublication,
+  validateFramePublication,
+} from "@app/lib/api/frames/build_and_publish";
 import {
   computeFrameSourcePathSetSha256,
   FRAME_SOURCE_STAGING_ROOT,
@@ -154,6 +157,38 @@ beforeEach(() => {
 });
 
 describe("buildAndPublishFramePublication", () => {
+  it("validates UI and Tailwind without writing a publication", async () => {
+    const { auth, conversation, frame } = await setup();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication(activePublicationId);
+
+    const result = await validateFramePublication(auth, {
+      conversation,
+      manifest: uiOnlyManifest,
+      sourceFiles: [
+        {
+          ...sourceFiles[0],
+          content: Buffer.from(
+            'export default function App() { return <main className="h-[600px]">Tasks</main>; }'
+          ),
+        },
+      ],
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(result.isOk() && result.value.warnings).toMatchObject([
+      {
+        type: "tailwind",
+        message: expect.stringContaining("index.tsx: Forbidden Tailwind"),
+      },
+    ]);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBe(activePublicationId);
+  });
+
   it("builds and publishes the UI without starting a sandbox", async () => {
     const { auth, conversation, frame } = await setup();
 

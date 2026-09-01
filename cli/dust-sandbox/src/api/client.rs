@@ -11,7 +11,8 @@ use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
     CallToolResponse, CallToolResult, FrameCallByIdRequest, FrameCallFromSourceRequest,
     FrameCallResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
-    FrameRegisterResponse, FrameShareLinkResponse, MCPServerView, SandboxServerViewsResponse,
+    FrameRegisterResponse, FrameShareLinkResponse, FrameValidateRequest, FrameValidateResponse,
+    MCPServerView, SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -187,6 +188,18 @@ impl DustApiClient {
         self.post(
             "sandbox/frames/register",
             &FrameRegisterRequest { manifest_path },
+        )
+        .await
+    }
+
+    pub async fn validate_frame(
+        &self,
+        manifest_path: &str,
+    ) -> anyhow::Result<FrameValidateResponse> {
+        self.post_with_timeout(
+            "sandbox/frames/validate",
+            &FrameValidateRequest { manifest_path },
+            POLL_MAX_DURATION,
         )
         .await
     }
