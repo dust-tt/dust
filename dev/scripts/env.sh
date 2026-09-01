@@ -8,10 +8,26 @@
 
 export DUST_REPO_ROOT="${DUST_REPO_ROOT:-/workspace}"
 export DUST_IN_CONTAINER="${DUST_IN_CONTAINER:-1}"
+export DUST_APPS_PROMPT_FILE="${DUST_APPS_PROMPT_FILE:-/tmp/dust-infra/start-apps.prompt}"
+# Persistent core/target volume: keep recent artifacts, drop the rest.
+export DUST_CARGO_SWEEP_DAYS="${DUST_CARGO_SWEEP_DAYS:-14}"
+export DUST_CARGO_SWEEP_MAXSIZE="${DUST_CARGO_SWEEP_MAXSIZE:-12GiB}"
 
 # 1Password Environment id for shared cloud-agent / container secrets (not a credential).
 # Cloud agents get it injected as a runtime secret; this default serves local docker runs.
 export OP_ENVIRONMENT_ID="${OP_ENVIRONMENT_ID:-r6iqd3y67zqlbsxnotrj6bm25q}"  # pragma: allowlist secret
+
+# Every stateful service writes under this single root so one Docker volume
+# survives image rebuilds and container re-creation. Paths are wired up by
+# init-data-dirs.sh; keep in sync with .devcontainer/devcontainer.json.
+export DUST_DATA_ROOT="${DUST_DATA_ROOT:-/var/lib/dust-dev}"
+export DUST_POSTGRES_DATA_ROOT="${DUST_POSTGRES_DATA_ROOT:-${DUST_DATA_ROOT}/postgres}"
+export DUST_REDIS_DATA_DIR="${DUST_REDIS_DATA_DIR:-${DUST_DATA_ROOT}/redis}"
+export DUST_ELASTICSEARCH_DATA_DIR="${DUST_ELASTICSEARCH_DATA_DIR:-${DUST_DATA_ROOT}/elasticsearch/data}"
+export DUST_TEMPORAL_DB_FILE="${DUST_TEMPORAL_DB_FILE:-${DUST_DATA_ROOT}/temporal/dev.db}"
+# Qdrant has no CLI flags for these; it reads QDRANT__* overrides from the env.
+export QDRANT__STORAGE__STORAGE_PATH="${QDRANT__STORAGE__STORAGE_PATH:-${DUST_DATA_ROOT}/qdrant/storage}"
+export QDRANT__STORAGE__SNAPSHOTS_PATH="${QDRANT__STORAGE__SNAPSHOTS_PATH:-${DUST_DATA_ROOT}/qdrant/snapshots}"
 
 export POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
@@ -51,6 +67,9 @@ export REDIS_URI="${REDIS_URI:-redis://${REDIS_HOST}:${REDIS_PORT}}"
 export REDIS_CACHE_URI="${REDIS_CACHE_URI:-$REDIS_URI}"
 export ELASTICSEARCH_URL="${ELASTICSEARCH_URL:-http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}}"
 export QDRANT_CLUSTER_0_URL="${QDRANT_CLUSTER_0_URL:-http://${QDRANT_HTTP_HOST}:${QDRANT_GRPC_PORT}}"
+# QdrantClients::build() errors out when the key is unset, even though the local
+# single-node Qdrant runs without authentication.
+export QDRANT_CLUSTER_0_API_KEY="${QDRANT_CLUSTER_0_API_KEY:-dust-dev-local}"
 export QDRANT_USE_SHARDING="${QDRANT_USE_SHARDING:-false}"
 
 export CORE_API="${CORE_API:-http://localhost:3001}"
@@ -73,7 +92,7 @@ export BASH_ENV="${BASH_ENV:-/tmp/dust-shell-env.sh}"
 # container id, so health checks against localhost:3000 never reach front-api.
 export HOSTNAME="${DUST_DEV_BIND_HOST:-0.0.0.0}"
 
-export SHELL="${SHELL:-/bin/bash}"
+export SHELL="${SHELL:-/bin/zsh}"
 export LANG="${LANG:-C.UTF-8}"
 export LC_ALL="${LC_ALL:-C.UTF-8}"
 export TERM="${TERM:-xterm-256color}"

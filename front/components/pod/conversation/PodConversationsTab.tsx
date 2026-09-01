@@ -211,7 +211,8 @@ export function PodConversationsTab({
                   podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
-                {podInfo.name} - {greeting}
+                {podInfo.name}{" "}
+                <span className="text-muted-foreground">- {greeting}</span>
               </h2>
               {podInfo.archivedAt && (
                 <Chip size="xs" color="warning" label="Archived" />

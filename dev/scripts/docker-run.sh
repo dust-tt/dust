@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # Run the Dust shared dev container locally (laptop) or attach to it.
 #
-# Binds the repo for live edits but overlays node_modules and core/target so
-# container npm install / cargo builds do not touch your Mac copies.
-#
-# Default: gitignored host dirs under dev/docker-volumes/ (not in the image).
-# Alternative: DUST_DEV_VOLUME_MODE=docker for opaque Docker named volumes.
+# Binds the repo for live edits but overlays node_modules and core/target with
+# named Docker volumes so container npm install / cargo builds stay on the
+# Linux VM disk (persist across relaunch, not visible on the Mac checkout).
 #
 # Usage (from repo root):
 #   bash dev/scripts/docker-run.sh                 # start container + up.sh (infra + mprocs)
@@ -26,12 +24,55 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 IMAGE_NAME="${DUST_DEV_IMAGE:-dust-dev}"
 CONTAINER_NAME="${DUST_DEV_CONTAINER:-dust-dev}"
-PLATFORM="${DUST_DEV_PLATFORM:-linux/amd64}"
-VOLUME_MODE="${DUST_DEV_VOLUME_MODE:-host}"
 VOLUME_PREFIX="${DUST_DEV_VOLUME_PREFIX:-dust-dev}"
-HOST_VOLUME_ROOT="${DUST_DEV_HOST_VOLUME_ROOT:-$REPO_ROOT/dev/docker-volumes}"
-NODE_MODULES_VOLUME="${VOLUME_PREFIX}-node-modules"
-CARGO_TARGET_VOLUME="${VOLUME_PREFIX}-cargo-target"
+
+# Build for Docker's native architecture by default. Set DUST_DEV_PLATFORM
+# (for example linux/amd64) to opt into a different platform explicitly.
+if [ -n "${DUST_DEV_PLATFORM:-}" ]; then
+  PLATFORM="$DUST_DEV_PLATFORM"
+else
+  docker_arch="$(docker info --format '{{.Architecture}}')"
+  case "$docker_arch" in
+    amd64|x86_64) PLATFORM="linux/amd64" ;;
+    arm64|aarch64) PLATFORM="linux/arm64" ;;
+    *)
+      echo "Unsupported Docker architecture: ${docker_arch}" >&2
+      exit 1
+      ;;
+  esac
+fi
+case "$PLATFORM" in
+  linux/amd64|linux/arm64) ;;
+  *)
+    echo "Unsupported DUST_DEV_PLATFORM: ${PLATFORM}" >&2
+    echo "Supported values: linux/amd64, linux/arm64" >&2
+    exit 1
+    ;;
+esac
+
+# Dependency trees, build outputs and dev-server caches, as `volume:target`
+# pairs. These are rewritten constantly and only ever read from inside the
+# container, so they stay on the Linux VM disk instead of the virtiofs repo
+# bind (where per-file latency dominates). Keep in sync with
+# .devcontainer/devcontainer.json.
+DEV_VOLUMES=(
+  "${VOLUME_PREFIX}-node-modules:/workspace/node_modules"
+  "${VOLUME_PREFIX}-cargo-target:/workspace/core/target"
+  # Only the caches under CARGO_HOME: /usr/local/cargo/bin holds the rustup
+  # shims, so a volume there would shadow toolchain upgrades from the image.
+  "${VOLUME_PREFIX}-cargo-registry:/usr/local/cargo/registry"
+  "${VOLUME_PREFIX}-cargo-git:/usr/local/cargo/git"
+  "${VOLUME_PREFIX}-front-spa-vite:/workspace/front-spa/.vite"
+  "${VOLUME_PREFIX}-front-api-cache:/workspace/front-api/.cache"
+  "${VOLUME_PREFIX}-front-api-dist:/workspace/front-api/dist"
+  "${VOLUME_PREFIX}-sparkle-dist:/workspace/sparkle/dist"
+  # Postgres/Redis/Elasticsearch/Temporal/Qdrant state, relocated under one root
+  # by init-data-dirs.sh — otherwise it lives in the container layer and is lost
+  # on every rebuild.
+  "${VOLUME_PREFIX}-data:/var/lib/dust-dev"
+  "${VOLUME_PREFIX}-gcloud-config:/root/.config/gcloud"
+  "${VOLUME_PREFIX}-git-spice-config:/root/.config/git-spice"
+)
 
 BUILD=0
 RESET_VOLUMES=0
@@ -81,7 +122,7 @@ exec_interactive() {
   exec docker exec -it \
     -e TERM="${TERM:-xterm-256color}" \
     -e COLORTERM="${COLORTERM:-truecolor}" \
-    -e SHELL=/bin/bash \
+    -e SHELL=/bin/zsh \
     -e LANG=C.UTF-8 \
     -e LC_ALL=C.UTF-8 \
     -e DUST_IN_CONTAINER=1 \
@@ -104,7 +145,7 @@ ensure_container_running() {
     --name "$CONTAINER_NAME" \
     -e TERM="${TERM:-xterm-256color}" \
     -e COLORTERM="${COLORTERM:-truecolor}" \
-    -e SHELL=/bin/bash \
+    -e SHELL=/bin/zsh \
     -e LANG=C.UTF-8 \
     -e LC_ALL=C.UTF-8 \
     -e DUST_IN_CONTAINER=1 \
@@ -113,7 +154,9 @@ ensure_container_running() {
     -p 3011:3011 \
     -p 3001:3001 \
     -p 3007:3007 \
+    -p 6333:6333 \
     -p 7233:7233 \
+    -p 8233:8233 \
     -v "$REPO_ROOT:/workspace" \
     "${VOLUME_ARGS[@]}" \
     "${ENV_ARGS[@]}" \
@@ -137,13 +180,21 @@ if [ "$SHELL_ONLY" = 1 ]; then
     exit 1
   fi
   collect_env_args
-  # -i: interactive shells skip BASH_ENV, so bashrc must run (colored PS1 + op env).
-  # -l: load profile/bash_profile so /root/.bashrc is reached consistently.
-  exec_interactive bash -il
+  # Interactive zsh reads ~/.zshrc (not BASH_ENV). Login (-l) also reads .zprofile.
+  exec_interactive zsh -il
 fi
 
-if [ "$BUILD" = 1 ] || ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
-  echo "Building ${IMAGE_NAME} from dev/Dockerfile..."
+IMAGE_PLATFORM=""
+if docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+  IMAGE_PLATFORM="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$IMAGE_NAME")"
+fi
+if [ "$BUILD" = 1 ] || [ -z "$IMAGE_PLATFORM" ] || [ "$IMAGE_PLATFORM" != "$PLATFORM" ]; then
+  if [ -n "$IMAGE_PLATFORM" ] && [ "$IMAGE_PLATFORM" != "$PLATFORM" ]; then
+    echo "Rebuilding ${IMAGE_NAME}: existing image is ${IMAGE_PLATFORM}, requested ${PLATFORM}."
+    BUILD=1
+  else
+    echo "Building ${IMAGE_NAME} for ${PLATFORM} from dev/Dockerfile..."
+  fi
   docker build --platform "$PLATFORM" -f "$REPO_ROOT/dev/Dockerfile" -t "$IMAGE_NAME" "$REPO_ROOT"
 fi
 
@@ -152,45 +203,35 @@ if [ "$BUILD" = 1 ] && docker container inspect "$CONTAINER_NAME" >/dev/null 2>&
   docker rm -f "$CONTAINER_NAME" >/dev/null
 fi
 
+if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+  container_image="$(docker container inspect --format '{{.Image}}' "$CONTAINER_NAME")"
+  container_platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$container_image")"
+  if [ "$container_platform" != "$PLATFORM" ]; then
+    echo "Removing ${CONTAINER_NAME}: existing container is ${container_platform}, requested ${PLATFORM}."
+    docker rm -f "$CONTAINER_NAME" >/dev/null
+  fi
+fi
+
 if [ "$RESET_VOLUMES" = 1 ] && docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
   echo "Removing container ${CONTAINER_NAME} before resetting volumes..."
   docker rm -f "$CONTAINER_NAME" >/dev/null
 fi
 
 VOLUME_ARGS=()
-case "$VOLUME_MODE" in
-  host)
-    NODE_MODULES_MOUNT="$HOST_VOLUME_ROOT/node_modules"
-    CARGO_TARGET_MOUNT="$HOST_VOLUME_ROOT/core-target"
-    if [ "$RESET_VOLUMES" = 1 ]; then
-      echo "Resetting host dev volumes under ${HOST_VOLUME_ROOT}..."
-      rm -rf "$NODE_MODULES_MOUNT" "$CARGO_TARGET_MOUNT"
-    fi
-    mkdir -p "$NODE_MODULES_MOUNT" "$CARGO_TARGET_MOUNT"
-    VOLUME_ARGS+=(
-      -v "$NODE_MODULES_MOUNT:/workspace/node_modules"
-      -v "$CARGO_TARGET_MOUNT:/workspace/core/target"
-    )
-    echo "Using host-isolated deps: ${NODE_MODULES_MOUNT}"
-    ;;
-  docker)
-    if [ "$RESET_VOLUMES" = 1 ]; then
-      echo "Removing Docker volumes ${NODE_MODULES_VOLUME} and ${CARGO_TARGET_VOLUME}..."
-      docker volume rm "$NODE_MODULES_VOLUME" "$CARGO_TARGET_VOLUME" >/dev/null 2>&1 || true
-    fi
-    docker volume create "$NODE_MODULES_VOLUME" >/dev/null
-    docker volume create "$CARGO_TARGET_VOLUME" >/dev/null
-    VOLUME_ARGS+=(
-      -v "$NODE_MODULES_VOLUME:/workspace/node_modules"
-      -v "$CARGO_TARGET_VOLUME:/workspace/core/target"
-    )
-    echo "Using Docker volumes: ${NODE_MODULES_VOLUME}, ${CARGO_TARGET_VOLUME}"
-    ;;
-  *)
-    echo "Unknown DUST_DEV_VOLUME_MODE=${VOLUME_MODE} (expected host or docker)" >&2
-    exit 1
-    ;;
-esac
+VOLUME_NAMES=()
+for spec in "${DEV_VOLUMES[@]}"; do
+  VOLUME_NAMES+=("${spec%%:*}")
+  VOLUME_ARGS+=(-v "$spec")
+done
+
+if [ "$RESET_VOLUMES" = 1 ]; then
+  echo "Removing Docker volumes: ${VOLUME_NAMES[*]}..."
+  docker volume rm "${VOLUME_NAMES[@]}" >/dev/null 2>&1 || true
+fi
+for name in "${VOLUME_NAMES[@]}"; do
+  docker volume create "$name" >/dev/null
+done
+echo "Using Docker volumes: ${VOLUME_NAMES[*]}"
 
 collect_env_args
 

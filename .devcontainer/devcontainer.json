@@ -1,0 +1,70 @@
+{
+  "name": "dust-dev",
+  "build": {
+    "dockerfile": "../dev/Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "remoteUser": "root",
+  "runArgs": [
+    "--init"
+  ],
+  "forwardPorts": [
+    3000,
+    3010,
+    3011,
+    3001,
+    3007,
+    6333,
+    7233,
+    8233
+  ],
+  "remoteEnv": {
+    "DUST_IN_CONTAINER": "1",
+    "OP_SERVICE_ACCOUNT_TOKEN": "${localEnv:OP_SERVICE_ACCOUNT_TOKEN}",
+    "OP_ENVIRONMENT_ID": "${localEnv:OP_ENVIRONMENT_ID}",
+    "GCP_SERVICE_ACCOUNT": "${localEnv:GCP_SERVICE_ACCOUNT}",
+    "DEV_WORKOS_USER_EMAIL": "${localEnv:DEV_WORKOS_USER_EMAIL}",
+    "DEV_WORKOS_USER_ID": "${localEnv:DEV_WORKOS_USER_ID}",
+    "DEV_WORKOS_USER_PASSWORD": "${localEnv:DEV_WORKOS_USER_PASSWORD}",
+    "SHELL": "/bin/zsh"
+  },
+  "mounts": [
+    "source=dust-dev-node-modules,target=/workspace/node_modules,type=volume",
+    "source=dust-dev-cargo-target,target=/workspace/core/target,type=volume",
+    "source=dust-dev-cargo-registry,target=/usr/local/cargo/registry,type=volume",
+    "source=dust-dev-cargo-git,target=/usr/local/cargo/git,type=volume",
+    "source=dust-dev-front-spa-vite,target=/workspace/front-spa/.vite,type=volume",
+    "source=dust-dev-front-api-cache,target=/workspace/front-api/.cache,type=volume",
+    "source=dust-dev-front-api-dist,target=/workspace/front-api/dist,type=volume",
+    "source=dust-dev-sparkle-dist,target=/workspace/sparkle/dist,type=volume",
+    "source=dust-dev-data,target=/var/lib/dust-dev,type=volume",
+    "source=dust-dev-gcloud-config,target=/root/.config/gcloud,type=volume",
+    "source=dust-dev-git-spice-config,target=/root/.config/git-spice,type=volume"
+  ],
+  "postCreateCommand": "bash dev/scripts/install.sh",
+  "postStartCommand": "DUST_OFFER_START_APPS=1 bash dev/scripts/infra.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "biomejs.biome",
+        "rust-lang.rust-analyzer",
+        "typescriptteam.native-preview",
+        "dbaeumer.vscode-eslint",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh",
+            "args": [
+              "-l"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

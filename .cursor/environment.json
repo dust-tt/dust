@@ -19,6 +19,8 @@
     { "name": "front-spa", "port": 3011 },
     { "name": "core-api", "port": 3001 },
     { "name": "viz", "port": 3007 },
-    { "name": "temporal", "port": 7233 }
+    { "name": "qdrant", "port": 6333 },
+    { "name": "temporal", "port": 7233 },
+    { "name": "temporal-ui", "port": 8233 }
   ]
 }

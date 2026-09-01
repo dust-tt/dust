@@ -112,6 +112,7 @@ procs:
       echo "Waiting for sparkle to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
+      bash ../tools/wait-for-front-api-ready.sh
       npm run dev:app
 
   front-poke:
@@ -122,6 +123,7 @@ procs:
       echo "Waiting for sparkle to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
+      bash ../tools/wait-for-front-api-ready.sh
       npm run dev:poke
 
   marketing-site:

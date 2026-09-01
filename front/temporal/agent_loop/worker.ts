@@ -32,7 +32,10 @@ import {
   SCHEDULES_QUEUE_NAME,
 } from "@app/temporal/agent_loop/config";
 import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
-import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import {
+  createTemporalWorker,
+  getWorkflowConfig,
+} from "@app/temporal/bundle_helper";
 import type { WorkerName } from "@app/temporal/worker_registry";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -43,7 +46,6 @@ import {
   OpenTelemetryActivityInboundInterceptor,
   OpenTelemetryActivityOutboundInterceptor,
 } from "@temporalio/interceptors-opentelemetry/lib/worker";
-import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 // Must match front-agent-loop-worker's terminationGracePeriodSeconds.
@@ -96,7 +98,7 @@ async function runAgentLoopWorkerForQueue({
 
   const spanExporter = new NoopSpanExporter();
 
-  const worker = await Worker.create({
+  const worker = await createTemporalWorker({
     ...getWorkflowConfig({
       workerName,
       getWorkflowsPath: () => require.resolve("./workflows"),

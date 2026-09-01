@@ -98,6 +98,31 @@ ensure_elasticsearch_create_index_built() {
   fi
 }
 
+qdrant_create_collection_bin() {
+  echo "${DUST_REPO_ROOT}/core/target/debug/qdrant_create_collection"
+}
+
+ensure_qdrant_create_collection_built() {
+  local bin
+  bin="$(qdrant_create_collection_bin)"
+  if [ -x "$bin" ]; then
+    return 0
+  fi
+  if ! command -v cargo >/dev/null 2>&1; then
+    log "cargo not found on PATH; rebuild dev/Dockerfile or source dev/scripts/env.sh"
+    return 1
+  fi
+  log "Building qdrant_create_collection (core)..."
+  (
+    cd "${DUST_REPO_ROOT}/core"
+    cargo build --bin qdrant_create_collection
+  )
+  if [ ! -x "$bin" ]; then
+    log "qdrant_create_collection binary missing after cargo build"
+    return 1
+  fi
+}
+
 write_gcp_service_account_file() {
   if [ -n "${GCP_SERVICE_ACCOUNT:-}" ]; then
     printf '%s' "$GCP_SERVICE_ACCOUNT" >"${SERVICE_ACCOUNT:-/tmp/dust-dev-sa.json}"
@@ -177,15 +202,16 @@ export_local_dev_infra() {
   apply_local_overrides
 }
 
-# Install /root shell rc so interactive login shells get secrets + colored PS1.
-# Interactive bash does NOT load BASH_ENV — only non-interactive bash does — so
-# /root/.bashrc must source the materialized env directly.
+# Install /root shell rc so interactive login shells get secrets + prompt.
+# Interactive bash does NOT load BASH_ENV — only non-interactive bash does.
+# zsh never loads BASH_ENV. Both rc files source the materialized env directly.
+# Infra scripts stay bash; only interactive terminals are zsh.
 write_root_shell_rc() {
   cat >/root/.bashrc <<EOF
 # Dust shared dev container — kept in sync by materialize_dev_environment.
 export BASH_ENV=${DUST_SHELL_ENV_FILE}
 
-# Interactive shells skip BASH_ENV; load materialized 1Password + local overrides here.
+# Interactive bash skips BASH_ENV; load materialized 1Password + local overrides here.
 if [ -f ${DUST_SHELL_ENV_FILE} ]; then
   # shellcheck disable=SC1091
   . ${DUST_SHELL_ENV_FILE}
@@ -199,10 +225,25 @@ EOF
 
   # Prefer bash_profile for login shells that skip .profile.
   cat >/root/.bash_profile <<'EOF'
-# Dust shared dev container login shell.
+# Dust shared dev container login shell (bash).
 if [ -f ~/.bashrc ]; then
   # shellcheck disable=SC1091
   . ~/.bashrc
+fi
+EOF
+
+  cat >/root/.zshrc <<EOF
+# Dust shared dev container — kept in sync by materialize_dev_environment.
+export SHELL=/bin/zsh
+
+if [ -f ${DUST_SHELL_ENV_FILE} ]; then
+  # shellcheck disable=SC1091
+  . ${DUST_SHELL_ENV_FILE}
+fi
+
+if [ -f /workspace/dev/zshrc ]; then
+  # shellcheck disable=SC1091
+  . /workspace/dev/zshrc
 fi
 EOF
 }

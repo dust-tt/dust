@@ -1,0 +1,115 @@
+# Interactive zsh defaults for the Dust shared dev container.
+# Secret env is loaded by /root/.zshrc (zsh does not use BASH_ENV).
+
+[[ -o interactive ]] || return
+
+# Belt-and-suspenders if this file is sourced without going through /root/.zshrc.
+if [[ -f /tmp/dust-shell-env.sh ]]; then
+  # shellcheck disable=SC1091
+  source /tmp/dust-shell-env.sh
+fi
+
+export SHELL=/bin/zsh
+export LANG="${LANG:-C.UTF-8}"
+export LC_ALL="${LC_ALL:-C.UTF-8}"
+export TERM="${TERM:-xterm-256color}"
+export COLORTERM="${COLORTERM:-truecolor}"
+export FORCE_COLOR="${FORCE_COLOR:-1}"
+export CLICOLOR="${CLICOLOR:-1}"
+export CLICOLOR_FORCE="${CLICOLOR_FORCE:-1}"
+
+# Cursor cloud-agent terminals replace image PATH; restore Rust/Qdrant tool locations.
+for _dev_bin_dir in /usr/local/cargo/bin /opt/qdrant; do
+  if [[ -d "${_dev_bin_dir}" ]]; then
+    case ":${PATH}:" in
+      *":${_dev_bin_dir}:"*) ;;
+      *) export PATH="${_dev_bin_dir}:${PATH}" ;;
+    esac
+  fi
+done
+unset _dev_bin_dir
+
+# Match the local interactive shell setup. Starship initializes below and
+# replaces the robbyrussell prompt, while the theme still supplies the rest of
+# its Oh My Zsh behavior.
+export ZSH="${HOME}/.oh-my-zsh"
+ZSH_THEME="robbyrussell"
+plugins=(git virtualenv gcloud)
+
+if [[ -r "${ZSH}/oh-my-zsh.sh" ]]; then
+  source "${ZSH}/oh-my-zsh.sh"
+fi
+
+HISTFILE="${HOME}/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=20000
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE SHARE_HISTORY
+
+if [[ -x /usr/bin/dircolors ]]; then
+  eval "$(dircolors -b)"
+  alias ls='ls --color=auto'
+  alias grep='grep --color=auto'
+fi
+
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+if [[ -d /workspace/.git ]]; then
+  alias cdust='cd /workspace'
+fi
+
+if [[ -f /workspace/dev/interactive-aliases.sh ]]; then
+  # shellcheck disable=SC1091
+  source /workspace/dev/interactive-aliases.sh
+fi
+
+# Oh My Zsh's gcloud plugin sources the apt-installed completion.zsh.inc.
+# git-spice emits a zsh wrapper around its native completion command.
+if (( $+commands[git-spice] )); then
+  eval "$(git-spice shell completion zsh)"
+fi
+
+if [[ -f /workspace/dev/starship.toml ]]; then
+  export STARSHIP_CONFIG=/workspace/dev/starship.toml
+elif [[ -f "${HOME}/.config/starship.toml" ]]; then
+  export STARSHIP_CONFIG="${HOME}/.config/starship.toml"
+fi
+
+if (( $+commands[starship] )); then
+  eval "$(starship init zsh)"
+fi
+
+# Dev Container lifecycle commands do not have an interactive stdin. infra.sh
+# leaves this one-shot marker after postStartCommand completes, and the next
+# interactive prompt offers to launch mprocs.
+_dust_offer_start_apps() {
+  local marker="${DUST_APPS_PROMPT_FILE:-/tmp/dust-infra/start-apps.prompt}"
+  local claim="${marker}.claimed"
+  local reply=""
+
+  [[ -t 0 && -t 1 && -f "$marker" ]] || return
+  mkdir "$claim" 2>/dev/null || return
+  rm -f "$marker"
+
+  if pgrep -f 'mprocs .*mprocs.yaml' >/dev/null 2>&1; then
+    rmdir "$claim" 2>/dev/null
+    return
+  fi
+
+  if ! read "reply?Would you like to start the Dust apps? [Y/n] "; then
+    echo
+    rmdir "$claim" 2>/dev/null
+    return
+  fi
+  echo
+
+  if [[ -z "$reply" || "$reply" == [Yy]* ]]; then
+    bash /workspace/dev/scripts/apps.sh
+  fi
+
+  rmdir "$claim" 2>/dev/null
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd _dust_offer_start_apps
