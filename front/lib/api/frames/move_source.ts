@@ -6,14 +6,20 @@ import {
   isFrameSourceMoveError,
   resolveFrameSourceMovePaths,
 } from "@app/lib/api/frames/move_source_paths";
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  withFramePublishLock,
+  withFrameSourceLock,
+} from "@app/lib/api/frames/operation_lock";
 import {
   copyFrameSourceStorage,
   deleteFrameSourceStorage,
   inspectFrameSourceStorage,
 } from "@app/lib/api/frames/source_storage";
 import type { Authenticator } from "@app/lib/auth";
-import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
+import {
+  isLockAcquisitionTimeoutError,
+  isLockLeaseLostError,
+} from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
@@ -106,10 +112,10 @@ export async function moveFrameV2Source(
     );
   }
 
-  const locked = await withFramePublishLock<
-    FrameSourceMove,
-    MoveFrameV2SourceError
-  >(frame.sId, async () => {
+  async function moveWithLocksHeld(
+    lockedSourceMountPath: string,
+    lockedDestinationMountPath: string
+  ) {
     const freshFrame = await frame.fetchFreshFrameV2(auth);
     if (
       !freshFrame ||
@@ -123,7 +129,7 @@ export async function moveFrameV2Source(
 
     const [registeredDestination] = await FileResource.fetchByMountFilePaths(
       auth,
-      [destinationMountPath]
+      [lockedDestinationMountPath]
     );
     if (registeredDestination) {
       return frameSourceMoveError(
@@ -133,8 +139,8 @@ export async function moveFrameV2Source(
     }
 
     const snapshot = await inspectFrameSourceStorage({
-      destinationMountPath,
-      sourceMountPath,
+      destinationMountPath: lockedDestinationMountPath,
+      sourceMountPath: lockedSourceMountPath,
     });
     if (snapshot.isErr()) {
       return frameSourceMoveError(snapshot.error.code, snapshot.error.message);
@@ -158,7 +164,7 @@ export async function moveFrameV2Source(
     try {
       await freshFrame.updateMount({
         destFileName: FRAME_MANIFEST_FILE,
-        destMountFilePath: destinationMountPath,
+        destMountFilePath: lockedDestinationMountPath,
         destUseCase: freshFrame.useCase,
         destUseCaseMetadata: freshFrame.useCaseMetadata ?? undefined,
       });
@@ -197,10 +203,17 @@ export async function moveFrameV2Source(
       frameId: frame.sId,
       sourceDeletionFailed: deleted.isErr(),
     });
-  });
+  }
+
+  const locked = await withFrameSourceLock(frame.sId, () =>
+    withFramePublishLock(frame.sId, () =>
+      moveWithLocksHeld(sourceMountPath, destinationMountPath)
+    )
+  );
 
   if (locked.isErr()) {
-    return isLockAcquisitionTimeoutError(locked.error)
+    return isLockAcquisitionTimeoutError(locked.error) ||
+      isLockLeaseLostError(locked.error)
       ? frameSourceMoveError(
           "conflict",
           "Another Frame operation is in progress; retry the move."

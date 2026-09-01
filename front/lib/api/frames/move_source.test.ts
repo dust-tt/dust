@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const emitMovedAuditLog = vi.hoisted(() => vi.fn());
+const lockEvents = vi.hoisted(() => [] as string[]);
 
 vi.mock("@app/lib/api/files/gcs_mount/files", async (importActual) => ({
   ...(await importActual<
@@ -13,7 +14,15 @@ vi.mock("@app/lib/api/files/gcs_mount/files", async (importActual) => ({
 
 vi.mock("@app/lib/lock", async (importActual) => ({
   ...(await importActual<typeof import("@app/lib/lock")>()),
-  executeWithLockResult: async <T>(_name: string, cb: () => Promise<T>) => cb(),
+  executeWithRenewingLockResult: async <T>(
+    name: string,
+    cb: (lease: never) => Promise<T>
+  ) => {
+    lockEvents.push(`acquire:${name}`);
+    const result = await cb({ check: vi.fn() } as never);
+    lockEvents.push(`release:${name}`);
+    return result;
+  },
 }));
 
 import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
@@ -30,6 +39,7 @@ import assert from "assert";
 beforeEach(() => {
   fileStorageMock.reset();
   emitMovedAuditLog.mockReset();
+  lockEvents.length = 0;
   vi.restoreAllMocks();
 });
 
@@ -78,5 +88,11 @@ describe("moveFrameV2Source", () => {
       )
     ).toBe(frameManifest);
     expect(emitMovedAuditLog).toHaveBeenCalledOnce();
+    expect(lockEvents).toEqual([
+      `acquire:frame:source:${c.frame.sId}`,
+      `acquire:frame:publish:${c.frame.sId}`,
+      `release:frame:publish:${c.frame.sId}`,
+      `release:frame:source:${c.frame.sId}`,
+    ]);
   });
 });
