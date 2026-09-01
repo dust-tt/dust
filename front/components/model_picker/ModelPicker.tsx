@@ -50,6 +50,9 @@ export interface ModelPickerProps {
   buttonVariant: "outline" | "ghost-secondary";
   buttonSize: "xs" | "sm";
   showLabel: boolean;
+  // Appends the dropdown chevron to the trigger. Only meaningful alongside
+  // `showLabel`: icon-only triggers stay a single glyph.
+  showDropdownArrow?: boolean;
   // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
   // active conversation (input bar pinned to the bottom), "bottom" on the new
   // conversation screen where there is room below.
@@ -82,6 +85,7 @@ export function ModelPicker({
   buttonVariant,
   buttonSize,
   showLabel,
+  showDropdownArrow = false,
   side = "top",
   disabled,
   selectionRef,
@@ -283,6 +287,7 @@ export function ModelPicker({
           size={buttonSize}
           icon={buttonIcon}
           label={showLabel ? label : undefined}
+          isSelect={showLabel && showDropdownArrow}
           tooltip={showLabel ? undefined : `Model picker: ${label}`}
           disabled={disabled}
         />
