@@ -43,7 +43,7 @@ describe("createAgentMessages", () => {
 
   beforeEach(async () => {
     // Create workspace, user, spaces, and groups using the helper
-    const setup = await createResourceTest({});
+    const setup = await createResourceTest({ plan: "creditPriced" });
     workspace = setup.workspace;
     user = setup.user;
     auth = setup.authenticator;
@@ -1702,7 +1702,7 @@ describe("createUserMessage", () => {
   let conversation: ConversationType;
 
   beforeEach(async () => {
-    const setup = await createResourceTest({});
+    const setup = await createResourceTest({ plan: "creditPriced" });
     workspace = setup.workspace;
     auth = setup.authenticator;
 

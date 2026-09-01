@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import * as temporalClient from "@app/temporal/triggers/schedule_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -22,6 +23,7 @@ describe("TriggerResource", () => {
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({
+        plan: "creditPriced",
         role: "admin",
       });
 
@@ -153,6 +155,7 @@ describe("TriggerResource", () => {
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({
+        plan: "creditPriced",
         role: "admin",
       });
 
@@ -315,6 +318,7 @@ describe("TriggerResource", () => {
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({
+        plan: "creditPriced",
         role: "admin",
       });
 
@@ -374,6 +378,7 @@ describe("TriggerResource", () => {
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({
+        plan: "creditPriced",
         role: "admin",
       });
 
@@ -430,7 +435,10 @@ describe("TriggerResource", () => {
         .spyOn(temporalClient, "createOrUpdateAgentSchedule")
         .mockResolvedValue(new Ok("workflow-id"));
 
-      const { authenticator } = await createResourceTest({ role: "admin" });
+      const { authenticator } = await createResourceTest({
+        plan: "creditPriced",
+        role: "admin",
+      });
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
         authenticator,
         { name: "Test Agent" }
@@ -458,7 +466,9 @@ describe("TriggerResource", () => {
     });
 
     it("counts zero for a workspace without triggers", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
+      const { authenticator } = await createResourceTest({
+        role: "admin",
+      });
 
       expect(await TriggerResource.countForWorkspace(authenticator)).toEqual({
         enabled: 0,
@@ -467,9 +477,115 @@ describe("TriggerResource", () => {
       });
     });
   });
+  describe("legacy plans", () => {
+    it("refuses to create a trigger on the user pool", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+
+      const result = await TriggerResource.makeNew(authenticator, {
+        workspaceId: workspace.id,
+        name: "Legacy user pool trigger",
+        kind: "schedule",
+        agentConfigurationId: agentConfig.sId,
+        editor: authenticator.getNonNullableUser().id,
+        customPrompt: null,
+        status: "disabled",
+        configuration: { cron: "0 9 * * 1", timezone: "UTC" },
+        origin: "user",
+        executionMode: "user_pool",
+      });
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates a trigger on the user pool with the legacy trigger limits flag", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      await FeatureFlagResource.enable(workspace, "legacy_trigger_limits");
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+
+      const result = await TriggerResource.makeNew(authenticator, {
+        workspaceId: workspace.id,
+        name: "Legacy user pool trigger",
+        kind: "schedule",
+        agentConfigurationId: agentConfig.sId,
+        editor: authenticator.getNonNullableUser().id,
+        customPrompt: null,
+        status: "disabled",
+        configuration: { cron: "0 9 * * 1", timezone: "UTC" },
+        origin: "user",
+        executionMode: "user_pool",
+      });
+
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("allows moving an existing user pool trigger to the workspace pool", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+      const trigger = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+      });
+      await TriggerResource.update(authenticator, trigger.sId, {
+        executionMode: "user_pool",
+      });
+      const userPoolTrigger = await TriggerResource.fetchById(
+        authenticator,
+        trigger.sId
+      );
+
+      const result = await userPoolTrigger?.setExecutionMode(
+        authenticator,
+        "workspace_pool"
+      );
+
+      expect(result?.isOk()).toBe(true);
+      const reloaded = await TriggerResource.fetchById(
+        authenticator,
+        trigger.sId
+      );
+      expect(reloaded?.executionMode).toBe("workspace_pool");
+    });
+
+    it("refuses to move an existing trigger back to the user pool", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+      const trigger = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+      });
+
+      const result = await trigger.setExecutionMode(authenticator, "user_pool");
+
+      expect(result.isErr()).toBe(true);
+      const reloaded = await TriggerResource.fetchById(
+        authenticator,
+        trigger.sId
+      );
+      expect(reloaded?.executionMode).toBe("workspace_pool");
+    });
+  });
+
   describe("setExecutionMode", () => {
     it("refuses the workspace pool without the governance grant", async () => {
-      const { authenticator } = await createResourceTest({ role: "user" });
+      const { authenticator } = await createResourceTest({
+        plan: "creditPriced",
+        role: "user",
+      });
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
         authenticator,
         { name: "Test Agent" }
@@ -522,7 +638,9 @@ describe("TriggerResource", () => {
     });
 
     it("lets an admin move a trigger to the workspace pool", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
+      const { authenticator } = await createResourceTest({
+        role: "admin",
+      });
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
         authenticator,
         { name: "Test Agent" }
@@ -552,6 +670,7 @@ describe("TriggerResource", () => {
         .mockResolvedValue(new Ok("workflow-id"));
 
       const { workspace, authenticator } = await createResourceTest({
+        plan: "creditPriced",
         role: "admin",
       });
       const agentConfig = await AgentConfigurationFactory.createTestAgent(

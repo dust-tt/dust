@@ -355,7 +355,11 @@ export function WebhookEditionSheetContent({
 
         <Separator />
 
-        <TriggerPoolSelector name="webhook.executionMode" isEditor={isEditor} />
+        <TriggerPoolSelector
+          name="webhook.executionMode"
+          currentExecutionMode={trigger?.executionMode ?? null}
+          isEditor={isEditor}
+        />
 
         <WebhookEditionExecutionLimit isEditor={isEditor} />
 

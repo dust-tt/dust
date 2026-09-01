@@ -2,7 +2,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { Authenticator } from "@app/lib/auth";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { TestWorkspacePlan } from "@app/tests/utils/WorkspaceFactory";
+import { workspaceForPlan } from "@app/tests/utils/WorkspaceFactory";
 import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
 
@@ -22,12 +23,14 @@ export const createPublicApiMockRequest = async ({
   systemKey = false,
   method = "GET",
   role = "builder",
+  plan = "basic",
 }: {
   systemKey?: boolean;
   method?: RequestMethod;
   role?: "user" | "builder" | "admin";
+  plan?: TestWorkspacePlan;
 } = {}) => {
-  const workspace = await WorkspaceFactory.basic();
+  const workspace = await workspaceForPlan(plan);
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
   let key;
   if (systemKey) {

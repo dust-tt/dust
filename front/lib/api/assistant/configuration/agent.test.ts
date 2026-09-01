@@ -972,6 +972,7 @@ describe("updateAgentConfigurationsScope", () => {
 
   it("disables triggers of non-editors when transitioning visible → hidden", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
+      plan: "creditPriced",
       role: "admin",
     });
 

@@ -1,8 +1,13 @@
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import { useTriggerExecutionModes } from "@app/hooks/useTriggerExecutionModes";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import {
+  NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE,
+  TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES,
+} from "@app/types/assistant/triggers";
+import {
   Button,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,17 +25,26 @@ const POOL_OPTIONS: { value: TriggerExecutionMode; label: string }[] = [
 interface TriggerPoolSelectorProps {
   name: "schedule.executionMode" | "webhook.executionMode";
   isEditor: boolean;
+  currentExecutionMode: TriggerExecutionMode | null;
 }
 
 export function TriggerPoolSelector({
   name,
   isEditor,
+  currentExecutionMode,
 }: TriggerPoolSelectorProps) {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const { field } = useController({ control, name });
 
-  const { hasPermission } = useWorkspacePermissions();
-  const canSetPool = hasPermission("use_workspace_pool", "trigger");
+  const { canUseExecutionMode, hasAvailableExecutionMode } =
+    useTriggerExecutionModes({ currentExecutionMode });
+
+  let restriction: string | null = null;
+  if (!hasAvailableExecutionMode) {
+    restriction = NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE;
+  } else if (!canUseExecutionMode(field.value)) {
+    restriction = TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES[field.value];
+  }
 
   return (
     <div className="space-y-1">
@@ -45,7 +59,7 @@ export function TriggerPoolSelector({
             variant="outline"
             isSelect
             className="w-fit"
-            disabled={!isEditor || !canSetPool}
+            disabled={!isEditor || !hasAvailableExecutionMode}
             label={
               POOL_OPTIONS.find((option) => option.value === field.value)
                 ?.label ?? "Select"
@@ -58,12 +72,15 @@ export function TriggerPoolSelector({
             <DropdownMenuItem
               key={value}
               label={label}
-              disabled={!isEditor || !canSetPool}
+              disabled={!isEditor || !canUseExecutionMode(value)}
               onClick={() => field.onChange(value)}
             />
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      {restriction && (
+        <ContentMessage variant="info">{restriction}</ContentMessage>
+      )}
     </div>
   );
 }

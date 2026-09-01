@@ -3,7 +3,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -31,7 +31,13 @@ import type {
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
-import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
+import {
+  availableTriggerExecutionModes,
+  getTriggerStatusOwner,
+  NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE,
+  TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES,
+} from "@app/types/assistant/triggers";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -102,25 +108,24 @@ function emitBulkTriggerAuditLogEvents(
   );
 }
 
+async function availableExecutionModes(
+  auth: Authenticator
+): Promise<TriggerExecutionMode[]> {
+  return availableTriggerExecutionModes({
+    isPlanCreditPriced: isCreditPricedPlan(auth.getNonNullablePlan()),
+    hasLegacyTriggerLimits: await hasFeatureFlag(auth, "legacy_trigger_limits"),
+    canUseWorkspacePool: await auth.hasWorkspacePermission(
+      "use_workspace_pool",
+      "trigger"
+    ),
+  });
+}
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TriggerResource extends ReadonlyAttributesType<TriggerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-async function canUseExecutionMode(
-  auth: Authenticator,
-  executionMode: TriggerExecutionMode
-): Promise<boolean> {
-  switch (executionMode) {
-    case "user_pool":
-      return true;
-    case "workspace_pool":
-      return auth.hasWorkspacePermission("use_workspace_pool", "trigger");
-    default:
-      assertNever(executionMode);
-  }
-}
-
 export class TriggerResource extends BaseResource<TriggerModel> {
   static model: ModelStatic<TriggerModel> = TriggerModel;
 
@@ -133,20 +138,32 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: CreationAttributes<TriggerModel>,
+    blob: Omit<CreationAttributes<TriggerModel>, "executionMode"> & {
+      executionMode?: TriggerExecutionMode;
+    },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<TriggerResource, Error>> {
-    if (!(await canUseExecutionMode(auth, blob.executionMode))) {
+    const executionModes = await availableExecutionModes(auth);
+    const executionMode = blob.executionMode ?? executionModes[0];
+    if (!executionMode) {
       return new Err(
         new TriggerExecutionModeForbiddenError(
-          "You don't have permission to charge this trigger to the workspace."
+          NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE
+        )
+      );
+    }
+    if (!executionModes.includes(executionMode)) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES[executionMode]
         )
       );
     }
 
-    const trigger = await TriggerModel.create(blob, {
-      transaction,
-    });
+    const trigger = await TriggerModel.create(
+      { ...blob, executionMode },
+      { transaction }
+    );
 
     const resource = new this(TriggerModel, trigger.get());
 
@@ -1026,7 +1043,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     executionMode: TriggerExecutionMode
   ): Promise<BulkTriggerUpdateOutcome> {
     const workspace = auth.getNonNullableWorkspace();
-    const canUseTargetMode = await canUseExecutionMode(auth, executionMode);
+    const canUseTargetMode = (await availableExecutionModes(auth)).includes(
+      executionMode
+    );
     const updatable = canUseTargetMode
       ? triggers.filter(
           (trigger) => auth.isManager() || trigger.isEditedBy(auth)
@@ -1271,7 +1290,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
     const isEditor = auth.isManager() || this.isEditedBy(auth);
-    if (!isEditor || !(await canUseExecutionMode(auth, executionMode))) {
+    if (!isEditor) {
       return new Err(
         new TriggerExecutionModeForbiddenError(
           "You don't have permission to change this trigger's pool."
@@ -1281,6 +1300,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
     if (this.executionMode === executionMode) {
       return new Ok(undefined);
+    }
+
+    if (!(await availableExecutionModes(auth)).includes(executionMode)) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES[executionMode]
+        )
+      );
     }
 
     const previousExecutionMode = this.executionMode;

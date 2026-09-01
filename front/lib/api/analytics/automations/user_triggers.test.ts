@@ -67,7 +67,10 @@ describe("fetchUserAutomationTriggers", () => {
   });
 
   it("lists the triggers that never ran after the ones that consumed", async () => {
-    const { authenticator } = await createResourceTest({ role: "user" });
+    const { authenticator } = await createResourceTest({
+      plan: "creditPriced",
+      role: "user",
+    });
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const consuming = await scheduleTrigger(authenticator, {
@@ -106,6 +109,7 @@ describe("fetchUserAutomationTriggers", () => {
 
   it("leaves out the triggers of other members", async () => {
     const { authenticator, workspace } = await createResourceTest({
+      plan: "creditPriced",
       role: "user",
     });
     const agent =
@@ -150,7 +154,10 @@ describe("fetchUserAutomationTriggers", () => {
   });
 
   it("still lists the triggers when the consumption query fails", async () => {
-    const { authenticator } = await createResourceTest({ role: "user" });
+    const { authenticator } = await createResourceTest({
+      plan: "creditPriced",
+      role: "user",
+    });
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const trigger = await scheduleTrigger(authenticator, {
@@ -173,7 +180,10 @@ describe("fetchUserAutomationTriggers", () => {
   });
 
   it("filters agents in Elasticsearch and applies kind and name filters", async () => {
-    const { authenticator } = await createResourceTest({ role: "user" });
+    const { authenticator } = await createResourceTest({
+      plan: "creditPriced",
+      role: "user",
+    });
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const schedule = await scheduleTrigger(authenticator, {

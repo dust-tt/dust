@@ -61,6 +61,7 @@ describe("POST /api/w/:wId/me/analytics/automations/triggers/:tId/breakdown", ()
       new Ok(BREAKDOWN)
     );
     const { workspace, auth } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       role: "user",
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
@@ -74,6 +75,7 @@ describe("POST /api/w/:wId/me/analytics/automations/triggers/:tId/breakdown", ()
 
   it("returns 404 for a trigger edited by another member", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       role: "admin",
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
@@ -96,7 +98,9 @@ describe("POST /api/w/:wId/me/analytics/automations/triggers/:tId/breakdown", ()
   });
 
   it("returns 404 for an unknown trigger", async () => {
-    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
 
     const response = await postBreakdownRequest(
       workspace.sId,
