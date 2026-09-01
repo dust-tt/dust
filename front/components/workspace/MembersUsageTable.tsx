@@ -27,13 +27,17 @@ import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
+import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Clock,
@@ -527,35 +531,48 @@ function buildConsumedAwuCreditsColumn(
   };
 }
 
-const modelTiersColumn: ColumnDef<RowData, string> = {
-  id: "modelTiers" as const,
-  header: () => (
-    <span className="flex items-center gap-1">
-      Models tier
-      <ModelTiersInfoButton />
-    </span>
-  ),
-  enableSorting: false,
-  accessorFn: (row) => row.modelTiersSummary,
-  cell: (info: Info) => {
-    const summary = info.row.original.modelTiersSummary;
-    const customSuffix = info.row.original.hasUserLevelModelTiersOverride
-      ? " (custom)"
-      : "";
+function buildModelTiersColumn(
+  variant: MembersUsageTableVariant
+): ColumnDef<RowData, string> {
+  return {
+    id: "modelTiers" as const,
+    header: () => (
+      <span className="flex items-center gap-1">
+        {(() => {
+          switch (variant) {
+            case "compact":
+              return "Models";
+            case "legacy":
+              return "Models tier";
+            default:
+              return assertNever(variant);
+          }
+        })()}
+        <ModelTiersInfoButton />
+      </span>
+    ),
+    enableSorting: false,
+    accessorFn: (row) => row.modelTiersSummary,
+    cell: (info: Info) => {
+      const summary = info.row.original.modelTiersSummary;
+      const customSuffix = info.row.original.hasUserLevelModelTiersOverride
+        ? " (custom)"
+        : "";
 
-    return (
-      <DataTable.CellContent>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {summary}
-          {customSuffix}
-        </span>
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "w-48",
-  },
-};
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {summary}
+            {customSuffix}
+          </span>
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "w-48",
+    },
+  };
+}
 
 const actionsColumn: ColumnDef<RowData, string> = {
   id: "actions" as const,
@@ -580,17 +597,19 @@ function buildColumns({
   showGroupsColumn,
   showModelTiersColumn,
   creditsResetAt,
+  variant,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
   showModelTiersColumn: boolean;
   creditsResetAt: string | null;
+  variant: MembersUsageTableVariant;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
-    ...(showModelTiersColumn ? [modelTiersColumn] : []),
+    ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
     seatTypeColumn,
     {
       ...buildConsumedAwuCreditsColumn(creditsResetAt),
@@ -599,6 +618,11 @@ function buildColumns({
     actionsColumn,
   ];
 }
+
+// "compact" is the Poke Pool Usage page layout: no "Up to " prefix on the
+// Models tier summary, a "Models" header instead of "Models tier". "legacy"
+// keeps the customer-facing usage page unchanged.
+export type MembersUsageTableVariant = "legacy" | "compact";
 
 interface MembersUsageTableProps {
   members: MemberUsageType[];
@@ -623,6 +647,7 @@ interface MembersUsageTableProps {
     selection: UserModelTierSelection
   ) => void;
   showModelTiersColumn?: boolean;
+  variant?: MembersUsageTableVariant;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
   userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
   groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
@@ -656,6 +681,7 @@ export function MembersUsageTable({
   onEditSpendLimit,
   onSetUserModelTier,
   showModelTiersColumn = false,
+  variant = "legacy",
   userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
   userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
   groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
@@ -706,9 +732,19 @@ export function MembersUsageTable({
             m.sId
           ),
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
-          modelTiersSummary: formatModelTiersSummary(
-            getMaxTierName(resolvedModelTiers?.tiers ?? [])
-          ),
+          modelTiersSummary: (() => {
+            const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
+            switch (variant) {
+              case "compact":
+                return maxTierName
+                  ? getModelsTierDisplayName(maxTierName)
+                  : "--";
+              case "legacy":
+                return formatModelTiersSummary(maxTierName);
+              default:
+                return assertNever(variant);
+            }
+          })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
             ...(!m.seatType || m.seatType === "none"
@@ -793,6 +829,7 @@ export function MembersUsageTable({
       isSeatBased,
       showSpendLimit,
       showModelTiersColumn,
+      variant,
       userModelTierSelectionByUserId,
       userAllowedModelTiersByUserId,
       groupModelTiersByGroupId,
@@ -814,8 +851,15 @@ export function MembersUsageTable({
         showGroupsColumn,
         showModelTiersColumn,
         creditsResetAt,
+        variant,
       }),
-    [enableSelection, showGroupsColumn, showModelTiersColumn, creditsResetAt]
+    [
+      enableSelection,
+      showGroupsColumn,
+      showModelTiersColumn,
+      creditsResetAt,
+      variant,
+    ]
   );
 
   if (isLoading) {
