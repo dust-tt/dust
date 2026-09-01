@@ -10,6 +10,7 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -209,15 +210,23 @@ async function createFramePublicationFunction({
 async function setupFrameV2Function({
   shareScope = "workspace_and_emails",
   featureFlag = "frames_v2",
+  standalone = false,
 }: {
   shareScope?: FileShareScope;
   featureFlag?: "frames_v2" | "sandbox_functions";
+  standalone?: boolean;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
   });
   await FeatureFlagFactory.basic(adminAuth, featureFlag);
   const space = await SpaceFactory.project(workspace);
+  const conversation = standalone
+    ? await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+      })
+    : null;
   const publicationId = "publication-1";
   const frame = await FileFactory.create(adminAuth, null, {
     contentType: frameV2ContentType,
@@ -226,7 +235,9 @@ async function setupFrameV2Function({
     status: "ready",
     useCase: "conversation",
     useCaseMetadata: {
-      spaceId: space.sId,
+      ...(conversation
+        ? { conversationId: conversation.sId }
+        : { spaceId: space.sId }),
       activePublicationId: publicationId,
     },
   });
@@ -514,6 +525,26 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         }),
       }
     );
+  });
+
+  it("invokes a Frame from a standalone conversation", async () => {
+    const { workspace, frame, sandboxFunction } = await setupFrameV2Function({
+      standalone: true,
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+      body: { input: { message: "hello" } },
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      invocation: {
+        functionId: sandboxFunction.sId,
+        status: "created",
+      },
+    });
   });
 
   it("keeps an in-flight Frame invocation streamable after a new publication activates", async () => {
@@ -849,6 +880,30 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         type: "user_authentication_required",
         message:
           "This Pod Function requires a logged-in user from its workspace.",
+      },
+    });
+  });
+
+  it("does not report an unavailable Frame runtime as an authentication error", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValueOnce(
+      new Err(
+        new SandboxFunctionInvocationError(
+          "This Frame's runtime scope no longer exists.",
+          "frame_runtime_unavailable"
+        )
+      )
+    );
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "frame_runtime_unavailable",
       },
     });
   });

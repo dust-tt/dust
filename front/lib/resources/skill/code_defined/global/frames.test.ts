@@ -87,6 +87,29 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("legacy Frame");
     expect(instructions).toContain("<frame>.tsx");
     expect(instructions).toContain(
+      "Chat apps, task lists, trackers, forms, CRUD apps"
+    );
+    expect(instructions).toContain(
+      "Do not substitute in-memory arrays or seed data"
+    );
+    expect(instructions).toContain("Do not inspect installed");
+    expect(instructions).toContain(
+      "`@dust/pod` or `@dust/react-hooks` package internals"
+    );
+    expect(instructions).toContain("Do not pass the convenience aliases");
+    expect(instructions).toContain("`/files/conversation` or `/files/pod`");
+    expect(instructions).toContain(
+      "Never run concurrent file mutations against the same path"
+    );
+    expect(instructions).toContain(
+      "exercise at least one read and one representative mutation"
+    );
+    expect(instructions).toContain(
+      'Distinguish "the UI renders" from "the application works end to end"'
+    );
+    expect(instructions).toContain("Never claim completion");
+    expect(instructions).toContain("while a verification step failed");
+    expect(instructions).toContain(
       "Other interactive-content tools remain available"
     );
     expect(framesSkill.mcpServers).toEqual([{ name: "interactive_content" }]);

@@ -19,6 +19,17 @@ Frames are interactive React applications. Use the Computer to edit their source
 - \`dsbx frame publish\` supports both formats. Edit and publish an existing legacy Frame in place;
   do not recreate it just to make it v2.
 
+## Before authoring
+
+Decide whether the Frame is a throwaway visualization or an application with durable state before
+writing source. Chat apps, task lists, trackers, forms, CRUD apps, and anything users can change
+default to durable: declare the database plus the read and mutation functions in the first
+manifest. Do not substitute in-memory arrays or seed data unless the user explicitly asked for a
+prototype.
+
+Treat the documented APIs and examples in this skill as authoritative. Do not inspect installed
+\`@dust/pod\` or \`@dust/react-hooks\` package internals to guess an API.
+
 ## Create a Frame
 
 Create and register a new Frame folder on the mounted file system:
@@ -30,6 +41,10 @@ dsbx frame create /files/conversation-<conversationId>/<frame-folder> --name "<n
 In a Pod, create it under \`/files/pod-<podId>/...\` instead. The command scaffolds
 \`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Edit the generated
 source before publishing it.
+
+Always pass canonical \`/files/conversation-<conversationId>/...\` or
+\`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
+\`/files/conversation\` or \`/files/pod\`.
 
 ## Register an existing Frame folder
 
@@ -336,5 +351,19 @@ yet. Use \`dsbx frame --help\` as the authority for available operations.
 
 Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this
 initial scope.
+
+## Editing and verification
+
+Never run concurrent file mutations against the same path. Read the current file, apply one edit,
+then start the next edit to that file.
+
+After publishing, verify the published Frame rather than only the source or build result:
+
+1. Open the Frame and inspect the rendered pixels, loading state, and errors.
+2. If it declares functions, exercise at least one read and one representative mutation through
+   the UI, then confirm the resulting state. A successful publish or screenshot capture does not
+   prove that function execution or persistence works.
+3. Distinguish "the UI renders" from "the application works end to end". Never claim completion
+   while a verification step failed; report exactly what remains unverified.
 
 ${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}`;

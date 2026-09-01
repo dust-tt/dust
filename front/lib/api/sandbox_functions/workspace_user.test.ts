@@ -2,6 +2,7 @@ import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functio
 import { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -12,11 +13,13 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
 async function setup() {
-  const { workspace, authenticator: adminAuth } = await createResourceTest({
-    role: "admin",
-  });
+  const {
+    workspace,
+    authenticator: adminAuth,
+    globalSpace,
+  } = await createResourceTest({ role: "admin" });
   const space = await SpaceFactory.project(workspace);
-  return { workspace, adminAuth, space };
+  return { workspace, adminAuth, globalSpace, space };
 }
 
 async function makeWorkspaceMember(
@@ -179,6 +182,34 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
       runtimeSpaceId: space.sId,
       pod: expect.objectContaining({ sId: space.sId }),
       user: expect.objectContaining({ sId: member.sId }),
+    });
+  });
+
+  it("uses the global space for a Frame in a standalone conversation", async () => {
+    const { adminAuth, globalSpace } = await setup();
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const frame = await FileFactory.create(adminAuth, null, {
+      contentType: frameV2ContentType,
+      fileName: "tasks.frame.json",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
+      userIdentity: "optional",
+      origin: "interactive_session",
+      owner: { kind: "frame", frame },
+    });
+
+    expect(authorization).toMatchObject({
+      authorized: true,
+      runtimeSpaceId: globalSpace.sId,
+      pod: null,
     });
   });
 
