@@ -1,3 +1,5 @@
+import { getFrameSourceLockName } from "@app/lib/api/frames/operation_lock";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
@@ -1806,6 +1808,42 @@ describe("FileResource", () => {
       true
     );
     expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
+  });
+
+  it("does not delete while another source operation holds the lock", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await createFrameWithFunction(auth, "frame-delete-locked", {
+      withSource: true,
+    });
+    const lockKey = `lock:${getFrameSourceLockName(frame.sId)}`;
+    const redisClient = await getRedisStreamClient({ origin: "lock" });
+    await redisClient.set(lockKey, "held-by-test", {
+      NX: true,
+      PX: 60_000,
+    });
+    vi.useFakeTimers();
+
+    try {
+      const deletionPromise = frame.delete(auth);
+      await vi.runAllTimersAsync();
+      const result = await deletionPromise;
+
+      expect(result.isErr() && result.error).toMatchObject({
+        name: "LockAcquisitionTimeoutError",
+      });
+      expect(await FileResource.fetchById(auth, frame.sId)).not.toBeNull();
+      expect(
+        await SandboxFunctionResource.listByFramePublication(auth, {
+          frame,
+          publicationId: "frame-delete-locked",
+        })
+      ).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+      await redisClient.del(lockKey);
+    }
   });
 
   it("rejects Frame deletion from another workspace", async () => {
