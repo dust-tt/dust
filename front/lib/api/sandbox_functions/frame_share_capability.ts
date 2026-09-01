@@ -68,8 +68,7 @@ export async function resolveSandboxFunctionWithCapability(
     if (isFramesV2Enabled) {
       const frameFunction = await resolveFrameV2FunctionReference(
         auth,
-        functionIdOrSlug,
-        { allowInactivePublication: allowInactiveFramePublication }
+        functionIdOrSlug
       );
       if (frameFunction) {
         return frameFunction;
@@ -95,8 +94,7 @@ export async function resolveSandboxFunctionWithCapability(
 
 async function resolveFrameV2FunctionReference(
   auth: Authenticator,
-  functionIdOrReference: string,
-  { allowInactivePublication }: { allowInactivePublication: boolean }
+  functionIdOrReference: string
 ): Promise<SandboxFunctionResource | null> {
   const [frameId, slug, ...rest] = functionIdOrReference.split("/");
   if (
@@ -108,20 +106,48 @@ async function resolveFrameV2FunctionReference(
   ) {
     return null;
   }
-  const frame = await FileResource.fetchById(auth, frameId);
-  const publicationId = frame?.useCaseMetadata?.activePublicationId;
-  if (!frame?.isFrameV2 || !publicationId) {
+  return resolveActiveFrameFunctionForUse(auth, {
+    frameId,
+    functionName: slug,
+  });
+}
+
+/** Resolve one function from the active publication of a Frame the caller may use. */
+export async function resolveActiveFrameFunctionForUse(
+  auth: Authenticator,
+  {
+    frameId,
+    functionName,
+  }: {
+    frameId: string;
+    functionName: string;
+  }
+): Promise<SandboxFunctionResource | null> {
+  if (
+    !isResourceSId("file", frameId) ||
+    !isValidSandboxFunctionSlug(functionName)
+  ) {
     return null;
   }
+
+  const frame = await FileResource.fetchById(auth, frameId);
+  const publicationId = frame?.useCaseMetadata?.activePublicationId;
+  if (
+    !frame?.isFrameV2 ||
+    !publicationId ||
+    !(await frame.canCurrentUserUseFrame(auth))
+  ) {
+    return null;
+  }
+
   const sandboxFunction =
     await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
       frame,
       publicationId,
-      slug,
+      slug: functionName,
     });
-
   return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
-    allowInactivePublication,
+    allowInactivePublication: false,
   });
 }
 
