@@ -2,11 +2,17 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use dust::stores::{postgres, store};
+use dust::{
+    databases::table::Table,
+    databases_store::{self, gcs::GoogleCloudStorageDatabasesStore},
+    project::Project,
+    stores::{postgres, store},
+};
 
 /*
- * Diagnostic for orphaned relational rows: `tables`, `data_sources_folders` and (latest)
- * `data_sources_documents` rows that have no matching `data_sources_nodes` row.
+ * Diagnostic (and optional cleanup) for orphaned relational rows: `tables`,
+ * `data_sources_folders` and (latest) `data_sources_documents` rows that have no matching
+ * `data_sources_nodes` row.
  *
  * Why this matters:
  *   - Tables / folders: `DataSource::delete` enumerates them through `data_sources_nodes`, so a
@@ -18,12 +24,23 @@ use dust::stores::{postgres, store};
  *     no node is still an integrity/search-index inconsistency worth surfacing. Superseded and
  *     deleted document rows legitimately have no node and are excluded.
  *
- * Read-only. Scans in bounded id windows so no single statement touches more than `--batch-size`
- * rows; the node lookup uses the FK indices on `data_sources_nodes("table")` / `(folder)` /
- * `(document)`.
+ * By default the scan is read-only. It scans in bounded id windows so no single statement touches
+ * more than `--batch-size` rows; the node lookup uses the FK indices on
+ * `data_sources_nodes("table")` / `(folder)` / `(document)`.
+ *
+ * `--delete` cleans up the deletion-blocking orphans (tables and folders) for a SINGLE data
+ * source. This is DESTRUCTIVE: it removes the orphan rows and, for local tables, their backing
+ * data. It is only appropriate for a data source that is being fully scrubbed anyway; for a live
+ * data source the correct remediation is to backfill the missing node, not delete the row. For
+ * that reason `--delete` requires `--data-source` and does nothing without `--execute`. Document
+ * orphans are never deleted here (they do not block deletion and carry versioned GCS blobs).
  *
  * Usage:
+ *   # Read-only scan (all data sources, or a single one):
  *   cargo run --bin find_orphan_relational_rows -- [--batch-size 5000] [--data-source <row_id>]
+ *   # Delete orphan tables/folders for one data source (dry-run, then execute):
+ *   cargo run --bin find_orphan_relational_rows -- --data-source <row_id> --delete
+ *   cargo run --bin find_orphan_relational_rows -- --data-source <row_id> --delete --execute
  */
 
 #[derive(Parser, Debug)]
@@ -33,6 +50,15 @@ struct Args {
 
     #[arg(long, help = "Restrict the scan to a single data_sources.id")]
     data_source: Option<i64>,
+
+    #[arg(
+        long,
+        help = "Delete orphan tables/folders for the given --data-source (requires --data-source)"
+    )]
+    delete: bool,
+
+    #[arg(long, help = "Actually perform the deletion (otherwise dry-run)")]
+    execute: bool,
 }
 
 struct ScanConfig {
@@ -60,6 +86,14 @@ async fn main() -> Result<()> {
         }
         Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
     };
+
+    if args.delete {
+        let data_source_row_id = args.data_source.ok_or_else(|| {
+            anyhow!("--delete requires --data-source (global orphan deletion is not allowed)")
+        })?;
+        return delete_orphans_for_data_source(store.as_ref(), data_source_row_id, args.execute)
+            .await;
+    }
 
     let configs = [
         ScanConfig {
@@ -156,6 +190,136 @@ async fn main() -> Result<()> {
         );
     }
     println!("=======================================");
+
+    Ok(())
+}
+
+/// Delete the deletion-blocking orphans (tables and folders) of a single data source, reusing the
+/// production deletion lifecycle. Tables go through `Table::delete` (transient database
+/// invalidation + GCS cleanup for local tables + transactional row/node delete); folders go
+/// through `Store::delete_data_source_folder`. Document orphans are intentionally left untouched.
+async fn delete_orphans_for_data_source(
+    store: &(dyn store::Store + Sync + Send),
+    data_source_row_id: i64,
+    execute: bool,
+) -> Result<()> {
+    let pool = store.raw_pool();
+    let c = pool.get().await?;
+
+    // Resolve the data source. We need project + data_source_id (string) to drive the lifecycle
+    // deletion helpers, which are keyed by those rather than by row id.
+    let ds_rows = c
+        .query(
+            "SELECT project, data_source_id FROM data_sources WHERE id = $1",
+            &[&data_source_row_id],
+        )
+        .await?;
+    let (project_id, data_source_id): (i64, String) = match ds_rows.len() {
+        0 => Err(anyhow!("Unknown data_sources.id: {}", data_source_row_id))?,
+        _ => (ds_rows[0].get(0), ds_rows[0].get(1)),
+    };
+    let project = Project::new_from_id(project_id);
+
+    // Orphan tables (scoped to one data source, so a direct anti-join is cheap). We also read the
+    // remote fields so `Table::delete` can pick the local vs. remote cleanup path.
+    let table_rows = c
+        .query(
+            "SELECT t.table_id, t.remote_database_table_id, t.remote_database_secret_id \
+               FROM tables t \
+               LEFT JOIN data_sources_nodes dsn ON dsn.\"table\" = t.id \
+               WHERE t.data_source = $1 AND dsn.id IS NULL",
+            &[&data_source_row_id],
+        )
+        .await?;
+
+    // Orphan folders.
+    let folder_rows = c
+        .query(
+            "SELECT f.folder_id \
+               FROM data_sources_folders f \
+               LEFT JOIN data_sources_nodes dsn ON dsn.folder = f.id \
+               WHERE f.data_source = $1 AND dsn.id IS NULL",
+            &[&data_source_row_id],
+        )
+        .await?;
+    drop(c);
+
+    println!(
+        "Data source project={} data_source_id={} (row id {}): {} orphan tables, {} orphan folders",
+        project_id,
+        data_source_id,
+        data_source_row_id,
+        table_rows.len(),
+        folder_rows.len()
+    );
+
+    if !execute {
+        for row in &table_rows {
+            let table_id: String = row.get(0);
+            println!("  [dry-run] would delete orphan table {}", table_id);
+        }
+        for row in &folder_rows {
+            let folder_id: String = row.get(0);
+            println!("  [dry-run] would delete orphan folder {}", folder_id);
+        }
+        println!("Dry-run only. Re-run with --execute to delete.");
+        return Ok(());
+    }
+
+    let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
+        Box::new(GoogleCloudStorageDatabasesStore::new());
+
+    for row in &table_rows {
+        let table_id: String = row.get(0);
+        let remote_database_table_id: Option<String> = row.get(1);
+        let remote_database_secret_id: Option<String> = row.get(2);
+
+        // Build a minimal Table for the orphan. The node-derived display fields (title, mime_type,
+        // parents, ...) are unknown for an orphan but are not read by `Table::delete`; only
+        // project / data_source_id / table_id / remote_database_table_id drive the deletion.
+        let table = Table::new(
+            project.clone(),
+            data_source_id.clone(),
+            String::new(),
+            0,
+            table_id.clone(),
+            String::new(),
+            String::new(),
+            0,
+            String::new(),
+            String::new(),
+            None,
+            vec![],
+            None,
+            vec![],
+            None,
+            None,
+            None,
+            remote_database_table_id,
+            remote_database_secret_id,
+        );
+
+        // No search_store: an orphan has no node, hence no search-index entry to remove.
+        table
+            .delete(store.clone_box(), databases_store.clone_box(), None)
+            .await?;
+        println!("  deleted orphan table {}", table_id);
+    }
+
+    for row in &folder_rows {
+        let folder_id: String = row.get(0);
+        store
+            .delete_data_source_folder(&project, &data_source_id, &folder_id)
+            .await?;
+        println!("  deleted orphan folder {}", folder_id);
+    }
+
+    println!(
+        "Done: deleted {} orphan tables and {} orphan folders for data source row id {}",
+        table_rows.len(),
+        folder_rows.len(),
+        data_source_row_id
+    );
 
     Ok(())
 }
