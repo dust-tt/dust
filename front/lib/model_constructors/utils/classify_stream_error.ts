@@ -10,12 +10,6 @@ import { isString } from "@app/types/shared/utils/general";
 
 export type StreamErrorSdkClass = "connection" | "abort" | "timeout";
 
-export type StreamErrorClassification = {
-  errorSource: ErrorSource;
-  type: ErrorType;
-  message: string;
-};
-
 type ErrorSignal = {
   code?: string;
   message: string;
@@ -111,13 +105,15 @@ function firstCodeIn(
  */
 export function classifyStreamError({
   error,
+  metadata,
   providerName,
   sdkClass,
 }: {
   error: unknown;
+  metadata: EndpointMetadata;
   providerName: string;
   sdkClass?: StreamErrorSdkClass;
-}): StreamErrorClassification {
+}): ErrorEvent {
   const signals = getErrorSignals(error);
   const normalizedMessage = normalizeError(error).message;
   const codes = new Set(
@@ -184,20 +180,11 @@ export function classifyStreamError({
       ? `${normalizedMessage} (${causeCode})`
       : normalizedMessage;
 
-  return {
+  return buildErrorEvent({
     errorSource,
     type,
     message: `${prefix}: ${details}`,
-  };
-}
-
-// Wraps a classification into the `ErrorEvent` every endpoint emits, attaching
-// the metadata and the original error for logging. Adapters classify with plain
-// control flow (see each `streamErrorToErrorEvent`) and pass the result here.
-export function classificationToErrorEvent(
-  metadata: EndpointMetadata,
-  error: unknown,
-  classification: StreamErrorClassification
-): ErrorEvent {
-  return buildErrorEvent({ ...classification, metadata, originalError: error });
+    metadata,
+    originalError: error,
+  });
 }

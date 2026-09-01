@@ -1,10 +1,8 @@
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ErrorEvent } from "@app/lib/model_constructors/types/output/events";
+import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
-import {
-  classificationToErrorEvent,
-  classifyStreamError,
-} from "@app/lib/model_constructors/utils/classify_stream_error";
+import { classifyStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,
@@ -26,25 +24,28 @@ export function openaiStreamErrorToErrorEvent(
   // it must be checked before it. They only hint the code/name classifier, which
   // decides the final type and attribution.
   if (error instanceof APIUserAbortError) {
-    return classificationToErrorEvent(
-      metadata,
+    return classifyStreamError({
       error,
-      classifyStreamError({ error, providerName, sdkClass: "abort" })
-    );
+      metadata,
+      providerName,
+      sdkClass: "abort",
+    });
   }
   if (error instanceof APIConnectionTimeoutError) {
-    return classificationToErrorEvent(
-      metadata,
+    return classifyStreamError({
       error,
-      classifyStreamError({ error, providerName, sdkClass: "timeout" })
-    );
+      metadata,
+      providerName,
+      sdkClass: "timeout",
+    });
   }
   if (error instanceof APIConnectionError) {
-    return classificationToErrorEvent(
-      metadata,
+    return classifyStreamError({
       error,
-      classifyStreamError({ error, providerName, sdkClass: "connection" })
-    );
+      metadata,
+      providerName,
+      sdkClass: "connection",
+    });
   }
   if (error instanceof APIError) {
     // A statusless `APIError` is how the SDK surfaces an in-band SSE `error`
@@ -53,10 +54,12 @@ export function openaiStreamErrorToErrorEvent(
     // as a non-retryable `unknown_error` rather than a retryable `server_error`.
     // We do not inspect free-form message text to upgrade it.
     if (error.status === undefined) {
-      return classificationToErrorEvent(metadata, error, {
+      return buildErrorEvent({
         errorSource: "provider",
+        metadata,
         type: "unknown_error",
         message: `Error from ${providerName}: ${error.message}`,
+        originalError: error,
       });
     }
     return buildHttpStatusErrorEvent({
@@ -67,24 +70,5 @@ export function openaiStreamErrorToErrorEvent(
       originalError: error,
     });
   }
-  return classificationToErrorEvent(
-    metadata,
-    error,
-    classifyStreamError({ error, providerName })
-  );
-}
-
-// OpenAI-family adapters serve more than one host. Attribute the error to the
-// host actually in use so a Fireworks or xAI failure is not labelled "OpenAI".
-export function openaiProviderNameForHost(
-  host: EndpointMetadata["host"]
-): string {
-  switch (host) {
-    case "fireworks":
-      return "Fireworks";
-    case "xai":
-      return "xAI";
-    default:
-      return "OpenAI";
-  }
+  return classifyStreamError({ error, metadata, providerName });
 }
