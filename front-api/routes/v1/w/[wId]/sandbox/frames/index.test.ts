@@ -1,17 +1,34 @@
 // Legacy Frame publishing runs esbuild, whose TextEncoder invariant requires Node rather than jsdom.
 // @vitest-environment node
 
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
-import { getConversationFilesBasePath } from "@app/types/mount_path";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+} from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
 
 vi.mock("@app/lib/lock", async (importActual) => {
   const actual = await importActual<typeof import("@app/lib/lock")>();
@@ -55,6 +72,28 @@ function requestFrameRegister(
       "content-type": "application/json",
     },
     body: JSON.stringify({ manifestPath }),
+  });
+}
+
+function requestFrameShare(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string,
+  {
+    emails = [],
+    shareScope = "workspace_and_emails",
+  }: {
+    emails?: string[];
+    shareScope?: "emails_only" | "public" | "workspace_and_emails";
+  } = {}
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/share`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ emails, shareScope, sourceDirectoryPath }),
   });
 }
 
@@ -140,6 +179,7 @@ async function setupLegacyFrame() {
 
 beforeEach(() => {
   fileStorageMock.reset();
+  mockEmitAuditLogEvent.mockClear();
 });
 
 describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
@@ -183,6 +223,123 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       published.publicationId
     );
+  });
+
+  it("configures Frame use rights through the sandbox token", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const publishResponse = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+    expect(publishResponse.status).toBe(200);
+    const user = context.auth.getNonNullableUser();
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      { emails: [user.email] }
+    );
+
+    const shared = await response.json();
+    expect(response.status, JSON.stringify(shared)).toBe(200);
+    expect(shared).toMatchObject({
+      emails: [user.email],
+      frameId: context.frame.sId,
+      shareScope: "workspace_and_emails",
+      sourceDirectoryPath,
+    });
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.email_grant_added",
+        metadata: expect.objectContaining({ emails: user.email }),
+      })
+    );
+  });
+
+  it("preserves existing rights when allowlist validation fails", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const publishResponse = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+    expect(publishResponse.status).toBe(200);
+    const published = await publishResponse.json();
+    await context.frame.setShareScope(context.auth, "emails_only");
+    fileStorageMock.setObject(
+      getFramePublicationUiBundlePath({
+        workspaceId: context.workspace.sId,
+        frameId: context.frame.sId,
+        publicationId: published.publicationId,
+      }),
+      'useFile("fil_ZZZZZZZZZZ");'
+    );
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath.replace(`/${FRAME_MANIFEST_FILE}`, ""),
+      {
+        emails: [context.auth.getNonNullableUser().email],
+        shareScope: "workspace_and_emails",
+      }
+    );
+
+    expect(response.status).toBe(400);
+    expect(await context.frame.getShareScope()).toBe("emails_only");
+    expect(await context.frame.listActiveSharingGrants()).toEqual([]);
+  });
+
+  it("requires write access to the Frame source folder", async () => {
+    const context = await setup();
+    const pod = await SpaceFactory.project(context.workspace);
+    const { globalGroup } = await GroupFactory.defaults(context.workspace);
+    await SpaceFactory.attachGroup(pod, globalGroup, "project_viewer");
+    await ConversationModel.update(
+      { spaceId: pod.id },
+      { where: { id: context.conversation.id } }
+    );
+    await FileFactory.create(context.auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: context.workspace.sId,
+        podId: pod.sId,
+      })}Status/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      `pod-${pod.sId}/Status`,
+      { shareScope: "emails_only" }
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("refuses sharing without the feature flag", async () => {
+    const context = await createSandboxTokenTestContext();
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      `conversation-${context.conversation.sId}/Status`
+    );
+
+    expect(response.status).toBe(403);
   });
 
   it("publishes a legacy Frame through its existing publication flow", async () => {
