@@ -24,10 +24,13 @@ function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
   return {
     data: {
       map,
+      mapWithAnchor: (updater: (message: T) => T, _anchorItemIndex: number) =>
+        map(updater),
       batch: (callback: () => void) => {
         callback();
       },
     },
+    getScrollLocation: () => ({ lastVisibleItemIndex: 0 }),
   };
 }
 
@@ -291,6 +294,70 @@ describe("appendThinkingStep", () => {
 });
 
 describe("useAgentMessageStream", () => {
+  it("anchors the visible item when updating a detached stream", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+    const map = vi.fn(
+      (updater: (message: typeof currentMessage) => typeof currentMessage) => {
+        currentMessage = updater(currentMessage);
+        return [currentMessage];
+      }
+    );
+    const mapWithAnchor = vi.fn(
+      (
+        updater: (message: typeof currentMessage) => typeof currentMessage,
+        _anchorItemIndex: number
+      ) => map(updater)
+    );
+    const batch = vi.fn((callback: () => void) => callback());
+
+    mockUseVirtuosoMethods.mockReturnValue({
+      data: { batch, map, mapWithAnchor },
+      getScrollLocation: () => ({ lastVisibleItemIndex: 7 }),
+    });
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+    mockIsAutoScrollEnabledRef.current = false;
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    act(() => {
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "1-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "Hello",
+            classification: "tokens",
+          },
+        })
+      );
+    });
+
+    expect(mapWithAnchor).toHaveBeenCalledWith(expect.any(Function), 7);
+    expect(batch).not.toHaveBeenCalled();
+  });
+
   it("clears stale database content before replaying fresh-mount tokens", () => {
     let currentMessage = makeInitialMessageStreamState(makeLightAgentMessage());
     const snapshots: Array<{

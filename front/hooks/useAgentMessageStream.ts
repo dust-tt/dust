@@ -62,6 +62,15 @@ function batchMapMessagesWithAutoScroll(
   isAutoScrollEnabledRef: MutableRefObject<boolean>,
   mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage
 ) {
+  if (!isAutoScrollEnabledRef.current) {
+    // Keep streamed row growth from displacing the detached viewport.
+    methods.data.mapWithAnchor(
+      mapFn,
+      methods.getScrollLocation().lastVisibleItemIndex
+    );
+    return;
+  }
+
   methods.data.batch(
     () => methods.data.map(mapFn),
     createAutoScrollToBottomBehavior(isAutoScrollEnabledRef)
