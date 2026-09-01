@@ -301,16 +301,21 @@ describe("adjustSeatCreditBalances", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockAddManualBalanceEntry).toHaveBeenCalledWith({
-      id: "credit-1",
-      customer_id: "cust-1",
-      contract_id: "contract-1",
-      segment_id: "segment-1",
-      amount: -1500,
-      per_group_amounts: { seatA: -1000, seatB: -500 },
-      reason: "test adjustment",
-      timestamp: "2026-06-11T15:00:00.000Z",
-    });
+    expect(mockAddManualBalanceEntry).toHaveBeenCalledWith(
+      {
+        id: "credit-1",
+        customer_id: "cust-1",
+        contract_id: "contract-1",
+        segment_id: "segment-1",
+        amount: -1500,
+        per_group_amounts: { seatA: -1000, seatB: -500 },
+        reason: "test adjustment",
+        timestamp: "2026-06-11T15:00:00.000Z",
+      },
+      // Manual ledger entries can't be deduped (no uniqueness_key), so we
+      // disable the SDK retry to avoid stacking the delta on a 504.
+      { maxRetries: 0 }
+    );
   });
 
   it("is a no-op when no per-seat amounts are provided", async () => {
@@ -502,6 +507,22 @@ describe("updateSubscriptionSeats", () => {
     expect(
       call.update_subscriptions[0].seat_updates.add_seat_ids[0].seat_ids
     ).toHaveLength(1000);
+    // Each edit carries a uniqueness_key so an SDK retry can't stack the delta.
+    expect(typeof call.uniqueness_key).toBe("string");
+  });
+
+  it("treats a duplicate-key 409 as success (edit already applied on a 504 retry)", async () => {
+    mockContractsEdit.mockRejectedValueOnce(new MockConflictError("duplicate"));
+
+    const result = await updateSubscriptionSeats({
+      metronomeCustomerId: "cust-1",
+      contractId: "contract-1",
+      fromSubscriptionId: "sub-1",
+      addUnassignedSeats: 137,
+      startingAt: "2026-04-01T00:00:00.000Z",
+    });
+
+    unwrapOk(result);
   });
 
   it("chunks adds and removes into separate edits above the cap", async () => {
