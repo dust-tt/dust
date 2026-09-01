@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { checkFrameShareScopePermission } from "@app/lib/api/share/frame_sharing";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import {
   buildShareFileResponse,
@@ -85,25 +86,15 @@ app.post(
 
     const { shareScope } = ctx.req.valid("json");
 
-    if (shareScope === "public") {
-      const workspace = auth.getNonNullableWorkspace();
-      const publicSharingAllowedByPolicy =
-        workspace.sharingPolicy === "all_scopes";
-      const canPublish =
-        publicSharingAllowedByPolicy &&
-        (await auth.hasWorkspacePermission("publish", "frame"));
-
-      if (!canPublish) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: publicSharingAllowedByPolicy
-              ? "You do not have permission to share this frame publicly."
-              : "Public sharing is disabled for this workspace.",
-          },
-        });
-      }
+    const permission = await checkFrameShareScopePermission(auth, shareScope);
+    if (permission.isErr()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: permission.error.message,
+        },
+      });
     }
 
     await file.setShareScope(auth, shareScope);

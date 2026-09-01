@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { checkFrameEmailGrantPermission } from "@app/lib/api/share/frame_sharing";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -89,43 +90,15 @@ app.post(
 
     const { emails: rawEmails } = ctx.req.valid("json");
 
-    const workspace = auth.getNonNullableWorkspace();
-
-    const externalSharingDisabledByPolicy =
-      workspace.sharingPolicy === "workspace_only";
-    const canInviteExternal =
-      !externalSharingDisabledByPolicy &&
-      (await auth.hasWorkspacePermission("invite", "frame"));
-
-    if (!canInviteExternal) {
-      const emails = rawEmails.map((e) => e.toLowerCase());
-      const users = await UserResource.fetchByEmails(emails);
-
-      const userIdToEmail = new Map(
-        users.map((u) => [u.id, u.email.toLowerCase()])
-      );
-
-      const { memberships } = await MembershipResource.getActiveMemberships({
-        users,
-        workspace,
+    const permission = await checkFrameEmailGrantPermission(auth, rawEmails);
+    if (permission.isErr()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: permission.error.message,
+        },
       });
-
-      const memberEmails = new Set(
-        memberships.map((m) => userIdToEmail.get(m.userId)).filter(Boolean)
-      );
-
-      const hasNonMemberEmails = emails.some((e) => !memberEmails.has(e));
-      if (hasNonMemberEmails) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: externalSharingDisabledByPolicy
-              ? "Only workspace members can be invited when external sharing is disabled."
-              : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.",
-          },
-        });
-      }
     }
 
     const grants = await file.addSharingGrants(auth, { emails: rawEmails });
