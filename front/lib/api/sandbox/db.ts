@@ -813,26 +813,27 @@ export async function deletePodStatePrefix(
 }
 
 /**
- * Delete ONE database's litestream replica: the GCS prefix the directory watcher keys on that
- * database's filename.
+ * Delete one Project database's Litestream replica: the GCS prefix the directory watcher keys on
+ * that database's filename.
  *
- * The replica is the durable copy of a pod database, and `setupSandboxStateOnColdStart` restores every
- * replica it finds. So a replica that survives resurrects a database whose live files were deleted —
- * which makes this the step that actually makes a database deletion stick.
+ * The replica is the durable copy of a Project database, and `setupSandboxStateOnColdStart`
+ * restores every replica it finds. So a replica that survives resurrects a database whose live
+ * files were deleted, which makes this the step that actually makes a database deletion stick.
  *
  * Call it AFTER the live files are gone AND the daemon has been restarted (`restartLitestreamDaemon`):
  * a running litestream keeps replicating a database it can still see, and removing the files does not
  * make it let go — the directory watcher only enumerates at start, so until the restart the daemon
  * still holds the database and recreates the prefix this wipes. The delete is verified by re-listing,
- * because a silently-surviving replica is indistinguishable from success until the pod next boots.
+ * because a silently-surviving replica is indistinguishable from success until the Project's
+ * sandbox next boots.
  */
-export async function deletePodDatabaseReplica(
+export async function deleteProjectDatabaseReplica(
   auth: Authenticator,
   space: SpaceResource,
   { database }: { database: string }
 ): Promise<Result<void, Error>> {
-  if (!isValidPodDatabaseName(database)) {
-    return new Err(new Error(`Invalid pod database name: '${database}'.`));
+  if (!isValidSandboxDatabaseName(database)) {
+    return new Err(new Error(`Invalid Project database name: '${database}'.`));
   }
 
   const statePrefix = getPodStateBasePath({
@@ -851,8 +852,8 @@ export async function deletePodDatabaseReplica(
     if (remaining.includes(replicaDirName)) {
       return new Err(
         new Error(
-          `Replica of pod database '${database}' still present after deletion; ` +
-            "the database would be restored on the pod's next cold start."
+          `Replica of Project database '${database}' still present after deletion; ` +
+            "the database would be restored on the Project sandbox's next cold start."
         )
       );
     }
@@ -862,3 +863,6 @@ export async function deletePodDatabaseReplica(
     return new Err(normalizeError(err));
   }
 }
+
+/** @deprecated Use `deleteProjectDatabaseReplica`. */
+export const deletePodDatabaseReplica = deleteProjectDatabaseReplica;
