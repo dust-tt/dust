@@ -1,6 +1,10 @@
 import path from "node:path";
 
 import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
+import {
+  withFrameSourceLock,
+  withFrameWorkspaceSourceLock,
+} from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
 import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
@@ -11,6 +15,8 @@ import {
 } from "@app/lib/api/frames/source_storage";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
+import type { LockAcquisitionTimeoutError } from "@app/lib/lock";
+import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
@@ -100,6 +106,7 @@ export async function cloneFrameV2Source(
       "Frame source and destination must be folders in a conversation or Pod mount."
     );
   }
+  const owner = auth.getNonNullableWorkspace();
   if (source === destination || destination.startsWith(`${source}/`)) {
     return cloneError(
       "invalid_source",
@@ -162,28 +169,56 @@ export async function cloneFrameV2Source(
     );
   }
 
-  const snapshot = await inspectFrameSourceStorage({
-    destinationMountPath,
-    sourceMountPath,
-  });
-  if (snapshot.isErr()) {
-    return cloneStorageError(snapshot.error);
-  }
+  const copied = await withFrameSourceLock<
+    void,
+    CloneFrameV2SourceError | LockAcquisitionTimeoutError
+  >(sourceFrame.sId, () =>
+    withFrameWorkspaceSourceLock<void, CloneFrameV2SourceError>(
+      owner.sId,
+      async () => {
+        const freshSourceFrame = await sourceFrame.fetchFreshFrameV2(auth);
+        if (
+          !freshSourceFrame ||
+          freshSourceFrame.mountFilePath !== sourceMountPath
+        ) {
+          return cloneError(
+            "invalid_source",
+            "The source Frame moved or was deleted before cloning started."
+          );
+        }
 
-  const registeredSourceFiles = await FileResource.fetchByMountFilePaths(
-    auth,
-    snapshot.value.sourceObjectNames
+        const snapshot = await inspectFrameSourceStorage({
+          destinationMountPath,
+          sourceMountPath,
+        });
+        if (snapshot.isErr()) {
+          return cloneStorageError(snapshot.error);
+        }
+
+        const registeredSourceFiles = await FileResource.fetchByMountFilePaths(
+          auth,
+          snapshot.value.sourceObjectNames
+        );
+        if (registeredSourceFiles.some((file) => file.id !== sourceFrame.id)) {
+          return cloneError(
+            "conflict",
+            "Clone nested registered files separately before cloning this Frame."
+          );
+        }
+
+        const copy = await copyFrameSourceStorage(snapshot.value);
+        return copy.isErr() ? cloneStorageError(copy.error) : copy;
+      }
+    )
   );
-  if (registeredSourceFiles.some((file) => file.id !== sourceFrame.id)) {
-    return cloneError(
-      "conflict",
-      "Clone nested registered files separately before cloning this Frame."
-    );
-  }
-
-  const copied = await copyFrameSourceStorage(snapshot.value);
   if (copied.isErr()) {
-    return cloneStorageError(copied.error);
+    if (isLockAcquisitionTimeoutError(copied.error)) {
+      return cloneError(
+        "conflict",
+        "Another Frame source operation is in progress; retry shortly."
+      );
+    }
+    return new Err(copied.error);
   }
 
   const registration = await registerFrameV2FromSourceUsingFileSystem(auth, {

@@ -2,12 +2,15 @@
 // @vitest-environment node
 
 import { cloneFrameV2Source } from "@app/lib/api/frames/clone_source";
+import * as frameOperationLock from "@app/lib/api/frames/operation_lock";
 import { setupFrameSourceStorageTest } from "@app/lib/api/frames/source_storage.test_utils";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { Err } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -17,6 +20,11 @@ beforeEach(() => {
 
 describe("cloneFrameV2Source", () => {
   it("copies into a fresh identity and activates its first publication", async () => {
+    const sourceLock = vi.spyOn(frameOperationLock, "withFrameSourceLock");
+    const workspaceLock = vi.spyOn(
+      frameOperationLock,
+      "withFrameWorkspaceSourceLock"
+    );
     const c = await setupFrameSourceStorageTest();
     fileStorageMock.setObject(
       c.sourceObjects[0],
@@ -53,6 +61,11 @@ describe("cloneFrameV2Source", () => {
       result.value.publicationId
     );
     expect(await FileResource.fetchById(c.auth, c.frame.sId)).toBeTruthy();
+    expect(sourceLock).toHaveBeenCalledWith(c.frame.sId, expect.any(Function));
+    expect(workspaceLock).toHaveBeenCalledWith(
+      c.workspace.sId,
+      expect.any(Function)
+    );
   });
 
   it("rejects a destination inside the source folder", async () => {
@@ -71,5 +84,26 @@ describe("cloneFrameV2Source", () => {
     expect(result.isErr() && result.error).toMatchObject({
       code: "invalid_source",
     });
+  });
+
+  it("does not copy when the source operation lock is busy", async () => {
+    const c = await setupFrameSourceStorageTest();
+    vi.spyOn(frameOperationLock, "withFrameSourceLock").mockResolvedValueOnce(
+      new Err(
+        new LockAcquisitionTimeoutError(
+          frameOperationLock.getFrameSourceLockName(c.frame.sId)
+        )
+      )
+    );
+    const copyFile = vi.spyOn(getPrivateUploadBucket(), "copyFile");
+
+    const result = await cloneFrameV2Source(c.auth, {
+      conversation: c.conversation,
+      sourceDirectoryPath: c.sourceDirectoryPath,
+      destinationDirectoryPath: `conversation-${c.conversation.sId}/Copy`,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({ code: "conflict" });
+    expect(copyFile).not.toHaveBeenCalled();
   });
 });
