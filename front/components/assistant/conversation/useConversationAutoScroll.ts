@@ -6,12 +6,19 @@ import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useRef } from "react";
 
+type ConversationAutoScrollMethods = Pick<
+  VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>,
+  | "cancelSmoothScroll"
+  | "getScrollLocation"
+  | "scrollerElement"
+  | "scrollToItem"
+>;
+
+type UserScrollDirection = "up" | "down";
+
 interface UseConversationAutoScrollProps {
   isMobile: boolean;
-  messageListRef: RefObject<VirtuosoMessageListMethods<
-    VirtuosoMessage,
-    VirtuosoMessageListContext
-  > | null>;
+  messageListRef: RefObject<ConversationAutoScrollMethods | null>;
 }
 
 export function useConversationAutoScroll({
@@ -23,8 +30,8 @@ export function useConversationAutoScroll({
     isAutoScrollEnabledRef.current = true;
   }, []);
 
-  // Compare native scroll movement with list height changes so Virtuoso's row
-  // remeasurement is not mistaken for user scroll intent.
+  // Track gestures separately from their resulting scroll movement so
+  // Virtuoso's concurrent movement cannot hide the user's direction.
   useEffect(() => {
     const methods = messageListRef.current;
     const scrollElement = isMobile
@@ -38,6 +45,7 @@ export function useConversationAutoScroll({
     let previousScrollHeight = scrollElement.scrollHeight;
     let previousScrollTop = scrollElement.scrollTop;
     let lastTouchY: number | null = null;
+    let pendingUserScrollDirection: UserScrollDirection | null = null;
 
     const captureScrollPosition = () => {
       previousScrollHeight = scrollElement.scrollHeight;
@@ -80,13 +88,18 @@ export function useConversationAutoScroll({
       );
       const isNearBottom =
         location.isAtBottom || location.bottomOffset <= stickyFooterHeight;
+      const isUserScrollingDown =
+        pendingUserScrollDirection === "down" ||
+        (pendingUserScrollDirection === null &&
+          scrollTopDelta > 0 &&
+          scrollHeightDelta === 0);
 
       // The sticky input bar hides the last part of the viewport. Reattach on
-      // downward user movement into that area, but ignore list height changes.
+      // downward user movement into that area. Gesture direction takes
+      // precedence over deltas that may also include list height changes.
       if (
         !isAutoScrollEnabledRef.current &&
-        scrollTopDelta > 0 &&
-        scrollHeightDelta === 0 &&
+        isUserScrollingDown &&
         isNearBottom
       ) {
         enableAutoScroll();
@@ -99,6 +112,18 @@ export function useConversationAutoScroll({
 
       previousScrollHeight = scrollHeight;
       previousScrollTop = scrollElement.scrollTop;
+      pendingUserScrollDirection = null;
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.deltaY === 0) {
+        return;
+      }
+
+      pendingUserScrollDirection = event.deltaY < 0 ? "up" : "down";
+      if (pendingUserScrollDirection === "up") {
+        detachFromAutoScroll();
+      }
     };
 
     const onTouchStart = (event: TouchEvent) => {
@@ -111,20 +136,23 @@ export function useConversationAutoScroll({
         return;
       }
 
-      if (lastTouchY !== null && touchY > lastTouchY) {
-        detachFromAutoScroll();
-      } else if (!isAutoScrollEnabledRef.current) {
-        captureScrollPosition();
+      if (lastTouchY !== null && touchY !== lastTouchY) {
+        pendingUserScrollDirection = touchY > lastTouchY ? "up" : "down";
+        if (pendingUserScrollDirection === "up") {
+          detachFromAutoScroll();
+        }
       }
       lastTouchY = touchY;
     };
 
     const passiveOptions = { passive: true };
     scrollTarget.addEventListener("scroll", onScroll, passiveOptions);
+    scrollElement.addEventListener("wheel", onWheel, passiveOptions);
     scrollElement.addEventListener("touchstart", onTouchStart, passiveOptions);
     scrollElement.addEventListener("touchmove", onTouchMove, passiveOptions);
     return () => {
       scrollTarget.removeEventListener("scroll", onScroll);
+      scrollElement.removeEventListener("wheel", onWheel);
       scrollElement.removeEventListener("touchstart", onTouchStart);
       scrollElement.removeEventListener("touchmove", onTouchMove);
     };
