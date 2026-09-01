@@ -4,9 +4,9 @@ import { formatCredits } from "@app/lib/client/credits";
 import {
   AlertCircle,
   ContentMessage,
+  cn,
   Page,
   Spinner,
-  ValueCard,
 } from "@dust-tt/sparkle";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
@@ -67,9 +67,7 @@ export function WorkspaceCreditUsageValueCards({
   );
   return (
     <div
-      className={
-        showPoolCard ? "grid grid-cols-3 gap-4" : "grid grid-cols-2 gap-4"
-      }
+      className={cn("grid gap-4", showPoolCard ? "grid-cols-3" : "grid-cols-2")}
     >
       {showPoolCard && (
         <SummaryCard

@@ -186,7 +186,7 @@ function sumProgrammaticPoolConsumedFromInvoice({
     .reduce((sum, item) => sum + item.total, 0);
 }
 
-// Read live from Metronome rather than ES
+// Read live from Metronome
 async function fetchProgrammaticConsumedCreditsOrNull({
   workspace,
   metronomeCustomerId,
