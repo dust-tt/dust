@@ -3,8 +3,8 @@ import { useWorkspaceAnalyticsToggle } from "@app/hooks/useWorkspaceAnalyticsTog
 import type { WorkspaceType } from "@app/types/user";
 import { SliderToggle } from "@dust-tt/sparkle";
 
-const LABEL = "Workspace Analyst";
-const DESCRIPTION =
+export const WORKSPACE_ANALYTICS_LABEL = "Workspace Analyst";
+export const WORKSPACE_ANALYTICS_DESCRIPTION =
   "Whether workspace admins get the Analyst agent and analytics tools to explore how the workspace is used";
 
 interface WorkspaceAnalyticsToggleProps {
@@ -19,8 +19,8 @@ export function WorkspaceAnalyticsToggle({
 
   return (
     <GovernanceSettingRowLayout
-      label={LABEL}
-      description={DESCRIPTION}
+      label={WORKSPACE_ANALYTICS_LABEL}
+      description={WORKSPACE_ANALYTICS_DESCRIPTION}
       action={
         <SliderToggle
           selected={isEnabled}

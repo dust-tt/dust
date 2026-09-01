@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 
-const POD_KNOWLEDGE_POLICIES = [
+export const POD_KNOWLEDGE_POLICIES = [
   {
     value: "enabled",
     label: "Manual updates allowed",
@@ -27,8 +27,9 @@ const POD_KNOWLEDGE_POLICIES = [
 
 type PodKnowledgePolicy = (typeof POD_KNOWLEDGE_POLICIES)[number];
 
-const LABEL = "Pod files";
-const DESCRIPTION = "Whether members can manually add files to Pods";
+export const POD_KNOWLEDGE_LABEL = "Pod files";
+export const POD_KNOWLEDGE_DESCRIPTION =
+  "Whether members can manually add files to Pods";
 
 export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
   const {
@@ -45,8 +46,8 @@ export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <GovernanceSettingRowLayout
-      label={LABEL}
-      description={DESCRIPTION}
+      label={POD_KNOWLEDGE_LABEL}
+      description={POD_KNOWLEDGE_DESCRIPTION}
       action={
         <PodKnowledgePolicyDropdown
           selectedPolicy={selectedPolicy}

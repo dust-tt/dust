@@ -3,8 +3,9 @@ import { usePrivateConversationUrlsToggle } from "@app/hooks/usePrivateConversat
 import type { WorkspaceType } from "@app/types/user";
 import { SliderToggle } from "@dust-tt/sparkle";
 
-const LABEL = "Private conversation URLs by default";
-const DESCRIPTION =
+export const PRIVATE_CONVERSATION_URLS_LABEL =
+  "Private conversation URLs by default";
+export const PRIVATE_CONVERSATION_URLS_DESCRIPTION =
   "Whether conversation URLs are private by default, limiting access to participants";
 
 interface PrivateConversationUrlsToggleProps {
@@ -19,8 +20,8 @@ export function PrivateConversationUrlsToggle({
 
   return (
     <GovernanceSettingRowLayout
-      label={LABEL}
-      description={DESCRIPTION}
+      label={PRIVATE_CONVERSATION_URLS_LABEL}
+      description={PRIVATE_CONVERSATION_URLS_DESCRIPTION}
       action={
         <SliderToggle
           selected={isEnabled}
