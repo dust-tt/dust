@@ -9,7 +9,6 @@ import type {
   SandboxFunctionStake,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import type { PodMetadataType } from "@app/types/project_metadata";
 import type { PodTaskType } from "@app/types/project_task";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -29,21 +28,6 @@ export type PokeListProjectKnowledgeFromConnectors = {
 
 export type PokeListProjectTasks = {
   tasks: PodTaskType[];
-};
-
-export type PokeProjectWorkflowInfo = {
-  workflowId: string;
-  runId: string;
-  status: string;
-  startTime: number | null;
-  closeTime: number | null;
-};
-
-export type PokeGetProjectWorkflow = {
-  metadata: PodMetadataType | null;
-  temporalNamespace: string;
-  workflowId: string;
-  latestWorkflow: PokeProjectWorkflowInfo | null;
 };
 
 export type PokePodDatabase = {

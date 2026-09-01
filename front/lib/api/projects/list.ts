@@ -286,7 +286,8 @@ export async function listAllProjectsWithAdminMetadata(
       ...enrichedSpaces[i],
       description: metadata?.description ?? null,
       archivedAt: metadata?.archivedAt?.getTime() ?? null,
-      todoGenerationEnabled: metadata?.todoGenerationEnabled ?? false,
+      // Automated task generation removed; keep field hardcoded for API compat.
+      todoGenerationEnabled: false,
     };
   });
 }

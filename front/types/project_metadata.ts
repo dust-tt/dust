@@ -7,7 +7,9 @@ export interface PodMetadataType {
   spaceId: string;
   description: string | null;
   archivedAt: number | null;
+  /** Hardcoded false — automated task generation removed; field kept for API compat. */
   todoGenerationEnabled: boolean;
+  /** Hardcoded null — automated task generation removed; field kept for API compat. */
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
   frameTabs: PodFileTab[];
