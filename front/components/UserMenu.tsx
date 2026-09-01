@@ -30,7 +30,12 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
+import {
+  isUserMenuModal,
+  USER_MENU_MODAL_QUERY_PARAM,
+} from "@app/lib/user_menu";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
@@ -40,6 +45,7 @@ import {
 } from "@app/types/extension";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
@@ -114,6 +120,7 @@ export function UserMenu({
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuModal = router.query[USER_MENU_MODAL_QUERY_PARAM];
 
   const isFirefox =
     typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
@@ -131,6 +138,25 @@ export function UserMenu({
     return () =>
       window.removeEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
   }, []);
+
+  useEffect(() => {
+    if (!router.isReady || !isUserMenuModal(userMenuModal)) {
+      return;
+    }
+
+    switch (userMenuModal) {
+      case "personal-usage":
+        setAnalyticsOpen(true);
+        break;
+      case "personal-automations":
+        setAutomationsOpen(true);
+        break;
+      default:
+        assertNeverAndIgnore(userMenuModal);
+    }
+
+    void removeParamFromRouter(router, USER_MENU_MODAL_QUERY_PARAM);
+  }, [router, userMenuModal]);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
