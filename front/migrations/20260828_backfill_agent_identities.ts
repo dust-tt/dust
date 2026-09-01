@@ -77,6 +77,7 @@ async function getBackfillStats(
       col: "sId",
     }),
     AgentConfigurationModel.count({
+      // @ts-expect-error This historical backfill predates the non-null agentId constraint.
       where: { workspaceId: workspace.id, agentId: null },
     }),
     frontSequelize.query<{ count: string }>(
@@ -101,6 +102,7 @@ async function getBackfillStats(
   return {
     logicalAgentCount,
     identitiesToCreate: 0,
+    // @ts-expect-error This count targets the historical nullable agentId schema.
     versionsToAttach,
     orphanIdentityCount: Number(count),
   };
@@ -192,8 +194,10 @@ export async function backfillAgentIdentities({
 
   if (execute) {
     const missingIdentityCount = await AgentConfigurationModel.count({
+      // @ts-expect-error This historical backfill predates the non-null agentId constraint.
       where: { workspaceId: workspace.id, agentId: null },
     });
+    // @ts-expect-error This count targets the historical nullable agentId schema.
     if (missingIdentityCount > 0) {
       throw new Error(
         `Workspace ${workspace.sId} still has ${missingIdentityCount} versions without an identity.`
