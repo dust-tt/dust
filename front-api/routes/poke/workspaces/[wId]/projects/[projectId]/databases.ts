@@ -14,13 +14,17 @@ app.get("/", async (ctx): HandlerResult<PokeListProjectDatabases> => {
   // databases live in each Frame's sandbox and are intentionally not included here.
   const result = await listDatabasesOnSandbox(auth, { space });
   if (result.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `Failed to list project databases: ${result.error.message}`,
+    return apiError(
+      ctx,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to list project databases: ${result.error.message}`,
+        },
       },
-    });
+      result.error
+    );
   }
 
   return ctx.json({ items: result.value });
