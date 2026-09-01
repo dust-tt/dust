@@ -30,8 +30,6 @@ export type AwuPoolCurrentCycleResponseBody = {
   otherConsumedCredits: number | null;
 };
 
-// Past-cycle history — requires scanning the full ledger window, slower than
-// `AwuPoolCurrentCycleResponseBody`.
 export type AwuPoolCycleHistoryResponseBody = {
   // Per-cycle pool consumption, most recent first
   cycleBreakdown: AwuPoolCycleBreakdown[];

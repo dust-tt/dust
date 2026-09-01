@@ -117,9 +117,6 @@ async function getPoolLedgerData({
   return new Ok({ poolCommitIds, ledgerEntries });
 }
 
-// O(invoices x ledgerEntries) via computeCycleBreakdown's .map, but invoices
-// are capped at MAX_CYCLE_HISTORY_LIMIT and ledgerEntries is bounded to
-// the same history window.
 function sumPoolLedgerEntriesForInvoice(
   ledgerEntries: PoolLedgerEntry[],
   invoiceId: string
@@ -445,8 +442,6 @@ async function getAwuPoolCycleHistoryUncached(
   return new Ok({ cycleBreakdown, excessCycleBreakdown });
 }
 
-// Full body — current cycle plus history, composed for callers that want
-// everything in one shot (Poke, the legacy combined endpoint).
 export async function getAwuPoolSummary(
   auth: Authenticator,
   {
