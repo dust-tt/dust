@@ -378,7 +378,6 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       secret,
       status: this.status,
-      groupIds: this.groupIds,
       spaces,
       role: this.role,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
