@@ -447,15 +447,17 @@ export class KeyResource extends BaseResource<KeyModel> {
 
     return new Map(
       keys.map((key) => {
-        const spaces = new Set(
-          key.groupIds.flatMap(
-            (groupModelId) => spacesByGroupModelId.get(groupModelId) ?? []
-          )
+        const spaces = new Map(
+          key.groupIds
+            .flatMap(
+              (groupModelId) => spacesByGroupModelId.get(groupModelId) ?? []
+            )
+            .map((space) => [space.sId, space])
         );
 
         return [
           key.id,
-          [...spaces].sort((a, b) => a.name.localeCompare(b.name)),
+          [...spaces.values()].sort((a, b) => a.name.localeCompare(b.name)),
         ];
       })
     );
