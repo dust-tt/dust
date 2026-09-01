@@ -97,6 +97,16 @@ function setupAutoScroll({ isMobile = false } = {}) {
     });
   };
 
+  const updateLayout = ({
+    scrollTop,
+    scrollHeight: nextScrollHeight = scrollHeight,
+  }: ScrollUpdate) => {
+    act(() => {
+      scrollHeight = nextScrollHeight;
+      scrollElement.scrollTop = scrollTop;
+    });
+  };
+
   const makeTouch = (clientY: number): Touch => ({
     clientX: 0,
     clientY,
@@ -130,6 +140,7 @@ function setupAutoScroll({ isMobile = false } = {}) {
     dispatchWheel,
     methods,
     scrollElement,
+    updateLayout,
   };
 }
 
@@ -352,6 +363,73 @@ describe("useConversationAutoScroll", () => {
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
       expect(harness.methods.scrollToItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("holding the detached position", () => {
+    it("removes streamed row growth from Virtuoso's scroll compensation", () => {
+      const harness = setupAutoScroll();
+
+      harness.dispatchWheel(-100);
+      harness.dispatchScroll({
+        scrollTop: 400,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+      harness.dispatchScroll({
+        scrollTop: 460,
+        scrollHeight: 1060,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+
+      expect(harness.scrollElement.scrollTop).toBe(400);
+    });
+
+    it("preserves upward movement concurrent with streamed row growth", () => {
+      const harness = setupAutoScroll();
+
+      harness.dispatchWheel(-100);
+      harness.dispatchScroll({
+        scrollTop: 400,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+      // Virtuoso moved down by 60px while the user moved up by 30px, leaving
+      // a positive net delta of 30px.
+      harness.dispatchScroll({
+        scrollTop: 430,
+        scrollHeight: 1060,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+
+      expect(harness.scrollElement.scrollTop).toBe(370);
+    });
+
+    it("uses the current height baseline for a later upward gesture", () => {
+      const harness = setupAutoScroll();
+      detach(harness);
+
+      harness.updateLayout({ scrollTop: 400, scrollHeight: 1060 });
+      harness.dispatchWheel(-50);
+      harness.dispatchScroll({
+        scrollTop: 350,
+        scrollHeight: 1060,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+
+      expect(harness.scrollElement.scrollTop).toBe(350);
+    });
+
+    it("does not correct the native scroll event that first detaches", () => {
+      const harness = setupAutoScroll();
+
+      harness.updateLayout({ scrollTop: 500, scrollHeight: 1060 });
+      harness.dispatchScroll({
+        scrollTop: 450,
+        scrollHeight: 1060,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+
+      expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
+      expect(harness.scrollElement.scrollTop).toBe(450);
     });
   });
 

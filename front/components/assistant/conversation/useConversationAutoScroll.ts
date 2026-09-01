@@ -64,6 +64,7 @@ export function useConversationAutoScroll({
     };
 
     const onScroll = () => {
+      const wasAutoScrollEnabled = isAutoScrollEnabledRef.current;
       const scrollHeight = scrollElement.scrollHeight;
       const scrollTop = scrollElement.scrollTop;
       const scrollHeightDelta = scrollHeight - previousScrollHeight;
@@ -116,6 +117,16 @@ export function useConversationAutoScroll({
           align: "end",
           behavior: "instant",
         });
+      }
+
+      // Virtuoso preserves the bottom offset when a row grows during an active
+      // upward scroll. Remove that growth so it does not cancel user movement.
+      if (
+        !wasAutoScrollEnabled &&
+        userScrollDirectionRef.current === "up" &&
+        scrollHeightDelta > 0
+      ) {
+        scrollElement.scrollTop -= scrollHeightDelta;
       }
 
       previousScrollHeight = scrollHeight;
