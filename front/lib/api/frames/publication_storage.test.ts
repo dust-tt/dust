@@ -1,5 +1,8 @@
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
+import {
+  getFramePublishLockName,
+  getFrameSourceLockName,
+} from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
   activateFramePublication,
@@ -25,6 +28,7 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { makeAlwaysHeldLockLease } from "@app/tests/utils/LockLeaseFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { getNamespace } from "@app/tests/utils/test_cls";
@@ -587,6 +591,7 @@ describe("activateFramePublication", () => {
     const activated = await activateFramePublication(auth, {
       frame,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
     expect(
@@ -624,6 +629,7 @@ describe("activateFramePublication", () => {
       frame,
       lease,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
     expect(activated.isErr() && isLockLeaseLostError(activated.error)).toBe(
@@ -632,7 +638,7 @@ describe("activateFramePublication", () => {
     expect(setActivePublication).not.toHaveBeenCalled();
   });
 
-  it("rolls back activation when the lease is lost before commit", async () => {
+  it("rolls back activation when the source lease is lost before commit", async () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
       frame,
@@ -646,9 +652,12 @@ describe("activateFramePublication", () => {
       return;
     }
     const leaseError = new LockLeaseLostError(
-      getFramePublishLockName(frame.sId)
+      getFrameSourceLockName(frame.sId)
     );
-    const lease = {
+    const publishLease = {
+      check: vi.fn().mockReturnValue(new Ok(undefined)),
+    };
+    const sourceLease = {
       check: vi
         .fn()
         .mockReturnValueOnce(new Ok(undefined))
@@ -664,8 +673,9 @@ describe("activateFramePublication", () => {
         async () => {
           const activated = await activateFramePublication(auth, {
             frame,
-            lease,
+            lease: publishLease,
             publicationId: stored.value.publicationId,
+            sourceLease,
           });
           throw activated.isErr()
             ? activated.error
@@ -710,12 +720,14 @@ describe("activateFramePublication", () => {
     await activateFramePublication(auth, {
       frame,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
     fileStorageMock.setFetchFileContentNotFound(() => true);
 
     const activation = await activateFramePublication(auth, {
       frame,
       publicationId: "b8c2b796-534a-4ad2-a5ad-071da692ca0b",
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
     expect(
@@ -746,6 +758,7 @@ describe("activateFramePublication", () => {
     const activated = await activateFramePublication(auth, {
       frame,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
     expect(activated.isOk()).toBe(true);
@@ -799,6 +812,7 @@ describe("activateFramePublication", () => {
     const result = await activateFramePublication(auth, {
       frame,
       publicationId: stored.value.publicationId,
+      sourceLease: makeAlwaysHeldLockLease(),
     });
 
     expect(
@@ -822,6 +836,7 @@ describe("activateFramePublication", () => {
       frame,
       functionArtifacts,
       manifest: manifestWithFunction,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: sourceFilesWithFunction,
       uiBundleCode: activeBundle,
     });
@@ -861,6 +876,7 @@ describe("activateFramePublication", () => {
         activateFramePublication(auth, {
           frame,
           publicationId: active.value.publicationId,
+          sourceLease: makeAlwaysHeldLockLease(),
         })
       )
     ).rejects.toThrow();
@@ -900,6 +916,7 @@ describe("activateFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
       uiBundleCode: firstBundle,
     });
@@ -919,6 +936,7 @@ describe("activateFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
       uiBundleCode: secondBundle,
     });
@@ -953,19 +971,46 @@ describe("publishFramePublication", () => {
         frame,
         functionArtifacts: [],
         manifest,
+        sourceLease: makeAlwaysHeldLockLease(),
         sourceFiles,
         uiBundleCode,
       });
       await vi.runAllTimersAsync();
       const published = await publicationPromise;
 
-      expect(published.isErr() && published.error.code).toBe(
-        "publish_conflict"
-      );
+      expect(published.isErr() && published.error).toMatchObject({
+        code: "publish_conflict",
+        message:
+          "Another publication is in progress for this Frame; retry shortly.",
+      });
     } finally {
       vi.useRealTimers();
       await redisClient.del(lockKey);
     }
+  });
+
+  it("reports source lease loss as a source-operation conflict", async () => {
+    const { auth, frame } = await setupFrame();
+    const sourceLease = {
+      check: () =>
+        new Err(new LockLeaseLostError(getFrameSourceLockName(frame.sId))),
+    };
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceLease,
+      sourceFiles,
+      uiBundleCode,
+    });
+
+    expect(published.isErr() && published.error).toMatchObject({
+      code: "publish_conflict",
+      message:
+        "Another source operation is in progress for this Frame; retry shortly.",
+    });
+    expect(reconcileFramePublicationDatabases).not.toHaveBeenCalled();
   });
 
   it("does not relabel a nested lock timeout as a publication conflict", async () => {
@@ -979,6 +1024,7 @@ describe("publishFramePublication", () => {
         frame,
         functionArtifacts: [],
         manifest,
+        sourceLease: makeAlwaysHeldLockLease(),
         sourceFiles,
         uiBundleCode,
       })
@@ -995,6 +1041,7 @@ describe("publishFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles,
       uiBundleCode,
     });
@@ -1021,6 +1068,7 @@ describe("publishFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest: manifestWithDatabase,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: [...sourceFiles, databaseSchema],
       uiBundleCode,
     });
@@ -1029,6 +1077,7 @@ describe("publishFramePublication", () => {
     expect(reconcileFramePublicationDatabases).toHaveBeenCalledWith(auth, {
       frame,
       manifest: manifestWithDatabase,
+      sourceLease: expect.objectContaining({ check: expect.any(Function) }),
       sourceFiles: [...sourceFiles, databaseSchema],
     });
   });
@@ -1050,6 +1099,7 @@ describe("publishFramePublication", () => {
       frame,
       functionArtifacts: [],
       manifest: manifestWithDatabase,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: [
         ...sourceFiles,
         {
@@ -1081,6 +1131,7 @@ describe("publishFramePublication", () => {
         frame,
         functionArtifacts,
         manifest: manifestWithFunction,
+        sourceLease: makeAlwaysHeldLockLease(),
         sourceFiles: sourceFilesWithFunction,
         uiBundleCode,
       })
@@ -1116,6 +1167,7 @@ describe("publishFramePublication", () => {
       frame,
       functionArtifacts,
       manifest: manifestWithFunction,
+      sourceLease: makeAlwaysHeldLockLease(),
       sourceFiles: sourceFilesWithFunction,
       uiBundleCode,
     });
