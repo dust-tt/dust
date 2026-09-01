@@ -103,7 +103,6 @@ export async function prepareAppContext(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
-        groupIds: auth.groupIds(),
         actionConfig,
         dustAppConfiguration: actionConfig.dustAppConfiguration,
         appId: actionConfig.dustAppConfiguration?.appId,
@@ -124,7 +123,6 @@ export async function prepareAppContext(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
-        groupIds: auth.groupIds(),
         appId: actionConfig.dustAppConfiguration.appId,
         actionConfig,
       },
