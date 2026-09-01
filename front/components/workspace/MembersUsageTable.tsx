@@ -5,9 +5,11 @@ import {
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import {
+  AT_POOL_LIMIT_BAR_CLASSES,
   getSeatBarClasses,
   getSeatIconColorClass,
   MUTED_BAR_CLASSES,
+  OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
@@ -184,10 +186,10 @@ interface AwuUsageBarProps {
   spendLimitSource: EffectiveSpendLimitSource;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
-  // Shows only the workspace-pool portion of usage (pool consumed / pool
-  // remaining + overage), hiding the seat-allowance section entirely. The
-  // limit figure above the bar becomes the pool limit instead of the
-  // combined (seat + pool) effective limit. Used by the compact Poke
+  // Shows only the workspace-pool portion of usage as a single bar (muted,
+  // orange at the limit, red over it), hiding the seat-allowance section
+  // entirely. The limit figure above the bar becomes the pool limit instead
+  // of the combined (seat + pool) effective limit. Used by the compact Poke
   // layout, which surfaces seat allowance separately in its own column.
   poolOnly?: boolean;
 }
@@ -263,38 +265,40 @@ export function AwuUsageBar({
   const overage =
     poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
 
-  if (poolOnly && poolLimit !== null && poolLimit <= 0) {
-    // No pool access, but credits were still consumed from it (e.g. legacy
-    // overage predating the seat's current limit). Surface the actual
-    // amount instead of hiding it behind "--".
-    const hasUnexpectedPoolConsumption = consumedFromPool > 0;
+  if (poolOnly) {
+    // Single bar: muted while under the pool limit, orange exactly at it,
+    // red once consumption exceeds it. `poolLimit` of 0 (no pool access)
+    // falls out of the same rule — any consumption there is already over.
+    const isOverPoolLimit = poolLimit !== null && consumedFromPool > poolLimit;
+    const isAtPoolLimit =
+      poolLimit !== null && poolLimit > 0 && consumedFromPool === poolLimit;
+    const fillClassName = isOverPoolLimit
+      ? OVER_POOL_LIMIT_BAR_CLASSES.fill
+      : isAtPoolLimit
+        ? AT_POOL_LIMIT_BAR_CLASSES.fill
+        : MUTED_BAR_CLASSES.fill;
+    const percentage =
+      poolLimit !== null && poolLimit > 0
+        ? Math.min(100, (consumedFromPool / poolLimit) * 100)
+        : consumedFromPool > 0
+          ? 100
+          : 0;
+    const limitLabel = poolLimit === null ? "∞" : formatCredits(poolLimit);
     return (
       <div className="flex w-full flex-col gap-1">
-        <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
-          <span>
-            {hasUnexpectedPoolConsumption
-              ? formatCredits(consumedFromPool)
-              : "--"}
-          </span>
-          {isPending ? <Spinner size="xs" /> : <span>--</span>}
+        <div className="flex justify-between text-xs tabular-nums text-foreground">
+          <span>{formatCredits(consumedFromPool)}</span>
+          {isPending ? <Spinner size="xs" /> : <span>{limitLabel}</span>}
         </div>
         <div className="flex h-3 w-full items-center">
           <ProgressBar
-            aria-label="Member credit usage"
-            aria-valuenow={hasUnexpectedPoolConsumption ? 100 : 0}
-            aria-valuetext={
-              hasUnexpectedPoolConsumption
-                ? `${formatCredits(consumedFromPool)} credits used from the workspace pool with no pool access`
-                : "No pool access"
-            }
+            aria-label="Member pool credit usage"
+            aria-valuenow={percentage}
+            aria-valuetext={`${formatCredits(consumedFromPool)} of ${limitLabel} pool credits used`}
             className="h-1 w-full gap-px bg-transparent"
             values={[
-              {
-                value: 1,
-                className: hasUnexpectedPoolConsumption
-                  ? OVERAGE_BAR_CLASSES.fill
-                  : MUTED_BAR_CLASSES.track,
-              },
+              { value: percentage, className: fillClassName },
+              { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
             ]}
           />
         </div>
@@ -308,14 +312,14 @@ export function AwuUsageBar({
     label: string;
   }> = [];
   const creditLabel = isFreeWithBalance ? "lifetime credits" : "seat allowance";
-  if (!poolOnly && seatConsumed > 0) {
+  if (seatConsumed > 0) {
     sections.push({
       value: seatConsumed,
       className: seatColors.fill,
       label: `${formatCredits(seatConsumed)} of ${formatCredits(allowance)} ${creditLabel} used`,
     });
   }
-  if (!poolOnly && seatRemaining > 0) {
+  if (seatRemaining > 0) {
     sections.push({
       value: seatRemaining,
       className: seatColors.track,
@@ -336,29 +340,17 @@ export function AwuUsageBar({
       label: `${formatCredits(poolRemaining)} credits remaining before spend limit`,
     });
   }
-  if (poolOnly && overage > 0) {
-    sections.push({
-      value: overage,
-      className: OVERAGE_BAR_CLASSES.fill,
-      label: `${formatCredits(overage)} credits over the pool limit`,
-    });
-  }
 
   const total = sections.reduce((sum, s) => sum + s.value, 0);
   const usedPercentage =
     total > 0
       ? Math.min(
           100,
-          Math.max(
-            0,
-            ((poolOnly ? poolConsumed + overage : seatConsumed + poolConsumed) /
-              total) *
-              100
-          )
+          Math.max(0, ((seatConsumed + poolConsumed) / total) * 100)
         )
       : 0;
 
-  const hasSeatSections = !poolOnly && (seatConsumed > 0 || seatRemaining > 0);
+  const hasSeatSections = seatConsumed > 0 || seatRemaining > 0;
   // Only surface the pool when there's actually a pool to spend from: a finite
   // positive limit, or uncapped (null). A zero pool limit (free) has no pool.
   const hasPoolSections =
@@ -442,19 +434,13 @@ export function AwuUsageBar({
     </div>
   );
 
-  const headlineConsumed = poolOnly
-    ? poolConsumed + overage
-    : isFreeWithBalance
-      ? Math.min(lifetimeConsumed! + overage, allowance)
-      : effectiveLimit !== null
-        ? Math.min(consumed, effectiveLimit)
-        : consumed;
+  const headlineConsumed = isFreeWithBalance
+    ? Math.min(lifetimeConsumed! + overage, allowance)
+    : effectiveLimit !== null
+      ? Math.min(consumed, effectiveLimit)
+      : consumed;
   // null means uncapped
-  const headlineLimit = poolOnly
-    ? poolLimit
-    : isFreeWithBalance
-      ? allowance
-      : effectiveLimit;
+  const headlineLimit = isFreeWithBalance ? allowance : effectiveLimit;
   const headlineLimitLabel =
     headlineLimit === null ? "Unlimited" : formatCredits(headlineLimit);
   return (

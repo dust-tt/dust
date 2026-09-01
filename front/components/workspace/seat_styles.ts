@@ -33,6 +33,17 @@ export const OVERAGE_BAR_CLASSES = {
   fill: "bg-warning-700",
 };
 
+// Pool credit bar fill exactly at its limit — a warning ahead of the overage
+// (red) color used once consumption exceeds it.
+export const AT_POOL_LIMIT_BAR_CLASSES = {
+  fill: "bg-warning-500",
+};
+
+// Pool credit bar fill once consumption exceeds its limit.
+export const OVER_POOL_LIMIT_BAR_CLASSES = {
+  fill: "bg-red-500",
+};
+
 // Seat icon text color: golden for max, highlight blue for pro, muted grey
 // otherwise (free / none / workspace).
 export function getSeatIconColorClass(seatType: MembershipSeatType): string {
