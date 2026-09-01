@@ -19,11 +19,23 @@ import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const emitMovedAuditLog = vi.hoisted(() => vi.fn());
+
+vi.mock("@app/lib/api/files/gcs_mount/files", async (importActual) => ({
+  ...(await importActual<
+    typeof import("@app/lib/api/files/gcs_mount/files")
+  >()),
+  emitGCSMountFileMovedAuditLog: emitMovedAuditLog,
+}));
+
 vi.mock("@app/lib/lock", async (importActual) => {
   const actual = await importActual<typeof import("@app/lib/lock")>();
+  const executeImmediately = async <T>(_name: string, cb: () => Promise<T>) =>
+    cb();
   return {
     ...actual,
-    executeWithLock: async <T>(_name: string, cb: () => Promise<T>) => cb(),
+    executeWithLock: executeImmediately,
+    executeWithLockResult: executeImmediately,
   };
 });
 
@@ -79,6 +91,22 @@ function requestFrameValidate(
   });
 }
 
+function requestFrameMove(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string,
+  destinationDirectoryPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/move`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ sourceDirectoryPath, destinationDirectoryPath }),
+  });
+}
+
 function requestFrameShare(
   workspaceId: string,
   token: string,
@@ -121,17 +149,25 @@ async function setup({ registered = true }: { registered?: boolean } = {}) {
     [`${mountDirectoryPath}/index.tsx`, uiSource],
   ]);
   fileStorageMock.setFileContent((path) => sourceByPath.get(path) ?? null);
+  for (const [path, content] of sourceByPath) {
+    fileStorageMock.setObject(path, content);
+  }
+  fileStorageMock.setFileExists(
+    (path) => fileStorageMock.getObject(path) !== undefined
+  );
   fileStorageMock.setFilesByPrefix((prefix) =>
     prefix === `${mountDirectoryPath}/`
-      ? [...sourceByPath.entries()].map(([name, content]) => ({
-          name,
-          metadata: {
-            contentType: name.endsWith(".tsx")
-              ? "text/typescript"
-              : "application/json",
-            size: String(Buffer.byteLength(content)),
-          },
-        }))
+      ? [...sourceByPath.entries()]
+          .filter(([name]) => fileStorageMock.getObject(name) !== undefined)
+          .map(([name, content]) => ({
+            name,
+            metadata: {
+              contentType: name.endsWith(".tsx")
+                ? "text/typescript"
+                : "application/json",
+              size: String(Buffer.byteLength(content)),
+            },
+          }))
       : null
   );
 
@@ -178,6 +214,7 @@ async function setupLegacyFrame() {
 
 beforeEach(() => {
   fileStorageMock.reset();
+  emitMovedAuditLog.mockReset().mockResolvedValue(undefined);
 });
 
 describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
@@ -263,6 +300,34 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       },
     });
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("moves a registered Frame folder through the sandbox token", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = sourceDirectoryPath.replace(
+      "/Status",
+      "/Renamed"
+    );
+
+    const response = await requestFrameMove(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    const moved = await response.json();
+    expect(response.status, JSON.stringify(moved)).toBe(200);
+    expect(moved).toEqual({
+      destinationDirectoryPath,
+      frameId: context.frame.sId,
+      sourceDeletionFailed: false,
+    });
   });
 
   it("returns the existing Frame share link without changing use rights", async () => {
