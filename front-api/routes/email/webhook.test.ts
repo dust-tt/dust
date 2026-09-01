@@ -172,7 +172,7 @@ describe("POST /api/email/webhook", () => {
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 502 }))
       .mockResolvedValueOnce(
-        Response.json({ status: "processing" }, { status: 200 })
+        Response.json({ status: "received" }, { status: 200 })
       )
       .mockResolvedValueOnce(
         Response.json({ status: "processed" }, { status: 200 })

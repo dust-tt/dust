@@ -161,7 +161,6 @@ class RedisMock {
         ) => {
           const updatesString =
             script.includes('redis.call("set", KEYS[1],') ||
-            script.includes('redis.call("expire", KEYS[1],') ||
             script.includes('redis.call("del", KEYS[1])');
           if (!updatesString) {
             return 1;
@@ -183,8 +182,6 @@ class RedisMock {
               value: nextValue,
               expiresAtMs: Date.now() + Number(ttlSeconds) * 1000,
             });
-          } else if (script.includes('redis.call("expire", KEYS[1],')) {
-            entry.expiresAtMs = Date.now() + Number(nextValue) * 1000;
           } else if (script.includes('redis.call("del", KEYS[1])')) {
             this.stringStore.delete(key);
           }

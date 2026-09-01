@@ -33,6 +33,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
+import { z } from "zod";
 
 /**
  * Node-style headers shape: matches the record built from
@@ -40,6 +41,16 @@ import { readFile } from "fs/promises";
  * headers shape.
  */
 export type EmailWebhookHeaders = Record<string, string | string[] | undefined>;
+
+export function toEmailWebhookHeaders(
+  webHeaders: Headers
+): EmailWebhookHeaders {
+  const headers: EmailWebhookHeaders = {};
+  webHeaders.forEach((value, key) => {
+    headers[key] = value;
+  });
+  return headers;
+}
 
 export const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
 const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
@@ -50,25 +61,30 @@ export const EMAIL_WEBHOOK_RELAY_ID_HEADER = "x-dust-email-webhook-relay-id";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
-const EMAIL_RELAY_LEASE_TTL_SECONDS = 30;
-const EMAIL_RELAY_PROCESSED_TTL_SECONDS = 60 * 60;
+const EMAIL_RELAY_RECEIPT_TTL_SECONDS = 60 * 60;
 const EMAIL_RELAY_PROCESSED_VALUE = "processed";
 const EMAIL_RELAY_STATUS_WAIT_MS = 35 * 1000;
 const EMAIL_RELAY_STATUS_POLL_MS = 500;
 const EMAIL_RELAY_RETRY_DELAY_MS = 200;
 const HTTP_SERVER_ERROR_STATUS_MIN = 500;
 
-export type EmailRelayLease = {
+export type EmailRelayReceipt = {
   relayId: string;
   token: string;
 };
 
-export type EmailRelayStatus = "not_received" | "processing" | "processed";
+const EmailRelayStatusSchema = z.enum([
+  "not_received",
+  "received",
+  "processed",
+]);
+export type EmailRelayStatus = z.infer<typeof EmailRelayStatusSchema>;
+const RemoteRelayStatusSchema = z.object({ status: EmailRelayStatusSchema });
 
 export type EmailRelayStart =
   | { status: "legacy" }
   | { status: "duplicate" }
-  | { status: "started"; lease: EmailRelayLease };
+  | { status: "started"; receipt: EmailRelayReceipt };
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
@@ -207,11 +223,11 @@ export async function startEmailRelay(
   const token = randomUUID();
   const result = await redis.set(makeEmailRelayKey(relayId), token, {
     NX: true,
-    EX: EMAIL_RELAY_LEASE_TTL_SECONDS,
+    EX: EMAIL_RELAY_RECEIPT_TTL_SECONDS,
   });
 
   return result === "OK"
-    ? { status: "started", lease: { relayId, token } }
+    ? { status: "started", receipt: { relayId, token } }
     : { status: "duplicate" };
 }
 
@@ -228,30 +244,11 @@ export async function getEmailRelayStatus(
   if (!value) {
     return "not_received";
   }
-  return value === EMAIL_RELAY_PROCESSED_VALUE ? "processed" : "processing";
-}
-
-export async function renewEmailRelay(lease: EmailRelayLease): Promise<void> {
-  const redis = await getRedisStreamClient({ origin: "email_context" });
-  const renewed = await redis.eval(
-    `
-      if redis.call("get", KEYS[1]) == ARGV[1] then
-        return redis.call("expire", KEYS[1], ARGV[2])
-      end
-      return 0
-    `,
-    {
-      keys: [makeEmailRelayKey(lease.relayId)],
-      arguments: [lease.token, String(EMAIL_RELAY_LEASE_TTL_SECONDS)],
-    }
-  );
-  if (renewed !== 1) {
-    throw new Error(`Lost lease for email relay ${lease.relayId}`);
-  }
+  return value === EMAIL_RELAY_PROCESSED_VALUE ? "processed" : "received";
 }
 
 export async function completeEmailRelay(
-  lease: EmailRelayLease
+  receipt: EmailRelayReceipt
 ): Promise<void> {
   const redis = await getRedisStreamClient({ origin: "email_context" });
   const completed = await redis.eval(
@@ -263,33 +260,17 @@ export async function completeEmailRelay(
       return 0
     `,
     {
-      keys: [makeEmailRelayKey(lease.relayId)],
+      keys: [makeEmailRelayKey(receipt.relayId)],
       arguments: [
-        lease.token,
+        receipt.token,
         EMAIL_RELAY_PROCESSED_VALUE,
-        String(EMAIL_RELAY_PROCESSED_TTL_SECONDS),
+        String(EMAIL_RELAY_RECEIPT_TTL_SECONDS),
       ],
     }
   );
   if (completed !== 1) {
-    throw new Error(`Lost lease for email relay ${lease.relayId}`);
+    throw new Error(`Lost receipt for email relay ${receipt.relayId}`);
   }
-}
-
-export async function abandonEmailRelay(lease: EmailRelayLease): Promise<void> {
-  const redis = await getRedisStreamClient({ origin: "email_context" });
-  await redis.eval(
-    `
-      if redis.call("get", KEYS[1]) == ARGV[1] then
-        return redis.call("del", KEYS[1])
-      end
-      return 0
-    `,
-    {
-      keys: [makeEmailRelayKey(lease.relayId)],
-      arguments: [lease.token],
-    }
-  );
 }
 
 async function getRemoteRelayStatus({
@@ -313,21 +294,14 @@ async function getRemoteRelayStatus({
       );
     }
 
-    const body: unknown = await response.json();
-    if (
-      typeof body !== "object" ||
-      body === null ||
-      !("status" in body) ||
-      (body.status !== "not_received" &&
-        body.status !== "processing" &&
-        body.status !== "processed")
-    ) {
+    const bodyRes = RemoteRelayStatusSchema.safeParse(await response.json());
+    if (!bodyRes.success) {
       return new Err(
         new Error("Relay receipt lookup returned an invalid body")
       );
     }
 
-    return new Ok(body.status);
+    return new Ok(bodyRes.data.status);
   } catch (error) {
     return new Err(normalizeError(error));
   }
@@ -346,18 +320,20 @@ async function waitForRemoteRelay({
     if (statusRes.isErr()) {
       return statusRes;
     }
-    if (statusRes.value === "processed") {
-      return new Ok(true);
-    }
-    if (statusRes.value === "not_received") {
-      return new Ok(false);
+    switch (statusRes.value) {
+      case "processed":
+        return new Ok(true);
+      case "not_received":
+        return new Ok(false);
+      case "received":
+        break;
+      default:
+        assertNever(statusRes.value);
     }
     await setTimeoutAsync(EMAIL_RELAY_STATUS_POLL_MS);
   }
 
-  // A lease that stayed active for the whole wait was renewed by the target,
-  // so the relay is still being processed and must not be sent twice.
-  return new Ok(true);
+  return new Err(new Error("Timed out waiting for email relay processing"));
 }
 
 async function postEmailRelay({
