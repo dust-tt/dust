@@ -235,6 +235,7 @@ export const MembersUsagePaginationSchema = z.object({
       // Legacy usage page only: sorts by total consumed credits. Kept
       // alongside `consumedFromPoolAwuCredits`, which sorts by pool-only
       // consumption for the compact (Poke) variant.
+      // TODO(avervaet, 2026-09-01): remove once the app page and Poke page usage tables are uniformized.
       "consumedAwuCredits",
       "consumedFromPoolAwuCredits",
       "seatType",

@@ -186,11 +186,7 @@ interface AwuUsageBarProps {
   spendLimitSource: EffectiveSpendLimitSource;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
-  // Shows only the workspace-pool portion of usage as a single bar (muted,
-  // orange at the limit, red over it), hiding the seat-allowance section
-  // entirely. The limit figure above the bar becomes the pool limit instead
-  // of the combined (seat + pool) effective limit. Used by the compact Poke
-  // layout, which surfaces seat allowance separately in its own column.
+  // TODO(avervaet, 2026-09-01): remove once the app page and Poke page usage tables are uniformized.
   poolOnly?: boolean;
 }
 
@@ -266,9 +262,6 @@ export function AwuUsageBar({
     poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
 
   if (poolOnly) {
-    // Single bar: muted while under the pool limit, orange exactly at it,
-    // red once consumption exceeds it. `poolLimit` of 0 (no pool access)
-    // falls out of the same rule — any consumption there is already over.
     const isOverPoolLimit = poolLimit !== null && consumedFromPool > poolLimit;
     const isAtPoolLimit =
       poolLimit !== null && poolLimit > 0 && consumedFromPool === poolLimit;
