@@ -43,8 +43,6 @@ type PoolLedgerData = {
   ledgerEntries: PoolLedgerEntry[];
 };
 
-// Balance listing bounded to a single cycle — the header cards only need the
-// current cycle's ledger, not the full history.
 async function getPoolLedgerData({
   metronomeCustomerId,
 }: {
@@ -212,8 +210,6 @@ export async function getAwuPoolCurrentCycle(
   return new Ok(outcome.body);
 }
 
-// The legacy combined endpoint currently returns exactly the current-cycle
-// figures — it grows a cycle-history component alongside the history table.
 export async function getAwuPoolSummary(
   auth: Authenticator
 ): Promise<Result<AwuPoolCurrentCycleResponseBody, AwuPoolSummaryError>> {
