@@ -601,6 +601,58 @@ export async function getEsConsumedProgrammaticAwuCredits(
   );
 }
 
+/**
+ * The workspace's total Elasticsearch-derived AWU consumption for the
+ * current billing cycle.
+ */
+export async function getEsConsumedAwuCreditsForWorkspace(
+  workspace: LightWorkspaceType,
+  { cycle }: { cycle?: BillingCycle } = {}
+): Promise<number | null> {
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return null;
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchAnalytics<
+    never,
+    { credits?: estypes.AggregationsSumAggregate }
+  >(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: { credits: { sum: { field: "cost.billable_awu" } } },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read total consumed credits from analytics index"
+    );
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.round(result.value.aggregations?.credits?.value ?? 0)
+  );
+}
+
 async function fetchPerUserUsageCreditsForMembersTable({
   workspaceId,
   metronomeCustomerId,
