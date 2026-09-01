@@ -28,7 +28,7 @@ export function useSkillFromSearchParam(workspaceId: string) {
         id: skill.sId,
         name: skill.name,
         icon: skill.icon,
-      })} for this request:`,
+      })} for this request: `,
       { replace: true }
     );
 
