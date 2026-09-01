@@ -3,13 +3,15 @@ import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
-import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import type { PublishFrameError } from "@app/lib/api/viz/publish_frame";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
+import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -148,7 +150,7 @@ export async function publishFrameFromSource(
  * Publish a Frames v2 FileResource from its current source folder. The FileResource path is the
  * authority: callers cannot point a Frame identity at a different manifest or source tree.
  */
-export async function publishFrameV2FromSource(
+async function publishFrameV2FromSourceWithSourceLockHeld(
   auth: Authenticator,
   {
     conversation,
@@ -165,13 +167,6 @@ export async function publishFrameV2FromSource(
     FramePublicationError | SandboxFunctionError
   >
 > {
-  if (!frame.isFrameV2) {
-    return frameError(
-      "invalid_frame",
-      `File '${frame.sId}' is not a Frames v2 manifest.`
-    );
-  }
-
   const canonicalManifestPath = frame.toScopedPath(auth);
   if (
     !canonicalManifestPath ||
@@ -323,4 +318,58 @@ export async function publishFrameV2FromSource(
     manifest: manifestResult.value,
     sourceFiles,
   });
+}
+
+export async function publishFrameV2FromSource(
+  auth: Authenticator,
+  {
+    conversation,
+    frame,
+    manifestPath,
+  }: {
+    conversation: ConversationWithoutContentType;
+    frame: FileResource;
+    manifestPath: string;
+  }
+): Promise<
+  Result<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >
+> {
+  if (!frame.isFrameV2) {
+    return frameError(
+      "invalid_frame",
+      `File '${frame.sId}' is not a Frames v2 manifest.`
+    );
+  }
+
+  const publication = await withFrameSourceLock(frame.sId, async () => {
+    const freshFrame = await frame.fetchFreshFrameV2(auth);
+    if (!freshFrame) {
+      return frameError(
+        "invalid_frame",
+        `Frame '${frame.sId}' no longer exists.`
+      );
+    }
+
+    return publishFrameV2FromSourceWithSourceLockHeld(auth, {
+      conversation,
+      frame: freshFrame,
+      manifestPath,
+    });
+  });
+  if (publication.isErr()) {
+    if (isLockAcquisitionTimeoutError(publication.error)) {
+      return new Err(
+        new SandboxFunctionError(
+          "publish_conflict",
+          "Another source operation is in progress for this Frame; retry shortly."
+        )
+      );
+    }
+    return new Err(publication.error);
+  }
+
+  return publication;
 }
