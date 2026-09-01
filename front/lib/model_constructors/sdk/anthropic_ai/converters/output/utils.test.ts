@@ -545,8 +545,8 @@ describe("streamErrorToErrorEvent", () => {
     [401, "authentication_error", "dust"],
     [403, "permission_error", "dust"],
     [404, "not_found_error", "dust"],
-    [413, "unknown_error", "unknown"],
-    [418, "unknown_error", "unknown"],
+    [413, "invalid_request_error", "dust"],
+    [418, "invalid_request_error", "dust"],
     [429, "rate_limit_error", "dust"],
     [503, "overloaded_error", "provider"],
   ] as const)("maps HTTP %i to %s from %s", (status, expectedType, errorSource) => {

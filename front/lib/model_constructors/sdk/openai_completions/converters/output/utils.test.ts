@@ -93,11 +93,11 @@ describe("streamErrorToErrorEvent", () => {
     });
   });
 
-  it("maps an unrecognized status to unknown_error without blaming either side", () => {
+  it("maps an unrecognized 4xx status to a Dust invalid_request_error", () => {
     const err = new APIError(418, {}, "teapot", undefined);
     const result = streamErrorToErrorEvent(metadata, err);
-    expect(result.content.type).toBe("unknown_error");
-    expect(result.content.errorSource).toBe("unknown");
+    expect(result.content.type).toBe("invalid_request_error");
+    expect(result.content.errorSource).toBe("dust");
   });
 
   it("maps APIConnectionError to a network_error without blaming the provider", () => {
