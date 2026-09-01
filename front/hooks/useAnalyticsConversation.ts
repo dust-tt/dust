@@ -13,9 +13,10 @@ import { useCallback, useState } from "react";
 
 /**
  * Creates and holds the single conversation for the Analytics conversation
- * panel, always mentioning `@analyst` on the first message. There is no
- * draft: creation is eager, on submit, matching how every other client
- * conversation is created (see useCreateConversationWithMessage).
+ * panel, always mentioning `@analyst` on the first message. Creation is eager
+ * on submit with the first message deferred, so `ConversationViewer` mounts
+ * right away and renders its own optimistic placeholders (see
+ * useCreateConversationWithMessage).
  */
 export function useAnalyticsConversation({
   owner,
@@ -52,8 +53,10 @@ export function useAnalyticsConversation({
             configurationId: mention.id,
           })),
           contentFragments,
+          richMentions: mentions,
         },
         title: `Ask ${GLOBAL_AGENTS_SID.ANALYST}`,
+        deferMessage: true,
       });
 
       if (result.isErr()) {

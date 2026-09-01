@@ -24,6 +24,8 @@ import {
   ConversationMessageContent,
   ConversationMessageTitle,
   ConversationPanel,
+  Icon,
+  Robot,
   Spinner,
   XClose,
 } from "@dust-tt/sparkle";
@@ -37,11 +39,18 @@ function AnalyticsConversationPanelHeader({
   onClose,
 }: AnalyticsConversationPanelHeaderProps) {
   return (
-    <div className="flex w-full items-center justify-between px-4 py-3">
-      <span className="text-sm font-semibold text-foreground">
-        Ask @analyst
-      </span>
-      <Button variant="ghost" size="sm" icon={XClose} onClick={onClose} />
+    <div className="flex h-14 w-full items-center justify-between px-2">
+      <div className="flex min-w-0 items-center gap-1.5 px-2">
+        <Icon visual={Robot} size="sm" className="shrink-0" />
+        <span className="line-clamp-1 text-sm font-medium">Analyst</span>
+      </div>
+      <Button
+        icon={XClose}
+        size="sm"
+        variant="ghost-secondary"
+        tooltip="Close panel"
+        onClick={onClose}
+      />
     </div>
   );
 }
@@ -66,8 +75,8 @@ function AnalyticsConversationGreeting({
           renderName={(name) => name}
         />
         <ConversationMessageContent type="agent">
-          Ask me about workspace usage — top agents, credit spend, or trends
-          over time.
+          I can help you understand your workspace usage and costs across your
+          analytics data.
         </ConversationMessageContent>
       </div>
     </ConversationMessageContainer>
@@ -110,14 +119,17 @@ function AnalyticsConversationPanelBody({
     [analystAgentConfiguration]
   );
 
-  const agentBuilderContext = useMemo<
+  // Stub reuse of ConversationViewer's agentBuilderContext slot, whose only
+  // fields we need are disableAgentMentions/actionsToShow.
+  const analystAgentContext = useMemo<
     VirtuosoMessageListContext["agentBuilderContext"]
   >(
     () => ({
       isSubmitting: false,
       resetConversation,
-      actionsToShow: ["attachment"],
+      actionsToShow: [],
       disableAgentMentions: true,
+      disableReactions: true,
     }),
     [resetConversation]
   );
@@ -143,11 +155,11 @@ function AnalyticsConversationPanelBody({
               owner={owner}
               user={user}
               conversationId={conversation.sId}
-              agentBuilderContext={agentBuilderContext}
+              agentBuilderContext={analystAgentContext}
               key={conversation.sId}
             />
           ) : (
-            <div className="px-4 py-4">
+            <div className="mx-auto w-full max-w-conversation px-5 pt-6 md:pt-10">
               <AnalyticsConversationGreeting
                 agentConfiguration={analystAgentConfiguration}
               />
@@ -156,15 +168,17 @@ function AnalyticsConversationPanelBody({
         </div>
 
         {!conversation && (
-          <div className="w-full flex-shrink-0 p-2">
+          <div className="relative z-20 mx-auto flex w-full flex-shrink-0 flex-col px-5 pt-4 pb-6 md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1">
             <InputBar
               owner={owner}
               user={user}
               onSubmit={createConversation}
               stickyMentions={stickyMentions}
               draftKey="analytics-conversation-panel"
-              actions={["attachment"]}
+              placeholder="Ask about your workspace usage and costs"
+              actions={[]}
               disableAgentMentions
+              disableUserMentions
               disableAutoFocus
               isFloating={false}
             />
@@ -187,7 +201,7 @@ export interface AnalyticsConversationPanelProps {
   owner: WorkspaceType;
   user: UserType;
   onClose: () => void;
-  /** Whether the panel is collapsed — skips fetching the agent configuration until open. */
+  /** Skips fetching the agent configuration while the panel is closed. */
   disabled?: boolean;
 }
 

@@ -19,8 +19,6 @@ interface AppLayoutConfig {
   hideSidebar?: boolean;
   navChildren?: ReactNode;
   pageTitle?: string;
-  rightPanel?: ReactNode;
-  isRightPanelOpen?: boolean;
   subNavigation?: SidebarNavigation[] | null;
   title?: ReactNode;
 }
@@ -32,8 +30,6 @@ interface AppLayoutSetters {
   setHideSidebar: (v: boolean | undefined) => void;
   setNavChildren: (v: ReactNode) => void;
   setPageTitle: (v: string | undefined) => void;
-  setRightPanel: (v: ReactNode) => void;
-  setIsRightPanelOpen: (v: boolean) => void;
   setSubNavigation: (v: SidebarNavigation[] | null | undefined) => void;
   setTitle: (v: ReactNode) => void;
 }
@@ -49,8 +45,6 @@ const NOOP_SETTERS: AppLayoutSetters = {
   setHideSidebar: () => {},
   setNavChildren: () => {},
   setPageTitle: () => {},
-  setRightPanel: () => {},
-  setIsRightPanelOpen: () => {},
   setSubNavigation: () => {},
   setTitle: () => {},
 };
@@ -72,8 +66,6 @@ export function AppLayoutProvider({ children }: AppLayoutProviderProps) {
   const [hideSidebar, setHideSidebar] = useState<boolean | undefined>();
   const [navChildren, setNavChildren] = useState<ReactNode>();
   const [pageTitle, setPageTitle] = useState<string | undefined>();
-  const [rightPanel, setRightPanel] = useState<ReactNode>();
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [subNavigation, setSubNavigation] = useState<
     SidebarNavigation[] | null | undefined
   >();
@@ -87,8 +79,6 @@ export function AppLayoutProvider({ children }: AppLayoutProviderProps) {
       hideSidebar,
       navChildren,
       pageTitle,
-      rightPanel,
-      isRightPanelOpen,
       subNavigation,
       title,
     }),
@@ -99,8 +89,6 @@ export function AppLayoutProvider({ children }: AppLayoutProviderProps) {
       hideSidebar,
       navChildren,
       pageTitle,
-      rightPanel,
-      isRightPanelOpen,
       subNavigation,
       title,
     ]
@@ -114,8 +102,6 @@ export function AppLayoutProvider({ children }: AppLayoutProviderProps) {
       setHideSidebar,
       setNavChildren,
       setPageTitle,
-      setRightPanel,
-      setIsRightPanelOpen,
       setSubNavigation,
       setTitle,
     }),
@@ -182,28 +168,6 @@ export function useSetNavChildren(value: AppLayoutConfig["navChildren"]) {
     setNavChildren(value);
     return () => setNavChildren(undefined);
   }, [setNavChildren, value]);
-}
-
-/**
- * Mounts a panel in the layout's right slot. `isOpen` is separate from the
- * content so the panel keeps its state (an in-progress conversation, say)
- * while collapsed, instead of unmounting every time it is closed.
- */
-export function useSetRightPanel(
-  value: AppLayoutConfig["rightPanel"],
-  isOpen: boolean
-) {
-  const { setRightPanel, setIsRightPanelOpen } = useContext(
-    AppLayoutSettersContext
-  );
-  useIsomorphicLayoutEffect(() => {
-    setRightPanel(value);
-    setIsRightPanelOpen(isOpen);
-    return () => {
-      setRightPanel(undefined);
-      setIsRightPanelOpen(false);
-    };
-  }, [setRightPanel, setIsRightPanelOpen, value, isOpen]);
 }
 
 export function useSetPageTitle(value: AppLayoutConfig["pageTitle"]) {
