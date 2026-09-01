@@ -34,10 +34,7 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Clock,
@@ -545,7 +542,8 @@ function buildModelTiersColumn(
             case "legacy":
               return "Models tier";
             default:
-              return assertNever(variant);
+              assertNeverAndIgnore(variant);
+              return "Models tier";
           }
         })()}
         <ModelTiersInfoButton />
@@ -742,7 +740,8 @@ export function MembersUsageTable({
               case "legacy":
                 return formatModelTiersSummary(maxTierName);
               default:
-                return assertNever(variant);
+                assertNeverAndIgnore(variant);
+                return formatModelTiersSummary(maxTierName);
             }
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
