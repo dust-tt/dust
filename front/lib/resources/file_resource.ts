@@ -164,14 +164,18 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">,
+    { transaction }: { transaction?: Transaction } = {}
   ) {
-    const key = await FileResource.model.create({
-      ...blob,
-      fileName: sanitizeFileSystemName(blob.fileName),
-      status: "created",
-      version: 0,
-    });
+    const key = await FileResource.model.create(
+      {
+        ...blob,
+        fileName: sanitizeFileSystemName(blob.fileName),
+        status: "created",
+        version: 0,
+      },
+      { transaction }
+    );
 
     return new this(FileResource.model, key.get());
   }
@@ -770,17 +774,20 @@ export class FileResource extends BaseResource<FileModel> {
    * Mark a Frames v2 manifest that already exists at its mount path as ready.
    * Unlike markAsReady(), this must not copy from the canonical upload path.
    */
-  async markFrameV2AsReadyFromMount(auth: Authenticator) {
+  async markFrameV2AsReadyFromMount(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
     assert(this.isFrameV2, "Only Frames v2 can be adopted from a mount path");
     assert(this.mountFilePath, "A mounted Frames v2 manifest requires a path");
 
-    await this.ensureShareableFrame(auth);
+    await this.ensureShareableFrame(auth, { transaction });
 
     if (this.status === "ready") {
       return;
     }
 
-    return this.update({ status: "ready" });
+    return this.update({ status: "ready" }, transaction);
   }
 
   get isReady(): boolean {
@@ -807,7 +814,10 @@ export class FileResource extends BaseResource<FileModel> {
     return isFrameContentType(this.contentType);
   }
 
-  async ensureShareableFrame(auth: Authenticator): Promise<void> {
+  async ensureShareableFrame(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
     if (!this.isShareableFrame) {
       return;
     }
@@ -829,6 +839,7 @@ export class FileResource extends BaseResource<FileModel> {
         sharedAt: new Date(),
         token: crypto.randomUUID(),
       },
+      transaction,
     });
   }
 

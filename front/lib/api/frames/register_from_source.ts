@@ -4,6 +4,7 @@ import { DustFileSystem } from "@app/lib/api/file_system";
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import {
   FRAME_MANIFEST_FILE,
   parseFrameManifest,
@@ -45,14 +46,14 @@ export type RegisterFrameV2FromSourceError =
   | DustFileSystemError
   | FramePublicationError;
 
-/** Register the manifest already present on the invoking conversation's mounted GCS filesystem. */
-export async function registerFrameV2FromSource(
+/** Register a Frames v2 manifest through an already authorized GCS filesystem. */
+export async function registerFrameV2FromSourceUsingFileSystem(
   auth: Authenticator,
   {
-    conversation,
+    dustFs,
     manifestPath,
   }: {
-    conversation: ConversationWithoutContentType;
+    dustFs: DustFileSystem;
     manifestPath: string;
   }
 ): Promise<
@@ -71,11 +72,6 @@ export async function registerFrameV2FromSource(
     );
   }
 
-  const fsResult = await DustFileSystem.forConversation(auth, conversation);
-  if (fsResult.isErr()) {
-    return new Err(fsResult.error);
-  }
-  const dustFs = fsResult.value;
   if (!dustFs.isGCSBacked()) {
     return registrationError(
       "Frames v2 registration does not yet support the database-backed filesystem."
@@ -135,18 +131,24 @@ export async function registerFrameV2FromSource(
     mount.kind === "pod" ? { spaceId: mount.id } : { conversationId: mount.id };
 
   try {
-    const frame = await FileResource.makeNew({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      userId: auth.user()?.id ?? null,
-      contentType: frameV2ContentType,
-      fileName: FRAME_MANIFEST_FILE,
-      fileSize: manifestBuffer.length,
-      useCase,
-      useCaseMetadata,
-      mountFilePath,
-      fileSystemNodeId: null,
+    const frame = await withTransaction(async (transaction) => {
+      const created = await FileResource.makeNew(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.user()?.id ?? null,
+          contentType: frameV2ContentType,
+          fileName: FRAME_MANIFEST_FILE,
+          fileSize: manifestBuffer.length,
+          useCase,
+          useCaseMetadata,
+          mountFilePath,
+          fileSystemNodeId: null,
+        },
+        { transaction }
+      );
+      await created.markFrameV2AsReadyFromMount(auth, { transaction });
+      return created;
     });
-    await frame.markFrameV2AsReadyFromMount(auth);
     return new Ok({ frame, created: true });
   } catch (error) {
     if (!(error instanceof UniqueConstraintError)) {
@@ -160,4 +162,31 @@ export async function registerFrameV2FromSource(
     assert(concurrent.value, "Frame not found after mount path conflict");
     return new Ok({ frame: concurrent.value, created: false });
   }
+}
+
+/** Register the manifest already present on the invoking conversation's mounted GCS filesystem. */
+export async function registerFrameV2FromSource(
+  auth: Authenticator,
+  {
+    conversation,
+    manifestPath,
+  }: {
+    conversation: ConversationWithoutContentType;
+    manifestPath: string;
+  }
+): Promise<
+  Result<
+    { frame: FileResource; created: boolean },
+    RegisterFrameV2FromSourceError
+  >
+> {
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(fsResult.error);
+  }
+
+  return registerFrameV2FromSourceUsingFileSystem(auth, {
+    dustFs: fsResult.value,
+    manifestPath,
+  });
 }
