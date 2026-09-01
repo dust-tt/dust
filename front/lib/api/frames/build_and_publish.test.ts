@@ -73,6 +73,13 @@ const uiOnlyManifest = FrameManifestSchema.parse({
   description: "Track tasks.",
 });
 
+const databaseManifest = FrameManifestSchema.parse({
+  version: 1,
+  name: "Task List",
+  description: "Track tasks.",
+  databases: [{ name: "tasks", schema: "databases/tasks.db.ts" }],
+});
+
 const sourceFiles = [
   {
     relativePath: "index.tsx",
@@ -187,6 +194,22 @@ describe("buildAndPublishFramePublication", () => {
       (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
         ?.activePublicationId
     ).toBe(activePublicationId);
+  });
+
+  it("validates database schema contracts without publishing", async () => {
+    const { auth, conversation } = await setup();
+
+    const result = await validateFramePublication(auth, {
+      conversation,
+      manifest: databaseManifest,
+      sourceFiles: sourceFiles.slice(0, 1),
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_source",
+      message: "Frame database schema not found: tasks (databases/tasks.db.ts)",
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("builds and publishes the UI without starting a sandbox", async () => {

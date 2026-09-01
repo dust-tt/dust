@@ -6,6 +6,7 @@ import type {
   FramePublicationSourceFile,
 } from "@app/lib/api/frames/publication_storage";
 import {
+  buildFramePublicationContracts,
   FramePublicationError,
   publishFramePublication,
 } from "@app/lib/api/frames/publication_storage";
@@ -203,6 +204,15 @@ export async function validateFramePublication(
   });
   if (buildResult.isErr()) {
     return buildResult;
+  }
+
+  const contracts = buildFramePublicationContracts({
+    functionArtifacts: buildResult.value.functionArtifacts,
+    manifest,
+    sourceFiles,
+  });
+  if (contracts.isErr()) {
+    return contracts;
   }
 
   return new Ok({ warnings: collectFrameTailwindWarnings(sourceFiles) });
