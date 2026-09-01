@@ -49,11 +49,11 @@ describe("pod state helpers", () => {
 
   test("parses live database enumeration output", () => {
     const findOutput = [
-      "/pod-state/databases/chat.db",
-      "/pod-state/databases/tasks.db",
-      "/pod-state/databases/.restore-chat.db",
-      "/pod-state/databases/UPPER.db",
-      "/pod-state/databases/not-a-db.txt",
+      "/sandbox-state/databases/chat.db",
+      "/sandbox-state/databases/tasks.db",
+      "/sandbox-state/databases/.restore-chat.db",
+      "/sandbox-state/databases/UPPER.db",
+      "/sandbox-state/databases/not-a-db.txt",
     ].join("\n");
 
     expect(parseLiveDatabaseNames(findOutput)).toEqual(["chat", "tasks"]);

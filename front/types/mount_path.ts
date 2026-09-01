@@ -142,7 +142,7 @@ export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/sandbox-state/replica";
  * it to GCS. Front is the only layer that hardcodes this location and passes it per exec through
  * both the canonical `DUST_SANDBOX_DATABASES_DIR` ABI and its legacy alias.
  */
-export const SANDBOX_STATE_DATABASES_DIR = "/pod-state/databases";
+export const SANDBOX_STATE_DATABASES_DIR = "/sandbox-state/databases";
 
 /**
  * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like
