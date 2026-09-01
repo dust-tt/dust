@@ -11,8 +11,13 @@ import { getRedisStreamClient } from "@app/lib/api/redis";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
-import { LockAcquisitionTimeoutError } from "@app/lib/lock";
+import {
+  isLockLeaseLostError,
+  LockAcquisitionTimeoutError,
+  LockLeaseLostError,
+} from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import {
   computeSandboxFunctionBundleSha256,
   SandboxFunctionResource,
@@ -594,6 +599,101 @@ describe("activateFramePublication", () => {
     );
   });
 
+  it("does not start activation when the lease is already lost", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    const leaseError = new LockLeaseLostError(
+      getFramePublishLockName(frame.sId)
+    );
+    const lease = {
+      check: vi.fn().mockReturnValue(new Err(leaseError)),
+    };
+    const setActivePublication = vi.spyOn(frame, "setActiveFramePublication");
+
+    const activated = await activateFramePublication(auth, {
+      frame,
+      lease,
+      publicationId: stored.value.publicationId,
+    });
+
+    expect(activated.isErr() && isLockLeaseLostError(activated.error)).toBe(
+      true
+    );
+    expect(setActivePublication).not.toHaveBeenCalled();
+  });
+
+  it("rolls back activation when the lease is lost before commit", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    const leaseError = new LockLeaseLostError(
+      getFramePublishLockName(frame.sId)
+    );
+    const lease = {
+      check: vi
+        .fn()
+        .mockReturnValueOnce(new Ok(undefined))
+        .mockReturnValueOnce(new Err(leaseError)),
+    };
+    const parentTransaction =
+      getNamespace("test-namespace")?.get("transaction");
+    expect(parentTransaction).toBeDefined();
+
+    await expect(
+      frontSequelize.transaction(
+        { transaction: parentTransaction },
+        async () => {
+          const activated = await activateFramePublication(auth, {
+            frame,
+            lease,
+            publicationId: stored.value.publicationId,
+          });
+          throw activated.isErr()
+            ? activated.error
+            : new Error("Expected the activation lease to be lost.");
+        }
+      )
+    ).rejects.toMatchObject({ name: "LockLeaseLostError" });
+
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBeUndefined();
+    expect(
+      await FileResource.shareableFileModel.count({
+        where: { fileId: frame.id, workspaceId: frame.workspaceId },
+      })
+    ).toBe(0);
+    expect(
+      await FileResource.authorizedFileAccessModel.count({
+        where: { workspaceId: frame.workspaceId },
+      })
+    ).toBe(0);
+    expect(
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: stored.value.publicationId,
+      })
+    ).toHaveLength(0);
+  });
+
   it("keeps the active publication when validation fails", async () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
@@ -618,9 +718,11 @@ describe("activateFramePublication", () => {
       publicationId: "b8c2b796-534a-4ad2-a5ad-071da692ca0b",
     });
 
-    expect(activation.isErr() && activation.error.code).toBe(
-      "publication_not_found"
-    );
+    expect(
+      activation.isErr() && "code" in activation.error
+        ? activation.error.code
+        : undefined
+    ).toBe("publication_not_found");
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
@@ -699,9 +801,9 @@ describe("activateFramePublication", () => {
       publicationId: stored.value.publicationId,
     });
 
-    expect(result.isErr() && result.error.code).toBe(
-      "invalid_function_artifact"
-    );
+    expect(
+      result.isErr() && "code" in result.error ? result.error.code : undefined
+    ).toBe("invalid_function_artifact");
     expect(frame.useCaseMetadata?.activePublicationId).toBeUndefined();
   });
 
@@ -1052,5 +1154,45 @@ describe("publishFramePublication", () => {
       deletion.isErr() ? deletion.error.message : undefined
     ).toBe(true);
     await expect(FileResource.fetchById(auth, frame.sId)).resolves.toBeNull();
+  });
+
+  it("preserves the Frame when its deletion lease is lost", async () => {
+    const { auth, frame } = await setupFrame({ ready: true });
+    const onDeleteByPrefix = vi.fn();
+    fileStorageMock.setOnDeleteByPrefix(onDeleteByPrefix);
+    const redisEval = vi.mocked(
+      redisMock.streamClient.eval as (...args: unknown[]) => Promise<number>
+    );
+    redisEval.mockResolvedValueOnce(0).mockResolvedValue(1);
+    const deleteSandbox = vi
+      .spyOn(FrameSandboxAdapter, "deleteSandbox")
+      .mockImplementation(
+        async (
+          _auth,
+          _frame,
+          { afterSandboxCleanup, beforeSandboxCleanup } = {}
+        ) => {
+          expect(beforeSandboxCleanup?.().isOk()).toBe(true);
+          await vi.advanceTimersByTimeAsync(200_000);
+          return afterSandboxCleanup?.() ?? new Ok(undefined);
+        }
+      );
+    vi.useFakeTimers();
+
+    try {
+      const deletion = await frame.delete(auth);
+
+      expect(deletion.isErr() && isLockLeaseLostError(deletion.error)).toBe(
+        true
+      );
+      await expect(
+        FileResource.fetchById(auth, frame.sId)
+      ).resolves.not.toBeNull();
+      expect(onDeleteByPrefix).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      deleteSandbox.mockRestore();
+      redisEval.mockResolvedValue(1);
+    }
   });
 });
