@@ -5,11 +5,11 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
 } from "@app/types/api/sandbox_functions";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   FrameFunctionInvocationParamsSchema,
   PostFrameFunctionInvocationBodySchema,
 } from "@front-api/lib/api/frame_function_invocation_schemas";
+import { getSandboxFunctionInvocationErrorStatusCode } from "@front-api/lib/api/sandbox_function_invocation_errors";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -47,19 +47,10 @@ app.post(
     });
     if (invocationResult.isErr()) {
       if (isSandboxFunctionInvocationError(invocationResult.error)) {
-        let statusCode: 401 | 409;
-        switch (invocationResult.error.code) {
-          case "user_authentication_required":
-            statusCode = 401;
-            break;
-          case "frame_runtime_unavailable":
-            statusCode = 409;
-            break;
-          default:
-            assertNever(invocationResult.error.code);
-        }
         return apiError(ctx, {
-          status_code: statusCode,
+          status_code: getSandboxFunctionInvocationErrorStatusCode(
+            invocationResult.error.code
+          ),
           api_error: {
             type: invocationResult.error.code,
             message: invocationResult.error.message,
