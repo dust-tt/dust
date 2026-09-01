@@ -5,6 +5,7 @@ import { createTeamsRoutes } from "./microsoft/routes.js";
 import { createTeamsVerificationMiddleware } from "./microsoft/verification.js";
 import { createNotionRoutes } from "./notion/routes.js";
 import type { SecretManager } from "./secrets.js";
+import { createShopifyRoutes } from "./shopify/routes.js";
 import {
   createSlackBotRoutes,
   createSlackDataSyncRoutes,
@@ -70,6 +71,9 @@ export function createRoutes(
     true
   );
   router.use("/notion/:providerWorkspaceId", notionInternalIntegrationRoutes);
+
+  const shopifyRoutes = createShopifyRoutes(secretManager);
+  router.use("/:webhookSecret/shopify", webhookSecretValidation, shopifyRoutes);
 
   const slackBotRoutes = createSlackBotRoutes(
     secretManager,
