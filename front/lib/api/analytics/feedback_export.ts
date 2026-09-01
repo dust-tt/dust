@@ -1,6 +1,7 @@
 import { fetchAgentMetadata } from "@app/lib/api/analytics/enrichment";
 import config from "@app/lib/api/config";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -51,12 +52,15 @@ export async function fetchFeedbackExportRows({
     .startOf("day")
     .toDate();
 
-  const feedbacks =
-    await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
-      startDate: startInstant,
-      endDate: exclusiveEndInstant,
-      workspace: owner,
-    });
+  const feedbacks = await getFrontReplicaDbConnection().transaction(
+    async (transaction) =>
+      AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
+        startDate: startInstant,
+        endDate: exclusiveEndInstant,
+        workspace: owner,
+        transaction,
+      })
+  );
 
   if (feedbacks.length === 0) {
     return new Ok([]);
