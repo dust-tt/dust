@@ -274,15 +274,28 @@ materialize_dev_environment() {
       ensure_bash_env_global
       return 1
     fi
-    chmod 600 "$tmp"
-    mv "$tmp" "$DUST_OP_ENV_FILE"
-    log "Materialized 1Password env ($(wc -l <"$DUST_OP_ENV_FILE" | tr -d ' ') vars) -> ${DUST_OP_ENV_FILE}"
+    local sanitized
+    sanitized="$(mktemp /tmp/dust-op-env.XXXXXX)"
+    if ! python3 "${DUST_REPO_ROOT}/dev/scripts/sanitize-op-env.py" "$tmp" "$sanitized"; then
+      rm -f "$tmp" "$sanitized"
+      log "Failed to sanitize 1Password env for shell sourcing"
+      ensure_bash_env_global
+      return 1
+    fi
+    rm -f "$tmp"
+    chmod 600 "$sanitized"
+    mv "$sanitized" "$DUST_OP_ENV_FILE"
+    log "Materialized 1Password env ($(grep -c '^export ' "$DUST_OP_ENV_FILE" | tr -d ' ') vars) -> ${DUST_OP_ENV_FILE}"
+    set -a
+    # shellcheck disable=SC1090
+    . "$DUST_OP_ENV_FILE"
+    set +a
   else
     log "Skipping 1Password materialize (credentials missing); local overrides only"
     rm -f "$DUST_OP_ENV_FILE"
   fi
 
-  # Runtime secret → SA JSON file for Google clients (var itself stays as injected).
+  # 1Password (or host) JSON key → path Google clients actually read.
   write_gcp_service_account_file
   ensure_bash_env_global
   return 0

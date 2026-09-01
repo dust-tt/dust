@@ -3,7 +3,7 @@
 # Source this file for defaults; call apply_local_overrides after loading 1Password
 # so cloud URIs lose to local Postgres/Temporal/APIs.
 #
-# Runtime secrets (OP_SERVICE_ACCOUNT_TOKEN, DEV_WORKOS_*, GCP_SERVICE_ACCOUNT, …)
+# Runtime secrets (OP_SERVICE_ACCOUNT_TOKEN, DEV_WORKOS_*, …)
 # are expected to already be in the process environment — do not re-export them here.
 
 export DUST_REPO_ROOT="${DUST_REPO_ROOT:-/workspace}"
