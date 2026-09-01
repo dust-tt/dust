@@ -186,6 +186,7 @@ export function PoolUsagePage() {
     creditsResetAt,
     isMembersUsageLoading,
     isMembersUsageValidating,
+    isMembersUsageError,
   } = usePokeMembersUsage({
     owner,
     pageIndex: pagination.pageIndex,
@@ -211,10 +212,12 @@ export function PoolUsagePage() {
     groups: groupAllowedModelTiers,
     maxTierName: workspaceMaxTierName,
   } = usePokeAllowedModelTiers({ owner });
+
   const workspaceAllowedModelTiers = useMemo(
     () => expandMaxTierName(workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER),
     [workspaceMaxTierName]
   );
+
   const userAllowedModelTiersByUserId = useMemo(() => {
     const map: Record<string, ModelsTierName[]> = {};
     for (const entry of userAllowedModelTiers) {
@@ -222,6 +225,7 @@ export function PoolUsagePage() {
     }
     return map;
   }, [userAllowedModelTiers]);
+
   const groupModelTiersByGroupId = useMemo(() => {
     const map: Record<string, ModelsTierName[]> = {};
     for (const entry of groupAllowedModelTiers) {
@@ -229,6 +233,7 @@ export function PoolUsagePage() {
     }
     return map;
   }, [groupAllowedModelTiers]);
+
   const groupNameToId = useMemo(() => {
     const map = new Map<string, string>();
     for (const group of allGroups) {
@@ -350,33 +355,44 @@ export function PoolUsagePage() {
                 {groupsFilterDropdown}
                 {seatFilterDropdown}
               </div>
-              <MembersUsageTable
-                members={members}
-                creditsResetAt={creditsResetAt}
-                isLoading={isMembersUsageLoading}
-                isRefreshing={
-                  isMembersUsageValidating && !isMembersUsageLoading
-                }
-                totalAllowedUsagePendingMemberIds={EMPTY_PENDING_MEMBER_IDS}
-                seatChangePendingMemberIds={EMPTY_PENDING_MEMBER_IDS}
-                isSeatBased
-                showSpendLimit
-                readOnly
-                onChangeSeat={noopOnMember}
-                onRemoveSeat={noopOnMember}
-                onEditSpendLimit={noopOnMember}
-                pagination={pagination}
-                setPagination={setPagination}
-                totalRowCount={totalMembers}
-                sorting={sorting}
-                setSorting={handleSetSorting}
-                showGroupsColumn={groups.length > 0}
-                showModelTiersColumn
-                userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
-                groupModelTiersByGroupId={groupModelTiersByGroupId}
-                workspaceAllowedModelTiers={workspaceAllowedModelTiers}
-                groupNameToId={groupNameToId}
-              />
+              {isMembersUsageError ? (
+                <ContentMessage
+                  title="Failed to load members usage"
+                  icon={AlertCircle}
+                  variant="warning"
+                >
+                  Could not load per-member seat and credit pool consumption
+                  data for this workspace.
+                </ContentMessage>
+              ) : (
+                <MembersUsageTable
+                  members={members}
+                  creditsResetAt={creditsResetAt}
+                  isLoading={isMembersUsageLoading}
+                  isRefreshing={
+                    isMembersUsageValidating && !isMembersUsageLoading
+                  }
+                  totalAllowedUsagePendingMemberIds={EMPTY_PENDING_MEMBER_IDS}
+                  seatChangePendingMemberIds={EMPTY_PENDING_MEMBER_IDS}
+                  isSeatBased
+                  showSpendLimit
+                  readOnly
+                  onChangeSeat={noopOnMember}
+                  onRemoveSeat={noopOnMember}
+                  onEditSpendLimit={noopOnMember}
+                  pagination={pagination}
+                  setPagination={setPagination}
+                  totalRowCount={totalMembers}
+                  sorting={sorting}
+                  setSorting={handleSetSorting}
+                  showGroupsColumn={groups.length > 0}
+                  showModelTiersColumn
+                  userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
+                  groupModelTiersByGroupId={groupModelTiersByGroupId}
+                  workspaceAllowedModelTiers={workspaceAllowedModelTiers}
+                  groupNameToId={groupNameToId}
+                />
+              )}
             </Page.Vertical>
           </TabsContent>
 
