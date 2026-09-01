@@ -4,22 +4,43 @@ import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/model
 import { AUTO_COMPLEX_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_FLASH_LITE_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_4_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
 
 const Icon = () => null;
 
 function asSelectable(
-  model: ModelConfigurationType
+  model: ModelConfigurationType,
+  unavailabilityReason: "premium" | "model_tier" | null = null,
+  effortReasons: Partial<
+    Record<ReasoningEffort, "premium" | "model_tier" | "unsupported">
+  > = {}
 ): EnabledModelConfigurationType {
-  return { ...model, isSelectable: true };
+  const reasoningEfforts = (["light", "medium", "high"] as const)
+    .filter((effort) => model.supportedReasoningEfforts[effort])
+    .map((effort) => ({
+      effort,
+      unavailabilityReason: effortReasons[effort] ?? null,
+    }));
+
+  return {
+    ...model,
+    isSelectable: unavailabilityReason !== "model_tier",
+    selectionAvailability: {
+      defaultReasoningEffort: model.defaultReasoningEffort,
+      reasoningEfforts,
+      unavailabilityReason,
+    },
+  };
 }
 
 describe("buildPickModelSlashCommandItems", () => {
   it("lists tiers first, then one row per slider effort", () => {
     const items = buildPickModelSlashCommandItems({
       getModelIcon: () => Icon,
-      lockPremiumEfforts: false,
       models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
       query: "",
       streams: null,
@@ -43,7 +64,6 @@ describe("buildPickModelSlashCommandItems", () => {
   it("uses a single row for non-reasoning models", () => {
     const items = buildPickModelSlashCommandItems({
       getModelIcon: () => Icon,
-      lockPremiumEfforts: false,
       models: [asSelectable(GPT_4_1_MODEL_CONFIG)],
       query: "",
       streams: null,
@@ -63,7 +83,6 @@ describe("buildPickModelSlashCommandItems", () => {
   it("uses display names for model makers", () => {
     const items = buildPickModelSlashCommandItems({
       getModelIcon: () => Icon,
-      lockPremiumEfforts: false,
       models: [asSelectable(GEMINI_3_1_FLASH_LITE_MODEL_CONFIG)],
       query: "",
       streams: null,
@@ -82,7 +101,6 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(
       buildPickModelSlashCommandItems({
         getModelIcon: () => Icon,
-        lockPremiumEfforts: false,
         models: [
           asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
           asSelectable(GPT_4_1_MODEL_CONFIG),
@@ -100,10 +118,9 @@ describe("buildPickModelSlashCommandItems", () => {
   it("omits a tier whose stream is above the member's model-tier cap", () => {
     const items = buildPickModelSlashCommandItems({
       getModelIcon: () => Icon,
-      lockPremiumEfforts: false,
       models: [
         asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
-        { ...AUTO_COMPLEX_MODEL_CONFIG, isSelectable: false },
+        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "model_tier"),
       ],
       query: "",
       streams: null,
@@ -116,11 +133,15 @@ describe("buildPickModelSlashCommandItems", () => {
     ).toEqual(["Basic", "Standard"]);
   });
 
-  it("omits premium efforts and the Premium tier when gated", () => {
+  it("omits efforts and tiers the backend marks as premium", () => {
     const items = buildPickModelSlashCommandItems({
       getModelIcon: () => Icon,
-      lockPremiumEfforts: true,
-      models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
+      models: [
+        asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, null, {
+          high: "premium",
+        }),
+        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "premium"),
+      ],
       query: "",
       streams: null,
     });

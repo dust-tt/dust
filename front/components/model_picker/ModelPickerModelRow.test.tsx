@@ -1,5 +1,4 @@
 import { ModelPickerModelRow } from "@app/components/model_picker/ModelPickerModelRow";
-import { getEffortStops } from "@app/components/model_picker/modelPickerUtils";
 import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import {
@@ -37,7 +36,7 @@ function TestMenu({ onSelectModel, onOpenChange }: TestMenuProps) {
           lockReason={null}
           isDegraded={false}
           effort={MODEL.defaultReasoningEffort}
-          effortStops={getEffortStops(MODEL, { lockPremiumEfforts: false })}
+          effortStops={[]}
           onSelectModel={onSelectModel}
           onChangeEffort={vi.fn()}
         />

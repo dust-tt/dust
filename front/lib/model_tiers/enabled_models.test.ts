@@ -3,6 +3,7 @@ import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import {
   getDefaultModelFromEnabledModels,
   getEnabledModelsForAuth,
+  getModelsForAuth,
   resolveStreamModel,
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
@@ -22,6 +23,7 @@ import {
   AUTO_MODEL_CONFIG,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
+import { FIREWORKS_GLM_5P2_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -109,6 +111,22 @@ describe("withModelSelectability", () => {
     expect(model.defaultReasoningEffort).toBe("medium");
   });
 
+  it("reports tier-capped efforts as unavailable in the models response", async () => {
+    const auth = await userAuthForTierCap("balanced");
+
+    const { models } = await getModelsForAuth(auth);
+    const sonnet = models.find(
+      (model) =>
+        model.modelId === CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+
+    expect(sonnet?.selectionAvailability?.reasoningEfforts).toEqual([
+      { effort: "light", unavailabilityReason: null },
+      { effort: "medium", unavailabilityReason: null },
+      { effort: "high", unavailabilityReason: "model_tier" },
+    ]);
+  });
+
   it("marks frontier-only models as not selectable when capped at balanced", async () => {
     const auth = await userAuthForTierCap("balanced");
 
@@ -172,6 +190,70 @@ describe("withModelSelectability", () => {
     expect(model.supportedReasoningEfforts).toEqual(
       CUSTOM_MODEL_CONFIG.supportedReasoningEfforts
     );
+  });
+});
+
+describe("getModelsForAuth", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let adminAuth: Authenticator;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  });
+
+  it("reports complete selection availability for legacy plans", async () => {
+    const { models, defaultModel } = await getModelsForAuth(adminAuth);
+    const sonnet = models.find(
+      (model) =>
+        model.modelId === CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+    const singleEffortModel = models.find(
+      (model) => model.modelId === FIREWORKS_GLM_5P2_MODEL_CONFIG.modelId
+    );
+    const premiumStream = models.find(
+      (model) => model.modelId === AUTO_COMPLEX_MODEL_CONFIG.modelId
+    );
+
+    expect(sonnet?.selectionAvailability).toEqual({
+      defaultReasoningEffort: "medium",
+      reasoningEfforts: [
+        { effort: "light", unavailabilityReason: null },
+        { effort: "medium", unavailabilityReason: null },
+        { effort: "high", unavailabilityReason: "premium" },
+      ],
+      unavailabilityReason: null,
+    });
+    expect(singleEffortModel?.selectionAvailability?.reasoningEfforts).toEqual([
+      { effort: "light", unavailabilityReason: "unsupported" },
+      { effort: "medium", unavailabilityReason: "unsupported" },
+      { effort: "high", unavailabilityReason: null },
+    ]);
+    expect(premiumStream?.selectionAvailability?.unavailabilityReason).toBe(
+      "premium"
+    );
+    expect(defaultModel.selectionAvailability).toBeDefined();
+  });
+
+  it("uses the workspace feature flag to unlock premium options", async () => {
+    await FeatureFlagFactory.basic(adminAuth, "claude_4_5_opus_feature");
+
+    const { models } = await getModelsForAuth(adminAuth);
+    const sonnet = models.find(
+      (model) =>
+        model.modelId === CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+    const premiumStream = models.find(
+      (model) => model.modelId === AUTO_COMPLEX_MODEL_CONFIG.modelId
+    );
+
+    expect(sonnet?.selectionAvailability?.reasoningEfforts).toContainEqual({
+      effort: "high",
+      unavailabilityReason: null,
+    });
+    expect(
+      premiumStream?.selectionAvailability?.unavailabilityReason
+    ).toBeNull();
   });
 });
 

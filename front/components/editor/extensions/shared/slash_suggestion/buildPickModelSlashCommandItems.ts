@@ -7,10 +7,11 @@ import {
   buildModelSelection,
   buildTierSelection,
   getEffortStops,
+  getInitialEffort,
+  getModelLockReason,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
   getTierResolvedModelLabel,
-  isPremiumModel,
   MODEL_TIERS,
 } from "@app/components/model_picker/modelPickerUtils";
 import type {
@@ -29,14 +30,13 @@ import type { ComponentType } from "react";
 // a selectable effort row for reasoning models — it only appears as the single
 // row for non-reasoning models that have no slider stops.
 export function getSelectableEffortsForSlashMenu(
-  model: EnabledModelConfigurationType,
-  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
+  model: EnabledModelConfigurationType
 ): ReasoningEffort[] {
-  if (isPremiumModel(model, { lockPremiumEfforts })) {
+  if (getModelLockReason(model)) {
     return [];
   }
 
-  const selectableEfforts = getEffortStops(model, { lockPremiumEfforts })
+  const selectableEfforts = getEffortStops(model)
     .filter((stop) => stop.unavailabilityReason === null)
     .map((stop) => stop.effort);
 
@@ -44,7 +44,7 @@ export function getSelectableEffortsForSlashMenu(
     return selectableEfforts;
   }
 
-  return ["none"];
+  return [getInitialEffort(model)];
 }
 
 function matchesQuery(item: SlashCommand, normalizedQuery: string): boolean {
@@ -58,18 +58,16 @@ function matchesQuery(item: SlashCommand, normalizedQuery: string): boolean {
 }
 
 function buildTierSlashCommandItems({
-  lockPremiumEfforts,
   streamModels,
   streams,
 }: {
-  lockPremiumEfforts: boolean;
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
 }): SelectModelSlashCommand[] {
   const items: SelectModelSlashCommand[] = [];
 
   for (const tier of MODEL_TIERS) {
-    if (getTierLockReason(tier.id, { lockPremiumEfforts, streamModels })) {
+    if (getTierLockReason(tier.id, streamModels)) {
       continue;
     }
 
@@ -93,13 +91,11 @@ function buildTierSlashCommandItems({
 
 export function buildPickModelSlashCommandItems({
   getModelIcon,
-  lockPremiumEfforts,
   models,
   query,
   streams,
 }: {
   getModelIcon: (model: EnabledModelConfigurationType) => ComponentType;
-  lockPremiumEfforts: boolean;
   models: EnabledModelConfigurationType[];
   query: string;
   streams: ModelStreamResolutionsType | null;
@@ -112,16 +108,13 @@ export function buildPickModelSlashCommandItems({
 
   const items: SelectModelSlashCommand[] = [
     ...buildTierSlashCommandItems({
-      lockPremiumEfforts,
       streamModels,
       streams,
     }),
   ];
 
   for (const model of selectableModels) {
-    const efforts = getSelectableEffortsForSlashMenu(model, {
-      lockPremiumEfforts,
-    });
+    const efforts = getSelectableEffortsForSlashMenu(model);
     const icon = getModelIcon(model);
 
     for (const effort of efforts) {

@@ -52,8 +52,10 @@ export function SetModelAssistantsDialog({
   const [pending, setPending] = useState<SelectionDisplay | null>(null);
   const [confirming, setConfirming] = useState<SelectionDisplay | null>(null);
 
-  const { modelProps, isModelsLoading, lockPremiumEfforts } =
-    useModelPickerModels({ owner, disabled: !isOpen });
+  const { modelProps, isModelsLoading } = useModelPickerModels({
+    owner,
+    disabled: !isOpen,
+  });
   const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
@@ -97,7 +99,7 @@ export function SetModelAssistantsDialog({
     setPending({
       kind: "model",
       model,
-      effort: getInitialEffort(model, { lockPremiumEfforts }),
+      effort: getInitialEffort(model),
     });
   };
 

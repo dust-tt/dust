@@ -17,6 +17,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export interface AvailableTool {
   sId: string;
@@ -41,9 +42,10 @@ export interface AvailableSkill {
  * plan, and workspace provider whitelisting.
  */
 export async function getAvailableModelsForWorkspace(
-  auth: Authenticator
+  auth: Authenticator,
+  preloadedFeatureFlags: WhitelistableFeature[] | null = null
 ): Promise<ModelConfigurationType[]> {
-  const featureFlags = await getFeatureFlags(auth);
+  const featureFlags = preloadedFeatureFlags ?? (await getFeatureFlags(auth));
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.plan();
   const region = regionConfig.getCurrentRegion();

@@ -2,12 +2,16 @@ import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   EnabledModelConfigurationType,
   GetEnabledModelsResponseType,
+  ModelSelectionAvailabilityType,
+  ModelSelectionUnavailabilityReason,
   ModelStreamResolutionsType,
   ModelStreamResolutionType,
+  ReasoningEffortSelectionUnavailabilityReason,
 } from "@app/types/api/assistant/models";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
 import {
@@ -30,11 +34,120 @@ import type {
   ReasoningEffortSupport,
 } from "@app/types/assistant/models/types";
 import { getMaximumReasoningEffort } from "@app/types/assistant/models/types";
+import { isCreditPricedPlan } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+
+const PICKER_REASONING_EFFORTS: ReasoningEffort[] = ["light", "medium", "high"];
 
 function isStaticModel(
   modelId: string
 ): modelId is keyof typeof STATIC_MODEL_TIERS {
   return modelId in STATIC_MODEL_TIERS;
+}
+
+function canSelectPremiumOptions(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  const plan = auth.plan();
+
+  return (
+    (plan !== null &&
+      (isCreditPricedPlan(plan) || plan.hasAdvancedModelAccess)) ||
+    featureFlags.includes("claude_4_5_opus_feature")
+  );
+}
+
+function getEffortUnavailabilityReason(
+  model: ModelConfigurationType,
+  enabledModel: EnabledModelConfigurationType,
+  effort: ReasoningEffort,
+  premiumOptionsAreSelectable: boolean
+): ReasoningEffortSelectionUnavailabilityReason | null {
+  if (!model.supportedReasoningEfforts[effort]) {
+    return "unsupported";
+  }
+
+  if (!enabledModel.supportedReasoningEfforts[effort]) {
+    return "model_tier";
+  }
+
+  if (
+    !premiumOptionsAreSelectable &&
+    getTierForModel(model.modelId, effort) === "premium"
+  ) {
+    return "premium";
+  }
+
+  return null;
+}
+
+function getSelectionAvailability(
+  model: ModelConfigurationType,
+  enabledModel: EnabledModelConfigurationType,
+  premiumOptionsAreSelectable: boolean
+): ModelSelectionAvailabilityType {
+  const usesReasoningEffort = PICKER_REASONING_EFFORTS.some(
+    (effort) => model.supportedReasoningEfforts[effort]
+  );
+  const efforts: ReasoningEffort[] = usesReasoningEffort
+    ? PICKER_REASONING_EFFORTS
+    : ["none"];
+  const options = efforts.map((effort) => ({
+    effort,
+    unavailabilityReason: getEffortUnavailabilityReason(
+      model,
+      enabledModel,
+      effort,
+      premiumOptionsAreSelectable
+    ),
+  }));
+  const selectableOptions = options.filter(
+    ({ unavailabilityReason }) => unavailabilityReason === null
+  );
+
+  let unavailabilityReason: ModelSelectionUnavailabilityReason | null = null;
+  if (selectableOptions.length === 0) {
+    if (
+      options.some((option) => option.unavailabilityReason === "model_tier")
+    ) {
+      unavailabilityReason = "model_tier";
+    } else if (
+      options.some((option) => option.unavailabilityReason === "premium")
+    ) {
+      unavailabilityReason = "premium";
+    }
+  }
+
+  const defaultOption = selectableOptions.find(
+    ({ effort }) => effort === enabledModel.defaultReasoningEffort
+  );
+
+  return {
+    defaultReasoningEffort:
+      defaultOption?.effort ?? selectableOptions[0]?.effort ?? "none",
+    reasoningEfforts: usesReasoningEffort ? options : [],
+    unavailabilityReason,
+  };
+}
+
+function withSelectionAvailability(
+  models: ModelConfigurationType[],
+  enabledModels: EnabledModelConfigurationType[],
+  premiumOptionsAreSelectable: boolean
+): EnabledModelConfigurationType[] {
+  return enabledModels.map((enabledModel, index) => {
+    // withModelSelectability preserves the input order and cardinality.
+    const model = models[index] ?? enabledModel;
+    return {
+      ...enabledModel,
+      selectionAvailability: getSelectionAvailability(
+        model,
+        enabledModel,
+        premiumOptionsAreSelectable
+      ),
+    };
+  });
 }
 
 function restrictModelConfigToAllowedTiers(
@@ -241,7 +354,19 @@ export function getStreamResolutions(
 export async function getModelsForAuth(
   auth: Authenticator
 ): Promise<GetEnabledModelsResponseType> {
-  const models = await getEnabledModelsForAuth(auth);
+  const featureFlags = await getFeatureFlags(auth);
+  const availableModels = await getAvailableModelsForWorkspace(
+    auth,
+    featureFlags
+  );
+  const enabledModels = await withModelSelectability(auth, {
+    models: availableModels,
+  });
+  const models = withSelectionAvailability(
+    availableModels,
+    enabledModels,
+    canSelectPremiumOptions(auth, featureFlags)
+  );
   const degradedModelIds = getDegradedModelIds();
 
   return {

@@ -18,12 +18,13 @@ import {
   buildModelSelection,
   buildTierSelection,
   DEGRADED_MODEL_TOOLTIP,
+  getEffortStops,
   getInitialEffort,
+  getModelLockReason,
   getModelTier,
   getModelWithReasoningEffortLabel,
   getReasoningEffortLabel,
   getTierLockReason,
-  isPremiumModel,
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -33,7 +34,6 @@ import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useClientType } from "@app/lib/context/clientType";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -112,13 +112,8 @@ export function ModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const {
-    modelProps,
-    models,
-    streamModels,
-    lockPremiumEfforts,
-    degradedModelIds,
-  } = useModelPickerModels({ owner });
+  const { modelProps, models, streamModels, degradedModelIds } =
+    useModelPickerModels({ owner });
   const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const { shown: baseSelection, agentDefault } = useMemo(
@@ -205,7 +200,7 @@ export function ModelPicker({
   }
 
   const onSelectTier = (tierId: ModelTierId) => {
-    if (getTierLockReason(tierId, { lockPremiumEfforts, streamModels })) {
+    if (getTierLockReason(tierId, streamModels)) {
       return;
     }
     commit(
@@ -218,10 +213,10 @@ export function ModelPicker({
   };
 
   const onSelectModel = (model: ModelConfigurationType) => {
-    if (isPremiumModel(model, { lockPremiumEfforts })) {
+    if (getModelLockReason(model)) {
       return;
     }
-    const effort = getInitialEffort(model, { lockPremiumEfforts });
+    const effort = getInitialEffort(model);
     commit(
       {
         display: { kind: "model", model, effort },
@@ -236,10 +231,10 @@ export function ModelPicker({
       return;
     }
     const { model } = shown.display;
-    if (
-      lockPremiumEfforts &&
-      getTierForModel(model.modelId, effort) === "premium"
-    ) {
+    const stop = getEffortStops(model).find(
+      (option) => option.effort === effort
+    );
+    if (!stop || stop.unavailabilityReason !== null) {
       return;
     }
     commit(

@@ -28,9 +28,6 @@ interface ModelPickerMakersViewProps {
   makerGroups: MakerGroup[];
   selection: ModelPickerSelectionModel;
   ignoreTierRestrictions: boolean;
-  // When true, premium (model, effort) picks are locked (workspace not on a
-  // credit-based plan).
-  lockPremiumEfforts: boolean;
   degradedModelIds: ReadonlySet<string>;
   onSelectModel: (model: ModelConfigurationType) => void;
   onChangeEffort?: (
@@ -43,7 +40,6 @@ export function ModelPickerMakersView({
   makerGroups,
   selection,
   ignoreTierRestrictions,
-  lockPremiumEfforts,
   degradedModelIds,
   onSelectModel,
   onChangeEffort,
@@ -67,10 +63,10 @@ export function ModelPickerMakersView({
                 isModelSelection(model, selection.agentDefault);
               const lockReason = ignoreTierRestrictions
                 ? null
-                : getModelLockReason(model, { lockPremiumEfforts });
+                : getModelLockReason(model);
               const effort = selectedEntry
                 ? selectedEntry.effort
-                : getInitialEffort(model, { lockPremiumEfforts });
+                : getInitialEffort(model);
               return (
                 <ModelPickerModelRow
                   key={getModelKey(model.providerId, model.modelId)}
@@ -80,7 +76,7 @@ export function ModelPickerMakersView({
                   lockReason={lockReason}
                   isDegraded={degradedModelIds.has(model.modelId)}
                   effort={effort}
-                  effortStops={getEffortStops(model, { lockPremiumEfforts })}
+                  effortStops={getEffortStops(model)}
                   onSelectModel={onSelectModel}
                   onChangeEffort={
                     onChangeEffort && ((next) => onChangeEffort(model, next))

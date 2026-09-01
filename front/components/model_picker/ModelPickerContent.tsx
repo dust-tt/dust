@@ -36,7 +36,6 @@ import {
 interface ModelPickerContentProps {
   side: "top" | "bottom";
   selection: ModelPickerSelectionModel;
-  lockPremiumEfforts: boolean;
   ignoreTierRestrictions: boolean;
   tiers: ModelTierDefinition[];
   degradedModelIds: ReadonlySet<string>;
@@ -63,7 +62,6 @@ interface ModelPickerContentProps {
 export function ModelPickerContent({
   side,
   selection,
-  lockPremiumEfforts,
   ignoreTierRestrictions,
   tiers,
   degradedModelIds,
@@ -91,7 +89,7 @@ export function ModelPickerContent({
         const isSelected = isTierSelected(tier.id, selection);
         const lockReason = ignoreTierRestrictions
           ? null
-          : getTierLockReason(tier.id, { lockPremiumEfforts, streamModels });
+          : getTierLockReason(tier.id, streamModels);
         if (lockReason) {
           return (
             <DropdownMenuItem
@@ -156,7 +154,6 @@ export function ModelPickerContent({
           makerGroups={makerGroups}
           selection={selection}
           ignoreTierRestrictions={ignoreTierRestrictions}
-          lockPremiumEfforts={lockPremiumEfforts}
           degradedModelIds={degradedModelIds}
           onSelectModel={onSelectModel}
           onChangeEffort={onChangeEffort}

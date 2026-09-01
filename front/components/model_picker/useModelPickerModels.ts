@@ -1,6 +1,5 @@
 import type { MakerGroup } from "@app/components/model_picker/modelPickerUtils";
 import { MODEL_TIERS } from "@app/components/model_picker/modelPickerUtils";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { useModels } from "@app/lib/swr/models";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -9,7 +8,6 @@ import type {
   ModelConfigurationType,
   ModelMakerIdType,
 } from "@app/types/assistant/models/types";
-import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 
@@ -33,14 +31,7 @@ export function useModelPickerModels({
   // catalog.
   modelIds?: string[];
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const { subscription } = useAuth();
-  const canSelectPremiumModels =
-    isCreditPricedPlan(subscription.plan) ||
-    subscription.plan.hasAdvancedModelAccess ||
-    hasFeature("claude_4_5_opus_feature");
   const isFilterMode = mode === "filter";
-  const lockPremiumEfforts = !canSelectPremiumModels;
 
   const { models, streams, degradedModelIds, isModelsLoading } = useModels({
     owner,
@@ -110,7 +101,6 @@ export function useModelPickerModels({
 
   return {
     modelProps: {
-      lockPremiumEfforts,
       ignoreTierRestrictions: isFilterMode,
       tiers,
       degradedModelIds,
@@ -124,6 +114,5 @@ export function useModelPickerModels({
     streamModels,
     degradedModelIds,
     isModelsLoading,
-    lockPremiumEfforts,
   };
 }

@@ -1,7 +1,10 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type {
   EnabledModelConfigurationType,
+  ModelSelectionAvailabilityType,
+  ModelSelectionUnavailabilityReason,
   ModelStreamResolutionsType,
+  ReasoningEffortSelectionAvailabilityType,
 } from "@app/types/api/assistant/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
@@ -11,19 +14,12 @@ import {
   AUTO_MODEL_ID,
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
-import {
-  getTierForModel,
-  STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
-} from "@app/types/assistant/models/model_tiers";
-import { isStaticModelId } from "@app/types/assistant/models/models";
 import type {
   ModelConfigurationType,
-  ModelIdType,
   ModelMakerIdType,
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import capitalize from "lodash/capitalize";
 
@@ -93,25 +89,10 @@ export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
   );
 }
 
-const PREMIUM_MODEL_TIER_IDS: ModelTierId[] = ["complex"];
-
-// A tier row is locked either because the workspace is on a legacy plan without
-// premium access, or because the stream's own model tier is above the member's
-// cap — the server refuses such a selection, so the picker must not offer it.
 export function getTierLockReason(
   tierId: ModelTierId,
-  {
-    lockPremiumEfforts,
-    streamModels,
-  }: {
-    lockPremiumEfforts: boolean;
-    streamModels: EnabledModelConfigurationType[];
-  }
+  streamModels: EnabledModelConfigurationType[]
 ): ModelLockReason | null {
-  if (lockPremiumEfforts && PREMIUM_MODEL_TIER_IDS.includes(tierId)) {
-    return "premium";
-  }
-
   const { metaModelId } = getModelTier(tierId);
   const streamModel = streamModels.find(
     (model) => model.modelId === metaModelId
@@ -120,11 +101,7 @@ export function getTierLockReason(
   // payload lands (`useModels` returns an empty list while it is in flight), so
   // locking on absence would flash every row locked on each open. Default to
   // unlocked — the server refuses an out-of-tier stream at send time anyway.
-  if (streamModel && !streamModel.isSelectable) {
-    return "model_tier";
-  }
-
-  return null;
+  return streamModel?.selectionAvailability?.unavailabilityReason ?? null;
 }
 
 export function getTierIdForMetaModelId(modelId: string): ModelTierId | null {
@@ -211,21 +188,12 @@ export interface ModelPickerSelectionModel {
   onRevert?: () => void;
 }
 
-export type ModelLockReason = "premium" | "model_tier";
-export type EffortUnavailabilityReason = "unsupported" | ModelLockReason;
+export type ModelLockReason = ModelSelectionUnavailabilityReason;
 
 // One stop of the reasoning-effort slider. A null reason means it is available.
 // Unsupported efforts are unavailable; premium and model-tier efforts are
 // locked behind access controls.
-export interface EffortStop {
-  effort: ReasoningEffort;
-  unavailabilityReason: EffortUnavailabilityReason | null;
-}
-
-// The reasoning-effort slider always presents these three canonical levels so
-// its shape stays consistent across models. "none" is not a level here: it
-// means "no reasoning" and is never a selectable slider position.
-const SLIDER_EFFORTS: ReasoningEffort[] = ["light", "medium", "high"];
+export type EffortStop = ReasoningEffortSelectionAvailabilityType;
 
 export function buildTierSelection(tierId: ModelTierId): ModelSelectionType {
   const { metaModelId } = getModelTier(tierId);
@@ -323,115 +291,37 @@ export function isSameSelection(
   return isSameDisplay(a, b);
 }
 
-interface LockPremiumOptions {
-  lockPremiumEfforts?: boolean;
+function hasSelectionAvailability(
+  model: ModelConfigurationType
+): model is ModelConfigurationType & {
+  selectionAvailability: ModelSelectionAvailabilityType;
+} {
+  return "selectionAvailability" in model;
 }
 
-function modelSupportsEffortStatically(
-  modelId: ModelIdType,
-  effort: ReasoningEffort
-): boolean {
-  if (!isStaticModelId(modelId)) {
-    return false;
-  }
-  return STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId][effort];
+export function getSelectionAvailability(
+  model: ModelConfigurationType
+): ModelSelectionAvailabilityType | null {
+  return hasSelectionAvailability(model) ? model.selectionAvailability : null;
 }
 
-// The single authority for whether a reasoning-effort level is selectable.
-export function getEffortStops(
-  enabledModel: ModelConfigurationType,
-  { lockPremiumEfforts = false }: LockPremiumOptions = {}
-): EffortStop[] {
-  const allowed = new Set(
-    getAvailableReasoningEfforts(enabledModel.supportedReasoningEfforts)
-  );
-
-  return SLIDER_EFFORTS.map((effort) => {
-    if (!allowed.has(effort)) {
-      return {
-        effort,
-        unavailabilityReason: modelSupportsEffortStatically(
-          enabledModel.modelId,
-          effort
-        )
-          ? "model_tier"
-          : "unsupported",
-      };
-    }
-    if (
-      lockPremiumEfforts &&
-      getTierForModel(enabledModel.modelId, effort) === "premium"
-    ) {
-      return { effort, unavailabilityReason: "premium" };
-    }
-    return { effort, unavailabilityReason: null };
-  });
+export function getEffortStops(model: ModelConfigurationType): EffortStop[] {
+  return getSelectionAvailability(model)?.reasoningEfforts ?? [];
 }
 
-// The reasoning effort to use when a model is freshly selected: its default when
-// that is allowed, otherwise the first available stop.
 export function getInitialEffort(
-  enabledModel: ModelConfigurationType,
-  options: LockPremiumOptions = {}
+  model: ModelConfigurationType
 ): ReasoningEffort {
-  const stops = getEffortStops(enabledModel, options);
-  const preferred = stops.find(
-    (stop) =>
-      stop.effort === enabledModel.defaultReasoningEffort &&
-      stop.unavailabilityReason === null
-  );
-  if (preferred) {
-    return preferred.effort;
-  }
   return (
-    stops.find((stop) => stop.unavailabilityReason === null)?.effort ?? "none"
+    getSelectionAvailability(model)?.defaultReasoningEffort ??
+    model.defaultReasoningEffort
   );
-}
-
-function isReasoningModel(modelId: ModelIdType): boolean {
-  if (!isStaticModelId(modelId)) {
-    return false;
-  }
-  const support = STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId];
-  return SLIDER_EFFORTS.some((effort) => support[effort]);
-}
-
-// Whether a whole model row must be locked
-export function isPremiumModel(
-  enabledModel: ModelConfigurationType,
-  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
-): boolean {
-  const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
-  const hasUsableSliderEffort = stops.some(
-    (stop) => stop.unavailabilityReason === null
-  );
-
-  if (isReasoningModel(enabledModel.modelId) && !hasUsableSliderEffort) {
-    return true;
-  }
-
-  if (!lockPremiumEfforts) {
-    return false;
-  }
-  const supportedSlider = stops.filter(
-    (stop) => stop.unavailabilityReason !== "unsupported"
-  );
-  if (supportedSlider.length > 0) {
-    return supportedSlider.every(
-      (stop) => stop.unavailabilityReason === "premium"
-    );
-  }
-  return getTierForModel(enabledModel.modelId, "none") === "premium";
 }
 
 export function getModelLockReason(
-  enabledModel: ModelConfigurationType,
-  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
+  model: ModelConfigurationType
 ): ModelLockReason | null {
-  if (!isPremiumModel(enabledModel, { lockPremiumEfforts })) {
-    return null;
-  }
-  return lockPremiumEfforts ? "premium" : "model_tier";
+  return getSelectionAvailability(model)?.unavailabilityReason ?? null;
 }
 
 export function getModelLockTooltip(reason: ModelLockReason): string {
