@@ -757,7 +757,7 @@ export const InputBarAttachmentsPicker = ({
       <DropdownPanel
         title="Attach knowledge"
         onBack={() => onBack?.()}
-        className="h-80 w-80 max-w-[calc(100vw-1rem)] xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
+        className="h-80 w-full xs:h-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
         headers={headers}
       >
         {items}

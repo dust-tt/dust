@@ -73,7 +73,7 @@ export function InputBarSpacesPicker({
     <DropdownPanel
       title={getSpacesPickerLabel(selectedSpaceIds)}
       onBack={onBack}
-      className="h-80 w-80 max-w-[calc(100vw-1rem)] xs:h-96"
+      className="h-80 w-full xs:h-96"
       headers={
         <>
           <DropdownMenuSearchbar

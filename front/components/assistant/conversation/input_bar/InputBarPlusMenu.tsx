@@ -35,64 +35,61 @@ import {
 import type { Transition, Variants } from "framer-motion";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 const PLUS_BUTTON_CLASSNAME = cn(
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
   INPUT_BAR_PILL_HOVER_CLASSNAME
 );
 
-const PANEL_SWAP_OFFSET_PX = 16;
-const PANEL_EASE = [0.32, 0.72, 0, 1] as const;
+const PANEL_SWAP_OFFSET_PX = 8;
+const PANEL_EASE_ENTER = [0.215, 0.61, 0.355, 1] as const;
 const PANEL_ENTER_TRANSITION: Transition = {
-  duration: 0.18,
-  ease: PANEL_EASE,
+  duration: 0.2,
+  ease: PANEL_EASE_ENTER,
 };
 const PANEL_EXIT_TRANSITION: Transition = {
-  duration: 0.13,
-  ease: PANEL_EASE,
-};
-const PANEL_SIZE_TRANSITION: Transition = {
-  duration: 0.2,
-  ease: PANEL_EASE,
+  duration: 0.15,
+  ease: PANEL_EASE_ENTER,
 };
 
 const PAGE_VARIANTS: Variants = {
   enter: (direction: number) => ({
     opacity: 0,
-    x: direction * PANEL_SWAP_OFFSET_PX,
+    transform: `translateX(${direction * PANEL_SWAP_OFFSET_PX}px)`,
   }),
-  idle: { opacity: 1, x: 0, transition: PANEL_ENTER_TRANSITION },
+  idle: {
+    opacity: 1,
+    transform: "translateX(0px)",
+    transition: PANEL_ENTER_TRANSITION,
+  },
   exit: (direction: number) => ({
     opacity: 0,
-    x: -direction * PANEL_SWAP_OFFSET_PX,
+    transform: `translateX(${-direction * PANEL_SWAP_OFFSET_PX}px)`,
     transition: PANEL_EXIT_TRANSITION,
   }),
 };
 
 type PlusMenuPage = "root" | "capabilities" | "attachments" | "spaces";
 
-interface PanelSize {
-  height: number;
-  width: number;
-}
+type PanelHeights = Partial<Record<PlusMenuPage, number>>;
 
 interface PanelSizerProps {
   children: React.ReactNode;
-  onResize: (size: PanelSize) => void;
+  onHeightChange: (page: PlusMenuPage, height: number) => void;
+  page: PlusMenuPage;
 }
 
-function PanelSizer({ children, onResize }: PanelSizerProps) {
+function PanelSizer({ children, onHeightChange, page }: PanelSizerProps) {
   const nodeRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = nodeRef.current;
     if (!node) {
       return;
     }
 
-    const measure = () =>
-      onResize({ height: node.offsetHeight, width: node.offsetWidth });
+    const measure = () => onHeightChange(page, node.offsetHeight);
 
     measure();
 
@@ -100,13 +97,9 @@ function PanelSizer({ children, onResize }: PanelSizerProps) {
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, [onResize]);
+  }, [onHeightChange, page]);
 
-  return (
-    <div ref={nodeRef} className="w-max">
-      {children}
-    </div>
-  );
+  return <div ref={nodeRef}>{children}</div>;
 }
 
 interface InputBarPlusMenuProps {
@@ -167,7 +160,17 @@ export function InputBarPlusMenu({
   );
   const [serverViewForDetails, setServerViewForDetails] =
     useState<MCPServerViewLightType | null>(null);
-  const [size, setSize] = useState<PanelSize | null>(null);
+  const [panelHeights, setPanelHeights] = useState<PanelHeights>({});
+
+  const handleHeightChange = useCallback(
+    (measuredPage: PlusMenuPage, measuredHeight: number) =>
+      setPanelHeights((previous) =>
+        previous[measuredPage] === measuredHeight
+          ? previous
+          : { ...previous, [measuredPage]: measuredHeight }
+      ),
+    []
+  );
 
   const hasAnyEntry = !hideCapabilities || !hideAttachments || spaces != null;
   if (!hasAnyEntry) {
@@ -195,12 +198,11 @@ export function InputBarPlusMenu({
     if (open) {
       setDirection(1);
       setPage("root");
-      setSize(null);
     }
   };
 
   const rootPage = (
-    <div className="w-64 p-1">
+    <div className="w-full p-1">
       {!hideCapabilities && (
         <DropdownMenuItem
           label="Capabilities"
@@ -342,16 +344,14 @@ export function InputBarPlusMenu({
         <DropdownMenuContent
           align="start"
           collisionPadding={8}
-          className="overflow-hidden p-0"
+          className="w-80 max-w-[calc(100vw-1rem)] overflow-hidden p-0"
         >
-          <motion.div
-            className="relative overflow-hidden"
-            initial={false}
-            animate={
-              size ? { height: size.height, width: size.width } : undefined
-            }
-            transition={
-              shouldReduceMotion ? { duration: 0 } : PANEL_SIZE_TRANSITION
+          <div
+            className="relative w-full overflow-hidden transition-[height] duration-200 ease-enter motion-reduce:transition-none"
+            style={
+              panelHeights[page] === undefined
+                ? undefined
+                : { height: panelHeights[page] }
             }
           >
             <AnimatePresence
@@ -361,17 +361,19 @@ export function InputBarPlusMenu({
             >
               <motion.div
                 key={page}
-                className="w-max"
+                className="w-full"
                 custom={direction}
                 variants={shouldReduceMotion ? undefined : PAGE_VARIANTS}
                 initial="enter"
                 animate="idle"
                 exit="exit"
               >
-                <PanelSizer onResize={setSize}>{renderPage()}</PanelSizer>
+                <PanelSizer page={page} onHeightChange={handleHeightChange}>
+                  {renderPage()}
+                </PanelSizer>
               </motion.div>
             </AnimatePresence>
-          </motion.div>
+          </div>
         </DropdownMenuContent>
       </DropdownMenu>
 
