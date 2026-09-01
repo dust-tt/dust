@@ -108,7 +108,7 @@ describe("PodFrameSheet", () => {
       fileId: "fil_frame",
       fileName: "app.frame.json",
       framePath: "pod-vlt_project/App/app.frame.json",
-      frameTabs: [],
+      fileTabs: [],
       isArchived: false,
       isEditor: true,
       isMember: true,
