@@ -139,6 +139,9 @@ async fn run() -> anyhow::Result<()> {
             commands::frame::FrameCommand::Register { manifest } => {
                 commands::cmd_frame_register(&manifest).await?
             }
+            commands::frame::FrameCommand::ShareLink { directory } => {
+                commands::cmd_frame_share_link(&directory).await?
+            }
             commands::frame::FrameCommand::Publish { source } => {
                 commands::cmd_frame_publish(&source).await?
             }
@@ -492,5 +495,54 @@ mod tests {
             Commands::Frame { .. } => panic!("expected publish"),
             _ => panic!("expected frame"),
         }
+    }
+
+    #[test]
+    fn frame_share_link_is_read_only() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "share-link",
+            "/files/conversation-conv_123/Status",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command: commands::frame::FrameCommand::ShareLink { directory },
+            } => {
+                assert_eq!(
+                    directory,
+                    std::path::PathBuf::from("/files/conversation-conv_123/Status")
+                );
+            }
+            Commands::Frame { .. } => panic!("expected share-link"),
+            _ => panic!("expected frame"),
+        }
+
+        assert!(Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "share-link",
+            "/files/conversation-conv_123/Status",
+            "--scope",
+            "public",
+        ])
+        .is_err());
+        assert!(Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "share-link",
+            "/files/conversation-conv_123/Status",
+            "--email",
+            "alice@example.com",
+        ])
+        .is_err());
+        assert!(Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "share",
+            "/files/conversation-conv_123/Status",
+        ])
+        .is_err());
     }
 }

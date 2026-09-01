@@ -63,6 +63,13 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("dsbx frame publish");
     expect(instructions).toContain("dsbx frame create");
     expect(instructions).toContain("dsbx frame register");
+    expect(instructions).toContain("dsbx frame share-link");
+    expect(instructions).toContain(
+      "Frame sharing and use rights are configured by the user in the Dust UI"
+    );
+    expect(instructions).toContain("This command is read-only");
+    expect(instructions).not.toContain("--scope");
+    expect(instructions).not.toContain("--email");
     expect(instructions).toContain("package-like folder");
     expect(instructions).toContain("canonical Frame resource");
     expect(instructions).toContain("`index.tsx` by default");

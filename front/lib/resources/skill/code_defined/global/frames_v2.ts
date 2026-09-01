@@ -42,6 +42,19 @@ dsbx frame register /files/<scope>/<frame-folder>/manifest.json
 Registration validates the manifest and assigns its stable Frame identity. Repeating the command
 for the same manifest path returns the same Frame. Registration does not publish the source.
 
+## Retrieve a registered Frame's share link
+
+Frame sharing and use rights are configured by the user in the Dust UI. Agents must not change
+the share scope or grant access to recipients. The CLI can only retrieve an existing share link:
+
+\`\`\`bash
+dsbx frame share-link /files/<scope>/<frame-folder>
+\`\`\`
+
+This command is read-only. It never creates sharing state, changes the scope, or adds or removes
+recipients. It returns the stable Frame ID, current share scope, and existing share URL. If no share
+link exists, ask the user to configure sharing in the Dust UI.
+
 ## Frames v2 source layout
 
 Keep one Frame and everything it owns in one folder:

@@ -1,6 +1,7 @@
 mod create;
 mod publish;
 mod register;
+mod share_link;
 
 use std::path::{Component, Path, PathBuf};
 
@@ -10,6 +11,7 @@ use clap::Subcommand;
 pub use create::run as cmd_frame_create;
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
+pub use share_link::run as cmd_frame_share_link;
 
 const FRAME_MANIFEST_FILE: &str = "manifest.json";
 
@@ -30,6 +32,11 @@ pub enum FrameCommand {
     Register {
         /// Absolute /files/.../manifest.json path
         manifest: PathBuf,
+    },
+    /// Retrieve the existing share link for a registered Frame
+    ShareLink {
+        /// Existing Frame folder under /files
+        directory: PathBuf,
     },
     /// Build and publish a Frame from its current source
     Publish {
