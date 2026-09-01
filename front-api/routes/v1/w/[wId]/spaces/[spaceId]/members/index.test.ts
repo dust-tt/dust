@@ -66,6 +66,25 @@ describe("POST /api/v1/w/:wId/spaces/:spaceId/members", () => {
     );
   });
 
+  it("adds a member to a project space", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+    const project = await SpaceFactory.project(workspace);
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const response = await postMembers(workspace, project.sId, key.secret, {
+      userIds: [user.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const { users } = await response.json();
+    expect(users).toEqual(
+      expect.arrayContaining([expect.objectContaining({ sId: user.sId })])
+    );
+  });
+
   it("rejects a global space", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
