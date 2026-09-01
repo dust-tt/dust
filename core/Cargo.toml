@@ -109,6 +109,10 @@ path = "bin/salesforce.rs"
 # name = "migrate_slack_to_slack_tools_platform_actions"
 # path = "bin/migrations/20251208_migrate_slack_to_slack_tools_platform_actions.rs"
 
+# [[bin]]
+# name = "find_orphan_relational_rows"
+# path = "bin/migrations/20260901_find_orphan_relational_rows.rs"
+
 [[bin]]
 name = "check_table"
 path = "bin/check_table.rs"
