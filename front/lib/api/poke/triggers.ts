@@ -161,4 +161,10 @@ export type PokeGetTriggerDetails = {
   trigger: TriggerType;
   agent: LightAgentConfigurationType;
   editorUser: UserType | null;
+  webhookSource: {
+    id: ModelId;
+    sId: string;
+    name: string;
+    payloadsGcsUrl: string;
+  } | null;
 };

@@ -17,4 +17,5 @@ export type PokeGetWebhookSourceDetails = {
   views: WebhookSourceViewForAdminType[];
   triggers: Array<TriggerType & { editorUser: UserType | null }>;
   requestStats: { last24h: number; last7d: number; last30d: number };
+  payloadsGcsUrl: string;
 };
