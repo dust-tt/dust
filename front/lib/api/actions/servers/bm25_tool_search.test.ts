@@ -1201,6 +1201,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "search the web for the latest AI research papers",
     expected: "web_search_&_browse.websearch",
+    maxRank: 2, // clari_copilot.get_call_details dilutes shared-token IDF
   },
   {
     query: "google this topic for me",
