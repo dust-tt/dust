@@ -12,7 +12,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import keyId from "./[id]";
-import keyGroups from "./groups";
 import keySpaces from "./spaces";
 
 const CreateKeyPostBodySchema = z.object({
@@ -112,7 +111,6 @@ app.post(
   }
 );
 
-app.route("/groups", keyGroups);
 app.route("/spaces", keySpaces);
 app.route("/:id", keyId);
 

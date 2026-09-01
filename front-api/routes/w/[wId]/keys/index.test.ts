@@ -4,10 +4,27 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { KeyType } from "@app/types/key";
+import type { ModelId } from "@app/types/shared/model_id";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
+
+// A key's groups are not part of its serialized form (only the spaces they map to are), so the
+// scoping a key was created with is asserted against the DB.
+async function keyGroupModelIds(
+  workspace: LightWorkspaceType,
+  keyModelId: ModelId
+) {
+  const key = await KeyResource.fetchByWorkspaceAndId({
+    workspace,
+    id: keyModelId,
+  });
+  expect(key).not.toBeNull();
+
+  return key?.groupIds.toSorted();
+}
 
 describe("GET /api/w/:wId/keys — secret visibility", () => {
   it("returns the full secret to the admin who created the key", async () => {
@@ -83,7 +100,9 @@ describe("POST /api/w/:wId/keys — role restrictions", () => {
   });
 
   it("does not add a user-role key to the Builders group", async () => {
-    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
 
     const res = await honoApp.request(`/api/w/${workspace.sId}/keys`, {
       method: "POST",
@@ -95,7 +114,7 @@ describe("POST /api/w/:wId/keys — role restrictions", () => {
     const { key } = await res.json();
     const group = await GroupResource.fetchManualBuildersGroup(workspace);
     expect(group).toBeNull();
-    expect(key.groupIds).not.toContain(group?.id);
+    expect(await keyGroupModelIds(workspace, key.id)).toEqual([globalGroup.id]);
   });
 
   it("defaults to user role and does not add the Builders group", async () => {
@@ -143,7 +162,7 @@ describe("POST /api/w/:wId/keys — space scoping", () => {
 
     expect(res.status).toBe(201);
     const { key } = await res.json();
-    expect(key.groupIds.toSorted()).toEqual(
+    expect(await keyGroupModelIds(workspace, key.id)).toEqual(
       [globalGroup.id, spaceGroups[0].id].toSorted()
     );
   });
@@ -171,7 +190,7 @@ describe("POST /api/w/:wId/keys — space scoping", () => {
     expect(res.status).toBe(201);
     const { key } = await res.json();
     // The editor group holds the space `admin` grant, which would let the key administrate the pod.
-    expect(key.groupIds.toSorted()).toEqual(
+    expect(await keyGroupModelIds(workspace, key.id)).toEqual(
       [globalGroup.id, memberGroup.id].toSorted()
     );
   });
@@ -197,7 +216,7 @@ describe("POST /api/w/:wId/keys — space scoping", () => {
 
     expect(res.status).toBe(201);
     const { key } = await res.json();
-    expect(key.groupIds.toSorted()).toEqual(
+    expect(await keyGroupModelIds(workspace, key.id)).toEqual(
       [globalGroup.id, ...podGroups.map((group) => group.id)].toSorted()
     );
   });

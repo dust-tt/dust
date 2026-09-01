@@ -28,7 +28,6 @@ export type KeyType = {
   secret: string;
   status: string;
   name: string;
-  groupIds: ModelId[];
   spaces: SpaceType[];
   role: RoleType;
   monthlyCapMicroUsd: number | null;
