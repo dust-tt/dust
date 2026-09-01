@@ -5,6 +5,7 @@ import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton
 import { PodFrameTabButton } from "@app/components/pod/files/PodFrameTabButton";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
 import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -65,10 +66,15 @@ export function PodFrameSheet({
     config: { disabled: !isOpen || !fileId },
   });
 
-  const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
-    fileId,
-    owner,
-  });
+  const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
+    useFileMetadata({
+      fileId,
+      owner,
+      disabled: !isOpen || !fileId,
+    });
+  const functionReferenceKind = getFrameFunctionReferenceKind(
+    fileMetadata?.contentType
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -141,7 +147,15 @@ export function PodFrameSheet({
           </div>
         </SheetHeader>
         <div className="flex-1 overflow-hidden">
-          {isFileMetadataLoading || !fileContent ? (
+          {isFileMetadataLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Spinner />
+            </div>
+          ) : isFileMetadataError || !fileMetadata || !functionReferenceKind ? (
+            <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
+              This frame is no longer available in the Pod files.
+            </div>
+          ) : !fileContent ? (
             <div className="flex h-full items-center justify-center">
               <Spinner />
             </div>
@@ -164,6 +178,7 @@ export function PodFrameSheet({
                 conversationId={null}
                 spaceId={fileMetadata?.useCaseMetadata.spaceId}
                 framePath={framePath}
+                frameId={functionReferenceKind === "v2" ? fileId : undefined}
                 isInDrawer={true}
                 isPodEditor={isEditor}
                 isPodMember={isMember}

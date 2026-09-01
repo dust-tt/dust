@@ -404,29 +404,33 @@ export function useFileMetadata({
   fileId,
   owner,
   cacheKey,
+  disabled = false,
 }: {
   fileId: string | null;
   owner: LightWorkspaceType;
   cacheKey?: string | null;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const fileMetadataFetcher: Fetcher<FileTypeWithMetadata> = fetcher;
 
   // Include cacheKey in the SWR key if provided to force cache invalidation.
-  const swrKey = fileId
-    ? cacheKey
-      ? `/api/w/${owner.sId}/files/${fileId}/metadata?v=${cacheKey}`
-      : `/api/w/${owner.sId}/files/${fileId}/metadata`
-    : null;
+  const swrKey =
+    !disabled && fileId
+      ? cacheKey
+        ? `/api/w/${owner.sId}/files/${fileId}/metadata?v=${cacheKey}`
+        : `/api/w/${owner.sId}/files/${fileId}/metadata`
+      : null;
 
   const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
     swrKey,
-    fileMetadataFetcher
+    fileMetadataFetcher,
+    { disabled: swrKey === null }
   );
 
   return {
     fileMetadata: data,
-    isFileMetadataLoading: !error && !data,
+    isFileMetadataLoading: swrKey !== null && !error && !data,
     isFileMetadataError: error,
     mutateFileMetadata: mutateRegardlessOfQueryParams,
   };
