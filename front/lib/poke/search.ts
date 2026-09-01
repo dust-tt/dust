@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { fetchPokeGroupById } from "@app/lib/api/poke/groups";
 import {
   findWorkspaceByWorkOSOrganizationId,
   getWorkspaceInfos,
@@ -13,7 +14,6 @@ import {
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -339,11 +339,10 @@ async function searchPokeResourcesBySId(
     }
 
     case "group": {
-      const groupRes = await GroupResource.fetchById(workspaceAuth, sId);
-      if (groupRes.isErr()) {
+      const group = await fetchPokeGroupById(workspaceAuth, sId);
+      if (!group) {
         return [];
       }
-      const group = groupRes.value;
 
       return [
         {

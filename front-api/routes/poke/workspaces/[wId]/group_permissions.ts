@@ -3,7 +3,7 @@ import {
   getPokeGroupPermissionsForGroup,
   getPokeGroupPermissionsForResource,
 } from "@app/lib/api/poke/group_permissions";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { fetchPokeGroupById } from "@app/lib/api/poke/groups";
 import { GROUP_PERMISSION_RESOURCE_TYPES } from "@app/types/group_permissions";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -33,8 +33,8 @@ app.get(
     const query = ctx.req.valid("query");
 
     if ("groupId" in query) {
-      const groupRes = await GroupResource.fetchById(auth, query.groupId);
-      if (groupRes.isErr()) {
+      const group = await fetchPokeGroupById(auth, query.groupId);
+      if (!group) {
         return apiError(ctx, {
           status_code: 404,
           api_error: {
@@ -45,10 +45,7 @@ app.get(
       }
 
       return ctx.json({
-        groupPermissions: await getPokeGroupPermissionsForGroup(
-          auth,
-          groupRes.value
-        ),
+        groupPermissions: await getPokeGroupPermissionsForGroup(auth, group),
       });
     }
 
