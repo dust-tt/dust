@@ -299,6 +299,7 @@ type SeedConsumptionBaseFields = Pick<
   | "api_key_name"
   | "attribution_version"
   | "completed_at"
+  | "created_at"
   | "consumption_key"
   | "context_origin"
   | "conversation_id"
@@ -333,6 +334,7 @@ function makeBaseFields(
     api_key_name: isProgrammatic ? "Seed integration key" : null,
     attribution_version: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     completed_at: message.completedAt.toISOString(),
+    created_at: message.completedAt.toISOString(),
     consumption_key: consumptionKey,
     context_origin: message.origin,
     conversation_id: message.conversationId,

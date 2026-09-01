@@ -218,6 +218,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       agentMessageId: context.agentMessage.sId,
       billedCredits: 5,
       completedAt: context.completedAt,
+      createdAt: context.agentMessage.createdAt,
       conversationId: context.conversation.sId,
       usages: [
         {

@@ -209,7 +209,7 @@ async function fetchConsumptionUserDayCells({
         { terms: { context_origin: USER_USAGE_ORIGINS } },
         {
           range: {
-            completed_at: {
+            created_at: {
               gte: windowStart.toISOString(),
               lt: windowEnd.toISOString(),
             },
@@ -235,7 +235,7 @@ async function fetchConsumptionUserDayCells({
               {
                 day: {
                   date_histogram: {
-                    field: "completed_at",
+                    field: "created_at",
                     calendar_interval: "1d",
                     time_zone: "UTC",
                   },
@@ -409,7 +409,7 @@ async function fetchConsumptionCellEvidence({
                         { term: { "user.id": cell.userId } },
                         {
                           range: {
-                            completed_at: utcDayRange(cell.dayMs),
+                            created_at: utcDayRange(cell.dayMs),
                           },
                         },
                       ],
@@ -659,12 +659,15 @@ function consumptionEvidenceSummary({
   documentId,
   source,
 }: EvidenceHit<AgentMessageConsumptionAnalyticsData>) {
+  const createdAt =
+    typeof source.created_at === "string" ? source.created_at : null;
   const summary = {
     documentId,
     consumptionKey: source.consumption_key,
     consumptionType: source.consumption_type,
+    createdAt,
     completedAt: source.completed_at,
-    date: source.completed_at.slice(0, 10),
+    date: createdAt?.slice(0, 10) ?? null,
     userId: source.user?.id ?? null,
     contextOrigin: source.context_origin,
     usageType: source.usage_type,
@@ -723,10 +726,21 @@ function evidenceObservations({
     legacyDocuments.map(({ source }) => source.timestamp.slice(0, 10))
   );
   const consumptionDates = new Set(
-    consumptionDocuments.map(({ source }) => source.completed_at.slice(0, 10))
+    consumptionDocuments.flatMap(({ source }) =>
+      typeof source.created_at === "string"
+        ? [source.created_at.slice(0, 10)]
+        : []
+    )
   );
+  if (
+    consumptionDocuments.some(
+      ({ source }) => typeof source.created_at !== "string"
+    )
+  ) {
+    observations.push("consumption_created_at_missing");
+  }
   if (![...legacyDates].some((date) => consumptionDates.has(date))) {
-    observations.push("created_day_differs_from_completed_day");
+    observations.push("created_day_differs_between_indices");
   }
 
   const legacyUserIds = new Set(
@@ -876,9 +890,9 @@ makeScript(
     const consumptionEvidenceByCell = groupEvidence(
       consumptionCellEvidence.documents,
       (document) =>
-        document.user
+        document.user && typeof document.created_at === "string"
           ? cellKey({
-              dayMs: utcDayMs(document.completed_at),
+              dayMs: utcDayMs(document.created_at),
               userId: document.user.id,
             })
           : ""

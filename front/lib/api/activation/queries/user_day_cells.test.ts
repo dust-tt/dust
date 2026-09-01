@@ -79,7 +79,7 @@ describe("fetchUserDayCells", () => {
     expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
   });
 
-  it("queries completed consumption by user and day", async () => {
+  it("queries consumption by message creation day", async () => {
     vi.mocked(searchConsumptionAnalytics).mockResolvedValue(emptyEsResponse());
 
     await fetchUserDayCells({
@@ -98,7 +98,7 @@ describe("fetchUserDayCells", () => {
             { terms: { context_origin: USER_USAGE_ORIGINS } },
             {
               range: {
-                completed_at: {
+                created_at: {
                   gte: windowStart.toISOString(),
                   lt: windowEnd.toISOString(),
                 },
@@ -118,7 +118,7 @@ describe("fetchUserDayCells", () => {
                 {
                   day: {
                     date_histogram: {
-                      field: "completed_at",
+                      field: "created_at",
                       calendar_interval: "1d",
                       time_zone: "UTC",
                     },

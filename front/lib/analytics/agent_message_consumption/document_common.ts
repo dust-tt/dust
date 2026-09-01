@@ -21,6 +21,7 @@ type AgentMessageConsumptionAnalyticsDocumentMetadata = Pick<
   | "api_key_name"
   | "attribution_version"
   | "completed_at"
+  | "created_at"
   | "consumption_key"
   | "context_origin"
   | "conversation_id"
@@ -72,6 +73,7 @@ export function makeBaseDocument(
     api_key_name: metadata.apiKeyName,
     attribution_version: attributionVersion,
     completed_at: metadata.completedAt.toISOString(),
+    created_at: metadata.createdAt.toISOString(),
     consumption_key: consumptionKey,
     context_origin: metadata.contextOrigin,
     conversation_id: metadata.conversationId,

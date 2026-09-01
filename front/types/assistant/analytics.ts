@@ -239,7 +239,8 @@ interface AgentMessageConsumptionAnalyticsBaseData
   api_key_name: string | null;
   // Version of the attribution logic that produced this document.
   attribution_version: number;
-  completed_at: string; // ISO date string.
+  completed_at: string; // Agent message completion time, as an ISO date string.
+  created_at: string; // Agent message creation time, as an ISO date string.
   // Idempotency key.
   consumption_key: string;
   context_origin: UserMessageOrigin | null;
