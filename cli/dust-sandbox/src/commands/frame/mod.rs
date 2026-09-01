@@ -1,3 +1,4 @@
+mod call;
 mod create;
 mod publish;
 mod register;
@@ -8,6 +9,7 @@ use std::path::{Component, Path, PathBuf};
 use anyhow::{bail, Context};
 use clap::Subcommand;
 
+pub use call::run as cmd_frame_call;
 pub use create::run as cmd_frame_create;
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
@@ -18,6 +20,16 @@ const FILES_ROOT: &str = "/files";
 
 #[derive(Subcommand)]
 pub enum FrameCommand {
+    /// Invoke a named function from a Frame's active publication
+    Call {
+        /// Absolute path to the Frame folder or manifest under /files
+        source: PathBuf,
+        /// Bare function name declared in the manifest
+        function_name: String,
+        /// JSON input passed to the function
+        #[arg(long, value_name = "JSON")]
+        input: Option<String>,
+    },
     /// Create and register a new Frame folder
     Create {
         /// Frame folder under /files/conversation-... or /files/pod-...

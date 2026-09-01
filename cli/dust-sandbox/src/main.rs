@@ -131,6 +131,11 @@ async fn run() -> anyhow::Result<()> {
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
         },
         Commands::Frame { command } => match command {
+            commands::frame::FrameCommand::Call {
+                source,
+                function_name,
+                input,
+            } => commands::cmd_frame_call(&source, &function_name, input.as_deref()).await?,
             commands::frame::FrameCommand::Create {
                 directory,
                 name,

@@ -17,6 +17,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import call from "./call";
 import register from "./register";
 import share from "./share";
 
@@ -70,6 +71,7 @@ function frameErrorStatus(error: PublishFrameFromSourceError): 400 | 403 | 500 {
 const app = sandboxApp();
 
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
+app.route("/call", call);
 app.route("/register", register);
 app.route("/share", share);
 
