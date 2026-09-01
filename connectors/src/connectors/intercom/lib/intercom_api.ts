@@ -13,14 +13,10 @@ import {
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
-function isRetryableIntercomFailure(status: number): boolean {
-  return status === 429 || status >= 500;
-}
-
 /**
  * Utility function to call the Intercom API.
  * It centralizes calling the API and handling global errors.
- * Returns null for not_found and other non-retryable errors.
+ * Returns null for 404 and other non-retryable errors.
  */
 async function queryIntercomAPI({
   accessToken,
@@ -85,26 +81,9 @@ async function queryIntercomAPI({
         if (error.code.toLowerCase() === "not_found") {
           return null;
         }
-        if (isRetryableIntercomFailure(rawResponse.status)) {
-          throw new ProviderWorkflowError(
-            "intercom",
-            `${error.code}: ${error.message ?? "Intercom API error"}`,
-            "transient_upstream_activity_error"
-          );
-        }
-        logger.warn(
-          {
-            path,
-            statusCode: rawResponse.status,
-            errorCode: error.code,
-            errorMessage: error.message,
-          },
-          "[Intercom] Non-retryable API error"
-        );
-        return null;
       }
 
-      if (isRetryableIntercomFailure(rawResponse.status)) {
+      if (rawResponse.status === 429 || rawResponse.status >= 500) {
         throw new ProviderWorkflowError(
           "intercom",
           `${rawResponse.status} - ${text}`,
