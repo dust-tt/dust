@@ -30,6 +30,7 @@
   "dust_mcp_server.settings_updated": 1,
   "file.moved": 1,
   "frame.authorized_files_updated": 1,
+  "frame.cloned": 1,
   "frame.deleted_admin": 1,
   "frame.email_grant_added": 2,
   "frame.email_grant_revoked": 3,

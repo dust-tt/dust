@@ -14,8 +14,19 @@ import { Err } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
+
 beforeEach(() => {
   fileStorageMock.reset();
+  mockEmitAuditLogEvent.mockClear();
 });
 
 describe("cloneFrameV2Source", () => {
@@ -65,6 +76,12 @@ describe("cloneFrameV2Source", () => {
     expect(workspaceLock).toHaveBeenCalledWith(
       c.workspace.sId,
       expect.any(Function)
+    );
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.cloned",
+        metadata: expect.objectContaining({ source_frame_id: c.frame.sId }),
+      })
     );
   });
 
