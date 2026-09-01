@@ -106,6 +106,93 @@ describe("validatePodFrameTabs", () => {
     }
   });
 
+  it("accepts previewable non-frame files such as markdown", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const mdPath = `pod-${pod.sId}/notes/readme.md`;
+
+    const stat = vi.fn(async (path: string) => {
+      if (path === mdPath) {
+        return new Ok({ contentType: "text/markdown", sizeBytes: 42 });
+      }
+      return new Ok(null);
+    });
+
+    vi.spyOn(DustFileSystem, "forPod").mockResolvedValue(
+      new Ok({ stat } as unknown as DustFileSystem)
+    );
+
+    const result = await validatePodFrameTabs(
+      auth,
+      pod,
+      [
+        {
+          path: mdPath,
+          title: "Readme",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+      ],
+      ["conversations", "tasks", "files", "apps", "connected_data", mdPath]
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.frameTabs).toEqual([
+        {
+          path: mdPath,
+          title: "Readme",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+      ]);
+    }
+  });
+
+  it("rejects files that are not previewable", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const zipPath = `pod-${pod.sId}/archive.zip`;
+
+    vi.spyOn(DustFileSystem, "forPod").mockResolvedValue(
+      new Ok({
+        stat: vi.fn(
+          async () => new Ok({ contentType: "application/zip", sizeBytes: 10 })
+        ),
+      } as unknown as DustFileSystem)
+    );
+
+    const result = await validatePodFrameTabs(
+      auth,
+      pod,
+      [
+        {
+          path: zipPath,
+          title: "Archive",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+      ],
+      ["conversations", "tasks", "files", "apps", "connected_data", zipPath]
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        `Frame tab path is not a previewable file: ${zipPath}`
+      );
+    }
+  });
+
   it("returns an error when the file system cannot be initialized", async () => {
     const {
       authenticator: auth,

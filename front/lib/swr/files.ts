@@ -115,6 +115,46 @@ export async function fetchFileIdFromPath({
   return metadata?.fileId ?? null;
 }
 
+export type FilePathMetadata = {
+  fileId: string | null;
+  contentType: string;
+  sizeBytes: number;
+};
+
+/**
+ * Resolve metadata for a canonical scoped path via HEAD on `/files/path/...`.
+ * Prefer the Dust content-type header (needed for frames); fall back to
+ * Content-Type. Returns null when the path is not found.
+ */
+export async function fetchFileMetadataFromPath({
+  owner,
+  filePath,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string;
+}): Promise<FilePathMetadata | null> {
+  const response = await clientFetch(
+    getFilePathMetadataApiPath(owner, filePath),
+    { method: "HEAD" }
+  );
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
+  }
+
+  const contentLength = response.headers.get("Content-Length");
+  return {
+    fileId: response.headers.get(DUST_FILE_ID_HEADER),
+    contentType:
+      response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER) ??
+      response.headers.get("Content-Type") ??
+      "application/octet-stream",
+    sizeBytes: contentLength ? Number(contentLength) : 0,
+  };
+}
+
 /**
  * Resolve the FileResource sId and content type linked to a canonical scoped path.
  * The id is null when the path exists but has no linked FileResource, or when
@@ -155,6 +195,42 @@ export function useFileIdFromPath({
     isFileIdNotFound:
       swrKey !== null && !isLoading && (data === null || data?.fileId === null),
     fileIdError: error ? normalizeError(error) : null,
+  };
+}
+
+export function useFileMetadataFromPath({
+  owner,
+  filePath,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string | null | undefined;
+  disabled?: boolean;
+}) {
+  const path = filePath ?? null;
+  const swrKey =
+    disabled || path === null
+      ? null
+      : (`file-metadata-from-path:${owner.sId}:${path}` as const);
+
+  const { data, error } = useSWRWithDefaults(
+    swrKey,
+    async (): Promise<FilePathMetadata | null> => {
+      if (path === null) {
+        return null;
+      }
+      return fetchFileMetadataFromPath({ owner, filePath: path });
+    },
+    { disabled: swrKey === null }
+  );
+
+  const isLoading = swrKey !== null && !error && data === undefined;
+
+  return {
+    metadata: data ?? null,
+    isFileMetadataLoading: isLoading,
+    isFileMetadataNotFound: swrKey !== null && !isLoading && data === null,
+    fileMetadataError: error ? normalizeError(error) : null,
   };
 }
 

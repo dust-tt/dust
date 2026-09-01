@@ -12,7 +12,10 @@ import type {
   FolderEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
-import { joinMountRelativePath } from "@app/components/file_explorer/utils";
+import {
+  isFilePreviewableContentType,
+  joinMountRelativePath,
+} from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
 import { EditPodFrameTabDialog } from "@app/components/pod/files/EditPodFrameTabDialog";
@@ -285,28 +288,25 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
   const getExtraFileMenuItems = useCallback(
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
-      if (
-        !isEditor ||
-        isArchived ||
-        entry.kind !== "file" ||
-        !isInteractiveContentType(entry.contentType)
-      ) {
+      if (!isEditor || isArchived || entry.kind !== "file") {
         return [];
       }
 
-      const pinned = isPinned(entry.path);
-      const items: FileExplorerMenuAction[] = [
-        {
+      const items: FileExplorerMenuAction[] = [];
+
+      if (isInteractiveContentType(entry.contentType)) {
+        const pinned = isPinned(entry.path);
+        items.push({
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
           icon: Pin02,
           onClick: (e) => {
             e.stopPropagation();
             void togglePin(entry.path, { fileName: entry.fileName });
           },
-        },
-      ];
+        });
+      }
 
-      if (hasFrameTabs) {
+      if (hasFrameTabs && isFilePreviewableContentType(entry.contentType)) {
         const asTab = isFrameTab(entry.path);
         items.push({
           label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",

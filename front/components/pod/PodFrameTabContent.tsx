@@ -1,7 +1,13 @@
+import { PodFileTabPreview } from "@app/components/pod/PodFileTabPreview";
 import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
 import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useFileMetadataFromPath } from "@app/lib/swr/files";
 import type { RichSpaceType } from "@app/types/api/spaces";
+import {
+  isInteractiveContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import type { WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
@@ -18,10 +24,69 @@ export function PodFrameTabContent({
   tab,
 }: PodFrameTabContentProps) {
   const { vizUrl } = useAuth();
+  const { metadata, isFileMetadataLoading, isFileMetadataNotFound } =
+    useFileMetadataFromPath({
+      owner,
+      filePath: tab.path,
+    });
+
+  const isFrame =
+    !!metadata?.contentType &&
+    isInteractiveContentType(stripMimeParameters(metadata.contentType));
+
+  // Frames still load via the processed renderable bundle; other previewable
+  // files reuse the shared file preview stack (including markdown edit).
+  if (isFileMetadataLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isFileMetadataNotFound) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
+        This file is no longer available in the Pod files.
+      </div>
+    );
+  }
+
+  if (!isFrame) {
+    return (
+      <PodFileTabPreview
+        owner={owner}
+        filePath={tab.path}
+        canEdit={podInfo.isEditor}
+      />
+    );
+  }
+
+  return (
+    <PodFrameTabVisualization
+      owner={owner}
+      podInfo={podInfo}
+      framePath={tab.path}
+      vizUrl={vizUrl}
+    />
+  );
+}
+
+function PodFrameTabVisualization({
+  owner,
+  podInfo,
+  framePath,
+  vizUrl,
+}: {
+  owner: WorkspaceType;
+  podInfo: RichSpaceType;
+  framePath: string;
+  vizUrl: string | null;
+}) {
   const { fileId, fileContent, isLoading, isNotFound } =
     usePodFrameRenderableContent({
       owner,
-      framePath: tab.path,
+      framePath,
     });
 
   if (isLoading) {
@@ -51,7 +116,7 @@ export function PodFrameTabContent({
           identifier={`viz-frame-tab-${fileId}`}
           isPodEditor={podInfo.isEditor}
           isPodMember={podInfo.isMember}
-          framePath={tab.path}
+          framePath={framePath}
         />
       </div>
     </div>

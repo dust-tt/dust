@@ -19,6 +19,7 @@
  * The script is intentionally scoped to one Pod and is dry-run by default.
  */
 
+import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -102,8 +103,8 @@ async function repairPodFrameTabs({
       continue;
     }
 
-    if (!isInteractiveContentType(statResult.contentType)) {
-      throw new Error(`Frame tab path is not an interactive frame: ${newPath}`);
+    if (!isFilePreviewableContentType(statResult.contentType)) {
+      throw new Error(`Frame tab path is not a previewable file: ${newPath}`);
     }
 
     if (seenPaths.has(newPath)) {

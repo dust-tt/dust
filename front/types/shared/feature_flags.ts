@@ -389,7 +389,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   pod_frame_tabs: {
     description:
-      "Allow adding frames from the pod file system as custom tabs (title, icon, order) on the pod.",
+      "Allow adding previewable Pod files (frames, markdown, and other previews) as custom tabs (title, icon, order) on the pod.",
     stage: "dust_only",
     owner: "Fraggle",
   },

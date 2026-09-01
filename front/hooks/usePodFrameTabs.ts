@@ -86,8 +86,8 @@ export function usePodFrameTabs({
       if (sortedTabs.length >= MAX_POD_FRAME_TABS) {
         sendNotification({
           type: "error",
-          title: "Frame tab limit reached",
-          description: `A pod can have at most ${MAX_POD_FRAME_TABS} frame tabs.`,
+          title: "Pod tab limit reached",
+          description: `A pod can have at most ${MAX_POD_FRAME_TABS} custom tabs.`,
         });
         return false;
       }

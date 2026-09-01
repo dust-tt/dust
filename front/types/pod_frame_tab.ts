@@ -185,7 +185,8 @@ export function moveFrameTabInTabsOrder(
 
 export function podFrameTabBasename(path: string): string {
   const base = path.split("/").pop() ?? path;
-  return base.replace(/\.(tsx?|jsx?)$/i, "") || base;
+  // Strip the last extension for any previewable file (frames, .md, etc.).
+  return base.replace(/\.[^.]+$/, "") || base;
 }
 
 export function makePodFrameTabValue(path: string): string {

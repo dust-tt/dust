@@ -1,6 +1,7 @@
 import {
   fetchFileHeadMetadataFromPath,
   fetchFileIdFromPath,
+  fetchFileMetadataFromPath,
   getFilePathContentApiPath,
 } from "@app/lib/swr/files";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
@@ -112,5 +113,32 @@ describe("file path HEAD metadata", () => {
         filePath: "conversation-c1/frame.tsx",
       })
     ).rejects.toThrow("Failed to fetch file metadata (HTTP 500).");
+  });
+});
+
+describe("fetchFileMetadataFromPath", () => {
+  it("returns content type, size, and file id from HEAD headers", async () => {
+    mockClientFetch.mockResolvedValue(
+      new Response(null, {
+        status: 200,
+        headers: {
+          [DUST_FILE_CONTENT_TYPE_HEADER]: "text/markdown",
+          "Content-Type": "text/plain",
+          "Content-Length": "42",
+          [DUST_FILE_ID_HEADER]: "fil_md",
+        },
+      })
+    );
+
+    await expect(
+      fetchFileMetadataFromPath({
+        owner,
+        filePath: "pod-p1/notes/readme.md",
+      })
+    ).resolves.toEqual({
+      fileId: "fil_md",
+      contentType: "text/markdown",
+      sizeBytes: 42,
+    });
   });
 });

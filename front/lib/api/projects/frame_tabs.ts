@@ -1,7 +1,7 @@
+import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { isInteractiveContentType } from "@app/types/files";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { PodFrameTab, PodTabsOrder } from "@app/types/pod_frame_tab";
 import {
@@ -14,8 +14,9 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
- * Validate frame tabs + nav order for a project space.
+ * Validate Pod file tabs + nav order for a project space.
  *
+ * Any previewable file (frames, markdown, PDFs, images, etc.) can be a tab.
  * Paths are canonicalized via resolveCanonicalScopedPath (same as pinned frames)
  * so accepted aliases like `project/...` / `pod/...` become `pod-{spaceId}/...`.
  */
@@ -74,10 +75,10 @@ export async function validatePodFrameTabs(
         );
       }
 
-      if (!isInteractiveContentType(statResult.value.contentType)) {
+      if (!isFilePreviewableContentType(statResult.value.contentType)) {
         return new Err(
           new Error(
-            `Frame tab path is not an interactive frame: ${normalizedPath}`
+            `Frame tab path is not a previewable file: ${normalizedPath}`
           )
         );
       }
