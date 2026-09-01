@@ -1976,8 +1976,25 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
-  finishFrameV2Conversion() {
+  async finishFrameV2Conversion(auth: Authenticator) {
     assert(this.isFrameV2, "Only Frames v2 can finish a conversion");
+    assert(
+      this.useCaseMetadata?.pendingFrameV2Conversion,
+      "Only a pending Frames v2 conversion can be finished"
+    );
+
+    // A converted Frame keeps its stable FileResource identity, so its legacy canonical
+    // objects still live under the same id. Remove only those front-owned artifacts here;
+    // the mount source remains user-owned. Cleanup precedes marker removal so recovery can
+    // retry it safely after a partial failure.
+    await Promise.all(
+      (["original", "processed", "public"] as const).map((version) =>
+        this.getBucketForVersion(version)
+          .file(this.getCloudStoragePath(auth, version))
+          .delete({ ignoreNotFound: true })
+      )
+    );
+
     const { pendingFrameV2Conversion: _pending, ...useCaseMetadata } =
       this.useCaseMetadata ?? {};
     return this.update({ useCaseMetadata });

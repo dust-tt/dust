@@ -501,6 +501,12 @@ export async function publishFrameV2FromSource(
         `Frame '${frame.sId}' no longer exists.`
       );
     }
+    if (freshFrame.useCaseMetadata?.pendingFrameV2Conversion) {
+      return frameError(
+        "invalid_frame",
+        `Frame '${frame.sId}' has an interrupted conversion; rerun the conversion command before publishing.`
+      );
+    }
 
     return publishFrameV2FromSourceWithLockHeld(auth, {
       conversation,

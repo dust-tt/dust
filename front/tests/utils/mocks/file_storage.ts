@@ -63,6 +63,7 @@ class FileStorageMock {
   private _fetchNotFoundPredicate: (filePath: string) => boolean = () => false;
   private _existsPredicate: (filePath: string) => boolean = () => true;
   private _saveShouldFail: (filePath: string) => boolean = () => false;
+  private _deleteShouldFail: (filePath: string) => boolean = () => false;
   private _metadataForPath: (filePath: string) => MockFileMetadata | null =
     () => null;
   private _contentForPath: (filePath: string) => string | null = () => null;
@@ -118,6 +119,10 @@ class FileStorageMock {
    */
   setFileSaveFails(predicate: (filePath: string) => boolean): void {
     this._saveShouldFail = predicate;
+  }
+
+  setFileDeleteFails(predicate: (filePath: string) => boolean): void {
+    this._deleteShouldFail = predicate;
   }
 
   /**
@@ -229,6 +234,7 @@ class FileStorageMock {
     this._fetchNotFoundPredicate = () => false;
     this._existsPredicate = () => true;
     this._saveShouldFail = () => false;
+    this._deleteShouldFail = () => false;
     this._metadataForPath = () => null;
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
@@ -294,7 +300,13 @@ class FileStorageMock {
           return stream;
         }),
       delete: vi.fn().mockImplementation(() => {
-        this._objectStore.delete(filePath ?? "unknown");
+        const path = filePath ?? "unknown";
+        if (this._deleteShouldFail(path)) {
+          return Promise.reject(
+            new Error(`Simulated GCS delete failure: ${path}`)
+          );
+        }
+        this._objectStore.delete(path);
         return Promise.resolve(undefined);
       }),
       download: vi.fn().mockImplementation(() => {
