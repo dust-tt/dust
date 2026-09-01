@@ -16,6 +16,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
 import { useKeyScopableGroups } from "@app/lib/swr/groups";
+import { useKeyScopableSpaces } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
@@ -127,6 +128,9 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
   const { groups, isGroupsError, isGroupsLoading } = useKeyScopableGroups({
     owner,
   });
+  const { spaces, isSpacesError, isSpacesLoading } = useKeyScopableSpaces({
+    owner,
+  });
   const isDataLoading = isKeysLoading || isGroupsLoading;
   const isDataError = !!isKeysError || isGroupsError;
 
@@ -143,13 +147,13 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
     useSubmitFunction(
       async ({
         name,
-        groups: selectedGroups,
+        spaceIds,
         monthlyCapMicroUsd,
         monthlyCapAwuCredits,
         role,
       }: {
         name: string;
-        groups: GroupType[];
+        spaceIds: string[];
         monthlyCapMicroUsd: number | null;
         monthlyCapAwuCredits: number | null;
         role: KeyRole;
@@ -161,7 +165,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
           },
           body: JSON.stringify({
             name,
-            group_ids: selectedGroups.map((g) => g.sId),
+            space_ids: spaceIds,
             monthly_cap_micro_usd: monthlyCapMicroUsd,
             monthly_cap_awu_credits: monthlyCapAwuCredits,
             role,
@@ -289,8 +293,8 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
             rel="noreferrer"
           />
           <NewAPIKeyDialog
-            groups={groups}
-            disabled={isGroupsLoading || isGroupsError}
+            spaces={spaces}
+            disabled={isSpacesLoading || isSpacesError}
             isGenerating={isGenerating}
             isRevoking={isRevoking}
             onCreate={handleGenerate}

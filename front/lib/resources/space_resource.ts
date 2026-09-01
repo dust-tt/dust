@@ -1713,8 +1713,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   // The space's auto-created (regular_auto) groups: its manual member group and, for projects, its
   // editor group. Resolved from `group_permissions`, filtered to regular_auto groups (a grant's
-  // type alone cannot tell a regular_auto group from the global group). Empty in group management
-  // mode, where the space's groups are provisioned (IdP-owned) rather than auto-created.
+  // type alone cannot tell a regular_auto group from the global group). Present in group management
+  // mode too: that mode adds the provisioned groups' grants on top of these rather than replacing
+  // them (see `updatePermissions`).
   async fetchRegularAutoGroups(
     auth: Authenticator,
     transaction?: Transaction
@@ -1724,6 +1725,41 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       resourceId: this.id,
       transaction,
     });
+  }
+
+  // The batched counterpart of `fetchRegularAutoGroups`: the regular_auto groups of every space in
+  // `spaces`, as a flat deduped union, in two queries rather than two per space.
+  static async listRegularAutoGroupsForSpaces(
+    auth: Authenticator,
+    spaces: SpaceResource[],
+    { includeEditors = true }: { includeEditors?: boolean } = {}
+  ): Promise<GroupResource[]> {
+    const autoGroups =
+      await GroupPermissionResource.listRegularAutoGroupsForResources(auth, {
+        resourceType: "space",
+        resourceIds: spaces.map((space) => space.id),
+      });
+
+    if (includeEditors) {
+      return autoGroups;
+    }
+
+    // Only projects have an editor group.
+    const editorGroupsByGrant =
+      await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+        grants: spaces
+          .filter((space) => space.isProject())
+          .map((space) => ({
+            grantType: SPACE_EDITOR_GRANT_TYPE,
+            resourceType: "space",
+            resourceId: space.id,
+          })),
+      });
+
+    const editorGroupIds = new Set(
+      [...editorGroupsByGrant.values()].map((group) => group.sId)
+    );
+    return autoGroups.filter((group) => !editorGroupIds.has(group.sId));
   }
 
   // The groups that make up this space's membership: its member group and, for projects, its editor

@@ -1,5 +1,6 @@
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
+import type { SpaceType } from "@app/types/space";
 
 export type GetKeysResponseBody = {
   keys: KeyType[];
@@ -9,6 +10,10 @@ export type GetKeysResponseBody = {
 // member of). Served by GET /api/w/:wId/keys/groups.
 export type GetKeyScopableGroupsResponseBody = {
   groups: GroupType[];
+};
+
+export type GetKeyScopableSpacesResponseBody = {
+  spaces: SpaceType[];
 };
 
 export type PostKeysResponseBody = {
