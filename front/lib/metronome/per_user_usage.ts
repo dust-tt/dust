@@ -380,6 +380,17 @@ function perUserAwuUsageCacheKey(
   return `per-user-awu-usage:${metronomeCustomerId}:${metronomeContractId}:${userId}`;
 }
 
+// In-process single-flight registry, keyed by the same string as the Redis
+// cache key. Closes the gap between "checked Redis" and "wrote Redis": two
+// concurrent callers requesting overlapping users (e.g. the pool summary card
+// and the members table both fetching "all active members" at page load)
+// would otherwise both see a cache miss and both fire their own Metronome
+// batch. A caller that finds an in-flight entry here awaits it instead of
+// starting a second fetch. Only dedupes within this process — a second
+// request landing on a different replica still fetches independently, same
+// as before this registry existed.
+const inFlightPerUserAwuUsage = new Map<string, Promise<number>>();
+
 /**
  * Per-user-cached AWU consumption for the current billing period. Each user is
  * cached under its own key (10min TTL); the users not in cache are fetched in ONE
@@ -425,35 +436,89 @@ export async function getPerUserAwuUsage({
         }
       });
 
-      if (misses.length > 0) {
-        const fetched = await fetchPerUserAwuUsage({
+      if (misses.length === 0) {
+        return result;
+      }
+
+      // Split misses into users someone else in this process is already
+      // fetching (await their promise) vs. users nobody is fetching yet
+      // (this call owns them and starts the batch).
+      const waiters: Array<{ userId: string; promise: Promise<number> }> = [];
+      const newMisses: string[] = [];
+      for (const userId of misses) {
+        const key = perUserAwuUsageCacheKey(
+          metronomeCustomerId,
+          metronomeContractId,
+          userId
+        );
+        const existing = inFlightPerUserAwuUsage.get(key);
+        if (existing) {
+          waiters.push({ userId, promise: existing });
+        } else {
+          newMisses.push(userId);
+        }
+      }
+
+      if (newMisses.length > 0) {
+        const batchPromise = fetchPerUserAwuUsage({
           workspaceId,
           metronomeCustomerId,
-          userIds: misses,
+          userIds: newMisses,
+        }).then((fetched) => {
+          if (fetched.isErr()) {
+            throw fetched.error;
+          }
+          return fetched.value;
         });
-        if (fetched.isErr()) {
-          throw fetched.error;
+
+        // Register a per-user promise for each newly-owned miss before
+        // awaiting anything, so a caller arriving during the fetch finds it.
+        for (const userId of newMisses) {
+          const key = perUserAwuUsageCacheKey(
+            metronomeCustomerId,
+            metronomeContractId,
+            userId
+          );
+          const userPromise = batchPromise.then(
+            (usageByUserId) => usageByUserId.get(userId) ?? 0
+          );
+          inFlightPerUserAwuUsage.set(key, userPromise);
+          // Stop advertising this fetch as in-flight once it settles, so a
+          // later miss (after the Redis TTL expires) starts a fresh one
+          // instead of reusing a stale reference.
+          void userPromise
+            .catch(() => {
+              // Swallow here — the rejection still propagates to every
+              // waiter through their own awaited `promise` below.
+            })
+            .finally(() => {
+              if (inFlightPerUserAwuUsage.get(key) === userPromise) {
+                inFlightPerUserAwuUsage.delete(key);
+              }
+            });
+          waiters.push({ userId, promise: userPromise });
         }
-        await concurrentExecutor(
-          misses,
-          async (userId) => {
-            // Cache 0 too: a user with no usage this period would otherwise
-            // miss on every request.
-            const value = fetched.value.get(userId) ?? 0;
-            result.set(userId, value);
-            await redis.set(
-              perUserAwuUsageCacheKey(
-                metronomeCustomerId,
-                metronomeContractId,
-                userId
-              ),
-              JSON.stringify(value),
-              { PX: PER_USER_AWU_USAGE_CACHE_TTL_MS }
-            );
-          },
-          { concurrency: 16 }
-        );
       }
+
+      await concurrentExecutor(
+        waiters,
+        async ({ userId, promise }) => {
+          // Cache 0 too: a user with no usage this period would otherwise
+          // miss on every request.
+          const value = await promise;
+          result.set(userId, value);
+          await redis.set(
+            perUserAwuUsageCacheKey(
+              metronomeCustomerId,
+              metronomeContractId,
+              userId
+            ),
+            JSON.stringify(value),
+            { PX: PER_USER_AWU_USAGE_CACHE_TTL_MS }
+          );
+        },
+        { concurrency: 16 }
+      );
 
       return result;
     }
