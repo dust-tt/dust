@@ -14,8 +14,6 @@ import {
   CloudArrowLeftRight,
   ContentMessage,
   ConversationListItem,
-  Cube01,
-  CubeOutline,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -49,7 +47,6 @@ import {
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
-  Separator,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -96,8 +93,9 @@ import {
 } from "../data/dataSources";
 import {
   enrichMyPodConversationParticipants,
-  matchesMyPodConversationFilter,
-  type MyPodConversationFilter,
+  isMyPodGroupConversation,
+  isMyPodMineConversation,
+  isTriggeredConversation,
 } from "../data/myPod";
 import type {
   Agent,
@@ -106,7 +104,6 @@ import type {
   Space,
   User,
 } from "../data/types";
-import { getRandomGreetingForName } from "../data/greetings";
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import {
@@ -152,6 +149,7 @@ interface GroupConversationViewProps {
   onFileToRevealInKnowledgeHandled?: () => void;
   podVariant?: "shared" | "personal";
   showComposer?: boolean;
+  hideConversationFilters?: boolean;
   currentUserId?: string;
   podTabCustomization?: {
     tabs: PodTabCustomizationItem[];
@@ -249,64 +247,6 @@ function getRandomCreator(
       )
     ];
   return getUserById(creatorId) || null;
-}
-
-type ConversationInitiator = {
-  name: string;
-  portrait?: string;
-  emoji?: string;
-  backgroundColor?: string;
-  isRounded?: boolean;
-};
-
-function getConversationInitiator(
-  conversation: Conversation,
-  _users: User[],
-  _agents: Agent[]
-): ConversationInitiator | null {
-  const preferUser = seededRandom(`${conversation.id}-initiator`, 0) < 0.5;
-
-  const pickUser = (): ConversationInitiator | null => {
-    if (conversation.userParticipants.length === 0) return null;
-    const userId =
-      conversation.userParticipants[
-        Math.floor(
-          seededRandom(`${conversation.id}-initiator-user`, 0) *
-            conversation.userParticipants.length
-        )
-      ];
-    const user = getUserById(userId);
-    if (!user) return null;
-    return {
-      name: user.fullName,
-      portrait: user.portrait,
-      isRounded: true,
-    };
-  };
-
-  const pickAgent = (): ConversationInitiator | null => {
-    if (conversation.agentParticipants.length === 0) return null;
-    const agentId =
-      conversation.agentParticipants[
-        Math.floor(
-          seededRandom(`${conversation.id}-initiator-agent`, 0) *
-            conversation.agentParticipants.length
-        )
-      ];
-    const agent = getAgentById(agentId);
-    if (!agent) return null;
-    return {
-      name: agent.name,
-      emoji: agent.emoji,
-      backgroundColor: agent.backgroundColor,
-      isRounded: false,
-    };
-  };
-
-  if (preferUser) {
-    return pickUser() ?? pickAgent();
-  }
-  return pickAgent() ?? pickUser();
 }
 
 // Convert participants to Avatar props format for Avatar.Stack
@@ -1391,6 +1331,7 @@ export function GroupConversationView({
   onFileToRevealInKnowledgeHandled,
   podVariant = "shared",
   showComposer = true,
+  hideConversationFilters = false,
   currentUserId,
   podTabCustomization,
 }: GroupConversationViewProps) {
@@ -1398,22 +1339,6 @@ export function GroupConversationView({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hideTriggeredConversations, setHideTriggeredConversations] =
     useState(false);
-  const currentUser = currentUserId ? getUserById(currentUserId) : undefined;
-  const [greeting, setGreeting] = useState("");
-  useEffect(() => {
-    if (currentUser?.firstName) {
-      setGreeting(getRandomGreetingForName(currentUser.firstName));
-    }
-  }, [currentUser?.firstName, space.name]);
-  const isRestrictedSpace = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-  const renderPodGreeting = () => (
-    <div className="flex w-full items-center gap-2">
-      <Icon visual={isRestrictedSpace ? CubeOutline : Cube01} />
-      <h2 className="heading-2xl font-medium text-foreground">
-        {space.name} - {greeting}
-      </h2>
-    </div>
-  );
   // Shared "Create" CTA for the Files tab so the empty state and the populated
   // toolbar expose the exact same button and menu.
   const renderCreateFilesMenu = () => (
@@ -1439,8 +1364,6 @@ export function GroupConversationView({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-  const [personalConversationFilter, setPersonalConversationFilter] =
-    useState<MyPodConversationFilter>("all");
   const [selectedConversationRow, setSelectedConversationRow] = useState<{
     rowId: string;
     conversationId: string;
@@ -1612,7 +1535,11 @@ export function GroupConversationView({
   }, [conversations, space.id]);
 
   const myPodEnrichedConversations = useMemo(() => {
-    if (podVariant !== "personal" || !currentUserId) {
+    if (
+      podVariant !== "personal" ||
+      !currentUserId ||
+      hideConversationFilters
+    ) {
       return expandedConversations;
     }
     return expandedConversations.map((conversation) =>
@@ -1623,28 +1550,54 @@ export function GroupConversationView({
         agents
       )
     );
-  }, [agents, currentUserId, expandedConversations, podVariant, users]);
-
-  const searchableConversations =
-    podVariant === "personal"
-      ? myPodEnrichedConversations
-      : expandedConversations;
+  }, [
+    agents,
+    currentUserId,
+    expandedConversations,
+    hideConversationFilters,
+    podVariant,
+    users,
+  ]);
 
   const visibleConversations = useMemo(() => {
-    if (podVariant !== "personal") return expandedConversations;
-    if (!currentUserId) return myPodEnrichedConversations;
-    return myPodEnrichedConversations.filter((conversation) =>
-      matchesMyPodConversationFilter(
-        conversation,
-        personalConversationFilter,
-        currentUserId
-      )
-    );
+    const source =
+      podVariant === "personal"
+        ? myPodEnrichedConversations
+        : expandedConversations;
+
+    return source.filter((conversation) => {
+      if (podVariant === "personal" && !hideConversationFilters) {
+        if (isTriggeredConversation(conversation)) {
+          return false;
+        }
+      } else if (
+        hideTriggeredConversations &&
+        isTriggeredConversation(conversation)
+      ) {
+        return false;
+      }
+      if (
+        hideConversationFilters ||
+        podVariant !== "personal" ||
+        !currentUserId
+      ) {
+        return true;
+      }
+      if (goodToKnowFilter === "mine") {
+        return isMyPodMineConversation(conversation, currentUserId);
+      }
+      if (goodToKnowFilter === "shared") {
+        return isMyPodGroupConversation(conversation);
+      }
+      return true;
+    });
   }, [
     currentUserId,
     expandedConversations,
+    goodToKnowFilter,
+    hideConversationFilters,
+    hideTriggeredConversations,
     myPodEnrichedConversations,
-    personalConversationFilter,
     podVariant,
   ]);
 
@@ -1678,7 +1631,7 @@ export function GroupConversationView({
       []
     );
 
-    const conversationResults = searchableConversations.reduce<
+    const conversationResults = visibleConversations.reduce<
       UniversalSearchItem[]
     >((acc, conversation) => {
       const creator = getRandomCreator(conversation, users);
@@ -1706,7 +1659,7 @@ export function GroupConversationView({
       }
       return a.title.localeCompare(b.title);
     });
-  }, [dataSources, searchText, searchableConversations, users]);
+  }, [dataSources, searchText, users, visibleConversations]);
 
   const handleSearchItemSelect = (item: UniversalSearchItem) => {
     if (item.type === "document") {
@@ -1886,7 +1839,6 @@ export function GroupConversationView({
       {
         avatarProps: ReturnType<typeof participantsToAvatarProps>;
         creator: User | null;
-        initiator: ConversationInitiator | null;
         mentionCount: number;
         messageCount: number;
         replyCount: number;
@@ -1906,14 +1858,7 @@ export function GroupConversationView({
 
       itemMap.set(conversation.id, {
         avatarProps: participantsToAvatarProps(participants),
-        creator:
-          podVariant === "personal"
-            ? null
-            : getRandomCreator(conversation, users),
-        initiator:
-          podVariant === "personal"
-            ? getConversationInitiator(conversation, users, agents)
-            : null,
+        creator: getRandomCreator(conversation, users),
         mentionCount,
         messageCount,
         replyCount,
@@ -1928,7 +1873,7 @@ export function GroupConversationView({
     });
 
     return itemMap;
-  }, [agents, podVariant, space.id, users, visibleConversations]);
+  }, [agents, space.id, users, visibleConversations]);
 
   const getAutoCheckRationales = (
     summary: OngoingSummary,
@@ -3640,73 +3585,73 @@ export function GroupConversationView({
           value="conversations"
           topBox={
             showComposer ? (
-              <>
-                {renderPodGreeting()}
-                <InputBar
-                  autoFocus
-                  placeholder="What are we working on?"
-                  className="w-full"
-                  isFloating={false}
-                />
-              </>
+              <InputBar
+                autoFocus
+                placeholder="What are we working on?"
+                className="w-full"
+                isFloating={false}
+              />
             ) : undefined
           }
         >
-          {!hasHistory && showComposer && (
+          {!hasHistory && showComposer && podVariant !== "personal" && (
             <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
           )}
-          {!hasHistory && !showComposer && (
+          {!hasHistory && (podVariant === "personal" || !showComposer) && (
             <EmptyState
               title="No conversations"
               description="Start a conversation from New, or pick one from Recent."
             />
           )}
-          {hasHistory && podVariant !== "personal" && (
+          {hasHistory && (
             <div className="flex flex-row items-center justify-between gap-3">
-              {spaceMemberIds.length > 1 && (
-                <ButtonsSwitchList
-                  defaultValue={goodToKnowFilter}
-                  onValueChange={(value) => {
-                    if (
-                      value === "all" ||
-                      value === "shared" ||
-                      value === "mine"
-                    ) {
-                      setGoodToKnowFilter(value);
-                    }
-                  }}
-                >
-                  <ButtonsSwitch
-                    value="mine"
-                    label="Mine"
-                    tooltip="Conversations where you have sent a message."
-                  />
-                  <ButtonsSwitch
-                    value="shared"
-                    label="Group"
-                    tooltip="Conversations with more than one person"
-                  />
-                  <ButtonsSwitch
-                    value="all"
-                    label="All"
-                    tooltip="Every conversation in this Pod."
-                  />
-                </ButtonsSwitchList>
+              {!hideConversationFilters &&
+                (podVariant === "personal" || spaceMemberIds.length > 1) && (
+                  <ButtonsSwitchList
+                    defaultValue={goodToKnowFilter}
+                    onValueChange={(value) => {
+                      if (
+                        value === "all" ||
+                        value === "shared" ||
+                        value === "mine"
+                      ) {
+                        setGoodToKnowFilter(value);
+                      }
+                    }}
+                  >
+                    <ButtonsSwitch
+                      value="mine"
+                      label="Mine"
+                      tooltip="Conversations where you have sent a message."
+                    />
+                    <ButtonsSwitch
+                      value="shared"
+                      label="Group"
+                      tooltip="Conversations with more than one person"
+                    />
+                    <ButtonsSwitch
+                      value="all"
+                      label="All"
+                      tooltip="Every conversation in this Pod."
+                    />
+                  </ButtonsSwitchList>
+                )}
+              {!hideConversationFilters && podVariant !== "personal" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={hideTriggeredConversations ? ZapOff : Zap}
+                  tooltip={
+                    hideTriggeredConversations
+                      ? "Show triggered"
+                      : "Hide triggered"
+                  }
+                  className="shrink-0"
+                  onClick={() =>
+                    setHideTriggeredConversations((current) => !current)
+                  }
+                />
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                icon={hideTriggeredConversations ? ZapOff : Zap}
-                tooltip={
-                  hideTriggeredConversations
-                    ? "Show triggered"
-                    : "Hide triggered"
-                }
-                className="shrink-0"
-                onClick={() =>
-                  setHideTriggeredConversations((current) => !current)
-                }
-              />
               <SearchInputWithPopover
                 name="conversation-search"
                 value={searchText}
@@ -3738,74 +3683,6 @@ export function GroupConversationView({
                 label="Mark all as read"
                 className="shrink-0"
               />
-            </div>
-          )}
-          {hasHistory && podVariant === "personal" && (
-            <div className="@container w-full">
-              <div className="flex w-full flex-row items-center gap-2">
-                <ButtonsSwitchList
-                  defaultValue={personalConversationFilter}
-                  onValueChange={(value) => {
-                    if (
-                      value === "all" ||
-                      value === "mine" ||
-                      value === "group" ||
-                      value === "triggered"
-                    ) {
-                      setPersonalConversationFilter(value);
-                    }
-                  }}
-                >
-                  <ButtonsSwitch
-                    value="all"
-                    label="All"
-                    tooltip="All conversations"
-                  />
-                  <ButtonsSwitch
-                    value="mine"
-                    label="Mine"
-                    tooltip="Conversations with just you and an agent"
-                  />
-                  <ButtonsSwitch
-                    value="group"
-                    label="Group"
-                    tooltip="Conversations with multiple people"
-                  />
-                  <Separator orientation="vertical" />
-                  <ButtonsSwitch
-                    value="triggered"
-                    label="Triggered"
-                    tooltip="Agent-owned conversations"
-                  />
-                </ButtonsSwitchList>
-                <div className="min-w-0 flex-1">
-                  <SearchInputWithPopover
-                    name="conversation-search"
-                    value={searchText}
-                    onChange={(value) => {
-                      setSearchText(value);
-                      if (!value.trim()) {
-                        setIsSearchOpen(false);
-                      }
-                    }}
-                    open={isSearchOpen}
-                    onOpenChange={setIsSearchOpen}
-                    placeholder="Search..."
-                    className="w-full"
-                    items={searchResults}
-                    availableHeight
-                    noResults={
-                      searchText.trim()
-                        ? "No results found"
-                        : "Start typing to search"
-                    }
-                    onItemSelect={handleSearchItemSelect}
-                    renderItem={(item, selected) => (
-                      <SearchResultItem item={item} selected={selected} />
-                    )}
-                  />
-                </div>
-              </div>
             </div>
           )}
           {visibleConversations.length > 0 && (
@@ -3848,25 +3725,7 @@ export function GroupConversationView({
                             >
                               <ConversationListItem
                                 conversation={conversation}
-                                avatar={
-                                  podVariant === "personal" &&
-                                  listItem.initiator
-                                    ? {
-                                        name: listItem.initiator.name,
-                                        visual: listItem.initiator.portrait,
-                                        emoji: listItem.initiator.emoji,
-                                        backgroundColor:
-                                          listItem.initiator.backgroundColor,
-                                        isRounded:
-                                          listItem.initiator.isRounded ?? true,
-                                      }
-                                    : undefined
-                                }
-                                creator={
-                                  podVariant === "personal"
-                                    ? undefined
-                                    : listItem.creator || undefined
-                                }
+                                creator={listItem.creator || undefined}
                                 className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
                                 time={listItem.time}
                                 showFocus={

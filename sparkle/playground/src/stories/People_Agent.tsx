@@ -9,6 +9,7 @@ import {
   CheckCircle,
   CheckDone01,
   ChevronDown,
+  ContactsRobot,
   Cube01,
   CubeOutline,
   Dialog,
@@ -21,6 +22,7 @@ import {
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -84,6 +86,7 @@ import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import { PersonAgentView } from "../components/PersonAgentView";
 import {
   type AgentSort,
   type AgentType,
@@ -178,9 +181,77 @@ function getSpaceActivity(space: Space) {
   return { count, hasActivity: count ? true : c % 2 !== 0 };
 }
 
+function collaboratorName(collaborator: Collaborator) {
+  return collaborator.type === "agent"
+    ? collaborator.data.name
+    : collaborator.data.fullName;
+}
+
+function collaboratorAvatarProps(collaborator: Collaborator) {
+  if (collaborator.type === "agent") {
+    return {
+      name: collaborator.data.name,
+      emoji: collaborator.data.emoji,
+      backgroundColor: collaborator.data.backgroundColor,
+      isRounded: false,
+    };
+  }
+  return {
+    name: collaborator.data.fullName,
+    visual: collaborator.data.portrait,
+    isRounded: true,
+  };
+}
+
+function getCollaboratorConversations(
+  allConversations: Conversation[],
+  userId: string,
+  collaborator: Collaborator
+): Conversation[] {
+  const id = collaborator.data.id;
+  const existing = allConversations.filter((conv) => {
+    if (!conv.userParticipants.includes(userId)) {
+      return false;
+    }
+    if (collaborator.type === "agent") {
+      return conv.agentParticipants.includes(id);
+    }
+    return conv.userParticipants.includes(id);
+  });
+  if (existing.length > 0) {
+    return existing;
+  }
+
+  const titles = [
+    "Quick question",
+    "Follow-up discussion",
+    "Project update",
+    "Weekly sync",
+    "Planning session",
+  ];
+  const seed = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const count = (seed % 4) + 3;
+  const now = Date.now();
+  return Array.from({ length: count }, (_, i) => {
+    const daysAgo = ((seed + i * 7) % 35) + 1;
+    const updatedAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
+    const title = titles[(seed + i) % titles.length];
+    return {
+      id: `generated-conv-${id}-${i}`,
+      title,
+      createdAt: new Date(updatedAt.getTime() - 2 * 24 * 60 * 60 * 1000),
+      updatedAt,
+      userParticipants:
+        collaborator.type === "person" ? [userId, id] : [userId],
+      agentParticipants: collaborator.type === "agent" ? [id] : [],
+      description: `Conversation about ${title.toLowerCase()}`,
+    };
+  });
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-function Inbox() {
+function PeopleAgent() {
   // ── Bootstrap state ───────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
   const [greeting, setGreeting] = useState<string>("");
@@ -205,10 +276,13 @@ function Inbox() {
         type: "agent" as const,
         data: d,
       })),
-      ...getRandomUsers(peopleCount).map((d) => ({
-        type: "person" as const,
-        data: d,
-      })),
+      ...getRandomUsers(peopleCount + 1)
+        .filter((person) => person.id !== u.id)
+        .slice(0, peopleCount)
+        .map((d) => ({
+          type: "person" as const,
+          data: d,
+        })),
     ]);
     const randomSpaces = getRandomSpaces(Math.floor(Math.random() * 7) + 3);
     setSpaces(randomSpaces);
@@ -227,6 +301,8 @@ function Inbox() {
     | { kind: "automations" }
     | { kind: "conversation"; conversationId: string }
     | { kind: "space"; spaceId: string }
+    | { kind: "agent"; agentId: string }
+    | { kind: "person"; personId: string }
     | { kind: "profile" }
     | { kind: "templates" };
 
@@ -267,6 +343,9 @@ function Inbox() {
     "chat"
   );
   const [searchText, setSearchText] = useState("");
+  const [agentSearchText, setAgentSearchText] = useState("");
+  const [peopleSearchText, setPeopleSearchText] = useState("");
+  const [isCollaboratorAboutOpen, setIsCollaboratorAboutOpen] = useState(false);
   const [welcomeAgentTab, setWelcomeAgentTab] =
     useState<WelcomeAgentTab>("favorites");
   const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
@@ -412,6 +491,91 @@ function Inbox() {
         : null,
     [p3View, allConversations]
   );
+
+  const sortedCollaborators = useMemo(() => {
+    return [...collaborators].sort((a, b) =>
+      collaboratorName(a).localeCompare(collaboratorName(b))
+    );
+  }, [collaborators]);
+
+  const filteredCollaborators = useMemo(() => {
+    if (!searchText.trim()) {
+      return sortedCollaborators;
+    }
+    const lower = searchText.toLowerCase();
+    return sortedCollaborators.filter((collaborator) => {
+      if (collaborator.type === "agent") {
+        return (
+          collaborator.data.name.toLowerCase().includes(lower) ||
+          collaborator.data.description.toLowerCase().includes(lower)
+        );
+      }
+      return (
+        collaborator.data.fullName.toLowerCase().includes(lower) ||
+        collaborator.data.email.toLowerCase().includes(lower)
+      );
+    });
+  }, [searchText, sortedCollaborators]);
+
+  const filteredAgents = useMemo(() => {
+    if (!agentSearchText.trim()) {
+      return mockAgents;
+    }
+    const lower = agentSearchText.toLowerCase();
+    return mockAgents.filter((agent) =>
+      agent.name.toLowerCase().includes(lower)
+    );
+  }, [agentSearchText]);
+
+  const filteredPeople = useMemo(() => {
+    const candidates = user
+      ? mockUsers.filter((person) => person.id !== user.id)
+      : mockUsers;
+    if (!peopleSearchText.trim()) {
+      return candidates;
+    }
+    const lower = peopleSearchText.toLowerCase();
+    return candidates.filter(
+      (person) =>
+        person.fullName.toLowerCase().includes(lower) ||
+        person.email.toLowerCase().includes(lower)
+    );
+  }, [peopleSearchText, user]);
+
+  const selectedCollaborator = useMemo((): Collaborator | null => {
+    if (p2View.kind === "agent") {
+      const fromList = collaborators.find(
+        (c) => c.type === "agent" && c.data.id === p2View.agentId
+      );
+      if (fromList) {
+        return fromList;
+      }
+      const agent = getAgentById(p2View.agentId);
+      return agent ? { type: "agent", data: agent } : null;
+    }
+    if (p2View.kind === "person") {
+      const fromList = collaborators.find(
+        (c) => c.type === "person" && c.data.id === p2View.personId
+      );
+      if (fromList) {
+        return fromList;
+      }
+      const person = getUserById(p2View.personId);
+      return person ? { type: "person", data: person } : null;
+    }
+    return null;
+  }, [p2View, collaborators]);
+
+  const collaboratorConversations = useMemo(() => {
+    if (!selectedCollaborator || !user) {
+      return [];
+    }
+    return getCollaboratorConversations(
+      allConversations,
+      user.id,
+      selectedCollaborator
+    );
+  }, [selectedCollaborator, user, allConversations]);
 
   // ── Pod context & tab state ───────────────────────────────────────────────
   const podContext = useMemo(
@@ -723,6 +887,48 @@ function Inbox() {
     : undefined;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  const openCreateAgent = () => {
+    setP2View({ kind: "templates" });
+    setP3View(null);
+    setP4Citation(null);
+  };
+
+  const selectCollaborator = (type: Collaborator["type"], id: string) => {
+    setP2View(
+      type === "agent"
+        ? { kind: "agent", agentId: id }
+        : { kind: "person", personId: id }
+    );
+    setP3View(null);
+    setP4Citation(null);
+    setIsCollaboratorAboutOpen(false);
+  };
+
+  const addCollaborator = (next: Collaborator) => {
+    setCollaborators((prev) => {
+      if (
+        prev.some((c) => c.type === next.type && c.data.id === next.data.id)
+      ) {
+        return prev;
+      }
+      return [...prev, next];
+    });
+  };
+
+  const removeCollaborator = (type: Collaborator["type"], id: string) => {
+    setCollaborators((prev) =>
+      prev.filter((c) => !(c.type === type && c.data.id === id))
+    );
+    if (
+      (p2View.kind === "agent" && type === "agent" && p2View.agentId === id) ||
+      (p2View.kind === "person" && type === "person" && p2View.personId === id)
+    ) {
+      setP2View({ kind: "inbox" });
+      setP3View(null);
+      setP4Citation(null);
+    }
+  };
+
   const handleRoomNameNext = (name: string, isPublic: boolean) => {
     const newSpace = createSpace(name, undefined, isPublic);
     setSpaces((prev) => [...prev, newSpace]);
@@ -1011,6 +1217,10 @@ function Inbox() {
     if (podContext) return podContext.space.name;
     if (p2View.kind === "conversation")
       return selectedConversation?.title ?? "Conversation";
+    if (p2View.kind === "agent" || p2View.kind === "person")
+      return selectedCollaborator
+        ? collaboratorName(selectedCollaborator)
+        : "People & Agents";
     if (p2View.kind === "profile") return "Profile";
     if (p2View.kind === "templates") return "Templates";
     return "Home";
@@ -1073,6 +1283,33 @@ function Inbox() {
           conversationsWithMessages={conversationsWithMessages}
           onCitationOpen={(citation) => {
             setP3View({ kind: "citation", citation });
+            setP4Citation(null);
+          }}
+        />
+      );
+    if (
+      (p2View.kind === "agent" || p2View.kind === "person") &&
+      selectedCollaborator
+    )
+      return (
+        <PersonAgentView
+          collaborator={selectedCollaborator}
+          user={user}
+          conversations={collaboratorConversations}
+          users={mockUsers}
+          agents={mockAgents}
+          aboutOpen={isCollaboratorAboutOpen}
+          onAboutOpenChange={setIsCollaboratorAboutOpen}
+          onConversationClick={(conversation) => {
+            setConversationsWithMessages((prev) =>
+              prev.some((c) => c.id === conversation.id)
+                ? prev
+                : [...prev, conversation]
+            );
+            setP3View({
+              kind: "conversation",
+              conversationId: conversation.id,
+            });
             setP4Citation(null);
           }}
         />
@@ -1414,6 +1651,21 @@ function Inbox() {
           hasLighterFont
         />
       );
+    if (
+      (p2View.kind === "agent" || p2View.kind === "person") &&
+      selectedCollaborator
+    )
+      return (
+        <div className="label-sm inline-flex h-9 min-w-0 items-center gap-2 border border-transparent px-2">
+          <Avatar
+            size="xs"
+            {...collaboratorAvatarProps(selectedCollaborator)}
+          />
+          <span className="truncate text-sm text-foreground">
+            {collaboratorName(selectedCollaborator)}
+          </span>
+        </div>
+      );
     if (p2View.kind === "inbox")
       return (
         <NavTabPill
@@ -1497,6 +1749,19 @@ function Inbox() {
 
   const p2TopBarRight = (() => {
     if (p2View.kind === "conversation") return conversationActions;
+    if (
+      (p2View.kind === "agent" || p2View.kind === "person") &&
+      selectedCollaborator
+    ) {
+      return (
+        <Button
+          label="About"
+          size="sm"
+          variant="outline"
+          onClick={() => setIsCollaboratorAboutOpen(true)}
+        />
+      );
+    }
     if (podContext) return podTopBarRight;
     return null;
   })();
@@ -1826,6 +2091,289 @@ function Inbox() {
               </NavigationListCollapsibleSection>
             </NavigationList>
 
+            {(filteredCollaborators.length > 0 || !searchText.trim()) && (
+              <NavigationList className="mx-sidebar-side-spacing">
+                <NavigationListCollapsibleSection
+                  label="People & Agents"
+                  type="collapse"
+                  defaultOpen={true}
+                  action={
+                    <>
+                      <Button
+                        size="xs"
+                        icon={Plus}
+                        label="New"
+                        variant="ghost-secondary"
+                        tooltip="Create an Agent"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openCreateAgent();
+                        }}
+                      />
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="xs"
+                            icon={DotsHorizontal}
+                            variant="ghost"
+                            aria-label="People and Agents options"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel label="Agents" />
+                          <DropdownMenuItem
+                            label="Create agent"
+                            icon={Plus}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openCreateAgent();
+                            }}
+                          />
+                          <DropdownMenuItem
+                            icon={ContactsRobot}
+                            label="Manage"
+                          />
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger
+                              icon={Edit04}
+                              label="Edit"
+                            />
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent
+                                dropdownHeaders={
+                                  <DropdownMenuSearchbar
+                                    autoFocus
+                                    value={agentSearchText}
+                                    onChange={setAgentSearchText}
+                                    name="agent-search"
+                                    placeholder="Search agents"
+                                  />
+                                }
+                              >
+                                {filteredAgents.length > 0 ? (
+                                  [...filteredAgents]
+                                    .sort((a, b) =>
+                                      a.name.localeCompare(b.name)
+                                    )
+                                    .map((agent) => (
+                                      <DropdownMenuItem
+                                        key={agent.id}
+                                        label={agent.name}
+                                        icon={
+                                          <Avatar
+                                            size="xxs"
+                                            name={agent.name}
+                                            emoji={agent.emoji}
+                                            backgroundColor={
+                                              agent.backgroundColor
+                                            }
+                                          />
+                                        }
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          addCollaborator({
+                                            type: "agent",
+                                            data: agent,
+                                          });
+                                          selectCollaborator("agent", agent.id);
+                                        }}
+                                      />
+                                    ))
+                                ) : (
+                                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                                    No agents found
+                                  </div>
+                                )}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                          <DropdownMenuLabel label="People" />
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger
+                              icon={UserSquare}
+                              label="Browse"
+                            />
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent
+                                dropdownHeaders={
+                                  <DropdownMenuSearchbar
+                                    autoFocus
+                                    value={peopleSearchText}
+                                    onChange={setPeopleSearchText}
+                                    name="people-search"
+                                    placeholder="Search people"
+                                  />
+                                }
+                              >
+                                {filteredPeople.length > 0 ? (
+                                  [...filteredPeople]
+                                    .sort((a, b) =>
+                                      a.fullName.localeCompare(b.fullName)
+                                    )
+                                    .map((person) => (
+                                      <DropdownMenuItem
+                                        key={person.id}
+                                        label={person.fullName}
+                                        icon={
+                                          <Avatar
+                                            size="xxs"
+                                            name={person.fullName}
+                                            visual={person.portrait}
+                                            isRounded
+                                          />
+                                        }
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          addCollaborator({
+                                            type: "person",
+                                            data: person,
+                                          });
+                                          selectCollaborator(
+                                            "person",
+                                            person.id
+                                          );
+                                        }}
+                                      />
+                                    ))
+                                ) : (
+                                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                                    No people found
+                                  </div>
+                                )}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </>
+                  }
+                >
+                  {filteredCollaborators.map((collaborator) => {
+                    if (collaborator.type === "agent") {
+                      const agent = collaborator.data;
+                      return (
+                        <NavigationListItem
+                          key={`agent-${agent.id}`}
+                          label={agent.name}
+                          selected={
+                            p2View.kind === "agent" &&
+                            p2View.agentId === agent.id
+                          }
+                          avatar={
+                            <Avatar
+                              size="xxs"
+                              name={agent.name}
+                              emoji={agent.emoji}
+                              backgroundColor={agent.backgroundColor}
+                              isRounded={false}
+                            />
+                          }
+                          moreMenu={
+                            <DropdownMenu modal={false}>
+                              <DropdownMenuTrigger asChild>
+                                <NavigationListItemAction />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem
+                                  label="Edit"
+                                  icon={Edit04}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    selectCollaborator("agent", agent.id);
+                                  }}
+                                />
+                                <DropdownMenuItem
+                                  label="Remove from favorites"
+                                  icon={Star01}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeCollaborator("agent", agent.id);
+                                  }}
+                                />
+                                <DropdownMenuItem
+                                  label="Delete"
+                                  icon={Trash01}
+                                  variant="warning"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeCollaborator("agent", agent.id);
+                                  }}
+                                />
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          }
+                          onClick={() => {
+                            selectCollaborator("agent", agent.id);
+                          }}
+                        />
+                      );
+                    }
+                    const person = collaborator.data;
+                    return (
+                      <NavigationListItem
+                        key={`person-${person.id}`}
+                        label={person.fullName}
+                        selected={
+                          p2View.kind === "person" &&
+                          p2View.personId === person.id
+                        }
+                        avatar={
+                          <Avatar
+                            size="xxs"
+                            name={person.fullName}
+                            visual={person.portrait}
+                            isRounded
+                          />
+                        }
+                        moreMenu={
+                          <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                              <NavigationListItemAction />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem
+                                label="View profile"
+                                icon={User03}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  selectCollaborator("person", person.id);
+                                }}
+                              />
+                              <DropdownMenuItem
+                                label="Remove from favorites"
+                                icon={Trash01}
+                                variant="warning"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  removeCollaborator("person", person.id);
+                                }}
+                              />
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        }
+                        onClick={() => {
+                          selectCollaborator("person", person.id);
+                        }}
+                      />
+                    );
+                  })}
+                </NavigationListCollapsibleSection>
+              </NavigationList>
+            )}
+
             <NavigationList className="mx-sidebar-side-spacing">
               {(recentConversations.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
@@ -2098,4 +2646,4 @@ function Inbox() {
   );
 }
 
-export default Inbox;
+export default PeopleAgent;
