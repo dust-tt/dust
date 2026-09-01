@@ -1,5 +1,6 @@
 import {
   checkReplicaMountLiveness,
+  ensurePodStateHealthOnSleep,
   isFuseStatfsMagic,
   isValidPodDatabaseName,
   parseLiveDatabaseNames,
@@ -142,5 +143,45 @@ describe("pod state helpers", () => {
 
     expect(result.isErr()).toBe(true);
     expect(execRoot).toHaveBeenCalledTimes(2);
+  });
+
+  test.each([
+    ["legacy image", "/pod-state/databases"],
+    ["canonical image", "/sandbox-state/databases"],
+  ])("syncs using the database path registered by the %s", async (_, dir) => {
+    const execRoot = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Ok({ exitCode: 0, stdout: "65735546\n", stderr: "" })
+      )
+      .mockResolvedValueOnce(
+        new Ok({
+          exitCode: 0,
+          stdout: "/pod-state/databases/chat.db\n",
+          stderr: "",
+        })
+      )
+      .mockResolvedValueOnce(
+        new Ok({ exitCode: 0, stdout: "SQLite format 3", stderr: "" })
+      )
+      .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+      .mockResolvedValueOnce(
+        new Ok({ exitCode: 0, stdout: `${dir}\n`, stderr: "" })
+      )
+      .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }));
+
+    const result = await ensurePodStateHealthOnSleep(
+      { getNonNullableWorkspace: () => ({ sId: "w" }) } as never,
+      { sId: "sandbox", execRoot } as never
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(
+      renderRootCommand(execRoot.mock.calls[4][1] as RootCommand)
+    ).toContain("/usr/bin/realpath -- /pod-state/databases");
+    expect(
+      renderRootCommand(execRoot.mock.calls[5][1] as RootCommand)
+    ).toContain(`${dir}/chat.db`);
+    expect(execRoot).toHaveBeenCalledTimes(6);
   });
 });
