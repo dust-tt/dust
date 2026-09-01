@@ -21,7 +21,7 @@ const listForWorkspaceQuery = new RequestCachedQuery<
   FeatureFlagResource[]
 >();
 
-const FEATURE_FLAG_CACHE_VERSION = 1;
+const FEATURE_FLAG_CACHE_VERSION = 2;
 
 type CachedFeatureFlagData = {
   id: ModelId;
