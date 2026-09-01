@@ -1,15 +1,11 @@
 import type { Logger } from "@app/logger/logger";
-import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
+import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
-import {
-  AgentChildAgentConfigurationModel,
-  AgentMCPServerConfigurationModel,
-} from "@app/lib/models/agent/actions/mcp";
-import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
-import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -19,7 +15,6 @@ import {
   isResourceSId,
 } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types/shared/model_id";
 
@@ -27,28 +22,14 @@ type SkillLinkTarget =
   | { customSkillId: ModelId; globalSkillId: null }
   | { customSkillId: null; globalSkillId: string };
 
-interface DependentConfigurationCounts {
-  childAgent: number;
-  dataSource: number;
-  project: number;
-  table: number;
-}
-
 interface AgentChange {
-  agent: AgentConfigurationModel;
-  dependentConfigurationCounts: DependentConfigurationCounts;
+  agentConfigurationModelId: ModelId;
+  agentId: string;
+  agentName: string;
   hasSkill: boolean;
-  toolConfigurations: AgentMCPServerConfigurationModel[];
-}
-
-interface ReplacementPlan {
-  agentChanges: AgentChange[];
-  dependentConfigurationCounts: DependentConfigurationCounts;
-  toolConfigurationIds: ModelId[];
-}
-
-interface DependentConfigurationReference {
-  mcpServerConfigurationId: ModelId | null;
+  sourceVersion: number;
+  targetVersion: number;
+  toolConfigurationIds: string[];
 }
 
 function getSkillLinkTarget(skill: SkillResource): SkillLinkTarget {
@@ -57,345 +38,207 @@ function getSkillLinkTarget(skill: SkillResource): SkillLinkTarget {
     : { customSkillId: null, globalSkillId: skill.sId };
 }
 
-function countByAgentConfiguration(
-  references: DependentConfigurationReference[],
-  agentConfigurationIdByToolConfigurationId: Map<ModelId, ModelId>
-): Map<ModelId, number> {
-  const counts = new Map<ModelId, number>();
-
-  for (const reference of references) {
-    if (reference.mcpServerConfigurationId === null) {
-      throw new Error(
-        "Found a dependent configuration without a tool configuration."
-      );
-    }
-
-    const agentConfigurationId = agentConfigurationIdByToolConfigurationId.get(
-      reference.mcpServerConfigurationId
-    );
-    if (agentConfigurationId === undefined) {
-      throw new Error(
-        `Missing agent configuration for tool configuration ${reference.mcpServerConfigurationId}.`
-      );
-    }
-
-    counts.set(
-      agentConfigurationId,
-      (counts.get(agentConfigurationId) ?? 0) + 1
-    );
-  }
-
-  return counts;
-}
-
-function sumDependentConfigurationCounts(
-  agentChanges: AgentChange[]
-): DependentConfigurationCounts {
-  return agentChanges.reduce<DependentConfigurationCounts>(
-    (totals, change) => ({
-      childAgent:
-        totals.childAgent + change.dependentConfigurationCounts.childAgent,
-      dataSource:
-        totals.dataSource + change.dependentConfigurationCounts.dataSource,
-      project: totals.project + change.dependentConfigurationCounts.project,
-      table: totals.table + change.dependentConfigurationCounts.table,
-    }),
-    { childAgent: 0, dataSource: 0, project: 0, table: 0 }
-  );
-}
-
-async function buildReplacementPlan(
-  {
-    mcpServerViewModelId,
-    skillLinkTarget,
-    workspaceModelId,
-  }: {
-    mcpServerViewModelId: ModelId;
-    skillLinkTarget: SkillLinkTarget;
-    workspaceModelId: ModelId;
-  },
-  transaction?: Transaction
-): Promise<ReplacementPlan> {
-  // Intentionally include every agent configuration status so drafts or pending versions cannot
-  // reintroduce the tool later. The dry run reports each status and version explicitly.
-  const toolConfigurations = await AgentMCPServerConfigurationModel.findAll({
-    attributes: ["id", "sId", "agentConfigurationId"],
+async function buildReplacementPlan({
+  mcpServerViewModelId,
+  skillLinkTarget,
+  workspaceModelId,
+}: {
+  mcpServerViewModelId: ModelId;
+  skillLinkTarget: SkillLinkTarget;
+  workspaceModelId: ModelId;
+}): Promise<AgentChange[]> {
+  const agents = await AgentConfigurationModel.findAll({
+    attributes: ["id", "sId", "name", "version"],
+    include: [
+      {
+        model: AgentMCPServerConfigurationModel,
+        as: "mcpServerConfigurations",
+        attributes: ["id", "sId"],
+        required: true,
+        where: {
+          mcpServerViewId: mcpServerViewModelId,
+          workspaceId: workspaceModelId,
+        },
+      },
+    ],
+    order: [
+      ["name", "ASC"],
+      ["sId", "ASC"],
+    ],
     where: {
-      mcpServerViewId: mcpServerViewModelId,
+      status: "active",
       workspaceId: workspaceModelId,
     },
-    transaction,
   });
 
-  if (toolConfigurations.length === 0) {
-    return {
-      agentChanges: [],
-      dependentConfigurationCounts: {
-        childAgent: 0,
-        dataSource: 0,
-        project: 0,
-        table: 0,
-      },
-      toolConfigurationIds: [],
-    };
+  if (agents.length === 0) {
+    return [];
   }
 
-  const agentConfigurationIds = [
-    ...new Set(
-      toolConfigurations.map(
-        (configuration) => configuration.agentConfigurationId
-      )
-    ),
-  ];
-  const toolConfigurationIds = toolConfigurations.map(
-    (configuration) => configuration.id
-  );
-  const dependentConfigurationWhere = {
-    mcpServerConfigurationId: { [Op.in]: toolConfigurationIds },
-    workspaceId: workspaceModelId,
-  };
-
-  const [
-    agents,
-    existingSkillLinks,
-    childAgentConfigurations,
-    dataSourceConfigurations,
-    projectConfigurations,
-    tableConfigurations,
-  ] = await Promise.all([
-    AgentConfigurationModel.findAll({
-      attributes: ["id", "sId", "name", "status", "version"],
-      where: {
-        id: { [Op.in]: agentConfigurationIds },
-        workspaceId: workspaceModelId,
-      },
-      transaction,
-    }),
-    AgentSkillModel.findAll({
-      attributes: ["agentConfigurationId"],
-      where: {
-        agentConfigurationId: { [Op.in]: agentConfigurationIds },
-        ...skillLinkTarget,
-        workspaceId: workspaceModelId,
-      },
-      transaction,
-    }),
-    AgentChildAgentConfigurationModel.findAll({
-      attributes: ["mcpServerConfigurationId"],
-      where: dependentConfigurationWhere,
-      transaction,
-    }),
-    AgentDataSourceConfigurationModel.findAll({
-      attributes: ["mcpServerConfigurationId"],
-      where: dependentConfigurationWhere,
-      transaction,
-    }),
-    AgentProjectConfigurationModel.findAll({
-      attributes: ["mcpServerConfigurationId"],
-      where: dependentConfigurationWhere,
-      transaction,
-    }),
-    AgentTablesQueryConfigurationTableModel.findAll({
-      attributes: ["mcpServerConfigurationId"],
-      where: dependentConfigurationWhere,
-      transaction,
-    }),
-  ]);
-
-  const agentsByModelId = new Map(agents.map((agent) => [agent.id, agent]));
-  const toolConfigurationsByAgentModelId = new Map<
-    ModelId,
-    AgentMCPServerConfigurationModel[]
-  >();
-  const agentConfigurationIdByToolConfigurationId = new Map<ModelId, ModelId>();
-
-  for (const toolConfiguration of toolConfigurations) {
-    const agentConfigurationId = toolConfiguration.agentConfigurationId;
-    const currentConfigurations =
-      toolConfigurationsByAgentModelId.get(agentConfigurationId) ?? [];
-
-    toolConfigurationsByAgentModelId.set(agentConfigurationId, [
-      ...currentConfigurations,
-      toolConfiguration,
-    ]);
-    agentConfigurationIdByToolConfigurationId.set(
-      toolConfiguration.id,
-      agentConfigurationId
-    );
-  }
-
-  const childAgentCounts = countByAgentConfiguration(
-    childAgentConfigurations,
-    agentConfigurationIdByToolConfigurationId
-  );
-  const dataSourceCounts = countByAgentConfiguration(
-    dataSourceConfigurations,
-    agentConfigurationIdByToolConfigurationId
-  );
-  const projectCounts = countByAgentConfiguration(
-    projectConfigurations,
-    agentConfigurationIdByToolConfigurationId
-  );
-  const tableCounts = countByAgentConfiguration(
-    tableConfigurations,
-    agentConfigurationIdByToolConfigurationId
-  );
+  const existingSkillLinks = await AgentSkillModel.findAll({
+    attributes: ["agentConfigurationId"],
+    where: {
+      agentConfigurationId: { [Op.in]: agents.map((agent) => agent.id) },
+      ...skillLinkTarget,
+      workspaceId: workspaceModelId,
+    },
+  });
   const agentConfigurationIdsWithSkill = new Set(
     existingSkillLinks.map((link) => link.agentConfigurationId)
   );
 
-  const agentChanges = agentConfigurationIds
-    .map((agentConfigurationId): AgentChange => {
-      const agent = agentsByModelId.get(agentConfigurationId);
-      if (!agent) {
-        throw new Error(
-          `Agent configuration ${agentConfigurationId} referenced by the tool was not found.`
-        );
-      }
-
-      return {
-        agent,
-        dependentConfigurationCounts: {
-          childAgent: childAgentCounts.get(agentConfigurationId) ?? 0,
-          dataSource: dataSourceCounts.get(agentConfigurationId) ?? 0,
-          project: projectCounts.get(agentConfigurationId) ?? 0,
-          table: tableCounts.get(agentConfigurationId) ?? 0,
-        },
-        hasSkill: agentConfigurationIdsWithSkill.has(agentConfigurationId),
-        toolConfigurations:
-          toolConfigurationsByAgentModelId.get(agentConfigurationId) ?? [],
-      };
-    })
-    .sort(
-      (left, right) =>
-        left.agent.name.localeCompare(right.agent.name) ||
-        left.agent.sId.localeCompare(right.agent.sId) ||
-        left.agent.version - right.agent.version
-    );
-
-  return {
-    agentChanges,
-    dependentConfigurationCounts: sumDependentConfigurationCounts(agentChanges),
-    toolConfigurationIds,
-  };
+  return agents.map((agent) => ({
+    agentConfigurationModelId: agent.id,
+    agentId: agent.sId,
+    agentName: agent.name,
+    hasSkill: agentConfigurationIdsWithSkill.has(agent.id),
+    sourceVersion: agent.version,
+    targetVersion: agent.version + 1,
+    toolConfigurationIds: agent.mcpServerConfigurations.map(
+      (configuration) => configuration.sId
+    ),
+  }));
 }
 
-async function applyReplacementPlan(
+async function createReplacementVersion(
+  auth: Authenticator,
   {
-    plan,
-    skillLinkTarget,
-    workspaceModelId,
+    change,
+    mcpServerViewId,
+    skill,
   }: {
-    plan: ReplacementPlan;
-    skillLinkTarget: SkillLinkTarget;
-    workspaceModelId: ModelId;
-  },
-  transaction: Transaction
-): Promise<void> {
-  if (plan.toolConfigurationIds.length === 0) {
-    return;
+    change: AgentChange;
+    mcpServerViewId: string;
+    skill: SkillResource;
   }
-
-  const agentConfigurationIdsToLink = plan.agentChanges
-    .filter((change) => !change.hasSkill)
-    .map((change) => change.agent.id);
-
-  if (agentConfigurationIdsToLink.length > 0) {
-    await AgentSkillModel.bulkCreate(
-      agentConfigurationIdsToLink.map((agentConfigurationId) => ({
-        agentConfigurationId,
-        ...skillLinkTarget,
-        workspaceId: workspaceModelId,
-      })),
-      { transaction }
-    );
-  }
-
-  const dependentConfigurationWhere = {
-    mcpServerConfigurationId: { [Op.in]: plan.toolConfigurationIds },
-    workspaceId: workspaceModelId,
-  };
-
-  await AgentChildAgentConfigurationModel.destroy({
-    where: dependentConfigurationWhere,
-    transaction,
-  });
-  await AgentDataSourceConfigurationModel.destroy({
-    where: dependentConfigurationWhere,
-    transaction,
-  });
-  await AgentProjectConfigurationModel.destroy({
-    where: dependentConfigurationWhere,
-    transaction,
-  });
-  await AgentTablesQueryConfigurationTableModel.destroy({
-    where: dependentConfigurationWhere,
-    transaction,
-  });
-
-  const removedToolConfigurationCount =
-    await AgentMCPServerConfigurationModel.destroy({
-      where: {
-        id: { [Op.in]: plan.toolConfigurationIds },
-        workspaceId: workspaceModelId,
-      },
-      transaction,
-    });
-
-  if (removedToolConfigurationCount !== plan.toolConfigurationIds.length) {
+): Promise<number> {
+  const contextResult = await getAgentConfigurationContext(
+    auth,
+    change.agentId,
+    {
+      requireEditorGroup: true,
+      dangerouslySkipPermissionFiltering: true,
+    }
+  );
+  if (contextResult.isErr()) {
     throw new Error(
-      `Expected to remove ${plan.toolConfigurationIds.length} tool configurations, removed ${removedToolConfigurationCount}.`
+      `Cannot create a new version of agent ${change.agentId}: ${contextResult.error.api_error.message}`
     );
   }
+
+  const { agentConfiguration, editorUsers, skills } = contextResult.value;
+  if (
+    agentConfiguration.id !== change.agentConfigurationModelId ||
+    agentConfiguration.version !== change.sourceVersion
+  ) {
+    throw new Error(
+      `Agent ${change.agentId} changed after the replacement plan was built. Run the script again.`
+    );
+  }
+
+  const serverSideActions = agentConfiguration.actions.filter(
+    isServerSideMCPServerConfiguration
+  );
+  const toolConfigurationIds = new Set(change.toolConfigurationIds);
+  const retainedActions = serverSideActions.filter(
+    (action) => !toolConfigurationIds.has(action.sId)
+  );
+  if (
+    serverSideActions.length - retainedActions.length !==
+    toolConfigurationIds.size
+  ) {
+    throw new Error(
+      `Agent ${change.agentId} no longer contains the planned configurations for MCP server view ${mcpServerViewId}. Run the script again.`
+    );
+  }
+
+  const skillIds = [
+    ...new Set([
+      ...skills.map((existingSkill) => existingSkill.sId),
+      skill.sId,
+    ]),
+  ];
+  const authorId = agentConfiguration.versionAuthorId;
+  if (authorId === null) {
+    throw new Error(
+      `Agent ${change.agentId} has no version author and cannot be saved as a new version.`
+    );
+  }
+
+  const result = await createOrUpgradeAgentConfiguration({
+    auth,
+    agentConfigurationId: agentConfiguration.sId,
+    assistant: {
+      name: agentConfiguration.name,
+      description: agentConfiguration.description,
+      instructions: agentConfiguration.instructions,
+      instructionsHtml: agentConfiguration.instructionsHtml,
+      pictureUrl: agentConfiguration.pictureUrl,
+      status: agentConfiguration.status,
+      scope: agentConfiguration.scope,
+      model: agentConfiguration.model,
+      actions: retainedActions,
+      templateId: agentConfiguration.templateId,
+      tags: agentConfiguration.tags,
+      editors: editorUsers.map((user) => ({ sId: user.sId })),
+      skills: skillIds.map((skillId) => ({ sId: skillId })),
+      additionalRequestedSpaceIds: agentConfiguration.requestedSpaceIds,
+    },
+    authorId,
+    dangerouslySkipPermissionFiltering: true,
+  });
+  if (result.isErr()) {
+    throw new Error(
+      `Failed to create a new version of agent ${change.agentId}: ${result.error.message}`
+    );
+  }
+
+  return result.value.version;
 }
 
-function logAgentChanges(
+function logAgentChange(
   {
+    change,
     execute,
     mcpServerViewId,
-    plan,
     skillId,
+    targetVersion,
     workspaceId,
   }: {
+    change: AgentChange;
     execute: boolean;
     mcpServerViewId: string;
-    plan: ReplacementPlan;
     skillId: string;
+    targetVersion: number;
     workspaceId: string;
   },
   logger: Logger
 ): void {
-  for (const change of plan.agentChanges) {
-    logger.info(
-      {
-        agentConfigurationModelId: change.agent.id,
-        agentId: change.agent.sId,
-        agentName: change.agent.name,
-        agentStatus: change.agent.status,
-        agentVersion: change.agent.version,
-        changes: {
-          addAgentSkillId: change.hasSkill ? null : skillId,
-          removeAgentMCPServerConfigurationIds: change.toolConfigurations.map(
-            (configuration) => configuration.sId
-          ),
-          removeDependentConfigurations: change.dependentConfigurationCounts,
-          skillAlreadyPresent: change.hasSkill,
-        },
-        mcpServerViewId,
-        workspaceId,
+  logger.info(
+    {
+      agentConfigurationModelId: change.agentConfigurationModelId,
+      agentId: change.agentId,
+      agentName: change.agentName,
+      changes: {
+        addAgentSkillIdToNewVersion: change.hasSkill ? null : skillId,
+        archiveAgentVersion: change.sourceVersion,
+        createAgentVersion: targetVersion,
+        toolConfigurationIdsNotCopiedToNewVersion: change.toolConfigurationIds,
       },
-      execute
-        ? "Replaced tool with skill on agent"
-        : "Dry run: would replace tool with skill on agent"
-    );
-  }
+      mcpServerViewId,
+      workspaceId,
+    },
+    execute
+      ? "Created a new agent version with the tool replaced by the skill"
+      : "Dry run: would create a new agent version with the tool replaced by the skill"
+  );
 }
 
 makeScript(
   {
     mcpServerViewId: {
       demandOption: true,
-      describe: "MCP server view sId (msv_...) to remove from agents",
+      describe: "MCP server view sId (msv_...) to replace in active agents",
       type: "string" as const,
     },
     skillId: {
@@ -426,7 +269,7 @@ makeScript(
       parsedSkillId.workspaceModelId !== parsedMCPServerViewId.workspaceModelId
     ) {
       throw new Error(
-        `The MCP server view and custom skill belong to different workspaces.`
+        "The MCP server view and custom skill belong to different workspaces."
       );
     }
 
@@ -461,64 +304,56 @@ makeScript(
       );
     }
 
-    const skillLinkTarget = getSkillLinkTarget(skill);
-    const plan = execute
-      ? await withTransaction(async (transaction) => {
-          const replacementPlan = await buildReplacementPlan(
-            {
-              mcpServerViewModelId: mcpServerView.id,
-              skillLinkTarget,
-              workspaceModelId: workspace.id,
-            },
-            transaction
-          );
+    const plan = await buildReplacementPlan({
+      mcpServerViewModelId: mcpServerView.id,
+      skillLinkTarget: getSkillLinkTarget(skill),
+      workspaceModelId: workspace.id,
+    });
 
-          await applyReplacementPlan(
-            {
-              plan: replacementPlan,
-              skillLinkTarget,
-              workspaceModelId: workspace.id,
-            },
-            transaction
-          );
+    let createdVersionCount = 0;
+    for (const change of plan) {
+      const targetVersion = execute
+        ? await createReplacementVersion(auth, {
+            change,
+            mcpServerViewId,
+            skill,
+          })
+        : change.targetVersion;
 
-          return replacementPlan;
-        })
-      : await buildReplacementPlan({
-          mcpServerViewModelId: mcpServerView.id,
-          skillLinkTarget,
-          workspaceModelId: workspace.id,
-        });
-
-    logAgentChanges(
-      {
-        execute,
-        mcpServerViewId,
-        plan,
-        skillId: skill.sId,
-        workspaceId: workspace.sId,
-      },
-      logger
-    );
+      if (execute) {
+        createdVersionCount++;
+      }
+      logAgentChange(
+        {
+          change,
+          execute,
+          mcpServerViewId,
+          skillId: skill.sId,
+          targetVersion,
+          workspaceId: workspace.sId,
+        },
+        logger
+      );
+    }
 
     logger.info(
       {
-        agentConfigurationCount: plan.agentChanges.length,
-        agentCount: new Set(plan.agentChanges.map((change) => change.agent.sId))
-          .size,
-        agentSkillLinksToAdd: plan.agentChanges.filter(
-          (change) => !change.hasSkill
-        ).length,
-        dependentConfigurationsToRemove: plan.dependentConfigurationCounts,
+        agentCount: plan.length,
+        agentSkillLinksToAdd: plan.filter((change) => !change.hasSkill).length,
+        agentVersionsCreated: createdVersionCount,
+        agentVersionsToCreate: execute ? 0 : plan.length,
         execute,
         mcpServerViewId,
         skillId: skill.sId,
-        toolConfigurationsToRemove: plan.toolConfigurationIds.length,
+        toolConfigurationsNotCopied: plan.reduce(
+          (count, change) => count + change.toolConfigurationIds.length,
+          0
+        ),
         workspaceId: workspace.sId,
       },
       execute
-        ? "Finished replacing tool with skill"
-        : "Dry run: finished listing tool-to-skill changes"
+        ? "Finished replacing tool with skill in new agent versions"
+        : "Dry run: finished listing new agent versions"
     );
   }
 );
