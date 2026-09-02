@@ -1426,9 +1426,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     return result;
   }
 
-  // Same resolution as `listMaxPoolCapGroupByUserModelIdInWorkspace`, for
-  // callers that only need the cap value (spend-limit enforcement) and have
-  // no use for the group name.
   static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace(args: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
