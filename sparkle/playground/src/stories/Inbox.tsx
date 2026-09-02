@@ -8,7 +8,6 @@ import {
   CheckCircle,
   CheckDone01,
   ChevronDown,
-  CoinsStacked01,
   Cube01,
   CubeOutline,
   Dialog,
@@ -29,7 +28,6 @@ import {
   Edit04,
   Eye,
   File02,
-  Folder,
   FolderOpen,
   Heart,
   Icon,
@@ -80,13 +78,8 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
-import {
-  ConversationCreditPanel,
-  ConversationFilesPanel,
-} from "../components/ConversationSidePanels";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
-import { FilePreviewPanel } from "../components/FilePreviewPanel";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -141,6 +134,16 @@ import {
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
+import {
+  ConversationActions,
+  conversationFilesFor,
+  isFileView,
+  type SelectedCitation,
+  type SidePanelView,
+  sidePanelContent,
+  sidePanelLabel,
+  sidePanelSizing,
+} from "./conversationSidePanels";
 import TemplateSelection, { type Template } from "./TemplateSelection";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -155,104 +158,6 @@ type PodTabsState = {
   mainTabOrder: string[];
   dynamicFileTabs: DynamicFileTab[];
 };
-
-type SelectedCitation = { title: string; icon?: string };
-
-// A side panel opened next to a conversation. Wiring summary (P3 also hosts
-// full conversations; P4 only ever hosts side panels):
-//
-//   kind      sizing                        content
-//   citation  shared (frame icon → focus)   placeholder preview (see note below)
-//   file      shared (frame type → focus)   FilePreviewPanel, fullscreen enabled
-//   files     secondary                     FilesBrowser over conversation files
-//   credits   secondary                     fake credit usage panel
-type SidePanelView =
-  | { kind: "citation"; citation: SelectedCitation }
-  | { kind: "file"; dataSource: DataSource }
-  | { kind: "files" }
-  | { kind: "credits" };
-
-// Map a message-citation icon onto the DataSource file-type vocabulary so the
-// conversation Files panel can reuse the pod FilesBrowser.
-function citationFileType(icon?: string): DataSourceFileType {
-  switch (icon) {
-    case "table":
-      return "xlsx";
-    case "image":
-      return "png";
-    case "frame":
-      return "frame";
-    case "notion":
-    case "slack":
-      return "md";
-    default:
-      return "doc";
-  }
-}
-
-// Files "in" a conversation: derived from its message citations, shaped as
-// DataSources. Conversations without their own messages render a random
-// message set (see ConversationView), so those fall back to the whole pool's
-// citations.
-function conversationFilesFor(
-  conversation: Conversation | null | undefined,
-  pool: Conversation[]
-): DataSource[] {
-  const messageSources = conversation?.messages?.length ? [conversation] : pool;
-  const seen = new Set<string>();
-  const files: DataSource[] = [];
-  for (const source of messageSources) {
-    for (const item of source.messages ?? []) {
-      if (item.kind !== "message") continue;
-      for (const citation of item.citations ?? []) {
-        if (seen.has(citation.id)) continue;
-        seen.add(citation.id);
-        files.push({
-          id: `conv-file-${citation.id}`,
-          kind: "file",
-          fileName: citation.title,
-          parentId: null,
-          source: "pod",
-          fileType: citationFileType(citation.icon),
-          createdBy: item.ownerId,
-          createdAt: item.timestamp,
-          updatedAt: item.timestamp,
-        });
-      }
-    }
-  }
-  return files;
-}
-
-function sidePanelLabel(view: SidePanelView): string {
-  switch (view.kind) {
-    case "citation":
-      return view.citation.title;
-    case "file":
-      return view.dataSource.fileName;
-    case "files":
-      return "Files";
-    case "credits":
-      return "Credit usage";
-  }
-}
-
-// Sizing: file previews share the space with the focus panel — unless the
-// file is a frame, which takes focus itself; files/credits lists stay
-// secondary.
-function sidePanelSizing(view: SidePanelView): PanelSizingType {
-  const previewSizing = (isFrame: boolean): PanelSizingType =>
-    isFrame ? "default" : "shared";
-  switch (view.kind) {
-    case "citation":
-      return previewSizing(view.citation.icon === "frame");
-    case "file":
-      return previewSizing(view.dataSource.fileType === "frame");
-    case "files":
-    case "credits":
-      return "secondary";
-  }
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1304,45 +1209,19 @@ function Inbox() {
   })();
 
   // ── P3 / P4 content ───────────────────────────────────────────────────────
-  // NOTE: message citations open this placeholder (they are titles, not
-  // DataSources); files opened from a Files panel or a pod render the real
-  // FilePreviewPanel. Map citations to DataSources if these should unify.
-  const citationPreview = (citation: SelectedCitation) => (
-    <div className="flex h-full flex-col gap-3 p-4">
-      <p className="text-sm font-medium text-foreground">{citation.title}</p>
-      <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
-        Document preview placeholder
-      </div>
-    </div>
-  );
-
-  // Shared renderer for the side-panel kinds; P3 additionally hosts full
-  // conversations (handled below). `filesSource` is the conversation whose
-  // files the "files" kind lists; opening one replaces the panel's content
-  // with the file preview in place.
-  const sidePanelContent = (
+  // Side-panel kinds are rendered by the shared helper; P3 additionally hosts
+  // full conversations (handled below).
+  const renderSidePanel = (
     view: SidePanelView,
     setView: (view: SidePanelView) => void,
     filesSource: Conversation | null | undefined
-  ) => {
-    switch (view.kind) {
-      case "citation":
-        return citationPreview(view.citation);
-      case "file":
-        return (
-          <FilePreviewPanel dataSource={view.dataSource} variant="document" />
-        );
-      case "files":
-        return (
-          <ConversationFilesPanel
-            files={conversationFilesFor(filesSource, conversationsWithMessages)}
-            onFileOpen={(dataSource) => setView({ kind: "file", dataSource })}
-          />
-        );
-      case "credits":
-        return <ConversationCreditPanel />;
-    }
-  };
+  ) =>
+    sidePanelContent({
+      view,
+      setView,
+      filesSource,
+      conversationPool: conversationsWithMessages,
+    });
 
   const p3Label =
     p3View === null
@@ -1375,7 +1254,7 @@ function Inbox() {
         />
       );
     }
-    return sidePanelContent(p3View, setP3View, selectedConversation);
+    return renderSidePanel(p3View, setP3View, selectedConversation);
   })();
 
   const p4Label = p4View === null ? "Attachment" : sidePanelLabel(p4View);
@@ -1384,56 +1263,24 @@ function Inbox() {
     p4View === null ? "secondary" : sidePanelSizing(p4View);
 
   const p4Content = p4View
-    ? sidePanelContent(p4View, setP4View, p3Conversation)
+    ? renderSidePanel(p4View, setP4View, p3Conversation)
     : null;
 
   // ── Panel top bars ────────────────────────────────────────────────────────
-  // Mirrors front's conversation title actions: credit usage, files, "...".
-  // `target` is the slot the side panel opens into (P3 for a level-1
-  // conversation, P4 for a level-2 one); clicking again toggles it closed.
-  const conversationActionsFor = (target: "p3" | "p4") => {
-    const currentKind = target === "p3" ? p3View?.kind : p4View?.kind;
-    const toggle = (kind: "files" | "credits") => {
-      if (target === "p3") {
-        setP3View(currentKind === kind ? null : { kind });
-        setP4View(null);
-      } else {
-        setP4View(currentKind === kind ? null : { kind });
-      }
-    };
-    return (
-      <>
-        <Button
-          size="sm"
-          variant="ghost-secondary"
-          icon={CoinsStacked01}
-          tooltip="Credit usage"
-          onClick={() => toggle("credits")}
-        />
-        <Button
-          size="sm"
-          variant="ghost-secondary"
-          icon={Folder}
-          tooltip="Files"
-          onClick={() => toggle("files")}
-        />
-        {/* Fake conversation menu — options are listed but do nothing. */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent collisionPadding={8}>
-            <DropdownMenuItem label="Rename" icon={Edit04} />
-            <DropdownMenuItem label="Copy link" icon={Link01} />
-            <DropdownMenuItem label="Mute notifications" icon={Bell01} />
-            <DropdownMenuSeparator />
-            <DropdownMenuItem label="Archive" icon={Archive} />
-            <DropdownMenuItem label="Delete" icon={Trash01} variant="warning" />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </>
-    );
-  };
+  // `target` is the slot the side panel opens into (P3 for the level-1
+  // conversation, P4 for a level-2 one).
+  const conversationActionsFor = (target: "p3" | "p4") => (
+    <ConversationActions
+      onToggle={(kind) => {
+        if (target === "p3") {
+          setP3View(p3View?.kind === kind ? null : { kind });
+          setP4View(null);
+        } else {
+          setP4View(p4View?.kind === kind ? null : { kind });
+        }
+      }}
+    />
+  );
 
   const podTopBarLeft =
     podContext?.variant === "shared" ? (
@@ -2191,9 +2038,7 @@ function Inbox() {
           label={p3Label}
           sizingType={p3SizingType}
           // Any file view gets fullscreen, wherever it was opened from.
-          fullscreenEnabled={
-            p3View?.kind === "file" || p3View?.kind === "citation"
-          }
+          fullscreenEnabled={isFileView(p3View)}
           isOpen={p3View !== null}
           onClose={() => {
             setP3View(null);
@@ -2209,9 +2054,7 @@ function Inbox() {
         <PanelLayoutPanel
           label={p4Label}
           sizingType={p4SizingType}
-          fullscreenEnabled={
-            p4View?.kind === "file" || p4View?.kind === "citation"
-          }
+          fullscreenEnabled={isFileView(p4View)}
           isOpen={p4View !== null}
           onClose={() => setP4View(null)}
           topBarLeft={p4TopBarLeft}

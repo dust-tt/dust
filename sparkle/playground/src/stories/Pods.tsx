@@ -1,9 +1,5 @@
-// NOTE: This playground predates the Inbox panel rework (sizing types,
-// files/credits side panels, file previews opening in panels, fullscreen).
-// Inbox.tsx is the reference implementation of the PanelLayout wiring.
 import {
   Archive,
-  Attachment01,
   Avatar,
   Bell01,
   Brackets,
@@ -95,6 +91,7 @@ import {
   PanelLayout,
   PanelLayoutNav,
   PanelLayoutPanel,
+  type PanelSizingType,
 } from "../components/PanelLayout";
 import { ProfilePanel } from "../components/Profile";
 import {
@@ -130,6 +127,14 @@ import {
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
+import {
+  ConversationActions,
+  isFileView,
+  type SidePanelView,
+  sidePanelContent,
+  sidePanelLabel,
+  sidePanelSizing,
+} from "./conversationSidePanels";
 import TemplateSelection, { type Template } from "./TemplateSelection";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -144,8 +149,6 @@ type PodTabsState = {
   mainTabOrder: string[];
   dynamicFileTabs: DynamicFileTab[];
 };
-
-type SelectedCitation = { title: string; icon?: string };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -235,15 +238,16 @@ function Pods() {
 
   const [p2View, setP2View] = useState<P2View>({ kind: "welcome" });
 
-  // P3: conversation from a space (level 2) OR citation from a level-1 conversation
+  // P3: conversation from a space (level 2), or a side panel opened from the
+  // level-1 conversation (citation preview, file, files, credit usage).
   type P3View =
     | { kind: "conversation"; conversationId: string }
-    | { kind: "citation"; citation: SelectedCitation };
+    | SidePanelView;
 
   const [p3View, setP3View] = useState<P3View | null>(null);
 
-  // P4: citation/attachment opened from a level-2 conversation
-  const [p4Citation, setP4Citation] = useState<SelectedCitation | null>(null);
+  // P4: side panel opened from a level-2 conversation.
+  const [p4View, setP4View] = useState<SidePanelView | null>(null);
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
@@ -1018,7 +1022,7 @@ function Pods() {
         onClick={() => {
           setP2View({ kind: "space", spaceId: space.id });
           setP3View(null);
-          setP4Citation(null);
+          setP4View(null);
         }}
       />
     );
@@ -1062,7 +1066,7 @@ function Pods() {
           conversationsWithMessages={conversationsWithMessages}
           onCitationOpen={(citation) => {
             setP3View({ kind: "citation", citation });
-            setP4Citation(null);
+            setP4View(null);
           }}
         />
       );
@@ -1083,7 +1087,7 @@ function Pods() {
               kind: "conversation",
               conversationId: conversation.id,
             });
-            setP4Citation(null);
+            setP4View(null);
           }}
           onInviteMembers={() => handleInviteMembers(podContext.spaceId)}
           onUpdateSpaceName={handleUpdateSpaceName}
@@ -1093,6 +1097,11 @@ function Pods() {
           onTabChange={setActivePodTab}
           dynamicFileTabIds={dynamicFileTabIds}
           onAddFileToTopbar={handlePodFileDrop}
+          // Pod files open in a panel (frames take focus, others share).
+          onFileOpen={(dataSource) => {
+            setP3View({ kind: "file", dataSource });
+            setP4View(null);
+          }}
           onFileDragChange={handlePodFileDragChange}
           fileToRevealInKnowledge={fileToRevealInKnowledge}
           onFileToRevealInKnowledgeHandled={() =>
@@ -1131,13 +1140,34 @@ function Pods() {
     );
   })();
 
-  // ── P3 content ────────────────────────────────────────────────────────────
+  // ── P3 / P4 content ───────────────────────────────────────────────────────
+  // Side-panel kinds are rendered by the shared helper; P3 additionally hosts
+  // full conversations (handled below).
+  const renderSidePanel = (
+    view: SidePanelView,
+    setView: (view: SidePanelView) => void,
+    filesSource: Conversation | null | undefined
+  ) =>
+    sidePanelContent({
+      view,
+      setView,
+      filesSource,
+      conversationPool: conversationsWithMessages,
+    });
+
   const p3Label =
-    p3View?.kind === "conversation"
-      ? (p3Conversation?.title ?? "Conversation")
-      : p3View?.kind === "citation"
-        ? p3View.citation.title
-        : "Panel 3";
+    p3View === null
+      ? "Panel 3"
+      : p3View.kind === "conversation"
+        ? (p3Conversation?.title ?? "Conversation")
+        : sidePanelLabel(p3View);
+
+  const p3SizingType: PanelSizingType =
+    p3View === null
+      ? "secondary"
+      : p3View.kind === "conversation"
+        ? "default"
+        : sidePanelSizing(p3View);
 
   const p3Content = (() => {
     if (!p3View) return null;
@@ -1149,45 +1179,39 @@ function Pods() {
           users={mockUsers}
           agents={mockAgents}
           conversationsWithMessages={conversationsWithMessages}
-          onCitationOpen={(citation) => setP4Citation(citation)}
+          onCitationOpen={(citation) =>
+            setP4View({ kind: "citation", citation })
+          }
         />
       );
-    if (p3View.kind === "citation")
-      return (
-        <div className="flex h-full flex-col gap-3 p-4">
-          <p className="text-sm font-medium text-foreground">
-            {p3View.citation.title}
-          </p>
-          <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
-            Document preview placeholder
-          </div>
-        </div>
-      );
+    if (p3View.kind !== "conversation")
+      return renderSidePanel(p3View, setP3View, selectedConversation);
     return null;
   })();
 
-  // ── P4 content ────────────────────────────────────────────────────────────
-  const p4Label = p4Citation?.title ?? "Attachment";
-  const p4Content = p4Citation ? (
-    <div className="flex h-full flex-col gap-3 p-4">
-      <p className="text-sm font-medium text-foreground">{p4Citation.title}</p>
-      <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
-        Document preview placeholder
-      </div>
-    </div>
-  ) : null;
+  const p4Label = p4View === null ? "Attachment" : sidePanelLabel(p4View);
+
+  const p4SizingType: PanelSizingType =
+    p4View === null ? "secondary" : sidePanelSizing(p4View);
+
+  const p4Content = p4View
+    ? renderSidePanel(p4View, setP4View, p3Conversation)
+    : null;
 
   // ── Panel top bars ────────────────────────────────────────────────────────
-  const conversationActions = (
-    <>
-      <Button
-        size="sm"
-        variant="ghost-secondary"
-        icon={Attachment01}
-        isSelect
-      />
-      <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
-    </>
+  // `target` is the slot the side panel opens into (P3 for the level-1
+  // conversation, P4 for a level-2 one).
+  const conversationActionsFor = (target: "p3" | "p4") => (
+    <ConversationActions
+      onToggle={(kind) => {
+        if (target === "p3") {
+          setP3View(p3View?.kind === kind ? null : { kind });
+          setP4View(null);
+        } else {
+          setP4View(p4View?.kind === kind ? null : { kind });
+        }
+      }}
+    />
   );
 
   const podTopBarLeft = podContext ? (
@@ -1392,7 +1416,7 @@ function Pods() {
   })();
 
   const p2TopBarRight = (() => {
-    if (p2View.kind === "conversation") return conversationActions;
+    if (p2View.kind === "conversation") return conversationActionsFor("p3");
     if (podContext) return podTopBarRight;
     return null;
   })();
@@ -1406,26 +1430,18 @@ function Pods() {
           hasLighterFont
         />
       );
-    if (p3View?.kind === "citation")
+    if (p3View !== null && p3View.kind !== "conversation")
       return (
-        <Breadcrumbs
-          items={[{ label: p3View.citation.title }]}
-          size="sm"
-          hasLighterFont
-        />
+        <Breadcrumbs items={[{ label: p3Label }]} size="sm" hasLighterFont />
       );
     return null;
   })();
 
   const p3TopBarRight =
-    p3View?.kind === "conversation" ? conversationActions : null;
+    p3View?.kind === "conversation" ? conversationActionsFor("p4") : null;
 
-  const p4TopBarLeft = p4Citation ? (
-    <Breadcrumbs
-      items={[{ label: p4Citation.title }]}
-      size="sm"
-      hasLighterFont
-    />
+  const p4TopBarLeft = p4View ? (
+    <Breadcrumbs items={[{ label: p4Label }]} size="sm" hasLighterFont />
   ) : null;
 
   // ── Sidebar (Nav) top bar ─────────────────────────────────────────────────
@@ -1475,7 +1491,7 @@ function Pods() {
                 onClick={() => {
                   setP2View({ kind: "welcome" });
                   setP3View(null);
-                  setP4Citation(null);
+                  setP4View(null);
                 }}
               />
             </div>
@@ -1612,7 +1628,7 @@ function Pods() {
                         conversationId: conversation.id,
                       });
                       setP3View(null);
-                      setP4Citation(null);
+                      setP4View(null);
                     }}
                   />
                 ))}
@@ -1694,7 +1710,7 @@ function Pods() {
                                       spaceId: space.id,
                                     });
                                     setP3View(null);
-                                    setP4Citation(null);
+                                    setP4View(null);
                                     setPodBrowseSearch("");
                                   }}
                                 >
@@ -1796,7 +1812,7 @@ function Pods() {
                           conversationId: c.id,
                         });
                         setP3View(null);
-                        setP4Citation(null);
+                        setP4View(null);
                       }}
                     />
                   ))}
@@ -1818,7 +1834,7 @@ function Pods() {
                               conversationId: c.id,
                             });
                             setP3View(null);
-                            setP4Citation(null);
+                            setP4View(null);
                           }}
                         />
                       ))}
@@ -1842,7 +1858,7 @@ function Pods() {
                               conversationId: c.id,
                             });
                             setP3View(null);
-                            setP4Citation(null);
+                            setP4View(null);
                           }}
                         />
                       ))}
@@ -1866,7 +1882,7 @@ function Pods() {
                               conversationId: c.id,
                             });
                             setP3View(null);
-                            setP4Citation(null);
+                            setP4View(null);
                           }}
                         />
                       ))}
@@ -1929,7 +1945,7 @@ function Pods() {
               e.stopPropagation();
               setP2View({ kind: "profile" });
               setP3View(null);
-              setP4Citation(null);
+              setP4View(null);
             }}
           />
           <DropdownMenuItem
@@ -1999,13 +2015,17 @@ function Pods() {
           {p2Content}
         </PanelLayoutPanel>
 
-        {/* P3 — Level 2: conversation from space, or citation from P2 conversation */}
+        {/* P3 — Level 2: conversation from a space (takes focus), or a side
+            panel from the P2 conversation (sizing per its kind) */}
         <PanelLayoutPanel
           label={p3Label}
+          sizingType={p3SizingType}
+          // Any file view gets fullscreen, wherever it was opened from.
+          fullscreenEnabled={isFileView(p3View)}
           isOpen={p3View !== null}
           onClose={() => {
             setP3View(null);
-            setP4Citation(null);
+            setP4View(null);
           }}
           topBarLeft={p3TopBarLeft}
           topBarRight={p3TopBarRight}
@@ -2013,12 +2033,13 @@ function Pods() {
           {p3Content}
         </PanelLayoutPanel>
 
-        {/* P4 — Level 3: citation / attachment (never takes focus) */}
+        {/* P4 — Level 3: citation / file / files / credits */}
         <PanelLayoutPanel
           label={p4Label}
-          sizingType="secondary"
-          isOpen={p4Citation !== null}
-          onClose={() => setP4Citation(null)}
+          sizingType={p4SizingType}
+          fullscreenEnabled={isFileView(p4View)}
+          isOpen={p4View !== null}
+          onClose={() => setP4View(null)}
           topBarLeft={p4TopBarLeft}
         >
           {p4Content}
