@@ -13,7 +13,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   frames_v2: {
     description: "Enable Frames v2",
-    stage: "dust_only",
+    stage: "self_serve",
     owner: "fontanierh",
   },
   advanced_notion_management: {
