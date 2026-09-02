@@ -59,6 +59,13 @@ describe("GPT 5.6 model configurations", () => {
       output: 20.0,
       cache_creation_input_tokens: 5.0,
       cache_read_input_tokens: 0.4,
+      long_context: {
+        prompt_token_threshold: 272_001,
+        input: 8.0,
+        output: 30.0,
+        cache_creation_input_tokens: 10.0,
+        cache_read_input_tokens: 0.8,
+      },
     });
     expect(
       OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.tokenPricing
