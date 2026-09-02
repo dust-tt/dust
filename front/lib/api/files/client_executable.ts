@@ -7,7 +7,10 @@ import {
   getFileContent,
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
-import { withLegacyFrameMutationLock } from "@app/lib/api/frames/operation_lock";
+import {
+  withLegacyFrameMutationLock,
+  withLegacyFrameMutationResultLock,
+} from "@app/lib/api/frames/operation_lock";
 import {
   diffAuthorizedFileRefs,
   fetchShareableFileAllowlistState,
@@ -15,6 +18,7 @@ import {
 } from "@app/lib/api/viz/authorized_file_access";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
+import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -58,6 +62,45 @@ function validateFileTitle({
     });
   }
   return new Ok(undefined);
+}
+
+type ClientExecutableMutationError = {
+  message: string;
+  tracked: boolean;
+};
+
+async function withLockedLegacyFrameMutation<T>(
+  auth: Authenticator,
+  fileId: string,
+  mutation: (
+    file: FileResource,
+    contentType: InteractiveContentFileContentType
+  ) => Promise<Result<T, ClientExecutableMutationError>>
+): Promise<Result<T, ClientExecutableMutationError>> {
+  const result = await withLegacyFrameMutationResultLock(fileId, async () => {
+    const fresh = await FileResource.fetchById(auth, fileId);
+    if (!fresh) {
+      return new Err({ message: `File not found: ${fileId}`, tracked: false });
+    }
+    if (!isInteractiveContentType(fresh.contentType)) {
+      return new Err({
+        message:
+          `File '${fileId}' is no longer a legacy interactive content file; ` +
+          "edit its Frames v2 source instead.",
+        tracked: false,
+      });
+    }
+    return mutation(fresh, fresh.contentType);
+  });
+  if (result.isErr()) {
+    return isLockAcquisitionTimeoutError(result.error)
+      ? new Err({
+          message: "Another Frame operation is in progress; retry shortly.",
+          tracked: false,
+        })
+      : new Err(result.error);
+  }
+  return result;
 }
 
 export async function createClientExecutableFile(
@@ -311,40 +354,34 @@ export async function renameClientExecutableFile(
     renamedByAgentConfigurationId?: string;
   }
 ): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
-  const fileResource = await FileResource.fetchById(auth, fileId);
-  if (!fileResource) {
-    return new Err({ message: `File not found: ${fileId}`, tracked: false });
-  }
+  return withLockedLegacyFrameMutation(
+    auth,
+    fileId,
+    async (fileResource, contentType) => {
+      const fileNameValidationResult = validateFileTitle({
+        fileName: newFileName,
+        mimeType: contentType,
+      });
+      if (fileNameValidationResult.isErr()) {
+        return fileNameValidationResult;
+      }
 
-  if (!isInteractiveContentType(fileResource.contentType)) {
-    return new Err({
-      message: `File '${fileId}' is not an interactive content file (content type: ${fileResource.contentType})`,
-      tracked: false,
-    });
-  }
+      await fileResource.rename(newFileName);
 
-  const fileNameValidationResult = validateFileTitle({
-    fileName: newFileName,
-    mimeType: fileResource.contentType,
-  });
-  if (fileNameValidationResult.isErr()) {
-    return fileNameValidationResult;
-  }
+      if (
+        renamedByAgentConfigurationId &&
+        fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+          renamedByAgentConfigurationId
+      ) {
+        await fileResource.setUseCaseMetadata(auth, {
+          ...fileResource.useCaseMetadata,
+          lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
+        });
+      }
 
-  await fileResource.rename(newFileName);
-
-  if (
-    renamedByAgentConfigurationId &&
-    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-      renamedByAgentConfigurationId
-  ) {
-    await fileResource.setUseCaseMetadata(auth, {
-      ...fileResource.useCaseMetadata,
-      lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
-    });
-  }
-
-  return new Ok(fileResource);
+      return new Ok(fileResource);
+    }
+  );
 }
 
 export async function getClientExecutableFileContent(
@@ -421,23 +458,20 @@ export async function revertClientExecutableFileChanges(
 ): Promise<
   Result<{ fileResource: FileResource }, { tracked: boolean; message: string }>
 > {
-  const fileResource = await FileResource.fetchById(auth, fileId);
-  if (!fileResource) {
-    return new Err({ tracked: true, message: "File not found" });
-  }
-
-  const revertResult = await fileResource.revert(auth, {
-    revertedByAgentConfigurationId,
-  });
-
-  if (revertResult.isErr()) {
-    return new Err({
-      tracked: false,
-      message: revertResult.error,
+  return withLockedLegacyFrameMutation(auth, fileId, async (fileResource) => {
+    const revertResult = await fileResource.revert(auth, {
+      revertedByAgentConfigurationId,
     });
-  }
 
-  return new Ok({ fileResource });
+    if (revertResult.isErr()) {
+      return new Err({
+        tracked: false,
+        message: revertResult.error,
+      });
+    }
+
+    return new Ok({ fileResource });
+  });
 }
 
 export async function getClientExecutableFileShareUrl(

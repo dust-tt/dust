@@ -1,6 +1,9 @@
+import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { frameV2ContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -102,6 +105,30 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
 
     expect(response.status).toBe(200);
     expect((await response.json()).file.fileName).toBe("new-name.pdf");
+  });
+
+  it("rejects renaming a stable Frame identity after conversion", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 1024,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: "conv" },
+      mountFilePath: `w/${workspace.sId}/conversations/conv/files/Frame/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const response = await patchRename(workspace, file.sId, {
+      fileName: "Legacy.tsx",
+    });
+
+    expect(response.status).toBe(409);
+    const reloaded = await FileResource.fetchById(auth, file.sId);
+    expect(reloaded?.fileName).toBe(FRAME_MANIFEST_FILE);
   });
 
   it("should deny non-manager from renaming non-project files", async () => {

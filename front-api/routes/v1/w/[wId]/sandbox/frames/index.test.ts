@@ -1,6 +1,7 @@
 // Legacy Frame publishing runs esbuild, whose TextEncoder invariant requires Node rather than jsdom.
 // @vitest-environment node
 
+import { revertClientExecutableFileChanges } from "@app/lib/api/files/client_executable";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -537,6 +538,30 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(
       await FileResource.fetchById(context.auth, context.frame.sId)
     ).toBeNull();
+  });
+
+  it("rejects legacy revert after the stable Frame identity converts", async () => {
+    const context = await setupLegacyFrameConversion();
+    const response = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+    expect(response.status, await response.text()).toBe(200);
+
+    const revertResult = await revertClientExecutableFileChanges(context.auth, {
+      fileId: context.frame.sId,
+      revertedByAgentConfigurationId: "agent",
+    });
+
+    expect(revertResult.isErr() && revertResult.error).toMatchObject({
+      message: expect.stringContaining("edit its Frames v2 source instead"),
+      tracked: false,
+    });
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.fileName).toBe(FRAME_MANIFEST_FILE);
+    expect(frame?.mountFilePath).toBe(context.manifestMountFilePath);
   });
 
   it("rejects deletion while conversion recovery is pending", async () => {
