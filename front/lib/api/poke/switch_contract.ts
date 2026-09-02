@@ -479,11 +479,13 @@ async function persistSeatFloors(
     if (!isMembershipSeatType(seatType)) {
       continue;
     }
-    if (seat.selected && seat.minSeats > 0) {
+    const maxSeats = seat.maxSeats ?? null;
+    if (seat.selected && (seat.minSeats > 0 || maxSeats !== null)) {
       const result = await WorkspaceSeatLimitResource.upsert({
         workspace,
         seatType,
         minSeats: seat.minSeats,
+        maxSeats,
       });
       if (result.isErr()) {
         return new Err(
