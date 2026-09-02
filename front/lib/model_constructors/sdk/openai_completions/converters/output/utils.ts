@@ -122,7 +122,7 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
-      yield openaiStreamErrorToErrorEvent(metadata, err);
+      yield openaiStreamErrorToErrorEvent(metadata, err, "Fireworks");
       return;
     }
     if (result.done) {

@@ -361,12 +361,14 @@ function responseErrorToErrorEvent(
 
 // Maps any error thrown by the OpenAI SDK while streaming into a unified
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
-export function streamErrorToErrorEvent(
-  metadata: EndpointMetadata,
-  error: unknown
-): ErrorEvent {
-  return openaiStreamErrorToErrorEvent(metadata, error);
+export function makeStreamErrorToErrorEvent(
+  providerName: string
+): OutputEventConverters["streamErrorToErrorEvent"] {
+  return (metadata, error) =>
+    openaiStreamErrorToErrorEvent(metadata, error, providerName);
 }
+
+export const streamErrorToErrorEvent = makeStreamErrorToErrorEvent("OpenAI");
 
 // -- Composite: a completed output item → unified events --
 

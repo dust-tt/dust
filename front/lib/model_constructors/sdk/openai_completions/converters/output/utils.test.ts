@@ -17,6 +17,10 @@ const metadata: EndpointMetadata = {
   model: "glm-5p2",
 };
 
+function streamErrorToErrorEvent(metadata: EndpointMetadata, error: unknown) {
+  return openaiStreamErrorToErrorEvent(metadata, error, "Fireworks");
+}
+
 const llmMetadata: LLMClientMetadata = {
   clientId: "fireworks",
   inferenceProvider: "fireworks",
@@ -24,7 +28,7 @@ const llmMetadata: LLMClientMetadata = {
   modelId: "accounts/fireworks/models/glm-5p2",
 };
 
-describe("openaiStreamErrorToErrorEvent", () => {
+describe("streamErrorToErrorEvent", () => {
   it.each([
     [400, "invalid_request_error", "dust"],
     [422, "invalid_request_error", "dust"],
@@ -35,14 +39,14 @@ describe("openaiStreamErrorToErrorEvent", () => {
     [503, "overloaded_error", "provider"],
   ] as const)("maps HTTP %i to %s from %s", (status, expectedType, errorSource) => {
     const err = new APIError(status, {}, "http failure", undefined);
-    const result = openaiStreamErrorToErrorEvent(metadata, err);
+    const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe(expectedType);
     expect(result.content.errorSource).toBe(errorSource);
   });
 
   it("maps a generic 5xx status to server_error from the provider", () => {
     const err = new APIError(500, {}, "kaboom", undefined);
-    const result = openaiStreamErrorToErrorEvent(metadata, err);
+    const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("server_error");
     expect(result.content.errorSource).toBe("provider");
   });
@@ -57,7 +61,7 @@ describe("openaiStreamErrorToErrorEvent", () => {
       "generation failed",
       undefined
     );
-    const result = openaiStreamErrorToErrorEvent(metadata, err);
+    const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("unknown_error");
     expect(result.content.errorSource).toBe("provider");
     expect(convertToOldEvent(result, llmMetadata)).toMatchObject({
@@ -73,7 +77,7 @@ describe("openaiStreamErrorToErrorEvent", () => {
       "too many tokens",
       undefined
     );
-    const result = openaiStreamErrorToErrorEvent(metadata, err);
+    const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("unknown_error");
     expect(result.content.errorSource).toBe("provider");
     expect(convertToOldEvent(result, llmMetadata)).toMatchObject({
@@ -84,7 +88,7 @@ describe("openaiStreamErrorToErrorEvent", () => {
 
   it("maps APIConnectionTimeoutError to a retryable timeout_error without blaming the provider", () => {
     const err = new APIConnectionTimeoutError({ message: "request timed out" });
-    const result = openaiStreamErrorToErrorEvent(metadata, err);
+    const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("timeout_error");
     expect(result.content.errorSource).toBe("unknown");
     expect(convertToOldEvent(result, llmMetadata)).toMatchObject({
@@ -95,21 +99,21 @@ describe("openaiStreamErrorToErrorEvent", () => {
 
   it("maps an unrecognized 4xx status to a Dust invalid_request_error", () => {
     const err = new APIError(418, {}, "teapot", undefined);
-    const result = openaiStreamErrorToErrorEvent(metadata, err);
+    const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("invalid_request_error");
     expect(result.content.errorSource).toBe("dust");
   });
 
   it("maps APIConnectionError to a network_error without blaming the provider", () => {
     const err = new APIConnectionError({ message: "connection reset" });
-    const result = openaiStreamErrorToErrorEvent(metadata, err);
+    const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("network_error");
     expect(result.content.errorSource).toBe("unknown");
     expect(result.content.originalError).toBe(err);
   });
 
   it("does not attribute a client abort to the provider", () => {
-    const result = openaiStreamErrorToErrorEvent(
+    const result = streamErrorToErrorEvent(
       metadata,
       new APIUserAbortError({ message: "cancelled" })
     );
@@ -123,14 +127,14 @@ describe("openaiStreamErrorToErrorEvent", () => {
         code: "UND_ERR_SOCKET",
       }),
     });
-    const result = openaiStreamErrorToErrorEvent(metadata, err);
+    const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("network_error");
     expect(result.content.errorSource).toBe("unknown");
     expect(result.content.message).toContain("UND_ERR_SOCKET");
   });
 
   it("serializes a Fireworks socket termination as a retryable network error", () => {
-    const event = openaiStreamErrorToErrorEvent(
+    const event = streamErrorToErrorEvent(
       metadata,
       new TypeError("terminated", {
         cause: Object.assign(new Error("other side closed"), {
@@ -150,7 +154,7 @@ describe("openaiStreamErrorToErrorEvent", () => {
   });
 
   it("serializes a client abort as a non-retryable unknown error", () => {
-    const event = openaiStreamErrorToErrorEvent(
+    const event = streamErrorToErrorEvent(
       metadata,
       new APIUserAbortError({ message: "cancelled" })
     );
@@ -166,7 +170,7 @@ describe("openaiStreamErrorToErrorEvent", () => {
   });
 
   it("does not attribute an arbitrary exception to the provider", () => {
-    const result = openaiStreamErrorToErrorEvent(
+    const result = streamErrorToErrorEvent(
       metadata,
       new SyntaxError("unexpected token")
     );
