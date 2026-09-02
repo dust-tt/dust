@@ -157,7 +157,6 @@ export function GroupsUsageTable({
                 <GroupModelTierPickerDropdown
                   owner={owner}
                   groupId={info.row.original.groupId}
-                  readOnly={readOnly}
                 />
               ),
               enableSorting: false,

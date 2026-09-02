@@ -803,7 +803,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "stateful_conversation_window"
   | "run_tools_from_prompt"
   | "usage_data_api"
-  | "usage_page_read_only"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
