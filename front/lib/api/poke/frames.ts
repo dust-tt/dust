@@ -27,6 +27,9 @@ import { removeNulls } from "@app/types/shared/utils/general";
 export type PokeFrameListItem = {
   sId: string;
   fileName: string;
+  // Manifest name and description of the active publication; null until first publish.
+  name: string | null;
+  description: string | null;
   status: FileStatus;
   mountFilePath: string | null;
   activePublicationId: string | null;
@@ -62,6 +65,8 @@ function toPokeFrameListItem(
   return {
     sId: frame.sId,
     fileName: frame.fileName,
+    name: frame.useCaseMetadata?.frameName ?? null,
+    description: frame.useCaseMetadata?.frameDescription ?? null,
     status: frame.status,
     mountFilePath: frame.mountFilePath,
     activePublicationId: frame.useCaseMetadata?.activePublicationId ?? null,

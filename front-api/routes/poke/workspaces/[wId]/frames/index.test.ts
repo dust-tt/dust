@@ -22,6 +22,8 @@ describe("GET /api/poke/workspaces/:wId/frames", () => {
     expect(data.items[0]).toMatchObject({
       sId: frame.sId,
       fileName: "manifest.json",
+      name: "Task List",
+      description: "Track tasks.",
       status: "ready",
       activePublicationId: "publication-1",
       functionCount: 1,

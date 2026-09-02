@@ -167,7 +167,11 @@ describe("buildAndPublishFramePublication", () => {
   it("validates UI and Tailwind without writing a publication", async () => {
     const { auth, conversation, frame } = await setup();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
-    await frame.setActiveFramePublication(activePublicationId);
+    await frame.setActiveFramePublication({
+      publicationId: activePublicationId,
+      name: "Task List",
+      description: "Track tasks.",
+    });
 
     const result = await validateFramePublication(auth, {
       conversation,
@@ -430,7 +434,11 @@ describe("buildAndPublishFramePublication", () => {
   it("keeps the active publication when the UI build fails", async () => {
     const { auth, conversation, frame } = await setup();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
-    await frame.setActiveFramePublication(activePublicationId);
+    await frame.setActiveFramePublication({
+      publicationId: activePublicationId,
+      name: "Task List",
+      description: "Track tasks.",
+    });
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,

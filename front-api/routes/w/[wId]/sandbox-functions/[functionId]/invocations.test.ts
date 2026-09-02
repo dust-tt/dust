@@ -563,7 +563,11 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       frame,
       publicationId: nextPublicationId,
     });
-    await frame.setActiveFramePublication(nextPublicationId);
+    await frame.setActiveFramePublication({
+      publicationId: nextPublicationId,
+      name: "Task List",
+      description: "Track tasks.",
+    });
     const staleInvocation = await postInvocation({
       workspaceId: workspace.sId,
       functionIdOrSlug: sandboxFunction.sId,
@@ -1296,7 +1300,11 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       frame,
       publicationId: "publication-2",
     });
-    await frame.setActiveFramePublication("publication-2");
+    await frame.setActiveFramePublication({
+      publicationId: "publication-2",
+      name: "Task List",
+      description: "Track tasks.",
+    });
     vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
       undefined
     );
@@ -1559,7 +1567,11 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       frame,
       publicationId: "publication-2",
     });
-    await frame.setActiveFramePublication("publication-2");
+    await frame.setActiveFramePublication({
+      publicationId: "publication-2",
+      name: "Task List",
+      description: "Track tasks.",
+    });
     vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
       undefined
     );
