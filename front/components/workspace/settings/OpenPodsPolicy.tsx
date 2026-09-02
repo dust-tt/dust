@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 
-const OPEN_PODS_POLICIES = [
+export const OPEN_PODS_POLICIES = [
   {
     value: "private_and_open",
     label: "Restricted and open Pods",
@@ -25,8 +25,9 @@ const OPEN_PODS_POLICIES = [
   },
 ] as const;
 
-const LABEL = "Restricted and Open Pods";
-const DESCRIPTION = "Whether members are allowed to create open pods";
+export const OPEN_PODS_LABEL = "Restricted and Open Pods";
+export const OPEN_PODS_DESCRIPTION =
+  "Whether members are allowed to create open pods";
 
 type OpenPodPolicy = (typeof OPEN_PODS_POLICIES)[number];
 
@@ -40,8 +41,8 @@ export function OpenPodPolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <GovernanceSettingRowLayout
-      label={LABEL}
-      description={DESCRIPTION}
+      label={OPEN_PODS_LABEL}
+      description={OPEN_PODS_DESCRIPTION}
       action={
         <OpenPodPolicyDropdown
           selectedPolicy={selectedPolicy}

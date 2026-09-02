@@ -13,13 +13,9 @@ import { Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
 
 interface ModelTiersSettingsCardProps {
   owner: LightWorkspaceType;
-  readOnly: boolean;
 }
 
-export function ModelTiersSettingsCard({
-  owner,
-  readOnly,
-}: ModelTiersSettingsCardProps) {
+export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
   const {
     maxTierName: workspaceMaxTierName,
     isWorkspaceAllowedModelTiersLoading,
@@ -53,7 +49,6 @@ export function ModelTiersSettingsCard({
                   tierName: value as ModelsTierName,
                 });
               }}
-              readOnly={readOnly}
               isLoading={isWorkspaceAllowedModelTiersLoading}
               isMutating={isWorkspaceAllowedModelTierMutating}
             />
@@ -65,9 +60,7 @@ export function ModelTiersSettingsCard({
           action={
             <SliderToggle
               selected={isRestrictedModelsForPublishedAgentsEnabled}
-              disabled={
-                readOnly || isRestrictedModelsForPublishedAgentsChanging
-              }
+              disabled={isRestrictedModelsForPublishedAgentsChanging}
               onClick={() => void doTogglePublishedAgentsRestrictedModels()}
             />
           }

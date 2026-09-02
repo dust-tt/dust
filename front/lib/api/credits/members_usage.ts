@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
 import {
   microCreditsToCredits,
@@ -27,12 +28,10 @@ import type {
 import {
   getCachedDefaultCapThresholdsBySeatType,
   getCachedPerUserCapAlertIds,
+  USER_AWU_WARNING_PERCENTAGE,
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
-import {
-  getCachedCustomerPerUserCreditBalances,
-  listMetronomeSeatBalances,
-} from "@app/lib/metronome/client";
+import { getCachedCustomerPerUserCreditBalances } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   getCreditTypeAwuId,
@@ -43,11 +42,14 @@ import { getPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { SeatData } from "@app/lib/metronome/seats";
-import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
+import {
+  getCachedSeatBalances,
+  getCachedSeatDataByUserId,
+} from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   getFairUseAwuCreditsStatus,
-  isUserAwuWarned,
+  isUserAwuWarnedByMetronome,
 } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -66,7 +68,10 @@ import {
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { CreditUsageStatus } from "@app/types/api/credits/usage_status";
+import type {
+  CreditUsageStatus,
+  CreditUsageTarget,
+} from "@app/types/api/credits/usage_status";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
@@ -145,6 +150,9 @@ export type MemberUsageType = {
   // Where `spendLimitAwuCredits` comes from: a user-specific `override`, the
   // seat-type `default`, or `none` (no cap configured / unlimited).
   spendLimitSource: EffectiveSpendLimitSource;
+  // Name of the group behind `spendLimitAwuCredits` when `spendLimitSource`
+  // is `"group"`. Null for every other source.
+  spendLimitGroupName: string | null;
   // Id of the Metronome alert backing the effective cap (override or default),
   // for deep-linking to the dashboard. Null when uncapped.
   spendLimitAlertId: string | null;
@@ -159,9 +167,15 @@ export type MemberUsageType = {
   // Per-user credit state machine state (personal-credits → pool → capped
   // progression) persisted on the membership. Surfaced for debugging.
   creditState: UserCreditState;
-  // Whether the user has consumed ≥ 80% of their effective limit. Driven by
-  // the nearLimit Redis flag (see user_block.ts). Poke-only.
+  // Whether the user has consumed ≥ 80% of their effective limit. With the
+  // rate-cap flag on, derived from the Redis rate-limiter counter; with it off,
+  // from the Metronome nearLimit flag (see user_block.ts). Poke-only.
   nearLimit: boolean;
+  // Classifies seat-allowance consumption against how far the billing cycle
+  // has elapsed: "elevated"/"critical" mean the member is burning through
+  // their seat allowance faster than a linear pace would predict. Poke-only
+  // (null otherwise, or when the billing cycle can't be resolved).
+  seatUsageTarget: CreditUsageTarget | null;
   // Per-user fair-use AWU credit usage (credits, with decimals) backed by the
   // microCredit rate-limit counter. Applies to non-credit-based plans
   // (free/trial) where a fair-use limit is set. Null when the plan carries no
@@ -218,7 +232,19 @@ export const MembersUsagePaginationSchema = z.object({
   // the search index; every other column is sorted in-app over the full
   // matching set (see resolveMembersUsagePageUsers).
   orderColumn: z
-    .enum(["name", "email", "consumedAwuCredits", "seatType", "creditState"])
+    .enum([
+      "name",
+      "email",
+      // Legacy usage page only: sorts by total consumed credits. Kept
+      // alongside `consumedFromPoolAwuCredits`, which sorts by pool-only
+      // consumption for the compact (Poke) variant.
+      // TODO(avervaet, 2026-09-01): remove once the app page and Poke page usage tables are uniformized.
+      "consumedAwuCredits",
+      "consumedFromPoolAwuCredits",
+      "seatType",
+      "creditState",
+      "seatUsage",
+    ])
     .catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
   // Optional seat-type filter. A base seat type (e.g. "pro") matches its
@@ -682,6 +708,43 @@ async function fetchPerUserUsageCreditsForMembersTable({
   }
 }
 
+async function fetchConsumedAwuCreditsFromMetronomeByUserId({
+  workspaceId,
+  metronomeCustomerId,
+  metronomeContractId,
+  users,
+}: {
+  workspaceId: string;
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
+  users: { sId: string; seatType: MembershipSeatType | null }[];
+}): Promise<Map<string, number>> {
+  if (users.length === 0) {
+    return new Map();
+  }
+  const metronomeUserIdById = new Map(
+    users.map((u) => [
+      u.sId,
+      u.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId,
+    ])
+  );
+  const usageByMetronomeUserId = await fetchPerUserUsageCreditsForMembersTable({
+    workspaceId,
+    metronomeCustomerId,
+    metronomeContractId,
+    userIds: [...metronomeUserIdById.values()],
+  });
+  const consumedByUserId = new Map<string, number>();
+  for (const u of users) {
+    const metronomeUserId = metronomeUserIdById.get(u.sId)!;
+    consumedByUserId.set(
+      u.sId,
+      usageByMetronomeUserId.get(metronomeUserId) ?? 0
+    );
+  }
+  return consumedByUserId;
+}
+
 /** Exported for testing. */
 export async function fetchSeatDataForMembersTable({
   metronomeCustomerId,
@@ -693,26 +756,26 @@ export async function fetchSeatDataForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId) {
     return new Map();
   }
-  try {
-    const seatData = await getCachedSeatDataByUserId({
-      metronomeCustomerId,
-      contractId: metronomeContractId,
-    });
-    // null: another process holds the fetch lock (skipIfLocked). Degrade
-    // rather than piling a duplicate Metronome fan-out on top.
-    if (!seatData) {
-      return new Map();
-    }
-    return new Map(Object.entries(seatData));
-  } catch (err) {
+  const seatDataResult = await getCachedSeatDataByUserId({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+  });
+  if (seatDataResult.isErr()) {
     // No uncached fallback: a failing loader means Metronome is already under
     // pressure, and refetching would amplify it (see the 429 storm of 2026-08).
     logger.warn(
-      { err: normalizeError(err), metronomeCustomerId },
+      { err: seatDataResult.error, metronomeCustomerId },
       "[MembersUsage] Failed to read cached seat data, degrading to empty map"
     );
     return new Map();
   }
+  const seatData = seatDataResult.value;
+  // null: another process holds the fetch lock (skipIfLocked). Degrade
+  // rather than piling a duplicate Metronome fan-out on top.
+  if (!seatData) {
+    return new Map();
+  }
+  return new Map(Object.entries(seatData));
 }
 
 // Live per-seat AWU balance remaining for paid (seat-managed) seats, keyed by
@@ -733,21 +796,25 @@ async function fetchSeatBalancesForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId || userIds.length === 0) {
     return new Map();
   }
-  const result = await listMetronomeSeatBalances({
+  const balanceByUserId = new Map<string, number>();
+  const balancesResult = await getCachedSeatBalances({
     metronomeCustomerId,
     metronomeContractId,
     seatIds: userIds,
   });
-  const balanceByUserId = new Map<string, number>();
-  if (result.isErr()) {
+  if (balancesResult.isErr()) {
     logger.warn(
-      { err: result.error, metronomeCustomerId },
+      { err: balancesResult.error, metronomeCustomerId },
       "[MembersUsage] Failed to fetch seat balances, degrading to empty map"
     );
     return balanceByUserId;
   }
+  const balances = balancesResult.value;
+  if (balances === null) {
+    return balanceByUserId;
+  }
   const awuCreditTypeId = getCreditTypeAwuId();
-  for (const seat of result.value) {
+  for (const seat of balances) {
     const awu = seat.balances.find((b) => b.credit_type_id === awuCreditTypeId);
     if (awu) {
       balanceByUserId.set(seat.seat_id, awu.balance);
@@ -799,11 +866,11 @@ async function fetchFreeSeatCreditsForMembersTable({
 }
 
 export async function sumActiveMembersPoolConsumedCredits({
-  workspace,
+  auth,
   metronomeCustomerId,
   metronomeContractId,
 }: {
-  workspace: LightWorkspaceType;
+  auth: Authenticator;
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
 }): Promise<number | null> {
@@ -812,7 +879,7 @@ export async function sumActiveMembersPoolConsumedCredits({
   }
 
   const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace,
+    workspace: auth.getNonNullableWorkspace(),
   });
   if (memberships.length === 0) {
     return 0;
@@ -826,15 +893,17 @@ export async function sumActiveMembersPoolConsumedCredits({
     return user ? [{ sId: user.sId, seatType: m.seatType ?? null }] : [];
   });
 
-  const [usageByMetronomeUserId, { freeStartingByUserId }, seatDataByUserId] =
+  // This function itself runs inside an outer Promise.all (getAwuPoolCurrentCycleUncached)
+  // alongside pure external calls, so the three fetchers below must stay Metronome/Redis-only.
+  // If one of them ever needs a DB read, pull it out and sequence it before this Promise.all
+  // instead of adding it here.
+  const [consumedByUserId, { freeStartingByUserId }, seatDataByUserId] =
     await Promise.all([
-      fetchPerUserUsageCreditsForMembersTable({
-        workspaceId: workspace.sId,
+      fetchConsumedAwuCreditsFromMetronomeByUserId({
+        workspaceId: auth.getNonNullableWorkspace().sId,
         metronomeCustomerId,
         metronomeContractId,
-        userIds: members.map((m) =>
-          m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
-        ),
+        users: members,
       }),
       fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
       fetchSeatDataForMembersTable({
@@ -845,12 +914,7 @@ export async function sumActiveMembersPoolConsumedCredits({
 
   let sumConsumedFromPoolAwuCredits = 0;
   for (const member of members) {
-    const metronomeUserId =
-      member.seatType === "free"
-        ? toFreeMetronomeUserId(member.sId)
-        : member.sId;
-    const totalConsumedCredits =
-      usageByMetronomeUserId.get(metronomeUserId) ?? 0;
+    const totalConsumedCredits = consumedByUserId.get(member.sId) ?? 0;
     const freeStartingBalanceAwu =
       member.seatType === "free"
         ? (freeStartingByUserId.get(member.sId) ?? null)
@@ -1439,17 +1503,18 @@ export async function getMemberUsage({
     return { member: null };
   }
 
-  const [groupNamesByUserModelId, groupCapByUserModelId] = await Promise.all([
-    GroupResource.listGroupNamesByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: [userResource.id],
-      groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
-    }),
-    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: [userResource.id],
-    }),
-  ]);
+  const [groupNamesByUserModelId, maxPoolCapGroupByUserModelId] =
+    await Promise.all([
+      GroupResource.listGroupNamesByUserModelIdInWorkspace({
+        workspace,
+        userModelIds: [userResource.id],
+        groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+      }),
+      GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+        workspace,
+        userModelIds: [userResource.id],
+      }),
+    ]);
 
   const metronomeUserId =
     membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
@@ -1510,14 +1575,19 @@ export async function getMemberUsage({
   // allowance, it just has no pool headroom on top. There's no default cap alert
   // for free (normalizeToPoolLimitSeatType is null), so we supply it explicitly.
   // Use the member's real free-credit total (which a rep may have raised) rather
-  // than the constant.
+  // than the constant. "none" seats have no seat and no pool access, so their
+  // cap is explicitly 0 rather than falling through to an unlimited `null`.
   const effectiveDefaultAwuCredits =
-    membership.seatType === "free" ? effectiveAllocationAwu : defaultAwuCredits;
+    membership.seatType === "free"
+      ? effectiveAllocationAwu
+      : membership.seatType === "none"
+        ? 0
+        : defaultAwuCredits;
 
   // Max group cap (pool-only) + seat allowance, matching override/default units.
   // Only pool-bearing seats (pro/max/workspace) get a group cap.
-  const groupPoolCapAwuCredits =
-    groupCapByUserModelId.get(userResource.id) ?? null;
+  const maxPoolCapGroup = maxPoolCapGroupByUserModelId.get(userResource.id);
+  const groupPoolCapAwuCredits = maxPoolCapGroup?.capAwuCredits ?? null;
   const groupCapAwuCredits =
     groupPoolCapAwuCredits !== null && normalizedSeatType !== null
       ? groupPoolCapAwuCredits +
@@ -1559,12 +1629,17 @@ export async function getMemberUsage({
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource,
+    spendLimitGroupName:
+      spendLimitSource === "group"
+        ? (maxPoolCapGroup?.groupName ?? null)
+        : null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
     freeCreditLowAlert: null,
     freeCreditEmptyAlert: null,
     creditState: membership.creditState,
     nearLimit: false,
+    seatUsageTarget: null,
   };
 
   return {
@@ -1772,6 +1847,7 @@ async function resolveMembersUsagePageUsers({
   );
 
   const sortKeyByUserId = new Map<string, number | string>();
+  const overageLimitByUserId = new Map<string, number>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
@@ -1787,6 +1863,94 @@ async function resolveMembersUsagePageUsers({
       });
       for (const u of allUsers) {
         sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
+      }
+      break;
+    }
+    case "consumedFromPoolAwuCredits": {
+      const freeSeatUserIds = allUsers.flatMap((u) =>
+        membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
+      );
+      const creditUsageConfig =
+        await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const [
+        consumedByUserId,
+        { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
+        freeSeatCredits,
+      ] = await Promise.all([
+        fetchConsumedAwuCreditsFromMetronomeByUserId({
+          workspaceId: workspace.sId,
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
+          users: allUsers.map((u) => ({
+            sId: u.sId,
+            seatType: membershipByUserModelId.get(u.id)?.seatType ?? null,
+          })),
+        }),
+        fetchEffectivePerUserSpendLimits({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          workspaceId: workspace.sId,
+          defaultPoolCapAwuCredits:
+            creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
+          includeAlertLinks: false,
+        }),
+        freeSeatUserIds.length > 0
+          ? fetchFreeSeatCreditsForMembersTable({
+              metronomeCustomerId: workspace.metronomeCustomerId,
+            })
+          : Promise.resolve({
+              freeBalanceByUserId: new Map<string, number>(),
+              freeStartingByUserId: new Map<string, number>(),
+            }),
+      ]);
+      const groupCapByUserModelId =
+        await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+          workspace,
+          userModelIds: allUsers.map((u) => u.id),
+        });
+      const { freeStartingByUserId } = freeSeatCredits;
+      for (const u of allUsers) {
+        const membership = membershipByUserModelId.get(u.id);
+        const seatType = membership?.seatType ?? null;
+        const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+        const seatAllowance = normalizedSeatType
+          ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+          : 0;
+        const totalConsumed = consumedByUserId.get(u.sId) ?? 0;
+        const freeStartingBalanceAwu =
+          seatType === "free"
+            ? (freeStartingByUserId.get(u.sId) ?? null)
+            : null;
+        const effectiveAllocationAwu = freeStartingBalanceAwu ?? seatAllowance;
+        const consumedFromPoolAwuCredits = Math.max(
+          0,
+          totalConsumed - effectiveAllocationAwu
+        );
+        sortKeyByUserId.set(u.sId, consumedFromPoolAwuCredits);
+
+        const overrideAwuCredits =
+          membership?.poolCapOverrideAwuCredits !== null &&
+          membership?.poolCapOverrideAwuCredits !== undefined &&
+          seatType !== "none"
+            ? membership.poolCapOverrideAwuCredits + seatAllowance
+            : null;
+        const groupPoolCapAwuCredits = groupCapByUserModelId.get(u.id) ?? null;
+        const groupCapAwuCredits =
+          groupPoolCapAwuCredits !== null && normalizedSeatType !== null
+            ? groupPoolCapAwuCredits + seatAllowance
+            : null;
+        const defaultAwuCredits = normalizedSeatType
+          ? (defaultCapAwuCreditsBySeatType[normalizedSeatType] ?? 0)
+          : 0;
+        const effectiveSpendLimitAwuCredits =
+          resolveEffectiveSpendLimitAwuCredits({
+            overrideAwuCredits,
+            groupCapAwuCredits,
+            defaultAwuCredits,
+          });
+        overageLimitByUserId.set(
+          u.sId,
+          effectiveSpendLimitAwuCredits - seatAllowance
+        );
       }
       break;
     }
@@ -1808,6 +1972,66 @@ async function resolveMembersUsagePageUsers({
       }
       break;
     }
+    case "seatUsage": {
+      const freeSeatUserIds = allUsers.flatMap((u) =>
+        membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
+      );
+      const [consumedByUserId, seatDataByUserId, freeSeatCredits] =
+        await Promise.all([
+          fetchConsumedAwuCreditsFromMetronomeByUserId({
+            workspaceId: workspace.sId,
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            metronomeContractId:
+              auth.subscription()?.metronomeContractId ?? null,
+            users: allUsers.map((u) => ({
+              sId: u.sId,
+              seatType: membershipByUserModelId.get(u.id)?.seatType ?? null,
+            })),
+          }),
+          fetchSeatDataForMembersTable({
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            metronomeContractId:
+              auth.subscription()?.metronomeContractId ?? null,
+          }),
+          freeSeatUserIds.length > 0
+            ? fetchFreeSeatCreditsForMembersTable({
+                metronomeCustomerId: workspace.metronomeCustomerId,
+              })
+            : Promise.resolve({
+                freeBalanceByUserId: new Map<string, number>(),
+                freeStartingByUserId: new Map<string, number>(),
+              }),
+        ]);
+      const { freeBalanceByUserId, freeStartingByUserId } = freeSeatCredits;
+      for (const u of allUsers) {
+        const seatType = membershipByUserModelId.get(u.id)?.seatType ?? null;
+        const awuAllocation = seatDataByUserId.get(u.sId)?.awuAllocation ?? 0;
+        const freeStartingBalanceAwu =
+          seatType === "free"
+            ? (freeStartingByUserId.get(u.sId) ?? null)
+            : null;
+        const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
+        const consumed =
+          seatType === "free"
+            ? Math.max(
+                0,
+                effectiveAllocationAwu - (freeBalanceByUserId.get(u.sId) ?? 0)
+              )
+            : Math.min(
+                consumedByUserId.get(u.sId) ?? 0,
+                effectiveAllocationAwu
+              );
+        sortKeyByUserId.set(
+          u.sId,
+          effectiveAllocationAwu > 0
+            ? Math.min(100, (consumed / effectiveAllocationAwu) * 100)
+            : consumed > 0
+              ? 100
+              : 0
+        );
+      }
+      break;
+    }
     default:
       assertNever(orderColumn);
   }
@@ -1822,6 +2046,12 @@ async function resolveMembersUsagePageUsers({
         : String(keyA).localeCompare(String(keyB));
     if (cmp !== 0) {
       return cmp * directionFactor;
+    }
+    // Tiebreak on the highest overage limit, always descending
+    const overageLimitA = overageLimitByUserId.get(a.sId) ?? 0;
+    const overageLimitB = overageLimitByUserId.get(b.sId) ?? 0;
+    if (overageLimitA !== overageLimitB) {
+      return overageLimitB - overageLimitA;
     }
     // Stable, direction-independent tiebreaker so pages don't reshuffle.
     const nameA = (a.fullName() || a.name).toLowerCase();
@@ -1980,7 +2210,7 @@ export async function getMembersUsage({
       userModelIds: users.map((u) => u.id),
       groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     }),
-    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+    GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
       workspace,
       userModelIds: users.map((u) => u.id),
     }),
@@ -2004,13 +2234,28 @@ export async function getMembersUsage({
       userIds: memberships.map((m) => m.userId),
     });
 
-  // Bulk-fetch near-limit flags from Redis (poke-only, gated on includeAlertLinks).
+  // With the rate-cap flag on, the per-user "near limit" (≥ 80% of the effective
+  // cap) is derived from the Redis rate-limiter counter below; with it off, from
+  // the Metronome near-limit flag. Matches the flag-aware enforcement in
+  // `lib/api/credits/access_control.ts`.
+  const featureFlags = await getFeatureFlags(auth);
+  const spendCapEnabled = featureFlags.includes(
+    "enforce_user_spend_limit_rate_cap"
+  );
+
+  // Bulk-fetch Metronome near-limit flags from Redis (poke-only). Still needed
+  // when the rate-cap flag is on: free/none seats have no cycle cap for the
+  // rate-limiter counter to model, so they fall back to this flag (driven by
+  // their lifetime credit-balance alert).
   const nearLimitByUserId = includeAlertLinks
     ? new Map(
         await concurrentExecutor(
           users,
           async (u) =>
-            [u.sId, await isUserAwuWarned(workspace.sId, u.sId)] as const,
+            [
+              u.sId,
+              await isUserAwuWarnedByMetronome(workspace.sId, u.sId),
+            ] as const,
           { concurrency: 8 }
         )
       )
@@ -2019,13 +2264,15 @@ export async function getMembersUsage({
   // Bulk-fetch the Redis fixed-window spend-cap counter per user (poke-only), to
   // display beside the Elasticsearch-derived usage. The counter is bucketed on
   // the current contract billing cycle — resolve the window once, then read each
-  // user's key.
+  // user's key. The same cycle also backs the per-member seat-usage pace below.
   const rateLimiterSpendByUserId = new Map<string, number>();
+  let billingCycle: BillingCycle | null = null;
   if (includeAlertLinks) {
     const periodResult = await getCachedMetronomeCurrentBillingPeriod(
       workspace.sId
     );
     if (periodResult.isOk() && periodResult.value) {
+      billingCycle = periodResult.value;
       const bounds = makeSpendLimitCycleWindowBounds(
         periodResult.value.cycleStart,
         periodResult.value.cycleEnd
@@ -2058,21 +2305,17 @@ export async function getMembersUsage({
   // Bulk-fetch each user's Metronome-side per-user AWU consumption (poke-only),
   // shown next to the ES and rate-limiter figures to spot divergence. Reuses the
   // resilient wrapper (empty map when Metronome isn't configured or on error).
-  const metronomeConsumedByUserId = new Map<string, number>();
-  if (includeAlertLinks) {
-    const usage = await fetchPerUserUsageCreditsForMembersTable({
-      workspaceId: workspace.sId,
-      metronomeCustomerId: metronomeCustomerId ?? null,
-      metronomeContractId,
-      userIds: users.flatMap((u) => [u.sId, toFreeMetronomeUserId(u.sId)]),
-    });
-    for (const u of users) {
-      const membership = membershipByUserId.get(u.id);
-      const metronomeUserId =
-        membership?.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId;
-      metronomeConsumedByUserId.set(u.sId, usage.get(metronomeUserId) ?? 0);
-    }
-  }
+  const metronomeConsumedByUserId = includeAlertLinks
+    ? await fetchConsumedAwuCreditsFromMetronomeByUserId({
+        workspaceId: workspace.sId,
+        metronomeCustomerId: metronomeCustomerId ?? null,
+        metronomeContractId,
+        users: users.map((u) => ({
+          sId: u.sId,
+          seatType: membershipByUserId.get(u.id)?.seatType ?? null,
+        })),
+      })
+    : new Map<string, number>();
 
   // Bulk-fetch each user's fair-use AWU credit usage (poke-only). This is a
   // bounded page (≤ 150) of Redis reads, so batch with `concurrentExecutor`.
@@ -2169,15 +2412,20 @@ export async function getMembersUsage({
     // allowance (allowance + 0 pool) — the cap includes the allowance like every
     // other seat, it just has no pool headroom on top. Use the member's real
     // free-credit total (which a rep may have raised) rather than the constant.
+    // "none" seats have no seat and no pool access, so their cap is explicitly
+    // 0 rather than falling through to an unlimited `null`.
     const effectiveDefaultAwuCredits =
       membership.seatType === "free"
         ? effectiveAllocationAwu
-        : defaultAwuCredits;
+        : membership.seatType === "none"
+          ? 0
+          : defaultAwuCredits;
 
     // Max group cap (pool-only, stored on the group) + seat allowance, to match
     // the units of override/default above. Only pool-bearing seats
     // (pro/max/workspace) get a group cap; free/none have no pool.
-    const groupPoolCapAwuCredits = groupCapByUserModelId.get(u.id) ?? null;
+    const maxPoolCapGroup = groupCapByUserModelId.get(u.id);
+    const groupPoolCapAwuCredits = maxPoolCapGroup?.capAwuCredits ?? null;
     const groupCapAwuCredits =
       groupPoolCapAwuCredits !== null && normalizedSeatType !== null
         ? groupPoolCapAwuCredits +
@@ -2185,6 +2433,11 @@ export async function getMembersUsage({
         : null;
 
     const spendLimitSource = resolveEffectiveSpendLimitSource({
+      overrideAwuCredits,
+      groupCapAwuCredits,
+      defaultAwuCredits: effectiveDefaultAwuCredits,
+    });
+    const effectiveSpendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
       overrideAwuCredits,
       groupCapAwuCredits,
       defaultAwuCredits: effectiveDefaultAwuCredits,
@@ -2210,6 +2463,55 @@ export async function getMembersUsage({
         ? (freeCreditAlertIds?.get(metronomeUserId) ?? null)
         : null;
 
+    const rateLimiterSpendAwuCredits = includeAlertLinks
+      ? (rateLimiterSpendByUserId.get(userId) ?? 0)
+      : null;
+    // Poke-only near-limit. With the rate-cap flag on, use the rate-limiter
+    // counter ≥ 80% of the effective cap — but only for seats that actually
+    // have a cycle cap. Free/none seats (no effective cap) have no counter to
+    // model their lifetime balance, so they fall back to the Metronome
+    // near-limit flag, same as when the flag is off.
+    const hasCycleCap =
+      effectiveSpendLimitAwuCredits !== null &&
+      effectiveSpendLimitAwuCredits > 0;
+    const nearLimit =
+      includeAlertLinks &&
+      (spendCapEnabled && hasCycleCap
+        ? (rateLimiterSpendAwuCredits ?? 0) >=
+          USER_AWU_WARNING_PERCENTAGE * effectiveSpendLimitAwuCredits
+        : (nearLimitByUserId.get(userId) ?? false));
+
+    // Seat-allowance consumption used for pace classification below: free
+    // seats track their live Metronome balance instead of the period spend
+    // (same distinction the seat-usage ring draws client-side). A missing
+    // entry means the balance read failed (the fetcher degrades to an empty
+    // map on Metronome failure), not that the balance is zero, so it must
+    // stay unknown rather than be treated as fully consumed.
+    const freeBalanceAwu = freeBalanceByUserId.get(userId) ?? null;
+    const seatAllowanceAwu =
+      effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null;
+    const seatConsumedAwu =
+      membership.seatType === "free"
+        ? seatAllowanceAwu !== null && freeBalanceAwu !== null
+          ? Math.max(0, seatAllowanceAwu - freeBalanceAwu)
+          : null
+        : consumedFromAllowanceAwuCredits;
+    // Free seats have a lifetime, non-renewing grant, not a recurring
+    // billing-cycle allowance, so the billing-cycle pace classification
+    // (on-track/orange/critical) doesn't apply to them.
+    const seatUsageTarget =
+      billingCycle &&
+      membership.seatType !== "free" &&
+      seatAllowanceAwu !== null &&
+      seatConsumedAwu !== null
+        ? (computeCreditUsageStatus({
+            consumedAwuCredits: seatConsumedAwu,
+            limitAwuCredits: seatAllowanceAwu,
+            billingCycle,
+            nowMs: Date.now(),
+          })?.target ?? null)
+        : null;
+
     return [
       {
         sId: userId,
@@ -2224,7 +2526,7 @@ export async function getMembersUsage({
           effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
         seatBalanceAwu:
           membership.seatType === "free"
-            ? (freeBalanceByUserId.get(userId) ?? 0)
+            ? freeBalanceAwu
             : effectiveAllocationAwu > 0
               ? (seatBalanceByUserId.get(userId) ?? null)
               : null,
@@ -2237,25 +2539,24 @@ export async function getMembersUsage({
         nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
-        spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
-          overrideAwuCredits,
-          groupCapAwuCredits,
-          defaultAwuCredits: effectiveDefaultAwuCredits,
-        }),
-        rateLimiterSpendAwuCredits: includeAlertLinks
-          ? (rateLimiterSpendByUserId.get(userId) ?? 0)
-          : null,
+        spendLimitAwuCredits: effectiveSpendLimitAwuCredits,
+        rateLimiterSpendAwuCredits,
         metronomeConsumedAwuCredits: includeAlertLinks
           ? (metronomeConsumedByUserId.get(userId) ?? 0)
           : null,
         spendLimitSource,
+        spendLimitGroupName:
+          spendLimitSource === "group"
+            ? (maxPoolCapGroup?.groupName ?? null)
+            : null,
         spendLimitAlertId,
         spendLimitWarningAlertId,
         freeCreditLowAlert: freeCreditAlerts?.low ?? null,
         freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
         creditState: membership.creditState,
-        nearLimit: nearLimitByUserId.get(userId) ?? false,
+        nearLimit,
         fairUse: fairUseByUserId.get(userId) ?? null,
+        seatUsageTarget,
       },
     ];
   });

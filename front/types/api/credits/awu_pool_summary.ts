@@ -1,5 +1,11 @@
 import type { SupportedCurrency } from "@app/types/currency";
 
+export type AwuPoolCycleBreakdown = {
+  cycleStartMs: number | null;
+  cycleEndMs: number | null;
+  consumedCredits: number;
+};
+
 // Current-cycle figures only — cheap to compute (bounded ledger lookup),
 // meant to render before cycle history is available.
 export type AwuPoolCurrentCycleResponseBody = {
@@ -24,4 +30,11 @@ export type AwuPoolCurrentCycleResponseBody = {
   otherConsumedCredits: number | null;
 };
 
-export type AwuPoolSummaryResponseBody = AwuPoolCurrentCycleResponseBody;
+export type AwuPoolCycleHistoryResponseBody = {
+  // Per-cycle pool consumption, most recent first
+  cycleBreakdown: AwuPoolCycleBreakdown[];
+  excessCycleBreakdown: AwuPoolCycleBreakdown[];
+};
+
+export type AwuPoolSummaryResponseBody = AwuPoolCurrentCycleResponseBody &
+  AwuPoolCycleHistoryResponseBody;

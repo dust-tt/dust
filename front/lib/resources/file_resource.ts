@@ -120,6 +120,7 @@ import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
+  InferAttributes,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -230,6 +231,60 @@ export class FileResource extends BaseResource<FileModel> {
       },
     });
     return frames.map((frame) => new this(this.model, frame.get()));
+  }
+
+  /**
+   * Poke's workspace Frames list. Keyset paginated on `updatedAt` (epoch ms in `lastValue`),
+   * backed by the partial index on ("workspaceId", "updatedAt" DESC) for this content type.
+   */
+  static async listFrameV2ForWorkspacePaginated(
+    auth: Authenticator,
+    {
+      limit,
+      // Poke's own Frames table re-fetches from offset 0 with a growing `limit` instead (see
+      // `usePokeFrames`); `lastValue` stays wired for other API consumers that want true keyset
+      // pagination.
+      lastValue,
+      orderDirection,
+    }: {
+      limit: number;
+      lastValue?: string;
+      orderDirection: "asc" | "desc";
+    }
+  ): Promise<{
+    frames: FileResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const where: WhereOptions<InferAttributes<FileModel>> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      contentType: frameV2ContentType,
+    };
+
+    if (lastValue) {
+      const timestampMs = parseInt(lastValue, 10);
+      if (!Number.isNaN(timestampMs)) {
+        where.updatedAt = {
+          [orderDirection === "desc" ? Op.lt : Op.gt]: new Date(timestampMs),
+        };
+      }
+    }
+
+    const rows = await this.model.findAll({
+      where,
+      order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
+      limit: limit + 1,
+    });
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    const last = page.at(-1);
+
+    return {
+      frames: page.map((row) => new this(this.model, row.get())),
+      hasMore,
+      lastValue: last ? `${last.updatedAt.getTime()}` : null,
+    };
   }
 
   static override async fetchByModelId(
@@ -1006,7 +1061,11 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   async setActiveFramePublication(
-    publicationId: string,
+    {
+      publicationId,
+      name,
+      description,
+    }: { publicationId: string; name: string; description: string },
     transaction?: Transaction
   ) {
     return this.update(
@@ -1014,6 +1073,8 @@ export class FileResource extends BaseResource<FileModel> {
         useCaseMetadata: {
           ...this.useCaseMetadata,
           activePublicationId: publicationId,
+          frameName: name,
+          frameDescription: description,
         },
       },
       transaction

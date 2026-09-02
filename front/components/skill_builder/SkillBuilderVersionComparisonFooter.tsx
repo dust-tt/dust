@@ -29,6 +29,14 @@ export function SkillBuilderVersionComparisonFooter() {
     setValue("fileAttachments", compareVersion.fileAttachments, {
       shouldDirty: true,
     });
+    // The version's hand-picked spaces.
+    // The spaces the current knowledge/tools/skills require are recomputed on save
+    // and are unaffected by this.
+    setValue(
+      "additionalSpaces",
+      compareVersion.manuallyRequestedSpaceIds ?? [],
+      { shouldDirty: true }
+    );
     exitDiffMode();
   };
 

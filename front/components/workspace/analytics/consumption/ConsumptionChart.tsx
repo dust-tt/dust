@@ -4,8 +4,13 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
 import {
+  consumptionGranularityLabel,
+  DEFAULT_CONSUMPTION_GRANULARITY,
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
@@ -262,7 +267,7 @@ export function ConsumptionDailyChart({
   );
   return (
     <ChartContainer
-      title="Daily consumption"
+      title="Credits over time"
       additionalControls={additionalControls}
       isLoading={isTimeseriesLoading}
       errorMessage={
@@ -350,6 +355,7 @@ export function ConsumptionDailyChart({
 export interface ConsumptionChartProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  granularity?: ConsumptionGranularity;
   dimension: ConsumptionDimension;
   filter?: ConsumptionScopeFilter;
   analyticsScope?: ConsumptionAnalyticsScope;
@@ -360,6 +366,7 @@ export interface ConsumptionChartProps {
 function WorkspaceConsumptionDailyChart({
   workspaceId,
   period,
+  granularity = DEFAULT_CONSUMPTION_GRANULARITY,
   dimension,
   filter,
   analyticsScope,
@@ -369,7 +376,8 @@ function WorkspaceConsumptionDailyChart({
     useConsumptionTimeseries({
       workspaceId,
       period,
-      mode: "daily",
+      granularity,
+      mode: "period",
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
@@ -393,6 +401,7 @@ interface WorkspaceConsumptionBurnUpChartProps
 function WorkspaceConsumptionBurnUpChart({
   workspaceId,
   period,
+  granularity = DEFAULT_CONSUMPTION_GRANULARITY,
   filter,
   analyticsScope,
   disabled,
@@ -407,10 +416,6 @@ function WorkspaceConsumptionBurnUpChart({
   const isFiltered = Object.values(filter ?? {}).some(
     (values) => values.length > 0
   );
-  // A cap only exists on a billing cycle, when there's no filter. Gating on the
-  // selection rather than on the response alone keeps a previous cycle's cap —
-  // kept around by `keepPreviousData` while the new request lands — from drawing
-  // a target over a period that has none.
   const capCredits =
     period.kind === "cycle" && !isFiltered
       ? (overview?.creditUsage?.capCredits ?? null)
@@ -420,6 +425,7 @@ function WorkspaceConsumptionBurnUpChart({
     useConsumptionTimeseries({
       workspaceId,
       period,
+      granularity,
       mode: "cumulative",
       filter,
       analyticsScope,
@@ -440,13 +446,14 @@ function WorkspaceConsumptionBurnUpChart({
 export function ConsumptionChart({
   workspaceId,
   period,
+  granularity = DEFAULT_CONSUMPTION_GRANULARITY,
   dimension,
   filter,
   analyticsScope,
   disabled,
   onModeChange,
 }: ConsumptionChartProps) {
-  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
+  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("period");
 
   const handleModeChange = (nextMode: ConsumptionTimeseriesMode) => {
     onModeChange?.(nextMode);
@@ -459,9 +466,9 @@ export function ConsumptionChart({
         <h2 className="text-base font-semibold text-foreground">Consumption</h2>
         <ButtonsSwitchList value={mode} size="xs">
           <ButtonsSwitch
-            value="daily"
-            label="Daily"
-            onClick={() => handleModeChange("daily")}
+            value="period"
+            label={consumptionGranularityLabel(granularity)}
+            onClick={() => handleModeChange("period")}
           />
           <ButtonsSwitch
             value="cumulative"
@@ -474,6 +481,7 @@ export function ConsumptionChart({
         <WorkspaceConsumptionBurnUpChart
           workspaceId={workspaceId}
           period={period}
+          granularity={granularity}
           filter={filter}
           analyticsScope={analyticsScope}
           disabled={disabled}
@@ -482,6 +490,7 @@ export function ConsumptionChart({
         <WorkspaceConsumptionDailyChart
           workspaceId={workspaceId}
           period={period}
+          granularity={granularity}
           dimension={dimension}
           filter={filter}
           analyticsScope={analyticsScope}

@@ -35,6 +35,7 @@ function TestMenu({ onSelectModel, onOpenChange }: TestMenuProps) {
           isSelected={false}
           isDefault={false}
           lockReason={null}
+          isDegraded={false}
           effort={MODEL.defaultReasoningEffort}
           effortStops={getEffortStops(MODEL, { lockPremiumEfforts: false })}
           onSelectModel={onSelectModel}

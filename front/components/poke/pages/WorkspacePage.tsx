@@ -5,6 +5,8 @@ import { CreditsDataTable } from "@app/components/poke/credits/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
+import { FramesDataTable } from "@app/components/poke/frames/table";
+import { GovernanceTab } from "@app/components/poke/governance/GovernanceTab";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
@@ -296,6 +298,7 @@ export function WorkspacePage() {
               <TabsTrigger value="datasources" label="Data Sources" />
               <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
+              <TabsTrigger value="frames" label="Frames" />
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP" />
               <TabsTrigger value="pods" label="Pods" />
@@ -327,6 +330,9 @@ export function WorkspacePage() {
             <TabsContent value="pods">
               <ProjectsDataTable owner={owner} loadOnInit />
             </TabsContent>
+            <TabsContent value="frames">
+              <FramesDataTable owner={owner} loadOnInit />
+            </TabsContent>
             <TabsContent value="spaces">
               <SpaceDataTable owner={owner} loadOnInit />
             </TabsContent>
@@ -354,6 +360,12 @@ export function WorkspacePage() {
               />
             </TabsContent>
 
+            <TabsContent value="governance">
+              <GovernanceTab
+                owner={owner}
+                workosEnvironmentId={workosEnvironmentId}
+              />
+            </TabsContent>
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} />
             </TabsContent>

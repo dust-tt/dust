@@ -2,7 +2,10 @@ import { PersonalUsageCard } from "@app/components/credits/PersonalUsageCard";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionChart } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
-import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import {
+  ConsumptionGranularitySelector,
+  ConsumptionPeriodSelector,
+} from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
@@ -15,8 +18,14 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_GRANULARITY,
+  DEFAULT_CONSUMPTION_PERIOD,
+} from "@app/lib/analytics/consumption_period";
 import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import {
   TRACKING_ACTIONS,
@@ -49,6 +58,9 @@ export function UserAnalyticsPopover({
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
+  const [granularity, setGranularity] = useState<ConsumptionGranularity>(
+    DEFAULT_CONSUMPTION_GRANULARITY
+  );
   const [dimension, setDimension] = useState<ConsumptionDimension>(
     DEFAULT_CONSUMPTION_DIMENSION
   );
@@ -80,10 +92,14 @@ export function UserAnalyticsPopover({
               disabled={!open}
             />
           </div>
-          <div className="col-span-2 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+          <div className="col-span-2 row-start-2 flex items-center gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-1">
             <ConsumptionPeriodSelector
               period={period}
               onPeriodChange={setPeriod}
+            />
+            <ConsumptionGranularitySelector
+              granularity={granularity}
+              onGranularityChange={setGranularity}
             />
           </div>
           <DialogClose asChild>
@@ -139,6 +155,7 @@ export function UserAnalyticsPopover({
                 <ConsumptionChart
                   workspaceId={owner.sId}
                   period={period}
+                  granularity={granularity}
                   dimension={dimension}
                   filter={scopeFilter}
                   analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}

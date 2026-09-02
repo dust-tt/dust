@@ -15,12 +15,14 @@ import type {
   SandboxPreSleepCheck,
 } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -231,6 +233,34 @@ export class FrameSandboxAdapter {
     frame: FrameSandboxOwner
   ): Promise<SandboxResource | null> {
     return this.fetchSandboxByFrame(auth, frame);
+  }
+
+  /** One query for the whole page of Frames — the Poke list must not wake or fetch per row. */
+  static async fetchSandboxStatusesByFrameModelIds(
+    auth: Authenticator,
+    frameModelIds: ModelId[]
+  ): Promise<Map<ModelId, SandboxStatus>> {
+    if (frameModelIds.length === 0) {
+      return new Map();
+    }
+
+    const links = await SandboxOwnerModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        frameFileModelId: { [Op.in]: frameModelIds },
+      },
+      include: [{ association: "sandbox", required: true }],
+    });
+
+    return new Map(
+      removeNulls(
+        links.map((link) =>
+          link.frameFileModelId
+            ? ([link.frameFileModelId, link.sandbox.status] as const)
+            : null
+        )
+      )
+    );
   }
 
   static async ensureSandboxActive(

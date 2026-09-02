@@ -517,7 +517,7 @@ describe("streamErrorToErrorEvent", () => {
     expect(result.content.originalError).toBe(err);
   });
 
-  it("maps file download failures to server_error", () => {
+  it("maps file download failures to a retryable Dust server_error", () => {
     const err = new APIError(
       400,
       {
@@ -535,7 +535,7 @@ describe("streamErrorToErrorEvent", () => {
       "server_error"
     );
     expect(streamErrorToErrorEvent(metadata, err).content.errorSource).toBe(
-      "provider"
+      "dust"
     );
   });
 
@@ -545,6 +545,8 @@ describe("streamErrorToErrorEvent", () => {
     [401, "authentication_error", "dust"],
     [403, "permission_error", "dust"],
     [404, "not_found_error", "dust"],
+    [413, "invalid_request_error", "dust"],
+    [418, "invalid_request_error", "dust"],
     [429, "rate_limit_error", "dust"],
     [503, "overloaded_error", "provider"],
   ] as const)("maps HTTP %i to %s from %s", (status, expectedType, errorSource) => {
@@ -559,13 +561,6 @@ describe("streamErrorToErrorEvent", () => {
     const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("server_error");
     expect(result.content.errorSource).toBe("provider");
-  });
-
-  it("maps an unrecognized status to unknown_error", () => {
-    const err = new APIError(418, {}, "teapot", undefined, null);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      "unknown_error"
-    );
   });
 
   // An `APIError` raised mid-stream from an SSE `error` event carries no HTTP
@@ -1643,7 +1638,11 @@ describe("batchResultToEvents", () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       type: "error",
-      content: { type: "server_error", message: "upstream blew up" },
+      content: {
+        type: "server_error",
+        message: "Server error from Anthropic: upstream blew up",
+        errorSource: "provider",
+      },
     });
   });
 

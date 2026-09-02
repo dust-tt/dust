@@ -1,5 +1,6 @@
 import { makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import config from "@app/lib/api/config";
+import { isWorkspaceProgrammaticWarningReached } from "@app/lib/api/credits/access_control";
 import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/members_usage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { getSeatPlan } from "@app/lib/api/credits/seat_plan";
@@ -14,7 +15,6 @@ import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedWorkspaceMetronomeAlerts } from "@app/lib/metronome/alerts/workspace_alerts";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
-import { isWorkspaceProgrammaticWarningReached } from "@app/lib/metronome/user_block";
 import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
 import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -291,9 +291,8 @@ export async function getPokeWorkspaceInfo(
     usageCapAlert,
     defaultAlerts,
     programmaticCreditState: workspaceResource.programmaticCreditState,
-    programmaticWarningReached: await isWorkspaceProgrammaticWarningReached(
-      owner.sId
-    ),
+    programmaticWarningReached:
+      await isWorkspaceProgrammaticWarningReached(auth),
     programmaticSpendLimitRateCapCount,
     programmaticEsConsumedAwuCredits,
     programmaticMetronomeConsumedAwuCredits,

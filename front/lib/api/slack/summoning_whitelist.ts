@@ -7,12 +7,12 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type {
   GetSlackWorkflowsResponseBody,
   SlackWorkflowType,
 } from "@app/types/api/slack/workflows";
-import { SLACK_WORKFLOW_GROUP_KINDS } from "@app/types/api/slack/workflows";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -57,6 +57,27 @@ async function fetchSlackBotDataSource(
   return new Ok({ dataSource, connectorId: dataSource.connectorId });
 }
 
+// The groups a Slack bot may be whitelisted with: the workspace groups a caller can reference
+// directly (global, provisioned, regular_manual), plus the `regular_auto` groups backing the
+// workspace spaces — a space's group is how the bot gets access to that space's agents. The other
+// `regular_auto` groups are agent and skill editor groups, which are never whitelistable.
+export async function listSlackWorkflowWhitelistableGroups(
+  auth: Authenticator
+): Promise<GroupResource[]> {
+  const workspaceGroups = await GroupResource.listAllWorkspaceGroups(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces: true,
+    includeRestricted: true,
+  });
+
+  const spaceGroups = await SpaceResource.listRegularAutoGroupsForSpaces(
+    auth,
+    spaces
+  );
+
+  return [...workspaceGroups, ...spaceGroups];
+}
+
 export async function listSlackWorkflows(
   auth: Authenticator
 ): Promise<Result<GetSlackWorkflowsResponseBody, SlackWorkflowError>> {
@@ -77,9 +98,7 @@ export async function listSlackWorkflows(
     connectorsAPI.getSlackBotSummoningWhitelist({
       connectorId: dataSourceRes.value.connectorId,
     }),
-    GroupResource.listAllWorkspaceGroups(auth, {
-      groupKinds: SLACK_WORKFLOW_GROUP_KINDS,
-    }),
+    listSlackWorkflowWhitelistableGroups(auth),
   ]);
 
   if (whitelistRes.isErr()) {
@@ -112,9 +131,7 @@ export async function allowSlackWorkflow(
   }
   const { dataSource, connectorId } = dataSourceRes.value;
 
-  const groups = await GroupResource.listAllWorkspaceGroups(auth, {
-    groupKinds: SLACK_WORKFLOW_GROUP_KINDS,
-  });
+  const groups = await listSlackWorkflowWhitelistableGroups(auth);
   const groupById = new Map(groups.map((g) => [g.sId, g]));
 
   const unknownGroupIds = groupIds.filter((sId) => !groupById.has(sId));

@@ -64,6 +64,11 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("dsbx frame create");
     expect(instructions).toContain("dsbx frame register");
     expect(instructions).toContain("dsbx frame share-link");
+    expect(instructions).toContain("dsbx frame call");
+    expect(instructions).toContain("stable Frame ID");
+    expect(instructions).toContain("additionally requires read access");
+    expect(instructions).toContain("does not test the Frame");
+    expect(instructions).toContain("dsbx frame validate");
     expect(instructions).toContain(
       "Frame sharing and use rights are configured by the user in the Dust UI"
     );
@@ -86,6 +91,28 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("### React Component Rules");
     expect(instructions).toContain("legacy Frame");
     expect(instructions).toContain("<frame>.tsx");
+    expect(instructions).toContain(
+      "Chat apps, task lists, trackers, forms, CRUD apps"
+    );
+    expect(instructions).toContain(
+      "Do not store durable application state in memory; use a Frame database"
+    );
+    expect(instructions).toContain(
+      "Use the Computer to create and edit their source"
+    );
+    expect(instructions).toContain("Do not pass the convenience aliases");
+    expect(instructions).toContain("`/files/conversation` or `/files/pod`");
+    expect(instructions).toContain(
+      "Never run concurrent file mutations against the same path"
+    );
+    expect(instructions).toContain(
+      "Do not replace an entire UI or function for a localized"
+    );
+    expect(instructions).toContain(
+      "mark required fields in a newly created table as `.notNull()`"
+    );
+    expect(instructions).toContain("shared Zod domain");
+    expect(instructions).toContain("instead of `bun build`");
     expect(instructions).toContain(
       "Other interactive-content tools remain available"
     );

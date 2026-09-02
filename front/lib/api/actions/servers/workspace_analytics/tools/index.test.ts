@@ -27,7 +27,6 @@ describe("workspace_analytics tools", () => {
     "get_agent_details",
     "get_consumption_overview",
     "get_credit_timeseries",
-    "get_usage_timeseries",
     "get_top_entities_by_credits",
     "get_top_entities_by_message_count",
     "get_top_entities_by_execution_count",

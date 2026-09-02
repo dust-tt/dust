@@ -5,12 +5,14 @@ import React, { type ComponentType } from "react";
 export interface IconProps {
   /** The SVG icon component to render; nothing is rendered when omitted. */
   visual?: ComponentType<{ className?: string }>;
-  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+  size?: "2xs" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   /** Color is inherited from text color, so set it with a `text-*` class here. */
   className?: string;
 }
 
 const IconSizes = {
+  // Badge scale: too small for a standalone glyph, use it inside DoubleIcon.
+  "2xs": "h-3 w-3",
   xs: "h-4 w-4",
   sm: "h-5 w-5",
   md: "h-6 w-6",
@@ -41,6 +43,7 @@ export function Icon({
 const sizeVariants = cva("relative", {
   variants: {
     size: {
+      xs: "h-4 w-4",
       sm: "h-5 w-5",
       md: "h-6 w-6",
       lg: "h-8 w-8 p-0.5",
@@ -52,33 +55,69 @@ const sizeVariants = cva("relative", {
   },
 });
 
-const iconSizeVariants = cva("absolute", {
+const positionVariants = cva("absolute", {
   variants: {
-    size: {
-      sm: "bottom-0 right-0",
-      md: "bottom-0 right-0",
-      lg: "bottom-0 right-0",
-      xl: "bottom-0 right-0",
+    position: {
+      "bottom-right": "bottom-0 right-0",
+      "top-right": "right-0 top-0 -translate-y-1/4 translate-x-1/4",
     },
   },
   defaultVariants: {
-    size: "lg",
+    position: "bottom-right",
   },
 });
 
-export interface DoubleIconProps extends VariantProps<typeof sizeVariants> {
+// Inset by a hair because the status glyphs (InfoCircle, AlertCircle,
+// CheckCircle...) draw their own ring just inside the icon box.
+const fillVariants = cva("absolute inset-px rounded-full", {
+  variants: {
+    color: {
+      info: "bg-info-500",
+      warning: "bg-warning-500",
+      success: "bg-success-500",
+      highlight: "bg-highlight-500",
+    },
+  },
+});
+
+type DoubleIconSize = "xs" | "sm" | "md" | "lg" | "xl";
+
+const MAIN_ICON_SIZE: Record<DoubleIconSize, IconProps["size"]> = {
+  xs: "xs",
+  sm: "xs",
+  md: "sm",
+  lg: "md",
+  xl: "lg",
+};
+
+const SECONDARY_ICON_SIZE: Record<DoubleIconSize, IconProps["size"]> = {
+  xs: "2xs",
+  sm: "xs",
+  md: "xs",
+  lg: "xs",
+  xl: "sm",
+};
+
+export interface DoubleIconProps
+  extends VariantProps<typeof sizeVariants>,
+    VariantProps<typeof positionVariants> {
   /** The primary icon, rendered at the full size. */
   mainIcon: React.ComponentType;
-  /** The smaller badge icon, overlaid on the bottom-right corner. */
+  /** The smaller badge icon, overlaid on a corner of the main icon. */
   secondaryIcon: React.ComponentType;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: DoubleIconSize;
+  /** Corner the badge sits in; defaults to the bottom-right. */
+  position?: "bottom-right" | "top-right";
+  /** Fills the badge with a semantic color and knocks the glyph out in white. */
+  secondaryColor?: "info" | "warning" | "success" | "highlight";
   className?: string;
 }
 
 /**
- * Renders a main icon with a smaller secondary icon overlaid on its
- * bottom-right corner, e.g. a tool icon badged with its provider logo. Use it
- * when a glyph needs a provider or status badge; for a plain glyph use Icon.
+ * Renders a main icon with a smaller secondary icon overlaid on one of its
+ * corners, e.g. a tool icon badged with its provider logo, or a model icon
+ * badged with an `info` status. Pass `secondaryColor` to turn the badge into a
+ * filled status disc. For a plain glyph use Icon.
  *
  * @summary Icon with an overlaid badge icon.
  */
@@ -87,35 +126,32 @@ export const DoubleIcon = ({
   secondaryIcon,
   className,
   size = "lg",
+  position = "bottom-right",
+  secondaryColor,
 }: DoubleIconProps) => {
   return (
     <div className={cn(sizeVariants({ size }), className)}>
       <Icon
         className="text-foreground"
-        size={
-          size === "sm"
-            ? "xs"
-            : size === "md"
-              ? "sm"
-              : size === "lg"
-                ? "md"
-                : "lg"
-        }
+        size={MAIN_ICON_SIZE[size]}
         visual={mainIcon}
       />
-      <Icon
-        size={
-          size === "sm"
-            ? "xs"
-            : size === "md"
-              ? "xs"
-              : size === "lg"
-                ? "xs"
-                : "md"
-        }
-        visual={secondaryIcon}
-        className={cn("absolute", iconSizeVariants({ size }))}
-      />
+      {secondaryColor ? (
+        <span className={cn(positionVariants({ position }), "flex")}>
+          <span className={fillVariants({ color: secondaryColor })} />
+          <Icon
+            size={SECONDARY_ICON_SIZE[size]}
+            visual={secondaryIcon}
+            className="relative text-white"
+          />
+        </span>
+      ) : (
+        <Icon
+          size={SECONDARY_ICON_SIZE[size]}
+          visual={secondaryIcon}
+          className={positionVariants({ position })}
+        />
+      )}
     </div>
   );
 };

@@ -3,7 +3,7 @@ import React from "react";
 
 import { MessageCircle01, Icon } from "../index_with_tw_base";
 
-const ICON_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
+const ICON_SIZES = ["2xs", "xs", "sm", "md", "lg", "xl", "2xl"] as const;
 
 const meta = {
   title: "Data Display/Icon",
@@ -12,7 +12,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `Renders an SVG icon component passed via **visual** at a consistent **size** (\`xs\`, \`sm\`, \`md\`, \`lg\`). Color is inherited from text color, so apply a \`text-*\` class via \`className\`.
+        component: `Renders an SVG icon component passed via **visual** at a consistent **size** (\`2xs\` through \`2xl\`). Color is inherited from text color, so apply a \`text-*\` class via \`className\`.
 
 **When to use**
 - To display a standalone glyph inside labels, buttons, list items, or status indicators.

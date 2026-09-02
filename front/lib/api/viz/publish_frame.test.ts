@@ -164,18 +164,10 @@ async function createPodFrameFile(
 }
 
 async function setupPodTestContext() {
-  const {
-    authenticator: workspaceAdminAuth,
-    workspace,
-    user,
-  } = await createResourceTest({ role: "admin" });
+  const { workspace, user } = await createResourceTest({ role: "admin" });
+  // `SpaceFactory.project` makes the creator a member of the Pod's editors group, which is what
+  // grants the user access to the Pod -- no extra group membership is needed here.
   const space = await SpaceFactory.project(workspace, user.id);
-  const [group] = await space.fetchRegularAutoGroups(workspaceAdminAuth);
-  assert(group);
-  const addMemberResult = await group.dangerouslyAddMember(workspaceAdminAuth, {
-    user: user.toJSON(),
-  });
-  assert(addMemberResult.isOk());
 
   return {
     auth: await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId),

@@ -8,6 +8,7 @@ import { amountCents } from "@app/lib/metronome/amounts";
 import {
   listMetronomeBalances,
   listMetronomeDraftInvoices,
+  listMetronomeFinalizedInvoices,
 } from "@app/lib/metronome/client";
 import {
   CREDIT_TYPE_EUR_ID,
@@ -25,13 +26,32 @@ import {
 } from "@app/lib/metronome/seat_types";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { AwuPoolCurrentCycleResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type {
+  AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryResponseBody,
+  AwuPoolSummaryResponseBody,
+} from "@app/types/api/credits/awu_pool_summary";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { isNumber } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
+import { z } from "zod";
+
+const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
+const MAX_CYCLE_HISTORY_LIMIT = 24;
+
+export const AwuPoolSummaryQuerySchema = z.object({
+  cycleHistoryLimit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_CYCLE_HISTORY_LIMIT)
+    .catch(DEFAULT_CYCLE_HISTORY_LIMIT),
+});
 
 const AUTOMATED_INVOICE_DEDUCTION_LEDGER_TYPES = new Set([
   "PREPAID_COMMIT_AUTOMATED_INVOICE_DEDUCTION",
@@ -51,16 +71,25 @@ type PoolLedgerData = {
   ledgerEntries: PoolLedgerEntry[];
 };
 
+const APPROX_CYCLE_LENGTH_DAYS = 31;
+
+// Balance listing bounded to the history the caller can actually surface
 async function getPoolLedgerData({
   metronomeCustomerId,
+  cycleHistoryLimit,
 }: {
   metronomeCustomerId: string;
+  cycleHistoryLimit: number;
 }): Promise<Result<PoolLedgerData, Error>> {
+  const startingAt = new Date(
+    Date.now() - cycleHistoryLimit * APPROX_CYCLE_LENGTH_DAYS * ONE_DAY_MS
+  );
   const balancesResult = await listMetronomeBalances(metronomeCustomerId, {
     coveringDate: null,
     onlyPoolCredits: true,
     includeArchived: true,
     includeLedgers: true,
+    startingAt,
   });
   if (balancesResult.isErr()) {
     return new Err(balancesResult.error);
@@ -95,6 +124,32 @@ function sumPoolLedgerEntriesForInvoice(
   return ledgerEntries
     .filter((entry) => entry.invoiceId === invoiceId)
     .reduce((sum, entry) => sum + Math.abs(entry.amountCredits), 0);
+}
+
+function computeCycleBreakdown({
+  finalizedInvoices,
+  ledgerEntries,
+  cycleHistoryLimit,
+}: {
+  finalizedInvoices: Invoice[];
+  ledgerEntries: PoolLedgerEntry[];
+  cycleHistoryLimit: number;
+}): AwuPoolCycleBreakdown[] {
+  return finalizedInvoices
+    .map((invoice) => ({
+      cycleStartMs: invoice.start_timestamp
+        ? new Date(invoice.start_timestamp).getTime()
+        : null,
+      cycleEndMs: invoice.end_timestamp
+        ? new Date(invoice.end_timestamp).getTime()
+        : null,
+      consumedCredits: sumPoolLedgerEntriesForInvoice(
+        ledgerEntries,
+        invoice.id
+      ),
+    }))
+    .filter((cycle) => cycle.consumedCredits > 0)
+    .slice(0, cycleHistoryLimit);
 }
 
 type MetronomeContext = {
@@ -165,6 +220,25 @@ function extractOverageFromInvoice(invoice: Invoice): {
     overageAmountCents,
     overageCurrency: overageCredits !== null ? overageCurrency : null,
   };
+}
+
+// Fallback cycle history for workspaces with no credit pool
+function computeExcessCycleBreakdown(
+  finalizedInvoices: Invoice[],
+  cycleHistoryLimit: number
+): AwuPoolCycleBreakdown[] {
+  return finalizedInvoices
+    .map((invoice) => ({
+      cycleStartMs: invoice.start_timestamp
+        ? new Date(invoice.start_timestamp).getTime()
+        : null,
+      cycleEndMs: invoice.end_timestamp
+        ? new Date(invoice.end_timestamp).getTime()
+        : null,
+      consumedCredits: extractOverageFromInvoice(invoice).overageCredits ?? 0,
+    }))
+    .filter((cycle) => cycle.consumedCredits > 0)
+    .slice(0, cycleHistoryLimit);
 }
 
 // Programmatic AWU spend against the pool, read straight from the current
@@ -253,7 +327,6 @@ const getCachedAwuPoolCurrentCycleOutcome = cacheWithRedis(
   }
 );
 
-// Header-card data only — cheap, bounded to a single cycle's ledger.
 export async function getAwuPoolCurrentCycle(
   auth: Authenticator
 ): Promise<Result<AwuPoolCurrentCycleResponseBody, AwuPoolSummaryError>> {
@@ -264,10 +337,133 @@ export async function getAwuPoolCurrentCycle(
   return new Ok(outcome.body);
 }
 
+type SerializableAwuPoolCycleHistoryOutcome =
+  | { status: "ok"; body: AwuPoolCycleHistoryResponseBody }
+  | { status: "error"; errorType: AwuPoolSummaryErrorType };
+
+async function computeAwuPoolCycleHistoryOutcome(
+  auth: Authenticator,
+  cycleHistoryLimit: number
+): Promise<SerializableAwuPoolCycleHistoryOutcome> {
+  const result = await getAwuPoolCycleHistoryUncached(auth, {
+    cycleHistoryLimit,
+  });
+  if (result.isErr()) {
+    return { status: "error", errorType: result.error.type };
+  }
+  return { status: "ok", body: result.value };
+}
+
+function cacheResolverKeyWithHistoryLimit(
+  workspaceId: string,
+  cycleHistoryLimit: number
+): string {
+  return `${workspaceId}-${cycleHistoryLimit}`;
+}
+
+const AWU_POOL_CYCLE_HISTORY_CACHE_ID = "awuPoolCycleHistory";
+const AWU_POOL_CYCLE_HISTORY_CACHE_TTL_MS = 60 * 1000;
+
+const getCachedAwuPoolCycleHistoryOutcome = cacheWithRedis(
+  computeAwuPoolCycleHistoryOutcome,
+  (auth, cycleHistoryLimit) =>
+    cacheResolverKeyWithHistoryLimit(
+      auth.getNonNullableWorkspace().sId,
+      cycleHistoryLimit
+    ),
+  {
+    cacheId: AWU_POOL_CYCLE_HISTORY_CACHE_ID,
+    ttlMs: AWU_POOL_CYCLE_HISTORY_CACHE_TTL_MS,
+  }
+);
+
+export async function getAwuPoolCycleHistory(
+  auth: Authenticator,
+  {
+    cycleHistoryLimit = DEFAULT_CYCLE_HISTORY_LIMIT,
+  }: {
+    cycleHistoryLimit?: number;
+  } = {}
+): Promise<Result<AwuPoolCycleHistoryResponseBody, AwuPoolSummaryError>> {
+  const outcome = await getCachedAwuPoolCycleHistoryOutcome(
+    auth,
+    cycleHistoryLimit
+  );
+  if (outcome.status === "error") {
+    return new Err(new AwuPoolSummaryError(outcome.errorType));
+  }
+  return new Ok(outcome.body);
+}
+
+async function getAwuPoolCycleHistoryUncached(
+  auth: Authenticator,
+  { cycleHistoryLimit }: { cycleHistoryLimit: number }
+): Promise<Result<AwuPoolCycleHistoryResponseBody, AwuPoolSummaryError>> {
+  const contextResult = resolveMetronomeContext(auth);
+  if (contextResult.isErr()) {
+    return contextResult;
+  }
+  const { metronomeCustomerId, metronomeContractId } = contextResult.value;
+
+  const [poolLedgerDataResult, finalizedInvoicesResult] = await Promise.all([
+    getPoolLedgerData({ metronomeCustomerId, cycleHistoryLimit }),
+    listMetronomeFinalizedInvoices(metronomeCustomerId, {
+      limit: cycleHistoryLimit,
+    }),
+  ]);
+
+  if (poolLedgerDataResult.isErr() || finalizedInvoicesResult.isErr()) {
+    logger.error(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        poolLedgerDataError: poolLedgerDataResult.isErr()
+          ? poolLedgerDataResult.error
+          : null,
+        invoicesError: finalizedInvoicesResult.isErr()
+          ? finalizedInvoicesResult.error
+          : null,
+      },
+      "[AwuPoolSummary] Failed to compute cycle breakdown"
+    );
+    return new Ok({ cycleBreakdown: [], excessCycleBreakdown: [] });
+  }
+
+  const cycleBreakdown = computeCycleBreakdown({
+    finalizedInvoices: finalizedInvoicesResult.value,
+    ledgerEntries: poolLedgerDataResult.value.ledgerEntries,
+    cycleHistoryLimit,
+  });
+  const excessCycleBreakdown = computeExcessCycleBreakdown(
+    finalizedInvoicesResult.value,
+    cycleHistoryLimit
+  );
+
+  return new Ok({ cycleBreakdown, excessCycleBreakdown });
+}
+
 export async function getAwuPoolSummary(
-  auth: Authenticator
-): Promise<Result<AwuPoolCurrentCycleResponseBody, AwuPoolSummaryError>> {
-  return getAwuPoolCurrentCycle(auth);
+  auth: Authenticator,
+  {
+    cycleHistoryLimit = DEFAULT_CYCLE_HISTORY_LIMIT,
+  }: {
+    cycleHistoryLimit?: number;
+  } = {}
+): Promise<Result<AwuPoolSummaryResponseBody, AwuPoolSummaryError>> {
+  const [currentCycleResult, cycleHistoryResult] = await Promise.all([
+    getAwuPoolCurrentCycle(auth),
+    getAwuPoolCycleHistory(auth, { cycleHistoryLimit }),
+  ]);
+  if (currentCycleResult.isErr()) {
+    return currentCycleResult;
+  }
+  if (cycleHistoryResult.isErr()) {
+    return cycleHistoryResult;
+  }
+  return new Ok({
+    ...currentCycleResult.value,
+    ...cycleHistoryResult.value,
+  });
 }
 
 async function getAwuPoolCurrentCycleUncached(
@@ -289,9 +485,9 @@ async function getAwuPoolCurrentCycleUncached(
   ] = await Promise.all([
     listMetronomeBalances(metronomeCustomerId),
     listMetronomeDraftInvoices(metronomeCustomerId),
-    getPoolLedgerData({ metronomeCustomerId }),
+    getPoolLedgerData({ metronomeCustomerId, cycleHistoryLimit: 1 }),
     sumActiveMembersPoolConsumedCredits({
-      workspace,
+      auth,
       metronomeCustomerId,
       metronomeContractId,
     }),

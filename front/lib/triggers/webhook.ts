@@ -1,3 +1,7 @@
+import {
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/api/credits/access_control";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { FathomClient } from "@app/lib/api/triggers/built-in-webhooks/fathom/fathom_client";
 import type { Authenticator } from "@app/lib/auth";
@@ -5,10 +9,6 @@ import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import {
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-} from "@app/lib/metronome/user_block";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -293,7 +293,7 @@ async function checkWorkspaceRateLimit({
   // depleted, no downstream message can be posted, so reject early instead of
   // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
   if (plan && isCreditPricedPlan(plan)) {
-    if (owner.metronomeCustomerId && (await isApiBlocked(owner.sId))) {
+    if (owner.metronomeCustomerId && (await isApiBlocked(auth))) {
       block = {
         status: "credits_exhausted",
         message:
@@ -307,7 +307,7 @@ async function checkWorkspaceRateLimit({
       !block &&
       owner.metronomeCustomerId &&
       trigger.executionMode === "workspace_pool" &&
-      (await isProgrammaticApiBlocked(owner.sId))
+      (await isProgrammaticApiBlocked(auth))
     ) {
       block = {
         status: "credits_exhausted",
@@ -574,8 +574,8 @@ async function storePayloadInGCS(
 
   const gcsPath = WebhookRequestResource.getGcsPath({
     workspaceId: auth.getNonNullableWorkspace().sId,
-    webhookSourceId: webhookSource.id,
-    webRequestId: webhookRequest.id,
+    webhookSourceModelId: webhookSource.id,
+    webhookRequestModelId: webhookRequest.id,
   });
 
   try {
@@ -646,8 +646,8 @@ export async function getWebhookRequestPayloadFromGCS(
     const file = bucket.file(
       WebhookRequestResource.getGcsPath({
         workspaceId: auth.getNonNullableWorkspace().sId,
-        webhookSourceId: webhookRequest.webhookSourceId,
-        webRequestId: webhookRequest.id,
+        webhookSourceModelId: webhookRequest.webhookSourceId,
+        webhookRequestModelId: webhookRequest.id,
       })
     );
     const [content] = await file.download();
@@ -852,8 +852,8 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
       if (bucket && requestCanHavePayload) {
         const gcsPath = WebhookRequestResource.getGcsPath({
           workspaceId: workspace.sId,
-          webhookSourceId: wrt.webhookRequest.webhookSourceId,
-          webRequestId: wrt.webhookRequest.id,
+          webhookSourceModelId: wrt.webhookRequest.webhookSourceId,
+          webhookRequestModelId: wrt.webhookRequest.id,
         });
 
         try {

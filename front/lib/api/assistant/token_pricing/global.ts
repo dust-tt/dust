@@ -27,6 +27,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 20.0,
     cache_creation_input_tokens: 5.0,
     cache_read_input_tokens: 0.4,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 8.0,
+      output: 30.0,
+      cache_creation_input_tokens: 10.0,
+      cache_read_input_tokens: 0.8,
+    },
   },
   // https://openai.com/api/pricing
   "gpt-5.6-terra": {
@@ -34,6 +41,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 12.0,
     cache_creation_input_tokens: 2.5,
     cache_read_input_tokens: 0.2,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 4.0,
+      output: 18.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.4,
+    },
   },
   // Verified 2026-08-19: https://developers.openai.com/api/docs/models/gpt-5.6-terra
   // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
@@ -57,6 +71,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.2,
     cache_creation_input_tokens: 0.25,
     cache_read_input_tokens: 0.02,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 0.4,
+      output: 1.8,
+      cache_creation_input_tokens: 0.5,
+      cache_read_input_tokens: 0.04,
+    },
   },
   // Verified 2026-08-21: https://developers.openai.com/api/docs/models/gpt-5.5
   "gpt-5.5": {
@@ -320,17 +341,26 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.9,
     output: 2.8,
   },
-  // Conservative: pricing is 2/12 for first 200k tokens
-  // then 4/18 beyond that.
+  // https://ai.google.dev/gemini-api/docs/pricing: 2/12 up to 200k input tokens,
+  // 4/18 beyond that.
   "gemini-3-pro-preview": {
-    input: 4,
-    output: 18,
+    input: 2,
+    output: 12,
+    long_context: {
+      prompt_token_threshold: 200_001,
+      input: 4,
+      output: 18,
+    },
   },
-  // Gemini 3.1 Pro: same pricing structure as 3 Pro (2/12 for <=200k, 4/18 for >200k)
-  // Using conservative pricing for the higher tier
+  // Gemini 3.1 Pro: same pricing structure as 3 Pro (2/12 for <=200k, 4/18 for >200k).
   "gemini-3.1-pro-preview": {
-    input: 4,
-    output: 18,
+    input: 2,
+    output: 12,
+    long_context: {
+      prompt_token_threshold: 200_001,
+      input: 4,
+      output: 18,
+    },
   },
   "gemini-3-flash-preview": {
     input: 0.5,

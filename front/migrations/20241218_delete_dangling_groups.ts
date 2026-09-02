@@ -1,3 +1,4 @@
+/*
 import { QueryTypes } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
@@ -45,3 +46,4 @@ makeScript({}, async ({ execute }) => {
     await cleanDanglingGroups(workspace, execute);
   });
 });
+*/

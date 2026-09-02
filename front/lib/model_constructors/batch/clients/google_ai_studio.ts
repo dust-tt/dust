@@ -12,6 +12,7 @@ import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/hosts";
 import { GOOGLE_LAB } from "@app/lib/model_constructors/types/labs";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   GenerateContentParameters,
@@ -68,11 +69,11 @@ export abstract class GoogleAiStudioBatch extends WithGoogleGenAIInputConverter(
   rawBatchOutputToEvents(result: InlinedResponse): NonDeltaResponseEvent[] {
     if (result.error) {
       return [
-        buildErrorEvent({
-          errorSource: "provider",
+        buildHttpStatusErrorEvent({
           metadata: this.metadata(),
-          type: "server_error",
-          message:
+          status: result.error.code,
+          provider: "Google",
+          detail:
             result.error.message ?? "The batch request failed without details.",
           originalError: result.error,
         }),
@@ -81,7 +82,7 @@ export abstract class GoogleAiStudioBatch extends WithGoogleGenAIInputConverter(
     if (!result.response) {
       return [
         buildErrorEvent({
-          errorSource: "provider",
+          errorSource: "unknown",
           metadata: this.metadata(),
           type: "unknown_error",
           message:

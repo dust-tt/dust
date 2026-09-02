@@ -1,4 +1,5 @@
 import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import type { ToolConsumptionDetailsOverride } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
 import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
@@ -8,14 +9,17 @@ import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
+import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
+import partition from "lodash/partition";
 
 /**
  * Builds the end-user explanation for one agent message. Provider and token facts stay behind this
- * interface. It uses the newest complete attribution version stored for the message and assigns
- * each direct sub-agent subtree to its originating run-agent tool. If no version covers the
- * message's current runs and tools, the exact bill remains available while details are withheld.
+ * interface. It uses the newest complete attribution version stored for the message, assigns each
+ * visible sub-agent subtree to its originating run-agent tool, and folds hidden helper sub-agents
+ * into the parent agent's work. If no version covers the message's current runs and tools, the
+ * exact bill remains available while details are withheld.
  */
 export async function getAgentMessageConsumption(
   auth: Authenticator,
@@ -98,6 +102,28 @@ export async function getAgentMessageConsumption(
     (total, subAgent) => total + subAgent.billedCredits,
     0
   );
+  const hiddenHelperActionIds = new Set<ModelId>(
+    removeNulls(
+      facts.actions.map((action) => {
+        const { toolConfiguration } = action;
+        if (!isLightServerSideMCPToolConfiguration(toolConfiguration)) {
+          return null;
+        }
+        const { childAgentId } = toolConfiguration;
+        return childAgentId && isHiddenHelperSubAgentId(childAgentId)
+          ? action.id
+          : null;
+      })
+    )
+  );
+  const [hiddenHelperSubAgents, visibleSubAgents] = partition(
+    subAgents,
+    ({ action }) => hiddenHelperActionIds.has(action.id)
+  );
+  const hiddenSubAgentBilledCredits = hiddenHelperSubAgents.reduce(
+    (total, subAgent) => total + subAgent.billedCredits,
+    0
+  );
   const totalBilledCredits = (facts.billedCredits ?? 0) + subAgentBilledCredits;
 
   const unavailableResponse: AgentMessageConsumptionResponse = {
@@ -119,8 +145,8 @@ export async function getAgentMessageConsumption(
 
   const agentConfigurationIds = [
     ...new Set(
-      subAgents.flatMap((subAgent) =>
-        subAgent.agentConfigurationId ? [subAgent.agentConfigurationId] : []
+      removeNulls(
+        visibleSubAgents.map((subAgent) => subAgent.agentConfigurationId)
       )
     ),
   ];
@@ -132,7 +158,7 @@ export async function getAgentMessageConsumption(
     ModelId,
     ToolConsumptionDetailsOverride
   >(
-    subAgents.map((subAgent) => {
+    visibleSubAgents.map((subAgent) => {
       const agentLabel = subAgent.agentConfigurationId
         ? agentLabels.get(subAgent.agentConfigurationId)
         : null;
@@ -158,6 +184,10 @@ export async function getAgentMessageConsumption(
     items: facts.items,
     runs,
     toolDetailsOverridesByActionModelId,
+    toolsAttributedToAgentWork: {
+      additionalAttributedCredits: hiddenSubAgentBilledCredits,
+      actionModelIds: hiddenHelperActionIds,
+    },
     usages,
   });
   if (!details) {

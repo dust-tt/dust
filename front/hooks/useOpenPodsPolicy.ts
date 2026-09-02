@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
@@ -11,9 +12,7 @@ interface UseOpenPodsPolicyProps {
 export function useOpenPodsPolicy({ owner }: UseOpenPodsPolicyProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
-  const [allowOpenPods, setAllowOpenPods] = useState(
-    owner.metadata?.allowOpenProjects !== false
-  );
+  const [allowOpenPods, setAllowOpenPods] = useState(areOpenPodsAllowed(owner));
 
   const doUpdateOpenPodsPolicy = async (nextValue: boolean) => {
     setIsChanging(true);

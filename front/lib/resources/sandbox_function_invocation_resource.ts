@@ -17,6 +17,7 @@ import {
 } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
+import type { SandboxFunctionInvocationErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import {
@@ -652,7 +653,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const runFunctionCheck = async (): Promise<{
         persistedFunction: SandboxFunctionModel;
         podAuthorization: SandboxFunctionAuthorization | null;
-        errorMessage: string | null;
+        error: {
+          code: SandboxFunctionInvocationErrorCode;
+          message: string;
+        } | null;
       } | null> => {
         const persistedFunction = await SandboxFunctionModel.findOne({
           where: {
@@ -671,9 +675,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           return {
             persistedFunction,
             podAuthorization: null,
-            errorMessage: user
+            error: user
               ? null
-              : "This Frame function requires a logged-in user from its workspace.",
+              : {
+                  code: "user_authentication_required",
+                  message:
+                    "This Frame function requires a logged-in user from its workspace.",
+                },
           };
         }
         const authorization = await authorizeSandboxFunctionInvocation(auth, {
@@ -684,9 +692,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         return {
           persistedFunction,
           podAuthorization: authorization,
-          errorMessage: authorization.authorized
+          error: authorization.authorized
             ? null
-            : authorization.errorMessage,
+            : {
+                code: authorization.errorCode,
+                message: authorization.errorMessage,
+              },
         };
       };
       const runEnsure = async (): Promise<
@@ -707,7 +718,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         ]);
       } else {
         functionCheck = await runFunctionCheck();
-        if (functionCheck === null || functionCheck.errorMessage !== null) {
+        if (functionCheck === null || functionCheck.error !== null) {
           ensureResult = null;
         } else {
           ensureResult = await runEnsure();
@@ -717,9 +728,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         return new Err(new Error(`The ${functionKind} no longer exists.`));
       }
       const { persistedFunction } = functionCheck;
-      if (functionCheck.errorMessage !== null) {
+      if (functionCheck.error !== null) {
         return new Err(
-          new SandboxFunctionInvocationError(functionCheck.errorMessage)
+          new SandboxFunctionInvocationError(
+            functionCheck.error.message,
+            functionCheck.error.code
+          )
         );
       }
       if (!ensureResult) {
@@ -759,7 +773,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
       if (!authorization.authorized) {
         return new Err(
-          new SandboxFunctionInvocationError(authorization.errorMessage)
+          new SandboxFunctionInvocationError(
+            authorization.errorMessage,
+            authorization.errorCode
+          )
         );
       }
 

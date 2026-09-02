@@ -26,6 +26,7 @@ import type {
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,
+  isAgentLoopDataModelNotFoundError,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -35,6 +36,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ApplicationFailure } from "@temporalio/common";
 import maxBy from "lodash/maxBy";
 import type { InferAttributes, WhereOptions } from "sequelize";
 import { fn, literal } from "sequelize";
@@ -649,6 +651,14 @@ export async function finalizeCancellation(
         "Message or conversation was deleted, exiting"
       );
       return;
+    }
+    if (isAgentLoopDataModelNotFoundError(runAgentDataRes.error)) {
+      // The selected model no longer exists. Retrying the
+      // cancel finalizer cannot recover an endpoint and would loop forever.
+      throw ApplicationFailure.nonRetryable(
+        `Failed to get run agent data: ${runAgentDataRes.error.message}`,
+        "ModelNotFound"
+      );
     }
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`

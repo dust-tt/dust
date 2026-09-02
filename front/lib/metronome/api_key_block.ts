@@ -73,7 +73,7 @@ async function getApiKeyCreditState(
   return state;
 }
 
-export async function isApiKeyCapped(
+export async function isApiKeyCappedByMetronome(
   workspaceId: string,
   keyModelId: ModelId
 ): Promise<boolean> {

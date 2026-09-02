@@ -1,11 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  getElevenLabsClient,
-  streamToBase64,
-} from "@app/lib/api/actions/servers/elevenlabs/utils";
+import { streamToBase64 } from "@app/lib/api/actions/servers/elevenlabs/utils";
 import { SOUND_STUDIO_TOOLS_METADATA } from "@app/lib/api/actions/servers/sound_studio/metadata";
+import { getElevenLabs } from "@app/lib/utils/transcribe_service";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -17,7 +15,7 @@ const handlers: ToolHandlers<typeof SOUND_STUDIO_TOOLS_METADATA> = {
     name = "sfx",
   }) => {
     try {
-      const client = getElevenLabsClient();
+      const client = getElevenLabs();
 
       const stream = await client.textToSoundEffects.convert({
         text: prompt,

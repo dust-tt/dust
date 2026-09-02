@@ -1,5 +1,7 @@
+import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { makeTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,5 +65,31 @@ describe("POST /api/w/:wId/frames/:frameId/functions/:name/invocations", () => {
         }),
       })
     );
+  });
+
+  it("reports an unavailable Frame runtime as a state conflict", async () => {
+    const { workspace, frame } = await makeTestFrameFunction();
+    vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValueOnce(
+      new Err(
+        new SandboxFunctionInvocationError(
+          "This Frame's runtime scope no longer exists.",
+          "frame_runtime_unavailable"
+        )
+      )
+    );
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/frames/${frame.sId}/functions/run-function/invocations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: { type: "frame_runtime_unavailable" },
+    });
   });
 });

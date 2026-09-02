@@ -1,11 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import {
-  fetchAgentCostStats,
-  fetchAgentOverview,
-  getAgentCostStats,
-} from "@app/lib/api/assistant/observability/overview";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -13,7 +7,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 const ParamsSchema = z.object({
   aId: z.string(),
@@ -50,59 +43,21 @@ app.get(
       });
     }
 
-    const { days, version } = ctx.req.valid("query");
-    const owner = auth.getNonNullableWorkspace();
+    const { days } = ctx.req.valid("query");
 
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: owner.sId,
-      agentId: assistant.sId,
-      days,
-      version,
-    });
-
-    const [feedbackCounts, overview, costStatsResult] = await Promise.all([
-      AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+    const feedbackCounts =
+      await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
         auth,
         assistant.sId,
         days
-      ),
-      fetchAgentOverview(baseQuery),
-      fetchAgentCostStats(auth, {
-        agentIds: [assistant.sId],
-        days,
-        version,
-      }),
-    ]);
-    const costs = getAgentCostStats(
-      costStatsResult.isOk() ? costStatsResult.value : new Map(),
-      assistant.sId
-    );
-
-    if (overview.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve agent overview: ${fromError(overview.error).toString()}`,
-        },
-      });
-    }
-
-    const { activeUsers, conversationCount, messageCount } = overview.value;
+      );
 
     return ctx.json({
-      activeUsers,
-      mentions: {
-        messageCount,
-        conversationCount,
-        timePeriodSec: days * 24 * 60 * 60,
-      },
       feedbacks: {
         positiveFeedbacks: feedbackCounts.positive,
         negativeFeedbacks: feedbackCounts.negative,
         timePeriodSec: days * 24 * 60 * 60,
       },
-      costs,
     });
   }
 );

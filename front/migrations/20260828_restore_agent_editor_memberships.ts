@@ -100,15 +100,24 @@ async function restoreWorkspaceAgentEditors(
 makeScript(
   {
     wId: { type: "string", required: false },
+    fromWorkspace: {
+      type: "number",
+      required: false,
+      description: "Resume from this numeric workspace model ID",
+    },
   },
-  async ({ wId, execute }, logger) => {
+  async ({ wId, fromWorkspace, execute }, logger) => {
     logger.info("Starting agent editor membership restoration");
 
     await runOnAllWorkspaces(
       async (workspace) => {
         await restoreWorkspaceAgentEditors(execute, logger, workspace);
       },
-      { concurrency: WORKSPACE_CONCURRENCY, wId }
+      {
+        concurrency: WORKSPACE_CONCURRENCY,
+        wId,
+        fromWorkspaceId: fromWorkspace,
+      }
     );
 
     logger.info("Agent editor membership restoration completed");

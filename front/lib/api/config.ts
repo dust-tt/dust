@@ -703,6 +703,9 @@ const config = {
   getGoogleCloudProjectId: (): string => {
     return EnvironmentConfig.getEnvVariable("GOOGLE_CLOUD_PROJECT_ID");
   },
+  getOptionalGoogleCloudProjectId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("GOOGLE_CLOUD_PROJECT_ID");
+  },
   // Novu notifications.
   getNovuSecretKey: (): string => {
     return EnvironmentConfig.getEnvVariable("NOVU_SECRET_KEY");

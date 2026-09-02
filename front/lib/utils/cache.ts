@@ -1,6 +1,8 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Transaction } from "sequelize";
 
@@ -245,6 +247,58 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       } else {
         unlock(readKey);
       }
+    }
+  };
+}
+
+// Wraps cacheWithRedisResult's error so it can round-trip through
+// cacheWithRedis's throw-to-skip-caching contract without ever escaping to a
+// caller of cacheWithRedisResult.
+class CacheResultError<E> extends Error {
+  constructor(public readonly original: E) {
+    super("cacheWithRedisResult: wrapped domain error");
+  }
+}
+
+// Same fetch-dedup semantics as cacheWithRedis (fleet-wide single-flight via
+// the distributed lock), but for loaders that report failure through Result<>
+// instead of throwing. The loader's Err is never cached and is returned to
+// the caller as a Result, so callers can use `.isErr()` instead of try/catch.
+export function cacheWithRedisResult<T, E, Args extends unknown[]>(
+  fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>,
+  resolver: KeyResolver<Args>,
+  options: {
+    cacheId?: string;
+    ttlMs?: number | ((...args: Args) => number);
+    useDistributedLock: true;
+    skipIfLocked: true;
+    cacheNullValues?: boolean;
+    migration?: CacheKeyMigration<Args>;
+  }
+): (...args: Args) => Promise<Result<JsonSerializable<T> | null, E>> {
+  const cacheId = options.cacheId ?? fn.name;
+
+  const cachedFn = cacheWithRedis<T, Args>(
+    async (...args: Args) => {
+      const result = await fn(...args);
+      if (result.isErr()) {
+        throw new CacheResultError(result.error);
+      }
+      return result.value;
+    },
+    resolver,
+    { ...options, cacheId }
+  );
+
+  return async function (...args: Args) {
+    try {
+      const value = await cachedFn(...args);
+      return new Ok(value);
+    } catch (err) {
+      if (err instanceof CacheResultError) {
+        return new Err(err.original as E);
+      }
+      throw err;
     }
   };
 }

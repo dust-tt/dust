@@ -845,7 +845,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Pool Cap Group",
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
       expect(regularGroup.poolCapAwuCredits).toBeNull();
 
@@ -875,7 +875,7 @@ describe("GroupResource", () => {
     });
   });
 
-  describe("listMaxPoolCapAwuCreditsByUserModelIdInWorkspace", () => {
+  describe("listMaxPoolCapGroupByUserModelIdInWorkspace", () => {
     it("returns the highest cap across a user's provisioned groups, ignoring uncapped and non-provisioned groups", async () => {
       const user2 = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user2, { role: "user" });
@@ -927,17 +927,60 @@ describe("GroupResource", () => {
       await regularGroup.updatePoolCap(10_000);
 
       const result =
-        await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+        await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
           workspace,
           userModelIds: [user.id, user2.id],
         });
 
       // user is in both capped provisioned groups → the highest cap wins; the
       // regular group's higher cap is ignored.
-      expect(result.get(user.id)).toBe(800);
+      expect(result.get(user.id)).toEqual({
+        capAwuCredits: 800,
+        groupName: "Capped 800",
+        groupId: capped800.id,
+      });
       // user2 is only in uncapped/non-eligible groups → absent (falls back to
       // the workspace default).
       expect(result.has(user2.id)).toBe(false);
+    });
+
+    it("breaks equal-cap ties deterministically by lowest groupId", async () => {
+      const groupA = await GroupResource.makeNew(
+        {
+          name: "Tie A",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-tie-a",
+        },
+        { memberIds: [user.id] }
+      );
+      await groupA.updatePoolCap(500);
+
+      const groupB = await GroupResource.makeNew(
+        {
+          name: "Tie B",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-tie-b",
+        },
+        { memberIds: [user.id] }
+      );
+      await groupB.updatePoolCap(500);
+
+      const [lower, higher] = [groupA, groupB].sort((a, b) => a.id - b.id);
+
+      const result =
+        await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+          workspace,
+          userModelIds: [user.id],
+        });
+
+      expect(result.get(user.id)).toEqual({
+        capAwuCredits: 500,
+        groupName: lower.name,
+        groupId: lower.id,
+      });
+      expect(result.get(user.id)?.groupId).not.toEqual(higher.id);
     });
   });
 

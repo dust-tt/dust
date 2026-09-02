@@ -1,8 +1,4 @@
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
-import {
-  fetchAgentCostStats,
-  getAgentCostStats,
-} from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
@@ -96,20 +92,7 @@ export async function fetchTopAgents(
     return new Ok([]);
   }
 
-  const [agents, costStatsResult] = await Promise.all([
-    resolveAnalyticsAgentLabels(auth, bucketAgentIds),
-    fetchAgentCostStats(auth, {
-      agentIds: bucketAgentIds,
-      days,
-      startDate,
-      endDate,
-    }),
-  ]);
-
-  if (costStatsResult.isErr()) {
-    return costStatsResult;
-  }
-  const costStatsMap = costStatsResult.value;
+  const agents = await resolveAnalyticsAgentLabels(auth, bucketAgentIds);
 
   const rows = buckets.flatMap((bucket) => {
     const agentId = String(bucket.key);
@@ -124,8 +107,6 @@ export async function fetchTopAgents(
         pictureUrl: label.pictureUrl,
         messageCount: bucket.doc_count ?? 0,
         userCount: Math.round(bucket.unique_users?.value ?? 0),
-        totalCostCredits: getAgentCostStats(costStatsMap, agentId)
-          .totalCostCredits,
       },
     ];
   });

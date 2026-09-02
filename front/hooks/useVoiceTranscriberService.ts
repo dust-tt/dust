@@ -1,4 +1,5 @@
 /// <reference types="chrome" />
+
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
@@ -17,8 +18,8 @@ import {
   isChromeExtension,
   isFirefoxExtension,
 } from "@app/lib/utils/extension";
-
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
+import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MutableRefObject } from "react";
@@ -271,7 +272,7 @@ export function useVoiceTranscriberService({
     await stopAndFinalize();
   }, [stopAndFinalize]);
 
-  return owner.metadata?.allowVoiceTranscription !== false
+  return isVoiceTranscriptionAllowed(owner)
     ? {
         status,
         level,

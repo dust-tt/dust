@@ -5,12 +5,9 @@ import {
   trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
-  billedCostAwuFromEvents,
-  buildLlmUsageEvents,
-  buildToolUseEvents,
   buildUsageEvents,
   computeRunKey,
   getUsageType,
@@ -204,9 +201,9 @@ export async function trackProgrammaticUsageActivity(
 }
 
 /**
- * Emit Metronome llm_usage and tool_use events for an agent message.
- * Called for ALL messages (not just programmatic) — always-on, fire-and-forget.
- * Metronome failures don't affect the agent loop.
+ * Emit the aggregated Metronome usage event (LLM + tool cost) for an agent
+ * message. Called for ALL messages (not just programmatic) — always-on,
+ * fire-and-forget. Metronome failures don't affect the agent loop.
  */
 export async function emitMetronomeUsageEventsActivity(
   authType: AuthenticatorType,
@@ -375,7 +372,6 @@ export async function emitMetronomeUsageEventsActivity(
       mcpServerId: json.mcpServerId,
       internalMCPServerName: json.internalMCPServerName,
       status: json.status,
-      executionDurationMs: json.executionDurationMs,
       shouldEmit:
         agentLoopArgs.startStep === undefined ||
         json.step >= agentLoopArgs.startStep,
@@ -389,51 +385,8 @@ export async function emitMetronomeUsageEventsActivity(
   // ceils per the exact same execution partition that is billed here.
   const runKey = computeRunKey(effectiveRunIds);
 
-  // Build the legacy (per-model llm_usage_v3 + per-tool tool_use_v3) events and
-  // the single aggregated event. Which set is ingested depends on the feature
-  // flag below; the cost parity of both is logged in all cases.
-  const llmEvents = buildLlmUsageEvents({
-    workspaceId: workspace.sId,
-    isByok,
-    conversationId,
-    userId,
-    isFreeSeatedUser,
-    agentMessageId,
-    agentId,
-    subAgentId,
-    parentAgentMessageId,
-    runKey,
-    runUsages,
-    origin: userMessageOrigin,
-    usageType,
-    authMethod,
-    apiKeyName,
-    messageStatus,
-    isSubAgentMessage,
-    timestamp,
-  });
-
-  const toolEvents = buildToolUseEvents({
-    workspaceId: workspace.sId,
-    conversationId,
-    userId,
-    isFreeSeatedUser,
-    agentMessageId,
-    agentId,
-    subAgentId,
-    parentAgentMessageId,
-    runKey,
-    actions: toolActions,
-    origin: userMessageOrigin,
-    usageType,
-    authMethod,
-    apiKeyName,
-    messageStatus,
-    isSubAgentMessage,
-    timestamp,
-  });
-
-  const aggregatedUsageEvents = buildUsageEvents({
+  // Build and ingest the single aggregated usage event (LLM + tool cost).
+  const usageEvents = buildUsageEvents({
     workspaceId: workspace.sId,
     isByok,
     conversationId,
@@ -455,35 +408,7 @@ export async function emitMetronomeUsageEventsActivity(
     timestamp,
   });
 
-  // When the flag is on, ingest the single aggregated event; otherwise keep
-  // ingesting the legacy events. Log the cost of both paths in all cases so we
-  // can confirm parity on real traffic.
-  const useAggregatedEvent = await hasFeatureFlag(
-    auth,
-    "metronome_aggregated_usage_event"
-  );
-  const newCostAwu = aggregatedUsageEvents.reduce((total, event) => {
-    const costAwu = event.properties["cost_awu"];
-    return total + (typeof costAwu === "number" ? costAwu : 0);
-  }, 0);
-  const oldCostAwu = billedCostAwuFromEvents([...llmEvents, ...toolEvents]);
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      conversationId,
-      agentMessageId,
-      runKey,
-      newCostAwu,
-      oldCostAwu,
-      costMatches: newCostAwu === oldCostAwu,
-      useAggregatedEvent,
-    },
-    "[UsageQueue] Metronome usage event cost parity check."
-  );
-
-  await ingestMetronomeEvents(
-    useAggregatedEvent ? aggregatedUsageEvents : [...llmEvents, ...toolEvents]
-  );
+  await ingestMetronomeEvents(usageEvents);
 
   // Per-key cap enforcement is pull-based: Metronome spend alerts can't
   // attribute spend by `api_key_name` (it's not the products' presentation

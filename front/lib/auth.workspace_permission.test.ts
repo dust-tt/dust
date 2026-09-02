@@ -262,12 +262,14 @@ describe("Authenticator.fromKey permission resolution", () => {
     // Every verb the registry defines holds, on the granted agent and on one that carries no
     // grant at all (instance verbs and type-level capabilities alike).
     expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
+      "admin",
       "create",
       "publish",
       "read",
       "write",
     ]);
     expect([...workspaceAuth.getGrantedVerbs("agent", 99)].sort()).toEqual([
+      "admin",
       "create",
       "publish",
       "read",
@@ -309,6 +311,7 @@ describe("Authenticator.fromKey permission resolution", () => {
     const workspaceAuth = await Authenticator.fromKey(key, workspace.sId);
 
     expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
+      "admin",
       "read",
       "write",
     ]);
@@ -382,7 +385,7 @@ describe("Authenticator.refresh permission resolution", () => {
     expect(workspaceAuth.getGrantedVerbs("agent", 42)).toEqual([]);
 
     // A grant lands on one of the key's groups AFTER the auth was built (mirrors a backfill or an
-    // updatePermissions write arriving mid-run). `editor` on `agent` confers read + write.
+    // updatePermissions write arriving mid-run). `editor` on `agent` confers read, write and admin.
     await GroupPermissionResource.grant(adminAuth, {
       group,
       grantType: "editor",
@@ -395,6 +398,7 @@ describe("Authenticator.refresh permission resolution", () => {
     await workspaceAuth.refresh();
 
     expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
+      "admin",
       "read",
       "write",
     ]);

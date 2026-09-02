@@ -5,6 +5,31 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FrameCallByIdRequest<'a> {
+    pub function_name: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input: Option<&'a serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameCallFromSourceRequest<'a> {
+    pub source_path: &'a str,
+    pub function_name: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input: Option<&'a serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameCallResponse {
+    pub frame_id: String,
+    pub function_name: String,
+    pub result: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FramePublishRequest<'a> {
     pub manifest_path: &'a str,
 }
@@ -12,6 +37,12 @@ pub struct FramePublishRequest<'a> {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FrameRegisterRequest<'a> {
+    pub manifest_path: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameValidateRequest<'a> {
     pub manifest_path: &'a str,
 }
 
@@ -32,6 +63,15 @@ pub struct FrameRegisterResponse {
     pub frame_id: String,
     pub manifest_path: String,
     pub created: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameValidateResponse {
+    pub frame_id: String,
+    pub manifest_path: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

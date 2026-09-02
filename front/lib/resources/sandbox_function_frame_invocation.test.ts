@@ -7,7 +7,11 @@ import { describe, expect, it } from "vitest";
 describe("SandboxFunctionResource.fetchInvocationByFrameAndId", () => {
   it("resolves the invocation after the Frame republishes", async () => {
     const { auth, frame, invocation } = await makeTestFrameInvocation();
-    await frame.setActiveFramePublication("publication-2");
+    await frame.setActiveFramePublication({
+      publicationId: "publication-2",
+      name: "Task List",
+      description: "Track tasks.",
+    });
 
     await expect(
       SandboxFunctionResource.fetchInvocationByFrameAndId(auth, {

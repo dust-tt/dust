@@ -9,9 +9,10 @@ use tokio::time::sleep;
 use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
-    CallToolResponse, CallToolResult, FramePublishRequest, FramePublishResponse,
-    FrameRegisterRequest, FrameRegisterResponse, FrameShareLinkResponse, MCPServerView,
-    SandboxServerViewsResponse,
+    CallToolResponse, CallToolResult, FrameCallByIdRequest, FrameCallFromSourceRequest,
+    FrameCallResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
+    FrameRegisterResponse, FrameShareLinkResponse, FrameValidateRequest, FrameValidateResponse,
+    MCPServerView, SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -145,6 +146,41 @@ impl DustApiClient {
         .await
     }
 
+    pub async fn call_frame_by_id(
+        &self,
+        frame_id: &str,
+        function_name: &str,
+        input: Option<&serde_json::Value>,
+    ) -> anyhow::Result<FrameCallResponse> {
+        self.post_with_timeout(
+            &format!("sandbox/frames/{frame_id}/call"),
+            &FrameCallByIdRequest {
+                function_name,
+                input,
+            },
+            POLL_MAX_DURATION,
+        )
+        .await
+    }
+
+    pub async fn call_frame_from_source(
+        &self,
+        source_path: &str,
+        function_name: &str,
+        input: Option<&serde_json::Value>,
+    ) -> anyhow::Result<FrameCallResponse> {
+        self.post_with_timeout(
+            "sandbox/frames/call",
+            &FrameCallFromSourceRequest {
+                source_path,
+                function_name,
+                input,
+            },
+            POLL_MAX_DURATION,
+        )
+        .await
+    }
+
     pub async fn register_frame(
         &self,
         manifest_path: &str,
@@ -152,6 +188,18 @@ impl DustApiClient {
         self.post(
             "sandbox/frames/register",
             &FrameRegisterRequest { manifest_path },
+        )
+        .await
+    }
+
+    pub async fn validate_frame(
+        &self,
+        manifest_path: &str,
+    ) -> anyhow::Result<FrameValidateResponse> {
+        self.post_with_timeout(
+            "sandbox/frames/validate",
+            &FrameValidateRequest { manifest_path },
+            POLL_MAX_DURATION,
         )
         .await
     }

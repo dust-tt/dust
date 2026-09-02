@@ -6,12 +6,12 @@ import {
   MAX_CREDIT_GROUPS,
   MAX_RESULTS,
   timeWindowSchemaShape,
-  usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { ConsumptionPeriodSchema } from "@app/lib/api/analytics/consumption/schema";
 import {
   CONSUMPTION_INVOCATION_DIMENSIONS,
   CONSUMPTION_MESSAGE_DIMENSIONS,
+  CONSUMPTION_SCOPE_DIMENSIONS,
   CONSUMPTION_TOP_DIMENSIONS,
 } from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
@@ -34,18 +34,17 @@ const getConsumptionOverviewSchema = {
 
 const getCreditTimeseriesSchema = {
   ...timeWindowSchemaShape,
-  ...usageFilterSchema,
+  ...consumptionFilterSchema,
   granularity: z
     .enum(["day", "week", "month"])
     .optional()
     .describe("Bucket granularity for the credit trend (default day)."),
   breakdownBy: z
-    .enum(["agent", "user", "model"])
+    .enum(CONSUMPTION_SCOPE_DIMENSIONS)
     .optional()
     .describe(
-      "Split each bucket into the top agents, users or models by credits, " +
-        "plus an 'other' series for the rest. Omit for a single total-credits " +
-        "trend."
+      "Split each bucket by this dimension — its top groups plus an 'others' " +
+        "series for the rest. Omit for a single total-credits trend."
     ),
   breakdownLimit: z
     .number()
@@ -56,26 +55,7 @@ const getCreditTimeseriesSchema = {
     .describe(
       `Number of top groups to break out when breakdownBy is set ` +
         `(default ${DEFAULT_CREDIT_GROUPS}, max ${MAX_CREDIT_GROUPS}); the ` +
-        `remainder is folded into 'other'.`
-    ),
-};
-
-const getUsageTimeseriesSchema = {
-  ...timeWindowSchemaShape,
-  ...usageFilterSchema,
-  metric: z
-    .enum(["messages", "skills", "tools"])
-    .optional()
-    .describe(
-      "What to plot over time. 'messages' (default): messages, conversations " +
-        "and active users. 'skills'/'tools': executions and unique users."
-    ),
-  granularity: z
-    .enum(["day", "week"])
-    .optional()
-    .describe(
-      "Bucket granularity (default day). Only applies to the messages metric; " +
-        "skills and tools are always daily."
+        `remainder is folded into 'others'.`
     ),
 };
 
@@ -205,42 +185,18 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: "get_credit_timeseries",
     description:
-      "Return estimated credit consumption as a time series over a window " +
-      "(defaults to the last 30 days), bucketed by day, week, or month. Set " +
-      "breakdownBy to split each " +
-      "bucket into the top agents, users or models plus an 'other' series (a " +
-      "stacked trend). Use this for credit/spend TRENDS over time. Use " +
-      `${GET_CONSUMPTION_OVERVIEW_TOOL_NAME} for a single window's total ` +
-      `and ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} to attribute it. ` +
-      "These figures are ESTIMATES. Always tell the user they are " +
-      "approximate " +
-      "and point them to the workspace Usage page for exact, billed credit " +
-      "amounts. Chart the result. Optionally filter by source (context_origin), " +
-      "agent, user, tag, or model. Admin-only.",
+      "Return credit consumption as a time series over a window (defaults to " +
+      "the last 30 days), bucketed by day, week or month. Use this to answer " +
+      "'is credit spend trending up or down' or 'which week had the highest " +
+      `spend'. For a single window use ${GET_CONSUMPTION_OVERVIEW_TOOL_NAME} ` +
+      `for the total and ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} for the ` +
+      "breakdown. Chart the result.",
     schema: getCreditTimeseriesSchema,
     stake: "never_ask",
     eager: true,
     displayLabels: {
-      running: "Estimating credit trend",
-      done: "Estimated credit trend",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "get_usage_timeseries",
-    description:
-      "Return a usage time series over a window (defaults to the last 30 " +
-      "days). Plot message volume (messages, conversations, active users), " +
-      "skill executions, or tool calls over time. Use this for any activity " +
-      "or usage trend — it is a single call, do not call other tools once per " +
-      "day. Combine with filters to narrow. Chart the result. Admin-only.",
-    schema: getUsageTimeseriesSchema,
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Retrieving usage time series",
-      done: "Retrieved usage time series",
+      running: "Retrieving credit trend",
+      done: "Retrieved credit trend",
     },
     toolCostCategory: "basic",
     freeUsage: true,

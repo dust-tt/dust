@@ -5,6 +5,25 @@ import { useSystemSpace } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 
+// Name and description of each messaging app bot, shared with the read-only Poke governance view.
+export const MESSAGING_APP_METADATA = {
+  slack_bot: {
+    name: "Slack Bot",
+    description: "Whether the Dust Bot can be used in Slack",
+    documentationUrl: "https://docs.dust.tt/docs/slack",
+  },
+  microsoft_bot: {
+    name: "Microsoft Teams Bot",
+    description: "Whether the Dust Bot can be used in Microsoft Teams",
+    documentationUrl: "https://docs.dust.tt/docs/dust-in-teams",
+  },
+  discord_bot: {
+    name: "Discord Bot",
+    description: "Whether the Dust Bot can be used in Discord",
+    documentationUrl: undefined,
+  },
+} as const;
+
 interface MessagingAppTogglesProps {
   owner: WorkspaceType;
 }
@@ -39,9 +58,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         systemSpace={systemSpace}
         oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
         connectorProvider="slack_bot"
-        name="Slack Bot"
-        description="Whether the Dust Bot can be used in Slack"
-        documentationUrl="https://docs.dust.tt/docs/slack"
+        {...MESSAGING_APP_METADATA.slack_bot}
       />
       <BotToggle
         owner={owner}
@@ -53,9 +70,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
           extraConfig: {},
         }}
         connectorProvider="microsoft_bot"
-        name="Microsoft Teams Bot"
-        description="Whether the Dust Bot can be used in Microsoft Teams"
-        documentationUrl="https://docs.dust.tt/docs/dust-in-teams"
+        {...MESSAGING_APP_METADATA.microsoft_bot}
       />
       {isDiscordBotAvailable && (
         <BotToggle
@@ -68,8 +83,7 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
             extraConfig: {},
           }}
           connectorProvider="discord_bot"
-          name="Discord Bot"
-          description="Whether the Dust Bot can be used in Discord"
+          {...MESSAGING_APP_METADATA.discord_bot}
         />
       )}
     </>

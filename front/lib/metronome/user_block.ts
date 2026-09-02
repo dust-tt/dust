@@ -1,17 +1,24 @@
 // Redis fast-path cache for credit-state-driven access control.
 //
+// This is the Metronome-credit-state layer. When the
+// `enforce_user_spend_limit_rate_cap` flag is on, callers should instead go
+// through the flag-aware readers in `lib/api/credits/access_control.ts`, which
+// enforce from the Redis rate-limiter counters and fall back to the functions
+// here when the flag is off.
+//
 // Four keys back the credit state machines:
 //   - `metronome:user_credit_state:<ws>:<user>`: fine-grained user credit state
 //     (mirrors `memberships.creditState`). Replaces the legacy boolean cap and
 //     warning flags — "capped" means blocked, "*_low_balance" means warned.
 //   - `metronome:pool_credit_status:<ws>`: fine-grained workspace pool state
 //     (mirrors `workspaces.poolCreditState`).
-//   - `metronome:pool_depleted:<ws>`: boolean shortcut for isUserBlocked /
-//     isApiBlocked hot paths (still maintained alongside pool_credit_status).
+//   - `metronome:pool_depleted:<ws>`: boolean shortcut for
+//     isUserBlockedByMetronome / isApiBlockedByMetronome hot paths (still
+//     maintained alongside pool_credit_status).
 //   - `metronome:programmatic_credit_status:<ws>` / `metronome:programmatic_depleted:<ws>`:
 //     programmatic (API) cap state.
 //
-// `isUserBlocked` is the unified read: a user is blocked iff the pool is
+// `isUserBlockedByMetronome` is the unified read: a user is blocked iff the pool is
 // depleted or the user's credit state is "capped". It returns the reason
 // ("credits_exhausted" / "user_cap_reached") so callers can surface a tailored
 // message. When both conditions hold, "user_cap_reached" wins: the per-user cap
@@ -78,7 +85,7 @@ export type GetWorkspaceUsageStatusResponseBody = {
   // Redis-only flag, independent of the throttling states (active_low_balance etc.).
   programmaticWarningReached: boolean;
   balanceThresholdReached: boolean;
-  // Authoritative block reason from isUserBlocked — null means the user can
+  // Authoritative block reason from access_control's isUserBlocked — null means the user can
   // send messages. Replaces the old client-side derivations (noSeat,
   // awuStatus === "blocked", poolCreditState === "depleted").
   userBlockedReason: UserBlockedReason | null;
@@ -167,7 +174,7 @@ async function getUserNearLimit(
   return state === "on_pool_low_balance" || state === "user_seat_low_balance";
 }
 
-export async function isUserAwuWarned(
+export async function isUserAwuWarnedByMetronome(
   workspaceId: string,
   userId: string
 ): Promise<boolean> {
@@ -222,7 +229,7 @@ export async function clearWorkspaceProgrammaticWarningReached(
   await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "0");
 }
 
-export async function isWorkspaceProgrammaticWarningReached(
+export async function isWorkspaceProgrammaticWarningReachedByMetronome(
   workspaceId: string
 ): Promise<boolean> {
   const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
@@ -318,9 +325,17 @@ function deriveBlockedReason({
   return null;
 }
 
-export async function isUserBlocked(
+export async function isUserBlockedByMetronome(
   workspace: LightWorkspaceType,
-  user: UserResource
+  user: UserResource,
+  // Overrides the Metronome-credit-state user-cap signal
+  // (`userCreditState === "capped"`) when set to a boolean. The flag-aware
+  // wrapper in `lib/api/credits/access_control.ts` passes the Redis rate-limiter
+  // result here so the pool/seat logic (no_seat, pool depletion, personal-seat
+  // carve-out) stays defined in one place. `null`/`undefined` means "no
+  // override" — the Metronome credit state is used (e.g. free/none seats, whose
+  // lifetime balance the rate limiter does not model).
+  opts?: { userCapBlockedOverride?: boolean | null }
 ): Promise<UserBlockedReason | null> {
   const workspaceId = workspace.sId;
   const userId = user.sId;
@@ -364,7 +379,8 @@ export async function isUserBlocked(
   }
 
   return deriveBlockedReason({
-    userCapBlocked: userCreditState === "capped",
+    userCapBlocked:
+      opts?.userCapBlockedOverride ?? userCreditState === "capped",
     workspacePoolDepleted,
   });
 }
@@ -513,7 +529,7 @@ export async function getWorkspaceProgrammaticCreditStatus(
   return status;
 }
 
-export async function isProgrammaticApiBlocked(
+export async function isProgrammaticApiBlockedByMetronome(
   workspaceId: string
 ): Promise<boolean> {
   // getWorkspaceProgrammaticCreditStatus has its own DB fallback and cache repopulation.
@@ -522,7 +538,9 @@ export async function isProgrammaticApiBlocked(
 }
 
 // Workspace-pool-only read for API calls (no per-user cap).
-export async function isApiBlocked(workspaceId: string): Promise<boolean> {
+export async function isApiBlockedByMetronome(
+  workspaceId: string
+): Promise<boolean> {
   // getWorkspaceCreditPoolStatus has its own DB fallback and cache repopulation.
   const poolStatus = await getWorkspaceCreditPoolStatus(workspaceId);
   return poolStatus === "depleted";

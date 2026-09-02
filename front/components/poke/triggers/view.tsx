@@ -8,18 +8,20 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import type { PokeGetTriggerDetails } from "@app/lib/api/poke/triggers";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Chip } from "@dust-tt/sparkle";
+import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 
 interface ViewTriggerTableProps {
   trigger: TriggerType;
   agent: LightAgentConfigurationType;
   owner: LightWorkspaceType;
   editorUser?: UserType | null;
+  webhookSource: PokeGetTriggerDetails["webhookSource"];
 }
 
 export function ViewTriggerTable({
@@ -27,6 +29,7 @@ export function ViewTriggerTable({
   agent,
   owner,
   editorUser,
+  webhookSource,
 }: ViewTriggerTableProps) {
   return (
     <div className="flex flex-col space-y-8">
@@ -141,6 +144,29 @@ export function ViewTriggerTable({
                         label={trigger.webhookSourceViewId}
                       />
                     </PokeTableRow>
+                  )}
+                  {webhookSource && (
+                    <>
+                      <PokeTableRow>
+                        <PokeTableHead>Webhook Source</PokeTableHead>
+                        <PokeTableCellWithLink
+                          href={`/poke/${owner.sId}/webhook-sources/${webhookSource.sId}`}
+                          content={`${webhookSource.name} (${webhookSource.sId})`}
+                        />
+                      </PokeTableRow>
+                      <PokeTableRow>
+                        <PokeTableHead>Payloads (GCS)</PokeTableHead>
+                        <PokeTableCell>
+                          <LinkWrapper
+                            href={webhookSource.payloadsGcsUrl}
+                            target="_blank"
+                            className="text-xs text-highlight-400"
+                          >
+                            Open bucket
+                          </LinkWrapper>
+                        </PokeTableCell>
+                      </PokeTableRow>
+                    </>
                   )}
                 </>
               )}

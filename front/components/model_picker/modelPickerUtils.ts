@@ -40,6 +40,10 @@ const MODEL_TIER_LOCKED_TOOLTIP =
   "Your current model access doesn't include this option. " +
   "Contact your administrator to get access.";
 
+export const DEGRADED_MODEL_TOOLTIP =
+  "This model is currently degraded following an incident on the provider side. " +
+  "Answers may be slower or fail — consider picking another model.";
+
 // The three primary picks of the model picker. Each tier is backed by a
 // meta-model that is resolved to a concrete model at message-send time. Tier ids
 // keep the meta-model wording; `name` is what users see:

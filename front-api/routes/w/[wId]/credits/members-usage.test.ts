@@ -34,11 +34,13 @@ const MEMBER_USAGE = {
   scheduledSeatType: null,
   seatType: "max" as const,
   seatBalanceAwu: 100,
+  seatUsageTarget: null,
   spendLimitAlertId: null,
   spendLimitAwuCredits: null,
   rateLimiterSpendAwuCredits: null,
   metronomeConsumedAwuCredits: null,
   spendLimitSource: "default" as const,
+  spendLimitGroupName: null,
   spendLimitWarningAlertId: null,
 };
 

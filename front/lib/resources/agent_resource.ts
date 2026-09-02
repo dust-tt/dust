@@ -1,0 +1,119 @@
+import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
+import type { Authenticator } from "@app/lib/auth";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { GrantVerb } from "@app/types/group_permissions";
+import type {
+  AccessControlList,
+  RoleGrant,
+  WithAccessControl,
+} from "@app/types/resource_permissions";
+import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
+
+// Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
+// editor role rather than granting write alone.
+const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin"];
+
+// Workspace admins manage editors but must grant themselves editor access to change the agent.
+const HIDDEN_AGENT_ROLE_GRANTS: RoleGrant[] = [
+  { role: "admin", permissions: ["read", "admin"] },
+];
+
+const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
+  ...HIDDEN_AGENT_ROLE_GRANTS,
+  { role: "manager", permissions: ["read"] },
+  { role: "builder", permissions: ["read"] },
+  { role: "user", permissions: ["read"] },
+  { role: "none", permissions: ["read"] },
+];
+
+export class AgentResource implements WithAccessControl {
+  private constructor(
+    readonly id: ModelId | null,
+    readonly sId: string,
+    readonly workspaceId: ModelId,
+    readonly kind: "custom" | "global",
+    private readonly authorId: ModelId | null,
+    private readonly scope: AgentConfigurationScope
+  ) {}
+
+  static fromAgentConfiguration(configuration: {
+    agentId: ModelId;
+    authorId: ModelId;
+    sId: string;
+    scope: AgentConfigurationScope;
+    workspaceId: ModelId;
+  }): AgentResource {
+    assert(configuration.scope !== "global");
+
+    return new AgentResource(
+      configuration.agentId,
+      configuration.sId,
+      configuration.workspaceId,
+      "custom",
+      configuration.authorId,
+      configuration.scope
+    );
+  }
+
+  static fromGlobalAgent({
+    agentId,
+    workspaceModelId,
+  }: {
+    agentId: GLOBAL_AGENTS_SID;
+    workspaceModelId: ModelId;
+  }): AgentResource {
+    return new AgentResource(
+      null,
+      agentId,
+      workspaceModelId,
+      "global",
+      null,
+      "global"
+    );
+  }
+
+  getAccessControlLists(auth: Authenticator): AccessControlList[] {
+    switch (this.kind) {
+      case "global":
+        assert(isGlobalAgentId(this.sId));
+
+        return [
+          {
+            roles: globalAgentReaderRoles(this.sId).map((role) => ({
+              role,
+              permissions: ["read"],
+            })),
+            workspaceId: this.workspaceId,
+          },
+        ];
+      case "custom": {
+        assert(this.id !== null);
+        assert(this.authorId !== null);
+
+        const grants = auth.getGrantedVerbs("agent", this.id);
+        const isAuthor =
+          auth.workspace()?.id === this.workspaceId &&
+          auth.user()?.id === this.authorId;
+
+        return [
+          {
+            roles:
+              this.scope === "visible"
+                ? VISIBLE_AGENT_ROLE_GRANTS
+                : HIDDEN_AGENT_ROLE_GRANTS,
+            grantedVerbs: isAuthor
+              ? [...new Set([...grants, ...AGENT_EDITOR_VERBS])]
+              : grants,
+            workspaceId: this.workspaceId,
+          },
+        ];
+      }
+      default:
+        return assertNever(this.kind);
+    }
+  }
+}

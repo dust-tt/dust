@@ -711,26 +711,13 @@ describe("GroupPermissionResource", () => {
       });
       expect(result.isOk()).toBe(true);
 
-      const grants = await GroupPermissionResource.listForGroups(
-        auth.getNonNullableWorkspace(),
-        {
-          groupModelIds: (
-            await GroupResource.listAllWorkspaceGroups(auth, {
-              groupKinds: ["regular_auto"],
-            })
-          ).map((group) => group.id),
-          grantType: "reader",
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
           resourceType: "space",
           resourceId: 42,
-        }
-      );
-      expect(grants).toHaveLength(1);
-
-      const group = await GroupResource.dangerouslyFetchByModelIds(auth, [
-        grants[0].groupId,
-      ]);
-      expect(group[0].kind).toBe("regular_auto");
-      expect(await group[0].isMember(user)).toBe(true);
+        });
+      expect(groups).toHaveLength(1);
+      expect(await groups[0].isMember(user)).toBe(true);
     });
 
     it("is idempotent for a repeat grant to the same user", async () => {
@@ -747,26 +734,13 @@ describe("GroupPermissionResource", () => {
       const repeat = await GroupPermissionResource.grantToUser(auth, spec);
       expect(repeat.isOk()).toBe(true);
 
-      const grants = await GroupPermissionResource.listForGroups(
-        auth.getNonNullableWorkspace(),
-        {
-          groupModelIds: (
-            await GroupResource.listAllWorkspaceGroups(auth, {
-              groupKinds: ["regular_auto"],
-            })
-          ).map((group) => group.id),
-          grantType: "reader",
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
           resourceType: "space",
           resourceId: 42,
-        }
-      );
-      expect(grants).toHaveLength(1);
-
-      const [backingGroup] = await GroupResource.dangerouslyFetchByModelIds(
-        auth,
-        [grants[0].groupId]
-      );
-      expect(await backingGroup.getMemberCount(auth)).toBe(1);
+        });
+      expect(groups).toHaveLength(1);
+      expect(await groups[0].getMemberCount(auth)).toBe(1);
     });
 
     it("reuses the existing regular_auto group for a second user", async () => {
@@ -788,27 +762,14 @@ describe("GroupPermissionResource", () => {
         resourceId: 7,
       });
 
-      const autoGroups = await GroupResource.listAllWorkspaceGroups(auth, {
-        groupKinds: ["regular_auto"],
-      });
-      const grantGroups = [];
-      for (const group of autoGroups) {
-        const grants = await GroupPermissionResource.listForGroups(
-          auth.getNonNullableWorkspace(),
-          {
-            groupModelIds: [group.id],
-            grantType: "editor",
-            resourceType: "agent",
-            resourceId: 7,
-          }
-        );
-        if (grants.length > 0) {
-          grantGroups.push(group);
-        }
-      }
-      expect(grantGroups).toHaveLength(1);
-      expect(await grantGroups[0].isMember(user1)).toBe(true);
-      expect(await grantGroups[0].isMember(user2)).toBe(true);
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
+          resourceType: "agent",
+          resourceId: 7,
+        });
+      expect(groups).toHaveLength(1);
+      expect(await groups[0].isMember(user1)).toBe(true);
+      expect(await groups[0].isMember(user2)).toBe(true);
     });
 
     it("revokes access and deletes the group when the last member is removed", async () => {
@@ -822,6 +783,13 @@ describe("GroupPermissionResource", () => {
         resourceId: 99,
       });
 
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
+          resourceType: "skill",
+          resourceId: 99,
+        });
+      expect(groups).toHaveLength(1);
+
       const result = await GroupPermissionResource.revokeFromUser(auth, {
         user: user.toJSON(),
         grantType: "editor",
@@ -830,19 +798,12 @@ describe("GroupPermissionResource", () => {
       });
       expect(result.isOk()).toBe(true);
 
-      const autoGroups = await GroupResource.listAllWorkspaceGroups(auth, {
-        groupKinds: ["regular_auto"],
-      });
-      const grants = await GroupPermissionResource.listForGroups(
-        auth.getNonNullableWorkspace(),
-        {
-          groupModelIds: autoGroups.map((group) => group.id),
-          grantType: "editor",
+      const resultGroups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
           resourceType: "skill",
           resourceId: 99,
-        }
-      );
-      expect(grants).toHaveLength(0);
+        });
+      expect(resultGroups).toHaveLength(0);
     });
 
     it("keeps the group when other members remain", async () => {
@@ -872,26 +833,14 @@ describe("GroupPermissionResource", () => {
       });
       expect(result.isOk()).toBe(true);
 
-      const grants = await GroupPermissionResource.listForGroups(
-        auth.getNonNullableWorkspace(),
-        {
-          groupModelIds: (
-            await GroupResource.listAllWorkspaceGroups(auth, {
-              groupKinds: ["regular_auto"],
-            })
-          ).map((group) => group.id),
-          grantType: "reader",
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
           resourceType: "space",
           resourceId: 5,
-        }
-      );
-      expect(grants).toHaveLength(1);
-
-      const [group] = await GroupResource.dangerouslyFetchByModelIds(auth, [
-        grants[0].groupId,
-      ]);
-      expect(await group.isMember(user1)).toBe(false);
-      expect(await group.isMember(user2)).toBe(true);
+        });
+      expect(groups).toHaveLength(1);
+      expect(await groups[0].isMember(user1)).toBe(false);
+      expect(await groups[0].isMember(user2)).toBe(true);
     });
   });
 

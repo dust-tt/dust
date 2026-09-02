@@ -32,11 +32,7 @@ import {
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
@@ -51,11 +47,10 @@ import {
   isFreePlan,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
-import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useSearchParam } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
-  useCreditPurchaseInfo,
   useMyUsage,
   useSeatPlan,
 } from "@app/lib/swr/credits";
@@ -81,7 +76,6 @@ import {
 } from "@app/lib/swr/upgrade_requests";
 import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
-  useAwuUsageFromAnalytics,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -154,12 +148,14 @@ function memberFromUpgradeRequest(
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource: "none",
+    spendLimitGroupName: null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
     freeCreditLowAlert: null,
     freeCreditEmptyAlert: null,
     creditState: "capped",
     nearLimit: false,
+    seatUsageTarget: null,
   };
 }
 
@@ -214,14 +210,10 @@ const DEFAULT_PAGE_SIZE = 25;
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const router = useAppRouter();
-  const { hasFeature } = useFeatureFlags();
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
-  // Legacy-contract workspaces can view this page in read-only mode behind a
-  // flag: analytics and member spend render as usual, but every action (top up,
-  // invite, seat changes, spend limits, settings) is disabled.
-  const isReadOnly = !isCreditPriced && hasFeature("usage_page_read_only");
-  const canViewUsage = isCreditPriced || isReadOnly;
+  // Workspaces off a credit plan see this page without the credit pool, seat
+  // and credits columns, spend limits and upgrade requests. Credit actions (top
+  // up, invite, seat changes) are disabled for them; model tiers stay editable.
   // A cancelled subscription already has its end date scheduled with
   // Metronome; scheduling a seat change on top of it can land past that end
   // date and get rejected. Block seat changes until the subscription is
@@ -271,13 +263,24 @@ export function UsagePage() {
   }, []);
 
   const sort = sorting[0];
+  // The legacy table's pool-usage cell displays total consumption
+  // (consumedAwuCredits), not the pool-only amount, so its "column" of the
+  // same id must sort by the total. Only the compact/Poke variant, which
+  // shows pool-only usage, sorts by consumedFromPoolAwuCredits.
+  // TODO(avervaet, 2026-09-02): remove once the app page and Poke page usage
+  // tables are uniformized.
   const membersOrderColumn =
-    sort?.id === "email" || sort?.id === "consumedAwuCredits"
+    sort?.id === "email"
       ? sort.id
-      : "name";
+      : sort?.id === "consumedFromPoolAwuCredits"
+        ? "consumedAwuCredits"
+        : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
-  const { myUsage } = useMyUsage({ workspaceId: owner.sId });
+  const { myUsage } = useMyUsage({
+    workspaceId: owner.sId,
+    disabled: !isCreditPriced,
+  });
   const openChangeMySeatParam = useSearchParam("openChangeMySeat");
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
@@ -323,6 +326,7 @@ export function UsagePage() {
   >("members");
   const { upgradeRequests, isUpgradeRequestsLoading } = useUpgradeRequests({
     workspaceId: owner.sId,
+    disabled: !isCreditPriced,
   });
 
   const filteredUpgradeRequests = useMemo(() => {
@@ -448,18 +452,12 @@ export function UsagePage() {
 
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
-  useEffect(() => {
-    if (!canViewUsage) {
-      void router.push(`/w/${owner.sId}/members`);
-    }
-  }, [canViewUsage, router, owner.sId]);
-
   // Auto-open the "change my seat" modal when arriving from a blocked-state
   useEffect(() => {
-    if (openChangeMySeatParam !== null && myUsage !== null) {
+    if (isCreditPriced && openChangeMySeatParam !== null && myUsage !== null) {
       setChangeSeatMember(myUsage);
     }
-  }, [openChangeMySeatParam, myUsage]);
+  }, [isCreditPriced, openChangeMySeatParam, myUsage]);
 
   const {
     totalRemainingCredits,
@@ -470,6 +468,7 @@ export function UsagePage() {
     mutateAwuPoolSummary,
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
+    disabled: !isCreditPriced,
   });
 
   // TODO(2026-08-24): add back logic to show consumption here.
@@ -482,7 +481,7 @@ export function UsagePage() {
   } = useConsumptionOverview({
     workspaceId: owner.sId,
     period: DEFAULT_CONSUMPTION_PERIOD,
-    disabled: !canViewUsage || !showConsumptionAnalytics,
+    disabled: !showConsumptionAnalytics,
   });
 
   const { awuPurchaseInfo, isAwuPurchaseInfoLoading, isAwuPurchaseInfoError } =
@@ -490,47 +489,6 @@ export function UsagePage() {
       workspaceId: owner.sId,
       disabled: !showBuyCreditDialog,
     });
-
-  const { billingCycleStartDay } = useCreditPurchaseInfo({
-    workspaceId: owner.sId,
-    disabled: !isReadOnly,
-  });
-
-  // Legacy contracts have no pool credits or commits, so the pool summary's
-  // overage figure is meaningless. In read-only mode we instead show the
-  // period's raw consumption from the AWU usage analytics endpoint (the same
-  // ES-backed data the usage charts use), summing its ungrouped "total" series
-  // over the current billing cycle.
-  const daysSinceCycleStart = useMemo(() => {
-    const now = new Date();
-    // Clamp the cycle day to 28 to avoid short-month edge cases — this only
-    // feeds a read-only estimate of the period's consumption.
-    const startDay = Math.min(billingCycleStartDay ?? 1, 28);
-    const start = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), startDay)
-    );
-    if (start.getTime() > now.getTime()) {
-      start.setUTCMonth(start.getUTCMonth() - 1);
-    }
-    return Math.max(
-      1,
-      Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    );
-  }, [billingCycleStartDay]);
-  const { awuUsageData } = useAwuUsageFromAnalytics({
-    workspaceId: owner.sId,
-    granularity: "day",
-    days: daysSinceCycleStart,
-    disabled: !isReadOnly,
-  });
-  const periodSpendCredits = useMemo(
-    () =>
-      (awuUsageData?.points ?? []).reduce(
-        (sum, point) => sum + (point.values.total ?? 0),
-        0
-      ),
-    [awuUsageData]
-  );
 
   const {
     membersUsage,
@@ -826,14 +784,17 @@ export function UsagePage() {
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
+    disabled: !isCreditPriced,
   });
 
   const { seatPlans } = useSeatPlan({
     workspaceId: owner.sId,
+    disabled: !isCreditPriced,
   });
 
   const { perSeatPricing } = usePerSeatPricing({
     workspaceId: owner.sId,
+    disabled: !isCreditPriced,
   });
 
   const isSeatBased = Object.keys(seatPlans).length > 1;
@@ -853,7 +814,10 @@ export function UsagePage() {
     );
   }, [seatPlans]);
 
-  const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
+  const { usageSettings } = useUsageSettings({
+    workspaceId: owner.sId,
+    disabled: !isCreditPriced,
+  });
 
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
@@ -889,8 +853,7 @@ export function UsagePage() {
     (creditUsage.status.target === "on_target" ? "on_target" : "off_target");
 
   const totalConsumedCredits = showConsumptionAnalytics
-    ? (consumptionOverview?.totalCredits ??
-      (isReadOnly ? periodSpendCredits : poolConsumedCredits))
+    ? (consumptionOverview?.totalCredits ?? poolConsumedCredits)
     : poolConsumedCredits;
 
   const initialTotalCredits = creditUsage?.capCredits ?? totalActiveCredits;
@@ -918,17 +881,13 @@ export function UsagePage() {
     consumptionOverview?.period.endDate ??
     null;
 
-  if (!canViewUsage) {
-    return null;
-  }
-
   const topUpButton = isWorkspaceAdmin ? (
     <Button
       label="Top up"
       icon={ArrowUp}
       size="sm"
       variant="outline"
-      disabled={isReadOnly || !usageSettings.topUpEnabled}
+      disabled={!isCreditPriced || !usageSettings.topUpEnabled}
       onClick={() => setShowBuyCreditDialog(true)}
     />
   ) : null;
@@ -948,7 +907,7 @@ export function UsagePage() {
           prefillText=""
           perSeatPricing={perSeatPricing}
           onInviteClick={onInviteClick}
-          disabled={isReadOnly}
+          disabled={!isCreditPriced}
           isFreePlan={isFreePlanWorkspace}
         />
       )}
@@ -1037,9 +996,9 @@ export function UsagePage() {
       creditsResetAt={creditsResetAt}
       isLoading={isMembersUsageLoading}
       isRefreshing={isMembersUsageRefreshing}
-      readOnly={isReadOnly}
+      showSeatAndCredits={isCreditPriced}
       seatActionsDisabled={isSubscriptionCancelled}
-      showSpendLimit={!isFreePlanWorkspace}
+      showSpendLimit={isCreditPriced && !isFreePlanWorkspace}
       showModelTiersColumn={isWorkspaceAdmin}
       userModelTierSelectionByUserId={userModelTierSelectionByUserId}
       userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
@@ -1060,7 +1019,7 @@ export function UsagePage() {
       sorting={sorting}
       setSorting={handleSetSorting}
       showGroupsColumn={groups.length > 0}
-      enableSelection={!isReadOnly}
+      enableSelection={isCreditPriced}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
     />
@@ -1079,7 +1038,7 @@ export function UsagePage() {
           ? handleBatchChangeSeat
           : undefined
       }
-      disabled={isReadOnly}
+      disabled={!isCreditPriced}
     />
   );
 
@@ -1124,19 +1083,21 @@ export function UsagePage() {
         ) : (
           <div className="flex items-center justify-between">
             <Page.Header title="Usage" />
-            {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
-              <Button
-                label="Top up"
-                icon={ArrowUp}
-                size="sm"
-                variant="outline"
-                onClick={() => setShowBuyCreditDialog(true)}
-              />
-            )}
+            {isCreditPriced &&
+              usageSettings.topUpEnabled &&
+              isWorkspaceAdmin && (
+                <Button
+                  label="Top up"
+                  icon={ArrowUp}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowBuyCreditDialog(true)}
+                />
+              )}
           </div>
         )}
 
-        {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
+        {isCreditPricedFreePlan(subscription.plan.code) && (
           <FreePlanUpgradeSection
             action={
               <Button
@@ -1149,7 +1110,7 @@ export function UsagePage() {
           />
         )}
 
-        {showConsumptionAnalytics ? (
+        {isCreditPriced && showConsumptionAnalytics ? (
           <Page.Vertical gap="none" align="stretch">
             <h2 className="heading-sm text-foreground">Credit Pool</h2>
             <div className="flex flex-col gap-2 pt-4">
@@ -1258,9 +1219,10 @@ export function UsagePage() {
           </Page.Vertical>
         ) : null}
 
-        {!showConsumptionAnalytics &&
+        {isCreditPriced &&
+        !showConsumptionAnalytics &&
         !isAwuPoolSummaryLoading &&
-        (isAwuPoolSummaryError || hasPool || isReadOnly) ? (
+        (isAwuPoolSummaryError || hasPool) ? (
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
@@ -1299,24 +1261,15 @@ export function UsagePage() {
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  {isReadOnly ? (
+                  {overageCredits !== null && overageCredits > 0 && (
                     <span className="copy-sm text-muted-foreground">
-                      {formatCredits(periodSpendCredits)} credits spent this
-                      period
+                      {formatCredits(overageCredits)} overage credits
                     </span>
-                  ) : (
-                    <>
-                      {overageCredits !== null && overageCredits > 0 && (
-                        <span className="copy-sm text-muted-foreground">
-                          {formatCredits(overageCredits)} overage credits
-                        </span>
-                      )}
-                      {isEnterprise && (
-                        <span className="copy-sm text-muted-foreground">
-                          Contact your Dust sales representative to buy credits
-                        </span>
-                      )}
-                    </>
+                  )}
+                  {isEnterprise && (
+                    <span className="copy-sm text-muted-foreground">
+                      Contact your Dust sales representative to buy credits
+                    </span>
                   )}
                 </div>
               </>
@@ -1350,25 +1303,27 @@ export function UsagePage() {
               {searchAndInviteRow}
               <div className="flex flex-col gap-2">
                 <div className="flex flex-row items-center justify-between gap-2">
-                  <ButtonsSwitchList
-                    size="xs"
-                    defaultValue="members"
-                    onValueChange={(v: string) =>
-                      setMembersTab(v === "requests" ? "requests" : "members")
-                    }
-                  >
-                    <ButtonsSwitch value="members" label="Members" />
-                    <ButtonsSwitch
-                      value="requests"
-                      label="Requests"
-                      isCounter
-                      counterValue={
-                        filteredUpgradeRequests.length > 0
-                          ? String(filteredUpgradeRequests.length)
-                          : undefined
+                  {isCreditPriced && (
+                    <ButtonsSwitchList
+                      size="xs"
+                      defaultValue="members"
+                      onValueChange={(v: string) =>
+                        setMembersTab(v === "requests" ? "requests" : "members")
                       }
-                    />
-                  </ButtonsSwitchList>
+                    >
+                      <ButtonsSwitch value="members" label="Members" />
+                      <ButtonsSwitch
+                        value="requests"
+                        label="Requests"
+                        isCounter
+                        counterValue={
+                          filteredUpgradeRequests.length > 0
+                            ? String(filteredUpgradeRequests.length)
+                            : undefined
+                        }
+                      />
+                    </ButtonsSwitchList>
+                  )}
                   {membersTab === "members" && (
                     <div className="flex flex-row items-center gap-2">
                       {groupsFilterDropdown}
@@ -1376,10 +1331,9 @@ export function UsagePage() {
                         <GroupModelTierPickerDropdown
                           owner={owner}
                           groupId={groupFilter}
-                          readOnly={isReadOnly}
                         />
                       )}
-                      {seatFilterDropdown}
+                      {isCreditPriced && seatFilterDropdown}
                     </div>
                   )}
                 </div>
@@ -1407,7 +1361,7 @@ export function UsagePage() {
           <TabsContent value="groups">
             <GroupsUsageTable
               owner={owner}
-              readOnly={isReadOnly}
+              showSpendLimitColumn={isCreditPriced}
               showModelTiersColumn={isWorkspaceAdmin}
             />
           </TabsContent>
@@ -1421,27 +1375,22 @@ export function UsagePage() {
           {isWorkspaceAdmin && (
             <TabsContent value="settings">
               <div className="flex flex-col gap-10">
-                <UsageSettingsCard
-                  workspaceId={owner.sId}
-                  readOnly={isReadOnly}
-                  hasPool={hasPool}
-                />
-                {isWorkspaceAdmin && (
-                  <ModelTiersSettingsCard owner={owner} readOnly={isReadOnly} />
+                {isCreditPriced && (
+                  <UsageSettingsCard
+                    workspaceId={owner.sId}
+                    hasPool={hasPool}
+                  />
                 )}
-                <LockedSection
-                  locked={!isAwuPoolSummaryLoading && !hasPool}
-                  className="flex flex-col gap-10"
-                >
-                  <UsageProgrammaticLimitCard
-                    workspaceId={owner.sId}
-                    readOnly={isReadOnly}
-                  />
-                  <UsageNotificationsCard
-                    workspaceId={owner.sId}
-                    readOnly={isReadOnly}
-                  />
-                </LockedSection>
+                <ModelTiersSettingsCard owner={owner} />
+                {isCreditPriced && (
+                  <LockedSection
+                    locked={!isAwuPoolSummaryLoading && !hasPool}
+                    className="flex flex-col gap-10"
+                  >
+                    <UsageProgrammaticLimitCard workspaceId={owner.sId} />
+                    <UsageNotificationsCard workspaceId={owner.sId} />
+                  </LockedSection>
+                )}
               </div>
             </TabsContent>
           )}

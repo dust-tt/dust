@@ -5,7 +5,7 @@ use anyhow::{bail, Context};
 
 use crate::api::DustApiClient;
 
-use super::{print_response, scoped_manifest_path, FRAME_MANIFEST_FILE};
+use super::{print_response, scoped_manifest_path, validate_scoped_path, FRAME_MANIFEST_FILE};
 
 const FRAME_UI_ENTRY_POINT: &str = "index.tsx";
 const DEFAULT_FRAME_SOURCE: &str = r#"export default function Frame() {
@@ -15,7 +15,7 @@ const DEFAULT_FRAME_SOURCE: &str = r#"export default function Frame() {
 
 pub async fn run(directory: &Path, name: Option<&str>, description: &str) -> anyhow::Result<()> {
     let manifest_path = directory.join(FRAME_MANIFEST_FILE);
-    let scoped_manifest_path = scoped_manifest_path(&manifest_path)?;
+    validate_scoped_path(&manifest_path)?;
     let frame_name = match name {
         Some(name) => name.to_owned(),
         None => directory
@@ -29,6 +29,9 @@ pub async fn run(directory: &Path, name: Option<&str>, description: &str) -> any
     }
 
     scaffold(directory, &frame_name, description)?;
+    // Scaffold first so canonicalization can follow `/files/conversation` and `/files/pod`
+    // symlinks even when the new Frame directory did not exist before this command.
+    let scoped_manifest_path = scoped_manifest_path(&manifest_path)?;
 
     let client = DustApiClient::from_env()?;
     let response = client.register_frame(&scoped_manifest_path).await?;

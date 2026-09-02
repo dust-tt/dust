@@ -803,7 +803,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "stateful_conversation_window"
   | "run_tools_from_prompt"
   | "usage_data_api"
-  | "usage_page_read_only"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
@@ -813,7 +812,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_dust_keys"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
-  | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"
   | "user_memory"
@@ -823,7 +821,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
   | "disable_fair_use_awu_limit"
-  | "metronome_aggregated_usage_event"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

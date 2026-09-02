@@ -607,6 +607,55 @@ describe("activateFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
     );
+    expect(reloaded?.useCaseMetadata?.frameName).toBe("Task List");
+    expect(reloaded?.useCaseMetadata?.frameDescription).toBe("Track tasks.");
+  });
+
+  it("refreshes the stored name and description on republish", async () => {
+    const { auth, frame } = await setupFrame();
+    const first = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+    expect(first.isOk()).toBe(true);
+    if (first.isErr()) {
+      return;
+    }
+    await activateFramePublication(auth, {
+      frame,
+      publicationId: first.value.publicationId,
+    });
+
+    const renamedManifest = FrameManifestSchema.parse({
+      ...manifest,
+      name: "Renamed Tasks",
+      description: "Renamed description.",
+    });
+    const second = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest: renamedManifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+    expect(second.isOk()).toBe(true);
+    if (second.isErr()) {
+      return;
+    }
+    const activated = await activateFramePublication(auth, {
+      frame,
+      publicationId: second.value.publicationId,
+    });
+    expect(activated.isOk()).toBe(true);
+
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.frameName).toBe("Renamed Tasks");
+    expect(reloaded?.useCaseMetadata?.frameDescription).toBe(
+      "Renamed description."
+    );
   });
 
   it("keeps the active publication when validation fails", async () => {
@@ -949,7 +998,11 @@ describe("publishFramePublication", () => {
   it("keeps the previous publication active when database reconciliation fails", async () => {
     const { auth, frame } = await setupFrame();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
-    await frame.setActiveFramePublication(activePublicationId);
+    await frame.setActiveFramePublication({
+      publicationId: activePublicationId,
+      name: "Task List",
+      description: "Track tasks.",
+    });
     vi.mocked(reconcileFramePublicationDatabases).mockResolvedValueOnce(
       new Err(
         new SandboxFunctionError(
@@ -984,7 +1037,11 @@ describe("publishFramePublication", () => {
   it("keeps the active publication when function artifact storage fails", async () => {
     const { auth, frame } = await setupFrame();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
-    await frame.setActiveFramePublication(activePublicationId);
+    await frame.setActiveFramePublication({
+      publicationId: activePublicationId,
+      name: "Task List",
+      description: "Track tasks.",
+    });
     fileStorageMock.setFileSaveFails((filePath) =>
       filePath.endsWith("/functions/add-task.ts")
     );

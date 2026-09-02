@@ -300,6 +300,7 @@ export class SlackBotWhitelistModel extends ConnectorBaseModel<SlackBotWhitelist
   declare updatedAt: CreationOptional<Date>;
   declare botName: string;
   declare groupIds: string[];
+  declare spaceIds: string[] | null;
   declare whitelistType: SlackbotWhitelistType;
   declare slackConfigurationId: ForeignKey<SlackConfigurationModel["id"]>;
 }
@@ -326,6 +327,10 @@ SlackBotWhitelistModel.init(
       defaultValue: "summon_agent",
     },
     groupIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    spaceIds: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },

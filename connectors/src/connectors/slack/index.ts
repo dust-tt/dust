@@ -823,7 +823,7 @@ async function resyncWebhookRouterConfig(
 ): Promise<Result<undefined, Error>> {
   try {
     const webhookService = new WebhookRouterConfigService();
-    const currentRegion = connectorsConfig.getCurrentRegion();
+    const currentCell = connectorsConfig.getCurrentCell();
 
     const remainingConnectorIds = configurations
       .filter((c) => c.connectorId !== connectorId)
@@ -833,7 +833,7 @@ async function resyncWebhookRouterConfig(
       "slack",
       slackTeamId,
       undefined,
-      currentRegion,
+      currentCell,
       remainingConnectorIds
     );
 
@@ -841,12 +841,12 @@ async function resyncWebhookRouterConfig(
       {
         connectorId,
         slackTeamId,
-        region: currentRegion,
+        cell: currentCell,
         remainingConnectors: remainingConnectorIds.length,
         isLastConnector: remainingConnectorIds.length === 0,
       },
       remainingConnectorIds.length === 0
-        ? "Resynced webhook router: removed region entry (last connector)"
+        ? "Resynced webhook router: removed cell entry (last connector)"
         : "Resynced webhook router: updated with remaining connectors"
     );
 

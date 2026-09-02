@@ -33,7 +33,7 @@ const { mockIsUserBlocked, mockIsNonCreditPricedUserSpendLimitReached } =
     mockIsNonCreditPricedUserSpendLimitReached: vi.fn(),
   }));
 
-vi.mock("@app/lib/metronome/user_block", () => ({
+vi.mock("@app/lib/api/credits/access_control", () => ({
   isUserBlocked: mockIsUserBlocked,
 }));
 

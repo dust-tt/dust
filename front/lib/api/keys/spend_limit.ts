@@ -381,7 +381,7 @@ async function readApiKeySpendLimitCountWithLazySeed(
  * read at message-send time from the Redis fixed-window counter over the current
  * contract billing cycle. The threshold is the key's admin-configured
  * `monthlyCapAwuCredits`. Runs alongside the Metronome per-key cap
- * (`isApiKeyCapped`) as a faster, independent backup. Returns `false` (does not
+ * (`isApiKeyCappedByMetronome`) as a faster, independent backup. Returns `false` (does not
  * block) when the key is gone, has no cap, the billing period can't be resolved,
  * or on a Redis read error (fail-open).
  */

@@ -1,6 +1,9 @@
 // @vitest-environment node
 
-import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import {
+  buildAndPublishFramePublication,
+  validateFramePublication,
+} from "@app/lib/api/frames/build_and_publish";
 import {
   computeFrameSourcePathSetSha256,
   FRAME_SOURCE_STAGING_ROOT,
@@ -68,6 +71,13 @@ const uiOnlyManifest = FrameManifestSchema.parse({
   version: 1,
   name: "Task List",
   description: "Track tasks.",
+});
+
+const databaseManifest = FrameManifestSchema.parse({
+  version: 1,
+  name: "Task List",
+  description: "Track tasks.",
+  databases: [{ name: "tasks", schema: "databases/tasks.db.ts" }],
 });
 
 const sourceFiles = [
@@ -154,6 +164,58 @@ beforeEach(() => {
 });
 
 describe("buildAndPublishFramePublication", () => {
+  it("validates UI and Tailwind without writing a publication", async () => {
+    const { auth, conversation, frame } = await setup();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication({
+      publicationId: activePublicationId,
+      name: "Task List",
+      description: "Track tasks.",
+    });
+
+    const result = await validateFramePublication(auth, {
+      conversation,
+      manifest: uiOnlyManifest,
+      sourceFiles: [
+        {
+          ...sourceFiles[0],
+          content: Buffer.from(
+            'export default function App() { return <main className="h-[600px]">Tasks</main>; }'
+          ),
+        },
+      ],
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(result.isOk() && result.value.warnings).toMatchObject([
+      {
+        type: "tailwind",
+        message: expect.stringContaining("index.tsx: Forbidden Tailwind"),
+      },
+    ]);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBe(activePublicationId);
+  });
+
+  it("validates database schema contracts without publishing", async () => {
+    const { auth, conversation } = await setup();
+
+    const result = await validateFramePublication(auth, {
+      conversation,
+      manifest: databaseManifest,
+      sourceFiles: sourceFiles.slice(0, 1),
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_source",
+      message: "Frame database schema not found: tasks (databases/tasks.db.ts)",
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
   it("builds and publishes the UI without starting a sandbox", async () => {
     const { auth, conversation, frame } = await setup();
 
@@ -372,7 +434,11 @@ describe("buildAndPublishFramePublication", () => {
   it("keeps the active publication when the UI build fails", async () => {
     const { auth, conversation, frame } = await setup();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
-    await frame.setActiveFramePublication(activePublicationId);
+    await frame.setActiveFramePublication({
+      publicationId: activePublicationId,
+      name: "Task List",
+      description: "Track tasks.",
+    });
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,

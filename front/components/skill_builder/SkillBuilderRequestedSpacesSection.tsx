@@ -5,16 +5,14 @@ import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/
 import { useRemoveSkillSpace } from "@app/components/skill_builder/useRemoveSkillSpace";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Button, Planet } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import { useMemo, useState } from "react";
+import { useController } from "react-hook-form";
 
 export function SkillBuilderRequestedSpacesSection() {
-  const { resetField } = useFormContext<SkillBuilderFormData>();
-
-  const {
-    field: additionalSpacesField,
-    fieldState: additionalSpacesFieldState,
-  } = useController<SkillBuilderFormData, "additionalSpaces">({
+  const { field: additionalSpacesField } = useController<
+    SkillBuilderFormData,
+    "additionalSpaces"
+  >({
     name: "additionalSpaces",
   });
   const isReadOnly = additionalSpacesField.disabled ?? false;
@@ -25,8 +23,6 @@ export function SkillBuilderRequestedSpacesSection() {
   const {
     areSpaceRequirementsReady,
     globalSpace,
-    initialAdditionalSpaces,
-    initialRequestedSpaceIds,
     missingSpaceIds,
     nonGlobalSpacesUsedBySkill,
     spaceIdsUsedBySkill,
@@ -34,26 +30,6 @@ export function SkillBuilderRequestedSpacesSection() {
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (
-      !areSpaceRequirementsReady ||
-      !initialRequestedSpaceIds ||
-      additionalSpacesFieldState.isDirty
-    ) {
-      return;
-    }
-
-    resetField("additionalSpaces", {
-      defaultValue: initialAdditionalSpaces,
-    });
-  }, [
-    areSpaceRequirementsReady,
-    additionalSpacesFieldState.isDirty,
-    initialAdditionalSpaces,
-    initialRequestedSpaceIds,
-    resetField,
-  ]);
 
   const handleOpenSheet = () => {
     if (!areSpaceRequirementsReady) {

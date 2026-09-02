@@ -145,12 +145,75 @@ jobs:
             echo "matrix=[\"${{ inputs.regions }}\"]" >> "$GITHUB_OUTPUT"
           fi
 
+  # Components on the build-once path: one build, pushed to the global registry and, for
+  # now, to both regional registries so the regional values files keep resolving.
+  # Front and marketing stay on the regional matrix: their images still bake
+  # region-specific NEXT_PUBLIC_* values at build time.
+  build-once:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [prepare, notify-start]
+    if: ${{ !failure() && !cancelled() && contains(fromJSON('["connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
+
+      - name: Build Image
+        id: build
+        uses: ./.github/actions/build-image
+        with:
+          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
+          commit_sha: ${{ needs.prepare.outputs.short_sha }}
+          component: ${{ inputs.component }}
+          dd_api_key: ${{ secrets.DD_API_KEY }}
+          depot_eu_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
+          depot_eu_token: ${{ secrets.DEPOT_EU_PROJECT_TOKEN }}
+          depot_region: ${{ inputs.depot_region }}
+          depot_us_project_id: ${{ secrets.DEPOT_PROJECT_ID }}
+          depot_us_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          # Global registry, lives in the dust-infra project next to the helm charts.
+          project_id: dust-infra
+          region: us-central1
+          extra_image_registries: >-
+            us-central1-docker.pkg.dev/${{ secrets.GCLOUD_US_PROJECT_ID }}/dust-images
+            europe-west1-docker.pkg.dev/${{ secrets.GCLOUD_EU_PROJECT_ID }}/dust-images
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+
+      - name: Notify build success
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "build_success"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          current_version: ${{ steps.build.outputs.current_version }}
+          commit_diff: ${{ steps.build.outputs.commit_diff }}
+          commit_count: ${{ steps.build.outputs.commit_count }}
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+
   build:
     permissions:
       contents: read
       id-token: write
     needs: [prepare, notify-start, create-matrix, verify-sandbox-images]
-    if: ${{ !failure() && !cancelled() && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
+    if: ${{ !failure() && !cancelled() && !contains(fromJSON('["connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -224,6 +287,7 @@ jobs:
         prepare,
         notify-start,
         build,
+        build-once,
         deploy-app,
         deploy-poke,
         verify-sandbox-images,

@@ -64,6 +64,10 @@ export type FileUseCaseMetadata = {
   frameEntryRelPath?: string;
   // Immutable Frames v2 publication currently served by the Frame.
   activePublicationId?: string;
+  // Name and description from the manifest of the active publication. Refreshed on every
+  // activation, so they describe what is served, not what the source folder currently says.
+  frameName?: string;
+  frameDescription?: string;
 };
 
 export function isConversationFileUseCase(

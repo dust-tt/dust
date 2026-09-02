@@ -13,12 +13,15 @@ const outputSchema: JSONSchema = { type: "object" };
 
 export async function makeTestFrameFunction({
   enableFramesV2 = true,
+  isSuperUser = false,
   shareScope = "workspace_and_emails",
 }: {
   enableFramesV2?: boolean;
+  isSuperUser?: boolean;
   shareScope?: "emails_only" | "workspace_and_emails";
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
+    isSuperUser,
     role: "admin",
   });
   if (enableFramesV2) {
@@ -35,6 +38,8 @@ export async function makeTestFrameFunction({
     useCaseMetadata: {
       spaceId: space.sId,
       activePublicationId: publicationId,
+      frameName: "Task List",
+      frameDescription: "Track tasks.",
     },
   });
   await frame.setShareScope(adminAuth, shareScope);
@@ -70,7 +75,11 @@ export async function makeTestFrameFunction({
   if (!sandboxFunction) {
     throw new Error("Expected the Frame function to exist.");
   }
+  // Re-mocks the WorkOS session (the last `createPrivateApiMockRequest` call wins for request
+  // authentication), so `isSuperUser` must be threaded here too or a poke request made right
+  // after `makeTestFrameFunction` would authenticate as this non-super "user" auth instead.
   const { auth } = await createPrivateApiMockRequest({
+    isSuperUser,
     role: "user",
     workspace,
   });

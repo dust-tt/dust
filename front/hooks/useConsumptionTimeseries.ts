@@ -2,7 +2,10 @@ import {
   getConsumptionAnalyticsUrl,
   useConsumptionQuery,
 } from "@app/hooks/useConsumptionQuery";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
@@ -18,6 +21,7 @@ import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumptio
 
 type ConsumptionTimeseriesBody = ConsumptionBody & {
   mode: ConsumptionTimeseriesMode;
+  granularity?: ConsumptionGranularity;
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
 };
@@ -25,8 +29,8 @@ type ConsumptionTimeseriesBody = ConsumptionBody & {
 export interface UseConsumptionTimeseriesParams {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  granularity?: ConsumptionGranularity;
   mode: ConsumptionTimeseriesMode;
-  // Omit for a single total series.
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
   filter?: ConsumptionScopeFilter;
@@ -37,6 +41,7 @@ export interface UseConsumptionTimeseriesParams {
 export function useConsumptionTimeseries({
   workspaceId,
   period,
+  granularity,
   mode,
   breakdownBy,
   breakdownCount,
@@ -55,6 +60,7 @@ export function useConsumptionTimeseries({
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     filter: normalizedConsumptionFilter(filter),
     mode,
+    granularity,
     breakdownBy,
     breakdownCount,
   };

@@ -3,8 +3,8 @@ import { useExtensionMcpToolsToggle } from "@app/hooks/useExtensionMcpToolsToggl
 import type { LightWorkspaceType } from "@app/types/user";
 import { SliderToggle } from "@dust-tt/sparkle";
 
-const LABEL = "Browser Extension Tools";
-const DESCRIPTION =
+export const EXTENSION_MCP_TOOLS_LABEL = "Browser Extension Tools";
+export const EXTENSION_MCP_TOOLS_DESCRIPTION =
   "Whether the Dust browser extension is allowed to list and read browser tabs.";
 
 interface ExtensionMcpToolsSectionProps {
@@ -19,8 +19,8 @@ export function ExtensionMcpToolsSection({
 
   return (
     <GovernanceSettingRowLayout
-      label={LABEL}
-      description={DESCRIPTION}
+      label={EXTENSION_MCP_TOOLS_LABEL}
+      description={EXTENSION_MCP_TOOLS_DESCRIPTION}
       action={
         <SliderToggle
           selected={isEnabled}

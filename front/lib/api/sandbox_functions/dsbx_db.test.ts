@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import {
   getDatabaseSchemaOnSandbox,
+  listDatabasesOnReadySandbox,
   listDatabasesOnSandbox,
   reconcileDatabaseOnReadySandbox,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
@@ -160,6 +161,50 @@ describe("non-staging db commands", () => {
       return;
     }
     expect(result.value).toEqual([]);
+  });
+});
+
+describe("listDatabasesOnReadySandbox", () => {
+  it("parses the `dsbx db list` envelope against the supplied owner sandbox", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: true,
+          databases: [
+            { name: "chat", size_bytes: 8192 },
+            { name: "notes", size_bytes: 4096 },
+          ],
+        }),
+        stderr: "",
+      })
+    );
+
+    const result = await listDatabasesOnReadySandbox(authenticator, sandbox);
+
+    expect(result.isOk() && result.value).toEqual([
+      { name: "chat", sizeBytes: 8192 },
+      { name: "notes", sizeBytes: 4096 },
+    ]);
+  });
+
+  it("returns an Err when the sandbox reports a db error", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: false,
+          error: { kind: "internal", message: "boom" },
+        }),
+        stderr: "",
+      })
+    );
+
+    const result = await listDatabasesOnReadySandbox(authenticator, sandbox);
+
+    expect(result.isErr()).toBe(true);
   });
 });
 

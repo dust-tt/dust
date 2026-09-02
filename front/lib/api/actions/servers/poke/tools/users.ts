@@ -15,11 +15,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import {
-  GROUP_KINDS,
-  isAgentEditorGroupKind,
-  isSystemGroupKind,
-} from "@app/types/groups";
 import { Err } from "@app/types/shared/result";
 
 type UserHandlers = Pick<
@@ -46,11 +41,7 @@ export const userHandlers: UserHandlers = {
 
     const targetAuth = targetAuthResult.value;
 
-    const groups = await GroupResource.listAllWorkspaceGroups(targetAuth, {
-      groupKinds: GROUP_KINDS.filter(
-        (kind) => !isSystemGroupKind(kind) && !isAgentEditorGroupKind(kind)
-      ),
-    });
+    const groups = await GroupResource.listAllWorkspaceGroups(targetAuth);
 
     return jsonResponse({
       workspace_id,

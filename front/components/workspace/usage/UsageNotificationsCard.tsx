@@ -12,12 +12,10 @@ import { useState } from "react";
 
 interface UsageNotificationsCardProps {
   workspaceId: string;
-  readOnly: boolean;
 }
 
 export function UsageNotificationsCard({
   workspaceId,
-  readOnly,
 }: UsageNotificationsCardProps) {
   const { usageNotifications, isUsageNotificationsLoading } =
     useUsageNotifications({ workspaceId });
@@ -101,7 +99,7 @@ export function UsageNotificationsCard({
                 onSave={handleSaveBalanceThreshold}
                 onFocus={() => setIsEditingThreshold(true)}
                 onBlur={() => setIsEditingThreshold(false)}
-                disabled={readOnly || isUsageNotificationsLoading}
+                disabled={isUsageNotificationsLoading}
               />
             </div>
           }
@@ -113,9 +111,7 @@ export function UsageNotificationsCard({
             <SliderToggle
               selected={usageNotifications.upgradeRequestEmail}
               disabled={
-                readOnly ||
-                isSavingUpgradeRequestEmail ||
-                isUsageNotificationsLoading
+                isSavingUpgradeRequestEmail || isUsageNotificationsLoading
               }
               onClick={() => void handleToggleUpgradeRequestEmail()}
             />

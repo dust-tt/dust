@@ -153,7 +153,7 @@ export function ConsumptionBurnUpChart({
 
   return (
     <ChartContainer
-      title="Cumulative consumption"
+      title="Credits over time"
       additionalControls={additionalControls}
       isLoading={isTimeseriesLoading}
       errorMessage={

@@ -20,6 +20,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -209,11 +210,21 @@ async function setupExecutionTest(
   };
 }
 
-async function setupFrameExecutionTest() {
-  const { authenticator, workspace } = await createResourceTest({
+async function setupFrameExecutionTest({
+  standalone = false,
+}: {
+  standalone?: boolean;
+} = {}) {
+  const { authenticator, globalSpace, workspace } = await createResourceTest({
     role: "admin",
   });
   const space = await SpaceFactory.project(workspace);
+  const conversation = standalone
+    ? await ConversationFactory.create(authenticator, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+      })
+    : null;
   const publicationId = "publication-1";
   const frame = await FileFactory.create(authenticator, null, {
     contentType: frameV2ContentType,
@@ -221,7 +232,12 @@ async function setupFrameExecutionTest() {
     fileSize: 100,
     status: "ready",
     useCase: "conversation",
-    useCaseMetadata: { spaceId: space.sId, activePublicationId: publicationId },
+    useCaseMetadata: {
+      ...(conversation
+        ? { conversationId: conversation.sId }
+        : { spaceId: space.sId }),
+      activePublicationId: publicationId,
+    },
   });
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(
@@ -260,7 +276,11 @@ async function setupFrameExecutionTest() {
     version: "0.0.0-test",
   });
   vi.mocked(ensureFrameSandboxReady).mockResolvedValue(
-    new Ok({ sandbox, freshlyCreated: false, scope: { spaceId: space.sId } })
+    new Ok({
+      sandbox,
+      freshlyCreated: false,
+      scope: { spaceId: standalone ? null : space.sId },
+    })
   );
   vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
     "sbt-frame-function-token"
@@ -273,6 +293,7 @@ async function setupFrameExecutionTest() {
   return {
     authenticator,
     frame,
+    globalSpace,
     invocation,
     publicationId,
     sandbox,
@@ -1040,6 +1061,35 @@ describe("SandboxFunctionInvocationResource", () => {
           kind: "frame",
           frameId: frame.sId,
           spaceId: movedSpace.sId,
+        },
+      })
+    );
+  });
+
+  it("uses the global space token scope for a standalone Frame", async () => {
+    const {
+      authenticator,
+      frame,
+      globalSpace,
+      invocation,
+      sandbox,
+      sandboxFunction,
+    } = await setupFrameExecutionTest({ standalone: true });
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+    );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      authenticator,
+      expect.objectContaining({
+        sandboxFunction,
+        owner: {
+          kind: "frame",
+          frameId: frame.sId,
+          spaceId: globalSpace.sId,
         },
       })
     );

@@ -34,7 +34,11 @@ const manifest = JSON.stringify({
 });
 const uiSource = "export default function Status() { return <p>Ready</p>; }";
 
-async function setup() {
+async function setup({
+  uiContentType = "text/typescript",
+}: {
+  uiContentType?: string;
+} = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
   });
@@ -68,7 +72,7 @@ async function setup() {
           name,
           metadata: {
             contentType: name.endsWith(".tsx")
-              ? "text/typescript"
+              ? uiContentType
               : frameV2ContentType,
             size: String(Buffer.byteLength(content)),
           },
@@ -226,6 +230,20 @@ describe("publishFrameV2FromSource", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       result.value.publicationId
     );
+  });
+
+  it("infers TSX source content type from its extension", async () => {
+    const { auth, conversation, frame, manifestPath } = await setup({
+      uiContentType: "application/x-tiled-tsx",
+    });
+
+    const result = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath,
+    });
+
+    expect(result.isOk()).toBe(true);
   });
 
   it("rejects a path that does not match the Frame identity", async () => {

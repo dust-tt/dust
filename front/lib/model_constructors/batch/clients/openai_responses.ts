@@ -13,7 +13,7 @@ import type { InputConfig } from "@app/lib/model_constructors/types/input/config
 import { OPENAI_LAB } from "@app/lib/model_constructors/types/labs";
 import type { Model } from "@app/lib/model_constructors/types/models";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 // Do not remove: front-api routes call into this client for the similar skill
 // and similar agent discovery features. Without an explicit version front-api can silently
@@ -175,12 +175,12 @@ export abstract class OpenAIResponsesBatch extends WithOpenAIResponsesInputConve
       const { custom_id, response, error } = parsed.data;
       if (error || !response) {
         batchResult.set(custom_id, [
-          buildErrorEvent({
-            errorSource: "provider",
+          buildHttpStatusErrorEvent({
             metadata: this.metadata(),
-            type: "server_error",
-            message:
-              error?.message ?? `No response for custom_id ${custom_id}.`,
+            status: response?.status_code,
+            provider: "OpenAI",
+            detail: error?.message ?? `No response for custom_id ${custom_id}.`,
+            originalError: error,
           }),
         ]);
         continue;

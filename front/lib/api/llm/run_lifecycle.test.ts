@@ -607,7 +607,6 @@ describe("LLM stream telemetry", () => {
     expect(info).toHaveBeenCalledWith(
       expect.objectContaining({
         llmEventType: "success",
-        providerId: "noop",
         surface: "stream",
         durationMs: expect.any(Number),
         timeToFirstEventMs: expect.any(Number),
@@ -659,7 +658,6 @@ describe("LLM stream telemetry", () => {
         llmEventType: "error",
         errorType: "overloaded_error",
         errorSource: "provider",
-        providerId: "noop",
         surface: "stream",
         durationMs: expect.any(Number),
       }),
@@ -778,7 +776,6 @@ describe("LLM stream telemetry", () => {
     expect(warn).toHaveBeenCalledWith(
       expect.objectContaining({
         llmEventType: "success_without_usage",
-        providerId: "noop",
         surface: "stream",
         durationMs: expect.any(Number),
       }),
@@ -943,7 +940,6 @@ describe("LLM batch telemetry", () => {
         errorType: "overloaded_error",
         errorSource: "provider",
         surface: "batch",
-        providerId: "noop",
       }),
       "LLM Error"
     );

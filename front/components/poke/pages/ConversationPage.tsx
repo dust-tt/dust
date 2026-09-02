@@ -1,9 +1,7 @@
 import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
 import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import type { AgentMessageCreditsToolBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { makeSandboxConnectCommand } from "@app/lib/poke/sandbox";
@@ -322,14 +320,12 @@ function getActionStatus(
 
 interface ToolActionViewProps {
   action: PokeAgentMessageType["actions"][number];
-  cost?: AgentMessageCreditsToolBreakdown;
   isExpanded: boolean;
   onToggle: () => void;
 }
 
 function ToolActionContent({
   action,
-  cost,
   isExpanded,
   onToggle,
 }: ToolActionViewProps) {
@@ -393,15 +389,6 @@ function ToolActionContent({
             size="xs"
           />
         )}
-        {cost && (
-          <span title={`${cost.toolCostCategory} tool cost category`}>
-            <Chip
-              color="primary"
-              label={cost.free ? "free" : `${cost.awu} AWU`}
-              size="xs"
-            />
-          </span>
-        )}
       </span>
       <span className="w-16 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
         {duration}
@@ -423,12 +410,7 @@ function ToolActionContent({
   );
 }
 
-function ToolActionView({
-  action,
-  cost,
-  isExpanded,
-  onToggle,
-}: ToolActionViewProps) {
+function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
   return (
     <div>
       <div
@@ -441,7 +423,6 @@ function ToolActionView({
       >
         <ToolActionContent
           action={action}
-          cost={cost}
           isExpanded={isExpanded}
           onToggle={onToggle}
         />
@@ -461,46 +442,6 @@ function ToolActionView({
           </CodeBlock>
         </div>
       )}
-    </div>
-  );
-}
-
-interface CostBreakdownViewProps {
-  message: PokeAgentMessageType;
-}
-
-function CostBreakdownView({ message }: CostBreakdownViewProps) {
-  const breakdown = message.costBreakdown;
-  if (!breakdown) {
-    return null;
-  }
-
-  const stored = message.costCredits;
-  const mismatch = stored != null && stored !== breakdown.totalAwu;
-
-  return (
-    <div className="mt-2 rounded-md border border-separator bg-muted-background px-2 py-1.5">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span className="shrink-0 text-sm font-medium text-foreground">
-          Cost
-        </span>
-        <MetadataItem label="stored" mono>
-          {stored != null ? `${formatCredits(stored)} AWU` : "—"}
-        </MetadataItem>
-        <MetadataItem label="analytics" mono>
-          {`${formatCredits(breakdown.totalAwu)} AWU`}
-        </MetadataItem>
-        <MetadataItem label="llm / tools" mono>
-          {`${formatCredits(breakdown.llmAwu)} / ${formatCredits(breakdown.toolAwu)}`}
-        </MetadataItem>
-        {message.subAgentCostCredits != null &&
-          message.subAgentCostCredits > 0 && (
-            <MetadataItem label="sub-agents" mono>
-              {`${formatCredits(message.subAgentCostCredits)} AWU`}
-            </MetadataItem>
-          )}
-        {mismatch && <Chip color="warning" label="mismatch" size="xs" />}
-      </div>
     </div>
   );
 }
@@ -683,10 +624,6 @@ const AgentMessageView = ({
     message.contents
   );
 
-  const costByActionId = new Map<string, AgentMessageCreditsToolBreakdown>(
-    message.costBreakdown?.byTool.map((t) => [t.actionId, t]) ?? []
-  );
-
   return (
     <div className="w-full">
       <ConversationMessage
@@ -759,7 +696,6 @@ const AgentMessageView = ({
             )}
           </div>
         </div>
-        <CostBreakdownView message={message} />
         {providerPassthroughEntries.map((entry) => (
           <ProviderPassthroughView
             key={entry.key}
@@ -774,7 +710,6 @@ const AgentMessageView = ({
             <ToolActionView
               key={a.sId}
               action={a}
-              cost={costByActionId.get(a.sId)}
               isExpanded={isExpanded}
               onToggle={() => toggleAction(a.sId)}
             />

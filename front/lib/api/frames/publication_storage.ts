@@ -107,27 +107,20 @@ function getFrameIdentity(
   return new Ok({ workspaceId: owner.sId, frameId: frame.sId });
 }
 
-export async function storeFramePublication(
-  auth: Authenticator,
-  {
-    frame,
-    functionArtifacts,
-    manifest,
-    sourceFiles,
-    uiBundleCode,
-  }: {
-    frame: FileResource;
-    functionArtifacts: FramePublicationFunctionArtifact[];
-    manifest: FrameManifest;
-    sourceFiles: FramePublicationSourceFile[];
-    uiBundleCode: string;
-  }
-): Promise<Result<{ publicationId: string }, FramePublicationError>> {
-  const frameIdentity = getFrameIdentity(auth, frame);
-  if (frameIdentity.isErr()) {
-    return frameIdentity;
-  }
+type FramePublicationContracts = Pick<
+  FramePublicationDescriptor,
+  "databases" | "functions"
+>;
 
+export function buildFramePublicationContracts({
+  functionArtifacts,
+  manifest,
+  sourceFiles,
+}: {
+  functionArtifacts: FramePublicationFunctionArtifact[];
+  manifest: FrameManifest;
+  sourceFiles: FramePublicationSourceFile[];
+}): Result<FramePublicationContracts, FramePublicationError> {
   const sourceFilesByPath = new Map<string, FramePublicationSourceFile>();
   for (const sourceFile of sourceFiles) {
     if (!isSafeFrameRelativePath(sourceFile.relativePath)) {
@@ -166,7 +159,8 @@ export async function storeFramePublication(
       );
     }
   }
-  const databaseContracts: FramePublicationDescriptor["databases"] = [];
+
+  const databases: FramePublicationDescriptor["databases"] = [];
   for (const database of manifest.databases) {
     const schemaFile = sourceFilesByPath.get(database.schema);
     if (!schemaFile) {
@@ -186,7 +180,7 @@ export async function storeFramePublication(
         )
       );
     }
-    databaseContracts.push({
+    databases.push({
       name: database.name,
       schemaSource,
       schemaSha256: sha256(schemaSource),
@@ -219,7 +213,8 @@ export async function storeFramePublication(
     }
     functionArtifactsByName.set(artifact.name, artifact);
   }
-  const functionContracts: FramePublicationDescriptor["functions"] = [];
+
+  const functions: FramePublicationDescriptor["functions"] = [];
   for (const fn of manifest.functions) {
     const artifact = functionArtifactsByName.get(fn.name);
     if (!artifact) {
@@ -230,13 +225,46 @@ export async function storeFramePublication(
         )
       );
     }
-    functionContracts.push({
+    functions.push({
       name: fn.name,
       bundleSha256: sha256(artifact.bundleCode),
       userIdentity: artifact.userIdentity,
       inputSchema: artifact.inputSchema,
       outputSchema: artifact.outputSchema,
     });
+  }
+
+  return new Ok({ databases, functions });
+}
+
+export async function storeFramePublication(
+  auth: Authenticator,
+  {
+    frame,
+    functionArtifacts,
+    manifest,
+    sourceFiles,
+    uiBundleCode,
+  }: {
+    frame: FileResource;
+    functionArtifacts: FramePublicationFunctionArtifact[];
+    manifest: FrameManifest;
+    sourceFiles: FramePublicationSourceFile[];
+    uiBundleCode: string;
+  }
+): Promise<Result<{ publicationId: string }, FramePublicationError>> {
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  const contracts = buildFramePublicationContracts({
+    functionArtifacts,
+    manifest,
+    sourceFiles,
+  });
+  if (contracts.isErr()) {
+    return contracts;
   }
 
   const identity = {
@@ -257,8 +285,8 @@ export async function storeFramePublication(
       }))
       .sort((left, right) => left.path.localeCompare(right.path)),
     ui: { bundleSha256: sha256(uiBundleCode) },
-    functions: functionContracts,
-    databases: databaseContracts,
+    functions: contracts.value.functions,
+    databases: contracts.value.databases,
   } satisfies FramePublicationDescriptor);
   if (!descriptorResult.success) {
     return new Err(
@@ -525,7 +553,14 @@ export async function activateFramePublication(
   await withTransaction(async (transaction) => {
     // Updating the Frame first serializes concurrent activations. None of the
     // new publication state becomes visible until the transaction commits.
-    await frame.setActiveFramePublication(publicationId, transaction);
+    await frame.setActiveFramePublication(
+      {
+        publicationId,
+        name: descriptor.value.manifest.name,
+        description: descriptor.value.manifest.description,
+      },
+      transaction
+    );
     await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
     await SandboxFunctionResource.createForFramePublication(
       auth,
@@ -552,7 +587,7 @@ export async function activateFramePublication(
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
       buildAuditLogTarget("frame", {
         sId: frame.sId,
-        name: frame.fileName,
+        name: descriptor.value.manifest.name,
       }),
     ],
     context: getAuditLogContext(auth),

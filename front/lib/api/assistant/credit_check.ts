@@ -1,10 +1,10 @@
-import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import type { Authenticator } from "@app/lib/auth";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
   isUserBlocked,
-} from "@app/lib/metronome/user_block";
+} from "@app/lib/api/credits/access_control";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import type { Authenticator } from "@app/lib/auth";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -37,8 +37,8 @@ export async function checkPoolCreditGate(
 
   const user = auth.user();
   const blocked = user
-    ? (await isUserBlocked(owner, user)) !== null
-    : await isApiBlocked(owner.sId);
+    ? (await isUserBlocked(auth, user)) !== null
+    : await isApiBlocked(auth);
   if (blocked) {
     return { shouldStop: true, reason: "credits_exhausted" };
   }
@@ -46,7 +46,7 @@ export async function checkPoolCreditGate(
   if (
     userMessageOrigin &&
     isProgrammaticUsage(auth, { userMessageOrigin }) &&
-    (await isProgrammaticApiBlocked(owner.sId))
+    (await isProgrammaticApiBlocked(auth))
   ) {
     return { shouldStop: true, reason: "credits_exhausted" };
   }

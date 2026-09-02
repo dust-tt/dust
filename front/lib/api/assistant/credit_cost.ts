@@ -1,12 +1,9 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
-import type { ToolCostCategory } from "@app/lib/api/mcp";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,7 +11,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   buildAgentMessageBillingPlan,
   computeRunKey,
-  getToolBillingInfo,
 } from "@app/lib/credits/agent_message_billing";
 import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -27,10 +23,6 @@ import {
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type {
-  AgentMessageAnalyticsData,
-  AgentMessageAnalyticsToolUsed,
-} from "@app/types/assistant/analytics";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 
@@ -39,132 +31,6 @@ interface CreditActionMinimalInput {
   internalMCPServerName: InternalMCPServerNameType | null;
   mcpServerId?: string | null;
   status: ToolExecutionStatus;
-}
-
-export interface AgentMessageCreditsToolBreakdown {
-  actionId: string;
-  toolName: string;
-  internalMCPServerName: InternalMCPServerNameType | null;
-  toolCostCategory: ToolCostCategory;
-  free: boolean;
-  awu: number;
-}
-
-export interface AgentMessageCreditsBreakdown {
-  llmAwu: number;
-  toolAwu: number;
-  totalAwu: number;
-  byTool: AgentMessageCreditsToolBreakdown[];
-}
-
-/**
- * Fetches the stored analytics document for each message, keyed by messageId. Returns an empty
- * map (rather than failing) on an Elasticsearch error, since this only feeds a poke-only
- * auditing display, not the billing pipeline itself.
- */
-export async function fetchAgentMessageCostAnalyticsByMessageIds(
-  auth: Authenticator,
-  { messageIds }: { messageIds: string[] }
-): Promise<Map<string, AgentMessageAnalyticsData>> {
-  if (messageIds.length === 0) {
-    return new Map();
-  }
-
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const result = await searchAnalytics<AgentMessageAnalyticsData>(
-    {
-      bool: {
-        filter: [
-          { term: { workspace_id: workspaceId } },
-          { terms: { message_id: messageIds } },
-        ],
-      },
-    },
-    { size: messageIds.length }
-  );
-
-  if (result.isErr()) {
-    logger.error(
-      { workspaceId, error: result.error },
-      "[Credits] Failed to fetch agent message cost analytics from Elasticsearch."
-    );
-    return new Map();
-  }
-
-  return new Map(
-    result.value.hits.hits
-      .flatMap((hit) => (hit._source ? [hit._source] : []))
-      .map((doc) => [doc.message_id, doc])
-  );
-}
-
-/**
- * Builds the LLM/tool cost split and per-tool breakdown for display (e.g. in poke) from the
- * message's stored analytics document, rather than recomputing it live from current code: the
- * analytics document is a frozen snapshot of the cost as computed by the billing pipeline at run
- * time, so comparing it against the stored `costCredits` catches genuine billing bugs instead of
- * drifting apart whenever the AWU pricing formulas are later tuned.
- *
- * The analytics document's `tools_used` entries carry no `actionId`, so they are matched back to
- * `actions` by `(step, toolName)`: both lists are built from the same ordered set of actions at
- * analytics-indexing time, so a positional match within that key is reliable in practice.
- */
-export function buildAgentMessageCreditsBreakdownFromAnalytics({
-  analytics,
-  actions,
-}: {
-  analytics: Pick<AgentMessageAnalyticsData, "cost" | "tools_used"> | undefined;
-  actions: (CreditActionMinimalInput & { actionId: string; step: number })[];
-}): AgentMessageCreditsBreakdown | undefined {
-  // `cost` and `tools_used` were added to the analytics document after it first shipped, so
-  // older documents may be missing either (or the document itself may not exist yet for a very
-  // recently sent message) — degrade to no breakdown rather than throwing on missing data.
-  if (!analytics?.cost) {
-    return undefined;
-  }
-
-  const toolUsageQueueByKey = new Map<
-    string,
-    AgentMessageAnalyticsToolUsed[]
-  >();
-  for (const tool of analytics.tools_used ?? []) {
-    const key = `${tool.step_index}|${tool.tool_name}`;
-    const queue = toolUsageQueueByKey.get(key) ?? [];
-    queue.push(tool);
-    toolUsageQueueByKey.set(key, queue);
-  }
-
-  const byTool: AgentMessageCreditsToolBreakdown[] = [];
-  for (const action of actions) {
-    const matched = toolUsageQueueByKey
-      .get(`${action.step}|${action.toolName}`)
-      ?.shift();
-    if (!matched) {
-      continue;
-    }
-
-    const { toolCostCategory } = getToolBillingInfo(
-      action.internalMCPServerName,
-      action.toolName
-    );
-    byTool.push({
-      actionId: action.actionId,
-      toolName: action.toolName,
-      internalMCPServerName: action.internalMCPServerName,
-      toolCostCategory,
-      // "Free" means the tool ran and its category priced it at zero, not that it never ran.
-      free:
-        matched.cost_awu === 0 && isToolExecutionStatusBillable(action.status),
-      awu: matched.cost_awu,
-    });
-  }
-
-  return {
-    llmAwu: analytics.cost.llm_awu,
-    toolAwu: analytics.cost.tool_awu,
-    totalAwu: analytics.cost.full_awu,
-    byTool,
-  };
 }
 
 export function computeAgentMessageCredits({

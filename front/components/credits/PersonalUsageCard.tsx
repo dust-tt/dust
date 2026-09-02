@@ -174,6 +174,7 @@ export function PersonalUsageCard({
                 seatBalanceAwu={myUsage?.seatBalanceAwu ?? null}
                 effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
                 spendLimitSource={myUsage?.spendLimitSource ?? "none"}
+                spendLimitGroupName={myUsage?.spendLimitGroupName ?? null}
                 seatType={myUsage?.seatType ?? null}
                 isTotalAllowedUsagePending={false}
               />

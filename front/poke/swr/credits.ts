@@ -12,6 +12,7 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type {
   AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleHistoryResponseBody,
   AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
@@ -194,6 +195,30 @@ export function usePokeAwuPoolCurrentCycle({
   };
 }
 
+export function usePokeAwuPoolCycleHistory({
+  owner,
+  disabled,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history`,
+    fetcherFn
+  );
+
+  return {
+    cycleBreakdown: data?.cycleBreakdown ?? emptyArray(),
+    excessCycleBreakdown: data?.excessCycleBreakdown ?? emptyArray(),
+    isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
+    isAwuPoolCycleHistoryError: error,
+    isAwuPoolCycleHistoryValidating: isValidating,
+    mutateAwuPoolCycleHistory: mutate,
+  };
+}
+
 export function usePokeTopUpsHistory({
   owner,
   disabled,
@@ -234,8 +259,10 @@ export function usePokeMembersUsage({
     | "name"
     | "email"
     | "consumedAwuCredits"
+    | "consumedFromPoolAwuCredits"
     | "seatType"
-    | "creditState";
+    | "creditState"
+    | "seatUsage";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType;
   creditState?: UserCreditState;

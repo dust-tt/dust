@@ -56,6 +56,6 @@ export const framesSkill = {
     });
   },
   mcpServers: [{ name: "interactive_content" }],
-  version: 4,
+  version: 5,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

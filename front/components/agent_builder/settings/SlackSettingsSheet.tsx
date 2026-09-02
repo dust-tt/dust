@@ -12,6 +12,7 @@ import {
   Checkbox,
   ContentMessage,
   Icon,
+  InfoCircle,
   LinkExternal01,
   Lock01,
   SearchInput,
@@ -26,7 +27,6 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useController } from "react-hook-form";
@@ -366,7 +366,7 @@ export function SlackSettingsSheet({
                 size="md"
                 variant="warning"
                 title="Admin Access Required"
-                icon={InformationCircleIcon}
+                icon={InfoCircle}
               >
                 <p>
                   Only administrators can enable default agents for specific

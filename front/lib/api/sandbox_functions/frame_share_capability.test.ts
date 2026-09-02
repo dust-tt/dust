@@ -25,7 +25,11 @@ describe("resolveActiveFrameFunctionForUse", () => {
       SandboxFunctionResource,
       "fetchByFramePublicationAndSlug"
     ).mockImplementationOnce(async (...args) => {
-      await frame.setActiveFramePublication("publication-2");
+      await frame.setActiveFramePublication({
+        publicationId: "publication-2",
+        name: "Task List",
+        description: "Track tasks.",
+      });
       return fetchFunction(...args);
     });
 

@@ -1141,15 +1141,6 @@ const QUERIES: LabeledQuery[] = [
     query: "show the credit spending trend over the last 30 days",
     expected: "workspace_analytics.get_credit_timeseries",
   },
-  {
-    query: "chart message and conversation volume over time",
-    expected: "workspace_analytics.get_usage_timeseries",
-  },
-  {
-    query: "how has agent activity changed over the last 30 days",
-    expected: "workspace_analytics.get_usage_timeseries",
-  },
-
   // --- ashby ---
   {
     query: "find a candidate in ashby by email",

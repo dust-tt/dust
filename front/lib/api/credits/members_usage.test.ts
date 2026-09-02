@@ -8,7 +8,7 @@ import {
   getCachedSeatDataByUserId,
 } from "@app/lib/metronome/seats";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
@@ -106,8 +106,8 @@ describe("fetchSeatDataForMembersTable", () => {
   });
 
   it("degrades to an empty map when the cached read fails, without an uncached refetch", async () => {
-    vi.mocked(getCachedSeatDataByUserId).mockRejectedValue(
-      new Error("429 rate limit exceeded")
+    vi.mocked(getCachedSeatDataByUserId).mockResolvedValue(
+      new Err(new Error("429 rate limit exceeded"))
     );
 
     const result = await fetchSeatDataForMembersTable({
@@ -120,7 +120,7 @@ describe("fetchSeatDataForMembersTable", () => {
   });
 
   it("degrades to an empty map when another process holds the fetch lock", async () => {
-    vi.mocked(getCachedSeatDataByUserId).mockResolvedValue(null);
+    vi.mocked(getCachedSeatDataByUserId).mockResolvedValue(new Ok(null));
 
     const result = await fetchSeatDataForMembersTable({
       metronomeCustomerId: "cust_1",
@@ -132,13 +132,15 @@ describe("fetchSeatDataForMembersTable", () => {
   });
 
   it("returns the cached seat data keyed by user id", async () => {
-    vi.mocked(getCachedSeatDataByUserId).mockResolvedValue({
-      user_1: {
-        awuAllocation: 5000,
-        billingFrequency: "MONTHLY",
-        nextCreditResetAt: "2026-09-01T00:00:00.000Z",
-      },
-    });
+    vi.mocked(getCachedSeatDataByUserId).mockResolvedValue(
+      new Ok({
+        user_1: {
+          awuAllocation: 5000,
+          billingFrequency: "MONTHLY",
+          nextCreditResetAt: "2026-09-01T00:00:00.000Z",
+        },
+      })
+    );
 
     const result = await fetchSeatDataForMembersTable({
       metronomeCustomerId: "cust_1",

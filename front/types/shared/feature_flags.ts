@@ -16,12 +16,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "fontanierh",
   },
-  live_speech_to_text: {
-    description:
-      "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
-    stage: "dust_only",
-    owner: "adrsimon",
-  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
@@ -182,12 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
     stage: "self_serve",
     owner: "flvndvd",
-  },
-  usage_page_read_only: {
-    description:
-      "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
-    stage: "self_serve",
-    owner: "tdraier",
   },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
@@ -408,7 +396,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   enforce_user_spend_limit_rate_cap: {
     description:
       "Enable the Redis fixed-window spend-cap backups (per-user, per-API-key, programmatic, and workspace usage cap): record AWU usage into the counters and enforce them at message send. When off, usage is neither recorded nor enforced.",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "tdraier",
   },
   enforce_premium_model_message_limit: {
@@ -440,12 +428,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow this workspace to preview and archive agents that have not been mentioned for a configurable number of days.",
     stage: "self_serve",
     owner: "achilleburah",
-  },
-  metronome_aggregated_usage_event: {
-    description:
-      "Ingest a single aggregated Metronome usage event (LLM + tools) instead of the legacy per-model llm_usage_v3 and per-tool tool_use_v3 events.",
-    stage: "dust_only",
-    owner: "tdraier",
   },
   legacy_trigger_limits: {
     description:

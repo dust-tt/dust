@@ -46,7 +46,11 @@ describe("GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events",
   it("keeps an invocation streamable after the Frame republishes", async () => {
     const { frame, invocation, sandboxFunction, workspace } =
       await makeTestFrameInvocation();
-    await frame.setActiveFramePublication("publication-2");
+    await frame.setActiveFramePublication({
+      publicationId: "publication-2",
+      name: "Task List",
+      description: "Track tasks.",
+    });
     mockEventStream({
       type: "sandbox_function_invocation_result",
       created: Date.now(),

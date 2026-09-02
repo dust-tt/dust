@@ -11,6 +11,11 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isUserMessageContextOverflowing } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import {
+  isApiBlocked,
+  isApiKeyBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/api/credits/access_control";
+import {
   checkProgrammaticUsageLimits,
   isProgrammaticUsage,
 } from "@app/lib/api/programmatic_usage/tracking";
@@ -19,11 +24,6 @@ import {
   addBackwardCompatibleConversationWithoutContentFields,
   normalizeConversationVisibility,
 } from "@app/lib/api/v1/backward_compatibility";
-import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
-import {
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-} from "@app/lib/metronome/user_block";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -156,10 +156,7 @@ app.post(
         const workspace = auth.getNonNullableWorkspace();
         const plan = auth.subscription()?.plan;
         if (plan && isCreditPricedPlan(plan)) {
-          if (
-            workspace.metronomeCustomerId &&
-            (await isApiBlocked(workspace.sId))
-          ) {
+          if (workspace.metronomeCustomerId && (await isApiBlocked(auth))) {
             return apiError(ctx, {
               status_code: 429,
               api_error: {
@@ -169,9 +166,14 @@ app.post(
               },
             });
           }
+          // Mirrors the authoritative gate in postUserMessage, checked here to
+          // avoid creating an empty conversation when the initial message is
+          // blocked. `isProgrammaticApiBlocked` / `isApiKeyBlocked` are
+          // flag-aware (Redis rate-limiter counters when the flag is on, the
+          // Metronome-driven credit state otherwise).
           if (
             workspace.metronomeCustomerId &&
-            (await isProgrammaticApiBlocked(workspace.sId))
+            (await isProgrammaticApiBlocked(auth))
           ) {
             return apiError(ctx, {
               status_code: 429,
@@ -182,10 +184,8 @@ app.post(
               },
             });
           }
-          // Per-API-key credit cap: block when this key's credit state is
-          // "capped" (driven by the Metronome per-key cap alert / reconcile).
           const key = auth.key();
-          if (key && (await isApiKeyCapped(workspace.sId, key.id))) {
+          if (key && (await isApiKeyBlocked(auth, { keyModelId: key.id }))) {
             return apiError(ctx, {
               status_code: 429,
               api_error: {

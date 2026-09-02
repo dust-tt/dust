@@ -1,3 +1,4 @@
+import { DegradedModelIcon } from "@app/components/model_picker/DegradedModelIcon";
 import { ModelPickerContent } from "@app/components/model_picker/ModelPickerContent";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
@@ -16,6 +17,7 @@ import type {
 import {
   buildModelSelection,
   buildTierSelection,
+  DEGRADED_MODEL_TOOLTIP,
   getInitialEffort,
   getModelTier,
   getModelWithReasoningEffortLabel,
@@ -110,8 +112,13 @@ export function ModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const { modelProps, models, streamModels, lockPremiumEfforts } =
-    useModelPickerModels({ owner });
+  const {
+    modelProps,
+    models,
+    streamModels,
+    lockPremiumEfforts,
+    degradedModelIds,
+  } = useModelPickerModels({ owner });
   const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const { shown: baseSelection, agentDefault } = useMemo(
@@ -270,6 +277,10 @@ export function ModelPicker({
       ? MODEL_TIER_ICON[shown.display.tierId]
       : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
 
+  const isShownModelDegraded =
+    shown.display.kind === "model" &&
+    degradedModelIds.has(shown.display.model.modelId);
+
   // Model name and reasoning effort read as one string for the tooltip and the
   // accessible name, but the visible trigger splits the effort into its own
   // chip so it reads as a modifier rather than part of the model's name.
@@ -301,7 +312,13 @@ export function ModelPicker({
           className="px-2"
           variant={buttonVariant}
           size={buttonSize}
-          icon={buttonIcon}
+          icon={
+            isShownModelDegraded ? (
+              <DegradedModelIcon icon={buttonIcon} />
+            ) : (
+              buttonIcon
+            )
+          }
           label={showLabel ? triggerLabel : undefined}
           iconRight={
             showLabel && effortLabel ? (
@@ -313,7 +330,13 @@ export function ModelPicker({
             ) : undefined
           }
           isSelect={showLabel && showDropdownArrow}
-          tooltip={showLabel ? undefined : `Model picker: ${label}`}
+          tooltip={
+            isShownModelDegraded
+              ? DEGRADED_MODEL_TOOLTIP
+              : showLabel
+                ? undefined
+                : `Model picker: ${label}`
+          }
           aria-label={`Model picker: ${label}`}
           disabled={disabled}
         />

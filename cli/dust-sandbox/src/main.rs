@@ -131,6 +131,11 @@ async fn run() -> anyhow::Result<()> {
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
         },
         Commands::Frame { command } => match command {
+            commands::frame::FrameCommand::Call {
+                target,
+                function_name,
+                input,
+            } => commands::cmd_frame_call(&target, &function_name, input.as_deref()).await?,
             commands::frame::FrameCommand::Create {
                 directory,
                 name,
@@ -141,6 +146,9 @@ async fn run() -> anyhow::Result<()> {
             }
             commands::frame::FrameCommand::ShareLink { directory } => {
                 commands::cmd_frame_share_link(&directory).await?
+            }
+            commands::frame::FrameCommand::Validate { manifest } => {
+                commands::cmd_frame_validate(&manifest).await?
             }
             commands::frame::FrameCommand::Publish { source } => {
                 commands::cmd_frame_publish(&source).await?
@@ -205,6 +213,41 @@ mod tests {
         assert_eq!(exit_code_for(&offload_error), 15);
 
         assert_eq!(exit_code_for(&anyhow::anyhow!("boom")), 1);
+    }
+
+    #[test]
+    fn parses_frame_call() {
+        for target in [
+            "fil_abc123XYZ",
+            "/files/conversation-conv_123/Status/manifest.json",
+        ] {
+            let cli = Cli::try_parse_from([
+                "dsbx",
+                "frame",
+                "call",
+                target,
+                "get-status",
+                "--input",
+                r#"{"scope":"current"}"#,
+            ])
+            .expect("should parse");
+
+            match cli.command {
+                Commands::Frame {
+                    command:
+                        commands::frame::FrameCommand::Call {
+                            target: parsed_target,
+                            function_name,
+                            input,
+                        },
+                } => {
+                    assert_eq!(parsed_target, target);
+                    assert_eq!(function_name, "get-status");
+                    assert_eq!(input.as_deref(), Some(r#"{"scope":"current"}"#));
+                }
+                _ => panic!("expected Frame call subcommand"),
+            }
+        }
     }
 
     struct ToolsFields {
@@ -493,6 +536,29 @@ mod tests {
                 );
             }
             Commands::Frame { .. } => panic!("expected publish"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_validate_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "validate",
+            "/files/pod-vlt_123/Status/manifest.json",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command: commands::frame::FrameCommand::Validate { manifest },
+            } => {
+                assert_eq!(
+                    manifest,
+                    std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
+                );
+            }
+            Commands::Frame { .. } => panic!("expected validate"),
             _ => panic!("expected frame"),
         }
     }

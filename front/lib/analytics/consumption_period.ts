@@ -2,7 +2,7 @@ import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/perio
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/types/api/analytics/consumption";
 
-export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90] as const;
+export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90, 180] as const;
 
 export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
 
@@ -24,6 +24,35 @@ export const CONSUMPTION_PERIOD_OPTIONS: ConsumptionPeriodSelection[] = [
     days,
   })),
 ];
+
+export const CONSUMPTION_GRANULARITY_OPTIONS = [
+  "day",
+  "week",
+  "month",
+] as const;
+
+export type ConsumptionGranularity =
+  (typeof CONSUMPTION_GRANULARITY_OPTIONS)[number];
+
+export const DEFAULT_CONSUMPTION_GRANULARITY: ConsumptionGranularity = "day";
+
+const CONSUMPTION_GRANULARITY_LABELS: Record<ConsumptionGranularity, string> = {
+  day: "Daily",
+  week: "Weekly",
+  month: "Monthly",
+};
+
+export function consumptionGranularityFromKey(
+  key: string
+): ConsumptionGranularity | null {
+  return CONSUMPTION_GRANULARITY_OPTIONS.find((o) => o === key) ?? null;
+}
+
+export function consumptionGranularityLabel(
+  granularity: ConsumptionGranularity
+): string {
+  return CONSUMPTION_GRANULARITY_LABELS[granularity];
+}
 
 export function formatConsumptionDate(date: string | number): string {
   return new Date(date).toLocaleDateString("en-US", {

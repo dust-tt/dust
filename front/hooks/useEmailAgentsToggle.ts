@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { areEmailAgentsAllowed } from "@app/lib/workspace_policies";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
@@ -11,9 +12,7 @@ interface UseEmailAgentsToggleProps {
 export function useEmailAgentsToggle({ owner }: UseEmailAgentsToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
-  const [isEnabled, setIsEnabled] = useState(
-    owner.metadata?.allowEmailAgents === true
-  );
+  const [isEnabled, setIsEnabled] = useState(areEmailAgentsAllowed(owner));
 
   const doToggleEmailAgents = async () => {
     setIsChanging(true);

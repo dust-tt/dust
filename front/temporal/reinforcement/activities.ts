@@ -2,6 +2,10 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/api/credits/access_control";
 import { getStreamLLM } from "@app/lib/api/llm";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
 import {
@@ -26,10 +30,6 @@ import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_st
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
-import {
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-} from "@app/lib/metronome/user_block";
 import {
   AgentMessageModel,
   MessageModel,
@@ -727,10 +727,10 @@ export async function getReinforcementSettingsActivity({
       break;
     }
     case "awu_credits": {
-      // Pool + programmatic cap via Metronome state (alert/webhook driven).
+      // Pool + programmatic cap. `isProgrammaticApiBlocked` is flag-aware (Redis
+      // rate-limiter counter when the flag is on, Metronome state otherwise).
       programmaticUsageLimitReached =
-        (await isApiBlocked(workspace.sId)) ||
-        (await isProgrammaticApiBlocked(workspace.sId));
+        (await isApiBlocked(auth)) || (await isProgrammaticApiBlocked(auth));
 
       // Both clamps fail-open on errors: the reinforcement cap stays the only
       // constraint.
