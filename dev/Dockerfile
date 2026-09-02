@@ -60,6 +60,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     zsh \
   && rm -rf /var/lib/apt/lists/*
 
+RUN git config --system http.version HTTP/1.1
+
 # Node — official tarball, checksum-verified (same artifact the node:* images ship)
 ARG NODE_VERSION=24.16.0
 RUN set -eu \
