@@ -17,13 +17,6 @@ type OverviewAggs = {
   active_users?: { value?: number };
   conversations?: { value?: number };
   total_messages?: { value?: number };
-  feedbacks?: {
-    recent?: {
-      doc_count: number;
-      up?: { doc_count: number };
-      down?: { doc_count: number };
-    };
-  };
 };
 
 export async function fetchAgentOverview(
