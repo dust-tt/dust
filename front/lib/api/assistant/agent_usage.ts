@@ -1,4 +1,11 @@
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  CARDINALITY_PRECISION_THRESHOLD,
+  COMPLETED_AT_FIELD,
+  CONSUMPTION_DIMENSION_FIELDS,
+  CONVERSATION_ID_FIELD,
+  uniqueMessagesCardinalityAgg,
+} from "@app/lib/api/analytics/consumption/scope";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -140,6 +147,7 @@ type MentionsCountAggs = {
   by_agent: estypes.AggregationsTermsAggregateBase<{
     key: string;
     doc_count: number;
+    message_count?: estypes.AggregationsCardinalityAggregate;
     conversation_count: estypes.AggregationsCardinalityAggregate;
     user_count: estypes.AggregationsCardinalityAggregate;
   }>;
@@ -153,10 +161,10 @@ export async function agentMentionsCount(
   const filters: estypes.QueryDslQueryContainer[] = [
     { term: { workspace_id: workspaceId } },
     { terms: { context_origin: USER_USAGE_ORIGINS } },
-    { exists: { field: "agent_id" } },
+    { exists: { field: CONSUMPTION_DIMENSION_FIELDS.agent } },
     {
       range: {
-        timestamp: {
+        [COMPLETED_AT_FIELD]: {
           gte: `now-${rankingUsageDays}d/d`,
         },
       },
@@ -164,7 +172,11 @@ export async function agentMentionsCount(
   ];
 
   if (agentConfiguration) {
-    filters.push({ term: { agent_id: agentConfiguration.sId } });
+    filters.push({
+      term: {
+        [CONSUMPTION_DIMENSION_FIELDS.agent]: agentConfiguration.sId,
+      },
+    });
   }
 
   const query: estypes.QueryDslQueryContainer = {
@@ -175,20 +187,35 @@ export async function agentMentionsCount(
     {
       by_agent: {
         terms: {
-          field: "agent_id",
+          field: CONSUMPTION_DIMENSION_FIELDS.agent,
           size: 1000,
+          order: { message_count: "desc" },
         },
         aggs: {
-          conversation_count: { cardinality: { field: "conversation_id" } },
-          user_count: { cardinality: { field: "user_id" } },
+          message_count: uniqueMessagesCardinalityAgg(),
+          conversation_count: {
+            cardinality: {
+              field: CONVERSATION_ID_FIELD,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+          user_count: {
+            cardinality: {
+              field: CONSUMPTION_DIMENSION_FIELDS.user,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
         },
       },
     };
 
-  const result = await searchAnalytics<never, MentionsCountAggs>(query, {
-    aggregations,
-    size: 0,
-  });
+  const result = await searchConsumptionAnalytics<never, MentionsCountAggs>(
+    query,
+    {
+      aggregations,
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return new Err(
@@ -205,7 +232,7 @@ export async function agentMentionsCount(
     buckets
       .map((bucket) => ({
         agentId: bucket.key,
-        messageCount: bucket.doc_count,
+        messageCount: Math.round(bucket.message_count?.value ?? 0),
         conversationCount: bucket.conversation_count?.value ?? 0,
         userCount: bucket.user_count?.value ?? 0,
         timePeriodSec: rankingUsageDays * 24 * 60 * 60,
