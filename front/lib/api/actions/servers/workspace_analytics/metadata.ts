@@ -6,7 +6,6 @@ import {
   MAX_CREDIT_GROUPS,
   MAX_RESULTS,
   timeWindowSchemaShape,
-  usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { ConsumptionPeriodSchema } from "@app/lib/api/analytics/consumption/schema";
 import {
@@ -57,25 +56,6 @@ const getCreditTimeseriesSchema = {
       `Number of top groups to break out when breakdownBy is set ` +
         `(default ${DEFAULT_CREDIT_GROUPS}, max ${MAX_CREDIT_GROUPS}); the ` +
         `remainder is folded into 'others'.`
-    ),
-};
-
-const getUsageTimeseriesSchema = {
-  ...timeWindowSchemaShape,
-  ...usageFilterSchema,
-  metric: z
-    .enum(["messages", "skills", "tools"])
-    .optional()
-    .describe(
-      "What to plot over time. 'messages' (default): messages, conversations " +
-        "and active users. 'skills'/'tools': executions and unique users."
-    ),
-  granularity: z
-    .enum(["day", "week"])
-    .optional()
-    .describe(
-      "Bucket granularity (default day). Only applies to the messages metric; " +
-        "skills and tools are always daily."
     ),
 };
 
@@ -217,24 +197,6 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving credit trend",
       done: "Retrieved credit trend",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "get_usage_timeseries",
-    description:
-      "Return a usage time series over a window (defaults to the last 30 " +
-      "days). Plot message volume (messages, conversations, active users), " +
-      "skill executions, or tool calls over time. Use this for any activity " +
-      "or usage trend — it is a single call, do not call other tools once per " +
-      "day. Combine with filters to narrow. Chart the result. Admin-only.",
-    schema: getUsageTimeseriesSchema,
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Retrieving usage time series",
-      done: "Retrieved usage time series",
     },
     toolCostCategory: "basic",
     freeUsage: true,

@@ -38,8 +38,7 @@ export const workspaceAnalyticsSkill = {
     "Choosing a tool:\n" +
     "- For trends over time — anything spanning multiple days or phrased as " +
     "'over time', 'per day', 'evolution', 'trend' — make a single timeseries " +
-    "call: get_credit_timeseries for credit/spend trends, or " +
-    "get_usage_timeseries for activity, skill, or tool trends. They return the " +
+    "call: get_credit_timeseries for credit/spend trends. It returns the " +
     "whole series bucketed by day/week/month in one call.\n" +
     "- Never build a trend by calling a snapshot tool once per day or in " +
     "parallel per period — it is slower and unnecessary, the timeseries " +
