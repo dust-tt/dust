@@ -4,6 +4,7 @@ import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
 import {
   PodFunctionHooksProvider,
@@ -468,7 +469,7 @@ export function VisualizationWrapper({
           ? transformEditableText(fetchedCode)
           : fetchedCode;
 
-        const baseImports: Record<string, unknown> = {
+        const baseImports = {
           papaparse: papaparseAll,
           react: reactAll,
           recharts: rechartsAll,
@@ -495,7 +496,7 @@ export function VisualizationWrapper({
             usePodFunctionMutation,
             useUserIdentity,
           },
-        };
+        } satisfies Record<FrameRuntimeImportName, unknown>;
 
         const refs = extractFileRefs(codeToUse);
         const cache = new Map<string, Promise<unknown>>();
