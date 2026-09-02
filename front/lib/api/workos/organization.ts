@@ -4,6 +4,8 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { getWorkOSOrganization } from "@app/lib/api/workos/organization_primitives";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -45,13 +47,12 @@ async function syncActiveMembershipsToWorkOSOrganization({
   await concurrentExecutor(
     memberships,
     async (membership) => {
-      const user = membership.user;
-      if (!user?.workOSUserId) {
+      if (!membership.user?.workOSUserId) {
         return;
       }
 
       await MembershipResource.updateWorkOSMembershipRole({
-        user,
+        user: new UserResource(UserModel, membership.user),
         workspace: workspaceWithOrg,
         newRole: membership.role,
       });
