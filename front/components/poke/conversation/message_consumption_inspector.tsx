@@ -228,11 +228,6 @@ export function PokeMessageConsumptionInspector({
                 ? formatCreditValue(totalCredits)
                 : "Not billed"}
             </p>
-            {details && (
-              <p className="text-xs text-muted-foreground">
-                Attribution v{details.attributionVersion}
-              </p>
-            )}
           </div>
         </div>
         <Icon
@@ -318,33 +313,12 @@ export function PokeMessageConsumptionInspector({
                     aria-labelledby={`message-${messageId}-attribution-heading`}
                     className="border-t border-border pt-5"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <h3
-                          id={`message-${messageId}-attribution-heading`}
-                          className="text-sm font-semibold text-foreground"
-                        >
-                          Additive attribution
-                        </h3>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          Reconciled shares of the exact bill.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          v{details.attributionVersion}
-                        </span>
-                        {isReconciled ? (
-                          <Chip
-                            size="mini"
-                            color="success"
-                            label="Reconciled"
-                          />
-                        ) : (
-                          <Chip size="mini" color="warning" label="Gap" />
-                        )}
-                      </div>
-                    </div>
+                    <h3
+                      id={`message-${messageId}-attribution-heading`}
+                      className="text-sm font-semibold text-foreground"
+                    >
+                      Additive attribution
+                    </h3>
 
                     {totalCredits > 0 && (
                       <div className="mt-4">

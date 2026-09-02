@@ -132,7 +132,9 @@ describe("PokeMessageConsumptionInspector", () => {
       screen.queryByText(/Attributed credits reconcile the stored bill/)
     ).not.toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
-    expect(screen.getByText("Reconciled")).toBeInTheDocument();
+    expect(screen.queryByText("Attribution v7")).not.toBeInTheDocument();
+    expect(screen.queryByText("v7")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reconciled")).not.toBeInTheDocument();
     expect(
       screen.getByRole("progressbar", {
         name: "Message credits split between agent work and tools",
