@@ -46,7 +46,7 @@ app.get(
     const { days } = ctx.req.valid("query");
 
     const feedbackCounts =
-      await await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+      await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
         auth,
         assistant.sId,
         days
