@@ -11,7 +11,7 @@ vi.mock("@app/lib/api/credits/members_usage", async () => {
 });
 
 function membersUsageUrl(wId: string) {
-  return `/api/w/${wId}/credits/members-usage`;
+  return `/api/poke/workspaces/${wId}/credits/members-usage`;
 }
 
 const MEMBER_USAGE = {
@@ -35,7 +35,7 @@ const MEMBER_USAGE = {
   seatType: "max" as const,
   seatBalanceAwu: 100,
   seatUsageTarget: null,
-  overallUsageTarget: null,
+  overallUsageTarget: "critical" as const,
   spendLimitAlertId: null,
   spendLimitAwuCredits: null,
   rateLimiterSpendAwuCredits: null,
@@ -55,40 +55,10 @@ beforeEach(() => {
   });
 });
 
-describe("GET /api/w/[wId]/credits/members-usage", () => {
-  it("returns 403 when the caller is not a manager", async () => {
+describe("GET /api/poke/workspaces/[wId]/credits/members-usage", () => {
+  it("returns members usage including the off-pace target, with alert links requested", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "user",
-    });
-
-    const response = await honoApp.request(membersUsageUrl(workspace.sId));
-
-    expect(response.status).toBe(403);
-    expect((await response.json()).error.type).toBe("workspace_auth_error");
-    expect(membersUsage.getMembersUsage).not.toHaveBeenCalled();
-  });
-
-  it("allows a manager to read members usage", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "manager",
-    });
-
-    const response = await honoApp.request(membersUsageUrl(workspace.sId));
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      members: [MEMBER_USAGE],
-      total: 1,
-      creditsResetAt: CREDITS_RESET_AT,
-    });
-    expect(membersUsage.getMembersUsage).toHaveBeenCalled();
-  });
-
-  it("allows an admin to read members usage", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "GET",
+      isSuperUser: true,
       role: "admin",
     });
 
@@ -100,5 +70,11 @@ describe("GET /api/w/[wId]/credits/members-usage", () => {
       total: 1,
       creditsResetAt: CREDITS_RESET_AT,
     });
+    expect(membersUsage.getMembersUsage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeAlertLinks: true,
+        includeSeatBalance: true,
+      })
+    );
   });
 });
