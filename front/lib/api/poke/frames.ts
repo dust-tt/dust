@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { loadFramePublicationDescriptor } from "@app/lib/api/frames/publication_storage";
+import type { PokePodFunction } from "@app/lib/api/poke/projects";
 import type { Authenticator } from "@app/lib/auth";
 import filestorageConfig from "@app/lib/file_storage/config";
 import { makeGcsConsoleUrl, makeGcsUri } from "@app/lib/poke/gcs";
@@ -253,4 +254,38 @@ export async function getFrameDetails(
     },
     publicationError: null,
   };
+}
+
+export type PokeListFrameFunctions = {
+  items: PokePodFunction[];
+};
+
+export async function listFrameFunctions(
+  auth: Authenticator,
+  frame: FileResource
+): Promise<PokePodFunction[]> {
+  const publicationId = frame.useCaseMetadata?.activePublicationId;
+  if (!publicationId) {
+    return [];
+  }
+
+  const sandboxFunctions = await SandboxFunctionResource.listByFramePublication(
+    auth,
+    { frame, publicationId }
+  );
+
+  const authors = await UserResource.fetchByModelIds(
+    removeNulls(
+      sandboxFunctions.map((sandboxFunction) => sandboxFunction.file.userId)
+    )
+  );
+  const authorsByModelId = new Map(authors.map((user) => [user.id, user]));
+
+  return sandboxFunctions.map((sandboxFunction) => {
+    const { userId } = sandboxFunction.file;
+
+    return sandboxFunction.toPokeJSON(
+      userId !== null ? (authorsByModelId.get(userId) ?? null) : null
+    );
+  });
 }
