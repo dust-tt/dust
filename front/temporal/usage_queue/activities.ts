@@ -40,6 +40,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -200,6 +201,64 @@ export async function trackProgrammaticUsageActivity(
   return { tracked: false, origin: userMessageOrigin };
 }
 
+// Bounds how many parent-conversation hops we'll walk to find the human who
+// ultimately triggered a message with no direct user attribution (e.g. a
+// pod_manager sub-conversation spawned by a system-key hidden helper spawned
+// by a real user's top-level conversation). Genuine chains are 1-2 hops deep;
+// this just guards against a pathological or cyclic one.
+const MAX_ORIGINATING_USER_TRACE_HOPS = 5;
+
+/**
+ * Walk `agenticOriginMessageId` links back through parent conversations to
+ * find the closest ancestor UserMessage that has a real user attached.
+ * `agenticOriginMessageId` points to the parent agent message (in the parent
+ * conversation) that spawned the current one; from there we walk `parentId`
+ * up that conversation's message chain until we reach the user message it
+ * replied to, then repeat if that one is itself unattributed.
+ */
+async function resolveOriginatingUserId(
+  workspace: { id: ModelId },
+  startUserMessage: UserMessageModel | undefined
+): Promise<string | null> {
+  let current = startUserMessage;
+  for (let hop = 0; hop < MAX_ORIGINATING_USER_TRACE_HOPS; hop++) {
+    if (!current?.agenticOriginMessageId) {
+      return null;
+    }
+
+    let messageRow = await MessageModel.findOne({
+      where: {
+        sId: current.agenticOriginMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    for (
+      let parentHop = 0;
+      parentHop < MAX_ORIGINATING_USER_TRACE_HOPS &&
+      messageRow &&
+      !messageRow.userMessageId;
+      parentHop++
+    ) {
+      messageRow = messageRow.parentId
+        ? await MessageModel.findByPk(messageRow.parentId)
+        : null;
+    }
+    if (!messageRow?.userMessageId) {
+      return null;
+    }
+
+    current =
+      (await UserMessageModel.findOne({
+        where: { id: messageRow.userMessageId, workspaceId: workspace.id },
+        include: [{ model: UserModel, required: false }],
+      })) ?? undefined;
+    if (current?.user) {
+      return current.user.sId;
+    }
+  }
+  return null;
+}
+
 /**
  * Emit the aggregated Metronome usage event (LLM + tool cost) for an agent
  * message. Called for ALL messages (not just programmatic) — always-on,
@@ -267,9 +326,14 @@ export async function emitMetronomeUsageEventsActivity(
   // Prefer the user associated with the UserMessage row; fall back to the
   // user on the authenticator (covers doNotAssociateUser messages like
   // pod_manager sub-conversations where the DB row has no user but the auth
-  // still carries the original session user).
+  // still carries the original session user); finally, walk back through
+  // agenticOriginMessageId to the closest ancestor conversation that does
+  // have one (covers a system-key hidden helper — which has no auth user of
+  // its own — calling pod_manager on behalf of a real user's conversation).
   const userId =
-    userMessageRow?.userMessage?.user?.sId ?? auth.user()?.sId ?? null;
+    userMessageRow?.userMessage?.user?.sId ??
+    auth.user()?.sId ??
+    (await resolveOriginatingUserId(workspace, userMessageRow?.userMessage));
 
   // Determine if the user holds a free seat. Free-seat events use a prefixed
   // user_id ("free-<sId>") so Metronome's free-credit specifier only drains
