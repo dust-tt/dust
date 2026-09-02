@@ -143,8 +143,8 @@ function createPodMount(
     legacyPrefix: includeLegacy ? LEGACY_PREFIX_PROJECT : null,
     legacySandboxMountPoint: includeLegacy ? `/files/pod` : null,
     permissions: {
-      canRead: space.canRead(auth),
-      canWrite: space.canWrite(auth),
+      canRead: auth.can("read", space),
+      canWrite: auth.can("write", space),
     },
   };
 }
@@ -353,7 +353,7 @@ export class DustFileSystem {
     // Decided by the caller that owns that concern (the file system only passes them to setup).
     { sandboxOnlyMounts = [] }: { sandboxOnlyMounts?: SandboxOnlyMount[] } = {}
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
-    if (!space.canRead(auth)) {
+    if (!auth.can("read", space)) {
       return new Err(
         new DustFileSystemError(
           "unauthorized",

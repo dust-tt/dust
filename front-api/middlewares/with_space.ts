@@ -25,19 +25,20 @@ function hasPermission(
   space: SpaceResource,
   options: WithSpaceOptions
 ): boolean {
-  if (options.requireCanAdministrate && !space.canAdministrate(auth)) {
+  if (options.requireCanAdministrate && !auth.can("admin", space)) {
     return false;
   }
   if (
     options.requireCanReadOrAdministrate &&
-    !space.canReadOrAdministrate(auth)
+    !auth.can("read", space) &&
+    !auth.can("admin", space)
   ) {
     return false;
   }
-  if (options.requireCanRead && !space.canRead(auth)) {
+  if (options.requireCanRead && !auth.can("read", space)) {
     return false;
   }
-  if (options.requireCanWrite && !space.canWrite(auth)) {
+  if (options.requireCanWrite && !auth.can("write", space)) {
     return false;
   }
   return true;

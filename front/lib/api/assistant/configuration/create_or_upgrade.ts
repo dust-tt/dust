@@ -134,7 +134,9 @@ export async function createOrUpgradeAgentConfiguration({
     // Validate that all requested spaces were found and user can read them
     if (!dangerouslySkipPermissionFiltering) {
       const readableSpaceIds = new Set(
-        additionalSpaces.filter((s) => s.canRead(auth)).map((s) => s.sId)
+        additionalSpaces
+          .filter((space) => auth.can("read", space))
+          .map((s) => s.sId)
       );
       const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
         (sId) => !readableSpaceIds.has(sId)

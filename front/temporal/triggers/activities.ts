@@ -53,7 +53,7 @@ async function createConversationForAgentConfiguration({
   let spaceModelId: ModelId | null = null;
   if (trigger.spaceId) {
     const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
-    if (pod && pod.isProject() && pod.canRead(auth)) {
+    if (pod && pod.isProject() && auth.can("read", pod)) {
       spaceModelId = pod.id;
     } else {
       logger.warn(

@@ -140,7 +140,7 @@ export async function validateSelectableSpaces(
     );
   }
 
-  if (spaces.some((space) => !space.canRead(auth))) {
+  if (spaces.some((space) => !auth.can("read", space))) {
     return new Err(
       new SelectedConversationSpacesError(
         "space_not_found",
@@ -427,7 +427,7 @@ async function getValidSelectedSpaceIdsForAgentRun(
     );
 
   return selectedSpaces
-    .filter((space) => space.canRead(auth) && space.isRegular())
+    .filter((space) => auth.can("read", space) && space.isRegular())
     .map((space) => space.sId);
 }
 

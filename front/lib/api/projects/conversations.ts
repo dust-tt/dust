@@ -183,7 +183,7 @@ export async function moveConversationToProject(
               )
             );
           }
-          if (!previousProject.canAdministrate(auth)) {
+          if (!auth.can("admin", previousProject)) {
             return new Err(
               new DustError(
                 "unauthorized",
@@ -323,7 +323,7 @@ export async function moveConversationOutOfProject(
             )
           );
         }
-        if (!project.canAdministrate(auth)) {
+        if (!auth.can("admin", project)) {
           return new Err(
             new DustError(
               "unauthorized",

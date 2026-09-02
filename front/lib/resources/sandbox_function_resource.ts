@@ -436,7 +436,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     const accessibleSpacesById = new Map(
       spaces
         .filter(
-          (space) => space.isProject() && space.canReadOrAdministrate(auth)
+          (space) =>
+            space.isProject() &&
+            (auth.can("read", space) || auth.can("admin", space))
         )
         .map((space) => [space.id, space])
     );
@@ -1011,7 +1013,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
-      if (!this.space.canReadOrAdministrate(auth)) {
+      if (!auth.can("read", this.space) && !auth.can("admin", this.space)) {
         return new Err(new Error("Sandbox function space is not accessible."));
       }
 

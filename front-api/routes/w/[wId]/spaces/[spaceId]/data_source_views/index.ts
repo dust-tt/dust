@@ -233,7 +233,7 @@ app.post(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

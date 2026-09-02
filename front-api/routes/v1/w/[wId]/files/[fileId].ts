@@ -289,7 +289,7 @@ async function checkFileAccess(
       auth,
       file.useCaseMetadata.spaceId
     );
-    if (!space || !space.canRead(auth)) {
+    if (!space || !auth.can("read", space)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

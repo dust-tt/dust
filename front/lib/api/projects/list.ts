@@ -221,7 +221,7 @@ export async function enrichProjectsWithMetadata(
     ...enrichedSpaces[i],
     description: metadataMap.get(space.id)?.description ?? null,
     isMember: space.isMember(auth),
-    isEditor: space.canAdministrate(auth),
+    isEditor: auth.can("admin", space),
     archivedAt: metadataMap.get(space.id)?.archivedAt?.getTime() ?? null,
   }));
 }

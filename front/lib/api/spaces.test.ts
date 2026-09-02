@@ -311,14 +311,14 @@ describe("createSpaceAndGroup", () => {
         ).toBe(true);
 
         const staleAuth = await Authenticator.fromJSON(staleAuthJson);
-        expect(pod.canAdministrate(staleAuth)).toBe(false);
+        expect(staleAuth.can("admin", pod)).toBe(false);
         expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
 
         await staleAuth.refresh();
         expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
 
         const refreshedPod = await SpaceResource.fetchById(staleAuth, pod.sId);
-        expect(refreshedPod?.canAdministrate(staleAuth)).toBe(true);
+        expect(staleAuth.can("admin", refreshedPod!)).toBe(true);
       }
 
       createConnectorSpy.mockRestore();
@@ -361,7 +361,7 @@ describe("createSpaceAndGroup", () => {
         // above, which has to call refresh() itself).
         expect(userAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
         expect(userAuth.getGrantedVerbs("space", pod.id)).toContain("admin");
-        expect(pod.canAdministrate(userAuth)).toBe(true);
+        expect(userAuth.can("admin", pod)).toBe(true);
       }
 
       createConnectorSpy.mockRestore();
@@ -465,11 +465,11 @@ describe("createSpaceAndGroup", () => {
       expect(await asMember!.isRestricted(memberAuth)).toBe(false);
 
       // The member group confers write; the global group's `reader` grant only confers read.
-      expect(asMember!.canRead(memberAuth)).toBe(true);
-      expect(asMember!.canWrite(memberAuth)).toBe(true);
+      expect(memberAuth.can("read", asMember!)).toBe(true);
+      expect(memberAuth.can("write", asMember!)).toBe(true);
 
-      expect(asNonMember!.canRead(nonMemberAuth)).toBe(true);
-      expect(asNonMember!.canWrite(nonMemberAuth)).toBe(false);
+      expect(nonMemberAuth.can("read", asNonMember!)).toBe(true);
+      expect(nonMemberAuth.can("write", asNonMember!)).toBe(false);
     });
 
     it("should create a restricted space without global group", async () => {

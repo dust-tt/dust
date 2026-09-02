@@ -841,8 +841,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   ): Promise<MCPServerViewResource[]> {
     // Filter out spaces that the user does not have read or administrate access to
-    const accessibleSpaces = spaces.filter((s) =>
-      s.canReadOrAdministrate(auth)
+    const accessibleSpaces = spaces.filter(
+      (space) => auth.can("read", space) || auth.can("admin", space)
     );
     if (accessibleSpaces.length === 0) {
       return [];
@@ -1144,7 +1144,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const matches = views.filter((view) => {
       if (
         view.space.kind === "system" ||
-        !view.space.canReadOrAdministrate(auth)
+        (!auth.can("read", view.space) && !auth.can("admin", view.space))
       ) {
         return false;
       }

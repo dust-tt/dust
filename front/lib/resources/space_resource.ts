@@ -560,7 +560,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const lastValue = lastSpace?.name ?? null;
 
     return {
-      spaces: resultSpaces.filter((space) => space.canRead(auth)),
+      spaces: resultSpaces.filter((space) => auth.can("read", space)),
       hasMore,
       lastValue,
     };
@@ -628,12 +628,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       });
     }
 
-    return spaces.filter((s) => s.canRead(auth));
+    return spaces.filter((space) => auth.can("read", space));
   }
 
   static async canAdministrateSystemSpace(auth: Authenticator) {
     const systemSpace = await this.fetchWorkspaceSystemSpace(auth);
-    return systemSpace.canAdministrate(auth);
+    return auth.can("admin", systemSpace);
   }
 
   static async fetchWorkspaceSystemSpace(
@@ -932,7 +932,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(new Error("Only admins can update space names."));
     }
 
@@ -1012,7 +1012,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1243,7 +1243,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // caller's own membership), so the group set and grants `auth` resolved at construction are now
     // stale. Refresh the caller's snapshot now that the write has committed — no transaction, so the
     // re-read sees the committed rows and the `afterCommit`-invalidated cache — so any later
-    // permission check in the same request (e.g. the post-update `canRead` in the members handler)
+    // permission check in the same request (e.g. the post-update read check in the members handler)
     // sees the new state instead of a pre-mutation view.
     await auth.refresh();
 
@@ -1414,7 +1414,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1455,8 +1455,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }
     }
 
-    // Authorization is the space-level `canAdministrate` gate above; the member group is resolved
-    // from group_permissions and mutated directly.
+    // Authorization is the space-level admin gate above; the member group is resolved from
+    // group_permissions and mutated directly.
     const memberGroup = await this.fetchManualMemberGroup(auth);
 
     const addMemberRes = await memberGroup.dangerouslyAddMembers(auth, {
@@ -1491,7 +1491,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1585,7 +1585,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1663,7 +1663,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -2179,7 +2179,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // Users can add themselves to open projects; otherwise managing a space's members requires
     // administration rights (held by workspace admins and a project's editors) — a project's plain
-    // members hold `write` but must not be able to add others, so this gates on `canAdministrate`.
+    // members hold `write` but must not be able to add others, so this gates on `admin`.
     if (this.isProject() && !(await this.isRestricted(auth))) {
       const currentUser = auth.getNonNullableUser();
       if (userId === currentUser.sId) {
@@ -2187,28 +2187,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }
     }
 
-    return this.canAdministrate(auth);
-  }
-
-  canAdministrate(auth: Authenticator) {
-    return this.hasSpacePermission(auth, "admin");
-  }
-
-  canWrite(auth: Authenticator) {
-    return this.hasSpacePermission(auth, "write");
-  }
-
-  canRead(auth: Authenticator) {
-    return this.hasSpacePermission(auth, "read");
-  }
-
-  // Serves the space permission decision from `group_permissions` (see `getAccessControlLists`).
-  private hasSpacePermission(auth: Authenticator, verb: GrantVerb): boolean {
-    return auth.hasPermission(verb, this);
-  }
-
-  canReadOrAdministrate(auth: Authenticator) {
-    return this.canRead(auth) || this.canAdministrate(auth);
+    return auth.can("admin", this);
   }
 
   isGlobal() {

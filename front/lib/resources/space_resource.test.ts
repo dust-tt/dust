@@ -1333,7 +1333,7 @@ describe("SpaceResource", () => {
           );
 
           expect(await reloadedSpace!.fetchIsAdminControlled()).toBe(true);
-          expect(reloadedSpace!.canAdministrate(adminAuth)).toBe(true);
+          expect(adminAuth.can("admin", reloadedSpace!)).toBe(true);
         });
 
         it("does not let managers administrate", async () => {
@@ -1357,7 +1357,7 @@ describe("SpaceResource", () => {
             projectSpace.sId
           );
 
-          expect(reloadedSpace!.canAdministrate(managerAuth)).toBe(false);
+          expect(managerAuth.can("admin", reloadedSpace!)).toBe(false);
         });
 
         it("blocks addEditors while admin-controlled", async () => {
@@ -2609,8 +2609,8 @@ describe("SpaceResource group_permissions enforcement", () => {
     );
 
     // Member group confers read+write; served from the group_permissions table.
-    expect(space.canRead(memberAuth)).toBe(true);
-    expect(space.canWrite(memberAuth)).toBe(true);
+    expect(memberAuth.can("read", space)).toBe(true);
+    expect(memberAuth.can("write", space)).toBe(true);
   });
 
   // An open regular space attaches the workspace global group as a `reader` viewer, so everyone can
@@ -2648,11 +2648,11 @@ describe("SpaceResource group_permissions enforcement", () => {
     expect(await openSpace!.isRestricted(adminAuth)).toBe(false);
 
     // The member group confers write; the global group's `reader` grant only confers read.
-    expect(openSpace!.canRead(memberAuth)).toBe(true);
-    expect(openSpace!.canWrite(memberAuth)).toBe(true);
+    expect(memberAuth.can("read", openSpace!)).toBe(true);
+    expect(memberAuth.can("write", openSpace!)).toBe(true);
 
-    expect(openSpace!.canRead(nonMemberAuth)).toBe(true);
-    expect(openSpace!.canWrite(nonMemberAuth)).toBe(false);
+    expect(nonMemberAuth.can("read", openSpace!)).toBe(true);
+    expect(nonMemberAuth.can("write", openSpace!)).toBe(false);
   });
 
   it("enforces the table: group mode accepts a manual group, and deselecting it revokes access", async () => {
@@ -2675,8 +2675,8 @@ describe("SpaceResource group_permissions enforcement", () => {
       workspace.sId
     );
     const withGroup = await SpaceResource.fetchById(adminAuth, space.sId);
-    expect(withGroup!.canRead(memberAuth)).toBe(true);
-    expect(withGroup!.canWrite(memberAuth)).toBe(true);
+    expect(memberAuth.can("read", withGroup!)).toBe(true);
+    expect(memberAuth.can("write", withGroup!)).toBe(true);
 
     // Deselecting the manual group must drop its association, not just the provisioned ones.
     const unsetRes = await space.updatePermissions(adminAuth, {
@@ -2693,8 +2693,8 @@ describe("SpaceResource group_permissions enforcement", () => {
       workspace.sId
     );
     const withoutGroup = await SpaceResource.fetchById(adminAuth, space.sId);
-    expect(withoutGroup!.canRead(refreshedMemberAuth)).toBe(false);
-    expect(withoutGroup!.canWrite(refreshedMemberAuth)).toBe(false);
+    expect(refreshedMemberAuth.can("read", withoutGroup!)).toBe(false);
+    expect(refreshedMemberAuth.can("write", withoutGroup!)).toBe(false);
   });
 
   it("stops a group-mode group from granting once the space switches to manual", async () => {
@@ -2716,7 +2716,7 @@ describe("SpaceResource group_permissions enforcement", () => {
       memberUser.sId,
       workspace.sId
     );
-    expect(inGroupMode!.canRead(memberAuth)).toBe(true);
+    expect(memberAuth.can("read", inGroupMode!)).toBe(true);
 
     // Switching back to manual leaves the group_vaults row in place, so only the kind filter in
     // `spaceGroupRoles` stops it granting in a mode that never selected it.
@@ -2734,8 +2734,8 @@ describe("SpaceResource group_permissions enforcement", () => {
       workspace.sId
     );
     const inManualMode = await SpaceResource.fetchById(adminAuth, space.sId);
-    expect(inManualMode!.canRead(refreshedMemberAuth)).toBe(false);
-    expect(inManualMode!.canWrite(refreshedMemberAuth)).toBe(false);
+    expect(refreshedMemberAuth.can("read", inManualMode!)).toBe(false);
+    expect(refreshedMemberAuth.can("write", inManualMode!)).toBe(false);
   });
 
   it("rejects internal groups in group management mode", async () => {
@@ -2804,11 +2804,11 @@ describe("SpaceResource group_permissions enforcement", () => {
 
     // In group management mode the provisioned group is the space's member group, so it is what
     // carries write.
-    expect(openSpace!.canRead(memberAuth)).toBe(true);
-    expect(openSpace!.canWrite(memberAuth)).toBe(true);
+    expect(memberAuth.can("read", openSpace!)).toBe(true);
+    expect(memberAuth.can("write", openSpace!)).toBe(true);
 
-    expect(openSpace!.canRead(nonMemberAuth)).toBe(true);
-    expect(openSpace!.canWrite(nonMemberAuth)).toBe(false);
+    expect(nonMemberAuth.can("read", openSpace!)).toBe(true);
+    expect(nonMemberAuth.can("write", openSpace!)).toBe(false);
   });
 
   it("enforces the table: member is denied when the space has no grants", async () => {
@@ -2825,7 +2825,7 @@ describe("SpaceResource group_permissions enforcement", () => {
       workspace.sId
     );
 
-    expect(space.canRead(memberAuth)).toBe(false);
+    expect(memberAuth.can("read", space)).toBe(false);
   });
 
   it("refreshes the caller's grant snapshot after opening a space", async () => {

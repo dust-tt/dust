@@ -154,7 +154,7 @@ app.patch(
     }
     const { auth, space, normalizedRelative } = built;
 
-    if (!space.canWrite(auth)) {
+    if (!auth.can("write", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -213,7 +213,7 @@ app.delete(
     }
     const { auth, space, normalizedRelative } = built;
 
-    if (!space.canWrite(auth)) {
+    if (!auth.can("write", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -261,7 +261,7 @@ app.post(
       });
     }
 
-    if (!space.canWrite(auth)) {
+    if (!auth.can("write", space)) {
       return apiError(c, {
         status_code: 403,
         api_error: {

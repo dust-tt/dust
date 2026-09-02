@@ -255,7 +255,7 @@ export function createProjectManagerTools(
 
         const { pod } = contextRes.value;
 
-        if (!pod.canAdministrate(auth)) {
+        if (!auth.can("admin", pod)) {
           return new Err(
             new MCPError(
               "You do not have permission to edit this Pod's information",
@@ -367,7 +367,7 @@ export function createProjectManagerTools(
 
         const { pod } = contextRes.value;
 
-        if (!pod.canAdministrate(auth)) {
+        if (!auth.can("admin", pod)) {
           return new Err(
             new MCPError(
               "You do not have permission to edit this Pod's information",
@@ -423,7 +423,7 @@ export function createProjectManagerTools(
 
         const { pod } = contextRes.value;
 
-        if (!pod.canAdministrate(auth)) {
+        if (!auth.can("admin", pod)) {
           return new Err(
             new MCPError(
               "You do not have permission to edit this Pod's default agent",
@@ -498,7 +498,7 @@ export function createProjectManagerTools(
 
         const { pod } = contextRes.value;
 
-        if (!pod.canAdministrate(auth)) {
+        if (!auth.can("admin", pod)) {
           return new Err(
             new MCPError("You do not have permission to update Pod members", {
               tracked: false,
