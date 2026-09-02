@@ -20,7 +20,7 @@ const TIMESERIES: GetConsumptionTimeseriesResponse = {
     endDate: "2026-08-01T00:00:00.000Z",
   },
   granularity: "day",
-  mode: "daily",
+  mode: "period",
   metric: "credit_micro",
   breakdownBy: null,
   groups: [{ groupKey: "total", name: "Total" }],
