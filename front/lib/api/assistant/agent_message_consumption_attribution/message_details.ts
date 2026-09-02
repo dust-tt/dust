@@ -30,19 +30,25 @@ export type ToolConsumptionDetailsOverride = {
   label: string;
 };
 
-function buildAgentWorkCredits({
+function buildConsumptionTotals({
   items,
   reconciledCreditAmounts,
 }: {
   items: AgentMessageConsumptionItemResource[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
-}): number {
+}): {
+  agentWorkCredits: number;
+} {
   const reconciledAgentWorkCreditAmountMicro = items.reduce(
     (total, item) => total + (reconciledCreditAmounts.byItem.get(item) ?? 0),
     0
   );
 
-  return microCreditsToCredits(reconciledAgentWorkCreditAmountMicro);
+  return {
+    agentWorkCredits: microCreditsToCredits(
+      reconciledAgentWorkCreditAmountMicro
+    ),
+  };
 }
 
 function toolIdentity(action: AgentMCPActionType): string {
@@ -214,14 +220,14 @@ function buildMessageConsumptionDetails({
   if (!tools) {
     return null;
   }
+  const { agentWorkCredits } = buildConsumptionTotals({
+    items: agentWorkItems,
+    reconciledCreditAmounts,
+  });
 
   return {
     attributionVersion,
-    agentWorkCredits:
-      buildAgentWorkCredits({
-        items: agentWorkItems,
-        reconciledCreditAmounts,
-      }) + (additionalAgentWorkCredits ?? 0),
+    agentWorkCredits: agentWorkCredits + (additionalAgentWorkCredits ?? 0),
     tools,
     models: buildModelDetails({
       items,
