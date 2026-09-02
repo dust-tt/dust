@@ -78,15 +78,15 @@ export class AgentResource implements WithAccessControl {
     );
   }
 
-  static async fetchModelIdBySId(
+  static async fetchModelId(
     auth: Authenticator,
-    sId: string,
+    agentId: string,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ModelId | null> {
     // agents.sId is unique, so this resolves one stable ID regardless of version count.
     const agent = await AgentModel.findOne({
       where: {
-        sId,
+        sId: agentId,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       attributes: ["id"],

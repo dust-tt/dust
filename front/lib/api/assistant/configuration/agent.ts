@@ -88,11 +88,11 @@ const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
 async function grantAgentEditors(
   auth: Authenticator,
   {
-    agentId,
+    agentModelId,
     editors,
     transaction,
   }: {
-    agentId: ModelId;
+    agentModelId: ModelId;
     editors: UserType[];
     transaction: Transaction;
   }
@@ -101,7 +101,7 @@ async function grantAgentEditors(
     users: editors,
     grantType: "editor",
     resourceType: "agent",
-    resourceId: agentId,
+    resourceId: agentModelId,
     transaction,
   });
   if (grantResult.isErr()) {
@@ -166,7 +166,7 @@ export async function createPendingAgentConfiguration(
       authorId: user.id,
     });
     await grantAgentEditors(auth, {
-      agentId: agentIdentity.id,
+      agentModelId: agentIdentity.id,
       editors: [user.toJSON()],
       transaction: t,
     });
@@ -970,7 +970,7 @@ export async function createAgentConfiguration(
         }
 
         await grantAgentEditors(auth, {
-          agentId: agentConfigurationInstance.agentId,
+          agentModelId: agentConfigurationInstance.agentId,
           editors,
           transaction: t,
         });
@@ -1631,14 +1631,12 @@ export async function updateAgentPermissions(
           return addRes;
         }
 
-        const agentModelId = await AgentResource.fetchModelIdBySId(
-          auth,
-          agent.sId,
-          { transaction: t }
-        );
+        const agentModelId = await AgentResource.fetchModelId(auth, agent.sId, {
+          transaction: t,
+        });
         assert(agentModelId, "Unexpected: agent identity is missing");
         await grantAgentEditors(auth, {
-          agentId: agentModelId,
+          agentModelId,
           editors: usersToAdd,
           transaction: t,
         });

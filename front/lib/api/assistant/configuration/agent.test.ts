@@ -146,7 +146,7 @@ describe("createAgentConfiguration with pending agent", () => {
     }
     const { sId: pendingId } = pendingAgentRes.value;
 
-    const pendingAgentModelId = await AgentResource.fetchModelIdBySId(
+    const pendingAgentModelId = await AgentResource.fetchModelId(
       authenticator,
       pendingId
     );
