@@ -89,10 +89,12 @@ export async function makeTestFrameFunction({
 
 export async function makeTestFrameInvocation({
   enableFramesV2 = true,
+  isSuperUser = false,
 }: {
   enableFramesV2?: boolean;
+  isSuperUser?: boolean;
 } = {}) {
-  const setup = await makeTestFrameFunction({ enableFramesV2 });
+  const setup = await makeTestFrameFunction({ enableFramesV2, isSuperUser });
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     setup.auth,
     {

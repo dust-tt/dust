@@ -1,4 +1,8 @@
 import type {
+  PokeFrameFunction,
+  PokeFrameFunctionDetails,
+} from "@app/lib/api/poke/frames";
+import type {
   PokePodFunction,
   PokePodFunctionDetails,
 } from "@app/lib/api/poke/projects";
@@ -737,6 +741,39 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
   }
 
+  /**
+   * A Frame function addressed by sId within a given Frame. Note `fetchById` cannot serve this:
+   * `baseFetch` excludes Frame functions unless asked. The `fileId` filter is what stops another
+   * Frame's function being read through this Frame's URL, and any publication resolves — not just
+   * the active one — so an operator can inspect a superseded function.
+   */
+  static async fetchByFrameAndId(
+    auth: Authenticator,
+    {
+      frame,
+      sandboxFunctionId,
+    }: { frame: FileResource; sandboxFunctionId: string }
+  ): Promise<SandboxFunctionResource | null> {
+    if (
+      !frame.isFrameV2 ||
+      !isResourceSId("sandbox_function", sandboxFunctionId)
+    ) {
+      return null;
+    }
+
+    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
+    if (sandboxFunctionModelId === null) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: sandboxFunctionModelId, fileId: frame.id },
+      includeFrameFunctions: true,
+    });
+
+    return sandboxFunction ?? null;
+  }
+
   static async fetchByFramePublicationAndSlug(
     auth: Authenticator,
     {
@@ -1008,6 +1045,41 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       defaultStake: this.defaultStake,
       inputSchema: this.inputSchema,
       outputSchema: this.outputSchema,
+    };
+  }
+
+  /**
+   * Poke's listing shape for a Frame function. Deliberately not `toPokeJSON`: a Pod function's
+   * `fileId` is the published bundle, while a Frame function's is the Frame manifest, so surfacing
+   * it here would mislead. `publicationId` is what identifies a Frame function's artifact instead,
+   * and `name` is the key its bundle is stored under.
+   */
+  toPokeFrameJSON(): PokeFrameFunction {
+    return {
+      sId: this.sId,
+      slug: this.slug,
+      name: sandboxFunctionNameFromSlug(this.slug),
+      description: this.description,
+      publicationId: this.publicationId,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
+    };
+  }
+
+  toPokeFrameDetailsJSON(
+    activePublicationId: string | null
+  ): PokeFrameFunctionDetails {
+    return {
+      ...this.toPokeFrameJSON(),
+      userIdentity: this.userIdentity,
+      executionMode: this.executionMode,
+      defaultStake: this.defaultStake,
+      bundleSha256: this.bundleSha256,
+      inputSchema: this.inputSchema,
+      outputSchema: this.outputSchema,
+      isActivePublication:
+        this.publicationId !== null &&
+        this.publicationId === activePublicationId,
     };
   }
 

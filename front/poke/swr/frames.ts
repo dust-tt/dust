@@ -1,12 +1,12 @@
 import type {
   PokeFrameDatabase,
   PokeFrameDetails,
+  PokeFrameFunction,
   PokeFrameListItem,
   PokeListFrameDatabases,
   PokeListFrameFunctions,
   PokeListFrames,
 } from "@app/lib/api/poke/frames";
-import type { PokePodFunction } from "@app/lib/api/poke/projects";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -91,7 +91,7 @@ export function usePokeFrameFunctions({
   );
 
   return {
-    data: data?.items ?? emptyArray<PokePodFunction>(),
+    data: data?.items ?? emptyArray<PokeFrameFunction>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

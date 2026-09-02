@@ -1,10 +1,13 @@
 import path from "node:path";
 
-import { loadFramePublicationDescriptor } from "@app/lib/api/frames/publication_storage";
-import type { PokePodFunction } from "@app/lib/api/poke/projects";
+import {
+  loadFramePublicationDescriptor,
+  readFramePublicationFunctionBundle,
+} from "@app/lib/api/frames/publication_storage";
 import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { listDatabasesOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { sandboxFunctionNameFromSlug } from "@app/lib/api/sandbox_functions/slug";
 import type { Authenticator } from "@app/lib/auth";
 import filestorageConfig from "@app/lib/file_storage/config";
 import { makeGcsConsoleUrl, makeGcsUri } from "@app/lib/poke/gcs";
@@ -18,11 +21,17 @@ import {
   getFrameDatabaseReplicasBasePath,
   getFramePublicationsBasePath,
 } from "@app/types/api/frame_storage";
+import type {
+  SandboxFunctionExecutionMode,
+  SandboxFunctionStake,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import type { FileStatus } from "@app/types/files";
 import type { PokeSandboxType } from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type PokeFrameListItem = {
   sId: string;
@@ -271,14 +280,48 @@ export async function getFrameDetails(
   };
 }
 
+/**
+ * Frame functions get their own shapes rather than reusing the Pod ones. A Pod function's `fileId`
+ * is its published bundle while a Frame function's is the Frame manifest, so the Pod shape would
+ * mislead here — and Pods are being retired, so sharing a type would only have to be untangled.
+ */
+export type PokeFrameFunction = {
+  sId: string;
+  slug: string;
+  // Bare function name, which is the key its published bundle is stored under.
+  name: string;
+  description: string;
+  publicationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PokeFrameFunctionDetails = PokeFrameFunction & {
+  userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  executionMode: SandboxFunctionExecutionMode;
+  defaultStake: SandboxFunctionStake;
+  bundleSha256: string | null;
+  inputSchema: JSONSchema;
+  outputSchema: JSONSchema;
+  isActivePublication: boolean;
+};
+
 export type PokeListFrameFunctions = {
-  items: PokePodFunction[];
+  items: PokeFrameFunction[];
+};
+
+export type PokeGetFrameFunction = {
+  frameFunction: PokeFrameFunctionDetails;
+};
+
+export type PokeGetFrameFunctionSource = {
+  source: string;
 };
 
 export async function listFrameFunctions(
   auth: Authenticator,
   frame: FileResource
-): Promise<PokePodFunction[]> {
+): Promise<PokeFrameFunction[]> {
   const publicationId = frame.useCaseMetadata?.activePublicationId;
   if (!publicationId) {
     return [];
@@ -289,20 +332,66 @@ export async function listFrameFunctions(
     { frame, publicationId }
   );
 
-  const authors = await UserResource.fetchByModelIds(
-    removeNulls(
-      sandboxFunctions.map((sandboxFunction) => sandboxFunction.file.userId)
-    )
+  return sandboxFunctions.map((sandboxFunction) =>
+    sandboxFunction.toPokeFrameJSON()
   );
-  const authorsByModelId = new Map(authors.map((user) => [user.id, user]));
+}
 
-  return sandboxFunctions.map((sandboxFunction) => {
-    const { userId } = sandboxFunction.file;
-
-    return sandboxFunction.toPokeJSON(
-      userId !== null ? (authorsByModelId.get(userId) ?? null) : null
-    );
+/**
+ * Resolves a Frame function within a given Frame. `SandboxFunctionResource.fetchById` is only
+ * workspace-scoped, so the `fileId` check is what keeps another Frame's function from being read
+ * through this Frame's URL. Any publication resolves, not just the active one: an operator
+ * pasting the URL of a superseded function should see it, and the details carry
+ * `isActivePublication` so the page can say which it is.
+ */
+export async function fetchFrameFunction(
+  auth: Authenticator,
+  frame: FileResource,
+  frameFunctionId: string
+): Promise<SandboxFunctionResource | null> {
+  return SandboxFunctionResource.fetchByFrameAndId(auth, {
+    frame,
+    sandboxFunctionId: frameFunctionId,
   });
+}
+
+export function getFrameFunctionDetails(
+  frame: FileResource,
+  sandboxFunction: SandboxFunctionResource
+): PokeFrameFunctionDetails {
+  return sandboxFunction.toPokeFrameDetailsJSON(
+    frame.useCaseMetadata?.activePublicationId ?? null
+  );
+}
+
+export class FrameFunctionSourceError extends Error {
+  constructor(readonly type: "not_published" | "bundle_not_found") {
+    super(type);
+  }
+}
+
+export async function getFrameFunctionSource(
+  auth: Authenticator,
+  {
+    frame,
+    sandboxFunction,
+  }: { frame: FileResource; sandboxFunction: SandboxFunctionResource }
+): Promise<Result<string, FrameFunctionSourceError>> {
+  const { publicationId } = sandboxFunction;
+  if (!publicationId) {
+    return new Err(new FrameFunctionSourceError("not_published"));
+  }
+
+  const bundleResult = await readFramePublicationFunctionBundle(auth, {
+    frame,
+    publicationId,
+    functionName: sandboxFunctionNameFromSlug(sandboxFunction.slug),
+  });
+  if (bundleResult.isErr()) {
+    return new Err(new FrameFunctionSourceError("bundle_not_found"));
+  }
+
+  return new Ok(bundleResult.value);
 }
 
 // Mirrors `LiveDatabaseEntry` from the sandbox-functions layer, but declared here so client code

@@ -3,6 +3,8 @@ import { listFrameFunctions } from "@app/lib/api/poke/frames";
 import { pokeFrameApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
+import functionId from "./[functionId]";
+
 // Mounted at /api/poke/workspaces/:wId/frames/:frameId/functions.
 const app = pokeFrameApp();
 
@@ -13,5 +15,7 @@ app.get("/", async (ctx): HandlerResult<PokeListFrameFunctions> => {
 
   return ctx.json({ items: await listFrameFunctions(auth, frame) });
 });
+
+app.route("/:functionId", functionId);
 
 export default app;

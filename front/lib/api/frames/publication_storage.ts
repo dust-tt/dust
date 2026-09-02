@@ -340,6 +340,49 @@ export async function storeFramePublication(
   return new Ok({ publicationId: identity.publicationId });
 }
 
+/**
+ * The published bundle of a single Frame function. `loadFramePublicationFunctionDefinitions` reads
+ * every function of a publication and verifies each hash because activation depends on it; a
+ * reader that only wants to display one function's code does not need the rest.
+ */
+export async function readFramePublicationFunctionBundle(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+    functionName,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+    functionName: string;
+  }
+): Promise<Result<string, FramePublicationError>> {
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  const bundlePath = getFramePublicationFunctionBundlePath({
+    ...frameIdentity.value,
+    publicationId,
+    functionName,
+  });
+
+  try {
+    return new Ok(await getPrivateUploadBucket().fetchFileContent(bundlePath));
+  } catch (error) {
+    if (!isGCSNotFoundError(error)) {
+      throw error;
+    }
+    return new Err(
+      new FramePublicationError(
+        "publication_not_found",
+        `Frame publication function artifact not found: ${functionName}`
+      )
+    );
+  }
+}
+
 export async function loadFramePublicationDescriptor(
   auth: Authenticator,
   {
