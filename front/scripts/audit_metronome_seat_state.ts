@@ -465,7 +465,16 @@ async function auditWorkspace(
   // starting_balance 48000). This is the exact population `syncSeatCount` can
   // no longer self-heal (empty-origin sees the user already converged on the
   // new seat), so it needs a targeted credit correction.
+  //
+  // A seat's AWU may be split across MULTIPLE balance entries (one per recurring
+  // credit — e.g. a stacked seat with a separate pro and max entry), so SUM all
+  // AWU-type entries rather than taking the first. `awuEntryCount` is emitted as
+  // a diagnostic: if some stacked seats show 2 entries, the split shape is real;
+  // if a fully-consumed stray grant is dropped by Metronome (single entry with
+  // starting_balance back at the allocation), starting_balance-based detection
+  // undercounts and we need a usage-based pass instead.
   const AWU_OVER_ALLOCATION_TOLERANCE = 1;
+  const awuEntryCountHistogram = new Map<number, number>();
   const overAllocatedSeats: Array<{
     seatId: string;
     seatType: MembershipSeatType;
@@ -473,27 +482,38 @@ async function auditWorkspace(
     startingBalance: number;
     currentBalance: number;
     overGrantedAwu: number;
+    awuEntryCount: number;
   }> = [];
   for (const [seatId, seatType] of seatTypeBySeatId) {
     const allocation = allocationBySeatType.get(seatType);
     if (allocation === undefined || allocation <= 0) {
       continue;
     }
-    const awu = balanceBySeatId
-      .get(seatId)
-      ?.find((b) => b.credit_type_id === awuCreditTypeId);
-    if (!awu) {
+    const awuEntries = (balanceBySeatId.get(seatId) ?? []).filter(
+      (b) => b.credit_type_id === awuCreditTypeId
+    );
+    awuEntryCountHistogram.set(
+      awuEntries.length,
+      (awuEntryCountHistogram.get(awuEntries.length) ?? 0) + 1
+    );
+    if (awuEntries.length === 0) {
       continue;
     }
-    const overGrantedAwu = awu.starting_balance - allocation;
+    const startingBalance = awuEntries.reduce(
+      (sum, b) => sum + b.starting_balance,
+      0
+    );
+    const currentBalance = awuEntries.reduce((sum, b) => sum + b.balance, 0);
+    const overGrantedAwu = startingBalance - allocation;
     if (overGrantedAwu > AWU_OVER_ALLOCATION_TOLERANCE) {
       overAllocatedSeats.push({
         seatId,
         seatType,
         allocation,
-        startingBalance: awu.starting_balance,
-        currentBalance: awu.balance,
+        startingBalance,
+        currentBalance,
         overGrantedAwu,
+        awuEntryCount: awuEntries.length,
       });
     }
   }
@@ -507,6 +527,10 @@ async function auditWorkspace(
       workspaceId,
       contractId,
       allocationBySeatType: Object.fromEntries(allocationBySeatType),
+      // How many AWU balance entries seats carry: >1 means the split (stacked)
+      // shape exists and summing catches it; all 1s means fully-consumed stray
+      // grants are dropped and starting_balance detection undercounts.
+      awuEntryCountHistogram: Object.fromEntries(awuEntryCountHistogram),
       overAllocatedSeatCount: overAllocatedSeats.length,
       totalOverGrantedAwu,
       overAllocatedSeats,
