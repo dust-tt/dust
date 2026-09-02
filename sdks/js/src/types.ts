@@ -812,7 +812,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_dust_keys"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
-  | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"
   | "user_memory"
