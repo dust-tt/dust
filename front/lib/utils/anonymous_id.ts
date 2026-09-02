@@ -65,10 +65,10 @@ export function getOrCreateAnonymousId(): string | null {
 }
 
 /**
- * Reads the `_dust_aid` value from `document.cookie`.
+ * Reads the `_dust_aid` value from `document.cookie` without creating one.
  * Returns `null` if the cookie is not present or we're not in a browser.
  */
-function readAnonymousIdFromDocumentCookie(): string | null {
+export function readAnonymousIdFromDocumentCookie(): string | null {
   if (typeof document === "undefined") {
     return null;
   }
