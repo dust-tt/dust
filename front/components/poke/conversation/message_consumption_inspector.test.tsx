@@ -46,6 +46,9 @@ describe("PokeMessageConsumptionInspector", () => {
 
     expect(screen.getByText("30 credits")).toBeInTheDocument();
     expect(screen.queryByText("Authoritative bill")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Authoritative message charge")
+    ).not.toBeInTheDocument();
     expect(mockUsePokeMessageConsumption).toHaveBeenLastCalledWith({
       conversationId: "conversation_test",
       disabled: true,
@@ -165,6 +168,8 @@ describe("PokeMessageConsumptionInspector", () => {
       })
     ).toBeInTheDocument();
     expect(screen.getAllByText("Direct tool charge")).toHaveLength(2);
+    expect(screen.getAllByText("Tokens")).toHaveLength(2);
+    expect(screen.queryByText("Attributed")).not.toBeInTheDocument();
   });
 
   it("keeps the exact bill visible when detailed attribution is unavailable", () => {
@@ -185,6 +190,9 @@ describe("PokeMessageConsumptionInspector", () => {
         subAgentBilledCredits={0}
       />
     );
+    expect(
+      screen.queryByText("Authoritative message charge")
+    ).not.toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", {
         name: "Expand consumption details for message message_test",
