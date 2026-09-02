@@ -1,11 +1,13 @@
 import type {
   PokeGetPodFunction,
-  PokeGetPodFunctionInvocation,
-  PokeGetPodFunctionMCPActionOutput,
   PokeGetPodFunctionSource,
-  PokeListPodFunctionInvocations,
-  PokePodFunctionInvocation,
 } from "@app/lib/api/poke/projects";
+import type {
+  PokeGetSandboxFunctionInvocation,
+  PokeGetSandboxFunctionMCPActionOutput,
+  PokeListSandboxFunctionInvocations,
+  PokeSandboxFunctionInvocation,
+} from "@app/lib/api/poke/sandbox_functions";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   SandboxFunctionInvocationOrigin,
@@ -68,7 +70,7 @@ export function usePokePodFunctionSource({
   };
 }
 
-export function usePokePodFunctionInvocations({
+export function usePokeSandboxFunctionInvocations({
   owner,
   projectId,
   functionId,
@@ -83,7 +85,8 @@ export function usePokePodFunctionInvocations({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const invocationsFetcher: Fetcher<PokeListPodFunctionInvocations> = fetcher;
+  const invocationsFetcher: Fetcher<PokeListSandboxFunctionInvocations> =
+    fetcher;
 
   const params = new URLSearchParams({ limit: limit.toString() });
   if (status) {
@@ -100,14 +103,14 @@ export function usePokePodFunctionInvocations({
   );
 
   return {
-    invocations: data?.items ?? emptyArray<PokePodFunctionInvocation>(),
+    invocations: data?.items ?? emptyArray<PokeSandboxFunctionInvocation>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
   };
 }
 
-export function usePokePodFunctionInvocation({
+export function usePokeSandboxFunctionInvocation({
   owner,
   projectId,
   functionId,
@@ -115,7 +118,7 @@ export function usePokePodFunctionInvocation({
   disabled,
 }: PodFunctionScope & { invocationId: string; disabled?: boolean }) {
   const { fetcher } = useFetcher();
-  const invocationFetcher: Fetcher<PokeGetPodFunctionInvocation> = fetcher;
+  const invocationFetcher: Fetcher<PokeGetSandboxFunctionInvocation> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `${podFunctionUrl({ owner, projectId, functionId })}/invocations/${invocationId}`,
     invocationFetcher,
@@ -130,7 +133,7 @@ export function usePokePodFunctionInvocation({
   };
 }
 
-export function usePokePodFunctionMCPActionOutput({
+export function usePokeSandboxFunctionMCPActionOutput({
   owner,
   projectId,
   functionId,
@@ -143,7 +146,7 @@ export function usePokePodFunctionMCPActionOutput({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const outputFetcher: Fetcher<PokeGetPodFunctionMCPActionOutput> = fetcher;
+  const outputFetcher: Fetcher<PokeGetSandboxFunctionMCPActionOutput> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `${podFunctionUrl({ owner, projectId, functionId })}/invocations/${invocationId}/actions/${actionId}/output`,
     outputFetcher,

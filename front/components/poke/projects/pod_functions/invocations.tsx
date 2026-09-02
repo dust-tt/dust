@@ -1,9 +1,9 @@
 import { PokeJsonBlock } from "@app/components/poke/projects/pod_functions/json_block";
 import { InvocationMCPActions } from "@app/components/poke/projects/pod_functions/mcp_actions";
-import type { PokePodFunctionInvocation } from "@app/lib/api/poke/projects";
+import type { PokeSandboxFunctionInvocation } from "@app/lib/api/poke/sandbox_functions";
 import {
-  usePokePodFunctionInvocation,
-  usePokePodFunctionInvocations,
+  usePokeSandboxFunctionInvocation,
+  usePokeSandboxFunctionInvocations,
 } from "@app/poke/swr/pod_function_details";
 import type {
   SandboxFunctionInvocationOrigin,
@@ -51,7 +51,9 @@ function colorForInvocationStatus(
 
 // The invocation row records no duration of its own: `updatedAt` is the moment the terminal status
 // was written, so the elapsed time is only meaningful once the invocation has settled.
-function elapsedLabel(invocation: PokePodFunctionInvocation): string | null {
+function elapsedLabel(
+  invocation: PokeSandboxFunctionInvocation
+): string | null {
   if (invocation.status === "created") {
     return null;
   }
@@ -82,14 +84,16 @@ export function PodFunctionInvocations({
     SandboxFunctionInvocationOrigin | undefined
   >(undefined);
 
-  const { invocations, isLoading, isError } = usePokePodFunctionInvocations({
-    owner,
-    projectId,
-    functionId,
-    limit,
-    status,
-    origin,
-  });
+  const { invocations, isLoading, isError } = usePokeSandboxFunctionInvocations(
+    {
+      owner,
+      projectId,
+      functionId,
+      limit,
+      status,
+      origin,
+    }
+  );
 
   const hasMore = invocations.length === limit;
 
@@ -198,7 +202,7 @@ export function PodFunctionInvocations({
 
 interface InvocationRowProps {
   functionId: string;
-  invocation: PokePodFunctionInvocation;
+  invocation: PokeSandboxFunctionInvocation;
   owner: LightWorkspaceType;
   projectId: string;
 }
@@ -215,7 +219,7 @@ function InvocationRow({
     invocation: details,
     isLoading,
     isError,
-  } = usePokePodFunctionInvocation({
+  } = usePokeSandboxFunctionInvocation({
     owner,
     projectId,
     functionId,

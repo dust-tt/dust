@@ -1,7 +1,7 @@
 import { PokeJsonBlock } from "@app/components/poke/projects/pod_functions/json_block";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
-import type { PokePodFunctionMCPAction } from "@app/lib/api/poke/projects";
-import { usePokePodFunctionMCPActionOutput } from "@app/poke/swr/pod_function_details";
+import type { PokeSandboxFunctionMCPAction } from "@app/lib/api/poke/sandbox_functions";
+import { usePokeSandboxFunctionMCPActionOutput } from "@app/poke/swr/pod_function_details";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -37,7 +37,7 @@ function colorForActionStatus(status: ToolExecutionBaseStatus): ChipColor {
 }
 
 interface InvocationMCPActionsProps {
-  actions: PokePodFunctionMCPAction[];
+  actions: PokeSandboxFunctionMCPAction[];
   functionId: string;
   invocationId: string;
   owner: LightWorkspaceType;
@@ -78,7 +78,7 @@ export function InvocationMCPActions({
 }
 
 interface MCPActionRowProps {
-  action: PokePodFunctionMCPAction;
+  action: PokeSandboxFunctionMCPAction;
   functionId: string;
   invocationId: string;
   owner: LightWorkspaceType;
@@ -94,7 +94,7 @@ function MCPActionRow({
 }: MCPActionRowProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { output, isLoading, isError } = usePokePodFunctionMCPActionOutput({
+  const { output, isLoading, isError } = usePokeSandboxFunctionMCPActionOutput({
     owner,
     projectId,
     functionId,
