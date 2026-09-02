@@ -8,17 +8,16 @@ import {
 } from "@app/lib/api/assistant/email/email_trigger";
 import { evaluateInboundAuth } from "@app/lib/api/assistant/email/inbound_auth";
 import { validateSendgridParseWebhookSignature } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
+import type { EmailWebhookHeaders } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
-  EMAIL_WEBHOOK_RELAY_ID_HEADER,
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
-  recordEmailRelayReceipt,
+  recordEmailRelay,
   relayEmailToOtherRegion,
   replyToError,
   resolveRelayedErrorReply,
   shouldRelayToOtherRegion,
-  toEmailWebhookHeaders,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
   buildAuditLogTarget,
@@ -35,10 +34,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-import relayStatus from "./relay-status";
 
 export type PostResponseBody = {
   success: boolean;
@@ -47,18 +42,21 @@ export type PostResponseBody = {
 // SendGrid Parse limits inbound mail to ~30MB; matches the original
 // `SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb"` enforced by `raw-body`.
 const SENDGRID_PARSE_WEBHOOK_MAX_SIZE_BYTES = 30 * 1024 * 1024;
-const RelayHeadersSchema = z.object({
-  [EMAIL_WEBHOOK_RELAY_ID_HEADER]: z.string().uuid().optional(),
-});
+
+function headersToNodeHeaders(webHeaders: Headers): EmailWebhookHeaders {
+  const out: EmailWebhookHeaders = {};
+  webHeaders.forEach((value, key) => {
+    out[key] = value;
+  });
+  return out;
+}
 
 // Mounted at /api/email/webhook.
-const app = createHono().use("/", validate("header", RelayHeadersSchema));
-
-app.route("/relay-status", relayStatus);
+const app = createHono();
 
 /** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
-  const headers = toEmailWebhookHeaders(ctx.req.raw.headers);
+  const headers = headersToNodeHeaders(ctx.req.raw.headers);
   const authHeader = isString(headers.authorization)
     ? headers.authorization
     : undefined;
@@ -144,8 +142,10 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
   const email = emailRes.value;
 
-  const relayId = ctx.req.header(EMAIL_WEBHOOK_RELAY_ID_HEADER);
-  if (isRelayRequest && !(await recordEmailRelayReceipt(relayId))) {
+  if (
+    isRelayRequest &&
+    !(await recordEmailRelay(email.threadingHeaders.messageId))
+  ) {
     logger.info(
       { senderEmail: email.sender.email },
       "[email] Ignoring duplicate inbound email relay"

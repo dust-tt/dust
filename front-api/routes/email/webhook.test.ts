@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import {
   EMAIL_WEBHOOK_RELAY_HEADER,
   EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
-  EMAIL_WEBHOOK_RELAY_ID_HEADER,
   EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -76,7 +75,10 @@ const RELAY_AUTH_HEADERS = {
   [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
 };
 
-function buildSendgridForm(senderEmail: string): FormData {
+function buildSendgridForm(
+  senderEmail: string,
+  messageId: string | null
+): FormData {
   const senderDomain = senderEmail.split("@")[1];
   const form = new FormData();
   form.set("subject", "Hello agent");
@@ -89,6 +91,9 @@ function buildSendgridForm(senderEmail: string): FormData {
     "envelope",
     JSON.stringify({ from: senderEmail, to: ["some-agent@dust.team"] })
   );
+  if (messageId) {
+    form.set("headers", `Message-ID: ${messageId}`);
+  }
   return form;
 }
 
@@ -97,11 +102,12 @@ function buildSendgridForm(senderEmail: string): FormData {
 // not derive them from a FormData body.
 const postWebhook = async (
   senderEmail: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  messageId: string | null = `<${randomUUID()}@example.com>`
 ): Promise<Response> => {
   const encoded = new Request("http://localhost/", {
     method: "POST",
-    body: buildSendgridForm(senderEmail),
+    body: buildSendgridForm(senderEmail, messageId),
   });
   const rawBody = Buffer.from(await encoded.arrayBuffer());
 
@@ -129,14 +135,6 @@ describe("POST /api/email/webhook", () => {
     expect(response.status).toBe(403);
   });
 
-  it("rejects malformed relay IDs", async () => {
-    const response = await postWebhook("someone@example.com", {
-      ...RELAY_AUTH_HEADERS,
-      [EMAIL_WEBHOOK_RELAY_ID_HEADER]: "not-a-uuid",
-    });
-    expect(response.status).toBe(400);
-  });
-
   it("relays with the source error type when no local workspace has email agents enabled", async () => {
     const { user } = await createResourceTest({ role: "admin" });
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}"));
@@ -154,9 +152,6 @@ describe("POST /api/email/webhook", () => {
       expect(relayInit.headers[EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]).toBe(
         "email_agents_disabled"
       );
-      expect(relayInit.headers[EMAIL_WEBHOOK_RELAY_ID_HEADER]).toEqual(
-        expect.any(String)
-      );
       // No bounce from the source region once the relay succeeded.
       expect(sendEmailToRecipients).not.toHaveBeenCalled();
     } finally {
@@ -164,40 +159,72 @@ describe("POST /api/email/webhook", () => {
     }
   });
 
-  it("records a relay receipt and ignores a duplicate", async () => {
-    const relayId = randomUUID();
-    const headers = {
-      ...RELAY_AUTH_HEADERS,
-      [EMAIL_WEBHOOK_RELAY_ID_HEADER]: relayId,
-    };
+  it("ignores a relayed email with the same Message-ID", async () => {
+    const messageId = `<${randomUUID()}@example.com>`;
 
     const firstResponse = await postWebhook(
       "unknown-sender@example.com",
-      headers
+      RELAY_AUTH_HEADERS,
+      messageId
     );
     expect(firstResponse.status).toBe(200);
     await vi.waitFor(() =>
       expect(sendEmailToRecipients).toHaveBeenCalledOnce()
     );
 
-    await vi.waitFor(async () => {
-      const statusResponse = await honoApp.request(
-        "/api/email/webhook/relay-status",
-        { headers }
-      );
-      expect(statusResponse.status).toBe(200);
-      await expect(statusResponse.json()).resolves.toEqual({
-        received: true,
-      });
-    });
-
     const secondResponse = await postWebhook(
       "unknown-sender@example.com",
-      headers
+      RELAY_AUTH_HEADERS,
+      messageId
     );
     expect(secondResponse.status).toBe(200);
     expect(userAndWorkspaceFromEmail).toHaveBeenCalledOnce();
     expect(sendEmailToRecipients).toHaveBeenCalledOnce();
+  });
+
+  it("retries a transient relay failure when the email has a Message-ID", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(user.email, {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not retry a relay without a Message-ID", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 502 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(
+        user.email,
+        { Authorization: SENDGRID_AUTH_HEADER },
+        null
+      );
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() =>
+        expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+      );
+      expect(fetchMock).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("replies with the source region error on a relayed request when it is more informative", async () => {

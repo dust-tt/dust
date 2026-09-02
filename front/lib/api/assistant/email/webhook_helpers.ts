@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type {
   EmailAttachment,
   EmailTriggerError,
@@ -23,6 +22,7 @@ import {
 import apiConfig from "@app/lib/api/config";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import { withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -40,26 +40,18 @@ import { readFile } from "fs/promises";
  */
 export type EmailWebhookHeaders = Record<string, string | string[] | undefined>;
 
-export function toEmailWebhookHeaders(
-  webHeaders: Headers
-): EmailWebhookHeaders {
-  const headers: EmailWebhookHeaders = {};
-  webHeaders.forEach((value, key) => {
-    headers[key] = value;
-  });
-  return headers;
-}
-
 export const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
 const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
   "x-dust-email-webhook-source-region";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
   "x-dust-email-webhook-source-error";
-export const EMAIL_WEBHOOK_RELAY_ID_HEADER = "x-dust-email-webhook-relay-id";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
-const EMAIL_RELAY_RECEIPT_TTL_SECONDS = 60 * 60;
+const EMAIL_RELAY_DEDUPE_TTL_SECONDS = 60 * 60;
+const EMAIL_RELAY_MAX_RETRIES = 1;
+const EMAIL_RELAY_NO_RETRIES = 0;
+const HTTP_SERVER_ERROR_STATUS_MIN = 500;
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
@@ -181,30 +173,24 @@ export function hasValidRelayAuthorization(
   );
 }
 
-function makeEmailRelayKey(relayId: string): string {
-  return `${EMAIL_RELAY_KEY_PREFIX}:${relayId}`;
+function makeEmailRelayKey(messageId: string): string {
+  return `${EMAIL_RELAY_KEY_PREFIX}:${messageId}`;
 }
 
-export async function recordEmailRelayReceipt(
-  relayId: string | undefined
+export async function recordEmailRelay(
+  messageId: string | null
 ): Promise<boolean> {
-  if (!relayId) {
-    // Keep accepting relays sent by versions deployed before relay retries.
+  if (!messageId) {
     return true;
   }
 
   const redis = await getRedisStreamClient({ origin: "email_context" });
-  const result = await redis.set(makeEmailRelayKey(relayId), "1", {
+  const result = await redis.set(makeEmailRelayKey(messageId), "1", {
     NX: true,
-    EX: EMAIL_RELAY_RECEIPT_TTL_SECONDS,
+    EX: EMAIL_RELAY_DEDUPE_TTL_SECONDS,
   });
 
   return result === "OK";
-}
-
-export async function hasEmailRelayReceipt(relayId: string): Promise<boolean> {
-  const redis = await getRedisStreamClient({ origin: "email_context" });
-  return Boolean(await redis.get(makeEmailRelayKey(relayId)));
 }
 
 export async function relayEmailToOtherRegion(
@@ -235,23 +221,53 @@ export async function relayEmailToOtherRegion(
       );
     }
 
-    const response = await fetch(`${url}/api/email/webhook`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
-        [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
-        [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
-          regionsConfig.getCurrentRegion(),
-        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
-        [EMAIL_WEBHOOK_RELAY_ID_HEADER]: randomUUID(),
-      },
-      body: formData,
-    });
+    const responseRes = await withRetry(
+      async () => {
+        const response = await fetch(`${url}/api/email/webhook`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+            [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+            [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
+              regionsConfig.getCurrentRegion(),
+            [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
+          },
+          body: formData,
+        });
 
-    if (!response.ok) {
+        if (response.status >= HTTP_SERVER_ERROR_STATUS_MIN) {
+          throw new Error(
+            `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+          );
+        }
+        return response;
+      },
+      {
+        maxRetries: email.threadingHeaders.messageId
+          ? EMAIL_RELAY_MAX_RETRIES
+          : EMAIL_RELAY_NO_RETRIES,
+        shouldRetry: (error) => {
+          logger.warn(
+            {
+              error: normalizeError(error),
+              senderEmail: email.sender.email,
+              sourceRegion: regionsConfig.getCurrentRegion(),
+              targetRegion: name,
+            },
+            "[email] Retrying inbound email relay"
+          );
+          return true;
+        },
+      }
+    );
+
+    if (responseRes.isErr()) {
+      return responseRes;
+    }
+    if (!responseRes.value.ok) {
       return new Err(
         new Error(
-          `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+          `Relay to ${name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
         )
       );
     }
