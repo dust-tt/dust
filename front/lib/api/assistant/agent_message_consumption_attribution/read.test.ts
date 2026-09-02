@@ -273,6 +273,7 @@ describe("getAgentMessageConsumption", () => {
         functionCallName: "run_research_agent",
         toolName: "run_research_agent",
         toolServerId: runAgentServerId,
+        childAgentId,
       }
     );
     await runChildAction.updateStepContext({
@@ -347,7 +348,7 @@ describe("getAgentMessageConsumption", () => {
     });
   });
 
-  it("exposes a blocked tool as pending without inventing a direct charge", async () => {
+  it("attributes a failed hidden helper call to agent work", async () => {
     const {
       auth,
       workspace,
@@ -362,12 +363,36 @@ describe("getAgentMessageConsumption", () => {
       agentMessageModelId: agentMessage.agentMessageId,
       dustRunId: run.dustRunId,
     });
+    const { action: hiddenHelperAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessage.agentMessageId,
+        status: "errored",
+        dustRunId: run.dustRunId,
+        functionCallName: "run_dust_task",
+        toolName: "run_dust_task",
+        childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
+      }
+    );
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
       agentMessageModelId: agentMessage.agentMessageId,
       attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-      records: modelRecords(runUsageModelId),
+      records: [
+        ...modelRecords(runUsageModelId),
+        {
+          itemType: "tool",
+          action: hiddenHelperAction,
+          runUsageModelId,
+          inputTokensCount: null,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 1_000_000,
+          directCreditAmountMicro: null,
+        },
+      ],
       pendingToolItems: [
         {
           action,
@@ -383,13 +408,17 @@ describe("getAgentMessageConsumption", () => {
       agentMessageId: agentMessage.sId,
     });
 
-    expect(consumption?.details?.tools).toEqual([
-      expect.objectContaining({
-        callCount: 1,
-        directCredits: 0,
-        pending: true,
-      }),
-    ]);
+    expect(consumption?.details).toMatchObject({
+      agentWorkCredits: 9,
+      tools: [
+        expect.objectContaining({
+          callCount: 1,
+          directCredits: 0,
+          pending: true,
+          toolName: "test_tool",
+        }),
+      ],
+    });
   });
 
   it("assigns an unattributed billed residual to agent work", async () => {

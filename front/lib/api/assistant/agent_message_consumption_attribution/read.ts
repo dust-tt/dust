@@ -1,4 +1,5 @@
 import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import type { ToolConsumptionDetailsOverride } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
 import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
@@ -101,14 +102,23 @@ export async function getAgentMessageConsumption(
     (total, subAgent) => total + subAgent.billedCredits,
     0
   );
+  const hiddenHelperActionIds = new Set<ModelId>(
+    removeNulls(
+      facts.actions.map((action) => {
+        const { toolConfiguration } = action;
+        if (!isLightServerSideMCPToolConfiguration(toolConfiguration)) {
+          return null;
+        }
+        const { childAgentId } = toolConfiguration;
+        return childAgentId && isHiddenHelperSubAgentId(childAgentId)
+          ? action.id
+          : null;
+      })
+    )
+  );
   const [hiddenHelperSubAgents, visibleSubAgents] = partition(
     subAgents,
-    ({ agentConfigurationId }) =>
-      agentConfigurationId !== null &&
-      isHiddenHelperSubAgentId(agentConfigurationId)
-  );
-  const hiddenHelperActionIds = new Set<ModelId>(
-    hiddenHelperSubAgents.map(({ action }) => action.id)
+    ({ action }) => hiddenHelperActionIds.has(action.id)
   );
   const hiddenSubAgentBilledCredits = hiddenHelperSubAgents.reduce(
     (total, subAgent) => total + subAgent.billedCredits,
