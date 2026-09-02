@@ -407,7 +407,7 @@ export function SeatCard({
             />
           </div>
           <span className="truncate text-base font-semibold text-foreground">
-            {stripYearlySuffix(info.name)}
+            {stripYearlySuffix(info.name).replace(/\s+Seat$/, "")}
           </span>
         </div>
         <div className="shrink-0 tabular-nums">{badge}</div>
