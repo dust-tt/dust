@@ -1,13 +1,9 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
-import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
-import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
-import type { ToolCostCategory } from "@app/lib/api/mcp";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,9 +11,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   buildAgentMessageBillingPlan,
   computeRunKey,
-  getToolBillingInfo,
 } from "@app/lib/credits/agent_message_billing";
-import { microCreditsToCredits } from "@app/lib/credits/units";
 import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -31,209 +25,12 @@ import {
 import logger from "@app/logger/logger";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { estypes } from "@elastic/elasticsearch";
-
-const CONSUMPTION_ANALYTICS_PAGE_SIZE = 1_000;
-
-interface AgentMessageConsumptionCreditAnalyticsBase
-  extends ElasticsearchBaseDocument {
-  agent_message_id: string;
-  completed_at: string;
-  consumption_key: string;
-  credit_micro: number;
-  gross_credit_micro: { direct: number };
-}
-
-interface AgentMessageConsumptionCreditAnalyticsLlm
-  extends AgentMessageConsumptionCreditAnalyticsBase {
-  consumption_type: "llm";
-  tool: null;
-}
-
-interface AgentMessageConsumptionCreditAnalyticsTool
-  extends AgentMessageConsumptionCreditAnalyticsBase {
-  consumption_type: "tool";
-  tool: { action_id: string };
-}
-
-type AgentMessageConsumptionCreditAnalytics =
-  | AgentMessageConsumptionCreditAnalyticsLlm
-  | AgentMessageConsumptionCreditAnalyticsTool;
 
 interface CreditActionMinimalInput {
   toolName: string;
   internalMCPServerName: InternalMCPServerNameType | null;
   mcpServerId?: string | null;
   status: ToolExecutionStatus;
-}
-
-export interface AgentMessageCreditsToolBreakdown {
-  actionId: string;
-  toolName: string;
-  internalMCPServerName: InternalMCPServerNameType | null;
-  toolCostCategory: ToolCostCategory;
-  free: boolean;
-  awu: number;
-}
-
-export interface AgentMessageCreditsBreakdown {
-  llmAwu: number;
-  toolAwu: number;
-  totalAwu: number;
-  byTool: AgentMessageCreditsToolBreakdown[];
-}
-
-/**
- * Fetches the stored consumption analytics documents for each message, keyed by messageId.
- * Returns an empty map (rather than failing) on an Elasticsearch error, since this only feeds a
- * poke-only auditing display, not the billing pipeline itself.
- */
-export async function fetchAgentMessageConsumptionAnalyticsByMessageIds(
-  auth: Authenticator,
-  { messageIds }: { messageIds: string[] }
-): Promise<Map<string, AgentMessageConsumptionCreditAnalytics[]>> {
-  if (messageIds.length === 0) {
-    return new Map();
-  }
-
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const query: estypes.QueryDslQueryContainer = {
-    bool: {
-      filter: [
-        { term: { workspace_id: workspaceId } },
-        { terms: { agent_message_id: messageIds } },
-      ],
-    },
-  };
-
-  const documents: AgentMessageConsumptionCreditAnalytics[] = [];
-  let searchAfter: estypes.SortResults | undefined;
-  let hitCount: number;
-
-  do {
-    const result =
-      await searchConsumptionAnalytics<AgentMessageConsumptionCreditAnalytics>(
-        query,
-        {
-          size: CONSUMPTION_ANALYTICS_PAGE_SIZE,
-          sort: [
-            { completed_at: "asc" },
-            { agent_message_id: "asc" },
-            { consumption_key: "asc" },
-          ],
-          search_after: searchAfter,
-        }
-      );
-
-    if (result.isErr()) {
-      logger.error(
-        { workspaceId, err: result.error },
-        "[Credits] Failed to fetch agent message consumption analytics from Elasticsearch."
-      );
-      return new Map();
-    }
-
-    const { hits } = result.value.hits;
-    for (const hit of hits) {
-      if (hit._source) {
-        documents.push(hit._source);
-      }
-    }
-
-    hitCount = hits.length;
-    searchAfter = hits[hits.length - 1]?.sort;
-  } while (hitCount === CONSUMPTION_ANALYTICS_PAGE_SIZE);
-
-  const documentsByMessageId = new Map<
-    string,
-    AgentMessageConsumptionCreditAnalytics[]
-  >();
-  for (const document of documents) {
-    const messageDocuments =
-      documentsByMessageId.get(document.agent_message_id) ?? [];
-    messageDocuments.push(document);
-    documentsByMessageId.set(document.agent_message_id, messageDocuments);
-  }
-
-  return documentsByMessageId;
-}
-
-/**
- * Builds the LLM/tool cost split and per-tool breakdown for display (e.g. in poke) from the
- * message's stored consumption analytics documents. Their total reconciles to the authoritative
- * billed message cost. The tool documents also preserve the direct tool charge and action ID, so
- * the existing tool-cost split can be reconstructed without recomputing historical prices or
- * matching tools by step and name.
- */
-export function buildAgentMessageCreditsBreakdownFromConsumptionAnalytics({
-  documents,
-  actions,
-}: {
-  documents: AgentMessageConsumptionCreditAnalytics[] | undefined;
-  actions: (CreditActionMinimalInput & { actionId: string })[];
-}): AgentMessageCreditsBreakdown | undefined {
-  if (!documents || documents.length === 0) {
-    return undefined;
-  }
-
-  let totalMicroCredits = 0;
-  let toolDirectMicroCredits = 0;
-  const directMicroCreditsByActionId = new Map<string, number>();
-
-  for (const document of documents) {
-    totalMicroCredits += document.credit_micro;
-
-    switch (document.consumption_type) {
-      case "llm":
-        break;
-      case "tool": {
-        const directMicroCredits = document.gross_credit_micro.direct;
-        toolDirectMicroCredits += directMicroCredits;
-        directMicroCreditsByActionId.set(
-          document.tool.action_id,
-          (directMicroCreditsByActionId.get(document.tool.action_id) ?? 0) +
-            directMicroCredits
-        );
-        break;
-      }
-      default:
-        assertNever(document);
-    }
-  }
-
-  const byTool: AgentMessageCreditsToolBreakdown[] = [];
-  for (const action of actions) {
-    const directMicroCredits = directMicroCreditsByActionId.get(
-      action.actionId
-    );
-    if (directMicroCredits === undefined) {
-      continue;
-    }
-
-    const { toolCostCategory } = getToolBillingInfo(
-      action.internalMCPServerName,
-      action.toolName
-    );
-    byTool.push({
-      actionId: action.actionId,
-      toolName: action.toolName,
-      internalMCPServerName: action.internalMCPServerName,
-      toolCostCategory,
-      // "Free" means the tool ran and its category priced it at zero, not that it never ran.
-      free:
-        directMicroCredits === 0 &&
-        isToolExecutionStatusBillable(action.status),
-      awu: microCreditsToCredits(directMicroCredits),
-    });
-  }
-
-  return {
-    llmAwu: microCreditsToCredits(totalMicroCredits - toolDirectMicroCredits),
-    toolAwu: microCreditsToCredits(toolDirectMicroCredits),
-    totalAwu: microCreditsToCredits(totalMicroCredits),
-    byTool,
-  };
 }
 
 export function computeAgentMessageCredits({
