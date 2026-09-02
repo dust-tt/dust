@@ -786,14 +786,14 @@ function buildColumns({
   enableSelection,
   showGroupsColumn,
   showModelTiersColumn,
-  showCreditPlanColumns,
+  showSeatAndCredits,
   creditsResetAt,
   variant,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
   showModelTiersColumn: boolean;
-  showCreditPlanColumns: boolean;
+  showSeatAndCredits: boolean;
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
 }): ColumnDef<RowData, string>[] {
@@ -802,7 +802,7 @@ function buildColumns({
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
     ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
-    ...(showCreditPlanColumns
+    ...(showSeatAndCredits
       ? buildCreditPlanColumns({ creditsResetAt, variant })
       : []),
     actionsColumn,
@@ -826,9 +826,9 @@ interface MembersUsageTableProps {
   isSeatBased: boolean;
   showSpendLimit: boolean;
   readOnly: boolean;
-  // Seat and credits usage columns, plus the seat and spend limit actions.
-  // Hidden for workspaces that are not on a credit plan.
-  showCreditPlanColumns?: boolean;
+  // Seat and credits usage columns plus the seat and spend limit row actions.
+  // Off for workspaces that are not on a credit plan.
+  showSeatAndCredits?: boolean;
   // Disables only the seat-assign/change/remove actions (e.g. while the
   // subscription has a cancellation scheduled), independent of `readOnly`.
   seatActionsDisabled?: boolean;
@@ -868,7 +868,7 @@ export function MembersUsageTable({
   isSeatBased,
   showSpendLimit,
   readOnly,
-  showCreditPlanColumns = true,
+  showSeatAndCredits = true,
   seatActionsDisabled = false,
   onChangeSeat,
   onRemoveSeat,
@@ -943,7 +943,7 @@ export function MembersUsageTable({
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
-            ...(showCreditPlanColumns && (!m.seatType || m.seatType === "none")
+            ...(showSeatAndCredits && (!m.seatType || m.seatType === "none")
               ? [
                   {
                     kind: "item" as const,
@@ -953,7 +953,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showCreditPlanColumns &&
+            ...(showSeatAndCredits &&
             isSeatBased &&
             m.seatType &&
             m.seatType !== "none"
@@ -966,7 +966,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showCreditPlanColumns &&
+            ...(showSeatAndCredits &&
             showSpendLimit &&
             m.seatType &&
             m.seatType !== "free" &&
@@ -1007,7 +1007,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showCreditPlanColumns &&
+            ...(showSeatAndCredits &&
             isSeatBased &&
             m.seatType &&
             m.seatType !== "none"
@@ -1038,7 +1038,7 @@ export function MembersUsageTable({
       workspaceAllowedModelTiers,
       groupNameToId,
       readOnly,
-      showCreditPlanColumns,
+      showSeatAndCredits,
       seatActionsDisabled,
       onChangeSeat,
       onRemoveSeat,
@@ -1053,7 +1053,7 @@ export function MembersUsageTable({
         enableSelection,
         showGroupsColumn,
         showModelTiersColumn,
-        showCreditPlanColumns,
+        showSeatAndCredits,
         creditsResetAt,
         variant,
       }),
@@ -1061,7 +1061,7 @@ export function MembersUsageTable({
       enableSelection,
       showGroupsColumn,
       showModelTiersColumn,
-      showCreditPlanColumns,
+      showSeatAndCredits,
       creditsResetAt,
       variant,
     ]
