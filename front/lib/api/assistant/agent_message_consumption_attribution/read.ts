@@ -11,6 +11,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
 import { getAgentUsageAttributedId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * Builds the end-user explanation for one agent message. Provider and token facts stay behind this
@@ -49,27 +50,29 @@ export async function getAgentMessageConsumption(
     facts.directSubAgents.map((subAgent) => [subAgent.action.id, subAgent])
   );
   const hiddenHelperActionIds = new Set<ModelId>(
-    facts.actions.flatMap((action) => {
-      const subAgentId = subAgentsByActionModelId.get(
-        action.id
-      )?.agentConfigurationId;
-      const { toolConfiguration } = action;
-      const configuredSubAgentId = isLightServerSideMCPToolConfiguration(
-        toolConfiguration
-      )
-        ? toolConfiguration.childAgentId
-        : null;
-      const agentId = subAgentId ?? configuredSubAgentId;
-      if (!agentId) {
-        return [];
-      }
-      return getAgentUsageAttributedId({
-        agentId,
-        parentAgentId: facts.agentConfigurationId,
-      }) !== agentId
-        ? [action.id]
-        : [];
-    })
+    removeNulls(
+      facts.actions.map((action) => {
+        const subAgentId = subAgentsByActionModelId.get(
+          action.id
+        )?.agentConfigurationId;
+        const { toolConfiguration } = action;
+        const configuredSubAgentId = isLightServerSideMCPToolConfiguration(
+          toolConfiguration
+        )
+          ? toolConfiguration.childAgentId
+          : null;
+        const agentId = subAgentId ?? configuredSubAgentId;
+        if (!agentId) {
+          return null;
+        }
+        return getAgentUsageAttributedId({
+          agentId,
+          parentAgentId: facts.agentConfigurationId,
+        }) !== agentId
+          ? action.id
+          : null;
+      })
+    )
   );
   const visibleSubAgents = facts.directSubAgents.filter(
     ({ action }) => !hiddenHelperActionIds.has(action.id)

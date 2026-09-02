@@ -15,6 +15,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
@@ -856,12 +857,14 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
     ]);
 
-    const directSubAgentRoots = actions.flatMap((action) => {
-      const childConversationId = action.getRunAgentChildConversationId();
-      return childConversationId && childConversationId !== conversation.sId
-        ? [{ action, childConversationId }]
-        : [];
-    });
+    const directSubAgentRoots = removeNulls(
+      actions.map((action) => {
+        const childConversationId = action.getRunAgentChildConversationId();
+        return childConversationId && childConversationId !== conversation.sId
+          ? { action, childConversationId }
+          : null;
+      })
+    );
     const childConversations = await ConversationResource.fetchByIds(
       auth,
       [
