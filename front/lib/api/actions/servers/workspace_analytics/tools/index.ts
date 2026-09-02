@@ -380,7 +380,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const result = await fetchConsumptionTimeseries(auth, {
       period: toConsumptionPeriod(window.value),
       granularity,
-      mode: "daily",
+      mode: "period",
       breakdownBy,
       breakdownCount: breakdownLimit ?? DEFAULT_CREDIT_GROUPS,
       filter,
