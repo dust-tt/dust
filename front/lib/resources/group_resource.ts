@@ -1365,10 +1365,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   }: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
-  }): Promise<Map<ModelId, { capAwuCredits: number; groupName: string }>> {
+  }): Promise<
+    Map<ModelId, { capAwuCredits: number; groupName: string; groupId: ModelId }>
+  > {
     const result = new Map<
       ModelId,
-      { capAwuCredits: number; groupName: string }
+      { capAwuCredits: number; groupName: string; groupId: ModelId }
     >();
     if (userModelIds.length === 0) {
       return result;
@@ -1406,8 +1408,18 @@ export class GroupResource extends BaseResource<GroupModel> {
         continue;
       }
       const existing = result.get(m.userId);
-      if (existing === undefined || cap > existing.capAwuCredits) {
-        result.set(m.userId, { capAwuCredits: cap, groupName: group.name });
+      // Tie-break on groupId so the pick is stable regardless of the
+      // memberships query's row order.
+      if (
+        existing === undefined ||
+        cap > existing.capAwuCredits ||
+        (cap === existing.capAwuCredits && group.id < existing.groupId)
+      ) {
+        result.set(m.userId, {
+          capAwuCredits: cap,
+          groupName: group.name,
+          groupId: group.id,
+        });
       }
     }
 
