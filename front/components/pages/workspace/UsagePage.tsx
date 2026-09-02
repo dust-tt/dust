@@ -272,10 +272,18 @@ export function UsagePage() {
   }, []);
 
   const sort = sorting[0];
+  // The legacy table's pool-usage cell displays total consumption
+  // (consumedAwuCredits), not the pool-only amount, so its "column" of the
+  // same id must sort by the total. Only the compact/Poke variant, which
+  // shows pool-only usage, sorts by consumedFromPoolAwuCredits.
+  // TODO(avervaet, 2026-09-02): remove once the app page and Poke page usage
+  // tables are uniformized.
   const membersOrderColumn =
-    sort?.id === "email" || sort?.id === "consumedAwuCredits"
+    sort?.id === "email"
       ? sort.id
-      : "name";
+      : sort?.id === "consumedFromPoolAwuCredits"
+        ? "consumedAwuCredits"
+        : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
   const { myUsage } = useMyUsage({ workspaceId: owner.sId });

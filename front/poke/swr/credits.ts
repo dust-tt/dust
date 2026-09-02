@@ -259,6 +259,7 @@ export function usePokeMembersUsage({
     | "name"
     | "email"
     | "consumedAwuCredits"
+    | "consumedFromPoolAwuCredits"
     | "seatType"
     | "creditState";
   orderDirection?: "asc" | "desc";
