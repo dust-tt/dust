@@ -357,7 +357,10 @@ export function WorkspacePage() {
             </TabsContent>
 
             <TabsContent value="governance">
-              <GovernanceTab owner={owner} />
+              <GovernanceTab
+                owner={owner}
+                workosEnvironmentId={workosEnvironmentId}
+              />
             </TabsContent>
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} />

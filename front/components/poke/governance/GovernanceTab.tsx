@@ -58,9 +58,11 @@ import {
   WORKSPACE_DEFAULT_AGENT_DESCRIPTION,
   WORKSPACE_DEFAULT_AGENT_LABEL,
 } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
+import type { AuditAction } from "@app/lib/api/audit/workos_audit";
 import { isDustMcpServerEnabled } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import type { PokeMessagingApp } from "@app/lib/api/poke/messaging_apps";
 import {
+  areAuditLogsEnabled,
   areEmailAgentsAllowed,
   areExtensionMcpToolsAllowed,
   areOpenPodsAllowed,
@@ -102,6 +104,8 @@ interface GovernanceRow {
   description: string;
   value: ReactNode;
   groupIds: string[];
+  // The audit action emitted when this setting changes, if any.
+  auditAction: AuditAction | null;
 }
 
 interface GovernanceSection {
@@ -131,6 +135,24 @@ function policyLabel<T extends { label: string }>(
   isSelected: (policy: T) => boolean
 ): string {
   return policies.find(isSelected)?.label ?? "Unknown";
+}
+
+// The WorkOS audit logs view, pre-filtered on one action. Same environment/organization pair as
+// the "WorkOS dashboard" link on the workspace tab.
+function workosAuditLogsUrl({
+  workosEnvironmentId,
+  workOSOrganizationId,
+  auditAction,
+}: {
+  workosEnvironmentId: string;
+  workOSOrganizationId: string;
+  auditAction: AuditAction;
+}): string {
+  const search = encodeURIComponent(
+    JSON.stringify([{ key: "action", value: [auditAction] }])
+  );
+
+  return `https://dashboard.workos.com/${workosEnvironmentId}/organizations/${workOSOrganizationId}/audit-logs?search=${search}`;
 }
 
 // Boolean settings are rendered with the same toggle as the workspace Settings & Governance page.
@@ -176,6 +198,7 @@ function buildPermissionRows(
       label: metadata?.label ?? key,
       description: metadata?.description ?? "",
       value: scopeChip(permission.configuration.scope),
+      auditAction: "workspace.governance_permission_updated",
       groupIds:
         permission.configuration.scope === "groups"
           ? permission.configuration.groupIds
@@ -190,6 +213,7 @@ function buildPodRows(owner: LightWorkspaceType): GovernanceRow[] {
   return [
     {
       key: "allowOpenProjects",
+      auditAction: "workspace.open_projects_updated",
       label: OPEN_PODS_LABEL,
       description: OPEN_PODS_DESCRIPTION,
       value: (
@@ -204,6 +228,7 @@ function buildPodRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "allowManualProjectKnowledgeManagement",
+      auditAction: "workspace.manual_project_knowledge_management_updated",
       label: POD_KNOWLEDGE_LABEL,
       description: POD_KNOWLEDGE_DESCRIPTION,
       value: (
@@ -228,6 +253,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
   return [
     {
       key: "workspaceDefaultAgentId",
+      auditAction: "workspace.default_agent_updated",
       label: WORKSPACE_DEFAULT_AGENT_LABEL,
       description: WORKSPACE_DEFAULT_AGENT_DESCRIPTION,
       value: workspaceDefaultAgentId ? (
@@ -243,6 +269,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "allowVoiceTranscription",
+      auditAction: "workspace.voice_transcription_updated",
       label: VOICE_TRANSCRIPTION_LABEL,
       description: VOICE_TRANSCRIPTION_DESCRIPTION,
       value: booleanToggle(isVoiceTranscriptionAllowed(owner)),
@@ -250,6 +277,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "allowEmailAgents",
+      auditAction: "workspace.email_agents_updated",
       label: EMAIL_AGENTS_LABEL,
       description: EMAIL_AGENTS_DESCRIPTION,
       value: booleanToggle(areEmailAgentsAllowed(owner)),
@@ -257,6 +285,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "allowConversationExternalNotifications",
+      auditAction: "workspace.conversation_external_notifications_updated",
       label: CONVERSATION_EXTERNAL_NOTIFICATIONS_LABEL,
       description: CONVERSATION_EXTERNAL_NOTIFICATIONS_DESCRIPTION,
       value: booleanToggle(areConversationExternalNotificationsEnabled(owner)),
@@ -264,6 +293,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "privateConversationUrlsByDefault",
+      auditAction: "workspace.private_conversation_urls_updated",
       label: PRIVATE_CONVERSATION_URLS_LABEL,
       description: PRIVATE_CONVERSATION_URLS_DESCRIPTION,
       value: booleanToggle(arePrivateConversationUrlsDefault(owner)),
@@ -271,6 +301,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "dustMcpServer",
+      auditAction: "dust_mcp_server.settings_updated",
       label: DUST_MCP_SERVER_LABEL,
       description: DUST_MCP_SERVER_DESCRIPTION,
       value: booleanToggle(isDustMcpServerEnabled(owner.metadata)),
@@ -278,6 +309,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "disableExtensionMcpTools",
+      auditAction: "workspace.extension_mcp_tools_updated",
       label: EXTENSION_MCP_TOOLS_LABEL,
       description: EXTENSION_MCP_TOOLS_DESCRIPTION,
       value: booleanToggle(areExtensionMcpToolsAllowed(owner)),
@@ -285,6 +317,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "slackPersonalAllowFooterRemoval",
+      auditAction: "workspace.slack_personal_footer_removal_updated",
       label: SLACK_PERSONAL_FOOTER_REMOVAL_LABEL,
       description: SLACK_PERSONAL_FOOTER_REMOVAL_DESCRIPTION,
       value: booleanToggle(isSlackPersonalFooterRemovalAllowed(owner)),
@@ -292,6 +325,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "disableWorkspaceAnalytics",
+      auditAction: "workspace.analytics_updated",
       label: WORKSPACE_ANALYTICS_LABEL,
       description: WORKSPACE_ANALYTICS_DESCRIPTION,
       value: booleanToggle(isWorkspaceAnalyticsEnabled(owner)),
@@ -299,6 +333,7 @@ function buildFeatureRows(owner: LightWorkspaceType): GovernanceRow[] {
     },
     {
       key: "inactiveAgentArchivalThresholdDays",
+      auditAction: "workspace.inactive_agent_archival_updated",
       label: INACTIVE_AGENT_ARCHIVAL_LABEL,
       description: INACTIVE_AGENT_ARCHIVAL_DESCRIPTION,
       value: (
@@ -325,6 +360,7 @@ function buildMessagingAppRows(
 
     return {
       key: messagingApp.provider,
+      auditAction: null,
       label: name,
       description,
       value: (
@@ -347,9 +383,13 @@ function buildMessagingAppRows(
 
 interface GovernanceTabProps {
   owner: LightWorkspaceType;
+  workosEnvironmentId: string;
 }
 
-export function GovernanceTab({ owner }: GovernanceTabProps) {
+export function GovernanceTab({
+  owner,
+  workosEnvironmentId,
+}: GovernanceTabProps) {
   const {
     data: governancePermissions,
     isLoading: isGovernancePermissionsLoading,
@@ -411,6 +451,7 @@ export function GovernanceTab({ owner }: GovernanceTabProps) {
           owner={owner}
           section={section}
           groupsById={groupsById}
+          workosEnvironmentId={workosEnvironmentId}
         />
       ))}
     </div>
@@ -421,6 +462,7 @@ interface GovernanceSectionTableProps {
   owner: LightWorkspaceType;
   section: GovernanceSection;
   groupsById: Map<string, GroupType>;
+  workosEnvironmentId: string;
 }
 
 // `table-fixed` with explicit column widths keeps every section's columns aligned with the others.
@@ -428,6 +470,7 @@ function GovernanceSectionTable({
   owner,
   section,
   groupsById,
+  workosEnvironmentId,
 }: GovernanceSectionTableProps) {
   return (
     <div className="flex flex-grow flex-col rounded-lg border p-4">
@@ -435,11 +478,12 @@ function GovernanceSectionTable({
       <PokeTable className="table-fixed">
         <PokeTableHeader>
           <PokeTableRow>
-            <PokeTableHead className="w-1/2">Setting</PokeTableHead>
-            <PokeTableHead className="w-1/4">Value</PokeTableHead>
+            <PokeTableHead className="w-2/5">Setting</PokeTableHead>
+            <PokeTableHead className="w-1/5">Value</PokeTableHead>
             {section.showGroups && (
-              <PokeTableHead className="w-1/4">Groups</PokeTableHead>
+              <PokeTableHead className="w-1/5">Groups</PokeTableHead>
             )}
+            <PokeTableHead className="w-1/5">Audit logs</PokeTableHead>
           </PokeTableRow>
         </PokeTableHeader>
         <PokeTableBody>
@@ -472,10 +516,57 @@ function GovernanceSectionTable({
                   )}
                 </PokeTableCell>
               )}
+              <PokeTableCell>
+                <AuditLogsCell
+                  owner={owner}
+                  auditAction={row.auditAction}
+                  workosEnvironmentId={workosEnvironmentId}
+                />
+              </PokeTableCell>
             </PokeTableRow>
           ))}
         </PokeTableBody>
       </PokeTable>
     </div>
+  );
+}
+
+interface AuditLogsCellProps {
+  owner: LightWorkspaceType;
+  auditAction: AuditAction | null;
+  workosEnvironmentId: string;
+}
+
+function AuditLogsCell({
+  owner,
+  auditAction,
+  workosEnvironmentId,
+}: AuditLogsCellProps) {
+  // The setting emits no audit event at all: that holds whether or not the workspace has audit
+  // logs on, so it takes precedence over the workspace-level switch.
+  if (!auditAction) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+
+  if (!areAuditLogsEnabled(owner)) {
+    return <span className="text-sm text-muted-foreground">No audit logs</span>;
+  }
+
+  if (!owner.workOSOrganizationId) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+
+  return (
+    <LinkWrapper
+      href={workosAuditLogsUrl({
+        workosEnvironmentId,
+        workOSOrganizationId: owner.workOSOrganizationId,
+        auditAction,
+      })}
+      target="_blank"
+      className="text-xs text-highlight-400"
+    >
+      {auditAction}
+    </LinkWrapper>
   );
 }

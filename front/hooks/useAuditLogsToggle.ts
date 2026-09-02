@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAuthContext } from "@app/lib/swr/workspaces";
+import { areAuditLogsEnabled } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
@@ -12,7 +13,7 @@ export function useAuditLogsToggle({ owner }: UseAuditLogsToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
-  const isEnabled = owner.metadata?.disableAuditLogs !== true;
+  const isEnabled = areAuditLogsEnabled(owner);
 
   const doToggleAuditLogs = async () => {
     setIsChanging(true);
