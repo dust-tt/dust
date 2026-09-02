@@ -28,6 +28,11 @@ import type {
 } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_TOP_DIMENSION_UNIT } from "@app/lib/api/analytics/consumption/scope";
 import type {
+  ConsumptionTimeseriesGroup,
+  ConsumptionTimeseriesPoint,
+} from "@app/lib/api/analytics/consumption/timeseries";
+import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
+import type {
   ConsumptionTopGroup,
   ResolvedConsumptionGroup,
 } from "@app/lib/api/analytics/consumption/top";
@@ -36,14 +41,11 @@ import {
   resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import {
-  fetchCreditTimeseries,
-  fetchCreditTimeseriesBreakdown,
-} from "@app/lib/api/assistant/observability/credit_usage";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchToolUsageMetrics } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -237,6 +239,18 @@ async function renderRanking(
   return new Ok([{ type: "text" as const, text }]);
 }
 
+function formatCreditLine(
+  point: ConsumptionTimeseriesPoint,
+  groups: ConsumptionTimeseriesGroup[],
+  tz: string
+): string {
+  const parts = groups.map(
+    ({ groupKey, name }) =>
+      `${name}: ${(point.values[groupKey] ?? 0).toFixed(2)}`
+  );
+  return `${formatDateFromMillis(point.timestamp, tz)} — ${parts.join(", ")}`;
+}
+
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   get_agent_details: async ({ agentId }, { auth }) => {
     const deniedError = workspaceManagerGuard(auth);
@@ -349,20 +363,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_credit_timeseries: async (
-    {
-      granularity,
-      breakdownBy,
-      breakdownLimit,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
+    { granularity = "day", breakdownBy, breakdownLimit, ...input },
     { auth }
   ) => {
     const deniedError = workspaceManagerGuard(auth);
@@ -370,116 +371,52 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(deniedError);
     }
 
-    const window = resolveTimeWindow(
-      { period, startDate, endDate, timezone },
-      "last_30_days"
-    );
+    const window = resolveTimeWindow(input, "last_30_days");
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
+    const filter = toConsumptionScope(input);
 
-    const { label, timezone: tz } = window.value;
-    const interval = granularity ?? "day";
-    const estimateNote =
-      "These are estimates — point the user to the workspace Usage page for " +
-      "exact billed credits";
-
-    if (breakdownBy) {
-      const result = await fetchCreditTimeseriesBreakdown(auth, {
-        startDate: window.value.startDate,
-        endDate: window.value.endDate,
-        granularity: interval,
-        timezone: window.value.timezone,
-        breakdownBy,
-        limit: breakdownLimit ?? DEFAULT_CREDIT_GROUPS,
-        contextOrigin: source,
-        agentIds,
-        userIds,
-        agentTagIds,
-        modelIds,
-      });
-
-      if (result.isErr()) {
-        return new Err(
-          new MCPError(
-            `Failed to estimate credit trend: ${result.error.message}`
-          )
-        );
-      }
-
-      const { groups, points } = result.value;
-      if (
-        groups.length === 0 ||
-        points.every((point) => point.totalCredits === 0)
-      ) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `No credit usage recorded for ${label} (${tz}).`,
-          },
-        ]);
-      }
-
-      const series = [...groups.map((group) => group.name), "Other"].join(", ");
-      const lines = points.map((point) => {
-        const parts = groups.map(
-          (group, index) => `${group.name} ${point.groupCredits[index]}`
-        );
-        parts.push(`Other ${point.otherCredits}`);
-        return `${point.date}: ${parts.join(", ")} (total ${point.totalCredits})`;
-      });
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text:
-            `Estimated credit usage per ${interval} for ${label} (${tz}), top ` +
-            `${groups.length} ${breakdownBy}s plus 'other'. ${estimateNote}.\n` +
-            `Series: ${series}\n` +
-            lines.join("\n"),
-        },
-      ]);
-    }
-
-    const result = await fetchCreditTimeseries(auth, {
-      startDate: window.value.startDate,
-      endDate: window.value.endDate,
-      granularity: interval,
+    const result = await fetchConsumptionTimeseries(auth, {
+      period: toConsumptionPeriod(window.value),
+      granularity,
+      mode: "daily",
+      breakdownBy,
+      breakdownCount: breakdownLimit ?? DEFAULT_CREDIT_GROUPS,
+      filter,
       timezone: window.value.timezone,
-      contextOrigin: source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
     });
 
     if (result.isErr()) {
       return new Err(
-        new MCPError(`Failed to estimate credit trend: ${result.error.message}`)
+        new MCPError(
+          `Failed to retrieve the credit trend: ${result.error.message}`
+        )
       );
     }
 
-    const points = result.value;
+    const { label, timezone: tz } = window.value;
+    const { groups, points } = result.value;
+    const active = points.filter((point) =>
+      Object.values(point.values).some((value) => value > 0)
+    );
 
-    if (points.every((point) => point.totalCredits === 0)) {
+    if (active.length === 0) {
       return new Ok([
         {
           type: "text" as const,
-          text: `No credit usage recorded for ${label} (${tz}).`,
+          text: `No credit consumption recorded for ${label} (${tz}).`,
         },
       ]);
     }
 
-    const lines = points.map(
-      (point) => `${point.date}: ${point.totalCredits} credits`
-    );
+    const lines = active.map((point) => formatCreditLine(point, groups, tz));
 
     return new Ok([
       {
         type: "text" as const,
         text:
-          `Estimated credit usage per ${interval} for ${label} (${tz}). ` +
-          `${estimateNote}:\n` +
+          `Credits per ${granularity} for ${label} (${tz}):\n` +
           lines.join("\n"),
       },
     ]);
