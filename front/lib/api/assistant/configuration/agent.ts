@@ -29,6 +29,7 @@ import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -82,6 +83,34 @@ const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
 const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
 const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
   "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+
+async function grantAgentEditors(
+  auth: Authenticator,
+  {
+    agentId,
+    editors,
+    transaction,
+  }: {
+    agentId: ModelId;
+    editors: UserType[];
+    transaction: Transaction;
+  }
+): Promise<void> {
+  // Each call serializes on the same grant tuple and reuses its regular_auto group. Agent editor
+  // sets are small, so keeping the existing per-user primitive is preferable to a second writer.
+  for (const editor of editors) {
+    const grantResult = await GroupPermissionResource.grantToUser(auth, {
+      user: editor,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: agentId,
+      transaction,
+    });
+    if (grantResult.isErr()) {
+      throw grantResult.error;
+    }
+  }
+}
 
 /**
  * Creates a pending agent configuration.
@@ -138,6 +167,11 @@ export async function createPendingAgentConfiguration(
     await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
       transaction: t,
       authorId: user.id,
+    });
+    await grantAgentEditors(auth, {
+      agentId: agentIdentity.id,
+      editors: [user.toJSON()],
+      transaction: t,
     });
     await auth.refresh({ transaction: t });
   });
@@ -883,10 +917,13 @@ export async function createAgentConfiguration(
           );
           await auth.refresh({ transaction: t });
           // No need to check on permission here since it was done a few lines above.
-          await group.dangerouslySetMembers(auth, {
+          const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
           });
+          if (setMembersRes.isErr()) {
+            throw setMembersRes.error;
+          }
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -934,6 +971,12 @@ export async function createAgentConfiguration(
             throw setMembersRes.error;
           }
         }
+
+        await grantAgentEditors(auth, {
+          agentId: agentConfigurationInstance.agentId,
+          editors,
+          transaction: t,
+        });
       }
 
       return agentConfigurationInstance;
@@ -1590,6 +1633,22 @@ export async function updateAgentPermissions(
         if (addRes.isErr()) {
           return addRes;
         }
+
+        // agents.sId is unique, so this resolves one stable ID regardless of version count.
+        const agentIdentity = await AgentModel.findOne({
+          where: {
+            sId: agent.sId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          attributes: ["id"],
+          transaction: t,
+        });
+        assert(agentIdentity, "Unexpected: agent identity is missing");
+        await grantAgentEditors(auth, {
+          agentId: agentIdentity.id,
+          editors: usersToAdd,
+          transaction: t,
+        });
       }
 
       if (usersToRemove.length > 0) {

@@ -3,6 +3,7 @@ import {
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -162,6 +163,32 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     const editorIds = data.editors.map((e: UserType) => e.sId);
     expect(editorIds).toContain(agentOwner.sId);
     expect(editorIds).toContain(newEditor.sId);
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const agentGrant = (
+      await GroupPermissionResource.listForWorkspace(auth)
+    ).find(
+      (grant) => grant.grantType === "editor" && grant.resourceType === "agent"
+    );
+    expect(agentGrant).toBeDefined();
+    if (!agentGrant) {
+      throw new Error("Agent editor grant was not created");
+    }
+    const grantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: agentGrant.resourceId,
+      });
+    expect(grantGroup).not.toBeNull();
+    if (!grantGroup) {
+      throw new Error("Agent editor group was not created");
+    }
+    expect(
+      new Set(
+        (await grantGroup.getActiveMembers(auth)).map((editor) => editor.sId)
+      )
+    ).toEqual(new Set([agentOwner.sId, newEditor.sId]));
   });
 
   it("admin who is not an agent editor can become an editor", async () => {

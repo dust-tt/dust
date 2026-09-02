@@ -134,6 +134,8 @@ describe("createAgentConfiguration with pending agent", () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
 
     // Create a pending agent using the helper function
     const pendingAgentRes =
@@ -142,6 +144,32 @@ describe("createAgentConfiguration with pending agent", () => {
       throw pendingAgentRes.error;
     }
     const { sId: pendingId } = pendingAgentRes.value;
+
+    const pendingAgent = await AgentConfigurationModel.findOne({
+      where: { sId: pendingId, workspaceId: workspace.id },
+    });
+    expect(pendingAgent).not.toBeNull();
+    if (!pendingAgent) {
+      throw new Error("Pending agent was not created");
+    }
+    const pendingGrantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        authenticator,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: pendingAgent.agentId,
+        }
+      );
+    expect(pendingGrantGroup).not.toBeNull();
+    if (!pendingGrantGroup) {
+      throw new Error("Pending agent editor grant was not created");
+    }
+    expect(
+      (await pendingGrantGroup.getActiveMembers(authenticator)).map(
+        (editor) => editor.sId
+      )
+    ).toEqual([user.sId]);
 
     // Convert the pending agent to active by passing its sId as agentConfigurationId
     const result = await createAgentConfiguration(authenticator, {
@@ -161,7 +189,7 @@ describe("createAgentConfiguration with pending agent", () => {
       templateId: null,
       requestedSpaceIds: [],
       tags: [],
-      editors: [user.toJSON()],
+      editors: [user.toJSON(), newEditor.toJSON()],
       authorId: user.id,
     });
 
@@ -177,9 +205,20 @@ describe("createAgentConfiguration with pending agent", () => {
       where: { sId: pendingId, workspaceId: workspace.id },
     });
     expect(agent).not.toBeNull();
-    expect(agent!.status).toBe("active");
-    expect(agent!.name).toBe("My New Agent");
-    expect(agent!.version).toBe(0); // Version should remain 0 (updated in place)
+    if (!agent) {
+      throw new Error("Pending agent was not converted");
+    }
+    expect(agent.status).toBe("active");
+    expect(agent.name).toBe("My New Agent");
+    expect(agent.version).toBe(0); // Version should remain 0 (updated in place)
+
+    expect(
+      new Set(
+        (await pendingGrantGroup.getActiveMembers(authenticator)).map(
+          (editor) => editor.sId
+        )
+      )
+    ).toEqual(new Set([user.sId, newEditor.sId]));
   });
 
   it("creates new agent if agentConfigurationId does not exist", async () => {
