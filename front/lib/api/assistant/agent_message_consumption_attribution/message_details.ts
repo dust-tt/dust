@@ -13,6 +13,7 @@ import type {
   AgentMessageConsumptionModelDetails,
 } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
+import partition from "lodash/partition";
 import type {
   MessageConsumptionAllocation,
   ReconciledCreditAmounts,
@@ -29,34 +30,19 @@ export type ToolConsumptionDetailsOverride = {
   label: string;
 };
 
-function buildConsumptionTotals({
-  additionalAgentWorkCredits = 0,
-  agentWorkActionModelIds,
+function buildAgentWorkCredits({
   items,
   reconciledCreditAmounts,
 }: {
-  additionalAgentWorkCredits?: number;
-  agentWorkActionModelIds?: ReadonlySet<ModelId>;
   items: AgentMessageConsumptionItemResource[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
-}): {
-  agentWorkCredits: number;
-} {
+}): number {
   const reconciledAgentWorkCreditAmountMicro = items.reduce(
-    (total, item) =>
-      item.itemType !== "tool" ||
-      (item.agentMCPActionId !== null &&
-        agentWorkActionModelIds?.has(item.agentMCPActionId))
-        ? total + (reconciledCreditAmounts.byItem.get(item) ?? 0)
-        : total,
+    (total, item) => total + (reconciledCreditAmounts.byItem.get(item) ?? 0),
     0
   );
 
-  return {
-    agentWorkCredits:
-      microCreditsToCredits(reconciledAgentWorkCreditAmountMicro) +
-      additionalAgentWorkCredits,
-  };
+  return microCreditsToCredits(reconciledAgentWorkCreditAmountMicro);
 }
 
 function toolIdentity(action: AgentMCPActionType): string {
@@ -71,13 +57,11 @@ function toolIdentity(action: AgentMCPActionType): string {
 /** Groups repeated executions by tool identity while preserving first-use display order. */
 function buildToolDetails({
   actions,
-  agentWorkActionModelIds,
   items,
   reconciledCreditAmounts,
   toolDetailsOverridesByActionModelId,
 }: {
   actions: AgentMCPActionResource[];
-  agentWorkActionModelIds?: ReadonlySet<ModelId>;
   items: AgentMessageConsumptionItemResource[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
   toolDetailsOverridesByActionModelId?: ReadonlyMap<
@@ -100,9 +84,6 @@ function buildToolDetails({
     const action = actionByModelId.get(item.agentMCPActionId);
     if (!action) {
       return null;
-    }
-    if (agentWorkActionModelIds?.has(action.id)) {
-      continue;
     }
 
     const serialized = action.toJSON();
@@ -216,11 +197,17 @@ function buildMessageConsumptionDetails({
 }): MessageConsumptionDetails | null {
   const { attributionVersion, items, messageUsages, reconciledCreditAmounts } =
     allocation;
+  const [agentWorkItems, toolItems] = partition(
+    items,
+    (item) =>
+      item.itemType !== "tool" ||
+      (item.agentMCPActionId !== null &&
+        agentWorkActionModelIds?.has(item.agentMCPActionId))
+  );
 
   const tools = buildToolDetails({
     actions,
-    agentWorkActionModelIds,
-    items,
+    items: toolItems,
     reconciledCreditAmounts,
     toolDetailsOverridesByActionModelId,
   });
@@ -230,12 +217,11 @@ function buildMessageConsumptionDetails({
 
   return {
     attributionVersion,
-    ...buildConsumptionTotals({
-      additionalAgentWorkCredits,
-      agentWorkActionModelIds,
-      items,
-      reconciledCreditAmounts,
-    }),
+    agentWorkCredits:
+      buildAgentWorkCredits({
+        items: agentWorkItems,
+        reconciledCreditAmounts,
+      }) + (additionalAgentWorkCredits ?? 0),
     tools,
     models: buildModelDetails({
       items,
