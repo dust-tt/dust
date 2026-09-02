@@ -522,7 +522,7 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
     );
   },
   meta: {
-    className: "w-36",
+    className: "w-32",
   },
 };
 
@@ -799,7 +799,7 @@ function buildCreditPlanColumns({
     })(),
     {
       ...buildPoolCreditUsageColumn(creditsResetAt, variant),
-      meta: { className: "w-64" },
+      meta: { className: "w-56" },
     },
   ];
 }
@@ -831,6 +831,16 @@ function buildColumns({
     ...(showSeatAndCredits || showModelTiersColumn ? [actionsColumn] : []),
   ];
 }
+
+// The table is fixed layout and Name is the only column without a set width,
+// so it absorbs every shrink. Drop the secondary columns first as the window
+// narrows, most dispensable at the widest breakpoint.
+const COLUMNS_BREAKPOINTS = {
+  groups: "2xl",
+  modelTiers: "xl",
+  seatType: "xl",
+  consumedFromPoolAwuCredits: "lg",
+} as const;
 
 // "compact" is the Poke Pool Usage page layout: no "Up to " prefix on the
 // Models tier summary, a "Models" header instead of "Models tier". "legacy"
@@ -1105,6 +1115,7 @@ export function MembersUsageTable({
         <DataTable
           data={rows}
           columns={columns}
+          columnsBreakpoints={COLUMNS_BREAKPOINTS}
           pagination={pagination}
           setPagination={setPagination}
           totalRowCount={totalRowCount}
