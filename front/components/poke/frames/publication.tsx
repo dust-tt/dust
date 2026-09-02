@@ -20,12 +20,11 @@ export function FramePublicationSection({
   return (
     <div className="my-4 flex flex-col rounded-lg border p-4">
       <h2 className="text-md pb-4 font-bold">Active publication</h2>
-      {publicationError && (
-        <div className="pb-4 text-sm text-warning">
-          Could not read the publication descriptor: {publicationError}
+      {publicationError ? (
+        <div className="text-sm text-warning">
+          Could not load the publication descriptor: {publicationError}
         </div>
-      )}
-      {!publication ? (
+      ) : !publication ? (
         <div className="text-sm text-muted-foreground">
           This Frame has never been published.
         </div>
@@ -80,12 +79,18 @@ export function FramePublicationSection({
                   <div className="pb-1 text-sm font-medium">
                     {database.name}
                   </div>
-                  <CodeBlock
-                    wrapLongLines
-                    className="language-ts max-h-64 overflow-auto"
-                  >
-                    {database.schemaSource}
-                  </CodeBlock>
+                  {/*
+                    CodeBlock's `className` is only used to derive the syntax-highlighting
+                    language (via a `language-(\w+)` regex match); the wrapper div and the
+                    SyntaxHighlighter it renders both use hardcoded classNames, so a height
+                    clamp passed to CodeBlock itself is silently discarded. Apply the clamp on
+                    an outer wrapper instead so it actually takes effect.
+                  */}
+                  <div className="max-h-64 overflow-auto">
+                    <CodeBlock wrapLongLines className="language-ts">
+                      {database.schemaSource}
+                    </CodeBlock>
+                  </div>
                 </div>
               ))}
             </>
