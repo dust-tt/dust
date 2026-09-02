@@ -52,10 +52,9 @@ const RelayHeadersSchema = z.object({
 });
 
 // Mounted at /api/email/webhook.
-const app = createHono();
+const app = createHono().use("/", validate("header", RelayHeadersSchema));
 
 app.route("/relay-status", relayStatus);
-app.use("/", validate("header", RelayHeadersSchema));
 
 /** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
@@ -145,7 +144,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
   const email = emailRes.value;
 
-  const relayId = ctx.req.valid("header")[EMAIL_WEBHOOK_RELAY_ID_HEADER];
+  const relayId = ctx.req.header(EMAIL_WEBHOOK_RELAY_ID_HEADER);
   if (isRelayRequest && !(await recordEmailRelayReceipt(relayId))) {
     logger.info(
       { senderEmail: email.sender.email },
