@@ -262,11 +262,6 @@ export function AwuUsageBar({
   if (poolOnly) {
     const isOverPoolLimit = consumedFromPool > poolLimit;
     const isAtPoolLimit = poolLimit > 0 && consumedFromPool === poolLimit;
-    const fillClassName = isOverPoolLimit
-      ? OVER_POOL_LIMIT_BAR_CLASSES.fill
-      : isAtPoolLimit
-        ? AT_POOL_LIMIT_BAR_CLASSES.fill
-        : MUTED_BAR_CLASSES.fill;
     const percentage =
       poolLimit > 0
         ? Math.min(100, (consumedFromPool / poolLimit) * 100)
@@ -287,7 +282,14 @@ export function AwuUsageBar({
             aria-valuetext={`${formatCredits(consumedFromPool)} of ${limitLabel} pool credits used`}
             className="h-1 w-full gap-px bg-transparent"
             values={[
-              { value: percentage, className: fillClassName },
+              {
+                value: percentage,
+                className: isOverPoolLimit
+                  ? OVER_POOL_LIMIT_BAR_CLASSES.fill
+                  : isAtPoolLimit
+                    ? AT_POOL_LIMIT_BAR_CLASSES.fill
+                    : MUTED_BAR_CLASSES.fill,
+              },
               { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
             ]}
           />

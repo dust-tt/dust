@@ -718,7 +718,7 @@ async function fetchConsumedAwuCreditsFromMetronomeByUserId({
   if (users.length === 0) {
     return new Map();
   }
-  const metronomeUserIdBySId = new Map(
+  const metronomeUserIdById = new Map(
     users.map((u) => [
       u.sId,
       u.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId,
@@ -728,11 +728,11 @@ async function fetchConsumedAwuCreditsFromMetronomeByUserId({
     workspaceId,
     metronomeCustomerId,
     metronomeContractId,
-    userIds: [...metronomeUserIdBySId.values()],
+    userIds: [...metronomeUserIdById.values()],
   });
   const consumedByUserId = new Map<string, number>();
   for (const u of users) {
-    const metronomeUserId = metronomeUserIdBySId.get(u.sId)!;
+    const metronomeUserId = metronomeUserIdById.get(u.sId)!;
     consumedByUserId.set(
       u.sId,
       usageByMetronomeUserId.get(metronomeUserId) ?? 0
@@ -1863,7 +1863,6 @@ async function resolveMembersUsagePageUsers({
         consumedByUserId,
         { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
         freeSeatCredits,
-        groupCapByUserModelId,
       ] = await Promise.all([
         fetchConsumedAwuCreditsFromMetronomeByUserId({
           workspaceId: workspace.sId,
@@ -1889,11 +1888,12 @@ async function resolveMembersUsagePageUsers({
               freeBalanceByUserId: new Map<string, number>(),
               freeStartingByUserId: new Map<string, number>(),
             }),
-        GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      ]);
+      const groupCapByUserModelId =
+        await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
           workspace,
           userModelIds: allUsers.map((u) => u.id),
-        }),
-      ]);
+        });
       const { freeStartingByUserId } = freeSeatCredits;
       for (const u of allUsers) {
         const membership = membershipByUserModelId.get(u.id);
