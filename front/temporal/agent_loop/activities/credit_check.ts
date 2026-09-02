@@ -31,7 +31,7 @@ export async function checkCreditsActivity(
   });
 }
 
-async function hasAcknowledgedSpendCheckpoint(
+async function hasAcknowledgedCreditSpendCheckpoint(
   auth: Authenticator,
   { agentMessageId }: { agentMessageId: string }
 ): Promise<boolean> {
@@ -46,12 +46,12 @@ async function hasAcknowledgedSpendCheckpoint(
         model: AgentMessageModel,
         as: "agentMessage",
         required: true,
-        attributes: ["spendCheckpointStatus"],
+        attributes: ["creditSpendCheckpointStatus"],
       },
     ],
   });
 
-  return message?.agentMessage?.spendCheckpointStatus === "acknowledged";
+  return message?.agentMessage?.creditSpendCheckpointStatus === "acknowledged";
 }
 
 /**
@@ -59,14 +59,14 @@ async function hasAcknowledgedSpendCheckpoint(
  * `acknowledged` lets the workflow stop calling this activity for the
  * rest of the execution, since it can't flip back once observed true.
  */
-export async function checkSpendCheckpointActivity(
+export async function checkCreditSpendCheckpointActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgsWithTiming }
 ): Promise<{ crossed: boolean; acknowledged: boolean }> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   if (
-    await hasAcknowledgedSpendCheckpoint(auth, {
+    await hasAcknowledgedCreditSpendCheckpoint(auth, {
       agentMessageId: agentLoopArgs.agentMessageId,
     })
   ) {
@@ -96,7 +96,7 @@ export async function checkSpendCheckpointActivity(
   // Persisted here so the pause survives a refresh.
   await AgentMessageModel.update(
     {
-      spendCheckpointStatus: "paused",
+      creditSpendCheckpointStatus: "paused",
     },
     {
       where: {
@@ -127,7 +127,7 @@ export async function checkSpendCheckpointActivity(
         agentMessageId: agentLoopArgs.agentMessageId,
         error: normalizeError(err),
       },
-      "[SpendCheckpoint] Failed to notify after persisting pause"
+      "[CreditSpendCheckpoint] Failed to notify after persisting pause"
     );
   }
 

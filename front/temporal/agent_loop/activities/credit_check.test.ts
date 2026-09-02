@@ -1,13 +1,13 @@
 import {
+  checkCreditSpendCheckpointActivity,
   checkCreditsActivity,
-  checkSpendCheckpointActivity,
 } from "@app/temporal/agent_loop/activities/credit_check";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockFromJson,
   mockCheckPoolCreditGate,
-  mockCheckSpendCheckpointGate,
+  mockCheckCreditSpendCheckpointGate,
   mockGetFullAgentLoopDataWithAuth,
   mockIsAgentLoopDataSoftDeleteError,
   mockPublishConversationRelatedEvent,
@@ -17,7 +17,7 @@ const {
 } = vi.hoisted(() => ({
   mockFromJson: vi.fn(),
   mockCheckPoolCreditGate: vi.fn(),
-  mockCheckSpendCheckpointGate: vi.fn(),
+  mockCheckCreditSpendCheckpointGate: vi.fn(),
   mockGetFullAgentLoopDataWithAuth: vi.fn(),
   mockIsAgentLoopDataSoftDeleteError: vi.fn(),
   mockPublishConversationRelatedEvent: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock("@app/lib/auth", () => ({
 
 vi.mock("@app/lib/api/assistant/credit_check", () => ({
   checkPoolCreditGate: mockCheckPoolCreditGate,
-  checkCreditSpendCheckpointGate: mockCheckSpendCheckpointGate,
+  checkCreditSpendCheckpointGate: mockCheckCreditSpendCheckpointGate,
 }));
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
@@ -120,7 +120,7 @@ describe("checkCreditsActivity (pure decision)", () => {
   });
 });
 
-describe("checkSpendCheckpointActivity", () => {
+describe("checkCreditSpendCheckpointActivity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFromJson.mockResolvedValue(FAKE_AUTH);
@@ -129,21 +129,21 @@ describe("checkSpendCheckpointActivity", () => {
 
   it("returns crossed: false without checking the gate once acknowledged", async () => {
     mockMessageModelFindOne.mockResolvedValue({
-      agentMessage: { spendCheckpointStatus: "acknowledged" },
+      agentMessage: { creditSpendCheckpointStatus: "acknowledged" },
     });
 
-    const result = await checkSpendCheckpointActivity({} as never, {
+    const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: { agentMessageId: "msg_id" } as never,
     });
 
     expect(result).toEqual({ crossed: false, acknowledged: true });
-    expect(mockCheckSpendCheckpointGate).not.toHaveBeenCalled();
+    expect(mockCheckCreditSpendCheckpointGate).not.toHaveBeenCalled();
   });
 
   it("does not load the conversation or publish when the gate says not crossed", async () => {
-    mockCheckSpendCheckpointGate.mockResolvedValue({ crossed: false });
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({ crossed: false });
 
-    const result = await checkSpendCheckpointActivity({} as never, {
+    const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: {} as never,
     });
 
@@ -153,7 +153,7 @@ describe("checkSpendCheckpointActivity", () => {
   });
 
   it("loads the conversation and publishes a notification event when crossed", async () => {
-    mockCheckSpendCheckpointGate.mockResolvedValue({
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -166,7 +166,7 @@ describe("checkSpendCheckpointActivity", () => {
       },
     });
 
-    const result = await checkSpendCheckpointActivity({} as never, {
+    const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: {
         conversationId: "conv_id",
         agentMessageId: "msg_id",
@@ -188,7 +188,7 @@ describe("checkSpendCheckpointActivity", () => {
   });
 
   it("still reports crossed but skips publishing when the message was soft-deleted", async () => {
-    mockCheckSpendCheckpointGate.mockResolvedValue({
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -198,7 +198,7 @@ describe("checkSpendCheckpointActivity", () => {
     });
     mockIsAgentLoopDataSoftDeleteError.mockReturnValue(true);
 
-    const result = await checkSpendCheckpointActivity({} as never, {
+    const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: {} as never,
     });
 
@@ -207,7 +207,7 @@ describe("checkSpendCheckpointActivity", () => {
   });
 
   it("throws (instead of pausing) on a non-deletion failure to load agent loop data", async () => {
-    mockCheckSpendCheckpointGate.mockResolvedValue({
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -218,7 +218,7 @@ describe("checkSpendCheckpointActivity", () => {
     mockIsAgentLoopDataSoftDeleteError.mockReturnValue(false);
 
     await expect(
-      checkSpendCheckpointActivity({} as never, {
+      checkCreditSpendCheckpointActivity({} as never, {
         agentLoopArgs: {} as never,
       })
     ).rejects.toThrow("transient_db_error");
@@ -228,7 +228,7 @@ describe("checkSpendCheckpointActivity", () => {
   });
 
   it("still reports crossed when the pause is persisted but the notification fails", async () => {
-    mockCheckSpendCheckpointGate.mockResolvedValue({
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -244,7 +244,7 @@ describe("checkSpendCheckpointActivity", () => {
       new Error("redis_publish_failed")
     );
 
-    const result = await checkSpendCheckpointActivity({} as never, {
+    const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: {
         conversationId: "conv_id",
         agentMessageId: "msg_id",

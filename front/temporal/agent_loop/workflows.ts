@@ -142,7 +142,7 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
 
 // No retries: this is a fail-open check, so a
 // failure should resolve immediately rather than delaying the step with retries.
-const { checkSpendCheckpointActivity } = proxyActivities<
+const { checkCreditSpendCheckpointActivity } = proxyActivities<
   typeof creditCheckActivities
 >({
   startToCloseTimeout: "1 minutes",
@@ -281,10 +281,10 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
-  let spendCheckpointPauseRequested = false;
+  let creditSpendCheckpointPauseRequested = false;
 
-  // Cached per execution: acknowledgment can't flip back to false once observed true (see checkSpendCheckpointActivity).
-  let spendCheckpointAcknowledged = false;
+  // Cached per execution: acknowledgment can't flip back to false once observed true (see checkCreditSpendCheckpointActivity).
+  let creditSpendCheckpointAcknowledged = false;
 
   const runIds: string[] = [];
 
@@ -379,28 +379,26 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        if (!spendCheckpointAcknowledged) {
+        if (!creditSpendCheckpointAcknowledged) {
           try {
-            const workflowAlertResult = await checkSpendCheckpointActivity(
-              authType,
-              {
+            const workflowAlertResult =
+              await checkCreditSpendCheckpointActivity(authType, {
                 agentLoopArgs: {
                   ...agentLoopArgs,
                   initialStartTime,
                 },
-              }
-            );
+              });
             if (workflowAlertResult.acknowledged) {
-              spendCheckpointAcknowledged = true;
+              creditSpendCheckpointAcknowledged = true;
             } else if (workflowAlertResult.crossed) {
-              spendCheckpointPauseRequested = true;
+              creditSpendCheckpointPauseRequested = true;
             }
           } catch {
             // Non-critical: fails open, must never fail the agent loop.
           }
         }
 
-        if (spendCheckpointPauseRequested) {
+        if (creditSpendCheckpointPauseRequested) {
           break;
         }
       }

@@ -11,7 +11,7 @@ const {
   mockIsApiBlocked,
   mockIsProgrammaticApiBlocked,
   mockIsProgrammaticUsage,
-  mockGetSpendCheckpointAwuCredits,
+  mockGetCreditSpendCheckpointAwuCredits,
   mockResolveSpendLimitCycleBounds,
   mockIsSpendCapCounterReached,
 } = vi.hoisted(() => ({
@@ -19,7 +19,7 @@ const {
   mockIsApiBlocked: vi.fn(),
   mockIsProgrammaticApiBlocked: vi.fn(),
   mockIsProgrammaticUsage: vi.fn(),
-  mockGetSpendCheckpointAwuCredits: vi.fn(),
+  mockGetCreditSpendCheckpointAwuCredits: vi.fn(),
   mockResolveSpendLimitCycleBounds: vi.fn(),
   mockIsSpendCapCounterReached: vi.fn(),
 }));
@@ -41,7 +41,8 @@ vi.mock("@app/types/plan", () => ({
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getSpendCheckpointThresholdAwuCredits: mockGetSpendCheckpointAwuCredits,
+    getCreditSpendCheckpointThresholdAwuCredits:
+      mockGetCreditSpendCheckpointAwuCredits,
   },
 }));
 
@@ -184,7 +185,7 @@ describe("checkCreditSpendCheckpointGate", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSpendCheckpointAwuCredits.mockReturnValue(1000);
+    mockGetCreditSpendCheckpointAwuCredits.mockReturnValue(1000);
     mockResolveSpendLimitCycleBounds.mockResolvedValue(FAKE_BOUNDS);
     mockIsSpendCapCounterReached.mockResolvedValue(false);
   });

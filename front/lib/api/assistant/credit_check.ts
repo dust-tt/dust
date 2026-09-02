@@ -71,7 +71,8 @@ export async function checkCreditSpendCheckpointGate(
     return DO_NOT_NOTIFY;
   }
   const workspace = auth.getNonNullableWorkspace();
-  const thresholdAwuCredits = config.getSpendCheckpointThresholdAwuCredits();
+  const thresholdAwuCredits =
+    config.getCreditSpendCheckpointThresholdAwuCredits();
 
   const bounds = await resolveSpendLimitCycleBounds(workspace);
   if (!bounds) {
