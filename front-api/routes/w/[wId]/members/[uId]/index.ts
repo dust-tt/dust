@@ -10,6 +10,7 @@ import {
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
+import { isDustCompanyPlan } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -107,11 +108,13 @@ app.post(
     const featureFlags = await getFeatureFlags(auth);
     const body = ctx.req.valid("json");
 
-    // Allow users with debug tools enabled to force role for testing.
-    const allowForDebugToolsTesting =
-      showDebugTools(featureFlags) && body.force === "true";
+    // Allow users in Dust's company workspace to force role for testing.
+    const allowForDustWorkspaceTesting =
+      isDustCompanyPlan(auth.getNonNullablePlan().code) &&
+      showDebugTools(featureFlags) &&
+      body.force === "true";
 
-    if (!auth.isManager() && !allowForDebugToolsTesting) {
+    if (!auth.isManager() && !allowForDustWorkspaceTesting) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -146,7 +149,7 @@ app.post(
     if (
       (targetIsAdmin || assigningAdmin) &&
       !auth.isAdmin() &&
-      !allowForDebugToolsTesting
+      !allowForDustWorkspaceTesting
     ) {
       return apiError(ctx, {
         status_code: 403,

@@ -1,8 +1,11 @@
+import { DUST_COMPANY_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
@@ -247,10 +250,13 @@ describe("POST /api/w/:wId/members/:uId", () => {
   });
 
   describe("forced role changes", () => {
-    it("should allow a regular user to force their role when debug tools are enabled", async () => {
-      const { auth, workspace, user } = await createPrivateApiMockRequest({
+    it("should allow a regular user in Dust's company workspace to force their role", async () => {
+      const plan = await PlanFactory.enterprise(DUST_COMPANY_PLAN_CODE);
+      const workspace = await WorkspaceFactory.fromPlan(plan);
+      const { auth, user } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
+        workspace,
       });
       await FeatureFlagFactory.basic(auth, "show_debug_tools");
 
@@ -266,6 +272,27 @@ describe("POST /api/w/:wId/members/:uId", () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.member.workspaces[0].role).toBe("admin");
+    });
+
+    it("should reject a regular user outside Dust's company workspace", async () => {
+      const { auth, workspace, user } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await FeatureFlagFactory.basic(auth, "show_debug_tools");
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, user.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "admin", force: "true" }),
+        }
+      );
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error.type).toBe("workspace_auth_error");
     });
   });
 
