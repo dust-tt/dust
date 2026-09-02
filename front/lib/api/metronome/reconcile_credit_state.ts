@@ -404,11 +404,11 @@ export async function reconcileUser({
 
   const groupCapAwuCredits =
     (
-      await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+      await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
         workspace: lightWorkspace,
         userModelIds: [membership.userId],
       })
-    ).get(membership.userId)?.capAwuCredits ?? null;
+    ).get(membership.userId) ?? null;
 
   const liveResult = await fetchLiveUserCreditInputs({
     workspaceId: workspace.sId,
@@ -578,7 +578,7 @@ export async function reconcileWorkspaceUserCreditStates({
     // Max group cap (pool-only) per member, fetched once to avoid an N+1.
     // Users with no capped group are absent (they fall back to the
     // workspace default).
-    GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
       workspace,
       userModelIds: memberships.map((m) => m.userId),
     }),
@@ -630,7 +630,7 @@ export async function reconcileWorkspaceUserCreditStates({
     // Priority: per-user override > max group cap > workspace default (shared
     // ladder).
     const groupCapAwuCredits =
-      groupCapByUserModelId.get(membership.userId)?.capAwuCredits ?? null;
+      groupCapByUserModelId.get(membership.userId) ?? null;
     const poolCapAwuCredits = resolveEffectiveSpendLimitAwuCredits({
       overrideAwuCredits: membership.poolCapOverrideAwuCredits,
       groupCapAwuCredits,

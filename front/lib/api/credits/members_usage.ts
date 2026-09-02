@@ -1190,7 +1190,7 @@ export async function getEffectiveSpendCapAwuCreditsForUser(
         creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
       includeAlertLinks: false,
     }),
-    GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
       workspace,
       userModelIds: [user.id],
     }),
@@ -1212,8 +1212,7 @@ export async function getEffectiveSpendCapAwuCreditsForUser(
       ? membership.poolCapOverrideAwuCredits + seatAllowance
       : null;
 
-  const groupPoolCapAwuCredits =
-    groupCapByUserModelId.get(user.id)?.capAwuCredits ?? null;
+  const groupPoolCapAwuCredits = groupCapByUserModelId.get(user.id) ?? null;
   const groupCapAwuCredits =
     groupPoolCapAwuCredits !== null && normalizedSeatType !== null
       ? groupPoolCapAwuCredits + seatAllowance
@@ -1903,7 +1902,7 @@ async function resolveMembersUsagePageUsers({
             }),
       ]);
       const groupCapByUserModelId =
-        await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+        await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
           workspace,
           userModelIds: allUsers.map((u) => u.id),
         });
@@ -1933,8 +1932,7 @@ async function resolveMembersUsagePageUsers({
           seatType !== "none"
             ? membership.poolCapOverrideAwuCredits + seatAllowance
             : null;
-        const groupPoolCapAwuCredits =
-          groupCapByUserModelId.get(u.id)?.capAwuCredits ?? null;
+        const groupPoolCapAwuCredits = groupCapByUserModelId.get(u.id) ?? null;
         const groupCapAwuCredits =
           groupPoolCapAwuCredits !== null && normalizedSeatType !== null
             ? groupPoolCapAwuCredits + seatAllowance
