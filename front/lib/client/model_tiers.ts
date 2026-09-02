@@ -1,4 +1,3 @@
-import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { resolveAllowedModelTiers } from "@app/lib/model_tiers/resolve_allowed";
 import { expandTiersUpTo } from "@app/lib/model_tiers/tier_order";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
@@ -77,10 +76,4 @@ export function formatUserModelTierInheritLabel({
   return resolved.source === "groups"
     ? "Inherited from groups"
     : "Inherited from workspace";
-}
-
-export function buildModelTierDefinitionByName(
-  tiers: readonly ModelsTierDefinition[]
-): Map<ModelsTierName, ModelsTierDefinition> {
-  return new Map(tiers.map((tier) => [tier.name, tier]));
 }

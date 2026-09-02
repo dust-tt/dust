@@ -1,4 +1,5 @@
 import { computeIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
+import { isUsagePageEnabled } from "@app/lib/plans/usage_page";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
 import type {
@@ -319,8 +320,7 @@ export const subNavigationAdmin = ({
             },
           ]
         : []),
-      ...(isCreditPricedPlan(subscription.plan) ||
-      featureFlags.includes("usage_page_read_only")
+      ...(isUsagePageEnabled(subscription.plan, featureFlags)
         ? [
             {
               id: "usage" as const,

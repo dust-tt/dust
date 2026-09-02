@@ -12,22 +12,11 @@ import {
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
-import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
-import {
-  getUserModelTierMenuItemsWithSelection,
-  INHERIT_MODEL_TIER,
-  toUserModelTierSelection,
-} from "@app/lib/client/model_tier_options";
-import {
-  formatModelTiersSummary,
-  formatUserModelTierInheritLabel,
-  resolveModelTiersForUser,
-} from "@app/lib/client/model_tiers";
-import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
+import { formatModelTiersSummary } from "@app/lib/client/model_tiers";
+import type { ResolvedAllowedModelTiers } from "@app/lib/model_tiers/resolve_allowed";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
-import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
@@ -57,23 +46,6 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import { useMemo } from "react";
-
-const EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID: Record<
-  string,
-  UserModelTierSelection
-> = {};
-const EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID: Record<
-  string,
-  ModelsTierName[]
-> = {};
-const EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID: Record<string, ModelsTierName[]> =
-  {};
-const EMPTY_WORKSPACE_ALLOWED_MODEL_TIERS: ModelsTierName[] = [];
-const EMPTY_GROUP_NAME_TO_ID = new Map<string, string>();
-const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
-  ModelsTierName,
-  ModelsTierDefinition
->();
 
 type RowData = {
   sId: string;
@@ -798,6 +770,11 @@ function buildColumns({
 // keeps the customer-facing usage page unchanged.
 export type MembersUsageTableVariant = "legacy" | "compact";
 
+export interface MembersUsageTableModelTiers {
+  getResolved: (member: MemberUsageType) => ResolvedAllowedModelTiers;
+  getMenuItem?: (member: MemberUsageType) => MenuItem;
+}
+
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   // End of the current billing period (workspace-level, from the members-usage
@@ -816,18 +793,10 @@ interface MembersUsageTableProps {
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
-  onSetUserModelTier?: (
-    member: MemberUsageType,
-    selection: UserModelTierSelection
-  ) => void;
-  showModelTiersColumn?: boolean;
+  // Shows the "Models tier" column; the row menu item is added only when
+  // `getMenuItem` is provided.
+  modelTiers?: MembersUsageTableModelTiers;
   variant?: MembersUsageTableVariant;
-  userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
-  userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
-  groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
-  workspaceAllowedModelTiers?: ModelsTierName[];
-  groupNameToId?: Map<string, string>;
-  modelTierDefinitionByName?: Map<ModelsTierName, ModelsTierDefinition>;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   totalRowCount: number;
@@ -853,15 +822,8 @@ export function MembersUsageTable({
   onChangeSeat,
   onRemoveSeat,
   onEditSpendLimit,
-  onSetUserModelTier,
-  showModelTiersColumn = false,
+  modelTiers,
   variant = "legacy",
-  userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
-  userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
-  groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
-  workspaceAllowedModelTiers = EMPTY_WORKSPACE_ALLOWED_MODEL_TIERS,
-  groupNameToId = EMPTY_GROUP_NAME_TO_ID,
-  modelTierDefinitionByName = EMPTY_MODEL_TIER_DEFINITION_BY_NAME,
   pagination,
   setPagination,
   totalRowCount,
@@ -875,15 +837,8 @@ export function MembersUsageTable({
   const rows: RowData[] = useMemo(
     () =>
       members.map((m) => {
-        const resolvedModelTiers = showModelTiersColumn
-          ? resolveModelTiersForUser({
-              userId: m.sId,
-              groupNames: m.groups,
-              groupNameToId,
-              userAllowedTierNamesByUserId: userAllowedModelTiersByUserId,
-              groupTierNamesByGroupId: groupModelTiersByGroupId,
-              workspaceAllowedTierNames: workspaceAllowedModelTiers,
-            })
+        const resolvedModelTiers = modelTiers
+          ? modelTiers.getResolved(m)
           : null;
 
         return {
@@ -956,33 +911,8 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showModelTiersColumn && onSetUserModelTier
-              ? [
-                  {
-                    kind: "submenu" as const,
-                    label: "Models tier",
-                    disabled: readOnly,
-                    selectionMode: "checkbox" as const,
-                    items: getUserModelTierMenuItemsWithSelection({
-                      selectedValue:
-                        userModelTierSelectionByUserId[m.sId] ??
-                        INHERIT_MODEL_TIER,
-                      inheritLabel: formatUserModelTierInheritLabel({
-                        groupNames: m.groups,
-                        groupNameToId,
-                        groupTierNamesByGroupId: groupModelTiersByGroupId,
-                        workspaceAllowedTierNames: workspaceAllowedModelTiers,
-                      }),
-                    }).map((tierItem) => ({
-                      id: tierItem.id,
-                      name: tierItem.name,
-                      description: tierItem.description,
-                      checked: tierItem.checked,
-                    })),
-                    onSelect: (itemId: string) =>
-                      onSetUserModelTier(m, toUserModelTierSelection(itemId)),
-                  },
-                ]
+            ...(modelTiers?.getMenuItem
+              ? [{ ...modelTiers.getMenuItem(m), disabled: readOnly }]
               : []),
             ...(isSeatBased && m.seatType && m.seatType !== "none"
               ? [
@@ -1004,19 +934,13 @@ export function MembersUsageTable({
       seatChangePendingMemberIds,
       isSeatBased,
       showSpendLimit,
-      showModelTiersColumn,
+      modelTiers,
       variant,
-      userModelTierSelectionByUserId,
-      userAllowedModelTiersByUserId,
-      groupModelTiersByGroupId,
-      workspaceAllowedModelTiers,
-      groupNameToId,
       readOnly,
       seatActionsDisabled,
       onChangeSeat,
       onRemoveSeat,
       onEditSpendLimit,
-      onSetUserModelTier,
     ]
   );
 
@@ -1025,17 +949,11 @@ export function MembersUsageTable({
       buildColumns({
         enableSelection,
         showGroupsColumn,
-        showModelTiersColumn,
+        showModelTiersColumn: modelTiers !== undefined,
         creditsResetAt,
         variant,
       }),
-    [
-      enableSelection,
-      showGroupsColumn,
-      showModelTiersColumn,
-      creditsResetAt,
-      variant,
-    ]
+    [enableSelection, showGroupsColumn, modelTiers, creditsResetAt, variant]
   );
 
   if (isLoading) {

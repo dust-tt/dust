@@ -15,6 +15,7 @@ import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitMod
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
+import type { MembersUsageTableModelTiers } from "@app/components/workspace/MembersUsageTable";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
@@ -25,6 +26,7 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
+import { useMembersModelTiers } from "@app/hooks/useMembersModelTiers";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
   cycleElapsedPercent,
@@ -38,19 +40,13 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
-import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
-import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
-import {
-  buildModelTierDefinitionByName,
-  expandMaxTierName,
-} from "@app/lib/client/model_tiers";
-import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   isCreditPricedFreePlan,
   isEnterprisePlanPrefix,
   isFreePlan,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
+import { isUsagePageEnabled } from "@app/lib/plans/usage_page";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
@@ -69,13 +65,6 @@ import {
   useUpdateMemberSeatType,
 } from "@app/lib/swr/memberships";
 import {
-  useGroupAllowedModelTiers,
-  useModelTiers,
-  useUserAllowedModelTierMutations,
-  useUserAllowedModelTiers,
-  useWorkspaceAllowedModelTiers,
-} from "@app/lib/swr/model_tiers";
-import {
   useResolveUpgradeRequest,
   useUpgradeRequests,
 } from "@app/lib/swr/upgrade_requests";
@@ -85,7 +74,6 @@ import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
-import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
@@ -216,13 +204,13 @@ export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const router = useAppRouter();
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
+  const canViewUsage = isUsagePageEnabled(subscription.plan, featureFlags);
   // Legacy-contract workspaces can view this page in read-only mode behind a
   // flag: analytics and member spend render as usual, but every action (top up,
   // invite, seat changes, spend limits, settings) is disabled.
-  const isReadOnly = !isCreditPriced && hasFeature("usage_page_read_only");
-  const canViewUsage = isCreditPriced || isReadOnly;
+  const isReadOnly = canViewUsage && !isCreditPriced;
   // A cancelled subscription already has its end date scheduled with
   // Metronome; scheduling a seat change on top of it can land past that end
   // date and get rejected. Block seat changes until the subscription is
@@ -373,22 +361,6 @@ export function UsagePage() {
       setEditSpendLimitMember(member);
     },
     []
-  );
-  const { setUserAllowedModelTier, clearUserAllowedModelTier } =
-    useUserAllowedModelTierMutations({ owner });
-  const handleSetUserModelTier = useCallback(
-    (member: MemberUsageType, selection: UserModelTierSelection) => {
-      if (selection === INHERIT_MODEL_TIER) {
-        void clearUserAllowedModelTier({ userId: member.sId });
-        return;
-      }
-
-      void setUserAllowedModelTier({
-        userId: member.sId,
-        tierName: selection,
-      });
-    },
-    [clearUserAllowedModelTier, setUserAllowedModelTier]
   );
   const handleUpgradePlanRequest = useCallback(
     (request: MembershipUpgradeRequestType) => {
@@ -563,58 +535,22 @@ export function UsagePage() {
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
 
-  const { tiers: modelTiersCatalog } = useModelTiers({
+  const { getResolvedModelTiers, getModelTierMenuItem } = useMembersModelTiers({
     owner,
     disabled: !isWorkspaceAdmin,
   });
-  const { users: userAllowedModelTiers } = useUserAllowedModelTiers({
-    owner,
-    disabled: !isWorkspaceAdmin,
-  });
-  const { groups: groupAllowedModelTiers } = useGroupAllowedModelTiers({
-    owner,
-    disabled: !isWorkspaceAdmin,
-  });
-  const { maxTierName: workspaceMaxTierName } = useWorkspaceAllowedModelTiers({
-    owner,
-    disabled: !isWorkspaceAdmin,
-  });
-  const modelTierDefinitionByName = useMemo(
-    () => buildModelTierDefinitionByName(modelTiersCatalog),
-    [modelTiersCatalog]
+  const membersModelTiers = useMemo<MembersUsageTableModelTiers | undefined>(
+    () =>
+      isWorkspaceAdmin
+        ? {
+            getResolved: (member) =>
+              getResolvedModelTiers(member.sId, member.groups),
+            getMenuItem: (member) =>
+              getModelTierMenuItem(member.sId, member.groups),
+          }
+        : undefined,
+    [isWorkspaceAdmin, getResolvedModelTiers, getModelTierMenuItem]
   );
-  const workspaceAllowedModelTiers = useMemo(
-    () => expandMaxTierName(workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER),
-    [workspaceMaxTierName]
-  );
-  const userModelTierSelectionByUserId = useMemo(() => {
-    const map: Record<string, UserModelTierSelection> = {};
-    for (const entry of userAllowedModelTiers) {
-      map[entry.userId] = entry.maxTierName;
-    }
-    return map;
-  }, [userAllowedModelTiers]);
-  const userAllowedModelTiersByUserId = useMemo(() => {
-    const map: Record<string, ModelsTierName[]> = {};
-    for (const entry of userAllowedModelTiers) {
-      map[entry.userId] = expandMaxTierName(entry.maxTierName);
-    }
-    return map;
-  }, [userAllowedModelTiers]);
-  const groupModelTiersByGroupId = useMemo(() => {
-    const map: Record<string, ModelsTierName[]> = {};
-    for (const entry of groupAllowedModelTiers) {
-      map[entry.groupId] = expandMaxTierName(entry.maxTierName);
-    }
-    return map;
-  }, [groupAllowedModelTiers]);
-  const groupNameToId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const group of groups) {
-      map.set(group.name, group.sId);
-    }
-    return map;
-  }, [groups]);
 
   // Cross-page selection for batch actions on the members table. Resets when the
   // filter identity changes (the "all matching" set is no longer the same).
@@ -1041,20 +977,13 @@ export function UsagePage() {
       readOnly={isReadOnly}
       seatActionsDisabled={isSubscriptionCancelled}
       showSpendLimit={!isFreePlanWorkspace}
-      showModelTiersColumn={isWorkspaceAdmin}
-      userModelTierSelectionByUserId={userModelTierSelectionByUserId}
-      userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
-      groupModelTiersByGroupId={groupModelTiersByGroupId}
-      workspaceAllowedModelTiers={workspaceAllowedModelTiers}
-      groupNameToId={groupNameToId}
-      modelTierDefinitionByName={modelTierDefinitionByName}
+      modelTiers={membersModelTiers}
       totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
       seatChangePendingMemberIds={seatChangePendingMemberIds}
       isSeatBased={isSeatBased}
       onChangeSeat={handleChangeSeatFromTable}
       onRemoveSeat={onRemoveSeat}
       onEditSpendLimit={handleEditSpendLimitFromTable}
-      onSetUserModelTier={handleSetUserModelTier}
       pagination={pagination}
       setPagination={setPagination}
       totalRowCount={totalMembersUsage}

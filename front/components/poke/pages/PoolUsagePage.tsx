@@ -3,6 +3,7 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import type { MembersUsageTableModelTiers } from "@app/components/workspace/MembersUsageTable";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import {
@@ -11,7 +12,10 @@ import {
 } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { expandMaxTierName } from "@app/lib/client/model_tiers";
+import {
+  expandMaxTierName,
+  resolveModelTiersForUser,
+} from "@app/lib/client/model_tiers";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   usePokeAwuPoolCurrentCycle,
@@ -243,6 +247,26 @@ export function PoolUsagePage() {
     return map;
   }, [allGroups]);
 
+  const membersModelTiers = useMemo<MembersUsageTableModelTiers>(
+    () => ({
+      getResolved: (member) =>
+        resolveModelTiersForUser({
+          userId: member.sId,
+          groupNames: member.groups,
+          groupNameToId,
+          userAllowedTierNamesByUserId: userAllowedModelTiersByUserId,
+          groupTierNamesByGroupId: groupModelTiersByGroupId,
+          workspaceAllowedTierNames: workspaceAllowedModelTiers,
+        }),
+    }),
+    [
+      groupNameToId,
+      userAllowedModelTiersByUserId,
+      groupModelTiersByGroupId,
+      workspaceAllowedModelTiers,
+    ]
+  );
+
   const seatFilterDropdown = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -388,11 +412,7 @@ export function PoolUsagePage() {
                   setSorting={handleSetSorting}
                   variant="compact"
                   showGroupsColumn={false}
-                  showModelTiersColumn
-                  userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
-                  groupModelTiersByGroupId={groupModelTiersByGroupId}
-                  workspaceAllowedModelTiers={workspaceAllowedModelTiers}
-                  groupNameToId={groupNameToId}
+                  modelTiers={membersModelTiers}
                 />
               )}
             </Page.Vertical>
