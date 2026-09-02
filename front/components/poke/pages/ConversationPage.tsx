@@ -1,4 +1,5 @@
 import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
+import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
 import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -577,6 +578,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 };
 
 interface AgentMessageViewProps {
+  conversationId: string;
   message: PokeAgentMessageType;
   useMarkdown: boolean;
   owner: LightWorkspaceType;
@@ -584,6 +586,7 @@ interface AgentMessageViewProps {
 }
 
 const AgentMessageView = ({
+  conversationId,
   message,
   useMarkdown,
   owner,
@@ -696,6 +699,13 @@ const AgentMessageView = ({
             )}
           </div>
         </div>
+        <PokeMessageConsumptionInspector
+          billedCredits={message.costCredits}
+          conversationId={conversationId}
+          messageId={message.sId}
+          subAgentBilledCredits={message.subAgentCostCredits}
+          workspaceId={owner.sId}
+        />
         {providerPassthroughEntries.map((entry) => (
           <ProviderPassthroughView
             key={entry.key}
@@ -1250,6 +1260,7 @@ export function ConversationPage() {
                           return (
                             <AgentMessageView
                               key={`message-${i}-${j}`}
+                              conversationId={conversationId}
                               message={m}
                               useMarkdown={useMarkdown}
                               owner={owner}

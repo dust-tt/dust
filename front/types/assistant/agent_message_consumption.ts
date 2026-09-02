@@ -40,9 +40,21 @@ export type AgentMessageConsumptionDetails = {
   tools: AgentMessageConsumptionToolDetails[];
 };
 
+export type AgentMessageConsumptionDetailsWithModels =
+  AgentMessageConsumptionDetails & {
+    models: AgentMessageConsumptionModelDetails[];
+  };
+
 export type AgentMessageConsumptionResponse = {
   billedCredits: number | null;
   /** Total credits billed by this message and its recursively spawned sub-agents. */
   totalBilledCredits?: number;
   details: AgentMessageConsumptionDetails | null;
+};
+
+export type AgentMessageConsumptionWithModelsResponse = Omit<
+  AgentMessageConsumptionResponse,
+  "details"
+> & {
+  details: AgentMessageConsumptionDetailsWithModels | null;
 };
