@@ -1,8 +1,12 @@
-import { getAwuPoolSummary } from "@app/lib/api/credits/awu_pool_summary";
+import {
+  AwuPoolSummaryQuerySchema,
+  getAwuPoolSummary,
+} from "@app/lib/api/credits/awu_pool_summary";
 import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 
 export type { AwuPoolSummaryResponseBody };
 
@@ -10,10 +14,11 @@ export type { AwuPoolSummaryResponseBody };
 const app = pokeApp();
 
 /** @ignoreswagger */
-app.get("/", async (ctx) => {
+app.get("/", validate("query", AwuPoolSummaryQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
+  const { cycleHistoryLimit } = ctx.req.valid("query");
 
-  const result = await getAwuPoolSummary(auth);
+  const result = await getAwuPoolSummary(auth, { cycleHistoryLimit });
   if (result.isErr()) {
     const err = result.error;
     switch (err.type) {

@@ -1,18 +1,18 @@
 import type { AwuPoolSummaryError } from "@app/lib/api/credits/awu_pool_summary";
 import {
   AwuPoolSummaryQuerySchema,
-  getAwuPoolSummary,
+  getAwuPoolCycleHistory,
 } from "@app/lib/api/credits/awu_pool_summary";
-import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type { AwuPoolCycleHistoryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
-import type { HandlerResult } from "@front-api/middlewares/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 
-function summaryErrorToApi(ctx: Context, err: AwuPoolSummaryError) {
+export type { AwuPoolCycleHistoryResponseBody };
+
+function cycleHistoryErrorToApi(ctx: Context, err: AwuPoolSummaryError) {
   switch (err.type) {
     case "not_configured":
       return apiError(ctx, {
@@ -43,24 +43,20 @@ function summaryErrorToApi(ctx: Context, err: AwuPoolSummaryError) {
   }
 }
 
-// Mounted at /api/w/:wId/credits/awu-pool-summary.
-const app = workspaceApp();
+// Mounted at /api/poke/workspaces/:wId/credits/awu-pool-cycle-history.
+const app = pokeApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  ensureIsManager(),
-  validate("query", AwuPoolSummaryQuerySchema),
-  async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
-    const auth = ctx.get("auth");
-    const { cycleHistoryLimit } = ctx.req.valid("query");
+app.get("/", validate("query", AwuPoolSummaryQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { cycleHistoryLimit } = ctx.req.valid("query");
 
-    const result = await getAwuPoolSummary(auth, { cycleHistoryLimit });
-    if (result.isErr()) {
-      return summaryErrorToApi(ctx, result.error);
-    }
-    return ctx.json(result.value);
+  const result = await getAwuPoolCycleHistory(auth, { cycleHistoryLimit });
+  if (result.isErr()) {
+    return cycleHistoryErrorToApi(ctx, result.error);
   }
-);
+
+  return ctx.json(result.value);
+});
 
 export default app;
