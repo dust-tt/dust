@@ -9,6 +9,8 @@ const STATIC_ALLOWED_ORIGINS = [
   // Chrome extension.
   "chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg",
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
+  // Customer specific entry - https://github.com/dust-tt/tasks/issues/10275
+  "chrome-extension://adoiifkpgaibbkgbicbdhpeoffmblbeb",
   // Documentation website.
   "https://docs.dust.tt",
   // Microsoft Power Automate.
