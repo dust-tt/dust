@@ -18,6 +18,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { PostHogServerSideTracking } from "@app/lib/tracking/posthog/server";
 import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
@@ -158,6 +159,25 @@ async function createConversationForAgentConfiguration({
   });
 
   if (messageRes.isErr()) {
+    const { type: errorType } = messageRes.error.api_error;
+    if (
+      errorType === "plan_message_limit_exceeded" ||
+      errorType === "credits_exhausted" ||
+      errorType === "user_cap_reached" ||
+      errorType === "rate_limit_error" ||
+      errorType === "no_seat"
+    ) {
+      PostHogServerSideTracking.trackEvent({
+        distinctId: auth.getNonNullableUser().sId,
+        event: "trigger_blocked",
+        properties: {
+          workspace_id: auth.getNonNullableWorkspace().sId,
+          trigger_id: trigger.sId,
+          error_type: errorType,
+        },
+      });
+    }
+
     logger.error(
       {
         agentConfigurationId: trigger.agentConfigurationId,

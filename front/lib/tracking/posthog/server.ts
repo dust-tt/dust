@@ -23,6 +23,30 @@ function getClient(): PostHog | null {
 }
 
 export class PostHogServerSideTracking {
+  static trackEvent({
+    distinctId,
+    event,
+    properties,
+  }: {
+    distinctId: string;
+    event: string;
+    properties?: Record<string, string | number | boolean>;
+  }): void {
+    const client = getClient();
+    if (!client) {
+      return;
+    }
+
+    try {
+      client.capture({ distinctId, event, properties });
+    } catch (err) {
+      logger.error(
+        { distinctId, event, err },
+        "Failed to capture event on PostHog"
+      );
+    }
+  }
+
   /**
    * Alias an anonymous device ID to an identified user so that all pre-signup
    * events captured with `dust_anonymous_id` are merged into the user's
