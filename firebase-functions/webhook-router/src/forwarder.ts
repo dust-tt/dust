@@ -3,19 +3,19 @@ import type { IncomingHttpHeaders } from "http";
 
 import { CONFIG } from "./config.js";
 import type { Secrets } from "./secrets.js";
-import type { Region } from "./webhook-router-config.js";
+import type { Cell } from "./webhook-router-config.js";
 
-type WebhookTarget = { region: Region; url: string; secret: string };
+type WebhookTarget = { cell: Cell; url: string; secret: string };
 
 export class WebhookForwarder {
   constructor(private secrets: Secrets) {}
 
-  async forwardToRegions({
+  async forwardToCells({
     body,
     endpoint,
     method,
     headers,
-    regions,
+    cells,
     rootUrlToken = "webhooks",
     providerWorkspaceId,
   }: {
@@ -23,25 +23,25 @@ export class WebhookForwarder {
     endpoint: string;
     method: string;
     headers: IncomingHttpHeaders;
-    regions: readonly Region[];
+    cells: readonly Cell[];
     rootUrlToken?: string;
     providerWorkspaceId?: string;
   }): Promise<PromiseSettledResult<Response>[]> {
     const targets: WebhookTarget[] = [
       {
-        region: "us-central1",
+        cell: "cell-00000",
         url: CONFIG.US_CONNECTOR_URL,
         secret: this.secrets.usSecret,
       },
       {
-        region: "europe-west1",
+        cell: "cell-00001",
         url: CONFIG.EU_CONNECTOR_URL,
         secret: this.secrets.euSecret,
       },
     ];
 
     const requests = targets
-      .filter(({ region }) => regions.includes(region))
+      .filter(({ cell }) => cells.includes(cell))
       .map((target) =>
         this.forwardToTarget({
           target,
@@ -87,7 +87,7 @@ export class WebhookForwarder {
 
       log("Webhook forwarding succeeded", {
         component: "forwarder",
-        region: target.region,
+        cell: target.cell,
         endpoint,
         providerWorkspaceId,
         status: response.status,
@@ -97,7 +97,7 @@ export class WebhookForwarder {
     } catch (e) {
       error("Webhook forwarding failed", {
         component: "forwarder",
-        region: target.region,
+        cell: target.cell,
         endpoint,
         error: e instanceof Error ? e.message : String(e),
       });

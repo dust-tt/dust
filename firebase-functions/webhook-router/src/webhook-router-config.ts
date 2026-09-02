@@ -1,23 +1,15 @@
 import type { Database } from "firebase-admin/database";
 import { z } from "zod";
 
-export const ALL_REGIONS = ["us-central1", "europe-west1"] as const;
-export type Region = (typeof ALL_REGIONS)[number];
-
 export const ALL_CELLS = ["cell-00000", "cell-00001"] as const;
 export type Cell = (typeof ALL_CELLS)[number];
 
-export const CELL_TO_REGION: Record<Cell, Region> = {
-  "cell-00000": "us-central1",
-  "cell-00001": "europe-west1",
-};
-
 type ProviderWithSigningSecret = "slack" | "notion";
 
+// Unknown keys (e.g. legacy `regions`) are stripped by Zod's default object behavior.
 const WebhookRouterEntrySchema = z.object({
   signingSecret: z.string(),
-  regions: z.record(z.enum(ALL_REGIONS), z.array(z.number())),
-  cells: z.record(z.enum(ALL_CELLS), z.array(z.number())).optional(),
+  cells: z.record(z.enum(ALL_CELLS), z.array(z.number())),
 });
 
 const WebhookRouterConfigSchema = z.record(

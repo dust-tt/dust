@@ -1,9 +1,7 @@
 import {
-  CELL_TO_REGION,
   type CellType,
   connectorsConfig,
   SUPPORTED_CELLS,
-  SUPPORTED_REGIONS,
 } from "@connectors/connectors/shared/config";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
@@ -12,18 +10,26 @@ import { z } from "zod";
 
 const WEBHOOK_ROUTER_CONFIG_FILE = "webhook-router-config.json";
 
-const WebhookRouterEntrySchema = z.object({
+const WebhookRouterEntryBaseSchema = z.object({
   signingSecret: z.string(),
-  regions: z.record(z.enum(SUPPORTED_REGIONS), z.array(z.number())),
-  cells: z.record(z.enum(SUPPORTED_CELLS), z.array(z.number())).optional(),
+  cells: z.record(z.enum(SUPPORTED_CELLS), z.array(z.number())),
 });
+
+// Preserve legacy keys (e.g. `regions`) across read-modify-write cycles until
+// they are intentionally removed by the removeRegions backfill.
+const WebhookRouterEntrySchema = WebhookRouterEntryBaseSchema.passthrough();
 
 const WebhookRouterConfigSchema = z.record(
   z.enum(["slack", "notion"]),
   z.record(z.string(), WebhookRouterEntrySchema)
 );
 
-type WebhookRouterEntry = z.infer<typeof WebhookRouterEntrySchema>;
+const WebhookRouterConfigWithoutLegacyKeysSchema = z.record(
+  z.enum(["slack", "notion"]),
+  z.record(z.string(), WebhookRouterEntryBaseSchema)
+);
+
+type WebhookRouterEntry = z.infer<typeof WebhookRouterEntryBaseSchema>;
 type WebhookRouterConfig = z.infer<typeof WebhookRouterConfigSchema>;
 
 /**
@@ -235,15 +241,15 @@ export class WebhookRouterConfigService {
   }
 
   /**
-   * Sync webhook router entry for a specific region with retry logic for concurrent modifications.
-   * Updates the connector IDs for the given region. If connectorIds is empty, removes the region.
-   * If all regions are removed, deletes the entire entry.
+   * Sync webhook router entry for a specific cell with retry logic for concurrent modifications.
+   * Updates the connector IDs for the given cell. If connectorIds is empty, removes the cell.
+   * If all cells are removed, deletes the entire entry.
    *
    * @param provider - The provider name (e.g., "slack", "notion")
    * @param providerWorkspaceId - The provider workspace/team ID
    * @param signingSecret - Optional signing secret for verification. If provided, updates the secret.
-   * @param region - The region name (e.g., "europe-west1", "us-central1")
-   * @param connectorIds - Array of connector IDs for this region
+   * @param cell - The cell name (e.g., "cell-00000", "cell-00001")
+   * @param connectorIds - Array of connector IDs for this cell
    * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
   async syncEntry(
@@ -254,7 +260,6 @@ export class WebhookRouterConfigService {
     connectorIds: number[],
     maxRetries: number = 5
   ): Promise<void> {
-    const region = CELL_TO_REGION[cell];
     return this.executeWithRetry(
       async (config) => {
         // Initialize provider object if it doesn't exist
@@ -266,18 +271,12 @@ export class WebhookRouterConfigService {
         const existingEntry = config[provider]![providerWorkspaceId];
 
         if (connectorIds.length === 0) {
-          // No connectors for this cell - remove the region & cell
+          // No connectors for this cell - remove the cell
           if (existingEntry) {
-            delete existingEntry.regions[region];
-            if (existingEntry.cells) {
-              delete existingEntry.cells[cell];
-            }
+            delete existingEntry.cells[cell];
 
-            // If no regions & cells left, delete the entire entry
-            const cellsEmpty =
-              !existingEntry.cells ||
-              Object.keys(existingEntry.cells).length === 0;
-            if (Object.keys(existingEntry.regions).length === 0 && cellsEmpty) {
+            // If no cells left, delete the entire entry
+            if (Object.keys(existingEntry.cells).length === 0) {
               delete config[provider]![providerWorkspaceId];
             }
           }
@@ -288,9 +287,8 @@ export class WebhookRouterConfigService {
             if (signingSecret !== undefined) {
               existingEntry.signingSecret = signingSecret;
             }
-            existingEntry.regions[region] = connectorIds;
             existingEntry.cells = {
-              ...(existingEntry.cells ?? {}),
+              ...existingEntry.cells,
               [cell]: connectorIds,
             };
           } else {
@@ -302,9 +300,6 @@ export class WebhookRouterConfigService {
             }
             config[provider]![providerWorkspaceId] = {
               signingSecret,
-              regions: {
-                [region]: connectorIds,
-              },
               cells: {
                 [cell]: connectorIds,
               },
@@ -337,11 +332,10 @@ export class WebhookRouterConfigService {
   }
 
   /**
-   * Backfill missing `cells` fields from `regions` in the GCS config file.
+   * Remove legacy `regions` fields from webhook router entries in GCS.
+   * Uses a stripping schema so unknown keys are dropped from the rewritten file.
    */
-  async backfillMissingCells(
-    execute: boolean
-  ): Promise<{ entriesUpdated: number }> {
+  async removeRegions(execute: boolean): Promise<{ entriesUpdated: number }> {
     const bucket = this.storage.bucket(this.bucketName);
     const file = bucket.file(WEBHOOK_ROUTER_CONFIG_FILE);
     const [exists] = await file.exists();
@@ -364,7 +358,7 @@ export class WebhookRouterConfigService {
           if (
             typeof entry === "object" &&
             entry !== null &&
-            !("cells" in entry)
+            "regions" in entry
           ) {
             entriesUpdated++;
           }
@@ -376,21 +370,7 @@ export class WebhookRouterConfigService {
       return { entriesUpdated: 0 };
     }
 
-    const config = WebhookRouterConfigSchema.parse(raw);
-
-    for (const providerConfig of Object.values(config)) {
-      for (const entry of Object.values(providerConfig)) {
-        if (entry.cells === undefined) {
-          entry.cells = Object.fromEntries(
-            SUPPORTED_CELLS.flatMap((cell) => {
-              const region = CELL_TO_REGION[cell];
-              const connectorIds = entry.regions[region];
-              return connectorIds !== undefined ? [[cell, connectorIds]] : [];
-            })
-          );
-        }
-      }
-    }
+    const config = WebhookRouterConfigWithoutLegacyKeysSchema.parse(raw);
 
     if (execute) {
       await this.writeConfig(config, metadata.generation?.toString() || null);

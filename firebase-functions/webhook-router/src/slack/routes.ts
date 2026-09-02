@@ -4,7 +4,7 @@ import { error } from "firebase-functions/logger";
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
-import { ALL_REGIONS } from "../webhook-router-config.js";
+import { ALL_CELLS } from "../webhook-router-config.js";
 import { createSlackVerificationMiddleware } from "./verification.js";
 
 export function createSlackBotRoutes(
@@ -69,13 +69,13 @@ async function handleSlackWebhook(
     // Get secrets for forwarding (already validated by middleware).
     const secrets = await secretManager.getSecrets();
 
-    // Forward to regions asynchronously.
-    await new WebhookForwarder(secrets).forwardToRegions({
+    // Forward to cells asynchronously.
+    await new WebhookForwarder(secrets).forwardToCells({
       body: req.body,
       endpoint,
       headers: req.headers,
       method: req.method,
-      regions: req.regions ?? ALL_REGIONS,
+      cells: req.cells ?? ALL_CELLS,
     });
   } catch (e) {
     error("Slack webhook router error", {
