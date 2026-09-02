@@ -119,6 +119,12 @@ export async function moveFrameV2Source(
         "The Frame source changed while it was being moved; retry from its current path."
       );
     }
+    if (freshFrame.useCaseMetadata?.pendingFrameV2Conversion) {
+      return moveError(
+        "conflict",
+        "The Frame has an interrupted conversion; recover it before moving."
+      );
+    }
 
     const [registeredDestination] = await FileResource.fetchByMountFilePaths(
       auth,

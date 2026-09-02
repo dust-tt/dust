@@ -1,5 +1,6 @@
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
+import { isFrameMutationConflictError } from "@app/lib/api/frames/operation_lock";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -157,6 +158,15 @@ app.post(
                 ? "workspace_auth_error"
                 : "invalid_request_error",
             message,
+          },
+        });
+      }
+      if (isFrameMutationConflictError(moveResult.error)) {
+        return apiError(ctx, {
+          status_code: 409,
+          api_error: {
+            type: "invalid_request_error",
+            message: moveResult.error.message,
           },
         });
       }

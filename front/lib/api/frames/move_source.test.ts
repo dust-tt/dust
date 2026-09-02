@@ -35,6 +35,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { frameContentType } from "@app/types/files";
 import assert from "assert";
 
 beforeEach(() => {
@@ -95,5 +96,46 @@ describe("moveFrameV2Source", () => {
       `release:${getFramePublishLockName(c.frame.sId)}`,
       `release:${getFrameSourceLockName(c.frame.sId)}`,
     ]);
+  });
+
+  it("rejects a source move while conversion recovery is pending", async () => {
+    const c = await setupFrameSourceStorageTest();
+    await c.frame.setUseCaseMetadata(c.auth, {
+      ...c.frame.useCaseMetadata,
+      pendingFrameV2Conversion: {
+        legacyContentType: frameContentType,
+        legacyFileName: "Legacy.tsx",
+        legacyFileSize: 1,
+        legacyMountFilePath: `${c.sourceMountDirectory}/Legacy.tsx`,
+        legacyRenderableVersion: "original",
+        legacyUseCase: "conversation",
+        legacyUseCaseMetadata: { conversationId: c.conversation.sId },
+        manifestMountFilePath: `${c.sourceMountDirectory}/${FRAME_MANIFEST_FILE}`,
+        manifestPath: `${c.sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+        sourcePath: `conversation-${c.conversation.sId}/Legacy.tsx`,
+      },
+    });
+    const destinationDirectoryPath = `conversation-${c.conversation.sId}/Archive/Renamed`;
+
+    const moved = await moveFrameV2Source(c.auth, {
+      conversation: c.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: c.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({
+      code: "conflict",
+      message: expect.stringContaining("recover it before moving"),
+    });
+    const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
+    expect(reloaded?.mountFilePath).toBe(
+      `${c.sourceMountDirectory}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(
+      fileStorageMock.getObject(
+        `${c.sourceMountDirectory.replace("/Status", "/Archive/Renamed")}/${FRAME_MANIFEST_FILE}`
+      )
+    ).toBeUndefined();
+    expect(emitMovedAuditLog).not.toHaveBeenCalled();
   });
 });

@@ -4,9 +4,11 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import {
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
+  frameContentType,
   frameV2ContentType,
 } from "@app/types/files";
 import { honoApp } from "@front-api/app";
@@ -15,6 +17,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/lock", () => ({
   executeWithLock: vi.fn(async (_lockName: string, fn: () => unknown) => fn()),
+  executeWithLockResult: vi.fn(async (_lockName: string, fn: () => unknown) =>
+    fn()
+  ),
 }));
 
 function makeReadStream() {
@@ -378,6 +383,53 @@ describe("PATCH /api/w/:wId/files/path/:canonicalPath", () => {
 
     expect(response.status).toBe(200);
     expect(bucket.copyFile).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a pending-conversion Frame rename before moving source bytes", async () => {
+    const { workspace, auth, conversation } = await setup();
+    const sourceDirectoryPath = `conversation-${conversation.sId}/Status`;
+    const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const manifestMountFilePath = `w/${workspace.sId}/conversations/${conversation.sId}/files/Status/${FRAME_MANIFEST_FILE}`;
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 42,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+        pendingFrameV2Conversion: {
+          legacyContentType: frameContentType,
+          legacyFileName: "Legacy.tsx",
+          legacyFileSize: 42,
+          legacyMountFilePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/Legacy.tsx`,
+          legacyRenderableVersion: "original",
+          legacyUseCase: "conversation",
+          legacyUseCaseMetadata: { conversationId: conversation.sId },
+          manifestMountFilePath,
+          manifestPath,
+          sourcePath: `conversation-${conversation.sId}/Legacy.tsx`,
+        },
+      },
+      mountFilePath: manifestMountFilePath,
+    });
+    setExistingFiles([`/files/Status/${FRAME_MANIFEST_FILE}`], {
+      contentType: frameV2ContentType,
+      size: "42",
+    });
+    const bucket = getInspectablePrivateUploadBucket();
+
+    const response = await request(workspace, manifestPath, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rename", fileName: "renamed.json" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(bucket.copyFile).not.toHaveBeenCalled();
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.fileName).toBe(FRAME_MANIFEST_FILE);
+    expect(reloaded?.mountFilePath).toBe(manifestMountFilePath);
   });
 
   it("returns 200 immediately when source and dest are identical", async () => {

@@ -1,5 +1,9 @@
 import type { LockAcquisitionTimeoutError } from "@app/lib/lock";
-import { executeWithLock, executeWithLockResult } from "@app/lib/lock";
+import {
+  executeWithLock,
+  executeWithLockResult,
+  isLockAcquisitionTimeoutError,
+} from "@app/lib/lock";
 import type { Result } from "@app/types/shared/result";
 
 const FRAME_OPERATION_LOCK_TTL_MS = 10 * 60_000;
@@ -10,6 +14,15 @@ export class LegacyFrameMutationConflictError extends Error {
     super(message);
     this.name = "LegacyFrameMutationConflictError";
   }
+}
+
+export function isFrameMutationConflictError(
+  error: unknown
+): error is LegacyFrameMutationConflictError | LockAcquisitionTimeoutError {
+  return (
+    error instanceof LegacyFrameMutationConflictError ||
+    isLockAcquisitionTimeoutError(error)
+  );
 }
 
 export function getFramePublishLockName(frameId: string): string {

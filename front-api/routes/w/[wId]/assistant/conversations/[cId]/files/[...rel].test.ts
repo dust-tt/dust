@@ -1,4 +1,5 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import { LegacyFrameMutationConflictError } from "@app/lib/api/frames/operation_lock";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Err, Ok } from "@app/types/shared/result";
@@ -179,5 +180,27 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/files/:rel (move)", () =
         destRelativeFilePath: "archive/chart.png",
       }
     );
+  });
+
+  it("returns 409 when the Frame changed during the move", async () => {
+    const mountFileOps = await import("@app/lib/api/files/mount_file_ops");
+    vi.spyOn(mountFileOps, "moveMountFileWithinScope").mockResolvedValue(
+      new Err(
+        new LegacyFrameMutationConflictError(
+          "The Frame changed while it was being moved."
+        )
+      )
+    );
+    const { workspace, conversation } = await setup();
+
+    const response = await postMove(
+      workspace,
+      conversation.sId,
+      ["Legacy.tsx"],
+      { destRelativeFilePath: "archive/Legacy.tsx" }
+    );
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 });
