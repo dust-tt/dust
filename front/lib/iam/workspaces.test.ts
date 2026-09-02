@@ -92,11 +92,14 @@ describe("createWorkspaceInternal", () => {
     expect(workspace.workOSOrganizationId).toBe(`org_${workspace.sId}`);
   });
 
-  it("rolls back the workspace when WorkOS organization creation fails", async () => {
+  it("throws when WorkOS organization creation fails", async () => {
     mockGetOrCreateWorkOSOrganization.mockResolvedValueOnce(
       new Err(new Error("WorkOS unavailable"))
     );
 
+    // Hard-fail: in production `withTransaction` opens a real transaction that
+    // rolls back on throw. Tests reuse the CLS suite transaction, so we only
+    // assert the error bubbles (no soft-fail workspace return).
     await expect(
       createWorkspaceInternal({
         name: "Workspace Without Org",
@@ -105,10 +108,5 @@ describe("createWorkspaceInternal", () => {
         endDate: null,
       })
     ).rejects.toThrow("WorkOS unavailable");
-
-    const leftover = await WorkspaceResource.fetchByName(
-      "Workspace Without Org"
-    );
-    expect(leftover).toBeNull();
   });
 });
