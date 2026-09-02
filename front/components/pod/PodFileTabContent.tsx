@@ -4,10 +4,7 @@ import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableCo
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileMetadataFromPath } from "@app/lib/swr/files";
 import type { RichSpaceType } from "@app/types/api/spaces";
-import {
-  isInteractiveContentType,
-  stripMimeParameters,
-} from "@app/types/files";
+import { isFrameContentType, stripMimeParameters } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
@@ -32,7 +29,7 @@ export function PodFileTabContent({
 
   const isFrame =
     !!metadata?.contentType &&
-    isInteractiveContentType(stripMimeParameters(metadata.contentType));
+    isFrameContentType(stripMimeParameters(metadata.contentType));
 
   // Frames still load via the processed renderable bundle; other previewable
   // files reuse the shared file preview stack (including markdown edit).
@@ -83,7 +80,7 @@ function PodFileTabVisualization({
   framePath: string;
   vizUrl: string | null;
 }) {
-  const { fileId, fileContent, isLoading, isNotFound } =
+  const { fileId, fileContent, functionReferenceKind, isLoading, isNotFound } =
     usePodFrameRenderableContent({
       owner,
       framePath,
@@ -97,7 +94,13 @@ function PodFileTabVisualization({
     );
   }
 
-  if (isNotFound || !fileId || !fileContent || !vizUrl) {
+  if (
+    isNotFound ||
+    !fileId ||
+    !fileContent ||
+    !functionReferenceKind ||
+    !vizUrl
+  ) {
     return (
       <div className="flex h-full w-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
         This frame is no longer available in the Pod files.
@@ -114,6 +117,7 @@ function PodFileTabVisualization({
           fileContent={fileContent}
           vizUrl={vizUrl}
           identifier={`viz-frame-tab-${fileId}`}
+          frameId={functionReferenceKind === "v2" ? fileId : undefined}
           isPodEditor={podInfo.isEditor}
           isPodMember={podInfo.isMember}
           framePath={framePath}

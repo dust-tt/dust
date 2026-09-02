@@ -1,4 +1,5 @@
 import { useFileContent, useFileIdFromPath } from "@app/lib/swr/files";
+import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -20,12 +21,17 @@ export function usePodFrameRenderableContent({
 }) {
   const isDisabled = disabled || !framePath;
 
-  const { fileId, isFileIdLoading, isFileIdNotFound, fileIdError } =
-    useFileIdFromPath({
-      owner,
-      filePath: framePath,
-      disabled: isDisabled,
-    });
+  const {
+    fileId,
+    fileContentType,
+    isFileIdLoading,
+    isFileIdNotFound,
+    fileIdError,
+  } = useFileIdFromPath({
+    owner,
+    filePath: framePath,
+    disabled: isDisabled,
+  });
 
   const {
     fileContent,
@@ -36,10 +42,10 @@ export function usePodFrameRenderableContent({
     owner,
     config: { disabled: isDisabled || !fileId },
   });
-
   return {
     fileId,
     fileContent: fileContent ?? null,
+    functionReferenceKind: getFrameFunctionReferenceKind(fileContentType),
     isLoading:
       !isDisabled && (isFileIdLoading || (!!fileId && isFileContentLoading)),
     isNotFound: isFileIdNotFound,
