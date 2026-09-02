@@ -33,6 +33,7 @@ const MEMBER_USAGE = {
   scheduledSeatChangeAt: null,
   scheduledSeatType: null,
   seatType: "max" as const,
+  seatUsageTarget: null,
   seatBalanceAwu: 100,
   spendLimitAlertId: null,
   spendLimitAwuCredits: null,
