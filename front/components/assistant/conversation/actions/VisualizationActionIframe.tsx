@@ -12,6 +12,7 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
 import { resolveFrameFunctionReference } from "@app/types/api/frame_function_reference";
+import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
 import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_reference";
 import type {
   PostSandboxFunctionInvocationRequestBody,
@@ -95,6 +96,7 @@ export function getFrameRuntimeAccess(
       ? {
           isAuthenticated: true,
           isWorkspaceMember: true,
+          isFrameAuthor: false,
           isPodEditor: scopedUserIdentity.isPodEditor ?? false,
           isPodMember: scopedUserIdentity.isPodMember ?? false,
           user: scopedUserIdentity.user,
@@ -102,6 +104,7 @@ export function getFrameRuntimeAccess(
       : {
           isAuthenticated: false,
           isWorkspaceMember: false,
+          isFrameAuthor: false,
           isPodEditor: false,
           isPodMember: false,
           user: null,
@@ -131,6 +134,37 @@ export function getSandboxFunctionInvocationAccessError(
         code: "not_supported",
         message: "Function calls are not available in this Frame.",
       };
+}
+
+async function resolveFrameUserIdentity({
+  frameId,
+  userIdentity,
+  workspaceId,
+}: {
+  frameId: string | undefined;
+  userIdentity: UserIdentityState;
+  workspaceId: string;
+}): Promise<UserIdentityState> {
+  if (!frameId || !userIdentity.isAuthenticated) {
+    return userIdentity;
+  }
+
+  try {
+    const response = await clientFetch(
+      `/api/w/${workspaceId}/frames/${encodeURIComponent(frameId)}/permissions`
+    );
+    if (!response.ok) {
+      return userIdentity;
+    }
+
+    const permissions: GetFramePermissionsResponseBody = await response.json();
+    return {
+      ...userIdentity,
+      isFrameAuthor: permissions.isFrameAuthor === true,
+    };
+  } catch {
+    return userIdentity;
+  }
 }
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
@@ -422,7 +456,7 @@ function useVisualizationDataHandler({
   setErrorMessage,
   visualization,
   vizIframeRef,
-  userIdentity,
+  resolveUserIdentity,
   waitForSandboxFunctionInvocationResult,
   workspaceId,
 }: {
@@ -441,7 +475,7 @@ function useVisualizationDataHandler({
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-  userIdentity: UserIdentityState;
+  resolveUserIdentity: () => Promise<UserIdentityState>;
   waitForSandboxFunctionInvocationResult: (params: {
     functionId: string;
     invocationId: string;
@@ -559,7 +593,7 @@ function useVisualizationDataHandler({
         }
 
         case "getUserIdentity":
-          sendResponseToIframe(data, userIdentity, event.source);
+          sendResponseToIframe(data, await resolveUserIdentity(), event.source);
           break;
 
         case "getFile":
@@ -637,7 +671,7 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
-    userIdentity,
+    resolveUserIdentity,
     sendNotification,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
@@ -847,6 +881,16 @@ export const VisualizationActionIframe = forwardRef<
     );
   }, [canInvokeFunctions, scopedUserIdentity, workspaceId]);
 
+  const resolveUserIdentity = useCallback(
+    () =>
+      resolveFrameUserIdentity({
+        frameId: props.frameId,
+        userIdentity: runtimeAccess.userIdentity,
+        workspaceId,
+      }),
+    [props.frameId, runtimeAccess.userIdentity, workspaceId]
+  );
+
   const isPublic = visualization.accessToken !== undefined;
 
   const getFileBlob = useCallback(
@@ -974,7 +1018,7 @@ export const VisualizationActionIframe = forwardRef<
     setErrorMessage,
     visualization,
     vizIframeRef,
-    userIdentity: runtimeAccess.userIdentity,
+    resolveUserIdentity,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
   });

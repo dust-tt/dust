@@ -62,7 +62,7 @@ const BUNDLE_CONTENT = "export default {/*bundle*/};";
 const validSchemaFile = JSON.stringify({
   name: "greet",
   description: "Greet someone.",
-  userIdentity: "interactive_workspace_user_required",
+  userIdentity: "frame_author_required",
   input_schema: { type: "object", properties: { name: { type: "string" } } },
   output_schema: {
     type: "object",
@@ -120,9 +120,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.value.bundleCode).toBe(BUNDLE_CONTENT);
-    expect(result.value.userIdentity).toBe(
-      "interactive_workspace_user_required"
-    );
+    expect(result.value.userIdentity).toBe("frame_author_required");
     expect(result.value.inputSchema).toEqual({
       type: "object",
       properties: { name: { type: "string" } },

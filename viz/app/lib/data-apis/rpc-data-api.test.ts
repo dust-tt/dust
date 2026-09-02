@@ -104,12 +104,52 @@ describe("sandbox function data APIs", () => {
     });
   });
 
+  it("defaults Frame authorship to false for hosts that omit it", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+    const api = new RPCDataAPI(sendMessage);
+
+    await expect(api.getUserIdentity()).resolves.toMatchObject({
+      isFrameAuthor: false,
+    });
+  });
+
+  it("keeps Frame authorship from hosts that provide it", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      isFrameAuthor: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+    const api = new RPCDataAPI(sendMessage);
+
+    await expect(api.getUserIdentity()).resolves.toMatchObject({
+      isFrameAuthor: true,
+    });
+  });
+
   it("returns no identity from the public cache", async () => {
     const api = new CacheDataAPI();
 
     await expect(api.getUserIdentity()).resolves.toEqual({
       isAuthenticated: false,
       isWorkspaceMember: false,
+      isFrameAuthor: false,
       isPodEditor: false,
       isPodMember: false,
       user: null,

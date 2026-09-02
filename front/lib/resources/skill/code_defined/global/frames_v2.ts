@@ -273,7 +273,11 @@ The \`schema.userIdentity\` policy decides whether the function may run:
 - \`workspace_user_required\` requires a current member of the owning workspace.
 - \`interactive_workspace_user_required\` additionally requires the member's live Dust session;
   delegated agents, schedules, and API clients are refused.
-- \`pod_member_required\` requires membership in the Pod when the Frame belongs to one.
+- \`frame_author_required\` requires the caller to be able to modify the Frame v2 source files. In a
+  standalone conversation this follows conversation access; in a Pod it follows write access to the
+  Pod. Use this for author-only or admin functions.
+- \`pod_member_required\` remains available for legacy Pod-specific functions. Do not use it for new
+  Frame v2 author controls.
 
 Frame UI calls are available only to authenticated members of the owning workspace; guest or link
 viewers must get a typed authorization error. A function policy can impose a stricter requirement.
@@ -281,8 +285,9 @@ viewers must get a typed authorization error. A function policy can impose a str
 Use \`currentUser()\` from \`@dust/pod\` for the trusted caller. It returns
 \`{ sId, firstName, lastName, fullName, image, isPodMember, isPodEditor }\`, or \`null\` under the
 optional policy when there is no user. Never accept a caller \`userId\` as function input: the caller
-can forge it. The frontend's \`useUserIdentity\` hook is for presentation only; authorization belongs
-in the function policy and server logic.
+can forge it. The frontend's \`useUserIdentity\` hook also returns \`isFrameAuthor\`; use that flag to
+show author-only UI, but enforce every author-only operation with \`frame_author_required\` because
+client-side conditions are not access control.
 
 ## Calling a function from the Frame UI
 
