@@ -5,7 +5,7 @@ import {
   POD_WORKSPACE_ID_ENV,
   PodUserIdentityError,
   runWithInvocationEnv,
-} from "@dust/pod";
+} from "@dust/sandbox";
 
 const identity = {
   workspaceId: "w_current",

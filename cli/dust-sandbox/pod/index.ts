@@ -1,8 +1,8 @@
 /**
- * `@dust/pod` — the runtime library for code running in a Dust pod sandbox.
+ * `@dust/sandbox` is the runtime library for code running in a Dust sandbox.
  *
  * Surfaces:
- * - `db(name)`: the pod's SQLite state databases, through Drizzle (./db.ts).
+ * - `db(name)`: the owner's SQLite state databases, through Drizzle (./db.ts).
  * - `currentUser()`: the workspace-scoped user attributed to this invocation.
  * - `podEnv(name)`: the invocation's environment (./context.ts).
  * - `resolveToolTextContent(block)`: full text of a tool output block,

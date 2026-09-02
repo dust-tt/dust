@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.105",
+      tag: "0.8.106",
     });
     expect(getDustBaseImage().baseImage).toEqual({
       type: "docker",
@@ -646,7 +646,7 @@ describe("sandbox image registry", () => {
     expect(litestreamConfig).toContain("path: /sandbox-state/replica");
   });
 
-  test("pins drizzle packages and vendors @dust/pod", () => {
+  test("pins drizzle packages and vendors @dust/sandbox", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
     const copyOperations = getCopyOperations(operations);
@@ -663,22 +663,29 @@ describe("sandbox image registry", () => {
       ])
     );
 
-    // Vendored copy of @dust/pod. Do NOT materialize the content here: the
-    // generator bun-builds cli/dust-sandbox/pod, which is written by a
-    // parallel track and may be absent in this checkout.
-    const podCopy = copyOperations.find(
+    // Do not materialize the content here: the generator bun-builds the whole
+    // runtime, while this test only needs to verify the image operation.
+    const runtimeCopies = copyOperations.filter(
       (operation) =>
+        operation.dest === "/opt/npm-global/lib/node_modules/@dust/sandbox" ||
         operation.dest === "/opt/npm-global/lib/node_modules/@dust/pod"
     );
-    expect(podCopy).toBeDefined();
-    expect(podCopy?.src.type).toBe("content");
+    expect(runtimeCopies).toHaveLength(1);
+    expect(runtimeCopies[0]?.dest).toBe(
+      "/opt/npm-global/lib/node_modules/@dust/sandbox"
+    );
+    expect(runtimeCopies[0]?.src.type).toBe("content");
+    expect(runCommands).toContain(
+      "ln -s /opt/npm-global/lib/node_modules/@dust/sandbox /opt/npm-global/lib/node_modules/@dust/pod"
+    );
 
     expect(image.tools).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
         expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
-        expect.objectContaining({ name: "@dust/pod", version: "0.3.2" }),
+        expect.objectContaining({ name: "@dust/sandbox", version: "0.3.3" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.3.3" }),
       ])
     );
   });
@@ -701,7 +708,7 @@ describe("sandbox image registry", () => {
     const drizzleIndex = runCommands.findIndex((command) =>
       command.includes("drizzle-orm@0.45.2")
     );
-    const podPackageMkdirIndex = runCommands.findIndex((command) =>
+    const sandboxPackageMkdirIndex = runCommands.findIndex((command) =>
       command.includes("mkdir -p /opt/npm-global/lib/node_modules/@dust")
     );
 
@@ -710,7 +717,7 @@ describe("sandbox image registry", () => {
       litestreamIndex,
       podStateIndex,
       drizzleIndex,
-      podPackageMkdirIndex,
+      sandboxPackageMkdirIndex,
     ]) {
       expect(index).toBeGreaterThanOrEqual(0);
       expect(index).toBeLessThan(lastHardeningIndex);

@@ -3,15 +3,17 @@ import {
   getRootConsumedPathHardeningCommand,
   getSandboxServicePathHardeningCommand,
 } from "@app/lib/api/sandbox/hardening";
-import {
-  buildPodPackage,
-  POD_PACKAGE_IMAGE_DIR,
-  POD_PACKAGE_NAME,
-  POD_PACKAGE_VERSION,
-} from "@app/lib/api/sandbox/image/pod_package";
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import {
+  buildSandboxPackage,
+  LEGACY_POD_PACKAGE_IMAGE_DIR,
+  LEGACY_POD_PACKAGE_NAME,
+  SANDBOX_PACKAGE_IMAGE_DIR,
+  SANDBOX_PACKAGE_NAME,
+  SANDBOX_PACKAGE_VERSION,
+} from "@app/lib/api/sandbox/image/sandbox_package";
 import type { ToolEntry } from "@app/lib/api/sandbox/image/types";
 import {
   DSBX_TOOL_NAME,
@@ -26,7 +28,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.105";
+const DUST_BASE_IMAGE_VERSION = "0.8.106";
 const DSBX_CLI_VERSION = "0.1.56";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -447,7 +449,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
         name: "drizzle-orm",
         version: "0.45.2",
         description:
-          "SQLite ORM (pod database schema files and function queries)",
+          "SQLite ORM (sandbox database schema files and function queries)",
         runtime: "node",
       },
       {
@@ -574,19 +576,33 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     "/etc/litestream.yml",
     { user: "root" }
   )
-  // Vendor @dust/pod into the global node_modules (see pod_package.ts for why
-  // this is a build-time copy rather than an npm install).
-  .runCmd(`mkdir -p ${path.posix.dirname(POD_PACKAGE_IMAGE_DIR)}`, {
+  // Vendor @dust/sandbox into the global node_modules (see sandbox_package.ts
+  // for why this is a build-time copy rather than an npm install).
+  .runCmd(`mkdir -p ${path.posix.dirname(SANDBOX_PACKAGE_IMAGE_DIR)}`, {
     user: "root",
   })
-  .copy(buildPodPackage, POD_PACKAGE_IMAGE_DIR, { user: "root" })
-  .registerTool({
-    name: POD_PACKAGE_NAME,
-    version: POD_PACKAGE_VERSION,
-    description:
-      "Frame and Pod database access: db(name) returns a Drizzle instance over the sandbox owner's SQLite database",
-    runtime: "node",
-  })
+  .copy(buildSandboxPackage, SANDBOX_PACKAGE_IMAGE_DIR, { user: "root" })
+  // Keep legacy function bundles on the same module instance, not a second
+  // copy of the runtime.
+  .runCmd(
+    `ln -s ${SANDBOX_PACKAGE_IMAGE_DIR} ${LEGACY_POD_PACKAGE_IMAGE_DIR}`,
+    { user: "root" }
+  )
+  .registerTool([
+    {
+      name: SANDBOX_PACKAGE_NAME,
+      version: SANDBOX_PACKAGE_VERSION,
+      description:
+        "Sandbox database access: db(name) returns a Drizzle instance over the owner's SQLite database",
+      runtime: "node",
+    },
+    {
+      name: LEGACY_POD_PACKAGE_NAME,
+      version: SANDBOX_PACKAGE_VERSION,
+      description: `Compatibility alias for ${SANDBOX_PACKAGE_NAME}`,
+      runtime: "node",
+    },
+  ])
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })
   // Core: compiled dust-tools binary + shared shell infra
   .copy(buildDustToolsBinary, `${PROFILE_DIR}/dust-tools`, { user: "root" })
