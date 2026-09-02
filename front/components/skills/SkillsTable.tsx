@@ -6,6 +6,7 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
+import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import {
   getManageSkillsRoute,
@@ -192,27 +193,6 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
       return null;
   }
 }
-
-export const SKILL_AVAILABILITY_DISPLAY: Record<
-  SkillAvailability,
-  { label: string; color: "primary" | "success" | "highlight"; tooltip: string }
-> = {
-  editors: {
-    label: "Editors only",
-    color: "primary",
-    tooltip: "Only editors can find it via the input bar and agent builder",
-  },
-  workspace_users: {
-    label: "Members",
-    color: "success",
-    tooltip: "All members can find it via the input bar and agent builder",
-  },
-  users_and_agents: {
-    label: "Members and agents",
-    color: "highlight",
-    tooltip: "Available to all members and agents with Discover Skills",
-  },
-};
 
 const nameColumn = {
   header: "Name",
