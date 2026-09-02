@@ -267,45 +267,23 @@ export function PokeMessageConsumptionInspector({
             </div>
           ) : (
             <div className="space-y-5 p-4">
-              <section aria-labelledby={`message-${messageId}-bill-heading`}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3
-                      id={`message-${messageId}-bill-heading`}
-                      className="text-sm font-semibold text-foreground"
-                    >
-                      Authoritative bill
-                    </h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Stored charge for this message and its recursive sub-agent
-                      tree.
-                    </p>
-                  </div>
-                  <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">
-                    {hasAuthoritativeBill
-                      ? formatCreditValue(totalCredits)
-                      : "Not billed"}
-                  </p>
-                </div>
-
-                <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  <CreditMetric
-                    label="Direct message"
-                    value={directMessageCredits}
-                    description="Credits billed on this message."
-                  />
-                  <CreditMetric
-                    label="Sub-agent tree"
-                    value={resolvedSubAgentBilledCredits}
-                    description="Recursive bill attributed to run-agent tools."
-                  />
-                  <CreditMetric
-                    label="Explained"
-                    value={explainedCredits}
-                    description="Additive attribution available below."
-                  />
-                </dl>
-              </section>
+              <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <CreditMetric
+                  label="Direct message"
+                  value={directMessageCredits}
+                  description="Credits billed on this message."
+                />
+                <CreditMetric
+                  label="Sub-agent tree"
+                  value={resolvedSubAgentBilledCredits}
+                  description="Recursive bill attributed to run-agent tools."
+                />
+                <CreditMetric
+                  label="Explained"
+                  value={explainedCredits}
+                  description="Additive attribution available below."
+                />
+              </dl>
 
               {details ? (
                 <>

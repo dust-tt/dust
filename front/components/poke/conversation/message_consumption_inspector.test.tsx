@@ -62,7 +62,12 @@ describe("PokeMessageConsumptionInspector", () => {
     expect(mockUsePokeMessageConsumption).toHaveBeenLastCalledWith(
       expect.objectContaining({ disabled: false })
     );
-    expect(screen.getByText("Authoritative bill")).toBeInTheDocument();
+    expect(screen.queryByText("Authoritative bill")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Stored charge for this message and its recursive sub-agent tree."
+      )
+    ).not.toBeInTheDocument();
   });
 
   it("shows the full model and tool attribution", () => {
