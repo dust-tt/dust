@@ -29,7 +29,7 @@ import { resolveDimensionDisplayNames } from "./labels";
 export { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/schema";
 
 export type ConsumptionGranularity = "day" | "week" | "month";
-export type ConsumptionTimeseriesMode = "daily" | "cumulative";
+export type ConsumptionTimeseriesMode = "period" | "cumulative";
 
 export const TOTAL_GROUP_KEY = "total";
 

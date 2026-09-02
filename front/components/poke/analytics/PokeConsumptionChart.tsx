@@ -28,7 +28,7 @@ function PokeConsumptionDailyChart({
     usePokeConsumptionTimeseries({
       workspaceId,
       period,
-      mode: "daily",
+      mode: "period",
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
@@ -110,13 +110,13 @@ export function PokeConsumptionChart({
   dimension,
   filter,
 }: ConsumptionChartProps) {
-  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
+  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("period");
   const modeSelector = (
     <ButtonsSwitchList value={mode} size="xs">
       <ButtonsSwitch
-        value="daily"
-        label="Daily"
-        onClick={() => setMode("daily")}
+        value="period"
+        label="Per period"
+        onClick={() => setMode("period")}
       />
       <ButtonsSwitch
         value="cumulative"

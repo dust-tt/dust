@@ -50,7 +50,7 @@ export const DEFAULT_CONSUMPTION_BREAKDOWN_COUNT = 10;
 
 export const ConsumptionTimeseriesBodySchema = ConsumptionBodySchema.extend({
   granularity: z.enum(["day", "week", "month"]).optional().default("day"),
-  mode: z.enum(["daily", "cumulative"]).optional().default("daily"),
+  mode: z.enum(["period", "cumulative"]).optional().default("period"),
   metric: z
     .enum(CONSUMPTION_METRICS)
     .optional()

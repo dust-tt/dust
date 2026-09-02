@@ -7,7 +7,10 @@ import {
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionChart } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
-import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import {
+  ConsumptionGranularitySelector,
+  ConsumptionPeriodSelector,
+} from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
@@ -19,8 +22,14 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_GRANULARITY,
+  DEFAULT_CONSUMPTION_PERIOD,
+} from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
@@ -49,6 +58,9 @@ export function AgentInsightsTab({
     useState<InsightsSubTab>("analytics");
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
+  );
+  const [granularity, setGranularity] = useState<ConsumptionGranularity>(
+    DEFAULT_CONSUMPTION_GRANULARITY
   );
   const [dimension, setDimension] = useState<ConsumptionDimension>("user");
   const [filter, setFilter] = useState<UsageFilter>({});
@@ -88,10 +100,16 @@ export function AgentInsightsTab({
               <TabsTrigger value="feedback" label="Feedback" />
             </TabsList>
             {selectedSubTab === "analytics" ? (
-              <ConsumptionPeriodSelector
-                period={period}
-                onPeriodChange={setPeriod}
-              />
+              <div className="flex items-center gap-2">
+                <ConsumptionPeriodSelector
+                  period={period}
+                  onPeriodChange={setPeriod}
+                />
+                <ConsumptionGranularitySelector
+                  granularity={granularity}
+                  onGranularityChange={setGranularity}
+                />
+              </div>
             ) : (
               <ObservabilityPeriodSelector
                 workspaceId={owner.sId}
@@ -151,6 +169,7 @@ export function AgentInsightsTab({
                       <ConsumptionChart
                         workspaceId={owner.sId}
                         period={period}
+                        granularity={granularity}
                         dimension={dimension}
                         filter={scopeFilter}
                         analyticsScope={analyticsScope}

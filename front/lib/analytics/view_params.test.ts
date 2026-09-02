@@ -1,5 +1,9 @@
 import { CONSUMPTION_DIMENSIONS } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { CONSUMPTION_PERIOD_OPTIONS } from "@app/lib/analytics/consumption_period";
+import {
+  CONSUMPTION_GRANULARITY_OPTIONS,
+  CONSUMPTION_PERIOD_OPTIONS,
+  DEFAULT_CONSUMPTION_GRANULARITY,
+} from "@app/lib/analytics/consumption_period";
 import type { AnalyticsViewState } from "@app/lib/analytics/view_params";
 import {
   analyticsConsumptionHref,
@@ -34,6 +38,7 @@ const VIEW_CASES: [query: string, state: AnalyticsViewState][] = [
     "a=8oGtWFRlPa",
     {
       period: { kind: "cycle" },
+      granularity: DEFAULT_CONSUMPTION_GRANULARITY,
       dimension: "agent",
       filter: { agent: ["8oGtWFRlPa"] },
     },
@@ -42,6 +47,7 @@ const VIEW_CASES: [query: string, state: AnalyticsViewState][] = [
     "p=30&d=model&a=8oGtWFRlPa&s=slack",
     {
       period: { kind: "days", days: 30 },
+      granularity: DEFAULT_CONSUMPTION_GRANULARITY,
       dimension: "model",
       filter: { agent: ["8oGtWFRlPa"], source: ["slack"] },
     },
@@ -50,6 +56,7 @@ const VIEW_CASES: [query: string, state: AnalyticsViewState][] = [
     "k=Zapier+prod+*main*",
     {
       period: { kind: "cycle" },
+      granularity: DEFAULT_CONSUMPTION_GRANULARITY,
       dimension: "agent",
       filter: { api_key: ["Zapier prod *main*"] },
     },
@@ -84,6 +91,7 @@ describe("analytics view params", () => {
       })
     ).toEqual({
       p: undefined,
+      gr: undefined,
       d: undefined,
       a: undefined,
       u: undefined,
@@ -100,6 +108,12 @@ describe("analytics view params", () => {
 describe("every axis of the view survives the round trip", () => {
   it.each(CONSUMPTION_PERIOD_OPTIONS)("period %o", (period) => {
     const view = { ...DEFAULT_ANALYTICS_VIEW_STATE, period };
+
+    expect(roundTripped(view)).toEqual(view);
+  });
+
+  it.each(CONSUMPTION_GRANULARITY_OPTIONS)("granularity %s", (granularity) => {
+    const view = { ...DEFAULT_ANALYTICS_VIEW_STATE, granularity };
 
     expect(roundTripped(view)).toEqual(view);
   });
@@ -162,6 +176,7 @@ describe("analyticsViewUrlQuery", () => {
     ).toEqual({
       tab: "explore",
       p: undefined,
+      gr: undefined,
       d: "model",
       a: undefined,
       u: undefined,
