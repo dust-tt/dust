@@ -81,10 +81,11 @@ import {
   Separator,
   Shapes,
   ShapesPlus,
+  ShieldTick,
   SlackLogo,
-  Star01,
   Terminal,
   User01,
+  UsersCheck,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -590,26 +591,30 @@ export function UserMenu({
                         icon={Shapes}
                       />
                     )}
-                    {!isOnlyAdmin(owner) && (
-                      <DropdownMenuItem
-                        label="Become Admin"
-                        onClick={() => forceRoleUpdate("admin")}
-                        icon={Star01}
-                      />
-                    )}
-                    {!isOnlyManager(owner) && (
-                      <DropdownMenuItem
-                        label="Become Manager"
-                        onClick={() => forceRoleUpdate("manager")}
-                        icon={Star01}
-                      />
-                    )}
-                    {!isOnlyUser(owner) && (
-                      <DropdownMenuItem
-                        label="Become User"
-                        onClick={() => forceRoleUpdate("user")}
-                        icon={User01}
-                      />
+                    {isDevelopment() && (
+                      <>
+                        {!isOnlyAdmin(owner) && (
+                          <DropdownMenuItem
+                            label="Become Admin"
+                            onClick={() => forceRoleUpdate("admin")}
+                            icon={ShieldTick}
+                          />
+                        )}
+                        {!isOnlyManager(owner) && (
+                          <DropdownMenuItem
+                            label="Become Manager"
+                            onClick={() => forceRoleUpdate("manager")}
+                            icon={UsersCheck}
+                          />
+                        )}
+                        {!isOnlyUser(owner) && (
+                          <DropdownMenuItem
+                            label="Become User"
+                            onClick={() => forceRoleUpdate("user")}
+                            icon={User01}
+                          />
+                        )}
+                      </>
                     )}
                     <DropdownMenuItem
                       label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
