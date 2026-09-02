@@ -6,7 +6,6 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
 import {
   ADMIN_GROUP_NAME,
-  BUILDER_GROUP_NAME,
   MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -343,14 +342,6 @@ describe("determineUserRoleFromGroups", () => {
     expect(role).toBe("admin");
   });
 
-  it("does not grant a role for the dust-builders group (builder deprecated)", async () => {
-    await addUserToRoleGroup(BUILDER_GROUP_NAME);
-
-    const role = await determineUserRoleFromGroups(workspace, user);
-
-    expect(role).toBe("user");
-  });
-
   it("grants 'manager' from the dust-managers group", async () => {
     await addUserToRoleGroup(MANAGER_GROUP_NAME);
 
@@ -366,14 +357,5 @@ describe("determineUserRoleFromGroups", () => {
     const role = await determineUserRoleFromGroups(workspace, user);
 
     expect(role).toBe("admin");
-  });
-
-  it("grants 'manager' even when also in the dust-builders group", async () => {
-    await addUserToRoleGroup(MANAGER_GROUP_NAME);
-    await addUserToRoleGroup(BUILDER_GROUP_NAME);
-
-    const role = await determineUserRoleFromGroups(workspace, user);
-
-    expect(role).toBe("manager");
   });
 });

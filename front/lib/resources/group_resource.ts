@@ -56,15 +56,10 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { col, fn, Op, QueryTypes, UniqueConstraintError } from "sequelize";
+import { col, fn, Op, QueryTypes } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
-export const BUILDER_GROUP_NAME = "dust-builders";
 export const MANAGER_GROUP_NAME = "dust-managers";
-// User-facing name of the manual builders group synced from the builder role (see
-// syncBuilderGroupMembership). Distinct from BUILDER_GROUP_NAME: workspaces provisioning
-// builders via SCIM keep their "dust-builders" IdP group alongside this one.
-export const MANUAL_BUILDERS_GROUP_NAME = "Builders";
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -2670,9 +2665,8 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Checks if dust-admins, dust-managers and dust-builders groups exist and are actively
-   * provisioned in the workspace. This indicates that role management should be restricted
-   * in the UI.
+   * Checks if dust-admins, dust-managers groups exist and are actively provisioned in the workspace.
+   * This indicates that role management should be restricted in the UI.
    */
   static async listRoleProvisioningGroupsForWorkspace(
     auth: Authenticator
@@ -2688,144 +2682,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         kind: "provisioned",
         name: {
-          [Op.in]: [ADMIN_GROUP_NAME, MANAGER_GROUP_NAME, BUILDER_GROUP_NAME],
+          [Op.in]: [ADMIN_GROUP_NAME, MANAGER_GROUP_NAME],
         },
       },
     });
 
     return provisionedGroups;
-  }
-
-  /**
-   * Transitional — builder role deprecation, see
-   * https://github.com/dust-tt/tasks/issues/9459.
-   *
-   * Maintains the per-workspace "Builders" group (`regular_manual`), which holds the governance
-   * capabilities (create agents / skills) that the `builder` role used to confer, so former
-   * builders kept their rights when the role was migrated away.
-   *
-   * The `builder` role is no longer the source of truth and no longer drives this sync — every
-   * builder membership has been migrated to `user`. The only remaining driver is the
-   * `dust-builders` SCIM provisioning group: both callers mirror an add/remove on that IdP group
-   * into this manual group, and neither creates it (`createIfMissing: false`). Once
-   * `dust-builders` is retired on the WorkOS side, this sync goes away and the group becomes
-   * fully admin-managed.
-   *
-   * Idempotent ensure-state semantics: after the call, the user's active membership in the
-   * group matches `isBuilder`.
-   */
-  static async syncBuilderGroupMembership({
-    workspace,
-    user,
-    isBuilder,
-    createIfMissing = true,
-  }: {
-    workspace: LightWorkspaceType;
-    user: UserResource;
-    isBuilder: boolean;
-    // When false, the group is never created: if it doesn't exist yet the sync is a no-op. Used
-    // by provisioning, which mirrors `dust-builders` membership into an existing manual group but
-    // must not create one.
-    createIfMissing?: boolean;
-  }): Promise<void> {
-    const existingGroup =
-      await GroupResource.fetchManualBuildersGroup(workspace);
-
-    if (!existingGroup && (!isBuilder || !createIfMissing)) {
-      // Nothing to revoke from a group that doesn't exist yet, and we won't create it.
-      return;
-    }
-
-    const groupId = existingGroup
-      ? existingGroup.id
-      : (await GroupResource.fetchOrCreateManualBuildersGroup(workspace)).id;
-
-    const now = new Date();
-    // Served by the (userId, groupId) index.
-    const activeMembershipWhere = {
-      groupId,
-      userId: user.id,
-      workspaceId: workspace.id,
-      status: "active",
-      startAt: { [Op.lte]: now },
-      [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-    };
-    const activeMembership = await GroupMembershipModel.findOne({
-      where: activeMembershipWhere,
-    });
-
-    if (isBuilder) {
-      if (activeMembership) {
-        return;
-      }
-      await GroupMembershipModel.create({
-        groupId,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: now,
-        status: "active",
-      });
-    } else {
-      if (!activeMembership) {
-        return;
-      }
-      // End every matching row, not just the one fetched: concurrent adds can leave
-      // duplicate active rows.
-      await GroupMembershipModel.update(
-        { endAt: now },
-        { where: activeMembershipWhere }
-      );
-    }
-
-    await GroupResource.batchInvalidateGroupIdsCacheForUsers([
-      [{ user: { id: user.id }, workspace: { id: workspace.id } }],
-    ]);
-  }
-
-  /**
-   * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME) if it has
-   * already been created, without creating it.
-   */
-  static async fetchManualBuildersGroup(
-    workspace: LightWorkspaceType
-  ): Promise<GroupResource | null> {
-    const existing = await GroupModel.findOne({
-      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
-    });
-    return existing ? new this(GroupModel, existing.get()) : null;
-  }
-
-  /**
-   * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME), creating it
-   * empty if it doesn't exist yet. Governance capability seeding may need to grant a capability
-   * to this group before any builder-role member has ever been synced into it — normally the
-   * group is created lazily by `syncBuilderGroupMembership` on the first such sync.
-   */
-  static async fetchOrCreateManualBuildersGroup(
-    workspace: LightWorkspaceType
-  ): Promise<GroupResource> {
-    const existing = await GroupResource.fetchManualBuildersGroup(workspace);
-    if (existing) {
-      return existing;
-    }
-
-    try {
-      return await GroupResource.makeNew({
-        name: MANUAL_BUILDERS_GROUP_NAME,
-        kind: "regular_manual",
-        workspaceId: workspace.id,
-      });
-    } catch (err) {
-      // Two concurrent callers can race on the group creation (this method, or a concurrent
-      // syncBuilderGroupMembership call); the (workspaceId, name) unique index makes the loser
-      // land here. Fall through to the winner's group.
-      if (!(err instanceof UniqueConstraintError)) {
-        throw err;
-      }
-      const winner = await GroupResource.fetchManualBuildersGroup(workspace);
-      assert(winner, "Builders group missing after unique constraint error");
-      return winner;
-    }
   }
 
   /**

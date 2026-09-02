@@ -34,7 +34,6 @@ import {
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
   ADMIN_GROUP_NAME,
-  BUILDER_GROUP_NAME,
   GroupResource,
   MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
@@ -216,19 +215,6 @@ async function handleRoleAssignmentForGroup(
     directoryId?: string;
   }
 ) {
-  // The `dust-builders` provisioning group no longer grants the deprecated builder role. Mirror
-  // the membership into the workspace's manual "Builders" group when it exists; if the group has
-  // not been created, ignore it (provisioning never creates it).
-  if (group.name === BUILDER_GROUP_NAME) {
-    await GroupResource.syncBuilderGroupMembership({
-      workspace,
-      user,
-      isBuilder: action === "add",
-      createIfMissing: false,
-    });
-    return;
-  }
-
   if (group.name !== ADMIN_GROUP_NAME && group.name !== MANAGER_GROUP_NAME) {
     // Not a special group, no role assignment needed.
     return;

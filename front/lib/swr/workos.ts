@@ -244,7 +244,6 @@ export function useProvisioningStatus({
       return {
         hasAdminGroup: false,
         hasManagerGroup: false,
-        hasBuilderGroup: false,
       };
     }
     return data;

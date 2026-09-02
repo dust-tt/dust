@@ -1,7 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   ADMIN_GROUP_NAME,
-  BUILDER_GROUP_NAME,
   GroupResource,
   MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
@@ -27,8 +26,6 @@ function determineExpectedRoleFromGroups(
   if (managerUserIds.has(userModelId)) {
     return "manager";
   }
-  // The `dust-builders` group no longer grants the deprecated builder role; membership is
-  // mirrored into the manual "Builders" group instead (see the sync in `execute`).
   return "user";
 }
 
@@ -36,12 +33,10 @@ export const applyGroupRoles = createPlugin({
   manifest: {
     id: "apply-roles-from-groups",
     name: "Apply group roles",
-    description:
-      "Force resync roles from dust-admins and dust-managers, and mirror dust-builders into the Builders group",
+    description: "Force resync roles from dust-admins and dust-managers",
     resourceTypes: ["workspaces"],
     warning:
-      "This action will override the existing membership roles based on the dust-admins and dust-managers groups, " +
-      "and sync the manual Builders group from dust-builders (if it exists). " +
+      "This action will override the existing membership roles based on the dust-admins and dust-managers groups," +
       "Make sure the user is aware of this and does not want to keep the roles assigned manually.",
     args: {},
     requiredRoles: ["engineering"],
@@ -74,10 +69,6 @@ export const applyGroupRoles = createPlugin({
       (g) => g.name === MANAGER_GROUP_NAME
     );
 
-    const [builderGroup] = provisioningGroups.filter(
-      (g) => g.name === BUILDER_GROUP_NAME
-    );
-
     const { memberships } = await MembershipResource.getActiveMemberships({
       workspace,
     });
@@ -90,7 +81,7 @@ export const applyGroupRoles = createPlugin({
     const membershipsByProvisioningGroup =
       await GroupResource.getActiveMembershipsForGroups(
         auth,
-        removeNulls([adminGroup, managerGroup, builderGroup])
+        removeNulls([adminGroup, managerGroup])
       );
 
     const adminUserIds = new Set(
@@ -101,16 +92,6 @@ export const applyGroupRoles = createPlugin({
         ? (membershipsByProvisioningGroup[managerGroup.id] ?? [])
         : []
     );
-    const builderUserIds = new Set(
-      builderGroup
-        ? (membershipsByProvisioningGroup[builderGroup.id] ?? [])
-        : []
-    );
-
-    // The manual "Builders" group is only reconciled when it already exists; this plugin never
-    // creates it (matching provisioning).
-    const hasManualBuildersGroup =
-      (await GroupResource.fetchManualBuildersGroup(workspace)) !== null;
 
     let updatedCount = 0;
     const errors: string[] = [];
@@ -143,17 +124,6 @@ export const applyGroupRoles = createPlugin({
         } else {
           updatedCount++;
         }
-      }
-
-      // Mirror `dust-builders` membership into the manual "Builders" group, same as provisioning.
-      // Per-member queries: poke-only plugin, bounded by the number of members.
-      if (hasManualBuildersGroup) {
-        await GroupResource.syncBuilderGroupMembership({
-          workspace,
-          user,
-          isBuilder: builderUserIds.has(user.id),
-          createIfMissing: false,
-        });
       }
     }
 

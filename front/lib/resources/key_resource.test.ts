@@ -92,13 +92,14 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import {
   KeyResource,
   MARK_AS_USED_MIN_INTERVAL_MS,
 } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -223,8 +224,10 @@ describe("KeyResource", () => {
 
     it("is idempotent when removing a group the key doesn't have", async () => {
       const key = await KeyFactory.regular(globalGroup);
-      const otherGroup =
-        await GroupResource.fetchOrCreateManualBuildersGroup(workspace);
+      const otherGroup = await GroupFactory.regularAuto(
+        workspace,
+        "other-group"
+      );
 
       await key.setGroupMembership({ group: otherGroup, isMember: false });
 
