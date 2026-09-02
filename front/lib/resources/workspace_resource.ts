@@ -73,9 +73,15 @@ type WorkspaceModelIdBatchRow = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
+// whiteListedProviders is deliberately not exposed: the raw column is ambiguous with the
+// effective value under global provider kill switches. Use `fetchWhiteListedProviders` for
+// gating and `configuredWhiteListedProviders` for serialization and display.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceResource
-  extends ReadonlyAttributesType<WorkspaceModel> {}
+  extends Omit<
+    ReadonlyAttributesType<WorkspaceModel>,
+    "whiteListedProviders"
+  > {}
 
 export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
   "block",
@@ -244,30 +250,28 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   // Materialization: the single seam where fetched blobs become resources, run by every fetch
-  // path (cached or not). This is where context outside the row is folded in: provider kill
-  // switches here, so a WorkspaceResource always carries the effective whiteListedProviders while
-  // the cache keeps the raw column value. Never persist whiteListedProviders read from a
-  // materialized resource: that would make a temporary kill switch permanent.
-  // TODO(2026-08-21 flav): Move the kill-switch overlay to its consumption points (Authenticator
-  // and model gating) so workspace fetches stay pure and this materialize becomes plain
-  // construction.
+  // path (cached or not). Plain construction: workspace fetches are pure and carry the raw
+  // column values. The kill-switch overlay on whiteListedProviders is applied where the value
+  // is consumed, through `fetchWhiteListedProviders`.
   private static async materialize(
     blobs: Attributes<WorkspaceModel>[]
   ): Promise<WorkspaceResource[]> {
-    if (blobs.length === 0) {
-      return [];
-    }
-    const enabledKillSwitches =
-      await KillSwitchResource.listEnabledKillSwitches();
-    return blobs.map(
-      (blob) =>
-        new WorkspaceResource(WorkspaceModel, {
-          ...blob,
-          whiteListedProviders: WorkspaceResource.filterKillSwitchedProviders(
-            blob.whiteListedProviders,
-            enabledKillSwitches
-          ),
-        })
+    return blobs.map((blob) => new WorkspaceResource(WorkspaceModel, blob));
+  }
+
+  // The configured column value, untouched by kill switches. For serialization and display
+  // only: never use it to decide which providers are usable, that is
+  // `fetchWhiteListedProviders`.
+  get configuredWhiteListedProviders(): ModelProviderIdType[] | null {
+    return this.blob.whiteListedProviders;
+  }
+
+  // Effective providers for LLM gating: the configured value overlaid with the global provider
+  // kill switches. Never persist the returned value: that would make a temporary kill switch
+  // permanent.
+  async fetchWhiteListedProviders(): Promise<ModelProviderIdType[] | null> {
+    return WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
+      this.blob.whiteListedProviders
     );
   }
 

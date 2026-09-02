@@ -1414,7 +1414,7 @@ export class Authenticator {
           ssoEnforced: this._workspace.ssoEnforced,
           regionalModelsOnly: this._workspace.regionalModelsOnly,
           workOSOrganizationId: this._workspace.workOSOrganizationId,
-          whiteListedProviders: this._workspace.whiteListedProviders,
+          whiteListedProviders: this._workspace.configuredWhiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
           metadata: this._workspace.metadata,
           metronomeCustomerId: this._workspace.metronomeCustomerId ?? null,

@@ -34,7 +34,10 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
-import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  isProviderWhitelistedForAuth,
+} from "@app/lib/api/assistant/models";
 import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
@@ -741,6 +744,8 @@ export async function postUserMessage(
   // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
   const isInternalRunAgent = agenticMessageData?.type === "run_agent";
 
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+
   for (const agentConfig of agentConfigurations) {
     if (!isInternalRunAgent && isRetiredGlobalAgent(agentConfig.sId)) {
       return new Err({
@@ -765,7 +770,8 @@ export async function postUserMessage(
 
     const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
-      agentConfig.model.providerId
+      agentConfig.model.providerId,
+      whiteListedProviders
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -1200,6 +1206,8 @@ export async function editUserMessage(
 
   const agentConfigurations = results[0];
 
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
       return new Err({
@@ -1214,7 +1222,8 @@ export async function editUserMessage(
 
     const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
-      agentConfig.model.providerId
+      agentConfig.model.providerId,
+      whiteListedProviders
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.

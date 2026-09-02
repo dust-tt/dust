@@ -1,6 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getFastestWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getFastestWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
@@ -81,7 +84,8 @@ export async function getSuggestedAgentsForContent(
 ): Promise<Result<LightAgentConfigurationType[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getFastestWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getFastestWhitelistedModel(auth, { whiteListedProviders });
   if (!model) {
     return new Err(
       new Error("Error suggesting agents: failed to find a whitelisted model.")

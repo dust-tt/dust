@@ -1,5 +1,6 @@
 import { getBuilderJsonSchemaGenerator } from "@app/lib/api/assistant/json_schema_generator";
 import {
+  getEffectiveWhiteListedProviders,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
 } from "@app/lib/api/assistant/models";
@@ -19,9 +20,10 @@ app.post(
     const auth = ctx.get("auth");
     const { instructions } = ctx.req.valid("json");
 
+    const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
     const model = !auth.isUpgraded()
-      ? await getSmallWhitelistedModel(auth)
-      : await getLargeWhitelistedModel(auth);
+      ? getSmallWhitelistedModel(auth, undefined, { whiteListedProviders })
+      : getLargeWhitelistedModel(auth, undefined, { whiteListedProviders });
     if (!model) {
       return apiError(ctx, {
         status_code: 400,

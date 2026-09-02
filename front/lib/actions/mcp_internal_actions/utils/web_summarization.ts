@@ -1,11 +1,13 @@
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import {
+  getEffectiveWhiteListedProviders,
   getSmallWhitelistedModel,
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { GPT_5_6_LUNA_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
@@ -41,7 +43,12 @@ export async function summarizeWithLLM({
   const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 
   const featureFlags = await getFeatureFlags(auth);
-  const modelConfig = getModelConfigForWebSummarization(auth, featureFlags);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const modelConfig = getModelConfigForWebSummarization(
+    auth,
+    featureFlags,
+    whiteListedProviders
+  );
   if (!modelConfig) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate summary")
@@ -104,13 +111,15 @@ export async function summarizeWithLLM({
 
 export function getModelConfigForWebSummarization(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[]
+  featureFlags: WhitelistableFeature[],
+  whiteListedProviders: ModelProviderIdType[] | null
 ): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
 } | null {
   const luna = selectEnabledModel(auth, [GPT_5_6_LUNA_MODEL_CONFIG], {
     featureFlags,
+    whiteListedProviders,
   });
   if (luna) {
     return {
@@ -121,6 +130,7 @@ export function getModelConfigForWebSummarization(
 
   const smallModel = getSmallWhitelistedModel(auth, new Set(), {
     featureFlags,
+    whiteListedProviders,
   });
   return smallModel
     ? {

@@ -1,6 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getFastestWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getFastestWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { BuilderSuggestionInputType } from "@app/types/api/assistant";
@@ -53,7 +56,8 @@ export async function getBuilderDescriptionSuggestions(
   auth: Authenticator,
   inputs: BuilderSuggestionInputType
 ): Promise<Result<SuggestionResults, Error>> {
-  const model = getFastestWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getFastestWhitelistedModel(auth, { whiteListedProviders });
   if (!model) {
     return new Err(
       new Error(
