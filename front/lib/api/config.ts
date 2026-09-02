@@ -76,7 +76,7 @@ const config = {
       thresholdAwuCredits <= 0
     ) {
       throw new Error(
-        "CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS must be a positive integer"
+        "CREDIT_SPEND_CHECKPOINT_THRESHOLD must be a positive integer"
       );
     }
 
