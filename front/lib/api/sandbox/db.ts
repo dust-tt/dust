@@ -63,6 +63,7 @@ const RUNUSER_BIN = "/usr/sbin/runuser";
 const SYSTEMCTL_BIN = "/usr/bin/systemctl";
 const SQLITE3_BIN = "/usr/bin/sqlite3";
 const FIND_BIN = "/usr/bin/find";
+const REALPATH_BIN = "/usr/bin/realpath";
 const STAT_BIN = "/usr/bin/stat";
 const MV_BIN = "/usr/bin/mv";
 const RM_BIN = "/usr/bin/rm";
@@ -176,6 +177,35 @@ function execFailure(
   return new Error(
     `${label} failed (exit ${result.exitCode}): ${result.stderr || result.stdout || "no output"}`
   );
+}
+
+async function resolveLiveDatabasesDir(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<string, Error>> {
+  const result = await sandbox.execRoot(
+    auth,
+    rootCommand.exec(REALPATH_BIN, ["--", SANDBOX_STATE_DATABASES_DIR]),
+    { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
+  );
+  if (result.isErr()) {
+    return result;
+  }
+  if (result.value.exitCode !== 0) {
+    return new Err(
+      execFailure("live database directory resolution", result.value)
+    );
+  }
+
+  const databasesDir = result.value.stdout.trim();
+  if (!databasesDir.startsWith("/")) {
+    return new Err(
+      new Error(
+        `live database directory resolved to ${databasesDir || "empty"}`
+      )
+    );
+  }
+  return new Ok(databasesDir);
 }
 
 /**
@@ -559,9 +589,26 @@ export async function ensurePodStateHealthOnSleep(
     return daemonResult;
   }
 
-  // 4. Sync each database through the daemon control socket.
+  // 4. Litestream keys its control API by exact path and does not resolve
+  // symlinks. Resolve the image's live directory once: old images return the
+  // legacy path, while the compatibility symlink in new images returns the
+  // canonical path registered by their watcher.
+  const databasesDirResult = await resolveLiveDatabasesDir(auth, sandbox);
+  if (databasesDirResult.isErr()) {
+    if (databasesDirResult.error instanceof SandboxNotFoundError) {
+      return new Ok(undefined);
+    }
+    recordPodStateHealth("failure");
+    childLogger.error(
+      { err: databasesDirResult.error },
+      "Sandbox state pre-sleep: database path resolution failed, not pausing"
+    );
+    return databasesDirResult;
+  }
+
+  // 5. Sync each database through the daemon control socket.
   for (const name of names) {
-    const dbPath = `${SANDBOX_STATE_DATABASES_DIR}/${name}.db`;
+    const dbPath = `${databasesDirResult.value}/${name}.db`;
     const syncResult = await sandbox.execRoot(
       auth,
       rootCommand.exec(LITESTREAM_BIN, [

@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.106",
+      tag: "0.8.107",
     });
     expect(getDustBaseImage().baseImage).toEqual({
       type: "docker",
@@ -555,7 +555,7 @@ describe("sandbox image registry", () => {
     );
   });
 
-  test("creates the dust-state user and the pod-state directory layout", () => {
+  test("creates one sandbox database directory with a legacy path alias", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
 
     expect(runCommands).toEqual(
@@ -563,19 +563,42 @@ describe("sandbox image registry", () => {
         expect.stringContaining(
           "useradd --system --no-create-home --gid dust-state --groups agent --shell /usr/sbin/nologin dust-state"
         ),
-        expect.stringContaining("install -d -o root -g root -m 755 /pod-state"),
-        expect.stringContaining(
-          "install -d -o dust-state -g agent -m 2770 /pod-state/databases"
-        ),
-        expect.stringContaining("setfacl -R -d -m g::rwx /pod-state/databases"),
-        expect.stringContaining("setfacl -R -m g::rwx /pod-state/databases"),
         expect.stringContaining(
           "install -d -o root -g root -m 755 /sandbox-state"
         ),
         expect.stringContaining(
+          "install -d -o dust-state -g agent -m 2770 /sandbox-state/databases"
+        ),
+        expect.stringContaining(
+          "setfacl -R -d -m g::rwx /sandbox-state/databases"
+        ),
+        expect.stringContaining(
+          "setfacl -R -m g::rwx /sandbox-state/databases"
+        ),
+        expect.stringContaining(
           "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica"
         ),
+        expect.stringContaining("install -d -o root -g root -m 755 /pod-state"),
+        expect.stringContaining(
+          "ln -s /sandbox-state/databases /pod-state/databases"
+        ),
       ])
+    );
+    expect(
+      runCommands.some((command) =>
+        command.includes(
+          "install -d -o dust-state -g agent -m 2770 /pod-state/databases"
+        )
+      )
+    ).toBe(false);
+    const stateSetupCommand =
+      runCommands.find((command) =>
+        command.includes("ln -s /sandbox-state/databases /pod-state/databases")
+      ) ?? "";
+    expectContentInOrder(
+      stateSetupCommand,
+      "install -d -o dust-state -g agent -m 2770 /sandbox-state/databases",
+      "ln -s /sandbox-state/databases /pod-state/databases"
     );
   });
 
@@ -589,7 +612,7 @@ describe("sandbox image registry", () => {
     );
 
     expect(litestreamUnit).toContain(
-      "Description=Dust Litestream replication daemon for pod state"
+      "Description=Dust Litestream replication daemon for sandbox state"
     );
     expect(litestreamUnit).toContain("User=dust-state");
     expect(litestreamUnit).toContain("Group=dust-state");
@@ -602,9 +625,8 @@ describe("sandbox image registry", () => {
     expect(litestreamUnit).toContain("RuntimeDirectory=litestream");
     expect(litestreamUnit).toContain("NoNewPrivileges=yes");
     expect(litestreamUnit).toContain("ProtectSystem=strict");
-    expect(litestreamUnit).toContain(
-      "ReadWritePaths=/pod-state /sandbox-state"
-    );
+    expect(litestreamUnit).toContain("ReadWritePaths=/sandbox-state");
+    expect(litestreamUnit).not.toContain("ReadWritePaths=/pod-state");
     expect(litestreamUnit).toContain("RestrictAddressFamilies=AF_UNIX");
     expect(litestreamUnit).toContain("MemoryDenyWriteExecute=yes");
 
@@ -639,7 +661,8 @@ describe("sandbox image registry", () => {
 
     // Directory watcher: post-cold-start databases are discovered
     // automatically; the replica subdir is named by db FILENAME ({db}.db).
-    expect(litestreamConfig).toContain("dir: /pod-state/databases");
+    expect(litestreamConfig).toContain("dir: /sandbox-state/databases");
+    expect(litestreamConfig).not.toContain("dir: /pod-state/databases");
     expect(litestreamConfig).toContain('pattern: "*.db"');
     expect(litestreamConfig).toContain("watch: true");
     expect(litestreamConfig).toContain("type: file");
@@ -690,7 +713,7 @@ describe("sandbox image registry", () => {
     );
   });
 
-  test("runs pod-state install ops before the final hardening re-run", () => {
+  test("runs sandbox-state install ops before the final hardening re-run", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
     const lastHardeningIndex = runCommands.reduce(
       (last, command, index) =>
@@ -702,7 +725,7 @@ describe("sandbox image registry", () => {
     const litestreamIndex = runCommands.findIndex((command) =>
       command.includes("benbjohnson/litestream/releases/download")
     );
-    const podStateIndex = runCommands.findIndex((command) =>
+    const sandboxStateIndex = runCommands.findIndex((command) =>
       command.includes("install -d -o dust-state -g agent -m 2770")
     );
     const drizzleIndex = runCommands.findIndex((command) =>
@@ -715,7 +738,7 @@ describe("sandbox image registry", () => {
     expect(lastHardeningIndex).toBeGreaterThanOrEqual(0);
     for (const index of [
       litestreamIndex,
-      podStateIndex,
+      sandboxStateIndex,
       drizzleIndex,
       sandboxPackageMkdirIndex,
     ]) {

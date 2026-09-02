@@ -823,47 +823,65 @@ export function assertRootInvokedHelpersSafe(output: string): void {
   }
 }
 
-const POD_STATE_DIR_EXPECTATIONS = [
-  { path: "/pod-state", owner: "root:root", mode: "755" },
-  { path: "/pod-state/databases", owner: "dust-state:agent", mode: "2770" },
+const SANDBOX_STATE_DIR_EXPECTATIONS = [
   { path: "/sandbox-state", owner: "root:root", mode: "755" },
+  {
+    path: "/sandbox-state/databases",
+    owner: "dust-state:agent",
+    mode: "2770",
+  },
   {
     path: "/sandbox-state/replica",
     owner: "dust-state:dust-state",
     mode: "700",
   },
+  { path: "/pod-state", owner: "root:root", mode: "755" },
 ] as const;
 
-export function assertPodStateDirsSafe(output: string): void {
+const LEGACY_DATABASE_STATE_LINK = {
+  path: "/pod-state/databases",
+  target: "/sandbox-state/databases",
+} as const;
+
+export function assertSandboxStatePathsSafe(output: string): void {
   const lineByPath = new Map<string, string>();
   for (const line of output.split("\n")) {
-    if (!line.startsWith("POD_STATE_DIR=")) {
+    if (!line.startsWith("SANDBOX_STATE_DIR=")) {
       continue;
     }
-    const [path] = line.replace("POD_STATE_DIR=", "").split(/\s+/, 1);
+    const [path] = line.replace("SANDBOX_STATE_DIR=", "").split(/\s+/, 1);
     if (path) {
       lineByPath.set(path, line);
     }
   }
 
-  for (const expectation of POD_STATE_DIR_EXPECTATIONS) {
+  for (const expectation of SANDBOX_STATE_DIR_EXPECTATIONS) {
     const line = lineByPath.get(expectation.path);
     if (!line) {
       throw new Error(
-        `missing pod-state directory audit for ${expectation.path}:\n${output}`
+        `missing sandbox-state directory audit for ${expectation.path}:\n${output}`
       );
     }
 
-    const fields = line.replace("POD_STATE_DIR=", "").split(/\s+/);
+    const fields = line.replace("SANDBOX_STATE_DIR=", "").split(/\s+/);
     const owner = fields[1];
     const mode = fields[2];
 
     if (owner !== expectation.owner || mode !== expectation.mode) {
       throw new Error(
-        `pod-state directory ${expectation.path} must be ${expectation.owner} ` +
+        `sandbox-state directory ${expectation.path} must be ${expectation.owner} ` +
           `mode ${expectation.mode}:\n${line}`
       );
     }
+  }
+
+  const expectedLegacyLink =
+    `SANDBOX_STATE_LEGACY_DATABASE_LINK=${LEGACY_DATABASE_STATE_LINK.path} ` +
+    LEGACY_DATABASE_STATE_LINK.target;
+  if (!output.split("\n").includes(expectedLegacyLink)) {
+    throw new Error(
+      `legacy database state path must be a symlink to ${LEGACY_DATABASE_STATE_LINK.target}:\n${output}`
+    );
   }
 }
 
@@ -954,12 +972,20 @@ for path in ${SANDBOX_ROOT_INVOKED_HELPERS.map((path) => shellQuote(path)).join(
     stat -c '%n %U:%G %a %A' "$path"
   fi
 done
-echo "--- pod-state-dirs ---"
-for dir in ${POD_STATE_DIR_EXPECTATIONS.map((expectation) =>
+echo "--- sandbox-state-paths ---"
+for dir in ${SANDBOX_STATE_DIR_EXPECTATIONS.map((expectation) =>
       shellQuote(expectation.path)
     ).join(" ")}; do
-  stat -c 'POD_STATE_DIR=%n %U:%G %a %A' "$dir"
+  /usr/bin/stat -c 'SANDBOX_STATE_DIR=%n %U:%G %a %A' "$dir"
 done
+if [ -L ${shellQuote(LEGACY_DATABASE_STATE_LINK.path)} ]; then
+  printf 'SANDBOX_STATE_LEGACY_DATABASE_LINK=%s %s\n' \
+    ${shellQuote(LEGACY_DATABASE_STATE_LINK.path)} \
+    "$(/usr/bin/readlink ${shellQuote(LEGACY_DATABASE_STATE_LINK.path)})"
+else
+  printf 'SANDBOX_STATE_LEGACY_DATABASE_LINK=%s %s\n' \
+    ${shellQuote(LEGACY_DATABASE_STATE_LINK.path)} '<not-a-symlink>'
+fi
 echo "--- root-path ---"
 printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
 /bin/bash --noprofile --norc -c 'source /etc/profile; printf "ROOT_LOGIN_PATH=%s\n" "$PATH"'
@@ -975,7 +1001,7 @@ printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
   assertStaticRootConsumedDirsSafe(output);
   assertSystemdUnitPathsSafe(output);
   assertRootInvokedHelpersSafe(output);
-  assertPodStateDirsSafe(output);
+  assertSandboxStatePathsSafe(output);
   assertRootPathSafe(output);
 }
 
@@ -1154,7 +1180,7 @@ fi
   }
 }
 
-async function checkPodStateWorkloadAccess(
+async function checkSandboxDatabaseStateAccess(
   provider: E2BSandboxProvider,
   providerId: string
 ): Promise<void> {
@@ -1166,16 +1192,20 @@ async function checkPodStateWorkloadAccess(
     providerId,
     `
 set -euo pipefail
-test -d /pod-state/databases
-proof=$(mktemp /pod-state/databases/dust-security-smoke-XXXXXX)
+test -d /sandbox-state/databases
+test -L /pod-state/databases
+test "$(readlink /pod-state/databases)" = "/sandbox-state/databases"
+proof=$(mktemp /sandbox-state/databases/dust-security-smoke-XXXXXX)
 printf 'db-ok' > "$proof"
-test "$(cat "$proof")" = "db-ok"
-rm -f "$proof"
+legacy_proof="/pod-state/databases/$(basename "$proof")"
+test "$(cat "$legacy_proof")" = "db-ok"
+rm -f "$legacy_proof"
+test ! -e "$proof"
 `,
     { user: AGENT_PROXIED_USER }
   );
   assertCommandSucceeded(
-    "pod-state databases workload access",
+    "sandbox database state workload access",
     databasesAccess
   );
 
@@ -1208,7 +1238,7 @@ fi
 `,
     { user: AGENT_PROXIED_USER }
   );
-  assertCommandSucceeded("pod-state workload denial probes", denials);
+  assertCommandSucceeded("sandbox-state workload denial probes", denials);
 }
 
 export function assertSshAndDnsHardening(output: string): void {
@@ -1369,7 +1399,7 @@ async function checkImage(image: SandboxImage): Promise<void> {
     await checkControlledUidEgress(provider, providerId);
     await checkRootExecPathHijack(provider, providerId);
     await checkSystemdUnitSearchPathShadow(provider, providerId);
-    await checkPodStateWorkloadAccess(provider, providerId);
+    await checkSandboxDatabaseStateAccess(provider, providerId);
 
     logger.info(
       { imageId, providerId },

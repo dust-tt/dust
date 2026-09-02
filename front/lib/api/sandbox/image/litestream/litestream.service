@@ -1,5 +1,5 @@
 [Unit]
-Description=Dust Litestream replication daemon for pod state
+Description=Dust Litestream replication daemon for sandbox state
 After=network.target
 
 [Service]
@@ -15,18 +15,17 @@ SyslogIdentifier=litestream
 # Control socket directory (/run/litestream), created by systemd as
 # dust-state. The pre-sleep `litestream sync -wait` runs against the socket
 # in there; the socket is enabled by the static /etc/litestream.yml baked at
-# image build (directory-watcher config over /pod-state/databases).
+# image build (directory-watcher config over /sandbox-state/databases).
 RuntimeDirectory=litestream
 RuntimeDirectoryMode=0755
 
 # Defense in depth, modeled on dust-egress-resolver.service. The daemon only
-# needs rw under /pod-state (live databases) and /sandbox-state (replica
-# gcsfuse mount); the
-# control socket is AF_UNIX and the file replica needs no network.
+# needs rw under /sandbox-state (live databases and replica gcsfuse mount).
+# The control socket is AF_UNIX and the file replica needs no network.
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
-ReadWritePaths=/pod-state /sandbox-state
+ReadWritePaths=/sandbox-state
 ProtectHome=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
