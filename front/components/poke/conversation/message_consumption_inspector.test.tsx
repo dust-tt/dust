@@ -122,6 +122,15 @@ describe("PokeMessageConsumptionInspector", () => {
     expect(screen.getByText("1.3 credits")).toBeInTheDocument();
     expect(screen.getByText("Run Research agent")).toBeInTheDocument();
     expect(screen.getByText("Workspace search")).toBeInTheDocument();
+    expect(
+      screen.queryByText("search / semantic_search")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("run_agent / run_research")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Attributed credits reconcile the stored bill/)
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("Reconciled")).toBeInTheDocument();
     expect(

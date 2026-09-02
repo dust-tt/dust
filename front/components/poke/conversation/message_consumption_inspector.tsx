@@ -104,19 +104,12 @@ function ToolRow({ tool, totalCredits }: ToolRowProps) {
               className="text-muted-foreground"
             />
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <p className="text-sm font-medium text-foreground">
-                {tool.label}
-              </p>
-              <Chip size="mini" label={toolUsageLabel(tool.callCount)} />
-              {tool.pending && (
-                <Chip size="mini" color="warning" label="Pending" />
-              )}
-            </div>
-            <p className="mt-0.5 break-all font-mono text-xs text-muted-foreground">
-              {tool.internalMCPServerName ?? "external"} / {tool.toolName}
-            </p>
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <p className="text-sm font-medium text-foreground">{tool.label}</p>
+            <Chip size="mini" label={toolUsageLabel(tool.callCount)} />
+            {tool.pending && (
+              <Chip size="mini" color="warning" label="Pending" />
+            )}
           </div>
         </div>
         <p className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
@@ -472,14 +465,6 @@ export function PokeMessageConsumptionInspector({
                       </ul>
                     </section>
                   )}
-
-                  <p className="border-t border-border pt-4 text-xs text-muted-foreground">
-                    Attributed credits reconcile the stored bill through model
-                    input. Direct tool charge is the tool's own rate-card
-                    charge; the attributed amount also includes the model
-                    footprint and, for run-agent tools, the recursive sub-agent
-                    bill.
-                  </p>
                 </>
               ) : (
                 <div className="rounded-xl border border-border bg-background p-3">
