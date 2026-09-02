@@ -120,6 +120,11 @@ describe("PokeMessageConsumptionInspector", () => {
     );
 
     expect(screen.getByText("Direct message by model")).toBeInTheDocument();
+    expect(screen.getByText("Attribution")).toBeInTheDocument();
+    expect(screen.queryByText("Additive attribution")).not.toBeInTheDocument();
+    expect(screen.queryByText("Direct message")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sub-agent tree")).not.toBeInTheDocument();
+    expect(screen.queryByText("Explained")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Provider and model mix for the originating message.")
     ).not.toBeInTheDocument();

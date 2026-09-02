@@ -35,24 +35,6 @@ function formatShare(credits: number, totalCredits: number): string {
   })}%`;
 }
 
-interface CreditMetricProps {
-  description: string;
-  label: string;
-  value: number | null;
-}
-
-function CreditMetric({ description, label, value }: CreditMetricProps) {
-  return (
-    <div className="min-w-0 rounded-xl border border-border bg-background p-3">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
-        {value === null ? "Not billed" : formatCreditValue(value)}
-      </dd>
-      <dd className="mt-1 text-xs text-muted-foreground">{description}</dd>
-    </div>
-  );
-}
-
 interface ModelRowProps {
   directMessageCredits: number;
   isDark: boolean;
@@ -256,46 +238,22 @@ export function PokeMessageConsumptionInspector({
             <div
               aria-busy="true"
               aria-label="Loading message consumption details"
-              className="space-y-3 p-4"
+              className="p-4"
             >
               <LoadingBlock className="h-16 w-full rounded-xl" />
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <LoadingBlock className="h-20 w-full rounded-xl" />
-                <LoadingBlock className="h-20 w-full rounded-xl" />
-                <LoadingBlock className="h-20 w-full rounded-xl" />
-              </div>
             </div>
           ) : (
             <div className="space-y-5 p-4">
-              <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <CreditMetric
-                  label="Direct message"
-                  value={directMessageCredits}
-                  description="Credits billed on this message."
-                />
-                <CreditMetric
-                  label="Sub-agent tree"
-                  value={resolvedSubAgentBilledCredits}
-                  description="Recursive bill attributed to run-agent tools."
-                />
-                <CreditMetric
-                  label="Explained"
-                  value={explainedCredits}
-                  description="Additive attribution available below."
-                />
-              </dl>
-
               {details ? (
                 <>
                   <section
                     aria-labelledby={`message-${messageId}-attribution-heading`}
-                    className="border-t border-border pt-5"
                   >
                     <h3
                       id={`message-${messageId}-attribution-heading`}
                       className="text-sm font-semibold text-foreground"
                     >
-                      Additive attribution
+                      Attribution
                     </h3>
 
                     {totalCredits > 0 && (
