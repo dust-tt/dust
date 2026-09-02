@@ -1,5 +1,6 @@
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -12,6 +13,12 @@ import type { LightWorkspaceType } from "@app/types/user";
  * Historically we only created a WorkOS organization once a workspace reached
  * an "upgraded" plan or hit the domains flow. We now create one for every
  * workspace at creation time; this script covers the gap for existing rows.
+ *
+ * `getOrCreateWorkOSOrganization` also syncs active members (with a
+ * `workOSUserId`) into the WorkOS organization when the workspace is first
+ * linked. Users without a WorkOS user id are skipped until they authenticate
+ * through WorkOS; use `20250728_backfill_membership_workos.ts` for a fuller
+ * membership reconcile if needed later.
  *
  * Skips relocated stubs (`relocation-done`) so we do not create a new org in
  * the source cell for a workspace that already lives elsewhere.
@@ -53,6 +60,8 @@ makeScript(
       skippedHasOrg: 0,
       skippedRelocationDone: 0,
       created: 0,
+      membersToSync: 0,
+      membersSkippedNoWorkOSUserId: 0,
       errors: 0,
     };
 
@@ -91,6 +100,8 @@ async function backfillWorkspaceWorkOSOrganization({
     skippedHasOrg: number;
     skippedRelocationDone: number;
     created: number;
+    membersToSync: number;
+    membersSkippedNoWorkOSUserId: number;
     errors: number;
   };
 }): Promise<void> {
@@ -120,9 +131,27 @@ async function backfillWorkspaceWorkOSOrganization({
   });
   const domain = domainRow?.domain;
 
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+  });
+  const membersWithWorkOSUserId = memberships.filter(
+    (m) => m.user?.workOSUserId
+  ).length;
+  const membersWithoutWorkOSUserId =
+    memberships.length - membersWithWorkOSUserId;
+
+  stats.membersToSync += membersWithWorkOSUserId;
+  stats.membersSkippedNoWorkOSUserId += membersWithoutWorkOSUserId;
+
   workspaceLogger.info(
-    { domain: domain ?? null, execute },
-    "Will create WorkOS organization"
+    {
+      domain: domain ?? null,
+      execute,
+      activeMembers: memberships.length,
+      membersWithWorkOSUserId,
+      membersWithoutWorkOSUserId,
+    },
+    "Will create WorkOS organization and sync active members"
   );
 
   if (!execute) {
@@ -146,7 +175,11 @@ async function backfillWorkspaceWorkOSOrganization({
 
   stats.created++;
   workspaceLogger.info(
-    { organizationId: orgRes.value.id },
-    "Created WorkOS organization"
+    {
+      organizationId: orgRes.value.id,
+      membersWithWorkOSUserId,
+      membersWithoutWorkOSUserId,
+    },
+    "Created WorkOS organization and synced active members"
   );
 }

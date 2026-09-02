@@ -1,7 +1,6 @@
 import schemaVersionsJson from "@app/lib/api/audit/schema_versions.json";
 import { config as cellConfig } from "@app/lib/api/cells/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import { getWorkOSOrganization } from "@app/lib/api/workos/organization_primitives";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -22,6 +21,45 @@ import {
 import assert from "assert";
 import uniqueId from "lodash/uniqueId";
 
+/**
+ * Ensure active Dust memberships exist as WorkOS organization memberships.
+ * Idempotent create-or-update via `updateWorkOSMembershipRole`.
+ * Users without a `workOSUserId` are skipped (they cannot be linked yet).
+ */
+async function syncActiveMembershipsToWorkOSOrganization({
+  workspace,
+  organizationId,
+}: {
+  workspace: LightWorkspaceType;
+  organizationId: string;
+}): Promise<void> {
+  const workspaceWithOrg: LightWorkspaceType = {
+    ...workspace,
+    workOSOrganizationId: organizationId,
+  };
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace: workspaceWithOrg,
+  });
+
+  await concurrentExecutor(
+    memberships,
+    async (membership) => {
+      const user = membership.user;
+      if (!user?.workOSUserId) {
+        return;
+      }
+
+      await MembershipResource.updateWorkOSMembershipRole({
+        user,
+        workspace: workspaceWithOrg,
+        newRole: membership.role,
+      });
+    },
+    { concurrency: 10 }
+  );
+}
+
 export async function getOrCreateWorkOSOrganization(
   workspace: LightWorkspaceType,
   { domain }: { domain?: string } = {}
@@ -32,7 +70,14 @@ export async function getOrCreateWorkOSOrganization(
       return new Err(organizationRes.error);
     }
 
-    let organization = organizationRes.value;
+    const existingOrganization = organizationRes.value;
+    // Sync members when first linking this workspace to WorkOS (missing DB id)
+    // or when creating a brand-new org. Skip on subsequent lookups (e.g. domains
+    // GET) so we do not re-walk every membership on hot paths.
+    const shouldSyncMemberships =
+      !workspace.workOSOrganizationId || !existingOrganization;
+
+    let organization = existingOrganization;
     if (!organization) {
       organization = await getWorkOS().organizations.createOrganization({
         name: workspace.name,
@@ -50,31 +95,6 @@ export async function getOrCreateWorkOSOrganization(
             ]
           : undefined,
       });
-
-      const { memberships } =
-        await MembershipResource.getMembershipsForWorkspace({
-          workspace,
-          includeUser: true,
-        });
-
-      await concurrentExecutor(
-        memberships,
-        async (membership) => {
-          const user = membership.user;
-          if (!user || !user.workOSUserId || !organization) {
-            return;
-          }
-
-          await getWorkOS().userManagement.createOrganizationMembership({
-            userId: user.workOSUserId,
-            organizationId: organization.id,
-            roleSlug: membership.role,
-          });
-
-          await invalidateWorkOSOrganizationsCacheForUserId(user.workOSUserId);
-        },
-        { concurrency: 10 }
-      );
     }
 
     if (workspace.workOSOrganizationId !== organization.id) {
@@ -82,6 +102,13 @@ export async function getOrCreateWorkOSOrganization(
         workspace.id,
         organization.id
       );
+    }
+
+    if (shouldSyncMemberships) {
+      await syncActiveMembershipsToWorkOSOrganization({
+        workspace,
+        organizationId: organization.id,
+      });
     }
 
     return new Ok(organization);
