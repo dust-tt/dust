@@ -17,6 +17,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   AlertCircle,
   Card,
+  CoinsStacked01,
   cn,
   Icon,
   LayerSingle,
@@ -389,13 +390,13 @@ export function SeatCard({
       size="sm"
       selected={isSelected}
       onClick={onClick}
-      className="w-full flex-col items-stretch gap-2"
+      className="w-full flex-col items-stretch gap-2 ring-0"
     >
-      <div className="flex w-full items-center justify-between">
-        <div className="flex min-w-0 basis-1/2 items-center gap-2">
+      <div className="flex w-full items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-2">
           <div
             className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-lg",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
               iconBackgroundClass
             )}
           >
@@ -405,14 +406,19 @@ export function SeatCard({
               className={getSeatIconColorClass(seatType)}
             />
           </div>
-          <span className="text-base font-semibold text-foreground">
-            {stripYearlySuffix(info.name)}
+          <span className="truncate text-base font-semibold text-foreground">
+            {stripYearlySuffix(info.name).replace(/\s+Seat$/, "")}
           </span>
         </div>
-        <div className="flex min-w-0 basis-1/2 justify-end">{badge}</div>
+        <div className="shrink-0 tabular-nums">{badge}</div>
       </div>
       {info.awuCredits > 0 && (
         <div className="flex items-center gap-2 text-muted-foreground">
+          <Icon
+            visual={CoinsStacked01}
+            size="xs"
+            className="text-muted-foreground"
+          />
           <span className="text-xs">{formatAwuCredits(info)}</span>
         </div>
       )}

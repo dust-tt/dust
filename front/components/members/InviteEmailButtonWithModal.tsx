@@ -26,13 +26,13 @@ import {
 import { useSeatPlan } from "@app/lib/swr/credits";
 import { isEmailValid } from "@app/lib/utils";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
+import { isMembershipSeatType } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
+  Chip,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -88,28 +88,18 @@ function seatBadge(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): ReactNode {
-  if (seatType === "free") {
-    return <span className="text-xs text-foreground">Free if eligible</span>;
-  }
-  const price = formatPriceCents(
-    info.priceCents,
-    info.currency,
-    info.billingFrequency
-  );
-  if (toBaseSeatType(seatType) === "workspace") {
-    return (
-      <span className="text-xs text-foreground">
-        {price} · User can spend credits from the workspace pool.
-      </span>
-    );
-  }
   const openCount = includedSeatsOpen(info);
+  if (openCount > 0) {
+    return <Chip size="xs" color="primary" label={`${openCount} Available`} />;
+  }
+
+  if (seatType === "free") {
+    return <Chip size="xs" color="primary" label="If eligible" />;
+  }
+
   return (
-    <span className="text-xs text-foreground">
-      {price} ·{" "}
-      {openCount > 0
-        ? `${openCount} included seat${pluralize(openCount)} open`
-        : "Plan included seats used. You can still invite new users."}
+    <span className="text-xs text-foreground tabular-nums">
+      {formatPriceCents(info.priceCents, info.currency, info.billingFrequency)}
     </span>
   );
 }
@@ -367,7 +357,7 @@ export function InviteEmailButtonWithModal({
           disabled={disabled}
         />
       </DialogTrigger>
-      <DialogContent size="md">
+      <DialogContent size="lg">
         <DialogHeader>
           <div className="flex flex-col gap-1">
             <DialogTitle>Invite new users</DialogTitle>
@@ -419,7 +409,7 @@ export function InviteEmailButtonWithModal({
                     />
                   </div>
                 )}
-                <div className="flex max-h-64 flex-col gap-2 overflow-y-auto pr-1">
+                <div className="flex flex-col gap-2">
                   {seatTypesByFrequency[activeFrequency].map((seatType) => {
                     const info = seatPlans[seatType];
                     if (!info) {
