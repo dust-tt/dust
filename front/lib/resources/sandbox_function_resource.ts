@@ -1008,10 +1008,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
-      if (
-        !auth.can("read", this.space) &&
-        !auth.can("admin", this.space)
-      ) {
+      if (!auth.can("read", this.space) && !auth.can("admin", this.space)) {
         return new Err(new Error("Sandbox function space is not accessible."));
       }
 

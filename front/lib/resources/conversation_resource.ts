@@ -1127,12 +1127,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // further restrict who can open the conversation — they remain a runtime/scope
     // concern, not a conjunctive ACL. Missing/deleted project spaces deny access.
     const accessiblePodConversations: ConversationResource[] = podConversations
-      .filter(
-        (c) => {
-          const space = spaceIdToSpaceMap.get(c.spaceId);
-          return space ? auth.can("read", space) : false;
-        }
-      )
+      .filter((c) => {
+        const space = spaceIdToSpaceMap.get(c.spaceId);
+        return space ? auth.can("read", space) : false;
+      })
       .map((c) => this.fromModel(c, spaceIdToSpaceMap.get(c.spaceId) ?? null));
 
     // If there are no regular conversations, return the accessible pod conversations immediately.

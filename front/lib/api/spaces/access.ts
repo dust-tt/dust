@@ -88,9 +88,7 @@ export async function listUsersWithoutAccessToSpaces(
   }
 
   const unauthorizedSpaceIds = spaces
-    .filter(
-      (space) => !auth.can("read", space) && !auth.can("admin", space)
-    )
+    .filter((space) => !auth.can("read", space) && !auth.can("admin", space))
     .map((space) => space.sId);
   if (unauthorizedSpaceIds.length > 0) {
     return new Err(
