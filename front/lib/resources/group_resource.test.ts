@@ -845,7 +845,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Pool Cap Group",
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
       expect(regularGroup.poolCapAwuCredits).toBeNull();
 
