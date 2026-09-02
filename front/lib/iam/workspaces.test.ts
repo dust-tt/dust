@@ -1,5 +1,7 @@
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Organization } from "@workos-inc/node";
 import type { Transaction } from "sequelize";
@@ -92,21 +94,31 @@ describe("createWorkspaceInternal", () => {
     expect(workspace.workOSOrganizationId).toBe(`org_${workspace.sId}`);
   });
 
-  it("throws when WorkOS organization creation fails", async () => {
+  it("rolls back the workspace when WorkOS organization creation fails", async () => {
     mockGetOrCreateWorkOSOrganization.mockResolvedValueOnce(
       new Err(new Error("WorkOS unavailable"))
     );
 
-    // Hard-fail: in production `withTransaction` opens a real transaction that
-    // rolls back on throw. Tests reuse the CLS suite transaction, so we only
-    // assert the error bubbles (no soft-fail workspace return).
+    // Nested SAVEPOINT under the CLS test transaction (same pattern as
+    // publication_storage.test.ts) so a throw rolls back only this unit of work.
+    const parentTransaction =
+      getNamespace("test-namespace")?.get("transaction");
+    expect(parentTransaction).toBeDefined();
+
     await expect(
-      createWorkspaceInternal({
-        name: "Workspace Without Org",
-        isBusiness: false,
-        planCode: null,
-        endDate: null,
-      })
+      frontSequelize.transaction({ transaction: parentTransaction }, async () =>
+        createWorkspaceInternal({
+          name: "Workspace Without Org",
+          isBusiness: false,
+          planCode: null,
+          endDate: null,
+        })
+      )
     ).rejects.toThrow("WorkOS unavailable");
+
+    const leftover = await WorkspaceResource.fetchByName(
+      "Workspace Without Org"
+    );
+    expect(leftover).toBeNull();
   });
 });
