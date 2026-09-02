@@ -1,4 +1,4 @@
-import type { SpendCheckpointDecision } from "@app/lib/swr/spend_checkpoint";
+import type { CreditSpendCheckpointDecision } from "@app/lib/swr/credit_spend_checkpoint";
 import {
   Avatar,
   Button,
@@ -8,21 +8,21 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 
-interface SpendCheckpointPausedCardProps {
+interface CreditSpendCheckpointPausedCardProps {
   // Only known right after the stream event that triggered the pause; not persisted, so it's
   // absent after a page refresh. The card still works without it (see the fallback copy below).
   thresholdAwuCredits: number | null;
-  submittingDecision: SpendCheckpointDecision | null;
+  submittingDecision: CreditSpendCheckpointDecision | null;
   onContinue: () => void;
   onDecline: () => void;
 }
 
-export function SpendCheckpointPausedCard({
+export function CreditSpendCheckpointPausedCard({
   thresholdAwuCredits,
   submittingDecision,
   onContinue,
   onDecline,
-}: SpendCheckpointPausedCardProps) {
+}: CreditSpendCheckpointPausedCardProps) {
   const isSubmitting = submittingDecision !== null;
 
   return (

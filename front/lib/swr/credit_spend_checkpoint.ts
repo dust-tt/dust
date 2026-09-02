@@ -3,30 +3,30 @@ import { useFetcher } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
-export type SpendCheckpointDecision = "continue" | "decline";
+export type CreditSpendCheckpointDecision = "continue" | "decline";
 
-interface UseResolveSpendCheckpointPauseParams {
+interface UseResolveCreditSpendCheckpointPauseParams {
   owner: LightWorkspaceType;
   conversationId: string;
   messageId: string;
 }
 
-export function useResolveSpendCheckpointPause({
+export function useResolveCreditSpendCheckpointPause({
   owner,
   conversationId,
   messageId,
-}: UseResolveSpendCheckpointPauseParams) {
+}: UseResolveCreditSpendCheckpointPauseParams) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const [submittingDecision, setSubmittingDecision] =
-    useState<SpendCheckpointDecision | null>(null);
+    useState<CreditSpendCheckpointDecision | null>(null);
 
   const resolve = useCallback(
-    async (decision: SpendCheckpointDecision) => {
+    async (decision: CreditSpendCheckpointDecision) => {
       setSubmittingDecision(decision);
       try {
         await fetcher(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/spend-checkpoint`,
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/credit-spend-checkpoint`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
