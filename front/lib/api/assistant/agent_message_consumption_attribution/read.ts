@@ -5,7 +5,7 @@ import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assi
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
@@ -42,12 +42,67 @@ export async function getAgentMessageConsumption(
     return null;
   }
 
-  const subAgentBilledCredits = facts.directSubAgents.reduce(
-    (total, subAgent) => total + subAgent.subtreeBilledCredits,
+  const directSubAgentRoots = removeNulls(
+    facts.actions.map((action) => {
+      const childConversationId = action.getRunAgentChildConversationId();
+      return childConversationId && childConversationId !== conversation.sId
+        ? { action, childConversationId }
+        : null;
+    })
+  );
+
+  const childConversations = await ConversationResource.fetchByIds(
+    auth,
+    [
+      ...new Set(
+        directSubAgentRoots.map(
+          ({ childConversationId }) => childConversationId
+        )
+      ),
+    ],
+    { includeDeleted: true }
+  );
+
+  const subAgentFactsByConversationId = new Map<
+    string,
+    { agentConfigurationId: string | null; billedCredits: number }
+  >();
+  for (const childConversation of childConversations) {
+    const { messages } =
+      await ConsumptionItemResource.fetchConversationConsumptionFacts(auth, {
+        conversation: childConversation,
+        maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      });
+    const rootMessage = messages.find(
+      (message) => message.conversationId === childConversation.sId
+    );
+
+    subAgentFactsByConversationId.set(childConversation.sId, {
+      agentConfigurationId: rootMessage?.agentConfigurationId ?? null,
+      billedCredits: messages.reduce(
+        (total, message) => total + (message.billedCredits ?? 0),
+        0
+      ),
+    });
+  }
+
+  const subAgents = directSubAgentRoots.map(
+    ({ action, childConversationId }) => {
+      const childFacts = subAgentFactsByConversationId.get(childConversationId);
+      return {
+        action,
+        agentConfigurationId: childFacts?.agentConfigurationId ?? null,
+        billedCredits: childFacts?.billedCredits ?? 0,
+      };
+    }
+  );
+
+  const subAgentBilledCredits = subAgents.reduce(
+    (total, subAgent) => total + subAgent.billedCredits,
     0
   );
   const [hiddenHelperSubAgents, visibleSubAgents] = partition(
-    facts.directSubAgents,
+    subAgents,
     ({ agentConfigurationId }) =>
       agentConfigurationId !== null &&
       isHiddenHelperSubAgentId(agentConfigurationId)
@@ -56,7 +111,7 @@ export async function getAgentMessageConsumption(
     hiddenHelperSubAgents.map(({ action }) => action.id)
   );
   const hiddenSubAgentBilledCredits = hiddenHelperSubAgents.reduce(
-    (total, subAgent) => total + subAgent.subtreeBilledCredits,
+    (total, subAgent) => total + subAgent.billedCredits,
     0
   );
   const totalBilledCredits = (facts.billedCredits ?? 0) + subAgentBilledCredits;
@@ -100,7 +155,7 @@ export async function getAgentMessageConsumption(
       return [
         subAgent.action.id,
         {
-          additionalAttributedCredits: subAgent.subtreeBilledCredits,
+          additionalAttributedCredits: subAgent.billedCredits,
           identity: subAgent.agentConfigurationId
             ? `sub-agent:${subAgent.agentConfigurationId}`
             : `sub-agent-action:${subAgent.action.id}`,
