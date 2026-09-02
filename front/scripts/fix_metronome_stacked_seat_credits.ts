@@ -49,9 +49,16 @@ import {
   findSeatCreditSegmentForPeriod,
   getMetronomeSeatActiveSince,
   getMetronomeSubscriptionSeatState,
+  invalidateCachedCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import type { ContractCreditType } from "@app/lib/metronome/constants";
+import {
+  CONTRACT_CREDIT_TYPE_EXCESS,
+  CONTRACT_CREDIT_TYPE_FREE_SEAT,
+  CONTRACT_CREDIT_TYPE_POOL,
+  getCreditTypeAwuId,
+} from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
@@ -428,6 +435,32 @@ async function fixWorkspace(
       "[StackedFix] corrected stacked seat"
     );
   }
+  // Bust the 1-hour per-user credit-balance Redis cache
+  // (getCachedCustomerPerUserCreditBalances) so poke reflects the corrections
+  // without waiting out the TTL. A manual balance entry does NOT fire the
+  // Metronome credit.create / segment.start webhook that normally invalidates
+  // it, so nothing else clears it. This covers the free-seat / pool surfaces
+  // that read the cache; the pro/max seat balance in the members table is read
+  // LIVE (uncached listMetronomeSeatBalances), so its brief post-correction lag
+  // is Metronome's own seat-balance read model catching up and self-heals.
+  if (applied > 0) {
+    const contractCreditTypes: ContractCreditType[] = [
+      CONTRACT_CREDIT_TYPE_FREE_SEAT,
+      CONTRACT_CREDIT_TYPE_POOL,
+      CONTRACT_CREDIT_TYPE_EXCESS,
+    ];
+    for (const contractCreditType of contractCreditTypes) {
+      await invalidateCachedCustomerPerUserCreditBalances({
+        metronomeCustomerId,
+        contractCreditType,
+      });
+    }
+    logger.info(
+      { workspaceId, metronomeCustomerId },
+      "[StackedFix] invalidated cached per-user credit balances"
+    );
+  }
+
   logger.info(
     { workspaceId, applied, planned: resolved.length },
     "[StackedFix] done"
