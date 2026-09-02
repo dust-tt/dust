@@ -5,6 +5,7 @@ import type {
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import fileStorageConfig from "@app/lib/file_storage/config";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -13,6 +14,7 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import logger from "@app/logger/logger";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -97,7 +99,7 @@ export async function deleteWebhookSource(
   return new Ok(undefined);
 }
 
-type WebhookSourceWithCounts = WebhookSourceType & {
+export type WebhookSourceWithCounts = WebhookSourceType & {
   viewCount: number;
   triggerCount: number;
 };
@@ -140,12 +142,28 @@ export async function listWebhookSourcesWithCounts(
   return results;
 }
 
-type WebhookSourceAdminDetails = {
+export type WebhookSourceAdminDetails = {
   webhookSource: WebhookSourceForAdminType;
   views: WebhookSourceViewForAdminType[];
   triggers: Array<TriggerType & { editorUser: UserType | null }>;
   requestStats: { last24h: number; last7d: number; last30d: number };
+  payloadsGcsUrl: string;
 };
+
+export function makeWebhookRequestsGcsUrl({
+  workspaceId,
+  webhookSourceModelId,
+}: {
+  workspaceId: string;
+  webhookSourceModelId: ModelId;
+}): string {
+  const directory = WebhookRequestResource.getGcsDirectory({
+    workspaceId,
+    webhookSourceModelId,
+  });
+
+  return `https://console.cloud.google.com/storage/browser/${fileStorageConfig.getWebhookRequestsBucket()}/${directory}`;
+}
 
 /**
  * For a given webhook source, return its admin-only JSON, all of its views,
@@ -194,6 +212,10 @@ export async function getWebhookSourceAdminDetails(
     views: views.map((v) => v.toJSONForAdmin()),
     triggers: triggersWithEditors,
     requestStats,
+    payloadsGcsUrl: makeWebhookRequestsGcsUrl({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      webhookSourceModelId: source.id,
+    }),
   };
 }
 

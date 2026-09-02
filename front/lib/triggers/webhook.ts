@@ -574,8 +574,8 @@ async function storePayloadInGCS(
 
   const gcsPath = WebhookRequestResource.getGcsPath({
     workspaceId: auth.getNonNullableWorkspace().sId,
-    webhookSourceId: webhookSource.id,
-    webRequestId: webhookRequest.id,
+    webhookSourceModelId: webhookSource.id,
+    webhookRequestModelId: webhookRequest.id,
   });
 
   try {
@@ -646,8 +646,8 @@ export async function getWebhookRequestPayloadFromGCS(
     const file = bucket.file(
       WebhookRequestResource.getGcsPath({
         workspaceId: auth.getNonNullableWorkspace().sId,
-        webhookSourceId: webhookRequest.webhookSourceId,
-        webRequestId: webhookRequest.id,
+        webhookSourceModelId: webhookRequest.webhookSourceId,
+        webhookRequestModelId: webhookRequest.id,
       })
     );
     const [content] = await file.download();
@@ -852,8 +852,8 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
       if (bucket && requestCanHavePayload) {
         const gcsPath = WebhookRequestResource.getGcsPath({
           workspaceId: workspace.sId,
-          webhookSourceId: wrt.webhookRequest.webhookSourceId,
-          webRequestId: wrt.webhookRequest.id,
+          webhookSourceModelId: wrt.webhookRequest.webhookSourceId,
+          webhookRequestModelId: wrt.webhookRequest.id,
         });
 
         try {
