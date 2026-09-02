@@ -140,6 +140,84 @@ describe("POST /api/email/webhook", () => {
     }
   });
 
+  it("retries a relay after a transient server error", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(
+        Response.json({ received: false }, { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(user.email, {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+      const firstHeaders = fetchMock.mock.calls[0][1].headers;
+      const secondHeaders = fetchMock.mock.calls[2][1].headers;
+      expect(firstHeaders[EMAIL_WEBHOOK_RELAY_ID_HEADER]).toBe(
+        secondHeaders[EMAIL_WEBHOOK_RELAY_ID_HEADER]
+      );
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not retry a relay received before its response failed", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(
+        Response.json({ received: true }, { status: 200 })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(user.email, {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      expect(fetchMock.mock.calls[1][0]).toBe(
+        "http://other-region.test/api/email/webhook/relay-status"
+      );
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not retry against a target without receipt support", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(user.email, {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() =>
+        expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("records a relay receipt and ignores a duplicate", async () => {
     const relayId = randomUUID();
     const headers = {

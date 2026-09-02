@@ -23,6 +23,7 @@ import {
 import apiConfig from "@app/lib/api/config";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -32,6 +33,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
+import { z } from "zod";
 
 /**
  * Node-style headers shape: matches the record built from
@@ -60,6 +62,10 @@ export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
 const EMAIL_RELAY_RECEIPT_TTL_SECONDS = 60 * 60;
+const EMAIL_RELAY_RETRY_DELAY_MS = 200;
+const HTTP_SERVER_ERROR_STATUS_MIN = 500;
+
+const RemoteRelayReceiptSchema = z.object({ received: z.boolean() });
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
@@ -213,12 +219,135 @@ export async function hasEmailRelayReceipt(relayId: string): Promise<boolean> {
   return Boolean(await redis.get(makeEmailRelayKey(relayId)));
 }
 
+async function getRemoteRelayReceipt({
+  url,
+  relayId,
+}: {
+  url: string;
+  relayId: string;
+}): Promise<Result<boolean, Error>> {
+  try {
+    const response = await fetch(`${url}/api/email/webhook/relay-status`, {
+      headers: {
+        Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+        [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+        [EMAIL_WEBHOOK_RELAY_ID_HEADER]: relayId,
+      },
+    });
+    if (!response.ok) {
+      return new Err(
+        new Error(`Relay receipt lookup failed with status ${response.status}`)
+      );
+    }
+
+    const bodyRes = RemoteRelayReceiptSchema.safeParse(await response.json());
+    if (!bodyRes.success) {
+      return new Err(
+        new Error("Relay receipt lookup returned an invalid body")
+      );
+    }
+
+    return new Ok(bodyRes.data.received);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+async function postEmailRelay({
+  url,
+  name,
+  headers,
+  formData,
+}: {
+  url: string;
+  name: string;
+  headers: Record<string, string>;
+  formData: FormData;
+}): Promise<Result<Response, Error>> {
+  try {
+    const response = await fetch(`${url}/api/email/webhook`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (response.status >= HTTP_SERVER_ERROR_STATUS_MIN) {
+      return new Err(
+        new Error(
+          `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+        )
+      );
+    }
+    return new Ok(response);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+async function sendEmailRelay({
+  url,
+  name,
+  relayId,
+  senderEmail,
+  headers,
+  formData,
+}: {
+  url: string;
+  name: string;
+  relayId: string;
+  senderEmail: string;
+  headers: Record<string, string>;
+  formData: FormData;
+}): Promise<Result<void, Error>> {
+  let responseRes = await postEmailRelay({ url, name, headers, formData });
+  if (responseRes.isErr()) {
+    const receiptRes = await getRemoteRelayReceipt({ url, relayId });
+    if (receiptRes.isOk() && receiptRes.value) {
+      return new Ok(undefined);
+    }
+    if (receiptRes.isErr()) {
+      return new Err(responseRes.error);
+    }
+
+    logger.warn(
+      {
+        error: responseRes.error,
+        senderEmail,
+        sourceRegion: regionsConfig.getCurrentRegion(),
+        targetRegion: name,
+      },
+      "[email] Retrying inbound email relay"
+    );
+    await setTimeoutAsync(EMAIL_RELAY_RETRY_DELAY_MS);
+    responseRes = await postEmailRelay({ url, name, headers, formData });
+
+    if (responseRes.isErr()) {
+      const retryReceiptRes = await getRemoteRelayReceipt({ url, relayId });
+      if (retryReceiptRes.isOk() && retryReceiptRes.value) {
+        return new Ok(undefined);
+      }
+    }
+  }
+
+  if (responseRes.isErr()) {
+    return new Err(responseRes.error);
+  }
+  if (!responseRes.value.ok) {
+    return new Err(
+      new Error(
+        `Relay to ${name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
+      )
+    );
+  }
+  return new Ok(undefined);
+}
+
 export async function relayEmailToOtherRegion(
   email: InboundEmail,
   { sourceError }: { sourceError: EmailTriggerError }
 ): Promise<Result<void, Error>> {
   try {
     const { url, name } = regionsConfig.getOtherRegionInfo();
+    const relayId = randomUUID();
     const formData = new FormData();
 
     formData.set("subject", email.subject);
@@ -241,25 +370,25 @@ export async function relayEmailToOtherRegion(
       );
     }
 
-    const response = await fetch(`${url}/api/email/webhook`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
-        [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
-        [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
-          regionsConfig.getCurrentRegion(),
-        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
-        [EMAIL_WEBHOOK_RELAY_ID_HEADER]: randomUUID(),
-      },
-      body: formData,
-    });
+    const relayHeaders = {
+      Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+      [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+      [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
+        regionsConfig.getCurrentRegion(),
+      [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
+      [EMAIL_WEBHOOK_RELAY_ID_HEADER]: relayId,
+    };
 
-    if (!response.ok) {
-      return new Err(
-        new Error(
-          `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
-        )
-      );
+    const relayRes = await sendEmailRelay({
+      url,
+      name,
+      relayId,
+      senderEmail: email.sender.email,
+      headers: relayHeaders,
+      formData,
+    });
+    if (relayRes.isErr()) {
+      return relayRes;
     }
 
     logger.info(
