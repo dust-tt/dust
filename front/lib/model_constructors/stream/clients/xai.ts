@@ -1,9 +1,6 @@
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
-import {
-  makeStreamErrorToErrorEvent,
-  rawOutputToEvents,
-} from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { XAI_HOST } from "@app/lib/model_constructors/types/hosts";
@@ -33,8 +30,6 @@ export abstract class XaiStream extends WithOpenAIResponsesInputConverter(
   static readonly host = XAI_HOST;
 
   static readonly configSchema: z.ZodType<InputConfig> = inputConfigSchema;
-
-  override streamErrorToErrorEvent = makeStreamErrorToErrorEvent("xAI");
 
   private readonly client: OpenAI;
 

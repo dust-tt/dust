@@ -1,4 +1,9 @@
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import {
+  FIREWORKS_HOST,
+  OPENAI_RESPONSES_HOST,
+  XAI_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import type { ErrorEvent } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
@@ -10,15 +15,28 @@ import {
   APIUserAbortError,
 } from "openai";
 
+function providerNameForHost(host: EndpointMetadata["host"]): string {
+  switch (host) {
+    case OPENAI_RESPONSES_HOST:
+      return "OpenAI";
+    case FIREWORKS_HOST:
+      return "Fireworks";
+    case XAI_HOST:
+      return "xAI";
+    default:
+      return "OpenAI-compatible provider";
+  }
+}
+
 // Shared by every adapter built on the `openai` SDK (Fireworks via chat
-// completions, OpenAI/xAI/Fireworks via responses). The SDK error classes and
-// the way a typed HTTP error exposes its status are identical; only the provider
-// name differs, so it is passed in.
+// completions, OpenAI/xAI/Fireworks via responses). The provider is derived from
+// endpoint metadata so clients cannot accidentally override it inconsistently.
 export function openaiStreamErrorToErrorEvent(
   metadata: EndpointMetadata,
-  error: unknown,
-  providerName: string
+  error: unknown
 ): ErrorEvent {
+  const providerName = providerNameForHost(metadata.host);
+
   // Abort, timeout, and connection errors all extend `APIError`, so they are
   // checked first. `APIConnectionTimeoutError` extends `APIConnectionError`, so
   // it must be checked before it. They only hint the code/name classifier, which

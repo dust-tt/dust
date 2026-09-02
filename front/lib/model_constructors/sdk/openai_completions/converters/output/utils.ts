@@ -1,7 +1,6 @@
 import { openaiStreamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
-  ErrorEvent,
   ModelResponseEvent,
   ReasoningEvent,
   TextEvent,
@@ -64,15 +63,6 @@ function usageToTokenUsageEvent(
   };
 }
 
-// Maps any error thrown while streaming into a unified `ErrorEvent`, so
-// everything leaving the endpoint is an event, not an exception.
-export function streamErrorToErrorEvent(
-  metadata: EndpointMetadata,
-  error: unknown
-): ErrorEvent {
-  return openaiStreamErrorToErrorEvent(metadata, error, "Fireworks");
-}
-
 type Accumulator = { textParts: string; reasoningParts: string };
 
 type ToolCallAccumulator = {
@@ -132,7 +122,7 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
-      yield streamErrorToErrorEvent(metadata, err);
+      yield openaiStreamErrorToErrorEvent(metadata, err);
       return;
     }
     if (result.done) {

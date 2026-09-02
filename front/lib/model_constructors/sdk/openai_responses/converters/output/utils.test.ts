@@ -464,14 +464,26 @@ describe("rawOutputToEvents", () => {
 });
 
 describe("streamErrorToErrorEvent", () => {
-  // The shared OpenAI helper is covered exhaustively by the completions tests;
-  // keep one adapter-level assertion that Responses delegates transport errors.
-  it("maps APIConnectionError to a network_error without blaming the provider", () => {
+  it.each([
+    ["openai-responses", "OpenAI"],
+    ["fireworks", "Fireworks"],
+    ["xai", "xAI"],
+  ] as const)("derives %s provider attribution from metadata", (host, providerName) => {
     const result = streamErrorToErrorEvent(
-      metadata,
+      { ...metadata, host },
       new APIConnectionError({ message: "connection reset" })
     );
     expect(result.content.type).toBe("network_error");
     expect(result.content.errorSource).toBe("unknown");
+    expect(result.content.message).toContain(providerName);
+  });
+
+  it("does not mask the original error for an unsupported host", () => {
+    const result = streamErrorToErrorEvent(
+      { ...metadata, host: "noop" },
+      new APIConnectionError({ message: "connection reset" })
+    );
+    expect(result.content.type).toBe("network_error");
+    expect(result.content.message).toContain("OpenAI-compatible provider");
   });
 });

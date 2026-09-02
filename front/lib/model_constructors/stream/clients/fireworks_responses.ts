@@ -6,10 +6,7 @@ import type { FireworksInputConfig } from "@app/lib/model_constructors/providers
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
-import {
-  makeStreamErrorToErrorEvent,
-  rawOutputToEvents,
-} from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { FIREWORKS_HOST } from "@app/lib/model_constructors/types/hosts";
@@ -39,8 +36,6 @@ export abstract class FireworksResponsesStream extends WithOpenAIResponsesInputC
   static readonly host = FIREWORKS_HOST;
 
   static readonly configSchema = fireworksConfigSchema;
-
-  override streamErrorToErrorEvent = makeStreamErrorToErrorEvent("Fireworks");
 
   // Fireworks' Responses API is "OpenAI-compatible" but never documents the
   // roles it accepts on input: https://docs.fireworks.ai/api-reference/post-responses
