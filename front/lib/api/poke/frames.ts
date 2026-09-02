@@ -2,6 +2,10 @@ import path from "node:path";
 
 import { loadFramePublicationDescriptor } from "@app/lib/api/frames/publication_storage";
 import type { PokePodFunction } from "@app/lib/api/poke/projects";
+import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import type { LiveDatabaseEntry } from "@app/lib/api/sandbox_functions/dsbx_db";
+import { listDatabasesOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
+import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import filestorageConfig from "@app/lib/file_storage/config";
 import { makeGcsConsoleUrl, makeGcsUri } from "@app/lib/poke/gcs";
@@ -17,6 +21,8 @@ import {
 } from "@app/types/api/frame_storage";
 import type { FileStatus } from "@app/types/files";
 import type { PokeSandboxType } from "@app/types/poke";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 export type PokeFrameListItem = {
@@ -288,4 +294,30 @@ export async function listFrameFunctions(
       userId !== null ? (authorsByModelId.get(userId) ?? null) : null
     );
   });
+}
+
+export type PokeListFrameDatabases = {
+  items: LiveDatabaseEntry[];
+};
+
+/**
+ * There is no database-backed record of a Frame's databases: the only source of truth is the live
+ * `{db}.db` files in the Frame sandbox, so this wakes (or cold starts) it. Poke fetches it on
+ * explicit user action only.
+ */
+export async function listFrameDatabases(
+  auth: Authenticator,
+  frame: FileResource
+): Promise<Result<LiveDatabaseEntry[], SandboxFunctionError>> {
+  const ensureResult = await ensureFrameSandboxReady(auth, frame);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+
+  return listDatabasesOnReadySandbox(auth, ensureResult.value.sandbox);
 }
