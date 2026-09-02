@@ -503,7 +503,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   // "paused": loop stopped after crossing the spend checkpoint, waiting on the user.
   // Declining sets the message status to "gracefully_stopped"
   // "acknowledged": user confirmed continuing, kept for the rest of the message's lifetime.
-  declare spendCheckpointStatus: "paused" | "acknowledged" | null;
+  declare creditSpendCheckpointStatus: "paused" | "acknowledged" | null;
 
   // The concrete provider/model/effort triplet used by the message when
   // running the agent. Legacy: null when the message runs the agent's configured model.
@@ -600,7 +600,7 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: false,
     },
-    spendCheckpointStatus: {
+    creditSpendCheckpointStatus: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
