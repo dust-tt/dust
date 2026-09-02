@@ -1,4 +1,3 @@
-import { defineCachedResourceLookup } from "@app/lib/api/resources/cached_resource_lookup";
 import {
   listWorkOSOrganizationsWithDomain,
   removeWorkOSOrganizationDomain,
@@ -15,11 +14,13 @@ import {
   hasAnyPlanLimitOverride,
   OVERRIDABLE_PLAN_LIMITS,
 } from "@app/lib/plans/plan_limit_overrides";
+import type { KillSwitchType } from "@app/lib/poke/types";
 import type {
   ResourceLogJSON,
   ResourceUpdateBlob,
 } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { defineCachedResourceStore } from "@app/lib/resources/cached_resource_store";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -33,7 +34,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
 import type {
   WorkspacePoolCreditState,
   WorkspaceProgrammaticCreditState,
@@ -45,10 +45,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, isStringArray } from "@app/types/shared/utils/general";
-import type {
-  WorkspaceSegmentationType,
-  WorkspaceSharingPolicy,
-} from "@app/types/user";
+import type { WorkspaceSegmentationType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type {
   Attributes,
@@ -67,29 +64,6 @@ const WORKSPACE_CACHE_KEY_VERSION = 3;
 
 export type WorkspaceConversationKillSwitchValue = {
   conversationIds: string[];
-};
-
-// We use this to avoid accidentaly inflating the cache footprint
-// Add new attributes with caution
-type CachedWorkspaceData = {
-  id: ModelId;
-  sId: string;
-  name: string;
-  description: string | null;
-  segmentation: WorkspaceSegmentationType | null;
-  ssoEnforced: boolean;
-  regionalModelsOnly: boolean;
-  workOSOrganizationId: string | null;
-  whiteListedProviders: ModelProviderIdType[] | null;
-  defaultEmbeddingProvider: EmbeddingProviderIdType | null;
-  metadata: Record<string, string | number | boolean | object> | null;
-  sharingPolicy: WorkspaceSharingPolicy;
-  conversationsRetentionDays: number | null;
-  metronomeCustomerId: string | null;
-  poolCreditState: WorkspacePoolCreditState;
-  programmaticCreditState: WorkspaceProgrammaticCreditState;
-  createdAt: number;
-  updatedAt: number;
 };
 
 type WorkspaceModelIdBatchRow = {
@@ -173,88 +147,27 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     this.blob = blob;
   }
 
-  private toCacheSnapshot(): CachedWorkspaceData {
-    return {
-      id: this.id,
-      sId: this.sId,
-      name: this.name,
-      description: this.description,
-      segmentation: this.segmentation,
-      ssoEnforced: this.ssoEnforced ?? false,
-      regionalModelsOnly: this.regionalModelsOnly,
-      workOSOrganizationId: this.workOSOrganizationId,
-      whiteListedProviders: this.whiteListedProviders,
-      defaultEmbeddingProvider: this.defaultEmbeddingProvider,
-      metadata: this.metadata,
-      sharingPolicy: this.sharingPolicy,
-      conversationsRetentionDays: this.conversationsRetentionDays,
-      metronomeCustomerId: this.metronomeCustomerId ?? null,
-      poolCreditState: this.poolCreditState,
-      programmaticCreditState: this.programmaticCreditState,
-      createdAt: this.createdAt.getTime(),
-      updatedAt: this.updatedAt.getTime(),
-    };
-  }
-
-  private static fromCacheSnapshot(
-    data: CachedWorkspaceData
-  ): WorkspaceResource {
-    const blob: Attributes<WorkspaceModel> = {
-      id: data.id,
-      sId: data.sId,
-      name: data.name,
-      description: data.description,
-      segmentation: data.segmentation,
-      ssoEnforced: data.ssoEnforced,
-      regionalModelsOnly: data.regionalModelsOnly,
-      workOSOrganizationId: data.workOSOrganizationId,
-      whiteListedProviders: data.whiteListedProviders,
-      defaultEmbeddingProvider: data.defaultEmbeddingProvider,
-      metadata: data.metadata,
-      sharingPolicy: data.sharingPolicy,
-      conversationsRetentionDays: data.conversationsRetentionDays,
-      metronomeCustomerId: data.metronomeCustomerId ?? null,
-      poolCreditState: data.poolCreditState,
-      programmaticCreditState: data.programmaticCreditState,
-      createdAt: new Date(data.createdAt),
-      updatedAt: new Date(data.updatedAt),
-    };
-    return new WorkspaceResource(WorkspaceModel, blob);
-  }
-
-  private static async fetchByIdFromDatabase(
-    workspaceId: string,
-    transaction?: Transaction
-  ): Promise<WorkspaceResource | null> {
-    const workspace = await WorkspaceModel.findOne({
-      where: { sId: workspaceId },
-      transaction,
-    });
-    return workspace
-      ? new WorkspaceResource(WorkspaceModel, workspace.get())
-      : null;
-  }
-
-  private static readonly byIdCache = defineCachedResourceLookup({
-    id: "workspace_by_sid",
-    version: WORKSPACE_CACHE_KEY_VERSION,
-    key: (workspaceId: string) => workspaceId,
-    migration: {
-      previousKey: {
-        cacheId: "_fetchByIdUncached",
-        key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
-        keyPattern: "workspace:v2:*",
+  private static readonly store = defineCachedResourceStore({
+    model: WorkspaceModel,
+    materialize: (blobs) => WorkspaceResource.materialize(blobs),
+    cache: {
+      id: "workspace_by_sid",
+      version: WORKSPACE_CACHE_KEY_VERSION,
+      keyAttribute: "sId",
+      migration: {
+        previousKey: {
+          cacheId: "_fetchByIdUncached",
+          key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
+          keyPattern: "workspace:v2:*",
+        },
+        readFrom: "new",
+        copyToOtherKey: "after_read",
       },
-      readFrom: "new",
-      copyToOtherKey: "after_read",
     },
-    loadFromDatabase: WorkspaceResource.fetchByIdFromDatabase,
-    toSnapshot: (workspace) => workspace.toCacheSnapshot(),
-    fromSnapshot: WorkspaceResource.fromCacheSnapshot,
   });
 
   static readonly byIdCacheOperations =
-    WorkspaceResource.byIdCache.createCacheOperations({
+    WorkspaceResource.store.createCacheOperations({
       label: "Workspace (by sId)",
       inputSchema: z.object({ wId: z.string().min(1) }),
       params: [
@@ -299,12 +212,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return killSwitched.conversationIds.includes(conversationId);
   }
 
-  public static async getWhiteListedProvidersFilteredByKillSwitches(
-    whiteListedProviders: ModelProviderIdType[] | null
-  ): Promise<ModelProviderIdType[] | null> {
-    const enabledKillSwitches =
-      await KillSwitchResource.listEnabledKillSwitches();
-
+  private static filterKillSwitchedProviders(
+    whiteListedProviders: ModelProviderIdType[] | null,
+    enabledKillSwitches: KillSwitchType[]
+  ): ModelProviderIdType[] | null {
     const isAnthropicBlacklisted = enabledKillSwitches.includes(
       "global_blacklist_anthropic"
     );
@@ -321,8 +232,47 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return whiteListedProviders;
   }
 
+  public static async getWhiteListedProvidersFilteredByKillSwitches(
+    whiteListedProviders: ModelProviderIdType[] | null
+  ): Promise<ModelProviderIdType[] | null> {
+    const enabledKillSwitches =
+      await KillSwitchResource.listEnabledKillSwitches();
+    return WorkspaceResource.filterKillSwitchedProviders(
+      whiteListedProviders,
+      enabledKillSwitches
+    );
+  }
+
+  // Materialization: the single seam where fetched blobs become resources, run by every fetch
+  // path (cached or not). This is where context outside the row is folded in: provider kill
+  // switches here, so a WorkspaceResource always carries the effective whiteListedProviders while
+  // the cache keeps the raw column value. Never persist whiteListedProviders read from a
+  // materialized resource: that would make a temporary kill switch permanent.
+  // TODO(2026-08-21 flav): Move the kill-switch overlay to its consumption points (Authenticator
+  // and model gating) so workspace fetches stay pure and this materialize becomes plain
+  // construction.
+  private static async materialize(
+    blobs: Attributes<WorkspaceModel>[]
+  ): Promise<WorkspaceResource[]> {
+    if (blobs.length === 0) {
+      return [];
+    }
+    const enabledKillSwitches =
+      await KillSwitchResource.listEnabledKillSwitches();
+    return blobs.map(
+      (blob) =>
+        new WorkspaceResource(WorkspaceModel, {
+          ...blob,
+          whiteListedProviders: WorkspaceResource.filterKillSwitchedProviders(
+            blob.whiteListedProviders,
+            enabledKillSwitches
+          ),
+        })
+    );
+  }
+
   static async invalidateCache(workspaceId: string): Promise<void> {
-    await WorkspaceResource.byIdCache.invalidate(workspaceId);
+    await WorkspaceResource.store.invalidateCached(workspaceId);
   }
 
   protected override async update(
@@ -342,66 +292,49 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     }
 
     const result = await super.update(blob, transaction);
-    await WorkspaceResource.byIdCache.invalidate(this.sId, transaction);
+    await WorkspaceResource.store.invalidateBlob(this.blob, transaction);
     return result;
   }
 
   static async makeNew(
     blob: CreationAttributes<WorkspaceModel>
   ): Promise<WorkspaceResource> {
-    const workspace = await this.model.create(blob);
-    const workspaceResource = new this(this.model, workspace.get());
-
-    await WorkspaceResource.byIdCache.invalidate(workspaceResource.sId);
-
-    return workspaceResource;
+    return WorkspaceResource.store.create(blob);
   }
 
   static async fetchById(
     wId: string,
     transaction?: Transaction
   ): Promise<WorkspaceResource | null> {
-    const workspace = await WorkspaceResource.byIdCache.fetch(wId, transaction);
-    if (!workspace) {
-      return null;
-    }
-    const whiteListedProviders =
-      await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
-        workspace.whiteListedProviders
-      );
-    return new WorkspaceResource(WorkspaceModel, {
-      ...workspace.blob,
-      whiteListedProviders,
-    });
+    return WorkspaceResource.store.fetchCached(wId, transaction);
   }
 
   static async fetchByName(name: string): Promise<WorkspaceResource | null> {
-    const workspace = await this.model.findOne({
+    const [workspace] = await this.store.baseFetch({
       where: { name },
+      limit: 1,
     });
-    return workspace ? new this(this.model, workspace.get()) : null;
+    return workspace ?? null;
   }
 
   static async fetchByModelIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
-    const workspaces = await this.model.findAll({
+    return this.store.baseFetch({
       where: {
         id: {
           [Op.in]: ids,
         },
       },
     });
-    return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
 
   static async fetchByIds(wIds: string[]): Promise<WorkspaceResource[]> {
-    const workspaces = await this.model.findAll({
+    return this.store.baseFetch({
       where: {
         sId: {
           [Op.in]: wIds,
         },
       },
     });
-    return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
 
   static async fetchModelIdsByIds(wIds: string[]): Promise<ModelId[]> {
@@ -431,8 +364,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       return null;
     }
 
-    const workspace = await this.model.findOne({
+    const [workspace] = await this.store.baseFetch({
       where: { id: workspaceDomain.workspaceId },
+      limit: 1,
     });
 
     if (!workspace) {
@@ -440,7 +374,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     }
 
     return {
-      workspace: new this(this.model, workspace.get()),
+      workspace,
       domainInfo: {
         domain: workspaceDomain.domain,
         domainAutoJoinEnabled: workspaceDomain.domainAutoJoinEnabled,
@@ -470,26 +404,27 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static async fetchByMetronomeCustomerId(
     metronomeCustomerId: string
   ): Promise<WorkspaceResource | null> {
-    const workspace = await this.model.findOne({
+    const [workspace] = await this.store.baseFetch({
       where: { metronomeCustomerId },
+      limit: 1,
     });
-    return workspace ? new this(this.model, workspace.get()) : null;
+    return workspace ?? null;
   }
 
   static async fetchByWorkOSOrganizationId(
     workOSOrganizationId: string
   ): Promise<WorkspaceResource | null> {
-    const workspace = await this.model.findOne({
+    const [workspace] = await this.store.baseFetch({
       where: { workOSOrganizationId },
+      limit: 1,
     });
-    return workspace ? new this(this.model, workspace.get()) : null;
+    return workspace ?? null;
   }
 
   static async listAll(order?: "ASC" | "DESC"): Promise<WorkspaceResource[]> {
-    const workspaces = await this.model.findAll({
+    return this.store.baseFetch({
       ...(order && { order: [["id", order]] }),
     });
-    return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
 
   static async listAllModelIds(order?: "ASC" | "DESC"): Promise<ModelId[]> {
@@ -555,10 +490,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     if (workspaceModelIds.length === 0) {
       return [];
     }
-    const workspaces = await this.model.findAll({
+    return this.store.baseFetch({
       where: { id: { [Op.in]: workspaceModelIds } },
     });
-    return workspaces.map((w) => new this(this.model, w.get()));
   }
 
   async updateSegmentation(segmentation: WorkspaceSegmentationType) {
@@ -1143,7 +1077,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         where: { id: this.blob.id },
         transaction,
       });
-      await WorkspaceResource.byIdCache.invalidate(this.sId, transaction);
+      await WorkspaceResource.store.invalidateBlob(this.blob, transaction);
       return new Ok(deletedCount);
     } catch (error) {
       return new Err(normalizeError(error));
