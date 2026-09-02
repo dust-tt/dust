@@ -180,7 +180,9 @@ interface AwuUsageBarProps {
   seatBalanceAwu?: number | null;
   // The fully-resolved spend cap from `spendLimitAwuCredits` (member override,
   // group cap or workspace default, all including seat allowance). `null`
-  // means uncapped
+  // means no cap could be resolved and is treated as no pool access (capped
+  // at the seat allowance) — unlimited/uncapped is not a supported product
+  // state right now.
   effectiveLimit: number | null;
   // Where `effectiveLimit` comes from — shown as a tooltip on the limit figure.
   spendLimitSource: EffectiveSpendLimitSource;
@@ -234,49 +236,44 @@ export function AwuUsageBar({
   const lifetimeConsumed = isFreeWithBalance
     ? Math.max(0, memberUsageLimit - seatBalanceAwu!)
     : null;
-  // Uncapped is not a real product state: fall back to seat allowance when no
-  // explicit spend limit is configured (no pool access).
+  // Unlimited/uncapped is not a supported product state right now: a `null`
+  // effective limit is treated as no pool access (capped at the seat
+  // allowance), same as an explicit "none" seat.
   // The bar splits consumption into seat → pool → overage:
   //   seat consumed · seat remaining · pool consumed · pool remaining · overage
   // `poolLimit` is the headroom above the seat allowance (0 = seat-only, e.g. free).
   // A seat with no pool (poolLimit === 0) shows no pool section —
   // any spend beyond the seat allowance is overage. Zero-width sections are
-  // skipped. `pool remaining` is omitted when uncapped (no finite headroom).
+  // skipped.
   const seatConsumed = isFreeWithBalance
     ? lifetimeConsumed!
     : consumedFromAllowance;
   const seatRemaining = isFreeWithBalance
     ? seatBalanceAwu!
     : Math.max(0, allowance - seatConsumed);
-  const poolLimit =
-    effectiveLimit !== null ? Math.max(0, effectiveLimit - allowance) : null;
+  const resolvedEffectiveLimit = effectiveLimit ?? allowance;
+  const poolLimit = Math.max(0, resolvedEffectiveLimit - allowance);
   // Of the pool consumption, the part within the pool limit vs. the overage
-  // beyond it (only capped seats can have overage).
-  const poolConsumed =
-    poolLimit !== null
-      ? Math.min(consumedFromPool, poolLimit)
-      : consumedFromPool;
-  const poolRemaining =
-    poolLimit !== null ? Math.max(0, poolLimit - poolConsumed) : null;
-  const overage =
-    poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
+  // beyond it.
+  const poolConsumed = Math.min(consumedFromPool, poolLimit);
+  const poolRemaining = Math.max(0, poolLimit - poolConsumed);
+  const overage = Math.max(0, consumedFromPool - poolLimit);
 
   if (poolOnly) {
-    const isOverPoolLimit = poolLimit !== null && consumedFromPool > poolLimit;
-    const isAtPoolLimit =
-      poolLimit !== null && poolLimit > 0 && consumedFromPool === poolLimit;
+    const isOverPoolLimit = consumedFromPool > poolLimit;
+    const isAtPoolLimit = poolLimit > 0 && consumedFromPool === poolLimit;
     const fillClassName = isOverPoolLimit
       ? OVER_POOL_LIMIT_BAR_CLASSES.fill
       : isAtPoolLimit
         ? AT_POOL_LIMIT_BAR_CLASSES.fill
         : MUTED_BAR_CLASSES.fill;
     const percentage =
-      poolLimit !== null && poolLimit > 0
+      poolLimit > 0
         ? Math.min(100, (consumedFromPool / poolLimit) * 100)
         : consumedFromPool > 0
           ? 100
           : 0;
-    const limitLabel = poolLimit === null ? "∞" : formatCredits(poolLimit);
+    const limitLabel = formatCredits(poolLimit);
     return (
       <div className="flex w-full flex-col gap-1">
         <div className="flex justify-between text-xs tabular-nums text-foreground">
@@ -326,7 +323,7 @@ export function AwuUsageBar({
       label: `${formatCredits(poolConsumed)} credits used from the workspace pool`,
     });
   }
-  if (poolRemaining !== null && poolRemaining > 0) {
+  if (poolRemaining > 0) {
     sections.push({
       value: poolRemaining,
       className: MUTED_BAR_CLASSES.track,
@@ -344,11 +341,10 @@ export function AwuUsageBar({
       : 0;
 
   const hasSeatSections = seatConsumed > 0 || seatRemaining > 0;
-  // Only surface the pool when there's actually a pool to spend from: a finite
-  // positive limit, or uncapped (null). A zero pool limit (free) has no pool.
+  // Only surface the pool when there's actually a pool to spend from (a
+  // zero pool limit, e.g. free/none, has no pool).
   const hasPoolSections =
-    (poolLimit === null || poolLimit > 0) &&
-    (poolConsumed > 0 || (poolRemaining !== null && poolRemaining > 0));
+    poolLimit > 0 && (poolConsumed > 0 || poolRemaining > 0);
 
   const tooltipLines: Array<{
     track: string;
@@ -369,10 +365,7 @@ export function AwuUsageBar({
       track: MUTED_BAR_CLASSES.track,
       fill: MUTED_BAR_CLASSES.fill,
       legend: "Pool usage",
-      usage:
-        poolLimit !== null
-          ? `${formatCredits(poolConsumed)} credits used out of ${formatCredits(poolLimit)}`
-          : `${formatCredits(poolConsumed)} credits used`,
+      usage: `${formatCredits(poolConsumed)} credits used out of ${formatCredits(poolLimit)}`,
     });
   }
   if (overage > 0) {
@@ -429,13 +422,9 @@ export function AwuUsageBar({
 
   const headlineConsumed = isFreeWithBalance
     ? Math.min(lifetimeConsumed! + overage, allowance)
-    : effectiveLimit !== null
-      ? Math.min(consumed, effectiveLimit)
-      : consumed;
-  // null means uncapped
-  const headlineLimit = isFreeWithBalance ? allowance : effectiveLimit;
-  const headlineLimitLabel =
-    headlineLimit === null ? "Unlimited" : formatCredits(headlineLimit);
+    : Math.min(consumed, resolvedEffectiveLimit);
+  const headlineLimit = isFreeWithBalance ? allowance : resolvedEffectiveLimit;
+  const headlineLimitLabel = formatCredits(headlineLimit);
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground">

@@ -1566,9 +1566,14 @@ export async function getMemberUsage({
   // allowance, it just has no pool headroom on top. There's no default cap alert
   // for free (normalizeToPoolLimitSeatType is null), so we supply it explicitly.
   // Use the member's real free-credit total (which a rep may have raised) rather
-  // than the constant.
+  // than the constant. "none" seats have no seat and no pool access, so their
+  // cap is explicitly 0 rather than falling through to an unlimited `null`.
   const effectiveDefaultAwuCredits =
-    membership.seatType === "free" ? effectiveAllocationAwu : defaultAwuCredits;
+    membership.seatType === "free"
+      ? effectiveAllocationAwu
+      : membership.seatType === "none"
+        ? 0
+        : defaultAwuCredits;
 
   // Max group cap (pool-only) + seat allowance, matching override/default units.
   // Only pool-bearing seats (pro/max/workspace) get a group cap.
@@ -2334,10 +2339,14 @@ export async function getMembersUsage({
     // allowance (allowance + 0 pool) — the cap includes the allowance like every
     // other seat, it just has no pool headroom on top. Use the member's real
     // free-credit total (which a rep may have raised) rather than the constant.
+    // "none" seats have no seat and no pool access, so their cap is explicitly
+    // 0 rather than falling through to an unlimited `null`.
     const effectiveDefaultAwuCredits =
       membership.seatType === "free"
         ? effectiveAllocationAwu
-        : defaultAwuCredits;
+        : membership.seatType === "none"
+          ? 0
+          : defaultAwuCredits;
 
     // Max group cap (pool-only, stored on the group) + seat allowance, to match
     // the units of override/default above. Only pool-bearing seats
