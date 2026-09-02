@@ -9,21 +9,19 @@ import {
   USER_ANALYTICS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_analytics/metadata";
 import type { ResolvedTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
-import { resolveTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import {
+  resolveTimeWindow,
+  toConsumptionPeriod,
+} from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import {
+  fetchConsumptionTopGroups,
+  resolveConsumptionGroupLabels,
+} from "@app/lib/api/analytics/consumption/top";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { MIN_USERS_FOR_ANONYMITY } from "@app/lib/api/assistant/observability/anonymity";
 import { fetchJobTypeCohort } from "@app/lib/api/assistant/observability/job_type_cohorts";
-import { fetchAvailableSkillsBySkillId } from "@app/lib/api/assistant/observability/skill_usage";
-import {
-  fetchAvailableTools,
-  resolveToolDisplayNames,
-} from "@app/lib/api/assistant/observability/tool_usage";
-import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
-import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
-import {
-  buildAgentAnalyticsBaseQuery,
-  daysToInstantRange,
-} from "@app/lib/api/assistant/observability/utils";
+import { resolveToolDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
@@ -63,56 +61,70 @@ async function buildDetailedUsageSections(
   auth: Authenticator,
   { userIds, window }: { userIds: string[]; window: ResolvedTimeWindow }
 ): Promise<string[]> {
-  const ws = auth.getNonNullableWorkspace();
-  const { startDate, endDate } = window;
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: ws.sId,
-    startDate,
-    endDate,
-    userIds,
-  });
+  const period = toConsumptionPeriod(window);
+  const filter = { users: userIds };
 
   const [skillsResult, toolsResult, agentsResult] = await Promise.all([
-    fetchAvailableSkillsBySkillId(baseQuery),
-    fetchAvailableTools(baseQuery),
-    fetchTopAgents(auth, {
-      startDate,
-      endDate,
+    fetchConsumptionTopGroups(auth, {
+      dimension: "skill",
+      period,
       limit: TOP_ITEMS_LIMIT,
-      userIds,
+      filter,
+      rankBy: "count",
+      includePreviousCredits: false,
+      includeTotalCount: false,
+    }),
+    fetchConsumptionTopGroups(auth, {
+      dimension: "tool",
+      period,
+      limit: TOP_ITEMS_LIMIT,
+      filter,
+      rankBy: "count",
+      includePreviousCredits: false,
+      includeTotalCount: false,
+    }),
+    fetchConsumptionTopGroups(auth, {
+      dimension: "agent",
+      period,
+      limit: TOP_ITEMS_LIMIT,
+      filter,
+      rankBy: "count",
+      includePreviousCredits: false,
+      includeTotalCount: false,
     }),
   ]);
 
   const sections: string[] = [];
 
-  // Filter to agents the caller can actually access — fetchTopAgents is
-  // workspace-scoped and its internal label resolver has a fallback that leaks
-  // names from private spaces.
-  const candidateAgents = (agentsResult.isOk() ? agentsResult.value : []).slice(
-    0,
-    TOP_ITEMS_LIMIT
+  // Filter to agents the caller can actually access — consumption label
+  // resolution has a workspace-scoped fallback that includes private agents.
+  const candidateAgents = await resolveConsumptionGroupLabels(
+    auth,
+    "agent",
+    agentsResult.isOk() ? agentsResult.value.groups : []
   );
   let topAgents = candidateAgents;
   if (candidateAgents.length > 0) {
     const accessible = await getAgentConfigurations(auth, {
-      agentIds: candidateAgents.map((a) => a.agentId),
+      agentIds: candidateAgents.map((a) => a.key),
       variant: "extra_light",
     });
     const accessibleIds = new Set(accessible.map((a) => a.sId));
-    topAgents = candidateAgents.filter((a) => accessibleIds.has(a.agentId));
+    topAgents = candidateAgents.filter((a) => accessibleIds.has(a.key));
   }
   if (topAgents.length > 0) {
     const lines = topAgents.map(
-      (a, i) =>
-        `${i + 1}. ${a.name} [${a.agentId}] — ${a.messageCount} messages`
+      (a, i) => `${i + 1}. ${a.name} [${a.key}] — ${a.count} messages`
     );
     sections.push(`Top agents (most used first):\n${lines.join("\n")}`);
   }
 
-  const topSkillRows = (skillsResult.isOk() ? skillsResult.value : []).slice(
-    0,
-    TOP_ITEMS_LIMIT
-  );
+  const topSkillRows = (
+    skillsResult.isOk() ? skillsResult.value.groups : []
+  ).map((skill) => ({
+    skillId: skill.key,
+    totalExecutions: skill.count,
+  }));
   const skills = await resolveAccessibleSkills(auth, topSkillRows);
   if (skills.length > 0) {
     const lines = skills.map(
@@ -121,9 +133,12 @@ async function buildDetailedUsageSections(
     sections.push(`Top skills (most used first):\n${lines.join("\n")}`);
   }
 
-  const topTools = (toolsResult.isOk() ? toolsResult.value : []).slice(
-    0,
-    TOP_ITEMS_LIMIT
+  const topTools = (toolsResult.isOk() ? toolsResult.value.groups : []).map(
+    (tool) => ({
+      serverName: tool.key,
+      displayName: tool.key,
+      totalExecutions: tool.count,
+    })
   );
   if (topTools.length > 0) {
     const resolved = await resolveToolDisplayNames(auth, topTools).catch(
@@ -227,12 +242,9 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_workspace_activity: async (_params, { auth }) => {
-    const ws = auth.getNonNullableWorkspace();
-    const { startDate, endDate } = daysToInstantRange(DAYS);
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: ws.sId,
-      startDate,
-      endDate,
+    const period = await resolveConsumptionPeriod(auth, {
+      kind: "days",
+      days: DAYS,
     });
 
     // Anonymity floor: a workspace-wide aggregate can de-anonymize individuals
@@ -240,13 +252,16 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
     // distinct active users before surfacing anything. Fetching the top users
     // capped at the floor is enough to decide — the count saturates at the
     // threshold.
-    const activeUsersResult = await fetchTopUsers(auth, {
-      startDate,
-      endDate,
+    const activeUsersResult = await fetchConsumptionTopGroups(auth, {
+      dimension: "user",
+      period,
       limit: MIN_USERS_FOR_ANONYMITY,
+      rankBy: "count",
+      includePreviousCredits: false,
+      includeTotalCount: false,
     });
     const activeUserCount = activeUsersResult.isOk()
-      ? activeUsersResult.value.length
+      ? activeUsersResult.value.groups.length
       : 0;
     if (activeUserCount < MIN_USERS_FOR_ANONYMITY) {
       return new Ok([
@@ -263,40 +278,57 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const [agentsResult, skillsResult] = await Promise.all([
-      fetchTopAgents(auth, { days: DAYS, limit: TOP_ITEMS_LIMIT }),
-      fetchAvailableSkillsBySkillId(baseQuery),
+      fetchConsumptionTopGroups(auth, {
+        dimension: "agent",
+        period,
+        limit: TOP_ITEMS_LIMIT,
+        rankBy: "count",
+        includePreviousCredits: false,
+        includeTotalCount: false,
+      }),
+      fetchConsumptionTopGroups(auth, {
+        dimension: "skill",
+        period,
+        limit: TOP_ITEMS_LIMIT,
+        rankBy: "count",
+        includePreviousCredits: false,
+        includeTotalCount: false,
+      }),
     ]);
 
     const sections: string[] = [];
 
-    const candidateAgents = (
-      agentsResult.isOk() ? agentsResult.value : []
-    ).slice(0, TOP_ITEMS_LIMIT);
+    const candidateAgents = await resolveConsumptionGroupLabels(
+      auth,
+      "agent",
+      agentsResult.isOk() ? agentsResult.value.groups : []
+    );
     let topAgents = candidateAgents;
     if (candidateAgents.length > 0) {
-      // Filter to agents the user can actually access — fetchTopAgents is workspace-scoped
-      // and its internal label resolver has a fallback that leaks names from private spaces.
+      // Filter to agents the user can actually access — consumption label
+      // resolution has a workspace-scoped fallback that includes private agents.
       const accessible = await getAgentConfigurations(auth, {
-        agentIds: candidateAgents.map((a) => a.agentId),
+        agentIds: candidateAgents.map((a) => a.key),
         variant: "extra_light",
       });
       const accessibleIds = new Set(accessible.map((a) => a.sId));
-      topAgents = candidateAgents.filter((a) => accessibleIds.has(a.agentId));
+      topAgents = candidateAgents.filter((a) => accessibleIds.has(a.key));
     }
     if (topAgents.length > 0) {
       const lines = topAgents.map(
-        (a, i) =>
-          `${i + 1}. ${a.name} [${a.agentId}] — ${a.messageCount} messages`
+        (a, i) => `${i + 1}. ${a.name} [${a.key}] — ${a.count} messages`
       );
       sections.push(
         `Most popular agents (most used first):\n${lines.join("\n")}`
       );
     }
 
-    const topSkillRows = (skillsResult.isOk() ? skillsResult.value : []).slice(
-      0,
-      TOP_ITEMS_LIMIT
-    );
+    const topSkillRows = (
+      skillsResult.isOk() ? skillsResult.value.groups : []
+    ).map((skill) => ({
+      skillId: skill.key,
+      totalExecutions: skill.count,
+    }));
     const skills = await resolveAccessibleSkills(auth, topSkillRows);
     if (skills.length > 0) {
       const lines = skills.map(
