@@ -3,6 +3,7 @@ import {
   removeFileFromProject,
 } from "@app/lib/api/projects/context";
 import { MessageModel } from "@app/lib/models/agent/conversation";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -12,12 +13,17 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { frameV2ContentType } from "@app/types/files";
-import { beforeEach, describe, expect, it } from "vitest";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
+import { Err } from "@app/types/shared/result";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("removeFileFromProject", () => {
   beforeEach(() => {
     // keep tests isolated; factories already run in their own DB context
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("deletes the file and deletes orphaned project content fragments", async () => {
@@ -84,6 +90,39 @@ describe("removeFileFromProject", () => {
         where: { id: file.id, workspaceId: workspace.id },
       })
     ).not.toBeNull();
+    expect(
+      await ContentFragmentModel.findOne({
+        where: {
+          fileId: file.id,
+          spaceId: project.id,
+          workspaceId: workspace.id,
+        },
+      })
+    ).not.toBeNull();
+  });
+
+  it("keeps project fragments when a legacy Frame deletion is blocked", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const project = await SpaceFactory.project(workspace, user.id);
+    const file = await ProjectFileFactory.create(auth, user, project, {
+      contentType: frameContentType,
+      fileName: "Legacy.tsx",
+      fileSize: 123,
+      status: "ready",
+    });
+    vi.spyOn(FileResource.prototype, "delete").mockResolvedValue(
+      new Err(new Error("Frame mutation lock timed out"))
+    );
+
+    const result = await removeFileFromProject(auth, {
+      space: project,
+      fileId: file.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
     expect(
       await ContentFragmentModel.findOne({
         where: {

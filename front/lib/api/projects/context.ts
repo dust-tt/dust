@@ -529,10 +529,18 @@ export async function removeFileFromProject(
     return new Err(new Error("File not found."));
   }
 
-  // Frames v2 own their source package and project-fragment cleanup. Let the canonical Frame
-  // deletion path run before this function mutates any fragments so source failures are retryable.
-  if (file.isFrameV2) {
-    return file.delete(auth);
+  // Frame deletion owns project-fragment cleanup inside its mutation lock. Calling it first keeps
+  // a lock timeout from partially removing project state, while preserving a live row for retry
+  // if cleanup fails.
+  if (file.isShareableFrame) {
+    const deleteRes = await file.delete(auth);
+    if (deleteRes.isErr()) {
+      return new Err(deleteRes.error);
+    }
+    if (file.isInteractiveContent) {
+      requestDustProjectIncrementalSync(auth, space);
+    }
+    return new Ok(undefined);
   }
 
   const workspaceId = auth.getNonNullableWorkspace().id;

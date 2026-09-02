@@ -14,7 +14,11 @@ import {
   getProcessedContentType,
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  LegacyFrameMutationConflictError,
+  withFrameSourceAndPublishLocks,
+  withLegacyFrameMutationResultLock,
+} from "@app/lib/api/frames/operation_lock";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
@@ -856,12 +860,19 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(writeAccess.error);
     }
 
-    return withFramePublishLock(this.sId, async () => {
+    return withFrameSourceAndPublishLocks(this.sId, async () => {
       const frame = await this.fetchFreshFrameV2(auth);
       if (!frame || frame.toScopedPath(auth) !== manifestPath) {
         return new Err(
           new Error(
             "The Frame source changed while it was being deleted; retry from its current path."
+          )
+        );
+      }
+      if (frame.useCaseMetadata?.pendingFrameV2Conversion) {
+        return new Err(
+          new LegacyFrameMutationConflictError(
+            "The Frame has an interrupted conversion; recover it before deleting."
           )
         );
       }
@@ -942,6 +953,52 @@ export class FileResource extends BaseResource<FileModel> {
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     if (this.isFrameV2) {
       return this.deleteFrameV2(auth);
+    }
+
+    if (this.isInteractiveContent) {
+      const expectedMountFilePath = this.mountFilePath;
+      return withLegacyFrameMutationResultLock(this.sId, async () => {
+        const fresh = await FileResource.fetchById(auth, this.sId);
+        if (!fresh) {
+          return new Err(
+            new LegacyFrameMutationConflictError(
+              "The legacy Frame was deleted by another operation."
+            )
+          );
+        }
+        if (fresh.isFrameV2) {
+          return fresh.deleteFrameV2(auth);
+        }
+        if (
+          !fresh.isInteractiveContent ||
+          fresh.mountFilePath !== expectedMountFilePath
+        ) {
+          return new Err(
+            new LegacyFrameMutationConflictError(
+              "The legacy Frame changed while it was being deleted; retry from its current state."
+            )
+          );
+        }
+        if (fresh.useCase === "project_context") {
+          const spaceId = fresh.useCaseMetadata?.spaceId;
+          const projectSpace = spaceId
+            ? await SpaceResource.fetchById(auth, spaceId)
+            : null;
+          if (!projectSpace?.isProject()) {
+            return new Err(new Error("Frame source Pod not found."));
+          }
+          try {
+            await cleanupProjectFileFragments({
+              fileModelId: fresh.id,
+              spaceModelId: projectSpace.id,
+              workspaceModelId: auth.getNonNullableWorkspace().id,
+            });
+          } catch (error) {
+            return new Err(normalizeError(error));
+          }
+        }
+        return fresh.deleteAfterSandboxCleanup(auth);
+      });
     }
 
     return this.deleteAfterSandboxCleanup(auth);
