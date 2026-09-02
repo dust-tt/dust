@@ -14,6 +14,7 @@
     "mcp_server_name": "string",
     "conversation_id": "string",
     "agent_message_id": "string",
+    "action_id": "string",
     "trigger_id": "string",
     "pod_id": "string",
     "pod_function_id": "string",

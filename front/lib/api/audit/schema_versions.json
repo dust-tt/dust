@@ -93,7 +93,7 @@
   "subscription.changed": 1,
   "tool.approval_requested": 3,
   "tool.approval_resolved": 3,
-  "tool.executed": 7,
+  "tool.executed": 8,
   "trigger.created": 1,
   "trigger.deleted": 1,
   "trigger.disabled": 2,
