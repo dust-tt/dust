@@ -88,7 +88,9 @@ function consumptionQuery({
     bool: {
       filter: [
         { term: { workspace_id: workspaceId } },
-        ...(agentIds.length > 0 ? [{ terms: { "agent.id": agentIds } }] : []),
+        ...(agentIds.length > 0
+          ? [{ terms: { "agent.attributed_id": agentIds } }]
+          : []),
         ...(userIds.length > 0 ? [{ terms: { "user.id": userIds } }] : []),
         ...(agentTagIds.length > 0
           ? [{ terms: { "agent.tag_ids": agentTagIds } }]
