@@ -51,6 +51,8 @@ import assert from "assert";
 import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
+import { col, fn, Op } from "sequelize";
+import { z } from "zod";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
@@ -68,6 +70,14 @@ export interface FramePublicationFunctionDefinition {
 }
 
 export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
+
+// A `findAll` carrying an aggregate attribute returns plain rows rather than model instances, so
+// the model's declared types do not describe them. Parsed instead of cast so a shape change fails
+// loudly. `functionCount` is coerced because aggregates arrive as strings from some drivers.
+const FrameFunctionCountRowSchema = z.object({
+  fileId: z.number(),
+  functionCount: z.coerce.number(),
+});
 
 /**
  * Sha256 hex of a published bundle's utf8 bytes — the same bytes uploadContent writes and the
@@ -667,6 +677,34 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       where: { fileId: frame.id, publicationId },
       includeFrameFunctions: true,
     });
+  }
+
+  /** One grouped count per Frame — the Poke Frames list must not query per row. */
+  static async countByFrameModelIds(
+    auth: Authenticator,
+    frameModelIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    if (frameModelIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await SandboxFunctionModel.findAll({
+      attributes: ["fileId", [fn("COUNT", col("id")), "functionCount"]],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        fileId: { [Op.in]: frameModelIds },
+      },
+      group: ["fileId"],
+      raw: true,
+    });
+
+    return new Map(
+      rows.map((row) => {
+        const { fileId, functionCount } =
+          FrameFunctionCountRowSchema.parse(row);
+        return [fileId, functionCount];
+      })
+    );
   }
 
   static async fetchByFramePublicationAndSlug(
