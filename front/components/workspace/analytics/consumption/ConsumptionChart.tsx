@@ -262,7 +262,7 @@ export function ConsumptionDailyChart({
   );
   return (
     <ChartContainer
-      title="Daily consumption"
+      title="Credits over time"
       additionalControls={additionalControls}
       isLoading={isTimeseriesLoading}
       errorMessage={
