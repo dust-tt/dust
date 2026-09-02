@@ -267,11 +267,11 @@ describe("checkCreditSpendCheckpointActivity", () => {
   });
 
   it("does not notify again when the conversation already has an action required", async () => {
-    mockCheckSpendCheckpointGate.mockResolvedValue({
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
-    mockGetAgentLoopData.mockResolvedValue({
+    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
       isErr: () => false,
       value: {
         agentConfiguration: { sId: "agent_config_id" },
@@ -280,7 +280,7 @@ describe("checkCreditSpendCheckpointActivity", () => {
       },
     });
 
-    await checkSpendCheckpointActivity({} as never, {
+    await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: {
         conversationId: "conv_id",
         agentMessageId: "msg_id",
