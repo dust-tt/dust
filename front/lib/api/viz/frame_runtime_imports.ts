@@ -13,16 +13,3 @@ export const FRAME_RUNTIME_IMPORT_NAMES = [
   "@dust/slideshow/v2",
   "@dust/react-hooks",
 ] as const;
-
-export type FrameRuntimeImportName =
-  (typeof FRAME_RUNTIME_IMPORT_NAMES)[number];
-
-const FRAME_RUNTIME_IMPORT_NAME_SET = new Set<string>(
-  FRAME_RUNTIME_IMPORT_NAMES
-);
-
-export function isFrameRuntimeImportName(
-  value: string
-): value is FrameRuntimeImportName {
-  return FRAME_RUNTIME_IMPORT_NAME_SET.has(value);
-}
