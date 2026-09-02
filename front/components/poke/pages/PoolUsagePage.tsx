@@ -132,7 +132,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
 
 export function PoolUsagePage() {
   const owner = useWorkspace();
-  usePokePageMetadata({ name: owner.name, subtitle: "Pool Usage" });
+  usePokePageMetadata({ name: owner.name, subtitle: "Credits Usage" });
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -182,6 +182,9 @@ export function PoolUsagePage() {
       ? sort.id
       : "name";
   const orderDirection = sort?.desc ? "desc" : "asc";
+
+  const { awuPoolCurrentCycle } = usePokeAwuPoolCurrentCycle({ owner });
+  const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
 
   const {
     members,
@@ -311,7 +314,7 @@ export function PoolUsagePage() {
       <Page.Header
         title={
           <div className="flex w-full items-center justify-between gap-4">
-            <Page.H variant="h3">Pool usage</Page.H>
+            <Page.H variant="h3">Credits usage</Page.H>
             <Button
               label="Breakdown in analytics"
               iconRight={LinkExternal01}
@@ -379,6 +382,7 @@ export function PoolUsagePage() {
                   seatChangePendingMemberIds={EMPTY_PENDING_MEMBER_IDS}
                   isSeatBased
                   showSpendLimit
+                  hasPool={hasPool}
                   readOnly
                   onChangeSeat={noopOnMember}
                   onRemoveSeat={noopOnMember}

@@ -42,6 +42,7 @@ import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Chip,
   Clock,
+  CoinsStacked03,
   createSelectionColumn,
   DataTable,
   Icon,
@@ -676,14 +677,22 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
 
 function buildPoolCreditUsageColumn(
   creditsResetAt: string | null,
-  variant: MembersUsageTableVariant
+  variant: MembersUsageTableVariant,
+  hasPool: boolean
 ): ColumnDef<RowData, string> {
   return {
     id: "consumedFromPoolAwuCredits" as const,
     header: () => (
       <div className="flex flex-col">
-        <span>Credits usage this month</span>
-        {creditsResetAt && (
+        {variant === "compact" ? (
+          <span className="flex items-center gap-1">
+            <Icon visual={CoinsStacked03} size="xs" />
+            {hasPool ? "Pool usage" : "Credit usage"}
+          </span>
+        ) : (
+          <span>Credits usage this month</span>
+        )}
+        {variant !== "compact" && creditsResetAt && (
           <span className="text-xs font-normal text-muted-foreground">
             Limits reset on{" "}
             {new Date(creditsResetAt).toLocaleDateString("en-US", {
@@ -786,9 +795,11 @@ const actionsColumn: ColumnDef<RowData, string> = {
 function buildCreditPlanColumns({
   creditsResetAt,
   variant,
+  hasPool,
 }: {
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
+  hasPool: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(() => {
@@ -803,7 +814,7 @@ function buildCreditPlanColumns({
       }
     })(),
     {
-      ...buildPoolCreditUsageColumn(creditsResetAt, variant),
+      ...buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool),
       meta: { className: "w-56" },
     },
   ];
@@ -816,6 +827,7 @@ function buildColumns({
   showSeatAndCredits,
   creditsResetAt,
   variant,
+  hasPool,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
@@ -823,6 +835,7 @@ function buildColumns({
   showSeatAndCredits: boolean;
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
+  hasPool: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -830,7 +843,7 @@ function buildColumns({
     ...(showGroupsColumn ? [groupsColumn] : []),
     ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
     ...(showSeatAndCredits
-      ? buildCreditPlanColumns({ creditsResetAt, variant })
+      ? buildCreditPlanColumns({ creditsResetAt, variant, hasPool })
       : []),
     // Every row action belongs to one of these two groups.
     ...(showSeatAndCredits || showModelTiersColumn ? [actionsColumn] : []),
@@ -880,6 +893,9 @@ interface MembersUsageTableProps {
   ) => void;
   showModelTiersColumn?: boolean;
   variant?: MembersUsageTableVariant;
+  // Whether the workspace has an active credit pool. Only affects the
+  // "compact" (poke) variant's credit column header.
+  hasPool?: boolean;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
   userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
   groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
@@ -915,6 +931,7 @@ export function MembersUsageTable({
   onSetUserModelTier,
   showModelTiersColumn = false,
   variant = "legacy",
+  hasPool = true,
   userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
   userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
   groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
@@ -1087,6 +1104,7 @@ export function MembersUsageTable({
         showSeatAndCredits,
         creditsResetAt,
         variant,
+        hasPool,
       }),
     [
       enableSelection,
@@ -1095,6 +1113,7 @@ export function MembersUsageTable({
       showSeatAndCredits,
       creditsResetAt,
       variant,
+      hasPool,
     ]
   );
 
