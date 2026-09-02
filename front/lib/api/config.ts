@@ -1,12 +1,9 @@
+import { DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD } from "@app/lib/constants/credits";
 import { DEFAULT_PRESTOP_DRAIN_DURATION_MS } from "@app/lib/constants/timeouts";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 const PRODUCTION_DUST_API = "https://dust.tt";
-
-// Same for every user/workspace: how much a user can spend in a billing cycle before the agent
-// loop pauses and asks them to confirm they want to keep going.
-const DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD = 1500;
 
 // Pluggable base URL resolver (e.g. RegionContext in the SPA).
 let baseUrlResolver: (() => string) | null = null;
