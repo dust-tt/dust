@@ -108,7 +108,7 @@ describe("fetchConsumptionTimeseries", () => {
     const result = await fetchConsumptionTimeseries(auth, {
       period,
       granularity: "day",
-      mode: "daily",
+      mode: "period",
     });
 
     const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
@@ -136,7 +136,7 @@ describe("fetchConsumptionTimeseries", () => {
     await fetchConsumptionTimeseries(auth, {
       period,
       granularity: "day",
-      mode: "daily",
+      mode: "period",
     });
 
     const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
@@ -164,7 +164,7 @@ describe("fetchConsumptionTimeseries", () => {
     const result = await fetchConsumptionTimeseries(auth, {
       period,
       granularity: "day",
-      mode: "daily",
+      mode: "period",
     });
 
     expect(result.isOk()).toBe(true);
@@ -183,7 +183,7 @@ describe("fetchConsumptionTimeseries", () => {
     await fetchConsumptionTimeseries(auth, {
       period,
       granularity: "day",
-      mode: "daily",
+      mode: "period",
       filter: { agents: ["a1"], sources: ["web", "slack"], skills: ["s1"] },
     });
 
@@ -257,7 +257,7 @@ describe("fetchConsumptionTimeseries", () => {
       await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: dimension,
         breakdownCount: 10,
       });
@@ -302,7 +302,7 @@ describe("fetchConsumptionTimeseries", () => {
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: "agent",
       });
 
@@ -331,7 +331,7 @@ describe("fetchConsumptionTimeseries", () => {
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: "user",
         breakdownCount: 1,
       });
@@ -368,7 +368,7 @@ describe("fetchConsumptionTimeseries", () => {
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: "skill",
       });
 
@@ -390,7 +390,7 @@ describe("fetchConsumptionTimeseries", () => {
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: "model",
       });
 

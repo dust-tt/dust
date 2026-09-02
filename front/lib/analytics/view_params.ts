@@ -3,9 +3,14 @@ import {
   consumptionDimensionFromQueryParam,
   DEFAULT_CONSUMPTION_DIMENSION,
 } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
 import {
   CONSUMPTION_PERIOD_DAY_OPTIONS,
+  consumptionGranularityFromKey,
+  DEFAULT_CONSUMPTION_GRANULARITY,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
@@ -20,12 +25,14 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type AnalyticsViewState = {
   period: ConsumptionPeriodSelection;
+  granularity: ConsumptionGranularity;
   dimension: ConsumptionDimension;
   filter: Partial<Record<ConsumptionScopeDimension, string[]>>;
 };
 
 export const DEFAULT_ANALYTICS_VIEW_STATE: AnalyticsViewState = {
   period: DEFAULT_CONSUMPTION_PERIOD,
+  granularity: DEFAULT_CONSUMPTION_GRANULARITY,
   dimension: DEFAULT_CONSUMPTION_DIMENSION,
   filter: {},
 };
@@ -33,6 +40,8 @@ export const DEFAULT_ANALYTICS_VIEW_STATE: AnalyticsViewState = {
 export const MAX_ANALYTICS_URL_LENGTH = 2_048;
 
 const PERIOD_PARAM = "p";
+
+const GRANULARITY_PARAM = "gr";
 
 const DIMENSION_PARAM = "d";
 
@@ -49,6 +58,7 @@ const CATEGORY_PARAM = {
 
 export const ANALYTICS_VIEW_PARAMS: readonly string[] = [
   PERIOD_PARAM,
+  GRANULARITY_PARAM,
   DIMENSION_PARAM,
   ...Object.values(CATEGORY_PARAM),
 ];
@@ -85,6 +95,24 @@ function readPeriod(
   return days ? { kind: "days", days } : DEFAULT_CONSUMPTION_PERIOD;
 }
 
+function granularityParam(
+  granularity: ConsumptionGranularity
+): string | undefined {
+  return granularity === DEFAULT_CONSUMPTION_GRANULARITY
+    ? undefined
+    : granularity;
+}
+
+function readGranularity(
+  value: string | string[] | undefined
+): ConsumptionGranularity {
+  const [first] = readValues(value);
+  return (
+    consumptionGranularityFromKey(first ?? "") ??
+    DEFAULT_CONSUMPTION_GRANULARITY
+  );
+}
+
 /**
  * Best effort: a value this build does not know falls back to the default for
  * its field, and a filter longer than the API accepts is cut to fit, so a
@@ -106,6 +134,7 @@ export function readAnalyticsView(query: AnalyticsQuery): AnalyticsViewState {
   // view state has to be read here before this compiles.
   return {
     period: readPeriod(query[PERIOD_PARAM]),
+    granularity: readGranularity(query[GRANULARITY_PARAM]),
     dimension: consumptionDimensionFromQueryParam(
       readValues(query[DIMENSION_PARAM])[0]
     ),
@@ -132,6 +161,7 @@ export function analyticsViewQuery(view: AnalyticsViewState): AnalyticsQuery {
   // until someone gives it one.
   const fields = {
     period: { [PERIOD_PARAM]: periodParam(view.period) },
+    granularity: { [GRANULARITY_PARAM]: granularityParam(view.granularity) },
     dimension: {
       [DIMENSION_PARAM]:
         view.dimension === DEFAULT_CONSUMPTION_DIMENSION
@@ -190,6 +220,7 @@ export function analyticsConsumptionHref(
 ): string {
   const view: AnalyticsViewState = {
     period: input.period ?? DEFAULT_ANALYTICS_VIEW_STATE.period,
+    granularity: input.granularity ?? DEFAULT_ANALYTICS_VIEW_STATE.granularity,
     dimension: input.dimension ?? DEFAULT_ANALYTICS_VIEW_STATE.dimension,
     filter: input.filter ?? {},
   };

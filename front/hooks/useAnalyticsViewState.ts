@@ -4,7 +4,10 @@ import {
   usageFilterFromIds,
   usageFilterToIds,
 } from "@app/components/workspace/analytics/usageFilter";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
 import type { AnalyticsViewState } from "@app/lib/analytics/view_params";
 import {
   analyticsViewQueryString,
@@ -67,6 +70,10 @@ export function useAnalyticsViewState() {
     setView((current) => ({ ...current, period }));
   }, []);
 
+  const setGranularity = useCallback((granularity: ConsumptionGranularity) => {
+    setView((current) => ({ ...current, granularity }));
+  }, []);
+
   const setDimension = useCallback((dimension: ConsumptionDimension) => {
     setView((current) => ({ ...current, dimension }));
   }, []);
@@ -80,9 +87,11 @@ export function useAnalyticsViewState() {
 
   return {
     period: view.period,
+    granularity: view.granularity,
     dimension: view.dimension,
     filter: view.filter,
     setPeriod,
+    setGranularity,
     setDimension,
     setFilter,
   };
