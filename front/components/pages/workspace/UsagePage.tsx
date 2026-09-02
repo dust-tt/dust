@@ -268,7 +268,10 @@ export function UsagePage() {
       : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
-  const { myUsage } = useMyUsage({ workspaceId: owner.sId });
+  const { myUsage } = useMyUsage({
+    workspaceId: owner.sId,
+    disabled: !isCreditPriced,
+  });
   const openChangeMySeatParam = useSearchParam("openChangeMySeat");
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
@@ -442,10 +445,10 @@ export function UsagePage() {
     useState<WorkspaceLimit | null>(null);
   // Auto-open the "change my seat" modal when arriving from a blocked-state
   useEffect(() => {
-    if (openChangeMySeatParam !== null && myUsage !== null) {
+    if (isCreditPriced && openChangeMySeatParam !== null && myUsage !== null) {
       setChangeSeatMember(myUsage);
     }
-  }, [openChangeMySeatParam, myUsage]);
+  }, [isCreditPriced, openChangeMySeatParam, myUsage]);
 
   const {
     totalRemainingCredits,
@@ -772,6 +775,7 @@ export function UsagePage() {
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
+    disabled: !isCreditPriced,
   });
 
   const { seatPlans } = useSeatPlan({
@@ -781,6 +785,7 @@ export function UsagePage() {
 
   const { perSeatPricing } = usePerSeatPricing({
     workspaceId: owner.sId,
+    disabled: !isCreditPriced,
   });
 
   const isSeatBased = Object.keys(seatPlans).length > 1;
@@ -800,7 +805,10 @@ export function UsagePage() {
     );
   }, [seatPlans]);
 
-  const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
+  const { usageSettings } = useUsageSettings({
+    workspaceId: owner.sId,
+    disabled: !isCreditPriced,
+  });
 
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);

@@ -178,10 +178,12 @@ export function GroupsUsageTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="copy-sm text-muted-foreground">
-        A group's monthly spend limit applies to each of its members. When a
-        member belongs to several groups, the highest limit is used.
-      </span>
+      {showSpendLimitColumn && (
+        <span className="copy-sm text-muted-foreground">
+          A group's monthly spend limit applies to each of its members. When a
+          member belongs to several groups, the highest limit is used.
+        </span>
+      )}
       <DataTable
         filterColumn="name"
         data={rows}

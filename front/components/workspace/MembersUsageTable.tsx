@@ -805,7 +805,8 @@ function buildColumns({
     ...(showSeatAndCredits
       ? buildCreditPlanColumns({ creditsResetAt, variant })
       : []),
-    actionsColumn,
+    // Every row action belongs to one of these two groups.
+    ...(showSeatAndCredits || showModelTiersColumn ? [actionsColumn] : []),
   ];
 }
 
