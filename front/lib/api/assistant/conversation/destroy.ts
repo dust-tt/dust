@@ -17,6 +17,7 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
@@ -161,6 +162,12 @@ export async function destroyConversationMessages(
       messagesChunk.map((m) => m.contentFragmentId)
     );
 
+    await AgentMessageConsumptionEventResource.deleteByAgentMessageModelIds(
+      auth,
+      {
+        agentMessageModelIds: agentMessageIds,
+      }
+    );
     await AgentMessageConsumptionItemResource.deleteByAgentMessageModelIds(
       auth,
       {
