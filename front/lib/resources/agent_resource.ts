@@ -1,5 +1,6 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentModel } from "@app/lib/models/agent/agent";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -12,6 +13,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
+import type { Transaction } from "sequelize";
 
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
@@ -74,6 +76,24 @@ export class AgentResource implements WithAccessControl {
       null,
       "global"
     );
+  }
+
+  static async fetchModelIdBySId(
+    auth: Authenticator,
+    sId: string,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<ModelId | null> {
+    // agents.sId is unique, so this resolves one stable ID regardless of version count.
+    const agent = await AgentModel.findOne({
+      where: {
+        sId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id"],
+      transaction,
+    });
+
+    return agent?.id ?? null;
   }
 
   getAccessControlLists(auth: Authenticator): AccessControlList[] {

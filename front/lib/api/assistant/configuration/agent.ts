@@ -28,6 +28,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -96,19 +97,15 @@ async function grantAgentEditors(
     transaction: Transaction;
   }
 ): Promise<void> {
-  // Each call serializes on the same grant tuple and reuses its regular_auto group. Agent editor
-  // sets are small, so keeping the existing per-user primitive is preferable to a second writer.
-  for (const editor of editors) {
-    const grantResult = await GroupPermissionResource.grantToUser(auth, {
-      user: editor,
-      grantType: "editor",
-      resourceType: "agent",
-      resourceId: agentId,
-      transaction,
-    });
-    if (grantResult.isErr()) {
-      throw grantResult.error;
-    }
+  const grantResult = await GroupPermissionResource.grantToUsers(auth, {
+    users: editors,
+    grantType: "editor",
+    resourceType: "agent",
+    resourceId: agentId,
+    transaction,
+  });
+  if (grantResult.isErr()) {
+    throw grantResult.error;
   }
 }
 
@@ -1634,18 +1631,14 @@ export async function updateAgentPermissions(
           return addRes;
         }
 
-        // agents.sId is unique, so this resolves one stable ID regardless of version count.
-        const agentIdentity = await AgentModel.findOne({
-          where: {
-            sId: agent.sId,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          attributes: ["id"],
-          transaction: t,
-        });
-        assert(agentIdentity, "Unexpected: agent identity is missing");
+        const agentModelId = await AgentResource.fetchModelIdBySId(
+          auth,
+          agent.sId,
+          { transaction: t }
+        );
+        assert(agentModelId, "Unexpected: agent identity is missing");
         await grantAgentEditors(auth, {
-          agentId: agentIdentity.id,
+          agentId: agentModelId,
           editors: usersToAdd,
           transaction: t,
         });

@@ -15,6 +15,7 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -145,11 +146,12 @@ describe("createAgentConfiguration with pending agent", () => {
     }
     const { sId: pendingId } = pendingAgentRes.value;
 
-    const pendingAgent = await AgentConfigurationModel.findOne({
-      where: { sId: pendingId, workspaceId: workspace.id },
-    });
-    expect(pendingAgent).not.toBeNull();
-    if (!pendingAgent) {
+    const pendingAgentModelId = await AgentResource.fetchModelIdBySId(
+      authenticator,
+      pendingId
+    );
+    expect(pendingAgentModelId).not.toBeNull();
+    if (!pendingAgentModelId) {
       throw new Error("Pending agent was not created");
     }
     const pendingGrantGroup =
@@ -158,7 +160,7 @@ describe("createAgentConfiguration with pending agent", () => {
         {
           grantType: "editor",
           resourceType: "agent",
-          resourceId: pendingAgent.agentId,
+          resourceId: pendingAgentModelId,
         }
       );
     expect(pendingGrantGroup).not.toBeNull();
