@@ -435,6 +435,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "adrsimon",
   },
+  message_export_from_consumption_index: {
+    description:
+      "Use the consumption analytics ES index instead of the message analytics index for message exports.",
+    stage: "ask_owner",
+    owner: "sylvain",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

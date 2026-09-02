@@ -7,17 +7,29 @@ import {
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  bucketsToArray,
+  searchAnalytics,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import type {
   AgentMessageAnalyticsCost,
   AgentMessageAnalyticsModel,
 } from "@app/types/assistant/analytics";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ModelResolutionMethodType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
+import { buildConsumptionScopeQuery } from "./consumption/scope";
 
 const PAGE_SIZE = 10000;
 
@@ -25,20 +37,15 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   message_id: string;
   timestamp: string;
   agent_id: string;
-  // Optional: docs indexed before agent_tag_ids shipped don't carry it.
   agent_tag_ids?: string[];
   conversation_id: string;
-  // Ids of the agent messages that triggered this message through `run_agent`,
-  // direct parent first. Empty or absent for user-initiated messages.
   ancestor_message_ids?: string[];
   user_id: string;
   context_origin: string;
   status: string;
   tools_used?: { server_name: string; tool_name: string }[];
   skills_used?: { skill_name: string }[];
-  // Optional: docs indexed before the cost fields shipped don't carry it.
   cost?: AgentMessageAnalyticsCost;
-  // Optional: docs indexed before the model fields shipped don't carry it.
   model?: AgentMessageAnalyticsModel | null;
 }
 
@@ -123,26 +130,239 @@ async function fetchAllMessageDocuments(
   return new Ok(allDocs);
 }
 
+// Limit page size so we don't exceed the 65536 bucket limits.
+const CONSUMPTION_AGG_PAGE_SIZE = 5000;
+
+type TermsAgg =
+  estypes.AggregationsTermsAggregateBase<estypes.AggregationsStringTermsBucketKeys>;
+
+interface ConsumptionMessageBucket {
+  key: Record<string, string>;
+  doc_count: number;
+  min_completed_at: estypes.AggregationsMinAggregate;
+  agent_id: TermsAgg;
+  agent_tag_ids: TermsAgg;
+  conversation_id: TermsAgg;
+  user_id: TermsAgg;
+  context_origin: TermsAgg;
+  latest_status: estypes.AggregationsTopHitsAggregate;
+  total_credit_micro: estypes.AggregationsSumAggregate;
+  tools: estypes.AggregationsFilterAggregate & {
+    unique_tools: estypes.AggregationsMultiTermsAggregate;
+  };
+  skills: TermsAgg;
+  models: estypes.AggregationsMultiTermsAggregate;
+}
+
+interface ConsumptionMessageAggs {
+  by_message: estypes.AggregationsTermsAggregateBase<ConsumptionMessageBucket> & {
+    after_key?: Record<string, string>;
+  };
+}
+
+function buildConsumptionAggregations(): Record<
+  string,
+  estypes.AggregationsAggregationContainer
+> {
+  return {
+    by_message: {
+      composite: {
+        size: CONSUMPTION_AGG_PAGE_SIZE,
+        sources: [
+          { agent_message_id: { terms: { field: "agent_message_id" } } },
+        ],
+      },
+      aggs: {
+        min_completed_at: { min: { field: "completed_at" } },
+        agent_id: { terms: { field: "agent.id", size: 1 } },
+        agent_tag_ids: { terms: { field: "agent.tag_ids", size: 100 } },
+        conversation_id: { terms: { field: "conversation_id", size: 1 } },
+        user_id: { terms: { field: "user.id", size: 1 } },
+        context_origin: { terms: { field: "context_origin", size: 1 } },
+        latest_status: {
+          top_hits: {
+            size: 1,
+            sort: [{ completed_at: "desc" }],
+            _source: { includes: ["status"] },
+          },
+        },
+        total_credit_micro: { sum: { field: "credit_micro" } },
+        tools: {
+          filter: { exists: { field: "tool.name" } },
+          aggs: {
+            unique_tools: {
+              multi_terms: {
+                terms: [{ field: "tool.server_name" }, { field: "tool.name" }],
+                size: 100,
+              },
+            },
+          },
+        },
+        skills: { terms: { field: "tool.attributed_skill_ids", size: 100 } },
+        models: {
+          multi_terms: {
+            terms: [
+              { field: "model.model_id" },
+              { field: "model.provider_id" },
+              { field: "model.resolution_method" },
+              { field: "model.reasoning_effort" },
+            ],
+            size: 10,
+          },
+        },
+      },
+    },
+  };
+}
+
+function firstBucketKey(agg: TermsAgg | undefined): string {
+  const buckets = bucketsToArray(agg?.buckets);
+  return buckets[0]?.key ?? "";
+}
+
+function consumptionBucketToDocument(
+  messageId: string,
+  bucket: ConsumptionMessageBucket
+): AgentMessageDocument {
+  const statusHit = bucket.latest_status.hits?.hits?.[0]?._source as
+    | { status?: string }
+    | undefined;
+
+  const toolBuckets = bucketsToArray(bucket.tools?.unique_tools?.buckets);
+
+  const skillBuckets = bucketsToArray(bucket.skills?.buckets);
+
+  const modelBuckets = bucketsToArray(bucket.models?.buckets);
+  const primaryModel = modelBuckets[0];
+
+  const creditMicro = bucket.total_credit_micro.value ?? 0;
+
+  return {
+    workspace_id: "",
+    message_id: messageId,
+    timestamp: bucket.min_completed_at.value_as_string ?? "",
+    agent_id: firstBucketKey(bucket.agent_id),
+    agent_tag_ids: bucketsToArray(bucket.agent_tag_ids?.buckets).map(
+      (b) => b.key
+    ),
+    conversation_id: firstBucketKey(bucket.conversation_id),
+    ancestor_message_ids: [],
+    user_id: firstBucketKey(bucket.user_id),
+    context_origin: firstBucketKey(bucket.context_origin),
+    status: statusHit?.status ?? "",
+    tools_used: toolBuckets.map((b) => ({
+      server_name: String(b.key[0]),
+      tool_name: String(b.key[1]),
+    })),
+    skills_used: skillBuckets.map((b) => ({
+      skill_name: b.key,
+    })),
+    cost: {
+      full_awu: 0,
+      llm_awu: 0,
+      tool_awu: 0,
+      billable_awu: Math.round(creditMicro / MICRO_CREDITS_PER_CREDIT),
+    },
+    model: primaryModel
+      ? {
+          model_id: String(primaryModel.key[0]) as ModelIdType,
+          provider_id: String(primaryModel.key[1]) as ModelProviderIdType,
+          resolution_method: String(
+            primaryModel.key[2]
+          ) as ModelResolutionMethodType,
+          reasoning_effort: String(primaryModel.key[3]) as ReasoningEffort,
+        }
+      : null,
+  };
+}
+
+async function fetchAllMessageDocumentsFromConsumptionIndex(
+  auth: Authenticator,
+  startDate: string,
+  endDate: string
+): Promise<Result<AgentMessageDocument[], Error>> {
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate,
+    endDate,
+  });
+
+  const allDocs: AgentMessageDocument[] = [];
+  let afterKey: Record<string, string> | undefined;
+
+  while (true) {
+    const aggs = buildConsumptionAggregations();
+    if (afterKey) {
+      (
+        aggs.by_message as { composite: { after?: Record<string, string> } }
+      ).composite.after = afterKey;
+    }
+
+    const result = await searchConsumptionAnalytics<
+      never,
+      ConsumptionMessageAggs
+    >(query, {
+      aggregations: aggs,
+      size: 0,
+    });
+
+    if (result.isErr()) {
+      return new Err(new Error(result.error.message));
+    }
+
+    const byMessage = result.value.aggregations?.by_message;
+    if (!byMessage) {
+      break;
+    }
+
+    const buckets = bucketsToArray(
+      byMessage.buckets
+    ) as ConsumptionMessageBucket[];
+
+    for (const bucket of buckets) {
+      allDocs.push(
+        consumptionBucketToDocument(bucket.key.agent_message_id, bucket)
+      );
+    }
+
+    if (buckets.length < CONSUMPTION_AGG_PAGE_SIZE) {
+      break;
+    }
+
+    afterKey = buckets[buckets.length - 1].key;
+  }
+
+  return new Ok(allDocs);
+}
+
 export async function fetchMessageExportRows({
   auth,
   owner,
   startDate,
   endDate,
   timezone,
+  useConsumptionIndex = false,
 }: {
   auth: Authenticator;
   owner: WorkspaceType;
   startDate: string;
   endDate: string;
   timezone: string;
+  useConsumptionIndex?: boolean;
 }): Promise<Result<MessageExportRow[], Error>> {
-  const query = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    startDate,
-    endDate,
-  });
-
-  const docsResult = await fetchAllMessageDocuments(query);
+  const docsResult = useConsumptionIndex
+    ? await fetchAllMessageDocumentsFromConsumptionIndex(
+        auth,
+        startDate,
+        endDate
+      )
+    : await fetchAllMessageDocuments(
+        buildAgentAnalyticsBaseQuery({
+          workspaceId: owner.sId,
+          startDate,
+          endDate,
+        })
+      );
   if (docsResult.isErr()) {
     return new Err(docsResult.error);
   }
