@@ -1,5 +1,4 @@
 import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import type { ToolConsumptionDetailsOverride } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
 import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
@@ -9,9 +8,10 @@ import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
-import { getAgentUsageAttributedId } from "@app/types/assistant/assistant";
+import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
+import partition from "lodash/partition";
 
 /**
  * Builds the end-user explanation for one agent message. Provider and token facts stay behind this
@@ -46,42 +46,17 @@ export async function getAgentMessageConsumption(
     (total, subAgent) => total + subAgent.subtreeBilledCredits,
     0
   );
-  const subAgentsByActionModelId = new Map(
-    facts.directSubAgents.map((subAgent) => [subAgent.action.id, subAgent])
+  const [hiddenHelperSubAgents, visibleSubAgents] = partition(
+    facts.directSubAgents,
+    ({ agentConfigurationId }) =>
+      agentConfigurationId !== null &&
+      isHiddenHelperSubAgentId(agentConfigurationId)
   );
   const hiddenHelperActionIds = new Set<ModelId>(
-    facts.actions
-      .filter((action) => {
-        const subAgentId = subAgentsByActionModelId.get(
-          action.id
-        )?.agentConfigurationId;
-        const { toolConfiguration } = action;
-        const configuredSubAgentId = isLightServerSideMCPToolConfiguration(
-          toolConfiguration
-        )
-          ? toolConfiguration.childAgentId
-          : null;
-        const agentId = subAgentId ?? configuredSubAgentId;
-        if (!agentId) {
-          return false;
-        }
-        return (
-          getAgentUsageAttributedId({
-            agentId,
-            parentAgentId: facts.agentConfigurationId,
-          }) !== agentId
-        );
-      })
-      .map((action) => action.id)
+    hiddenHelperSubAgents.map(({ action }) => action.id)
   );
-  const visibleSubAgents = facts.directSubAgents.filter(
-    ({ action }) => !hiddenHelperActionIds.has(action.id)
-  );
-  const hiddenSubAgentBilledCredits = facts.directSubAgents.reduce(
-    (total, subAgent) =>
-      hiddenHelperActionIds.has(subAgent.action.id)
-        ? total + subAgent.subtreeBilledCredits
-        : total,
+  const hiddenSubAgentBilledCredits = hiddenHelperSubAgents.reduce(
+    (total, subAgent) => total + subAgent.subtreeBilledCredits,
     0
   );
   const totalBilledCredits = (facts.billedCredits ?? 0) + subAgentBilledCredits;

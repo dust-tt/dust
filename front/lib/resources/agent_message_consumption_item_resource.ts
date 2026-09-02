@@ -832,7 +832,6 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       maxAttributionVersion: number;
     }
   ): Promise<{
-    agentConfigurationId: string;
     billedCredits: number | null;
     dustRunIds: string[];
     items: AgentMessageConsumptionItemResource[];
@@ -898,7 +897,6 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
 
     return {
-      agentConfigurationId: agentMessage.agentConfigurationId,
       billedCredits: agentMessage.costCredits,
       dustRunIds: [...new Set(agentMessage.runIds ?? [])],
       items,

@@ -347,7 +347,7 @@ describe("getAgentMessageConsumption", () => {
     });
   });
 
-  it("keeps visible pending tools when a hidden helper shares their tool identity", async () => {
+  it("exposes a blocked tool as pending without inventing a direct charge", async () => {
     const {
       auth,
       workspace,
@@ -356,35 +356,12 @@ describe("getAgentMessageConsumption", () => {
       runUsageModelId,
       agentMessage,
     } = await setupMessage();
-    const runAgentServerId = internalMCPServerNameToSId({
-      name: "run_agent",
-      workspaceId: workspace.id,
-      prefix: 1,
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      dustRunId: run.dustRunId,
     });
-    const { action: hiddenHelperAction } = await AgentMCPActionFactory.create(
-      auth,
-      {
-        workspace,
-        conversationModelId: conversation.id,
-        agentMessageModelId: agentMessage.agentMessageId,
-        dustRunId: run.dustRunId,
-        functionCallName: "run_agent",
-        toolName: "run_agent",
-        toolServerId: runAgentServerId,
-        childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
-      }
-    );
-    const { action: visibleSubAgentAction } =
-      await AgentMCPActionFactory.create(auth, {
-        workspace,
-        conversationModelId: conversation.id,
-        agentMessageModelId: agentMessage.agentMessageId,
-        dustRunId: run.dustRunId,
-        functionCallName: "run_agent",
-        toolName: "run_agent",
-        toolServerId: runAgentServerId,
-        childAgentId: generateRandomModelSId(),
-      });
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
@@ -393,13 +370,7 @@ describe("getAgentMessageConsumption", () => {
       records: modelRecords(runUsageModelId),
       pendingToolItems: [
         {
-          action: hiddenHelperAction,
-          runUsageModelId,
-          outputTokensCount: 5,
-          grossAttributedCreditAmountMicro: 1_000_000,
-        },
-        {
-          action: visibleSubAgentAction,
+          action,
           runUsageModelId,
           outputTokensCount: 5,
           grossAttributedCreditAmountMicro: 1_000_000,
@@ -412,18 +383,13 @@ describe("getAgentMessageConsumption", () => {
       agentMessageId: agentMessage.sId,
     });
 
-    expect(consumption?.details).toMatchObject({
-      agentWorkCredits: 9,
-      tools: [
-        expect.objectContaining({
-          attributedCredits: 1,
-          callCount: 1,
-          directCredits: 0,
-          pending: true,
-          toolName: "run_agent",
-        }),
-      ],
-    });
+    expect(consumption?.details?.tools).toEqual([
+      expect.objectContaining({
+        callCount: 1,
+        directCredits: 0,
+        pending: true,
+      }),
+    ]);
   });
 
   it("assigns an unattributed billed residual to agent work", async () => {

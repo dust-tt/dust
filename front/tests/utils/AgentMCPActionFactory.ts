@@ -45,7 +45,6 @@ export class AgentMCPActionFactory {
       toolName = "test_tool",
       mcpServerName = "test_server",
       toolServerId = "test-server",
-      childAgentId = null,
       sandboxChildActionInfo,
       parentAction,
     }: {
@@ -61,7 +60,6 @@ export class AgentMCPActionFactory {
       toolName?: string;
       mcpServerName?: string;
       toolServerId?: string;
-      childAgentId?: string | null;
       sandboxChildActionInfo?: SandboxChildActionInfo;
       parentAction?: AgentMCPActionResource;
     }
@@ -98,7 +96,7 @@ export class AgentMCPActionFactory {
       name: functionCallName,
       dataSources: null,
       tables: null,
-      childAgentId,
+      childAgentId: null,
       timeFrame: null,
       jsonSchema: null,
       additionalConfiguration: {},
