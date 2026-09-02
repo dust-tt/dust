@@ -1,6 +1,7 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -35,13 +36,29 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    // Test fixture, not a real workflow: many tests construct an Authenticator directly without
-    // ever creating a workspace membership, so `auth` may not hold the create-agent capability
-    // (or any capability at all). `authorId`/`editors` below are explicit, so using an internal
-    // admin authenticator for the actual write doesn't change who the created agent is
-    // attributed to — it only bypasses the capability check for this test fixture.
+    const workspace = auth.getNonNullableWorkspace();
+    // Some tests build auth without a membership. Seed the row directly to satisfy editor groups
+    // and grants without running production membership workflows from a test fixture.
+    if (!Authenticator.isMember(auth.role())) {
+      const now = new Date();
+      const membership = await MembershipModel.findOne({
+        where: { userId: user.id, workspaceId: workspace.id, endAt: null },
+      });
+      if (!membership) {
+        await MembershipModel.create({
+          role: "user",
+          origin: "invited",
+          startAt: now,
+          firstUsedAt: now,
+          userId: user.id,
+          workspaceId: workspace.id,
+        });
+      }
+    }
+
+    // Internal auth only bypasses the create capability; explicit author/editors keep attribution.
     const internalAuth = await Authenticator.internalAdminForWorkspace(
-      auth.getNonNullableWorkspace().sId
+      workspace.sId
     );
 
     const result = await createAgentConfiguration(internalAuth, {
