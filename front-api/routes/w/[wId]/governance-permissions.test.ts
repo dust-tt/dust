@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type {
@@ -8,7 +7,6 @@ import type {
   PatchGovernancePermissionResponseBody,
 } from "@app/types/api/governance";
 import { honoApp } from "@front-api/app";
-import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 function getGovernancePermissions(workspace: { sId: string }) {
@@ -99,10 +97,6 @@ describe("GET /api/w/:wId/governance-permissions", () => {
 
     // Set up grant state with an internal admin auth, independent of the request user.
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      workspace.id
-    );
-    assert(globalGroup, "global group should exist");
 
     await GroupPermissionResource.setForEverybody(auth, {
       grantType: "create",

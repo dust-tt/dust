@@ -1059,12 +1059,12 @@ describe("GroupPermissionResource", () => {
 
   describe("grantToEverybody / revokeFromEverybody", () => {
     it("grants and revokes an instance-level permission on the global group", async () => {
-      const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-        workspace.id
-      );
-      if (!globalGroup) {
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(auth);
+      if (globalGroupRes.isErr()) {
         throw new Error("global group should exist");
       }
+      const globalGroup = globalGroupRes.value;
 
       await GroupPermissionResource.grantToEverybody(auth, {
         grantType: "reader",

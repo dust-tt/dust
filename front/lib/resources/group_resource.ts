@@ -973,7 +973,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return !!group;
   }
 
-  static async fetchByName(
+  static async dangerouslyFetchByName(
     auth: Authenticator,
     name: string
   ): Promise<GroupResource | null> {
@@ -982,9 +982,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         name,
       },
     });
-    if (group && !group.canRead(auth)) {
-      return null;
-    }
 
     return group ?? null;
   }
@@ -1075,27 +1072,6 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const [group] = groups;
     return group;
-  }
-
-  // Fetches the system group without any ACL check. Only used in scripts and
-  // system-flow plumbing — the system group is deny-all in `getAccessControlLists`
-  // and must never be exposed to interactive callers.
-  static async dangerouslyFetchWorkspaceSystemGroup(
-    auth: Authenticator
-  ): Promise<Result<GroupResource, DustError>> {
-    const [group] = await this.baseFetch(auth, {
-      where: {
-        kind: "system",
-      },
-    });
-
-    if (!group) {
-      return new Err(
-        new DustError("group_not_found", "System group not found")
-      );
-    }
-
-    return new Ok(group);
   }
 
   static async fetchWorkspaceGlobalGroup(
