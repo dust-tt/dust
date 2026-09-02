@@ -1,7 +1,6 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -37,26 +36,11 @@ export class AgentConfigurationFactory {
     assert(user, "User is required");
 
     const workspace = auth.getNonNullableWorkspace();
-    // Some tests build auth without a membership. Seed the row directly to satisfy editor groups
-    // and grants without running production membership workflows from a test fixture.
-    if (!Authenticator.isMember(auth.role())) {
-      const now = new Date();
-      const membership = await MembershipModel.findOne({
-        where: { userId: user.id, workspaceId: workspace.id, endAt: null },
-      });
-      if (!membership) {
-        await MembershipModel.create({
-          role: "user",
-          origin: "invited",
-          startAt: now,
-          firstUsedAt: now,
-          userId: user.id,
-          workspaceId: workspace.id,
-        });
-      }
-    }
+    // Some legacy tests use an auth without workspace membership. Such users cannot belong to an
+    // editor group, but authorId below still preserves attribution and the author fallback.
+    const editors = Authenticator.isMember(auth.role()) ? [user.toJSON()] : [];
 
-    // Internal auth only bypasses the create capability; explicit author/editors keep attribution.
+    // Internal auth only bypasses the create capability; explicit authorId keeps attribution.
     const internalAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -77,7 +61,7 @@ export class AgentConfigurationFactory {
       templateId: null,
       requestedSpaceIds,
       tags: [], // Added missing tags property
-      editors: [user.toJSON()],
+      editors,
       authorId: user.id,
     });
 

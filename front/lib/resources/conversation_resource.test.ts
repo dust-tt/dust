@@ -84,18 +84,18 @@ const setupTestAgents = async (
     user.sId,
     workspace.sId
   );
-  const hiddenAgent = await AgentConfigurationFactory.createTestAgent(auth, {
-    name: `Test Agent 1 ${user.name}`,
-    description: "Hidden test agent",
-    scope: "hidden",
-  });
-  const visibleAgent = await AgentConfigurationFactory.createTestAgent(auth, {
-    name: `Test Agent 2 ${user.name}`,
-    description: "Visible test agent",
-    scope: "visible",
-  });
-
-  return [hiddenAgent, visibleAgent];
+  return Promise.all([
+    AgentConfigurationFactory.createTestAgent(auth, {
+      name: `Test Agent 1 ${user.name}`,
+      description: "Hidden test agent",
+      scope: "hidden",
+    }),
+    AgentConfigurationFactory.createTestAgent(auth, {
+      name: `Test Agent 2 ${user.name}`,
+      description: "Visible test agent",
+      scope: "visible",
+    }),
+  ]);
 };
 
 const dateFromDaysAgo = (days: number) => {
