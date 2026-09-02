@@ -48,9 +48,7 @@ export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
-const EMAIL_RELAY_DEDUPE_TTL_SECONDS = 60 * 60;
-const EMAIL_RELAY_MAX_RETRIES = 1;
-const EMAIL_RELAY_NO_RETRIES = 0;
+const EMAIL_RELAY_DEDUPE_TTL_SECONDS = 5 * 60;
 const HTTP_SERVER_ERROR_STATUS_MIN = 500;
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
@@ -243,9 +241,6 @@ export async function relayEmailToOtherRegion(
         return response;
       },
       {
-        maxRetries: email.threadingHeaders.messageId
-          ? EMAIL_RELAY_MAX_RETRIES
-          : EMAIL_RELAY_NO_RETRIES,
         shouldRetry: (error) => {
           logger.warn(
             {

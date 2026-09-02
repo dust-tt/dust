@@ -75,10 +75,7 @@ const RELAY_AUTH_HEADERS = {
   [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
 };
 
-function buildSendgridForm(
-  senderEmail: string,
-  messageId: string | null
-): FormData {
+function buildSendgridForm(senderEmail: string, messageId: string): FormData {
   const senderDomain = senderEmail.split("@")[1];
   const form = new FormData();
   form.set("subject", "Hello agent");
@@ -91,9 +88,7 @@ function buildSendgridForm(
     "envelope",
     JSON.stringify({ from: senderEmail, to: ["some-agent@dust.team"] })
   );
-  if (messageId) {
-    form.set("headers", `Message-ID: ${messageId}`);
-  }
+  form.set("headers", `Message-ID: ${messageId}`);
   return form;
 }
 
@@ -103,7 +98,7 @@ function buildSendgridForm(
 const postWebhook = async (
   senderEmail: string,
   headers: Record<string, string>,
-  messageId: string | null = `<${randomUUID()}@example.com>`
+  messageId = `<${randomUUID()}@example.com>`
 ): Promise<Response> => {
   const encoded = new Request("http://localhost/", {
     method: "POST",
@@ -182,10 +177,11 @@ describe("POST /api/email/webhook", () => {
     expect(sendEmailToRecipients).toHaveBeenCalledOnce();
   });
 
-  it("retries a transient relay failure when the email has a Message-ID", async () => {
+  it("retries transient relay failures", async () => {
     const { user } = await createResourceTest({ role: "admin" });
     const fetchMock = vi
       .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
       .mockResolvedValueOnce(new Response(null, { status: 502 }))
       .mockResolvedValueOnce(new Response("{}"));
     vi.stubGlobal("fetch", fetchMock);
@@ -196,32 +192,8 @@ describe("POST /api/email/webhook", () => {
       });
       expect(response.status).toBe(200);
 
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
       expect(sendEmailToRecipients).not.toHaveBeenCalled();
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it("does not retry a relay without a Message-ID", async () => {
-    const { user } = await createResourceTest({ role: "admin" });
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response(null, { status: 502 }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    try {
-      const response = await postWebhook(
-        user.email,
-        { Authorization: SENDGRID_AUTH_HEADER },
-        null
-      );
-      expect(response.status).toBe(200);
-
-      await vi.waitFor(() =>
-        expect(sendEmailToRecipients).toHaveBeenCalledOnce()
-      );
-      expect(fetchMock).toHaveBeenCalledOnce();
     } finally {
       vi.unstubAllGlobals();
     }
