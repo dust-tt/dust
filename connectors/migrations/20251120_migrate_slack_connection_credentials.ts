@@ -124,7 +124,7 @@ async function migrateSlackConnectionCredential(
 
   // Configure webhook router
   const webhookService = new WebhookRouterConfigService();
-  const currentRegion = connectorsConfig.getCurrentRegion();
+  const currentCell = connectorsConfig.getCurrentCell();
 
   // Get all connectors for this team to build the connector IDs list
   const allTeamSlackConfigs = await SlackConfigurationResource.listForTeamId(
@@ -137,12 +137,12 @@ async function migrateSlackConnectionCredential(
     PROVIDER,
     teamId,
     slackSigningSecret,
-    currentRegion,
+    currentCell,
     connectorIds
   );
 
   logger.info(
-    { teamId, region: currentRegion, connectorIds },
+    { teamId, cell: currentCell, connectorIds },
     `Updated webhook router configuration for team ${teamId} with ${connectorIds.length} connector(s).`
   );
 
