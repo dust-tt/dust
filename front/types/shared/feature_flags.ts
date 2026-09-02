@@ -183,12 +183,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "flvndvd",
   },
-  usage_page_read_only: {
-    description:
-      "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
-    stage: "self_serve",
-    owner: "tdraier",
-  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "self_serve",

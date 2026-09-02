@@ -319,19 +319,14 @@ export const subNavigationAdmin = ({
             },
           ]
         : []),
-      ...(isCreditPricedPlan(subscription.plan) ||
-      featureFlags.includes("usage_page_read_only")
-        ? [
-            {
-              id: "usage" as const,
-              label: "Usage",
-              icon: PieChart01,
-              href: `/w/${owner.sId}/usage`,
-              current: isCurrent("usage"),
-              disabled: !hasManagerRole,
-            },
-          ]
-        : []),
+      {
+        id: "usage" as const,
+        label: "Usage",
+        icon: PieChart01,
+        href: `/w/${owner.sId}/usage`,
+        current: isCurrent("usage"),
+        disabled: !hasManagerRole,
+      },
       {
         id: "model_providers",
         label: "Model Providers",

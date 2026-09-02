@@ -802,24 +802,14 @@ const actionsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildColumns({
-  enableSelection,
-  showGroupsColumn,
-  showModelTiersColumn,
+function buildCreditPlanColumns({
   creditsResetAt,
   variant,
 }: {
-  enableSelection: boolean;
-  showGroupsColumn: boolean;
-  showModelTiersColumn: boolean;
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
 }): ColumnDef<RowData, string>[] {
   return [
-    ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
-    nameColumn,
-    ...(showGroupsColumn ? [groupsColumn] : []),
-    ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
     ...(() => {
       switch (variant) {
         case "compact":
@@ -835,7 +825,34 @@ function buildColumns({
       ...buildPoolCreditUsageColumn(creditsResetAt, variant),
       meta: { className: "w-64" },
     },
-    actionsColumn,
+  ];
+}
+
+function buildColumns({
+  enableSelection,
+  showGroupsColumn,
+  showModelTiersColumn,
+  showSeatAndCredits,
+  creditsResetAt,
+  variant,
+}: {
+  enableSelection: boolean;
+  showGroupsColumn: boolean;
+  showModelTiersColumn: boolean;
+  showSeatAndCredits: boolean;
+  creditsResetAt: string | null;
+  variant: MembersUsageTableVariant;
+}): ColumnDef<RowData, string>[] {
+  return [
+    ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
+    nameColumn,
+    ...(showGroupsColumn ? [groupsColumn] : []),
+    ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
+    ...(showSeatAndCredits
+      ? buildCreditPlanColumns({ creditsResetAt, variant })
+      : []),
+    // Every row action belongs to one of these two groups.
+    ...(showSeatAndCredits || showModelTiersColumn ? [actionsColumn] : []),
   ];
 }
 
@@ -855,7 +872,11 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
   showSpendLimit: boolean;
-  readOnly: boolean;
+  // Disables every row action (Poke's read-only view).
+  readOnly?: boolean;
+  // Seat and credits usage columns plus the seat row actions. Off for
+  // workspaces that are not on a credit plan.
+  showSeatAndCredits?: boolean;
   // Disables only the seat-assign/change/remove actions (e.g. while the
   // subscription has a cancellation scheduled), independent of `readOnly`.
   seatActionsDisabled?: boolean;
@@ -894,7 +915,8 @@ export function MembersUsageTable({
   seatChangePendingMemberIds,
   isSeatBased,
   showSpendLimit,
-  readOnly,
+  readOnly = false,
+  showSeatAndCredits = true,
   seatActionsDisabled = false,
   onChangeSeat,
   onRemoveSeat,
@@ -921,6 +943,8 @@ export function MembersUsageTable({
   const rows: RowData[] = useMemo(
     () =>
       members.map((m) => {
+        const hasSeat = m.seatType !== null && m.seatType !== "none";
+        const canEditSeat = showSeatAndCredits && isSeatBased && hasSeat;
         const resolvedModelTiers = showModelTiersColumn
           ? resolveModelTiersForUser({
               userId: m.sId,
@@ -970,7 +994,7 @@ export function MembersUsageTable({
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
-            ...(!m.seatType || m.seatType === "none"
+            ...(showSeatAndCredits && !hasSeat
               ? [
                   {
                     kind: "item" as const,
@@ -980,7 +1004,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(isSeatBased && m.seatType && m.seatType !== "none"
+            ...(canEditSeat
               ? [
                   {
                     kind: "item" as const,
@@ -990,10 +1014,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showSpendLimit &&
-            m.seatType &&
-            m.seatType !== "free" &&
-            m.seatType !== "none"
+            ...(showSpendLimit && hasSeat && m.seatType !== "free"
               ? [
                   {
                     kind: "item" as const,
@@ -1008,7 +1029,6 @@ export function MembersUsageTable({
                   {
                     kind: "submenu" as const,
                     label: "Models tier",
-                    disabled: readOnly,
                     selectionMode: "checkbox" as const,
                     items: getUserModelTierMenuItemsWithSelection({
                       selectedValue:
@@ -1031,7 +1051,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(isSeatBased && m.seatType && m.seatType !== "none"
+            ...(canEditSeat
               ? [
                   {
                     kind: "item" as const,
@@ -1059,6 +1079,7 @@ export function MembersUsageTable({
       workspaceAllowedModelTiers,
       groupNameToId,
       readOnly,
+      showSeatAndCredits,
       seatActionsDisabled,
       onChangeSeat,
       onRemoveSeat,
@@ -1073,6 +1094,7 @@ export function MembersUsageTable({
         enableSelection,
         showGroupsColumn,
         showModelTiersColumn,
+        showSeatAndCredits,
         creditsResetAt,
         variant,
       }),
@@ -1080,6 +1102,7 @@ export function MembersUsageTable({
       enableSelection,
       showGroupsColumn,
       showModelTiersColumn,
+      showSeatAndCredits,
       creditsResetAt,
       variant,
     ]

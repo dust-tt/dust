@@ -19,13 +19,11 @@ import { useState } from "react";
 
 interface UsageSettingsCardProps {
   workspaceId: string;
-  readOnly: boolean;
   hasPool: boolean;
 }
 
 export function UsageSettingsCard({
   workspaceId,
-  readOnly,
   hasPool,
 }: UsageSettingsCardProps) {
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
@@ -114,7 +112,7 @@ export function UsageSettingsCard({
                   onSave={handleSaveDefaultLimit}
                   onFocus={() => setIsEditingDefaultLimit(true)}
                   onBlur={() => setIsEditingDefaultLimit(false)}
-                  disabled={readOnly || isDefaultUserSpendLimitLoading}
+                  disabled={isDefaultUserSpendLimitLoading}
                 />
               </div>
             }
@@ -126,9 +124,7 @@ export function UsageSettingsCard({
           action={
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}
-              disabled={
-                readOnly || isUpdatingUsageSettings || isUsageSettingsLoading
-              }
+              disabled={isUpdatingUsageSettings || isUsageSettingsLoading}
               onClick={() => void handleToggleAllowUpgradeRequest()}
             />
           }
@@ -147,7 +143,6 @@ export function UsageSettingsCard({
                   usageSettings.requireUpgradeRequestReason
                 }
                 disabled={
-                  readOnly ||
                   isUpdatingUsageSettings ||
                   isUsageSettingsLoading ||
                   !usageSettings.allowUpgradeRequest
@@ -181,7 +176,6 @@ export function UsageSettingsCard({
                 usageSettings.autoSeatUpgradeEnabled
               }
               disabled={
-                readOnly ||
                 isUpdatingUsageSettings ||
                 isUsageSettingsLoading ||
                 !usageSettings.autoSeatUpgradeAvailable

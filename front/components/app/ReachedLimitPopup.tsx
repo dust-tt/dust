@@ -302,10 +302,13 @@ function getLimitPromptForCode(
     }
 
     case "user_credits_exhausted": {
+      // Off credit plans the per-member cap is set by Dust, not on the Usage
+      // page, so there is nothing for an admin to change there.
+      const canManageCap = isAdmin && isCreditPricedPlan(subscription.plan);
       return {
         title: "Usage cap reached",
-        validateLabel: isAdmin ? "Go to Usage" : "Ok",
-        onValidate: isAdmin
+        validateLabel: canManageCap ? "Go to Usage" : "Ok",
+        onValidate: canManageCap
           ? () => {
               void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
             }
@@ -313,9 +316,11 @@ function getLimitPromptForCode(
         children: (
           <>
             <Page.P>
-              {isAdmin
+              {canManageCap
                 ? "You have reached your personal usage cap. On the usage page you can change your seat or adjust user caps."
-                : "You have reached your personal usage cap. Please contact your administrator to increase it."}
+                : isAdmin
+                  ? "You have reached your personal usage cap. Please contact your Dust representative to adjust it."
+                  : "You have reached your personal usage cap. Please contact your administrator to increase it."}
             </Page.P>
           </>
         ),

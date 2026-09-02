@@ -7,12 +7,10 @@ import { useState } from "react";
 
 interface UsageProgrammaticLimitCardProps {
   workspaceId: string;
-  readOnly: boolean;
 }
 
 export function UsageProgrammaticLimitCard({
   workspaceId,
-  readOnly,
 }: UsageProgrammaticLimitCardProps) {
   const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
     useProgrammaticUsageLimit({ workspaceId });
@@ -74,7 +72,7 @@ export function UsageProgrammaticLimitCard({
                 onSave={handleSaveLimit}
                 onFocus={() => setIsEditing(true)}
                 onBlur={() => setIsEditing(false)}
-                disabled={readOnly || isProgrammaticUsageLimitLoading}
+                disabled={isProgrammaticUsageLimitLoading}
               />
             </div>
           }
