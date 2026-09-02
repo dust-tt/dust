@@ -59,18 +59,31 @@ const recurringFreeCreditSchema = z
 // `metronomeAmount`. When `commitmentPrice` is set (also in major units), a
 // contract prepaid commit is created granting `minSeats * rate` of contract
 // credit, invoiced at `commitmentPrice`.
-const seatEntrySchema = z.object({
-  // Whether the seat is entitled on the new contract. `true` (the default,
-  // for backward compatibility) entitles and configures the seat; `false`
-  // disables a seat the package would otherwise sell. The dialog submits
-  // every known seat so deselections can be turned into disable overrides.
-  selected: z.boolean().default(true),
-  minSeats: z.number().int().min(0, "Min seats must be ≥ 0"),
-  maxSeats: z.number().int().min(1, "Max seats must be ≥ 1").optional(),
-  rate: z.number().min(0, "Rate must be ≥ 0"),
-  commitmentPrice: z.number().min(0, "Commitment price must be ≥ 0").optional(),
-  paymentSchedule: paymentScheduleSchema,
-});
+const seatEntrySchema = z
+  .object({
+    // Whether the seat is entitled on the new contract. `true` (the default,
+    // for backward compatibility) entitles and configures the seat; `false`
+    // disables a seat the package would otherwise sell. The dialog submits
+    // every known seat so deselections can be turned into disable overrides.
+    selected: z.boolean().default(true),
+    minSeats: z.number().int().min(0, "Min seats must be ≥ 0"),
+    maxSeats: z.number().int().min(1, "Max seats must be ≥ 1").optional(),
+    rate: z.number().min(0, "Rate must be ≥ 0"),
+    commitmentPrice: z
+      .number()
+      .min(0, "Commitment price must be ≥ 0")
+      .optional(),
+    paymentSchedule: paymentScheduleSchema,
+  })
+  // The cap can't be below the commitment floor. Enforced here so the form and
+  // endpoint reject it upfront rather than failing later at the resource layer.
+  .refine(
+    ({ minSeats, maxSeats }) => maxSeats === undefined || maxSeats >= minSeats,
+    {
+      path: ["maxSeats"],
+      message: "Max seats must be greater than or equal to commitment",
+    }
+  );
 
 export const SwitchContractBodySchema = z.object({
   planCode: z.string().min(1, "Required"),
