@@ -1,4 +1,3 @@
-import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
@@ -6,6 +5,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Op, literal } from "sequelize";
 
 /**
  * Backfill WorkOS organizations for workspaces that are missing one.
@@ -20,8 +20,10 @@ import type { LightWorkspaceType } from "@app/types/user";
  * through WorkOS; use `20250728_backfill_membership_workos.ts` for a fuller
  * membership reconcile if needed later.
  *
- * Skips relocated stubs (`relocation-done`) so we do not create a new org in
- * the source cell for a workspace that already lives elsewhere.
+ * Filters early at SQL level: workspaces that already have a WorkOS
+ * organization, and relocated stubs (`relocation-done`), are excluded from the
+ * scan so we do not create a new org in the source cell for a workspace that
+ * already lives elsewhere.
  *
  * Based on `20250602_migrate_organizations.ts`, but creates for all missing
  * orgs rather than only domain/paid workspaces.
@@ -57,8 +59,6 @@ makeScript(
 
     const stats = {
       scanned: 0,
-      skippedHasOrg: 0,
-      skippedRelocationDone: 0,
       created: 0,
       membersToSync: 0,
       membersSkippedNoWorkOSUserId: 0,
@@ -79,6 +79,15 @@ makeScript(
         concurrency,
         wId,
         fromWorkspaceId,
+        where: {
+          [Op.and]: [
+            { workOSOrganizationId: { [Op.is]: null } },
+            // IS DISTINCT FROM keeps NULL metadata (and missing keys).
+            literal(
+              `(metadata->>'maintenance') IS DISTINCT FROM 'relocation-done'`
+            ),
+          ],
+        },
       }
     );
 
@@ -97,8 +106,6 @@ async function backfillWorkspaceWorkOSOrganization({
   logger: Logger;
   stats: {
     scanned: number;
-    skippedHasOrg: number;
-    skippedRelocationDone: number;
     created: number;
     membersToSync: number;
     membersSkippedNoWorkOSUserId: number;
@@ -109,20 +116,6 @@ async function backfillWorkspaceWorkOSOrganization({
     workspaceId: workspace.sId,
     workspaceModelId: workspace.id,
   });
-
-  if (isWorkspaceRelocationDone(workspace)) {
-    stats.skippedRelocationDone++;
-    workspaceLogger.info(
-      { maintenance: workspace.metadata?.maintenance },
-      "Skipping relocated workspace stub (relocation-done)"
-    );
-    return;
-  }
-
-  if (workspace.workOSOrganizationId) {
-    stats.skippedHasOrg++;
-    return;
-  }
 
   const domainRow = await WorkspaceHasDomainModel.findOne({
     where: {

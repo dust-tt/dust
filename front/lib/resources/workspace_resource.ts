@@ -52,6 +52,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 import { z } from "zod";
@@ -421,9 +422,17 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ?? null;
   }
 
-  static async listAll(order?: "ASC" | "DESC"): Promise<WorkspaceResource[]> {
+  static async listAll(
+    order?: "ASC" | "DESC",
+    {
+      where,
+    }: {
+      where?: WhereOptions<Attributes<WorkspaceModel>>;
+    } = {}
+  ): Promise<WorkspaceResource[]> {
     return this.store.baseFetch({
       ...(order && { order: [["id", order]] }),
+      ...(where && { where }),
     });
   }
 
