@@ -156,10 +156,7 @@ app.post(
         const workspace = auth.getNonNullableWorkspace();
         const plan = auth.subscription()?.plan;
         if (plan && isCreditPricedPlan(plan)) {
-          if (
-            workspace.metronomeCustomerId &&
-            (await isApiBlocked(workspace.sId))
-          ) {
+          if (workspace.metronomeCustomerId && (await isApiBlocked(auth))) {
             return apiError(ctx, {
               status_code: 429,
               api_error: {

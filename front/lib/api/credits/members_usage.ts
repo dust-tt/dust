@@ -45,7 +45,7 @@ import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   getFairUseAwuCreditsStatus,
-  isUserAwuWarned,
+  isUserAwuWarnedByMetronome,
 } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -1896,7 +1896,10 @@ export async function getMembersUsage({
           await concurrentExecutor(
             users,
             async (u) =>
-              [u.sId, await isUserAwuWarned(workspace.sId, u.sId)] as const,
+              [
+                u.sId,
+                await isUserAwuWarnedByMetronome(workspace.sId, u.sId),
+              ] as const,
             { concurrency: 8 }
           )
         )

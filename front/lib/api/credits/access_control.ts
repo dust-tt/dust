@@ -20,24 +20,31 @@ import {
 } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
+import { isApiKeyCappedByMetronome } from "@app/lib/metronome/api_key_block";
 import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import {
-  isProgrammaticApiBlocked as isProgrammaticApiBlockedByMetronome,
-  isUserAwuWarned as isUserAwuWarnedByMetronome,
-  isUserBlocked as isUserBlockedByMetronome,
-  isWorkspaceProgrammaticWarningReached as isWorkspaceProgrammaticWarningReachedByMetronome,
+  isApiBlockedByMetronome,
+  isProgrammaticApiBlockedByMetronome,
+  isUserAwuWarnedByMetronome,
+  isUserBlockedByMetronome,
+  isWorkspaceProgrammaticWarningReachedByMetronome,
 } from "@app/lib/metronome/user_block";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 
-// Pool-only read (no per-user cap, no rate-limiter dimension): re-exported so
-// access-control callers have a single import site.
-export { isApiBlocked } from "@app/lib/metronome/user_block";
-
 async function spendLimitRateCapEnabled(auth: Authenticator): Promise<boolean> {
   const featureFlags = await getFeatureFlags(auth);
   return featureFlags.includes("enforce_user_spend_limit_rate_cap");
+}
+
+/**
+ * Whether the workspace credit pool is depleted (API calls with no per-user
+ * cap). Pool depletion is a credit-balance signal with no rate-limiter
+ * dimension, so this always reads the Metronome pool state; it lives here only
+ * so access-control callers have a single, `auth`-based import site.
+ */
+export async function isApiBlocked(auth: Authenticator): Promise<boolean> {
+  return isApiBlockedByMetronome(auth.getNonNullableWorkspace().sId);
 }
 
 /**
@@ -86,7 +93,7 @@ export async function isApiKeyBlocked(
 ): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
   if (!(await spendLimitRateCapEnabled(auth))) {
-    return isApiKeyCapped(workspace.sId, keyModelId);
+    return isApiKeyCappedByMetronome(workspace.sId, keyModelId);
   }
   return isApiKeySpendLimitRateCapReached(auth, { keyModelId });
 }

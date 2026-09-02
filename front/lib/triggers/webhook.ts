@@ -293,7 +293,7 @@ async function checkWorkspaceRateLimit({
   // depleted, no downstream message can be posted, so reject early instead of
   // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
   if (plan && isCreditPricedPlan(plan)) {
-    if (owner.metronomeCustomerId && (await isApiBlocked(owner.sId))) {
+    if (owner.metronomeCustomerId && (await isApiBlocked(auth))) {
       block = {
         status: "credits_exhausted",
         message:

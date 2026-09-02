@@ -2560,7 +2560,7 @@ export async function checkMessagesLimit(
     // from the Metronome credit state (see `user_block.ts`).
     const blockedReason = user
       ? await isUserBlocked(auth, user)
-      : (await isApiBlocked(owner.sId))
+      : (await isApiBlocked(auth))
         ? ("credits_exhausted" as const)
         : null;
     if (blockedReason === "no_seat") {

@@ -38,7 +38,7 @@ export async function checkPoolCreditGate(
   const user = auth.user();
   const blocked = user
     ? (await isUserBlocked(auth, user)) !== null
-    : await isApiBlocked(owner.sId);
+    : await isApiBlocked(auth);
   if (blocked) {
     return { shouldStop: true, reason: "credits_exhausted" };
   }

@@ -730,8 +730,7 @@ export async function getReinforcementSettingsActivity({
       // Pool + programmatic cap. `isProgrammaticApiBlocked` is flag-aware (Redis
       // rate-limiter counter when the flag is on, Metronome state otherwise).
       programmaticUsageLimitReached =
-        (await isApiBlocked(workspace.sId)) ||
-        (await isProgrammaticApiBlocked(auth));
+        (await isApiBlocked(auth)) || (await isProgrammaticApiBlocked(auth));
 
       // Both clamps fail-open on errors: the reinforcement cap stays the only
       // constraint.
