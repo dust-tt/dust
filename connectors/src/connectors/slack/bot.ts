@@ -54,6 +54,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import {
+  cacheWithRedis,
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
@@ -75,6 +76,7 @@ import {
   isSupportedAudioContentType,
   isSupportedFileContentType,
   isSupportedImageContentType,
+  normalizeError,
   Ok,
   removeNulls,
 } from "@dust-tt/client";
@@ -773,6 +775,61 @@ async function processErrorResult(
   }
 }
 
+const SPACE_GROUP_IDS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function fetchSpaceGroupIds(
+  connector: ConnectorResource,
+  reach: { whitelistModelId: ModelId; spaceIds: string[] }
+): Promise<string[]> {
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+    },
+    logger
+  );
+
+  const groupIdsRes = await dustAPI.getSpaceGroupIds({
+    spaceIds: reach.spaceIds,
+  });
+  if (groupIdsRes.isErr()) {
+    throw new Error(groupIdsRes.error.message);
+  }
+
+  return groupIdsRes.value;
+}
+
+const getSpaceGroupIds = cacheWithRedis(
+  fetchSpaceGroupIds,
+  (connector, reach) => `${reach.whitelistModelId}`,
+  { ttlMs: SPACE_GROUP_IDS_CACHE_TTL_MS }
+);
+
+// A whitelisted workflow reaches the spaces it was allowed on. Front owns which group stands for a
+// space, so ask it at run time instead of keeping group ids here.
+async function getWorkflowGroupIds(
+  connector: ConnectorResource,
+  slackConfig: SlackConfigurationResource,
+  botName: string
+): Promise<Result<string[], Error>> {
+  const reach = await slackConfig.getBotReach(botName);
+  if (!reach?.spaceIds) {
+    return new Ok(reach?.groupIds ?? []);
+  }
+
+  try {
+    return new Ok(
+      await getSpaceGroupIds(connector, {
+        whitelistModelId: reach.whitelistModelId,
+        spaceIds: reach.spaceIds,
+      })
+    );
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 async function answerMessage(
   message: string,
   mentionOverride: string | undefined,
@@ -943,7 +1000,15 @@ async function answerMessage(
     if (!botName) {
       throw new Error("Failed to get bot name. Should never happen.");
     }
-    requestedGroups = await slackConfig.getBotGroupIds(botName);
+    const groupIdsRes = await getWorkflowGroupIds(
+      connector,
+      slackConfig,
+      botName
+    );
+    if (groupIdsRes.isErr()) {
+      return new Err(groupIdsRes.error);
+    }
+    requestedGroups = groupIdsRes.value;
   }
 
   const userEmailHeader =

@@ -20,9 +20,16 @@ import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
+export type BotReachType = {
+  whitelistModelId: ModelId;
+  groupIds: string[];
+  spaceIds: string[] | null;
+};
+
 export type WhitelistedBotType = {
   botName: string;
   groupIds: string[];
+  spaceIds: string[] | null;
   createdAt: number;
 };
 
@@ -182,7 +189,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   async whitelistBot(
     botName: string,
-    groupIds: string[],
+    { groupIds, spaceIds }: { groupIds: string[]; spaceIds: string[] | null },
     whitelistType: SlackbotWhitelistType
   ): Promise<Result<undefined, Error>> {
     const existingBot = await SlackBotWhitelistModel.findOne({
@@ -196,6 +203,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     if (existingBot) {
       await existingBot.update({
         groupIds,
+        spaceIds,
         whitelistType,
       });
     } else {
@@ -204,6 +212,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         slackConfigurationId: this.id,
         botName,
         groupIds,
+        spaceIds,
         whitelistType,
       });
     }
@@ -226,6 +235,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return bots.map((bot) => ({
       botName: bot.botName,
       groupIds: bot.groupIds ?? [],
+      spaceIds: bot.spaceIds,
       createdAt: bot.createdAt.getTime(),
     }));
   }
@@ -244,8 +254,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     });
   }
 
-  // Get the Dust group IDs that the bot is whitelisted for.
-  async getBotGroupIds(botName: string): Promise<string[]> {
+  // What the bot is whitelisted for: spaces, or group ids for a row written before the whitelist
+  // moved to spaces.
+  async getBotReach(botName: string): Promise<BotReachType | null> {
     const bot = await SlackBotWhitelistModel.findOne({
       where: {
         connectorId: this.connectorId,
@@ -254,7 +265,15 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       },
     });
 
-    return bot ? bot.groupIds : [];
+    if (!bot) {
+      return null;
+    }
+
+    return {
+      whitelistModelId: bot.id,
+      groupIds: bot.groupIds ?? [],
+      spaceIds: bot.spaceIds,
+    };
   }
 
   static async listAll() {

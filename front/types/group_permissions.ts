@@ -53,6 +53,11 @@ export type GrantType = (typeof GRANT_TYPES)[number];
 // grant (SpaceResource.spaceGroupRoles) and the code that reads it back (fetchManualEditorGroup).
 export const SPACE_EDITOR_GRANT_TYPE = "admin" satisfies GrantType;
 
+// A space's members are the groups holding the space-level `member` role. Its own regular_auto
+// member group always holds it, and holds it on that space only, which is what lets a caller map
+// between a space and a group without a snapshot going stale.
+export const SPACE_MEMBER_GRANT_TYPE = "member" satisfies GrantType;
+
 // Resource domains. "*" means "all resource types".
 export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "space",

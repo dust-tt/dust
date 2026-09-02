@@ -21,6 +21,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -37,6 +38,11 @@ import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
+import type { GrantSpec } from "@app/types/group_permissions";
+import {
+  grantKey,
+  SPACE_MEMBER_GRANT_TYPE,
+} from "@app/types/group_permissions";
 import {
   isManageableGroupKind,
   PROJECT_EDITOR_GROUP_PREFIX,
@@ -46,6 +52,7 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
@@ -65,6 +72,55 @@ import { Op, UniqueConstraintError } from "sequelize";
  * Known gap: `getToolsUsage` groups by MCP server, not by view, so a manually-added tool with
  * views in two regular spaces will leak combined usage into both. Same fix as above resolves it.
  */
+export type SpaceMemberGroup = {
+  space: SpaceResource;
+  memberGroup: GroupResource;
+};
+
+function spaceMemberGrant(space: SpaceResource): GrantSpec {
+  return {
+    grantType: SPACE_MEMBER_GRANT_TYPE,
+    resourceType: "space",
+    resourceId: space.id,
+  };
+}
+
+// The group that stands for a space: its own regular_auto member group, which lives and dies with
+// the space and cannot be attached to another one, or the workspace global group for the Company
+// Space. A provisioned group would drift the moment an admin attaches it elsewhere.
+export async function listSpaceMemberGroups(
+  auth: Authenticator,
+  spaces: SpaceResource[]
+): Promise<SpaceMemberGroup[]> {
+  const [memberGroupByGrantKey, globalGroupRes] = await Promise.all([
+    GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+      grants: spaces.map(spaceMemberGrant),
+    }),
+    GroupResource.fetchWorkspaceGlobalGroup(auth),
+  ]);
+  const globalGroup = globalGroupRes.isOk() ? globalGroupRes.value : null;
+
+  return removeNulls(
+    spaces.map((space) => {
+      const memberGroup = space.isGlobal()
+        ? globalGroup
+        : memberGroupByGrantKey.get(grantKey(spaceMemberGrant(space)));
+
+      return memberGroup ? { space, memberGroup } : null;
+    })
+  );
+}
+
+export async function listSpaceMemberGroupIds(
+  auth: Authenticator,
+  { spaceIds }: { spaceIds: string[] }
+): Promise<string[]> {
+  const spaces = await SpaceResource.fetchByIds(auth, spaceIds);
+  const spaceMemberGroups = await listSpaceMemberGroups(auth, spaces);
+
+  return spaceMemberGroups.map(({ memberGroup }) => memberGroup.sId);
+}
+
 export async function getSpaceCategoriesWithUsage(
   auth: Authenticator,
   space: SpaceResource
