@@ -7,7 +7,9 @@
 When working on UI components, always use the `sparkle-storybook` MCP tools to access
 Storybook's component and documentation knowledge before answering or taking any action.
 (The server is served by the Sparkle Storybook dev server — `cd sparkle && npm run storybook`
-— and registered in `.mcp.json` at the repo root.)
+— and registered in `.mcp.json` at the repo root. If you use dust-hive locally, start it with
+`dust-hive restart <env> storybook` instead: the hive forwarder owns port 6006 and routes it to
+the forwarded env.)
 
 - **CRITICAL: Never hallucinate component properties!** Before using ANY property on a
   component from the design system (including common-sounding ones like `shadow`, etc.), you

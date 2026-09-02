@@ -165,6 +165,19 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     },
     portKey: "viz",
   },
+  storybook: {
+    cwd: "sparkle",
+    needsNvm: true,
+    needsEnvSh: false,
+    // The package.json script hard-codes 6006, so pass the port ourselves.
+    buildCommand: (env) =>
+      `npx storybook dev -p ${env.ports.storybook} --host 127.0.0.1 --exact-port --ci`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.storybook}/`,
+    },
+    portKey: "storybook",
+  },
 };
 
 const registryKeys = Object.keys(SERVICE_REGISTRY) as ServiceName[];
@@ -178,9 +191,11 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except sparkle, SDK, and viz which start at spawn/manually).
+// Services to start during warm (all services except sparkle, SDK, viz and storybook which start at
+// spawn/manually).
 export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
-  (service) => service !== "sparkle" && service !== "sdk" && service !== "viz"
+  (service) =>
+    service !== "sparkle" && service !== "sdk" && service !== "viz" && service !== "storybook"
 );
 
 // Build the full shell command for a service

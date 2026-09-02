@@ -258,6 +258,10 @@ OAuth providers (WorkOS, Google, GitHub, etc.) are configured to redirect to `ht
 | 3001 | core | base + 1 |
 | 3002 | connectors | base + 2 |
 | 3006 | oauth | base + 6 |
+| 3007 | viz | base + 7 |
+| 3010 | front-spa-poke | base + 10 |
+| 3011 | front-spa-app | base + 11 |
+| 6006 | storybook (sparkle) | base + 8 |
 
 **Automatic**: When you run `dust-hive warm`, these ports are automatically forwarded to that environment.
 The forwarder listens on `127.0.0.1` by default; set `DUST_HIVE_FORWARD_LISTEN_HOST=0.0.0.0` to expose it to your LAN.
