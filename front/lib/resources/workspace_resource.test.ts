@@ -2,6 +2,7 @@ import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retenti
 import { EMPTY_PLAN_LIMIT_OVERRIDE } from "@app/lib/plans/plan_limit_overrides";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { getNamespace } from "@app/tests/utils/test_cls";
+import type { Result } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -65,6 +66,19 @@ vi.mock("@app/lib/utils/cache", () => ({
       };
     }
   ),
+  cacheWithRedisResult: vi
+    .fn()
+    .mockImplementation(
+      <T, E, Args extends unknown[]>(
+        fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>
+      ) => {
+        return async (
+          ...args: Args
+        ): Promise<Result<JsonSerializable<T>, E>> => {
+          return fn(...args);
+        };
+      }
+    ),
   invalidateCacheWithRedis: vi.fn().mockImplementation(
     <T, Args extends unknown[]>(
       fn: CacheableFunction<JsonSerializable<T>, Args>,
