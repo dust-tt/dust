@@ -47,11 +47,10 @@ describe("canAgentBeUsedInProjectConversation", () => {
       ReturnType<Authenticator["getNonNullableUser"]>["toJSON"]
     >
   ) {
-    const [regularGroup] =
-      await space.fetchRegularAutoGroups(internalAdminAuth);
-    if (!regularGroup) {
-      throw new Error("Expected a regular group on the space");
-    }
+    // Use the member group specifically — `fetchRegularAutoGroups()[0]` is
+    // unordered and can return the editor group, where the project creator is
+    // already a member.
+    const regularGroup = await space.fetchManualMemberGroup(internalAdminAuth);
     const addRes = await regularGroup.dangerouslyAddMember(internalAdminAuth, {
       user: userJson,
     });
