@@ -1,5 +1,6 @@
 import {
   SEAT_TYPE_ICONS,
+  seatTypeChipColor,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
@@ -39,6 +40,7 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  Chip,
   Clock,
   createSelectionColumn,
   DataTable,
@@ -561,16 +563,19 @@ const seatsIconColumn: ColumnDef<RowData, string> = {
           tooltipTriggerAsChild
           label={tooltipLabel}
           trigger={
-            <span className="flex cursor-default items-center justify-center">
-              <SeatTypeIcon seatType={seatType} />
-            </span>
+            <Chip
+              size="mini"
+              color={seatTypeChipColor(seatType)}
+              label={seatTypeDisplayName(seatType)}
+              className="cursor-default"
+            />
           }
         />
       </DataTable.CellContent>
     );
   },
   meta: {
-    className: "w-16",
+    className: "w-24",
     headerAlign: "center",
   },
 };
