@@ -139,8 +139,10 @@ export async function getAgentMessageConsumption(
 
   const details = buildLatestAvailableMessageConsumptionDetails({
     actions: facts.actions,
-    additionalAgentWorkCredits: hiddenSubAgentBilledCredits,
-    agentWorkActionModelIds: hiddenHelperActionIds,
+    agentWorkDetailsOverride: {
+      additionalAttributedCredits: hiddenSubAgentBilledCredits,
+      actionModelIds: hiddenHelperActionIds,
+    },
     billedCredits: facts.billedCredits,
     dustRunIds: facts.dustRunIds,
     items: facts.items,

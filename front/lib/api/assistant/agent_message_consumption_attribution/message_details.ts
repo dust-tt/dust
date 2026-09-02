@@ -30,6 +30,11 @@ export type ToolConsumptionDetailsOverride = {
   label: string;
 };
 
+export type AgentWorkConsumptionDetailsOverride = {
+  additionalAttributedCredits: number;
+  actionModelIds: ReadonlySet<ModelId>;
+};
+
 function buildConsumptionTotals({
   items,
   reconciledCreditAmounts,
@@ -187,14 +192,12 @@ function buildModelDetails({
 
 function buildMessageConsumptionDetails({
   actions,
-  additionalAgentWorkCredits,
-  agentWorkActionModelIds,
+  agentWorkDetailsOverride,
   allocation,
   toolDetailsOverridesByActionModelId,
 }: {
   actions: AgentMCPActionResource[];
-  additionalAgentWorkCredits?: number;
-  agentWorkActionModelIds?: ReadonlySet<ModelId>;
+  agentWorkDetailsOverride?: AgentWorkConsumptionDetailsOverride;
   allocation: MessageConsumptionAllocation;
   toolDetailsOverridesByActionModelId?: ReadonlyMap<
     ModelId,
@@ -208,7 +211,7 @@ function buildMessageConsumptionDetails({
     (item) =>
       item.itemType !== "tool" ||
       (item.agentMCPActionId !== null &&
-        agentWorkActionModelIds?.has(item.agentMCPActionId))
+        agentWorkDetailsOverride?.actionModelIds.has(item.agentMCPActionId))
   );
 
   const tools = buildToolDetails({
@@ -227,7 +230,9 @@ function buildMessageConsumptionDetails({
 
   return {
     attributionVersion,
-    agentWorkCredits: agentWorkCredits + (additionalAgentWorkCredits ?? 0),
+    agentWorkCredits:
+      agentWorkCredits +
+      (agentWorkDetailsOverride?.additionalAttributedCredits ?? 0),
     tools,
     models: buildModelDetails({
       items,
@@ -240,8 +245,7 @@ function buildMessageConsumptionDetails({
 /** Selects the newest self-consistent attribution stored for a message. */
 export function buildLatestAvailableMessageConsumptionDetails({
   actions,
-  additionalAgentWorkCredits,
-  agentWorkActionModelIds,
+  agentWorkDetailsOverride,
   billedCredits,
   dustRunIds,
   items,
@@ -250,8 +254,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
   usages,
 }: {
   actions: AgentMCPActionResource[];
-  additionalAgentWorkCredits?: number;
-  agentWorkActionModelIds?: ReadonlySet<ModelId>;
+  agentWorkDetailsOverride?: AgentWorkConsumptionDetailsOverride;
   billedCredits: number | null;
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
@@ -276,8 +279,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
 
   return buildMessageConsumptionDetails({
     actions,
-    additionalAgentWorkCredits,
-    agentWorkActionModelIds,
+    agentWorkDetailsOverride,
     allocation,
     toolDetailsOverridesByActionModelId,
   });
