@@ -143,7 +143,7 @@ describe("POST /api/email/webhook", () => {
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 502 }))
       .mockResolvedValueOnce(
-        Response.json({ status: "not_received" }, { status: 200 })
+        Response.json({ received: false }, { status: 200 })
       )
       .mockResolvedValueOnce(new Response("{}"));
     vi.stubGlobal("fetch", fetchMock);
@@ -166,16 +166,13 @@ describe("POST /api/email/webhook", () => {
     }
   });
 
-  it("waits for a received relay before deciding whether to retry", async () => {
+  it("does not retry a relay received before its response failed", async () => {
     const { user } = await createResourceTest({ role: "admin" });
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 502 }))
       .mockResolvedValueOnce(
-        Response.json({ status: "received" }, { status: 200 })
-      )
-      .mockResolvedValueOnce(
-        Response.json({ status: "processed" }, { status: 200 })
+        Response.json({ received: true }, { status: 200 })
       );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -185,7 +182,7 @@ describe("POST /api/email/webhook", () => {
       });
       expect(response.status).toBe(200);
 
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
       expect(fetchMock.mock.calls[1][0]).toBe(
         "http://other-region.test/api/email/webhook/relay-status"
       );
@@ -241,7 +238,7 @@ describe("POST /api/email/webhook", () => {
       );
       expect(statusResponse.status).toBe(200);
       await expect(statusResponse.json()).resolves.toEqual({
-        status: "processed",
+        received: true,
       });
     });
 

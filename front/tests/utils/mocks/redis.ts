@@ -159,33 +159,16 @@ class RedisMock {
           script: string,
           { keys, arguments: args }: { keys: string[]; arguments: string[] }
         ) => {
-          const updatesString =
-            script.includes('redis.call("set", KEYS[1],') ||
-            script.includes('redis.call("del", KEYS[1])');
-          if (!updatesString) {
+          if (!script.includes('redis.call("del", KEYS[1])')) {
             return 1;
           }
-
           const [key] = keys;
-          const [expectedValue, nextValue, ttlSeconds] = args;
-          const entry = key ? this.stringStore.get(key) : undefined;
-          if (
-            !key ||
-            !entry ||
-            entry.value !== expectedValue ||
-            (entry.expiresAtMs > 0 && Date.now() > entry.expiresAtMs)
-          ) {
-            return 0;
-          }
-          if (script.includes('redis.call("set", KEYS[1],')) {
-            this.stringStore.set(key, {
-              value: nextValue,
-              expiresAtMs: Date.now() + Number(ttlSeconds) * 1000,
-            });
-          } else if (script.includes('redis.call("del", KEYS[1])')) {
+          const [expectedValue] = args;
+          if (key && this.stringStore.get(key)?.value === expectedValue) {
             this.stringStore.delete(key);
+            return 1;
           }
-          return 1;
+          return 0;
         }
       ),
       exists: vi.fn(async (key: string) => {

@@ -62,29 +62,10 @@ export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
 const EMAIL_RELAY_RECEIPT_TTL_SECONDS = 60 * 60;
-const EMAIL_RELAY_PROCESSED_VALUE = "processed";
-const EMAIL_RELAY_STATUS_WAIT_MS = 35 * 1000;
-const EMAIL_RELAY_STATUS_POLL_MS = 500;
 const EMAIL_RELAY_RETRY_DELAY_MS = 200;
 const HTTP_SERVER_ERROR_STATUS_MIN = 500;
 
-export type EmailRelayReceipt = {
-  relayId: string;
-  token: string;
-};
-
-const EmailRelayStatusSchema = z.enum([
-  "not_received",
-  "received",
-  "processed",
-]);
-export type EmailRelayStatus = z.infer<typeof EmailRelayStatusSchema>;
-const RemoteRelayStatusSchema = z.object({ status: EmailRelayStatusSchema });
-
-export type EmailRelayStart =
-  | { status: "legacy" }
-  | { status: "duplicate" }
-  | { status: "started"; receipt: EmailRelayReceipt };
+const RemoteRelayReceiptSchema = z.object({ received: z.boolean() });
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
@@ -210,25 +191,22 @@ function makeEmailRelayKey(relayId: string): string {
   return `${EMAIL_RELAY_KEY_PREFIX}:${relayId}`;
 }
 
-export async function startEmailRelay(
+export async function recordEmailRelayReceipt(
   headers: EmailWebhookHeaders
-): Promise<EmailRelayStart> {
+): Promise<boolean> {
   const relayId = headers[EMAIL_WEBHOOK_RELAY_ID_HEADER];
   if (!isString(relayId)) {
     // Keep accepting relays sent by versions deployed before relay retries.
-    return { status: "legacy" };
+    return true;
   }
 
   const redis = await getRedisStreamClient({ origin: "email_context" });
-  const token = randomUUID();
-  const result = await redis.set(makeEmailRelayKey(relayId), token, {
+  const result = await redis.set(makeEmailRelayKey(relayId), "1", {
     NX: true,
     EX: EMAIL_RELAY_RECEIPT_TTL_SECONDS,
   });
 
-  return result === "OK"
-    ? { status: "started", receipt: { relayId, token } }
-    : { status: "duplicate" };
+  return result === "OK";
 }
 
 export function getEmailRelayId(headers: EmailWebhookHeaders): string | null {
@@ -236,50 +214,18 @@ export function getEmailRelayId(headers: EmailWebhookHeaders): string | null {
   return isString(relayId) ? relayId : null;
 }
 
-export async function getEmailRelayStatus(
-  relayId: string
-): Promise<EmailRelayStatus> {
+export async function hasEmailRelayReceipt(relayId: string): Promise<boolean> {
   const redis = await getRedisStreamClient({ origin: "email_context" });
-  const value = await redis.get(makeEmailRelayKey(relayId));
-  if (!value) {
-    return "not_received";
-  }
-  return value === EMAIL_RELAY_PROCESSED_VALUE ? "processed" : "received";
+  return Boolean(await redis.get(makeEmailRelayKey(relayId)));
 }
 
-export async function completeEmailRelay(
-  receipt: EmailRelayReceipt
-): Promise<void> {
-  const redis = await getRedisStreamClient({ origin: "email_context" });
-  const completed = await redis.eval(
-    `
-      if redis.call("get", KEYS[1]) == ARGV[1] then
-        redis.call("set", KEYS[1], ARGV[2], "EX", ARGV[3])
-        return 1
-      end
-      return 0
-    `,
-    {
-      keys: [makeEmailRelayKey(receipt.relayId)],
-      arguments: [
-        receipt.token,
-        EMAIL_RELAY_PROCESSED_VALUE,
-        String(EMAIL_RELAY_RECEIPT_TTL_SECONDS),
-      ],
-    }
-  );
-  if (completed !== 1) {
-    throw new Error(`Lost receipt for email relay ${receipt.relayId}`);
-  }
-}
-
-async function getRemoteRelayStatus({
+async function getRemoteRelayReceipt({
   url,
   relayId,
 }: {
   url: string;
   relayId: string;
-}): Promise<Result<EmailRelayStatus, Error>> {
+}): Promise<Result<boolean, Error>> {
   try {
     const response = await fetch(`${url}/api/email/webhook/relay-status`, {
       headers: {
@@ -294,46 +240,17 @@ async function getRemoteRelayStatus({
       );
     }
 
-    const bodyRes = RemoteRelayStatusSchema.safeParse(await response.json());
+    const bodyRes = RemoteRelayReceiptSchema.safeParse(await response.json());
     if (!bodyRes.success) {
       return new Err(
         new Error("Relay receipt lookup returned an invalid body")
       );
     }
 
-    return new Ok(bodyRes.data.status);
+    return new Ok(bodyRes.data.received);
   } catch (error) {
     return new Err(normalizeError(error));
   }
-}
-
-async function waitForRemoteRelay({
-  url,
-  relayId,
-}: {
-  url: string;
-  relayId: string;
-}): Promise<Result<boolean, Error>> {
-  const deadline = Date.now() + EMAIL_RELAY_STATUS_WAIT_MS;
-  while (Date.now() < deadline) {
-    const statusRes = await getRemoteRelayStatus({ url, relayId });
-    if (statusRes.isErr()) {
-      return statusRes;
-    }
-    switch (statusRes.value) {
-      case "processed":
-        return new Ok(true);
-      case "not_received":
-        return new Ok(false);
-      case "received":
-        break;
-      default:
-        assertNever(statusRes.value);
-    }
-    await setTimeoutAsync(EMAIL_RELAY_STATUS_POLL_MS);
-  }
-
-  return new Err(new Error("Timed out waiting for email relay processing"));
 }
 
 async function postEmailRelay({
@@ -383,7 +300,7 @@ async function sendEmailRelay({
 }): Promise<Result<void, Error>> {
   let responseRes = await postEmailRelay({ url, name, headers, formData });
   if (responseRes.isErr()) {
-    const receiptRes = await waitForRemoteRelay({ url, relayId });
+    const receiptRes = await getRemoteRelayReceipt({ url, relayId });
     if (receiptRes.isOk() && receiptRes.value) {
       return new Ok(undefined);
     }
@@ -404,7 +321,7 @@ async function sendEmailRelay({
     responseRes = await postEmailRelay({ url, name, headers, formData });
 
     if (responseRes.isErr()) {
-      const retryReceiptRes = await waitForRemoteRelay({ url, relayId });
+      const retryReceiptRes = await getRemoteRelayReceipt({ url, relayId });
       if (retryReceiptRes.isOk() && retryReceiptRes.value) {
         return new Ok(undefined);
       }

@@ -8,17 +8,15 @@ import {
 } from "@app/lib/api/assistant/email/email_trigger";
 import { evaluateInboundAuth } from "@app/lib/api/assistant/email/inbound_auth";
 import { validateSendgridParseWebhookSignature } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
-import type { EmailRelayStart } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
-  completeEmailRelay,
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
+  recordEmailRelayReceipt,
   relayEmailToOtherRegion,
   replyToError,
   resolveRelayedErrorReply,
   shouldRelayToOtherRegion,
-  startEmailRelay,
   toEmailWebhookHeaders,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
@@ -140,10 +138,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
   const email = emailRes.value;
 
-  const relayStart: EmailRelayStart = isRelayRequest
-    ? await startEmailRelay(headers)
-    : { status: "legacy" };
-  if (relayStart.status === "duplicate") {
+  if (isRelayRequest && !(await recordEmailRelayReceipt(headers))) {
     logger.info(
       { senderEmail: email.sender.email },
       "[email] Ignoring duplicate inbound email relay"
@@ -156,7 +151,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
   // remaining processing in a detached IIFE so the response goes out
   // immediately, matching the Next-side `res.status(200).json(...)` then
   // keep-working pattern.
-  const processing = (async () => {
+  void (async () => {
     try {
       const authDecision = evaluateInboundAuth(email);
       if (!authDecision.authenticated) {
@@ -345,26 +340,8 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         { error: normalizeError(err) },
         "[email] Unhandled error in async email processing"
       );
-      throw err;
     }
   })();
-
-  if (relayStart.status === "started") {
-    void processing
-      .then(async () => {
-        try {
-          await completeEmailRelay(relayStart.receipt);
-        } catch (error) {
-          logger.error(
-            { error: normalizeError(error) },
-            "[email] Failed to complete inbound email relay receipt"
-          );
-        }
-      })
-      .catch(() => undefined);
-  } else {
-    void processing.catch(() => undefined);
-  }
 
   return ctx.json({ success: true });
 });

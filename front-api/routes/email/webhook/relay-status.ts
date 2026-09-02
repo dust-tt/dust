@@ -1,7 +1,6 @@
-import type { EmailRelayStatus } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
   getEmailRelayId,
-  getEmailRelayStatus,
+  hasEmailRelayReceipt,
   hasValidRelayAuthorization,
   toEmailWebhookHeaders,
 } from "@app/lib/api/assistant/email/webhook_helpers";
@@ -9,7 +8,7 @@ import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 type GetResponseBody = {
-  status: EmailRelayStatus;
+  received: boolean;
 };
 
 const app = createHono();
@@ -38,7 +37,7 @@ app.get("/", async (ctx): HandlerResult<GetResponseBody> => {
     });
   }
 
-  return ctx.json({ status: await getEmailRelayStatus(relayId) });
+  return ctx.json({ received: await hasEmailRelayReceipt(relayId) });
 });
 
 export default app;
