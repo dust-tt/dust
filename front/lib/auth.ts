@@ -1513,6 +1513,20 @@ export class Authenticator {
   }
 
   /**
+   * True when the attached user holds the DB super-user flag with a
+   * Dust-internal email. Unlike `isDustSuperUser()` (which is only set by the
+   * poke factories), this is available on regular session auths and should
+   * only gate debug/dev tooling, never data access.
+   */
+  isDustSuperUserAccount(): boolean {
+    const user = this._user;
+
+    return (
+      user !== null && user.isDustSuperUser && isDustInternalEmail(user.email)
+    );
+  }
+
+  /**
    * Poke operator principal (email/name). Prefers the attached Dust user when
    * present; otherwise the Cloudflare Access principal stashed at auth time.
    */

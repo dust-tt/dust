@@ -21,7 +21,7 @@ app.post("/", async (ctx): HandlerResult<PostSendOnboardingResponseBody> => {
     : (acceptLanguage?.split(",")[0]?.split("-")[0] ?? null);
 
   // Only superusers can force creation (for testing purposes).
-  const force = auth.isDustSuperUser() && body?.force === true;
+  const force = auth.isDustSuperUserAccount() && body?.force === true;
 
   const result = await createOnboardingConversationIfNeeded(auth, {
     force,

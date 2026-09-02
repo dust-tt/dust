@@ -110,7 +110,7 @@ app.post(
     // Allow Dust Super User to force role for testing
     const allowForSuperUserTesting =
       showDebugTools(featureFlags) &&
-      auth.isDustSuperUser() &&
+      auth.isDustSuperUserAccount() &&
       body.force === "true";
 
     if (!auth.isManager() && !allowForSuperUserTesting) {
