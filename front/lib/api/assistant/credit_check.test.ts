@@ -12,16 +12,12 @@ const {
   mockIsProgrammaticApiBlocked,
   mockIsProgrammaticUsage,
   mockGetCreditSpendCheckpointAwuCredits,
-  mockResolveSpendLimitCycleBounds,
-  mockIsSpendCapCounterReached,
 } = vi.hoisted(() => ({
   mockIsUserBlocked: vi.fn(),
   mockIsApiBlocked: vi.fn(),
   mockIsProgrammaticApiBlocked: vi.fn(),
   mockIsProgrammaticUsage: vi.fn(),
   mockGetCreditSpendCheckpointAwuCredits: vi.fn(),
-  mockResolveSpendLimitCycleBounds: vi.fn(),
-  mockIsSpendCapCounterReached: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/credits/access_control", () => ({
@@ -44,14 +40,6 @@ vi.mock("@app/lib/api/config", () => ({
     getCreditSpendCheckpointThresholdAwuCredits:
       mockGetCreditSpendCheckpointAwuCredits,
   },
-}));
-
-vi.mock("@app/lib/spend_limits/cycle", () => ({
-  resolveSpendLimitCycleBounds: mockResolveSpendLimitCycleBounds,
-}));
-
-vi.mock("@app/lib/api/users/spend_limit", () => ({
-  isSpendCapCounterReached: mockIsSpendCapCounterReached,
 }));
 
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class
@@ -181,46 +169,32 @@ describe("checkPoolCreditGate", () => {
 });
 
 describe("checkCreditSpendCheckpointGate", () => {
-  const FAKE_BOUNDS = { startMs: 0, endMs: 1 } as never;
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCreditSpendCheckpointAwuCredits.mockReturnValue(1000);
-    mockResolveSpendLimitCycleBounds.mockResolvedValue(FAKE_BOUNDS);
-    mockIsSpendCapCounterReached.mockResolvedValue(false);
   });
 
   it("does not notify when there is no user", async () => {
     const auth = makeAuth({ hasUser: false });
-    const result = await checkCreditSpendCheckpointGate(auth);
-    expect(result).toEqual({ crossed: false });
-    expect(mockResolveSpendLimitCycleBounds).not.toHaveBeenCalled();
-  });
-
-  it("does not notify when the billing cycle can't be resolved", async () => {
-    mockResolveSpendLimitCycleBounds.mockResolvedValue(null);
-    const auth = makeAuth({ hasUser: true });
-    const result = await checkCreditSpendCheckpointGate(auth);
-    expect(result).toEqual({ crossed: false });
-    expect(mockIsSpendCapCounterReached).not.toHaveBeenCalled();
-  });
-
-  it("does not notify when the counter has not reached the threshold", async () => {
-    mockIsSpendCapCounterReached.mockResolvedValue(false);
-    const auth = makeAuth({ hasUser: true });
-    const result = await checkCreditSpendCheckpointGate(auth);
-    expect(result).toEqual({ crossed: false });
-  });
-
-  it("notifies with the fixed threshold once the counter crosses it", async () => {
-    mockIsSpendCapCounterReached.mockResolvedValue(true);
-    const auth = makeAuth({ hasUser: true });
-    const result = await checkCreditSpendCheckpointGate(auth);
-    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1000 });
-    expect(mockIsSpendCapCounterReached).toHaveBeenCalledWith(auth, {
-      user: { id: 42, sId: "user_test" },
-      thresholdAwuCredits: 1000,
-      bounds: FAKE_BOUNDS,
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 5000,
     });
+    expect(result).toEqual({ crossed: false });
+  });
+
+  it("does not notify when this message's consumed credits are below the threshold", async () => {
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 999,
+    });
+    expect(result).toEqual({ crossed: false });
+  });
+
+  it("notifies with the fixed threshold once this message's consumed credits reach it", async () => {
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 1000,
+    });
+    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1000 });
   });
 });

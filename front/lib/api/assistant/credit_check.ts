@@ -5,9 +5,7 @@ import {
   isUserBlocked,
 } from "@app/lib/api/credits/access_control";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import { isSpendCapCounterReached } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
-import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -63,27 +61,25 @@ export type CreditSpendCheckpointCheckResult =
 
 const DO_NOT_NOTIFY: CreditSpendCheckpointCheckResult = { crossed: false };
 
+/**
+ * `consumedAwuCredits` is the cost of this agent message's own run so far (its
+ * accumulated `runIds`), not the user's cumulative cycle spend — this checkpoint is
+ * about how expensive the current answer is turning out to be, not the account-wide
+ * cap already enforced by `isUserSpendLimitRateCapReached`.
+ */
 export async function checkCreditSpendCheckpointGate(
-  auth: Authenticator
+  auth: Authenticator,
+  { consumedAwuCredits }: { consumedAwuCredits: number }
 ): Promise<CreditSpendCheckpointCheckResult> {
   const user = auth.user();
   if (!user) {
     return DO_NOT_NOTIFY;
   }
-  const workspace = auth.getNonNullableWorkspace();
+
   const thresholdAwuCredits =
     config.getCreditSpendCheckpointThresholdAwuCredits();
 
-  const bounds = await resolveSpendLimitCycleBounds(workspace);
-  if (!bounds) {
-    return DO_NOT_NOTIFY;
-  }
-
-  const reached = await isSpendCapCounterReached(auth, {
-    user,
-    thresholdAwuCredits,
-    bounds,
-  });
-
-  return reached ? { crossed: true, thresholdAwuCredits } : DO_NOT_NOTIFY;
+  return consumedAwuCredits >= thresholdAwuCredits
+    ? { crossed: true, thresholdAwuCredits }
+    : DO_NOT_NOTIFY;
 }

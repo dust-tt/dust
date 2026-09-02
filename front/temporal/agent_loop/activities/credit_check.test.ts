@@ -14,6 +14,9 @@ const {
   mockMessageModelFindOne,
   mockAgentMessageModelUpdate,
   mockMarkAsActionRequired,
+  mockListByDustRunIds,
+  mockListRunUsagesForRuns,
+  mockAwuFromMicroUsd,
 } = vi.hoisted(() => ({
   mockFromJson: vi.fn(),
   mockCheckPoolCreditGate: vi.fn(),
@@ -24,6 +27,9 @@ const {
   mockMessageModelFindOne: vi.fn(),
   mockAgentMessageModelUpdate: vi.fn(),
   mockMarkAsActionRequired: vi.fn(),
+  mockListByDustRunIds: vi.fn(),
+  mockListRunUsagesForRuns: vi.fn(),
+  mockAwuFromMicroUsd: vi.fn(),
 }));
 
 vi.mock("@app/lib/auth", () => ({
@@ -46,6 +52,17 @@ vi.mock("@app/lib/models/agent/conversation", () => ({
 
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: { markAsActionRequired: mockMarkAsActionRequired },
+}));
+
+vi.mock("@app/lib/resources/run_resource", () => ({
+  RunResource: {
+    listByDustRunIds: mockListByDustRunIds,
+    listRunUsagesForRuns: mockListRunUsagesForRuns,
+  },
+}));
+
+vi.mock("@app/lib/credits/agent_message_billing", () => ({
+  awuFromMicroUsd: mockAwuFromMicroUsd,
 }));
 
 vi.mock("@app/types/assistant/agent_run", () => ({
@@ -125,11 +142,17 @@ describe("checkCreditSpendCheckpointActivity", () => {
     vi.clearAllMocks();
     mockFromJson.mockResolvedValue(FAKE_AUTH);
     mockMessageModelFindOne.mockResolvedValue(null);
+    mockListByDustRunIds.mockResolvedValue([]);
+    mockListRunUsagesForRuns.mockResolvedValue([]);
+    mockAwuFromMicroUsd.mockReturnValue(0);
   });
 
   it("returns crossed: false without checking the gate once acknowledged", async () => {
     mockMessageModelFindOne.mockResolvedValue({
-      agentMessage: { creditSpendCheckpointStatus: "acknowledged" },
+      agentMessage: {
+        creditSpendCheckpointStatus: "acknowledged",
+        runIds: ["run_1"],
+      },
     });
 
     const result = await checkCreditSpendCheckpointActivity({} as never, {
@@ -138,6 +161,52 @@ describe("checkCreditSpendCheckpointActivity", () => {
 
     expect(result).toEqual({ crossed: false, acknowledged: true });
     expect(mockCheckCreditSpendCheckpointGate).not.toHaveBeenCalled();
+    expect(mockListByDustRunIds).not.toHaveBeenCalled();
+  });
+
+  it("skips the run usage lookup when this message has no runIds yet", async () => {
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({ crossed: false });
+
+    await checkCreditSpendCheckpointActivity({} as never, {
+      agentLoopArgs: { agentMessageId: "msg_id" } as never,
+    });
+
+    expect(mockListByDustRunIds).not.toHaveBeenCalled();
+    expect(mockCheckCreditSpendCheckpointGate).toHaveBeenCalledWith(FAKE_AUTH, {
+      consumedAwuCredits: 0,
+    });
+  });
+
+  it("computes this message's consumed AWU credits from its own runIds and passes them to the gate", async () => {
+    mockMessageModelFindOne.mockResolvedValue({
+      agentMessage: {
+        creditSpendCheckpointStatus: null,
+        runIds: ["run_1", "run_2"],
+      },
+    });
+    const fakeRuns = [{ id: 1 }, { id: 2 }];
+    mockListByDustRunIds.mockResolvedValue(fakeRuns);
+    mockListRunUsagesForRuns.mockResolvedValue([
+      { costMicroUsd: 100 },
+      { costMicroUsd: 250 },
+    ]);
+    mockAwuFromMicroUsd.mockReturnValue(42);
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({ crossed: false });
+
+    await checkCreditSpendCheckpointActivity({} as never, {
+      agentLoopArgs: { agentMessageId: "msg_id" } as never,
+    });
+
+    expect(mockListByDustRunIds).toHaveBeenCalledWith(FAKE_AUTH, {
+      dustRunIds: ["run_1", "run_2"],
+    });
+    expect(mockListRunUsagesForRuns).toHaveBeenCalledWith(FAKE_AUTH, {
+      runs: fakeRuns,
+    });
+    expect(mockAwuFromMicroUsd).toHaveBeenCalledWith(350);
+    expect(mockCheckCreditSpendCheckpointGate).toHaveBeenCalledWith(FAKE_AUTH, {
+      consumedAwuCredits: 42,
+    });
   });
 
   it("does not load the conversation or publish when the gate says not crossed", async () => {
