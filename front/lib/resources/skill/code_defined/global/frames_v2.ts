@@ -335,6 +335,17 @@ dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 If validation, a function build, or database reconciliation fails, no partial publication becomes
 active. Fix the reported error and rerun the command.
 
+Call a function from the active publication by its stable Frame ID and bare manifest name:
+
+\`\`\`bash
+dsbx frame call <frame-id> <function-name> --input '<json>'
+\`\`\`
+
+During authoring, the mounted Frame folder or manifest path is also accepted in place of the ID.
+The ID form requires Frame use rights; the path form additionally requires read access to the
+mounted source. Use this to exercise published server behavior directly; it does not test the Frame
+UI.
+
 For a legacy Frame, pass its entry source file instead:
 
 \`\`\`bash
