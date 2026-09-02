@@ -9,7 +9,6 @@ export type WorkspaceTopAgentRow = {
   pictureUrl: string | null;
   messageCount: number;
   userCount: number;
-  totalCostCredits: number | null;
 };
 
 export type GetWorkspaceTopAgentsResponse = {

@@ -32,7 +32,6 @@ import {
   formatMcpDescription,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
   describeMcpServer,
   getAvailableModelsForWorkspace,
@@ -837,8 +836,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const owner = auth.getNonNullableWorkspace();
-
     // Verify agent configuration exists and is accessible.
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
@@ -854,11 +851,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     const numberOfDays = days ?? 30;
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: owner.sId,
-      agentId: agentConfigurationId,
-      days: numberOfDays,
-    });
 
     const [feedbackCounts, overviewResult] = await Promise.all([
       AgentMessageFeedbackResource.getFeedbackCountForAssistant(
@@ -866,7 +858,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         agentConfigurationId,
         numberOfDays
       ),
-      fetchAgentOverview(baseQuery),
+      fetchAgentOverview(auth, {
+        agentId: agentConfigurationId,
+        days: numberOfDays,
+      }),
     ]);
 
     if (overviewResult.isErr()) {

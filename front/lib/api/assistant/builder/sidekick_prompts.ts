@@ -3,7 +3,6 @@ import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/con
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -192,20 +191,16 @@ async function fetchInsightsMarkdown(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<string | null> {
-  const owner = auth.getNonNullableWorkspace();
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    agentId: agentConfigurationId,
-    days: INSIGHTS_DAYS,
-  });
-
   const [feedbackCounts, overviewResult] = await Promise.all([
     AgentMessageFeedbackResource.getFeedbackCountForAssistant(
       auth,
       agentConfigurationId,
       INSIGHTS_DAYS
     ),
-    fetchAgentOverview(baseQuery),
+    fetchAgentOverview(auth, {
+      agentId: agentConfigurationId,
+      days: INSIGHTS_DAYS,
+    }),
   ]);
 
   if (overviewResult.isErr()) {
