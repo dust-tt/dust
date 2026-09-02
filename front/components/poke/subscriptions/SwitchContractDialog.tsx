@@ -294,6 +294,7 @@ export default function SwitchContractDialog({
       {
         selected: boolean;
         minSeats: number;
+        maxSeats?: number;
         rate: number;
         paymentSchedule: { frequency: "one_time" };
       }
@@ -306,6 +307,7 @@ export default function SwitchContractDialog({
       next[seat.seatType] = {
         selected: seat.entitled,
         minSeats: 0,
+        maxSeats: undefined,
         rate,
         paymentSchedule: { frequency: "one_time" },
       };
@@ -610,6 +612,10 @@ export default function SwitchContractDialog({
         const minSeats = Number.isFinite(entry?.minSeats)
           ? (entry?.minSeats ?? 0)
           : 0;
+        const maxSeats =
+          typeof entry?.maxSeats === "number" && Number.isFinite(entry.maxSeats)
+            ? entry.maxSeats
+            : undefined;
         const rate = Number.isFinite(entry?.rate) ? (entry?.rate ?? 0) : 0;
         // If the operator left commitment price blank, default to minSeats * rate
         // (the list value of the committed seats).
@@ -637,6 +643,7 @@ export default function SwitchContractDialog({
         seats[seatType] = {
           selected,
           minSeats,
+          maxSeats,
           rate,
           commitmentPrice,
           paymentSchedule,
@@ -1048,7 +1055,8 @@ export default function SwitchContractDialog({
                         {/* Header row */}
                         <div className="flex items-center gap-3 pb-1 text-xs font-medium text-muted-foreground">
                           <div className="w-32 shrink-0" />
-                          <div className="flex-1">Min seats</div>
+                          <div className="flex-1">Commitment</div>
+                          <div className="flex-1">Max</div>
                           <div className="flex-1">
                             Seat rate
                             {resolvedCurrency
@@ -1109,6 +1117,17 @@ export default function SwitchContractDialog({
                                   hideLabel
                                   type="number"
                                   placeholder="0"
+                                  disabled={!isSelected}
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <InputField
+                                  control={form.control}
+                                  name={`seats.${seatType}.maxSeats`}
+                                  hideLabel
+                                  type="number"
+                                  min="1"
+                                  placeholder="∞"
                                   disabled={!isSelected}
                                 />
                               </div>
