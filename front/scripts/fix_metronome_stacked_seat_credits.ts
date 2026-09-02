@@ -53,18 +53,17 @@ import {
 } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
-import { getSeatCreditNameForSeatType } from "@app/lib/metronome/seats";
 import {
   getAwuAllocationForSeatType,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
+import { getSeatCreditNameForSeatType } from "@app/lib/metronome/seats";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { makeScript } from "./helpers";
 
@@ -293,11 +292,20 @@ async function fixWorkspace(
     });
   }
 
-  // Resolve the stray credit segment + a valid entry timestamp per seat. The
-  // entry must fall inside the stray credit segment AND at a time the seat is
-  // active in the stray subscription (mirrors resolveSeatAdjustmentTimestamp in
-  // seats.ts). A seat that never had a stray-tier active window this segment
-  // cannot receive the ledger entry this way and is reported unresolved.
+  // Resolve the stray credit segment + a valid entry timestamp per seat.
+  //
+  // The stray grant sits in the CURRENTLY-active stray credit segment (that's
+  // why it still counts toward the balance): the seat was assigned to the stray
+  // tier at that segment's start — the monthly recurrence that granted it —
+  // before converging onto its home tier. So the segment's `starting_at` is a
+  // valid, hour-aligned, in-segment entry time at which the seat held the
+  // stray grant, even though the seat is no longer assigned to the stray
+  // subscription now (which is exactly why `getMetronomeSeatActiveSince` on the
+  // stray subscription returns null for a converged seat — the reason the first
+  // single-seat --execute resolved nothing). We therefore default to the
+  // segment start and only clamp UP to a live stray active-window when one
+  // still exists (a seat still partly on the stray tier). A seat is left
+  // unresolved only when no stray credit segment covers now.
   const segmentCache = new Map<
     string,
     { creditId: string; segmentId: string; segmentStartingAt: string } | null
@@ -320,27 +328,23 @@ async function fixWorkspace(
     }
     c.creditId = seg.creditId;
     c.segmentId = seg.segmentId;
+    const segmentStartMs = new Date(seg.segmentStartingAt).getTime();
+    let timestampMs = segmentStartMs;
     const strayTier = tierBySeatType.get(c.strayType);
-    if (!strayTier) {
-      continue;
+    if (strayTier) {
+      const activeSinceRes = await paceMetronome(() =>
+        getMetronomeSeatActiveSince({
+          metronomeCustomerId,
+          contractId,
+          subscriptionId: strayTier.subscriptionId,
+          seatId: c.seatId,
+        })
+      );
+      if (activeSinceRes.isOk() && activeSinceRes.value) {
+        timestampMs = Math.max(activeSinceRes.value.getTime(), segmentStartMs);
+      }
     }
-    const activeSinceRes = await paceMetronome(() =>
-      getMetronomeSeatActiveSince({
-        metronomeCustomerId,
-        contractId,
-        subscriptionId: strayTier.subscriptionId,
-        seatId: c.seatId,
-      })
-    );
-    if (activeSinceRes.isErr() || !activeSinceRes.value) {
-      continue;
-    }
-    c.adjustmentTimestamp = new Date(
-      Math.max(
-        activeSinceRes.value.getTime(),
-        new Date(seg.segmentStartingAt).getTime()
-      )
-    );
+    c.adjustmentTimestamp = new Date(timestampMs);
   }
 
   const resolved = corrections.filter(
@@ -458,7 +462,8 @@ makeScript(
     await fixWorkspace(workspaceId, {
       execute,
       onlySeatId: seatId ?? null,
-      onlyHomeSeatType: (homeSeatType as MembershipSeatType | undefined) ?? null,
+      onlyHomeSeatType:
+        (homeSeatType as MembershipSeatType | undefined) ?? null,
       logger,
     });
   }
