@@ -34,7 +34,7 @@ export function WorkspacePoolUsageButton({
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="text-sm font-semibold text-foreground">
-          Pool Usage
+          Credits Usage
         </span>
         <span className="text-xs text-muted-foreground">
           Review member seats and credit pool consumption.

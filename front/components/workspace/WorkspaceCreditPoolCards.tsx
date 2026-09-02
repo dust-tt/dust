@@ -78,7 +78,7 @@ export function WorkspaceCreditUsageValueCards({
     >
       {showPoolCard && (
         <SummaryCard
-          label="Remaining credits pool"
+          label="Remaining credits in the pool"
           value={formatCredits(totalRemainingCredits)}
           hint={null}
         />
@@ -93,7 +93,7 @@ export function WorkspaceCreditUsageValueCards({
         hint={cycleDayLabel}
       />
       <SummaryCard
-        label="Programmatic / Other usage this cycle"
+        label="Programmatic usage this cycle"
         value={
           typeof programmaticConsumedCredits === "number"
             ? formatCredits(programmaticConsumedCredits)
@@ -154,7 +154,12 @@ export function WorkspaceCreditPoolCycleHistoryTable({
         : "Unknown cycle",
     consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
   }));
-  return <DataTable data={rows} columns={CYCLE_HISTORY_COLUMNS} />;
+  return (
+    <>
+      <Page.H variant="h5">Previous cycles</Page.H>
+      <DataTable data={rows} columns={CYCLE_HISTORY_COLUMNS} />
+    </>
+  );
 }
 
 interface WorkspaceCreditPoolHistoryProps {
@@ -228,7 +233,7 @@ export function WorkspaceCreditPoolSection({
 
   return (
     <Page.Vertical gap="xs" align="stretch">
-      <Page.H variant="h4">Credit usage</Page.H>
+      <Page.H variant="h4">Credit consumption</Page.H>
 
       {cardsStatus === "error" ? (
         <ContentMessage
