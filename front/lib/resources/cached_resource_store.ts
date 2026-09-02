@@ -317,6 +317,12 @@ export type CachedResourceStore<
     blob: Attributes<M>,
     transaction?: Transaction
   ) => Promise<void>;
+  // Key-based counterpart of invalidateBlob, for callers that only hold the cache key (e.g.
+  // invalidation after out-of-band writes such as a relocation).
+  invalidateCached: (
+    input: Attributes<M>[K],
+    transaction?: Transaction
+  ) => Promise<void>;
   createCacheOperations: <OperationsInput>(definition: {
     label: string;
     params: CacheOperationParam[];
@@ -423,6 +429,8 @@ export function defineCachedResourceStore<
       return resource;
     },
     invalidateBlob,
+    invalidateCached: (input, transaction) =>
+      blobLookup.invalidate(input, transaction),
     createCacheOperations: blobLookup.createCacheOperations,
   };
 }

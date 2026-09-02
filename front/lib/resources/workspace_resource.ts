@@ -271,6 +271,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     );
   }
 
+  static async invalidateCache(workspaceId: string): Promise<void> {
+    await WorkspaceResource.store.invalidateCached(workspaceId);
+  }
+
   protected override async update(
     blob: ResourceUpdateBlob<WorkspaceModel>,
     transaction?: Transaction
