@@ -1,5 +1,6 @@
 import type { MembershipSeatType } from "@app/types/memberships";
 import { toBaseSeatType } from "@app/types/memberships";
+import type { Chip } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   CoinsStacked01,
@@ -8,6 +9,7 @@ import {
   LayersThree01,
   LayersTwo01,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import type { ComponentType } from "react";
 
 const SEAT_TYPE_DISPLAY_NAMES: Record<string, string> = {
@@ -58,6 +60,23 @@ export function seatTypeAvatarColors(seatType: string) {
         iconColor: "text-muted-foreground",
       };
   }
+}
+
+export type SeatChipColor = NonNullable<
+  React.ComponentProps<typeof Chip>["color"]
+>;
+
+// Chip color per plan, matching the seat icon colors used elsewhere (golden
+// for max, blue/highlight for pro, green for the platform seat).
+const SEAT_TYPE_CHIP_COLORS: Record<string, SeatChipColor> = {
+  max: "warning",
+  pro: "highlight",
+  workspace: "success",
+};
+
+export function seatTypeChipColor(seatType: MembershipSeatType): SeatChipColor {
+  const base = toBaseSeatType(seatType);
+  return SEAT_TYPE_CHIP_COLORS[base] ?? "primary";
 }
 
 export function formatAmount(cents: number, currency: string): string {
