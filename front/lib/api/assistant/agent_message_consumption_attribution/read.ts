@@ -50,8 +50,8 @@ export async function getAgentMessageConsumption(
     facts.directSubAgents.map((subAgent) => [subAgent.action.id, subAgent])
   );
   const hiddenHelperActionIds = new Set<ModelId>(
-    removeNulls(
-      facts.actions.map((action) => {
+    facts.actions
+      .filter((action) => {
         const subAgentId = subAgentsByActionModelId.get(
           action.id
         )?.agentConfigurationId;
@@ -63,19 +63,26 @@ export async function getAgentMessageConsumption(
           : null;
         const agentId = subAgentId ?? configuredSubAgentId;
         if (!agentId) {
-          return null;
+          return false;
         }
-        return getAgentUsageAttributedId({
-          agentId,
-          parentAgentId: facts.agentConfigurationId,
-        }) !== agentId
-          ? action.id
-          : null;
+        return (
+          getAgentUsageAttributedId({
+            agentId,
+            parentAgentId: facts.agentConfigurationId,
+          }) !== agentId
+        );
       })
-    )
+      .map((action) => action.id)
   );
   const visibleSubAgents = facts.directSubAgents.filter(
     ({ action }) => !hiddenHelperActionIds.has(action.id)
+  );
+  const hiddenSubAgentBilledCredits = facts.directSubAgents.reduce(
+    (total, subAgent) =>
+      hiddenHelperActionIds.has(subAgent.action.id)
+        ? total + subAgent.subtreeBilledCredits
+        : total,
+    0
   );
   const totalBilledCredits = (facts.billedCredits ?? 0) + subAgentBilledCredits;
 
@@ -98,8 +105,8 @@ export async function getAgentMessageConsumption(
 
   const agentConfigurationIds = [
     ...new Set(
-      visibleSubAgents.flatMap((subAgent) =>
-        subAgent.agentConfigurationId ? [subAgent.agentConfigurationId] : []
+      removeNulls(
+        visibleSubAgents.map((subAgent) => subAgent.agentConfigurationId)
       )
     ),
   ];
@@ -118,7 +125,6 @@ export async function getAgentMessageConsumption(
       return [
         subAgent.action.id,
         {
-          attributionTarget: "tool" as const,
           additionalAttributedCredits: subAgent.subtreeBilledCredits,
           identity: subAgent.agentConfigurationId
             ? `sub-agent:${subAgent.agentConfigurationId}`
@@ -130,16 +136,11 @@ export async function getAgentMessageConsumption(
       ];
     })
   );
-  for (const actionModelId of hiddenHelperActionIds) {
-    toolDetailsOverridesByActionModelId.set(actionModelId, {
-      attributionTarget: "agent_work",
-      additionalAttributedCredits:
-        subAgentsByActionModelId.get(actionModelId)?.subtreeBilledCredits ?? 0,
-    });
-  }
 
   const details = buildLatestAvailableMessageConsumptionDetails({
     actions: facts.actions,
+    additionalAgentWorkCredits: hiddenSubAgentBilledCredits,
+    agentWorkActionModelIds: hiddenHelperActionIds,
     billedCredits: facts.billedCredits,
     dustRunIds: facts.dustRunIds,
     items: facts.items,
