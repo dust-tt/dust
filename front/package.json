@@ -230,6 +230,9 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@dust-frame-runtime/lucide-react": "npm:lucide-react@0.483.0",
+    "@dust-frame-runtime/motion": "npm:motion@12.40.0",
+    "@dust-frame-runtime/recharts": "npm:recharts@2.15.4",
     "@faker-js/faker": "^9.3.0",
     "@google-cloud/storage": "^7.11.2",
     "@tailwindcss/postcss": "^4.3.0",
@@ -250,6 +253,7 @@
     "@types/luxon": "^3.4.2",
     "@types/minimist": "^1.2.2",
     "@types/node": "^24.12.2",
+    "@types/papaparse": "5.5.2",
     "@types/pegjs": "^0.10.3",
     "@types/pg": "^8.11.11",
     "@types/react": "^18.3.18",
