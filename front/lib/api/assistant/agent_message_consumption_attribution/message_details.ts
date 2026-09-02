@@ -23,32 +23,57 @@ export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
   models: AgentMessageConsumptionModelDetails[];
 };
 
-export type ToolConsumptionDetailsOverride = {
-  additionalAttributedCredits: number;
-  identity: string;
-  label: string;
-};
+/** Controls how one action and any additional subtree bill appear in message details. */
+export type ToolConsumptionDetailsOverride =
+  | {
+      attributionTarget: "agent_work";
+      additionalAttributedCredits: number;
+    }
+  | {
+      attributionTarget: "tool";
+      additionalAttributedCredits: number;
+      identity: string;
+      label: string;
+    };
 
 function buildConsumptionTotals({
   items,
   reconciledCreditAmounts,
+  toolDetailsOverridesByActionModelId,
 }: {
   items: AgentMessageConsumptionItemResource[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
+  toolDetailsOverridesByActionModelId?: ReadonlyMap<
+    ModelId,
+    ToolConsumptionDetailsOverride
+  >;
 }): {
   agentWorkCredits: number;
 } {
-  const reconciledAgentWorkCreditAmountMicro = items.reduce(
-    (total, item) =>
-      item.itemType === "tool"
-        ? total
-        : total + (reconciledCreditAmounts.byItem.get(item) ?? 0),
-    0
-  );
+  const reconciledAgentWorkCreditAmountMicro = items.reduce((total, item) => {
+    const toolOverride =
+      item.itemType === "tool" && item.agentMCPActionId !== null
+        ? toolDetailsOverridesByActionModelId?.get(item.agentMCPActionId)
+        : undefined;
+    return item.itemType !== "tool" ||
+      toolOverride?.attributionTarget === "agent_work"
+      ? total + (reconciledCreditAmounts.byItem.get(item) ?? 0)
+      : total;
+  }, 0);
+  const additionalAgentWorkCredits = toolDetailsOverridesByActionModelId
+    ? [...toolDetailsOverridesByActionModelId.values()].reduce(
+        (total, override) =>
+          override.attributionTarget === "agent_work"
+            ? total + override.additionalAttributedCredits
+            : total,
+        0
+      )
+    : 0;
+
   return {
-    agentWorkCredits: microCreditsToCredits(
-      reconciledAgentWorkCreditAmountMicro
-    ),
+    agentWorkCredits:
+      microCreditsToCredits(reconciledAgentWorkCreditAmountMicro) +
+      additionalAgentWorkCredits,
   };
 }
 
@@ -95,6 +120,9 @@ function buildToolDetails({
 
     const serialized = action.toJSON();
     const override = toolDetailsOverridesByActionModelId?.get(action.id);
+    if (override?.attributionTarget === "agent_work") {
+      continue;
+    }
     const identity = override?.identity ?? toolIdentity(serialized);
     const current = groupedTools.get(identity);
     const additionalAttributedCredits =
@@ -216,6 +244,7 @@ function buildMessageConsumptionDetails({
     ...buildConsumptionTotals({
       items,
       reconciledCreditAmounts,
+      toolDetailsOverridesByActionModelId,
     }),
     tools,
     models: buildModelDetails({

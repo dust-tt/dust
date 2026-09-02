@@ -435,7 +435,7 @@ describe("getAgentMessageConsumption", () => {
     });
   });
 
-  it("exposes a blocked tool as pending without inventing a direct charge", async () => {
+  it("keeps visible pending tools when a hidden helper shares their tool identity", async () => {
     const {
       auth,
       workspace,
@@ -455,6 +455,8 @@ describe("getAgentMessageConsumption", () => {
       workspaceId: workspace.id,
       prefix: 1,
     });
+    const visibleChildAgent =
+      await AgentConfigurationFactory.createTestAgent(auth);
     const { action: hiddenHelperAction } = await AgentMCPActionFactory.create(
       auth,
       {
@@ -462,12 +464,23 @@ describe("getAgentMessageConsumption", () => {
         conversationModelId: conversation.id,
         agentMessageModelId: agentMessage.agentMessageId,
         dustRunId: run.dustRunId,
-        functionCallName: "run_dust-task",
-        toolName: "run_dust-task",
+        functionCallName: "run_agent",
+        toolName: "run_agent",
         toolServerId: runAgentServerId,
         childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
       }
     );
+    const { action: visibleSubAgentAction } =
+      await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessage.agentMessageId,
+        dustRunId: run.dustRunId,
+        functionCallName: "run_agent",
+        toolName: "run_agent",
+        toolServerId: runAgentServerId,
+        childAgentId: visibleChildAgent.sId,
+      });
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
@@ -487,6 +500,12 @@ describe("getAgentMessageConsumption", () => {
           outputTokensCount: 5,
           grossAttributedCreditAmountMicro: 1_000_000,
         },
+        {
+          action: visibleSubAgentAction,
+          runUsageModelId,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 1_000_000,
+        },
       ],
     });
 
@@ -496,12 +515,20 @@ describe("getAgentMessageConsumption", () => {
     });
 
     expect(consumption?.details).toMatchObject({
-      agentWorkCredits: 9,
+      agentWorkCredits: 8,
       tools: [
         expect.objectContaining({
           callCount: 1,
           directCredits: 0,
           pending: true,
+          toolName: "test_tool",
+        }),
+        expect.objectContaining({
+          attributedCredits: 1,
+          callCount: 1,
+          directCredits: 0,
+          pending: true,
+          toolName: "run_agent",
         }),
       ],
     });
