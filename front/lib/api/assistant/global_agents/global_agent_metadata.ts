@@ -32,6 +32,7 @@ import {
   O3_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { RoleType } from "@app/types/user";
 
 // Audiences are role-hierarchical: `managers` means managers and admins.
 const GLOBAL_AGENT_AUDIENCES = ["everyone", "managers", "admins"] as const;
@@ -45,28 +46,36 @@ type AgentMetadata = {
   audience?: GlobalAgentAudience;
 };
 
+function readerRolesForAudience(audience: GlobalAgentAudience): RoleType[] {
+  switch (audience) {
+    case "everyone":
+      return ["admin", "manager", "builder", "user", "none"];
+    case "managers":
+      return ["admin", "manager"];
+    case "admins":
+      return ["admin"];
+    default:
+      return assertNever(audience);
+  }
+}
+
 export function canRoleSeeAudience(
   audience: GlobalAgentAudience,
   auth: Authenticator
 ): boolean {
-  switch (audience) {
-    case "everyone":
-      return true;
-    case "managers":
-      return auth.isManager();
-    case "admins":
-      return auth.isAdmin();
-    default:
-      return assertNever(audience);
-  }
+  return readerRolesForAudience(audience).includes(auth.role());
+}
+
+export function globalAgentReaderRoles(sId: GLOBAL_AGENTS_SID): RoleType[] {
+  const { audience = "everyone" } = getGlobalAgentMetadata(sId);
+  return readerRolesForAudience(audience);
 }
 
 export function canRoleSeeGlobalAgent(
   sId: GLOBAL_AGENTS_SID,
   auth: Authenticator
 ): boolean {
-  const { audience = "everyone" } = getGlobalAgentMetadata(sId);
-  return canRoleSeeAudience(audience, auth);
+  return globalAgentReaderRoles(sId).includes(auth.role());
 }
 
 export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
