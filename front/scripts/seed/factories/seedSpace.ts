@@ -57,7 +57,7 @@ export async function seedSpace(
 
     // The member group is a regular_auto group whose permissions are not
     // checked directly; gate on administration of the space instead.
-    if (!restrictedSpace.canAdministrate(auth)) {
+    if (!auth.can("admin", restrictedSpace)) {
       throw new Error("Only admins or group editors can change group members");
     }
     // Add the users to the group so they can access the space

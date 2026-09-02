@@ -22,7 +22,7 @@ export async function resolveAdditionalRequestedSpaceModelIds(
   const spaces = await SpaceResource.fetchByIds(auth, requestedSpaceIds);
   const readableSpacesById = new Map(
     spaces
-      .filter((space) => space.canRead(auth))
+      .filter((space) => auth.can("read", space))
       .map((space) => [space.sId, space])
   );
 

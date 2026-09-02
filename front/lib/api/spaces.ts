@@ -177,7 +177,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     "Cannot delete spaces that are not regular or project."
   );
   assert(
-    space.canAdministrate(auth),
+    auth.can("admin", space),
     "Only project editors or workspace admins can delete project spaces."
   );
 
@@ -771,7 +771,7 @@ export async function createSpaceAndGroup(
         // Seeding a regular space's members requires administering it. The member
         // group is a regular_auto group whose permissions are not checked directly,
         // so gate on the space instead.
-        if (!space.canAdministrate(auth)) {
+        if (!auth.can("admin", space)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -806,7 +806,7 @@ export async function createSpaceAndGroup(
         // For group-based spaces, we need to associate the selected groups with the space
         if (params.groupIds.length > 0) {
           // Associating groups requires administering the space.
-          if (!space.canAdministrate(auth)) {
+          if (!auth.can("admin", space)) {
             return new Err(
               new DustError(
                 "unauthorized",

@@ -151,8 +151,8 @@ describe("publishFrameFromSource", () => {
       workspace.sId
     );
     assert(viewerAuth);
-    expect(space.canRead(viewerAuth)).toBe(true);
-    expect(space.canWrite(viewerAuth)).toBe(false);
+    expect(viewerAuth.can("read", space)).toBe(true);
+    expect(viewerAuth.can("write", space)).toBe(false);
 
     const conversation = await ConversationFactory.create(viewerAuth, {
       agentConfigurationId: "test-agent",
@@ -335,8 +335,8 @@ describe("publishFrameV2FromSource", () => {
       workspace.sId
     );
     assert(viewerAuth);
-    expect(space.canRead(viewerAuth)).toBe(true);
-    expect(space.canWrite(viewerAuth)).toBe(false);
+    expect(viewerAuth.can("read", space)).toBe(true);
+    expect(viewerAuth.can("write", space)).toBe(false);
 
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",

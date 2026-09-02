@@ -261,7 +261,7 @@ function getSandboxFunctionUserIdentity(
     workspaceId: workspace.sId,
     // Same predicate as the `isEditor` the pod UI serializes: pod editor group members plus
     // workspace admins via role.
-    isPodEditor: pod?.canAdministrate(auth) ?? false,
+    isPodEditor: pod ? auth.can("admin", pod) : false,
     // Same predicate as the pod UI's `isMember` and the `pod_member_required` policy: users in
     // any of the pod's groups. Workspace admins outside them are not members.
     isPodMember: pod?.isMember(auth) ?? false,
@@ -1320,7 +1320,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         }
         viewerModelId = sandboxFunction.frame
           ? viewer.id
-          : sandboxFunction.space.canAdministrate(auth)
+          : auth.can("admin", sandboxFunction.space)
             ? undefined
             : viewer.id;
         break;

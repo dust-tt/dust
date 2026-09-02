@@ -2150,7 +2150,7 @@ export class FileResource extends BaseResource<FileModel> {
         auth,
         file.useCaseMetadata.spaceId
       );
-      if (!space || !space.canRead(auth)) {
+      if (!space || !auth.can("read", space)) {
         return { verified: false };
       }
     }

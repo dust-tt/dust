@@ -66,7 +66,7 @@ export async function resolveTriggerSpaceId(
   }
 
   const pod = await SpaceResource.fetchById(auth, spaceId);
-  if (!pod || !pod.isProject() || !pod.canRead(auth)) {
+  if (!pod || !pod.isProject() || !auth.can("read", pod)) {
     return new Err("Pod not found or not accessible.");
   }
 

@@ -110,7 +110,7 @@ export async function handleSearch(
       includeProjectSpaces: allowPods,
     });
     spaces = allWorkspaceSpaces.filter(
-      (s) => s.canAdministrate(auth) || s.canRead(auth)
+      (space) => auth.can("admin", space) || auth.can("read", space)
     );
   } else {
     spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);

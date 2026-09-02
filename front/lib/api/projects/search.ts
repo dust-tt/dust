@@ -45,7 +45,7 @@ export async function searchProjectConversations(
   }
 
   const spaces = (await SpaceResource.fetchByIds(auth, spaceIds)).filter(
-    (space) => space.canRead(auth)
+    (space) => auth.can("read", space)
   );
 
   if (spaces.length === 0) {

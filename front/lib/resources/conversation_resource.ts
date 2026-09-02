@@ -578,8 +578,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspace = auth.getNonNullableWorkspace();
 
     // Check if the user has access to the space.
-    // Note, using canRead because spaces members do not have write access to the space as write is tied with datasources.
-    if (space && !space.canRead(auth)) {
+    // Use read because space members do not have write access to the space; write is tied to data
+    // sources.
+    if (space && !auth.can("read", space)) {
       throw new Error(
         "Cannot create conversation in a space you do not have access to."
       );
@@ -1127,9 +1128,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // concern, not a conjunctive ACL. Missing/deleted project spaces deny access.
     const accessiblePodConversations: ConversationResource[] = podConversations
       .filter(
-        (c) =>
-          spaceIdToSpaceMap.has(c.spaceId) &&
-          spaceIdToSpaceMap.get(c.spaceId)!.canRead(auth)
+        (c) => {
+          const space = spaceIdToSpaceMap.get(c.spaceId);
+          return space ? auth.can("read", space) : false;
+        }
       )
       .map((c) => this.fromModel(c, spaceIdToSpaceMap.get(c.spaceId) ?? null));
 
@@ -1279,7 +1281,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       const spaces = await SpaceResource.fetchByModelIds(auth, [
         conversation.spaceId,
       ]);
-      return spaces.length > 0 && spaces[0].canRead(auth)
+      return spaces.length > 0 && auth.can("read", spaces[0])
         ? "allowed"
         : "conversation_access_restricted";
     }

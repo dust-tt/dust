@@ -37,7 +37,7 @@ export async function listActivationWorkAreasForUser(
 
   if (podId !== undefined) {
     const space = await SpaceResource.fetchById(auth, podId);
-    if (!space || !space.canAdministrate(auth)) {
+    if (!space || !auth.can("admin", space)) {
       return [];
     }
 
@@ -84,7 +84,7 @@ export async function updateActivationWorkAreaForUser(
   const [space] = activationPod
     ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
     : [];
-  if (!row || !space || !space.canAdministrate(auth)) {
+  if (!row || !space || !auth.can("admin", space)) {
     return new Err(
       new DustError("activation_work_area_not_found", "Work area not found.")
     );
