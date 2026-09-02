@@ -298,6 +298,7 @@ export function WorkspacePage() {
               <TabsTrigger value="datasources" label="Data Sources" />
               <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
+              <TabsTrigger value="frames" label="Frames" />
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP" />
               <TabsTrigger value="pods" label="Pods" />
