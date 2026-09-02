@@ -12,7 +12,8 @@ export function makeColumnsForFrames({
 }): ColumnDef<PokeFrameListItem>[] {
   return [
     {
-      accessorKey: "fileName",
+      id: "name",
+      accessorFn: (row) => row.name ?? "",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Name" />
       ),
@@ -21,7 +22,7 @@ export function makeColumnsForFrames({
           href={`/poke/${owner.sId}/files/${row.original.sId}`}
           className="text-highlight-500"
         >
-          {row.original.fileName}
+          {row.original.name ?? row.original.fileName}
         </LinkWrapper>
       ),
     },

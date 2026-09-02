@@ -31,7 +31,11 @@ export function ViewFrameTable({ details, owner }: ViewFrameTableProps) {
           </PokeTableRow>
           <PokeTableRow>
             <PokeTableHead>Name</PokeTableHead>
-            <PokeTableCell>{frame.fileName}</PokeTableCell>
+            <PokeTableCell>{frame.name ?? "—"}</PokeTableCell>
+          </PokeTableRow>
+          <PokeTableRow>
+            <PokeTableHead>Description</PokeTableHead>
+            <PokeTableCell>{frame.description ?? "—"}</PokeTableCell>
           </PokeTableRow>
           <PokeTableRow>
             <PokeTableHead>File status</PokeTableHead>

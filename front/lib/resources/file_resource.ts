@@ -1061,7 +1061,11 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   async setActiveFramePublication(
-    publicationId: string,
+    {
+      publicationId,
+      name,
+      description,
+    }: { publicationId: string; name: string; description: string },
     transaction?: Transaction
   ) {
     return this.update(
@@ -1069,6 +1073,8 @@ export class FileResource extends BaseResource<FileModel> {
         useCaseMetadata: {
           ...this.useCaseMetadata,
           activePublicationId: publicationId,
+          frameName: name,
+          frameDescription: description,
         },
       },
       transaction

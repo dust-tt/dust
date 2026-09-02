@@ -38,6 +38,8 @@ export async function makeTestFrameFunction({
     useCaseMetadata: {
       spaceId: space.sId,
       activePublicationId: publicationId,
+      frameName: "Task List",
+      frameDescription: "Track tasks.",
     },
   });
   await frame.setShareScope(adminAuth, shareScope);

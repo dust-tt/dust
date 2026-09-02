@@ -553,7 +553,14 @@ export async function activateFramePublication(
   await withTransaction(async (transaction) => {
     // Updating the Frame first serializes concurrent activations. None of the
     // new publication state becomes visible until the transaction commits.
-    await frame.setActiveFramePublication(publicationId, transaction);
+    await frame.setActiveFramePublication(
+      {
+        publicationId,
+        name: descriptor.value.manifest.name,
+        description: descriptor.value.manifest.description,
+      },
+      transaction
+    );
     await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
     await SandboxFunctionResource.createForFramePublication(
       auth,
@@ -580,7 +587,7 @@ export async function activateFramePublication(
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
       buildAuditLogTarget("frame", {
         sId: frame.sId,
-        name: frame.fileName,
+        name: descriptor.value.manifest.name,
       }),
     ],
     context: getAuditLogContext(auth),
