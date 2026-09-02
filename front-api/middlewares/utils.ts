@@ -21,6 +21,11 @@ import { routePath } from "hono/route";
  */
 export type HandlerResult<T> = Promise<TypedResponse<T | APIErrorResponse>>;
 
+type ApiErrorOptions = {
+  error?: Error;
+  isExpected?: boolean;
+};
+
 /**
  * Returns a JSON error response from an `APIErrorWithStatusCode` and emits
  * the same logging / tracing / statsd side-effects as `apiError` in
@@ -28,14 +33,17 @@ export type HandlerResult<T> = Promise<TypedResponse<T | APIErrorResponse>>;
  * handler — do not call `ctx.json({ error: ... }, status)` directly, so the
  * observability behavior stays consistent across Next and Hono.
  *
- * Pass `error` when forwarding an underlying exception so its message and
- * stack are captured in the log instead of the synthetic one.
+ * Pass `options.error` when forwarding an underlying exception so its message
+ * and stack are captured in the log instead of the synthetic one. Set
+ * `options.isExpected` for a specific expected outcome that should be logged at
+ * `info` without lowering the severity of every error sharing its type.
  */
 export function apiError(
   ctx: Context,
   err: APIErrorWithContentfulStatusCode,
-  error?: Error
+  options: ApiErrorOptions = {}
 ) {
+  const { error } = options;
   const callstack = new Error().stack;
   const errorAttrs = {
     message: error?.message ?? err.api_error.message,
@@ -46,9 +54,10 @@ export function apiError(
   // Some error types are expected outcomes of normal operation (e.g. a region
   // redirect) rather than failures. Log those at `info` so they don't pollute
   // error monitoring.
-  const logLevel = EXPECTED_API_ERROR_TYPES.has(err.api_error.type)
-    ? "info"
-    : "error";
+  const logLevel =
+    options.isExpected || EXPECTED_API_ERROR_TYPES.has(err.api_error.type)
+      ? "info"
+      : "error";
 
   logger[logLevel](
     {

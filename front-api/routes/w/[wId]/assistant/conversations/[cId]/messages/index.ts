@@ -219,7 +219,7 @@ app.get(
             message: "Invalid pagination parameters",
           },
         },
-        paginationRes.error
+        { error: paginationRes.error }
       );
     }
 

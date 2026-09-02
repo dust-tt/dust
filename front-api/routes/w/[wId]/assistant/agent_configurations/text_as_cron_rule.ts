@@ -66,7 +66,7 @@ app.post(
             message: cleanMessage,
           },
         },
-        r.error
+        { error: r.error }
       );
     }
 

@@ -74,7 +74,7 @@ app.post(
                 message: "Failed to validate action",
               },
             },
-            result.error
+            { error: result.error }
           );
       }
     }

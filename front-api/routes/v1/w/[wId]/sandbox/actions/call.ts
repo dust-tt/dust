@@ -174,7 +174,7 @@ app.post(
             message: result.error.message,
           },
         },
-        result.error
+        { error: result.error }
       );
     }
 

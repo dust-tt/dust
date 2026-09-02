@@ -73,13 +73,17 @@ app.get(
       PROJECT_FILES_MAX_CONCURRENT_REQUESTS_PER_PROCESS
     ) {
       ctx.header("Retry-After", "1");
-      return apiError(ctx, {
-        status_code: 429,
-        api_error: {
-          type: "rate_limit_error",
-          message: "Too many concurrent project file listings. Retry later.",
+      return apiError(
+        ctx,
+        {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message: "Too many concurrent project file listings. Retry later.",
+          },
         },
-      });
+        { isExpected: true }
+      );
     }
 
     activeProjectFilesRequests += 1;

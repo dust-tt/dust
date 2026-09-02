@@ -1,8 +1,9 @@
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import logger from "@app/logger/logger";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROJECT_FILES_MAX_CONCURRENT_REQUESTS_PER_PROCESS } from ".";
 
@@ -45,6 +46,10 @@ function getProjectFiles(
 }
 
 describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     getAllFilesByPrefixMock.mockReset();
     getAllFilesByPrefixMock.mockResolvedValue({ files: [], pageFetchCount: 1 });
@@ -171,6 +176,8 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
   });
 
   it("limits concurrent connector listings and releases slots", async () => {
+    const infoLog = vi.spyOn(logger, "info");
+    const errorLog = vi.spyOn(logger, "error");
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
@@ -206,6 +213,16 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
         message: "Too many concurrent project file listings. Retry later.",
       },
     });
+    expect(infoLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 429,
+        error: expect.objectContaining({
+          message: "Too many concurrent project file listings. Retry later.",
+        }),
+      }),
+      "API Error"
+    );
+    expect(errorLog).not.toHaveBeenCalled();
 
     releaseListings?.();
     const completedResponses = [];

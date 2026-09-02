@@ -161,7 +161,7 @@ app.post(
                 message: "Failed to answer question",
               },
             },
-            result.error
+            { error: result.error }
           );
       }
     }
