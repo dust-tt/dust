@@ -328,12 +328,14 @@ function deriveBlockedReason({
 export async function isUserBlockedByMetronome(
   workspace: LightWorkspaceType,
   user: UserResource,
-  // When set, overrides the Metronome-credit-state user-cap signal
-  // (`userCreditState === "capped"`). The flag-aware wrapper in
-  // `lib/api/credits/access_control.ts` passes the Redis rate-limiter result
-  // here so the pool/seat logic (no_seat, pool depletion, personal-seat
-  // carve-out) stays defined in one place.
-  opts?: { userCapBlockedOverride?: boolean }
+  // Overrides the Metronome-credit-state user-cap signal
+  // (`userCreditState === "capped"`) when set to a boolean. The flag-aware
+  // wrapper in `lib/api/credits/access_control.ts` passes the Redis rate-limiter
+  // result here so the pool/seat logic (no_seat, pool depletion, personal-seat
+  // carve-out) stays defined in one place. `null`/`undefined` means "no
+  // override" — the Metronome credit state is used (e.g. free/none seats, whose
+  // lifetime balance the rate limiter does not model).
+  opts?: { userCapBlockedOverride?: boolean | null }
 ): Promise<UserBlockedReason | null> {
   const workspaceId = workspace.sId;
   const userId = user.sId;

@@ -101,17 +101,22 @@ export async function isApiKeyBlocked(
 /**
  * Whether the user has consumed ≥ 80% of their per-user cap (soft warning). With
  * the rate-cap flag on, from the Redis fixed-window counter; with it off, from
- * the Metronome-driven near-limit flag.
+ * the Metronome-driven near-limit flag. Free/none seats have no cycle cap for
+ * the counter to model, so they always fall back to the Metronome near-limit
+ * flag (driven by their lifetime credit-balance alert).
  */
 export async function isUserAwuWarned(
   auth: Authenticator,
   { user }: { user: UserResource }
 ): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
-  if (!(await spendLimitRateCapEnabled(auth))) {
-    return isUserAwuWarnedByMetronome(workspace.sId, user.sId);
+  if (await spendLimitRateCapEnabled(auth)) {
+    const rateWarned = await isUserSpendLimitRateWarningReached(auth, { user });
+    if (rateWarned !== null) {
+      return rateWarned;
+    }
   }
-  return isUserSpendLimitRateWarningReached(auth, { user });
+  return isUserAwuWarnedByMetronome(workspace.sId, user.sId);
 }
 
 /**

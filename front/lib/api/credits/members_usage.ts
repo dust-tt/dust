@@ -1888,22 +1888,23 @@ export async function getMembersUsage({
     "enforce_user_spend_limit_rate_cap"
   );
 
-  // Bulk-fetch Metronome near-limit flags from Redis (poke-only, and only when
-  // the rate-cap flag is off — otherwise the rate-limiter counter drives it).
-  const nearLimitByUserId =
-    includeAlertLinks && !spendCapEnabled
-      ? new Map(
-          await concurrentExecutor(
-            users,
-            async (u) =>
-              [
-                u.sId,
-                await isUserAwuWarnedByMetronome(workspace.sId, u.sId),
-              ] as const,
-            { concurrency: 8 }
-          )
+  // Bulk-fetch Metronome near-limit flags from Redis (poke-only). Still needed
+  // when the rate-cap flag is on: free/none seats have no cycle cap for the
+  // rate-limiter counter to model, so they fall back to this flag (driven by
+  // their lifetime credit-balance alert).
+  const nearLimitByUserId = includeAlertLinks
+    ? new Map(
+        await concurrentExecutor(
+          users,
+          async (u) =>
+            [
+              u.sId,
+              await isUserAwuWarnedByMetronome(workspace.sId, u.sId),
+            ] as const,
+          { concurrency: 8 }
         )
-      : new Map<string, boolean>();
+      )
+    : new Map<string, boolean>();
 
   // Bulk-fetch the Redis fixed-window spend-cap counter per user (poke-only), to
   // display beside the Elasticsearch-derived usage. The counter is bucketed on
@@ -2107,15 +2108,19 @@ export async function getMembersUsage({
     const rateLimiterSpendAwuCredits = includeAlertLinks
       ? (rateLimiterSpendByUserId.get(userId) ?? 0)
       : null;
-    // Poke-only near-limit: with the rate-cap flag on, the rate-limiter counter
-    // ≥ 80% of the effective cap; with it off, the Metronome near-limit flag.
+    // Poke-only near-limit. With the rate-cap flag on, use the rate-limiter
+    // counter ≥ 80% of the effective cap — but only for seats that actually
+    // have a cycle cap. Free/none seats (no effective cap) have no counter to
+    // model their lifetime balance, so they fall back to the Metronome
+    // near-limit flag, same as when the flag is off.
+    const hasCycleCap =
+      effectiveSpendLimitAwuCredits !== null &&
+      effectiveSpendLimitAwuCredits > 0;
     const nearLimit =
       includeAlertLinks &&
-      (spendCapEnabled
-        ? effectiveSpendLimitAwuCredits !== null &&
-          effectiveSpendLimitAwuCredits > 0 &&
-          (rateLimiterSpendAwuCredits ?? 0) >=
-            USER_AWU_WARNING_PERCENTAGE * effectiveSpendLimitAwuCredits
+      (spendCapEnabled && hasCycleCap
+        ? (rateLimiterSpendAwuCredits ?? 0) >=
+          USER_AWU_WARNING_PERCENTAGE * effectiveSpendLimitAwuCredits
         : (nearLimitByUserId.get(userId) ?? false));
 
     return [
