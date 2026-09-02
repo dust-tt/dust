@@ -37,3 +37,7 @@ export function isSlackPersonalFooterRemovalAllowed(
 ): boolean {
   return owner.metadata?.slackPersonalAllowFooterRemoval === true;
 }
+
+export function areAuditLogsEnabled(owner: LightWorkspaceType): boolean {
+  return owner.metadata?.disableAuditLogs !== true;
+}
