@@ -173,9 +173,10 @@ export default {
 \`\`\`
 
 Keep each function focused on one endpoint. Put validation, formatting, clients, and other logic
-used by several functions in \`functions/lib/\` rather than duplicating it. Publishing bundles each
-entry point and its relative imports from one source snapshot. Editing any source or helper changes
-nothing for viewers until the whole Frame is published again.
+used by several functions in \`functions/lib/\` rather than duplicating it. Define shared Zod domain
+schemas once in that folder and import them into each function that uses them. Publishing bundles
+each entry point and its relative imports from one source snapshot. Editing any source or helper
+changes nothing for viewers until the whole Frame is published again.
 
 \`zod\`, \`drizzle-orm\`, and \`@dust/pod\` are available to function source. Other npm packages are
 not guaranteed at build time.
@@ -198,10 +199,10 @@ export const comments = sqliteTable(
   "comments",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    threadId: text("thread_id"),
-    authorId: text("author_id"),
-    body: text("body"),
-    createdAt: integer("created_at", { mode: "timestamp" }),
+    threadId: text("thread_id").notNull(),
+    authorId: text("author_id").notNull(),
+    body: text("body").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },
   (table) => [index("comments_thread_idx").on(table.threadId)]
 );
@@ -221,10 +222,12 @@ Do not redefine tables inside function files, hand-write SQL schema changes, or 
 in module globals. The schema file is the source of truth for row serialization too, so keep column
 modes identical by always importing its table objects.
 
-Schema evolution is additive-only: add tables, nullable columns, and indexes. Do not drop, rename,
-or retype existing objects. In particular:
+Schema evolution is additive-only: add tables, columns, and indexes. Do not drop, rename, or retype
+existing objects. In particular:
 
-- make new columns nullable unless they have a default;
+- mark required fields in a newly created table as \`.notNull()\`;
+- when adding a column to an existing table, make it nullable or give it a default so existing rows
+  remain valid;
 - give each table an \`id\` and \`createdAt\`;
 - avoid foreign keys, CHECK constraints, and UNIQUE constraints; enforce integrity in code and use
   \`uniqueIndex()\` only when existing rows are known to satisfy it;
@@ -324,9 +327,20 @@ loading, empty, and error states for every call. Function failures are
 
 ## Publish a Frame
 
-There is no separate v2 function publish. After every source change that should become visible,
-publish the manifest once; the UI source, all declared functions, and all declared database schemas
-are validated, built or reconciled, stored, and activated atomically:
+Before publishing a Frames v2 manifest, validate the current source snapshot:
+
+\`\`\`bash
+dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+This runs the manifest, UI, function-build, database-contract, and Tailwind checks without storing or
+activating a publication or reconciling Frame-owned databases. Fix every error and Tailwind warning
+before publishing. Use this command instead of \`bun build\` or an ad hoc regex scan: those do not use
+the Frame build context and report unrelated or noisy failures.
+
+There is no separate v2 function publish. Once validation is clean, publish the manifest once; the
+UI source, all declared functions, and all declared database schemas are built or reconciled,
+stored, and activated atomically:
 
 \`\`\`bash
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
@@ -363,5 +377,8 @@ initial scope.
 
 Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
 read the current file, apply one edit, then start the next edit to that file.
+
+When fixing a validation or runtime problem, preserve working structure and make the smallest
+targeted edit. Do not replace an entire UI or function for a localized state, schema, or styling bug.
 
 ${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}`;

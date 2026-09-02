@@ -1,9 +1,12 @@
 import path from "node:path";
+import type { ValidationWarning } from "@app/lib/api/files/content_validation";
+import { validateTailwindCode } from "@app/lib/api/files/content_validation";
 import type {
   FramePublicationFunctionArtifact,
   FramePublicationSourceFile,
 } from "@app/lib/api/frames/publication_storage";
 import {
+  buildFramePublicationContracts,
   FramePublicationError,
   publishFramePublication,
 } from "@app/lib/api/frames/publication_storage";
@@ -19,6 +22,11 @@ import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+type FramePublicationBuild = {
+  functionArtifacts: FramePublicationFunctionArtifact[];
+  uiBundleCode: string;
+};
 
 async function buildFrameUiBundle({
   manifest,
@@ -54,29 +62,19 @@ async function buildFrameUiBundle({
   return new Ok(buildResult.value.code);
 }
 
-/**
- * Build the UI and every declared function from one captured source snapshot, then atomically
- * publish its artifacts. Function builds stage the snapshot in the invoking conversation's DSBX;
- * source stays in its authoring scope. No publication storage is touched until every build succeeds.
- */
-export async function buildAndPublishFramePublication(
+async function buildFramePublication(
   auth: Authenticator,
   {
     conversation,
-    frame,
     manifest,
     sourceFiles,
   }: {
     conversation: ConversationWithoutContentType;
-    frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
   }
 ): Promise<
-  Result<
-    { publicationId: string },
-    FramePublicationError | SandboxFunctionError
-  >
+  Result<FramePublicationBuild, FramePublicationError | SandboxFunctionError>
 > {
   const seenSourcePaths = new Set<string>();
   for (const sourceFile of sourceFiles) {
@@ -100,11 +98,8 @@ export async function buildAndPublishFramePublication(
   }
 
   if (manifest.functions.length === 0) {
-    return publishFramePublication(auth, {
-      frame,
+    return new Ok({
       functionArtifacts: [],
-      manifest,
-      sourceFiles,
       uiBundleCode: uiBundle.value,
     });
   }
@@ -151,11 +146,116 @@ export async function buildAndPublishFramePublication(
     return functionArtifactResult;
   }
 
-  return publishFramePublication(auth, {
-    frame,
+  return new Ok({
     functionArtifacts: functionArtifactResult.value,
+    uiBundleCode: uiBundle.value,
+  });
+}
+
+function collectFrameTailwindWarnings(
+  sourceFiles: FramePublicationSourceFile[]
+): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+  for (const sourceFile of sourceFiles) {
+    if (!/\.(?:jsx|tsx)$/.test(sourceFile.relativePath)) {
+      continue;
+    }
+
+    const validation = validateTailwindCode(
+      sourceFile.content.toString("utf8")
+    );
+    if (validation.isErr()) {
+      warnings.push(
+        ...validation.error.map((warning) => ({
+          ...warning,
+          message: `${sourceFile.relativePath}: ${warning.message}`,
+        }))
+      );
+    }
+  }
+
+  return warnings;
+}
+
+/**
+ * Run the publication build without storing, reconciling, or activating anything.
+ */
+export async function validateFramePublication(
+  auth: Authenticator,
+  {
+    conversation,
     manifest,
     sourceFiles,
-    uiBundleCode: uiBundle.value,
+  }: {
+    conversation: ConversationWithoutContentType;
+    manifest: FrameManifest;
+    sourceFiles: FramePublicationSourceFile[];
+  }
+): Promise<
+  Result<
+    { warnings: ValidationWarning[] },
+    FramePublicationError | SandboxFunctionError
+  >
+> {
+  const buildResult = await buildFramePublication(auth, {
+    conversation,
+    manifest,
+    sourceFiles,
+  });
+  if (buildResult.isErr()) {
+    return buildResult;
+  }
+
+  const contracts = buildFramePublicationContracts({
+    functionArtifacts: buildResult.value.functionArtifacts,
+    manifest,
+    sourceFiles,
+  });
+  if (contracts.isErr()) {
+    return contracts;
+  }
+
+  return new Ok({ warnings: collectFrameTailwindWarnings(sourceFiles) });
+}
+
+/**
+ * Build the UI and every declared function from one captured source snapshot, then atomically
+ * publish its artifacts. Function builds stage the snapshot in the invoking conversation's DSBX;
+ * source stays in its authoring scope. No publication storage is touched until every build succeeds.
+ */
+export async function buildAndPublishFramePublication(
+  auth: Authenticator,
+  {
+    conversation,
+    frame,
+    manifest,
+    sourceFiles,
+  }: {
+    conversation: ConversationWithoutContentType;
+    frame: FileResource;
+    manifest: FrameManifest;
+    sourceFiles: FramePublicationSourceFile[];
+  }
+): Promise<
+  Result<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >
+> {
+  const buildResult = await buildFramePublication(auth, {
+    conversation,
+    manifest,
+    sourceFiles,
+  });
+  if (buildResult.isErr()) {
+    return buildResult;
+  }
+
+  return publishFramePublication(auth, {
+    frame,
+    functionArtifacts: buildResult.value.functionArtifacts,
+    manifest,
+    sourceFiles,
+    uiBundleCode: buildResult.value.uiBundleCode,
   });
 }

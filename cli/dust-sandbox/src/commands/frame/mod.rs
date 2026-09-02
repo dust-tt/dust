@@ -3,6 +3,7 @@ mod create;
 mod publish;
 mod register;
 mod share_link;
+mod validate;
 
 use std::path::{Component, Path, PathBuf};
 
@@ -14,6 +15,7 @@ pub use create::run as cmd_frame_create;
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
 pub use share_link::run as cmd_frame_share_link;
+pub use validate::run as cmd_frame_validate;
 
 const FRAME_MANIFEST_FILE: &str = "manifest.json";
 const FILES_ROOT: &str = "/files";
@@ -50,6 +52,11 @@ pub enum FrameCommand {
     ShareLink {
         /// Existing Frame folder under /files
         directory: PathBuf,
+    },
+    /// Validate a Frames v2 source without publishing it
+    Validate {
+        /// Absolute path to a v2 manifest under /files
+        manifest: PathBuf,
     },
     /// Build and publish a Frame from its current source
     Publish {

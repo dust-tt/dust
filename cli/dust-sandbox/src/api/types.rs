@@ -40,6 +40,12 @@ pub struct FrameRegisterRequest<'a> {
     pub manifest_path: &'a str,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameValidateRequest<'a> {
+    pub manifest_path: &'a str,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FramePublishResponse {
@@ -57,6 +63,15 @@ pub struct FrameRegisterResponse {
     pub frame_id: String,
     pub manifest_path: String,
     pub created: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameValidateResponse {
+    pub frame_id: String,
+    pub manifest_path: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
