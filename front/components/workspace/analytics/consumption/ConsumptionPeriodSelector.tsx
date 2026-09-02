@@ -84,12 +84,11 @@ export function ConsumptionGranularitySelector({
         <DropdownMenuRadioGroup
           value={granularity}
           onValueChange={(value) => {
-            if (
-              CONSUMPTION_GRANULARITY_OPTIONS.includes(
-                value as ConsumptionGranularity
-              )
-            ) {
-              onGranularityChange(value as ConsumptionGranularity);
+            const match = CONSUMPTION_GRANULARITY_OPTIONS.find(
+              (o) => o === value
+            );
+            if (match) {
+              onGranularityChange(match);
             }
           }}
         >
