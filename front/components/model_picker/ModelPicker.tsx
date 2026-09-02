@@ -17,7 +17,7 @@ import type {
 import {
   buildModelSelection,
   buildTierSelection,
-  DEGRADED_MODEL_TOOLTIP,
+  getDegradedModelTooltip,
   getInitialEffort,
   getModelTier,
   getModelWithReasoningEffortLabel,
@@ -83,6 +83,9 @@ export interface ModelPickerProps {
   // surface. Consumers that don't pass it (e.g. the agent builder) are not
   // tracked.
   trackingSurface?: ModelPickerSurface;
+  // Degradation badges warn about picking a model to chat with right now; the
+  // agent builder configures a durable default, so it turns them off.
+  showDegradations?: boolean;
 }
 
 export function ModelPicker({
@@ -103,6 +106,7 @@ export function ModelPicker({
   commitApiRef,
   openApiRef,
   trackingSurface,
+  showDegradations = true,
 }: ModelPickerProps) {
   const clientType = useClientType();
 
@@ -118,7 +122,7 @@ export function ModelPicker({
     streamModels,
     lockPremiumEfforts,
     degradedModelIds,
-  } = useModelPickerModels({ owner });
+  } = useModelPickerModels({ owner, showDegradations });
   const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const { shown: baseSelection, agentDefault } = useMemo(
@@ -277,9 +281,11 @@ export function ModelPicker({
       ? MODEL_TIER_ICON[shown.display.tierId]
       : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
 
-  const isShownModelDegraded =
+  const degradedModelTooltip =
     shown.display.kind === "model" &&
-    degradedModelIds.has(shown.display.model.modelId);
+    degradedModelIds.has(shown.display.model.modelId)
+      ? getDegradedModelTooltip(shown.display.model.displayName)
+      : null;
 
   // Model name and reasoning effort read as one string for the tooltip and the
   // accessible name, but the visible trigger splits the effort into its own
@@ -313,7 +319,7 @@ export function ModelPicker({
           variant={buttonVariant}
           size={buttonSize}
           icon={
-            isShownModelDegraded ? (
+            degradedModelTooltip !== null ? (
               <DegradedModelIcon icon={buttonIcon} />
             ) : (
               buttonIcon
@@ -331,11 +337,8 @@ export function ModelPicker({
           }
           isSelect={showLabel && showDropdownArrow}
           tooltip={
-            isShownModelDegraded
-              ? DEGRADED_MODEL_TOOLTIP
-              : showLabel
-                ? undefined
-                : `Model picker: ${label}`
+            degradedModelTooltip ??
+            (showLabel ? undefined : `Model picker: ${label}`)
           }
           aria-label={`Model picker: ${label}`}
           disabled={disabled}

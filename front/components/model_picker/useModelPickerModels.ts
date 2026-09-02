@@ -18,6 +18,8 @@ import { useMemo } from "react";
 // plan restrictions instead of padlocking the rows they exclude.
 type ModelPickerMenuMode = "select" | "filter";
 
+const EMPTY_DEGRADED_MODEL_IDS: ReadonlySet<string> = new Set();
+
 // The model lists every surface rendering `ModelPickerContent` offers, and what
 // the member is allowed to pick from them.
 export function useModelPickerModels({
@@ -25,6 +27,7 @@ export function useModelPickerModels({
   disabled,
   mode = "select",
   modelIds,
+  showDegradations = true,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
@@ -32,6 +35,9 @@ export function useModelPickerModels({
   // When set, the menu offers exactly these models instead of the workspace
   // catalog.
   modelIds?: string[];
+  // Degradation badges warn about picking a model to chat with right now;
+  // surfaces configuring a durable default (the agent builder) turn them off.
+  showDegradations?: boolean;
 }) {
   const { hasFeature } = useFeatureFlags();
   const { subscription } = useAuth();
@@ -42,10 +48,18 @@ export function useModelPickerModels({
   const isFilterMode = mode === "filter";
   const lockPremiumEfforts = !canSelectPremiumModels;
 
-  const { models, streams, degradedModelIds, isModelsLoading } = useModels({
+  const {
+    models,
+    streams,
+    degradedModelIds: allDegradedModelIds,
+    isModelsLoading,
+  } = useModels({
     owner,
     disabled,
   });
+  const degradedModelIds = showDegradations
+    ? allDegradedModelIds
+    : EMPTY_DEGRADED_MODEL_IDS;
 
   // Concrete models (meta-models are surfaced as tiers instead).
   const allModels = useMemo<ModelConfigurationType[]>(() => {

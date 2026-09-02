@@ -1,3 +1,4 @@
+import { DegradedInfoIcon } from "@app/components/model_picker/DegradedModelIcon";
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
 import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
 import type {
@@ -5,7 +6,7 @@ import type {
   ModelLockReason,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
-  DEGRADED_MODEL_TOOLTIP,
+  getDegradedModelTooltip,
   getModelLockTooltip,
 } from "@app/components/model_picker/modelPickerUtils";
 import { ReasoningEffortSlider } from "@app/components/model_picker/ReasoningEffortSlider";
@@ -13,7 +14,7 @@ import type {
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { DropdownMenuItem, Icon, InfoCircle, Lock01 } from "@dust-tt/sparkle";
+import { DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 
@@ -67,9 +68,7 @@ export function ModelPickerModelRow({
   const endComponent =
     isSelected || isDegraded ? (
       <div className="flex items-center gap-2">
-        {isDegraded && (
-          <Icon visual={InfoCircle} size="sm" className="text-info-500" />
-        )}
+        {isDegraded && <DegradedInfoIcon />}
         {isSelected && (
           <>
             <ModelTierChip
@@ -89,7 +88,9 @@ export function ModelPickerModelRow({
         label={`${model.displayName}${isDefault ? " (Default)" : ""}`}
         icon={icon}
         truncateText
-        tooltip={isDegraded ? DEGRADED_MODEL_TOOLTIP : undefined}
+        tooltip={
+          isDegraded ? getDegradedModelTooltip(model.displayName) : undefined
+        }
         endComponent={endComponent}
         onClick={() => {
           onSelectModel(model);
