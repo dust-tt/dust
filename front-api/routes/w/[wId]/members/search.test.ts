@@ -1,5 +1,7 @@
+import { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -231,6 +233,47 @@ describe("GET /api/w/:wId/members/search", () => {
     const data = await response.json();
     expect(data.total).toBe(0);
     expect(data.members).toHaveLength(0);
+  });
+
+  it("returns 400 on an unknown group kind", async () => {
+    const { workspace } = await setup();
+
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, { groupKinds: "provisioned,nope" })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns the members' groups of the requested kinds", async () => {
+    const { workspace, user } = await setup();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const sales = await GroupFactory.regularManual(workspace, "Sales");
+    const idpTeam = await GroupFactory.provisioned(workspace, "IdP Team");
+    await GroupFactory.withMembers(adminAuth, sales, [user]);
+    await GroupFactory.withMembers(adminAuth, idpTeam, [user]);
+
+    const withoutKinds = await honoApp.request(searchUrl(workspace.sId));
+    expect((await withoutKinds.json()).members[0].workspace.groups).toBe(
+      undefined
+    );
+
+    const oneKind = await honoApp.request(
+      searchUrl(workspace.sId, { groupKind: "provisioned" })
+    );
+    expect((await oneKind.json()).members[0].workspace.groups).toEqual([
+      "IdP Team",
+    ]);
+
+    const twoKinds = await honoApp.request(
+      searchUrl(workspace.sId, { groupKinds: "provisioned,regular_manual" })
+    );
+    expect((await twoKinds.json()).members[0].workspace.groups).toEqual([
+      "IdP Team",
+      "Sales",
+    ]);
   });
 
   it("returns 400 on an unknown role filter", async () => {

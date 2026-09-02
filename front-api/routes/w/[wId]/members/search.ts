@@ -14,12 +14,21 @@ import { z } from "zod";
 
 const DEFAULT_PAGE_LIMIT = 25;
 
+const GroupKindSchema = z.enum(GROUP_KINDS).exclude(["system"]);
+
 const SearchMembersQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).catch(0),
   limit: z.coerce.number().int().min(0).max(150).catch(DEFAULT_PAGE_LIMIT),
   searchTerm: z.string().optional(),
   searchEmails: z.string().optional(),
-  groupKind: z.enum(GROUP_KINDS).exclude(["system"]).optional(),
+  // Members carry the names of their groups of these kinds. `groupKinds` is a
+  // comma-separated list; `groupKind` is the legacy single-kind form.
+  groupKind: GroupKindSchema.optional(),
+  groupKinds: z
+    .string()
+    .transform((value) => value.split(","))
+    .pipe(z.array(GroupKindSchema))
+    .optional(),
   // Restricts the results to the members holding that role.
   role: ActiveRoleSchema.optional(),
   // Deprecated: the builder-role filter was removed; accepted but ignored to
@@ -44,6 +53,8 @@ app.get(
   > => {
     const auth = ctx.get("auth");
     const query = ctx.req.valid("query");
+    const groupKinds =
+      query.groupKinds ?? (query.groupKind ? [query.groupKind] : undefined);
 
     const emails = query.searchEmails?.split(",");
     if (emails?.length && emails.length > MAX_SEARCH_EMAILS) {
@@ -61,7 +72,7 @@ app.get(
       {
         searchTerm: query.searchTerm,
         searchEmails: emails,
-        groupKind: query.groupKind,
+        groupKinds,
         role: query.role,
       },
       query

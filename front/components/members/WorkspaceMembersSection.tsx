@@ -38,6 +38,8 @@ import { useCallback, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
+const PROVISIONED_GROUP_KINDS = ["provisioned"] as const;
+
 interface WorkspaceMembersSectionProps {
   currentUser: UserType | null;
   isProvisioningEnabled: boolean;
@@ -197,7 +199,7 @@ function WorkspaceMembersList({
     searchTerm,
     pageIndex: pagination.pageIndex,
     pageSize: DEFAULT_PAGE_SIZE,
-    groupKind: isProvisioningEnabled ? "provisioned" : undefined,
+    groupKinds: isProvisioningEnabled ? PROVISIONED_GROUP_KINDS : undefined,
     role: roleFilter === "all" ? undefined : roleFilter,
   });
 

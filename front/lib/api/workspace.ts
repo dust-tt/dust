@@ -18,7 +18,6 @@ import type { SearchMembersPaginationParams } from "@app/lib/resources/user_reso
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceConversationKillSwitchValue } from "@app/lib/resources/workspace_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -321,7 +320,9 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
-    groupKind?: Exclude<GroupKind, "system">;
+    // When set, each member carries the names of the groups of these kinds
+    // they belong to.
+    groupKinds?: Exclude<GroupKind, "system">[];
     role?: ActiveRoleType;
   },
   paginationParams: SearchMembersPaginationParams
@@ -377,47 +378,45 @@ export async function searchMembers(
     total = results.value.total;
   }
 
-  const usersWithWorkspace = await concurrentExecutor(
-    users,
-    async (u) => {
-      const [m] = u.memberships ?? [];
-      let role: RoleType = "none";
-      let groups: string[] | undefined;
-      let origin: MembershipOriginType | undefined = undefined;
+  // One row-bounded query for the whole page instead of one per member.
+  const groupNamesByUserModelId = options.groupKinds?.length
+    ? await GroupResource.listGroupNamesByUserModelIdInWorkspace({
+        workspace: owner,
+        userModelIds: users.map((u) => u.id),
+        groupKinds: options.groupKinds,
+      })
+    : null;
 
-      if (m) {
-        const membership = new MembershipResource(
-          MembershipResource.model,
-          m.get()
-        );
+  const usersWithWorkspace = users.map((u) => {
+    const [m] = u.memberships ?? [];
+    let role: RoleType = "none";
+    let origin: MembershipOriginType | undefined = undefined;
 
-        role = !membership.isRevoked()
-          ? ACTIVE_ROLES.includes(membership.role)
-            ? membership.role
-            : "none"
-          : "none";
+    if (m) {
+      const membership = new MembershipResource(
+        MembershipResource.model,
+        m.get()
+      );
 
-        origin = membership.origin;
-      }
+      role = !membership.isRevoked()
+        ? ACTIVE_ROLES.includes(membership.role)
+          ? membership.role
+          : "none"
+        : "none";
 
-      if (options.groupKind) {
-        const groupsResult = await GroupResource.listUserGroupsInWorkspace({
-          user: u,
-          workspace: owner,
-          groupKinds: [options.groupKind],
-        });
+      origin = membership.origin;
+    }
 
-        groups = groupsResult.map((g) => g.toJSON()).map((g) => g.name);
-      }
+    const groups = groupNamesByUserModelId
+      ? (groupNamesByUserModelId.get(u.id) ?? [])
+      : undefined;
 
-      return {
-        ...u.toJSON(),
-        workspace: { ...owner, role, groups, flags: null },
-        origin,
-      };
-    },
-    { concurrency: 5 }
-  );
+    return {
+      ...u.toJSON(),
+      workspace: { ...owner, role, groups, flags: null },
+      origin,
+    };
+  });
 
   return {
     members: usersWithWorkspace,
