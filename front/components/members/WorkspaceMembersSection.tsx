@@ -4,6 +4,7 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { isFullUserType } from "@app/components/members/MemberSelectionTable";
+import type { MembersListColumn } from "@app/components/members/MembersList";
 import { MembersList } from "@app/components/members/MembersList";
 import type { RoleFilter } from "@app/components/members/Roles";
 import {
@@ -11,8 +12,10 @@ import {
   ROLE_FILTER_OPTIONS,
 } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
+import { useMembersModelTiers } from "@app/hooks/useMembersModelTiers";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
@@ -34,7 +37,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -48,6 +51,7 @@ interface WorkspaceMembersSectionProps {
   subscription: SubscriptionType;
   perSeatPricing: SubscriptionPerSeatPricing | null;
   hasAvailableSeats: boolean;
+  showModelTiers: boolean;
 }
 
 export function WorkspaceMembersSection({
@@ -58,6 +62,7 @@ export function WorkspaceMembersSection({
   subscription,
   perSeatPricing,
   hasAvailableSeats,
+  showModelTiers,
 }: WorkspaceMembersSectionProps) {
   const [view, setView] = useState("members");
   const [searchTerm, setSearchTerm] = useState("");
@@ -149,6 +154,7 @@ export function WorkspaceMembersSection({
           searchTerm={searchTerm}
           roleFilter={roleFilter}
           isProvisioningEnabled={isProvisioningEnabled}
+          showModelTiers={showModelTiers}
         />
       )}
       {view === "invitations" && isManualInvitationsEnabled && (
@@ -175,6 +181,7 @@ interface WorkspaceMembersListProps {
   searchTerm: string;
   roleFilter: RoleFilter;
   isProvisioningEnabled: boolean;
+  showModelTiers: boolean;
 }
 
 function WorkspaceMembersList({
@@ -183,6 +190,7 @@ function WorkspaceMembersList({
   searchTerm,
   roleFilter,
   isProvisioningEnabled,
+  showModelTiers,
 }: WorkspaceMembersListProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -194,12 +202,20 @@ function WorkspaceMembersList({
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspace | null>(null);
 
+  // Model tiers resolve through every cap-eligible group; the provisioning view
+  // only needs the provisioned ones for its Groups column.
+  const membersGroupKinds = showModelTiers
+    ? CAP_ELIGIBLE_GROUP_KINDS
+    : isProvisioningEnabled
+      ? PROVISIONED_GROUP_KINDS
+      : undefined;
+
   const membersData = useSearchMembers<UserTypeWithWorkspace>({
     workspaceId: owner.sId,
     searchTerm,
     pageIndex: pagination.pageIndex,
     pageSize: DEFAULT_PAGE_SIZE,
-    groupKinds: isProvisioningEnabled ? PROVISIONED_GROUP_KINDS : undefined,
+    groupKinds: membersGroupKinds,
     role: roleFilter === "all" ? undefined : roleFilter,
   });
 
@@ -221,17 +237,43 @@ function WorkspaceMembersList({
     }
   }, []);
 
+  const { getResolvedModelTiers, getModelTierMenuItem } = useMembersModelTiers({
+    owner,
+    disabled: !showModelTiers,
+  });
+  const getRowResolvedModelTiers = useCallback(
+    (user: SearchMemberWithWorkspaceType) =>
+      getResolvedModelTiers(user.sId, user.workspace.groups ?? []),
+    [getResolvedModelTiers]
+  );
+  const getRowMenuItems = useCallback(
+    (user: SearchMemberWithWorkspaceType) => [
+      getModelTierMenuItem(user.sId, user.workspace.groups ?? []),
+    ],
+    [getModelTierMenuItem]
+  );
+  const showColumns = useMemo<MembersListColumn[]>(
+    () => [
+      "name",
+      "email",
+      "role",
+      ...(isProvisioningEnabled ? (["status", "groups"] as const) : []),
+      ...(showModelTiers ? (["modelTiers", "actions"] as const) : []),
+    ],
+    [isProvisioningEnabled, showModelTiers]
+  );
+
   return (
     <>
       <MembersList
         currentUser={currentUser}
         membersData={membersData}
         onRowClick={handleRowClick}
-        showColumns={
-          isProvisioningEnabled
-            ? ["name", "email", "role", "status", "groups"]
-            : ["name", "email", "role"]
+        showColumns={showColumns}
+        getResolvedModelTiers={
+          showModelTiers ? getRowResolvedModelTiers : undefined
         }
+        getMenuItems={showModelTiers ? getRowMenuItems : undefined}
         pagination={pagination}
         setPagination={setPagination}
       />

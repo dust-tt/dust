@@ -2,7 +2,9 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { ProvisionedGroupDialog } from "@app/components/groups/ProvisionedGroupDialog";
+import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
+import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
@@ -48,9 +50,10 @@ type GroupRowData = {
 
 interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
+  showModelTiers: boolean;
 }
 
-const columns: ColumnDef<GroupRowData>[] = [
+const baseColumns: ColumnDef<GroupRowData>[] = [
   {
     id: "name",
     accessorKey: "name",
@@ -81,47 +84,75 @@ const columns: ColumnDef<GroupRowData>[] = [
       );
     },
   },
-  {
-    id: "actions",
-    header: "",
-    meta: { className: "w-12" },
-    cell: ({ row }) => {
-      const { onDelete } = row.original;
-      if (!onDelete) {
-        return null;
-      }
-      return (
-        <DataTable.CellContent>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                icon={DotsHorizontal}
-                size="mini"
-                variant="ghost-secondary"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent
-                align="end"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <DropdownMenuItem
-                  label="Delete"
-                  icon={Trash01}
-                  variant="warning"
-                  onClick={onDelete}
-                />
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
-        </DataTable.CellContent>
-      );
-    },
-  },
 ];
 
-export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
+function buildModelTiersColumn(owner: WorkspaceType): ColumnDef<GroupRowData> {
+  return {
+    id: "modelTiers",
+    header: () => (
+      <span className="flex items-center gap-1">
+        Models tier
+        <ModelTiersInfoButton />
+      </span>
+    ),
+    meta: { className: "w-64" },
+    cell: ({ row }) => (
+      <div
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <GroupModelTierPickerDropdown
+          owner={owner}
+          groupId={row.original.groupId}
+        />
+      </div>
+    ),
+  };
+}
+
+const actionsColumn: ColumnDef<GroupRowData> = {
+  id: "actions",
+  header: "",
+  meta: { className: "w-12" },
+  cell: ({ row }) => {
+    const { onDelete } = row.original;
+    if (!onDelete) {
+      return null;
+    }
+    return (
+      <DataTable.CellContent>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={DotsHorizontal}
+              size="mini"
+              variant="ghost-secondary"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenuItem
+                label="Delete"
+                icon={Trash01}
+                variant="warning"
+                onClick={onDelete}
+              />
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
+      </DataTable.CellContent>
+    );
+  },
+};
+
+export function WorkspaceGroupsList({
+  owner,
+  showModelTiers,
+}: WorkspaceGroupsListProps) {
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
@@ -195,6 +226,15 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
       };
     });
   }, [groups, handleDeleteGroup]);
+
+  const columns = useMemo(
+    () => [
+      ...baseColumns,
+      ...(showModelTiers ? [buildModelTiersColumn(owner)] : []),
+      actionsColumn,
+    ],
+    [owner, showModelTiers]
+  );
 
   return (
     <div className="flex flex-col gap-4">

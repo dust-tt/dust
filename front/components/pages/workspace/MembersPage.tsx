@@ -1,13 +1,19 @@
 import { WorkspaceGroupsList } from "@app/components/groups/WorkspaceGroupsList";
 import { WorkspaceMembersSection } from "@app/components/members/WorkspaceMembersSection";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
+import { isUsagePageEnabled } from "@app/lib/plans/usage_page";
 import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
   useWorkspaceVerifiedDomains,
 } from "@app/lib/swr/workspaces";
+import { isAdmin } from "@app/types/user";
 import {
   Page,
   Spinner,
@@ -18,6 +24,7 @@ import {
 } from "@dust-tt/sparkle";
 
 export function MembersPage() {
+  const { featureFlags } = useFeatureFlags();
   const owner = useWorkspace();
   const { subscription, user } = useAuth();
   const plan = subscription.plan;
@@ -37,6 +44,9 @@ export function MembersPage() {
   const isProvisioningEnabled = isSCIMEnabled(plan) && hasVerifiedDomains;
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
+  // Workspaces with a Usage page manage model tiers there.
+  const showModelTiers =
+    isAdmin(owner) && !isUsagePageEnabled(plan, featureFlags);
 
   const isLoading =
     isVerifiedDomainsLoading ||
@@ -60,6 +70,7 @@ export function MembersPage() {
       subscription={subscription}
       perSeatPricing={perSeatPricing}
       hasAvailableSeats={hasAvailableSeats}
+      showModelTiers={showModelTiers}
     />
   );
 
@@ -79,7 +90,10 @@ export function MembersPage() {
             {membersContent}
           </TabsContent>
           <TabsContent value="groups" className="flex flex-col gap-4">
-            <WorkspaceGroupsList owner={owner} />
+            <WorkspaceGroupsList
+              owner={owner}
+              showModelTiers={showModelTiers}
+            />
           </TabsContent>
         </Tabs>
       </div>

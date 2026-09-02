@@ -5,10 +5,15 @@ import {
   normalizeDisplayRole,
   ROLES_DATA,
 } from "@app/components/members/Roles";
+import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
+import { formatModelTiersSummary } from "@app/lib/client/model_tiers";
+import type { ResolvedAllowedModelTiers } from "@app/lib/model_tiers/resolve_allowed";
+import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import assert from "@app/lib/utils/assert";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type { RoleType, UserType } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Chip,
   DataTable,
@@ -35,6 +40,8 @@ type RowData = {
   onClick: () => void;
   onRemoveMemberClick?: () => void;
   origin?: MembershipOriginType;
+  modelTiers?: ResolvedAllowedModelTiers;
+  menuItems?: MenuItem[];
 };
 
 type Info = CellContext<RowData, string>;
@@ -61,12 +68,18 @@ function getTableRows({
   allUsers,
   onClick,
   onRemoveMemberClick,
+  getResolvedModelTiers,
+  getMenuItems,
   currentUserId,
   allowRemoveSelfAndProvisionedUsers,
 }: {
   allUsers: SearchMemberWithWorkspaceType[];
   onClick: (user: SearchMemberWithWorkspaceType) => void;
   onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
+  getResolvedModelTiers?: (
+    user: SearchMemberWithWorkspaceType
+  ) => ResolvedAllowedModelTiers;
+  getMenuItems?: (user: SearchMemberWithWorkspaceType) => MenuItem[];
   currentUserId: string;
   allowRemoveSelfAndProvisionedUsers: boolean;
 }): RowData[] {
@@ -89,6 +102,8 @@ function getTableRows({
       onClick: () => onClick(user),
       onRemoveMemberClick: () => onRemoveMemberClick?.(user),
       origin,
+      modelTiers: getResolvedModelTiers?.(user),
+      menuItems: getMenuItems?.(user),
     };
   });
 }
@@ -173,7 +188,64 @@ const memberColumns = [
       </DataTable.CellContent>
     ),
   },
+  {
+    id: "modelTiers" as const,
+    header: () => (
+      <span className="flex items-center gap-1">
+        Models tier
+        <ModelTiersInfoButton />
+      </span>
+    ),
+    cell: (info: Info) => {
+      const modelTiers = info.row.original.modelTiers;
+      if (!modelTiers) {
+        return null;
+      }
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground">
+            {formatModelTiersSummary(getMaxTierName(modelTiers.tiers))}
+            {modelTiers.source === "user" ? " (custom)" : ""}
+          </span>
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "w-48",
+    },
+  },
+  {
+    id: "actions" as const,
+    header: "",
+    cell: (info: Info) => {
+      const menuItems = info.row.original.menuItems;
+      if (!menuItems) {
+        return null;
+      }
+      return (
+        <div
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <DataTable.MoreButton menuItems={menuItems} />
+        </div>
+      );
+    },
+    meta: {
+      className: "w-14",
+    },
+  },
 ];
+
+export type MembersListColumn =
+  | "name"
+  | "email"
+  | "role"
+  | "remove"
+  | "status"
+  | "groups"
+  | "modelTiers"
+  | "actions";
 
 interface MembersListProps {
   allowRemoveSelfAndProvisionedUsers?: boolean;
@@ -181,7 +253,11 @@ interface MembersListProps {
   membersData: MembersData;
   onRowClick: (user: SearchMemberWithWorkspaceType) => void;
   onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
-  showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
+  getResolvedModelTiers?: (
+    user: SearchMemberWithWorkspaceType
+  ) => ResolvedAllowedModelTiers;
+  getMenuItems?: (user: SearchMemberWithWorkspaceType) => MenuItem[];
+  showColumns: MembersListColumn[];
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;
 }
@@ -192,6 +268,8 @@ export function MembersList({
   membersData,
   onRowClick,
   onRemoveMemberClick,
+  getResolvedModelTiers,
+  getMenuItems,
   showColumns,
   pagination,
   setPagination,
@@ -199,6 +277,14 @@ export function MembersList({
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
     "onRemoveMemberClick is required if remove column is shown"
+  );
+  assert(
+    !showColumns.includes("modelTiers") || getResolvedModelTiers,
+    "getResolvedModelTiers is required if modelTiers column is shown"
+  );
+  assert(
+    !showColumns.includes("actions") || getMenuItems,
+    "getMenuItems is required if actions column is shown"
   );
 
   const { members, totalMembersCount, isLoading } = membersData;
@@ -211,6 +297,8 @@ export function MembersList({
       allUsers: filteredMembers,
       onClick: onRowClick,
       onRemoveMemberClick,
+      getResolvedModelTiers,
+      getMenuItems,
       currentUserId: currentUser?.sId ?? "current-user-not-loaded",
       allowRemoveSelfAndProvisionedUsers,
     });
@@ -218,6 +306,8 @@ export function MembersList({
     members,
     onRowClick,
     onRemoveMemberClick,
+    getResolvedModelTiers,
+    getMenuItems,
     currentUser?.sId,
     allowRemoveSelfAndProvisionedUsers,
   ]);
