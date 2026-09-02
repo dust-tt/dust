@@ -23,14 +23,15 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import capitalize from "lodash/capitalize";
 
-// Shown when a model or reasoning effort is locked by the workspace plan.
-export const WORKSPACE_PLAN_LOCKED_TOOLTIP =
+// Shown when the workspace is not entitled to a premium model or reasoning
+// effort.
+export const PREMIUM_ENTITLEMENT_LOCKED_TOOLTIP =
   "This option isn't available on your workspace's current plan. " +
   "Contact your administrator to upgrade.";
 
-// Shown when a model or reasoning effort is outside the model access granted
+// Shown when a model or reasoning effort exceeds the tier limit granted
 // through the workspace, a group, or the member directly.
-const MODEL_ACCESS_LOCKED_TOOLTIP =
+const TIER_LIMIT_LOCKED_TOOLTIP =
   "Your current model access doesn't include this option. " +
   "Contact your administrator to get access.";
 
@@ -189,8 +190,8 @@ export interface ModelPickerSelectionModel {
 export type ModelLockReason = ModelSelectionLockReason;
 
 // One stop of the reasoning-effort slider. A null reason means it is available.
-// Unsupported efforts are unavailable; workspace-plan and model-access
-// restrictions are locks.
+// Unsupported efforts are unavailable; missing premium entitlement and tier
+// limits are locks.
 export type EffortStop = ReasoningEffortSelectionAvailabilityType;
 
 export function buildTierSelection(tierId: ModelTierId): ModelSelectionType {
@@ -324,10 +325,10 @@ export function getModelLockReason(
 
 export function getModelLockTooltip(reason: ModelLockReason): string {
   switch (reason) {
-    case "workspace_plan":
-      return WORKSPACE_PLAN_LOCKED_TOOLTIP;
-    case "model_access":
-      return MODEL_ACCESS_LOCKED_TOOLTIP;
+    case "premium_entitlement":
+      return PREMIUM_ENTITLEMENT_LOCKED_TOOLTIP;
+    case "tier_limit":
+      return TIER_LIMIT_LOCKED_TOOLTIP;
     default:
       assertNeverAndIgnore(reason);
       return "";
@@ -336,10 +337,10 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
 
 export function getEffortStopTooltip(stop: EffortStop): string | null {
   switch (stop.unavailabilityReason) {
-    case "workspace_plan":
-      return WORKSPACE_PLAN_LOCKED_TOOLTIP;
-    case "model_access":
-      return MODEL_ACCESS_LOCKED_TOOLTIP;
+    case "premium_entitlement":
+      return PREMIUM_ENTITLEMENT_LOCKED_TOOLTIP;
+    case "tier_limit":
+      return TIER_LIMIT_LOCKED_TOOLTIP;
     case "unsupported":
       return `This model doesn't support ${capitalize(stop.effort)} reasoning.`;
     case null:

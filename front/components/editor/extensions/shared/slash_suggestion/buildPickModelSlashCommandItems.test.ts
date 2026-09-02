@@ -31,7 +31,7 @@ function asSelectable(
 
   return {
     ...model,
-    isSelectable: lockReason !== "model_access",
+    isSelectable: lockReason !== "tier_limit",
     selectionAvailability: {
       defaultReasoningEffort: model.defaultReasoningEffort,
       reasoningEfforts,
@@ -123,7 +123,7 @@ describe("buildPickModelSlashCommandItems", () => {
       getModelIcon: () => Icon,
       models: [
         asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
-        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "model_access"),
+        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "tier_limit"),
       ],
       query: "",
       streams: null,
@@ -136,14 +136,14 @@ describe("buildPickModelSlashCommandItems", () => {
     ).toEqual(["Basic", "Standard"]);
   });
 
-  it("omits efforts and tiers locked by the workspace plan", () => {
+  it("omits efforts and tiers without premium entitlement", () => {
     const items = buildPickModelSlashCommandItems({
       getModelIcon: () => Icon,
       models: [
         asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, null, {
-          high: "workspace_plan",
+          high: "premium_entitlement",
         }),
-        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "workspace_plan"),
+        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "premium_entitlement"),
       ],
       query: "",
       streams: null,

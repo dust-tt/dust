@@ -12,7 +12,10 @@ export type EnabledModelConfigurationType = ModelConfigurationType & {
   selectionAvailability?: ModelSelectionAvailabilityType;
 };
 
-export type ModelSelectionLockReason = "workspace_plan" | "model_access";
+// `premium_entitlement` means the workspace is not entitled to premium
+// options. `tier_limit` means the option exceeds the effective tier ceiling
+// granted through the workspace, a group, or the member directly.
+export type ModelSelectionLockReason = "premium_entitlement" | "tier_limit";
 
 export type ReasoningEffortSelectionUnavailabilityReason =
   | "unsupported"

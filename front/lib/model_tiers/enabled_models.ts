@@ -69,14 +69,14 @@ function getEffortUnavailabilityReason(
   }
 
   if (!enabledModel.supportedReasoningEfforts[effort]) {
-    return "model_access";
+    return "tier_limit";
   }
 
   if (
     !premiumOptionsAreSelectable &&
     getTierForModel(model.modelId, effort) === "premium"
   ) {
-    return "workspace_plan";
+    return "premium_entitlement";
   }
 
   return null;
@@ -109,13 +109,15 @@ function getSelectionAvailability(
   let lockReason: ModelSelectionLockReason | null = null;
   if (selectableOptions.length === 0) {
     if (
-      options.some((option) => option.unavailabilityReason === "model_access")
+      options.some((option) => option.unavailabilityReason === "tier_limit")
     ) {
-      lockReason = "model_access";
+      lockReason = "tier_limit";
     } else if (
-      options.some((option) => option.unavailabilityReason === "workspace_plan")
+      options.some(
+        (option) => option.unavailabilityReason === "premium_entitlement"
+      )
     ) {
-      lockReason = "workspace_plan";
+      lockReason = "premium_entitlement";
     }
   }
 

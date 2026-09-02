@@ -5,7 +5,7 @@ import {
   getInitialEffort,
   getModelLockReason,
   getTierLockReason,
-  WORKSPACE_PLAN_LOCKED_TOOLTIP,
+  PREMIUM_ENTITLEMENT_LOCKED_TOOLTIP,
 } from "@app/components/model_picker/modelPickerUtils";
 import type {
   EnabledModelConfigurationType,
@@ -28,7 +28,7 @@ const SONNET_AVAILABILITY: ModelSelectionAvailabilityType = {
   reasoningEfforts: [
     { effort: "light", unavailabilityReason: null },
     { effort: "medium", unavailabilityReason: null },
-    { effort: "high", unavailabilityReason: "workspace_plan" },
+    { effort: "high", unavailabilityReason: "premium_entitlement" },
   ],
   lockReason: null,
 };
@@ -43,7 +43,7 @@ function withAvailability(
 function streamModel(
   modelId: ModelStreamIdType,
   lockReason: ModelSelectionLockReason | null,
-  isSelectable = lockReason !== "model_access"
+  isSelectable = lockReason !== "tier_limit"
 ): EnabledModelConfigurationType {
   return {
     ...withAvailability(
@@ -95,13 +95,13 @@ describe("modelPickerUtils", () => {
     expect(
       getEffortStopTooltip({
         effort: "high",
-        unavailabilityReason: "workspace_plan",
+        unavailabilityReason: "premium_entitlement",
       })
-    ).toBe(WORKSPACE_PLAN_LOCKED_TOOLTIP);
+    ).toBe(PREMIUM_ENTITLEMENT_LOCKED_TOOLTIP);
     expect(
       getEffortStopTooltip({
         effort: "medium",
-        unavailabilityReason: "model_access",
+        unavailabilityReason: "tier_limit",
       })
     ).toBe(
       "Your current model access doesn't include this option. " +
@@ -113,14 +113,14 @@ describe("modelPickerUtils", () => {
     it("uses the stream model's backend-owned lock reason", () => {
       expect(
         getTierLockReason("complex", [
-          streamModel(AUTO_COMPLEX_MODEL_ID, "model_access"),
+          streamModel(AUTO_COMPLEX_MODEL_ID, "tier_limit"),
         ])
-      ).toBe("model_access");
+      ).toBe("tier_limit");
       expect(
         getTierLockReason("complex", [
-          streamModel(AUTO_COMPLEX_MODEL_ID, "workspace_plan"),
+          streamModel(AUTO_COMPLEX_MODEL_ID, "premium_entitlement"),
         ])
-      ).toBe("workspace_plan");
+      ).toBe("premium_entitlement");
       expect(
         getTierLockReason("fast", [streamModel(AUTO_FAST_MODEL_ID, null)])
       ).toBeNull();
@@ -132,7 +132,7 @@ describe("modelPickerUtils", () => {
 
     it("defaults to Basic when Standard is above the member's tier cap", () => {
       expect(
-        getDefaultTierId([streamModel(AUTO_MODEL_ID, "model_access", false)])
+        getDefaultTierId([streamModel(AUTO_MODEL_ID, "tier_limit", false)])
       ).toBe("fast");
     });
 
