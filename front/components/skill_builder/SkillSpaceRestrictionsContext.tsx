@@ -21,13 +21,12 @@ export interface EditorWithoutSpaceAccess {
   missingSpaces: SpaceType[];
 }
 
-interface SkillSpaceRestrictionsContextType {
+export interface SkillSpaceRestrictionsContextType {
   actionsBySpaceId: ReturnType<typeof getSpaceIdToActionsMap>;
   allSpaces: EnrichedSpaceType[];
   areSpaceRequirementsReady: boolean;
   editorsWithoutSpaceAccess: EditorWithoutSpaceAccess[];
   globalSpace: EnrichedSpaceType | undefined;
-  initialAdditionalSpaces: string[];
   initialRequestedSpaceIds?: string[];
   knowledgeBySpaceId: Record<string, AttachedKnowledgeFormData[]>;
   missingSpaceIds: string[];
@@ -142,20 +141,6 @@ export function SkillSpaceRestrictionsProvider({
     return skillsBySpace;
   }, [referencedSkills]);
 
-  const initialAdditionalSpaces = useMemo(() => {
-    if (!areSpaceRequirementsReady || !initialRequestedSpaceIds?.length) {
-      return [];
-    }
-
-    return initialRequestedSpaceIds.filter(
-      (spaceId) => !spaceIdsUsedBySkill.has(spaceId)
-    );
-  }, [
-    areSpaceRequirementsReady,
-    initialRequestedSpaceIds,
-    spaceIdsUsedBySkill,
-  ]);
-
   const additionalSpaceIds = useMemo(() => {
     return new Set(additionalSpaces ?? []);
   }, [additionalSpaces]);
@@ -228,7 +213,6 @@ export function SkillSpaceRestrictionsProvider({
       areSpaceRequirementsReady,
       editorsWithoutSpaceAccess,
       globalSpace,
-      initialAdditionalSpaces,
       initialRequestedSpaceIds,
       knowledgeBySpaceId,
       missingSpaceIds,
@@ -243,7 +227,6 @@ export function SkillSpaceRestrictionsProvider({
       areSpaceRequirementsReady,
       editorsWithoutSpaceAccess,
       globalSpace,
-      initialAdditionalSpaces,
       initialRequestedSpaceIds,
       knowledgeBySpaceId,
       missingSpaceIds,
