@@ -13,6 +13,7 @@ import type {
   AgentMessageConsumptionModelDetails,
 } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
+import partition from "lodash/partition";
 import type {
   MessageConsumptionAllocation,
   ReconciledCreditAmounts,
@@ -29,6 +30,11 @@ export type ToolConsumptionDetailsOverride = {
   label: string;
 };
 
+export type ToolsAttributedToAgentWork = {
+  additionalAttributedCredits: number;
+  actionModelIds: ReadonlySet<ModelId>;
+};
+
 function buildConsumptionTotals({
   items,
   reconciledCreditAmounts,
@@ -39,12 +45,10 @@ function buildConsumptionTotals({
   agentWorkCredits: number;
 } {
   const reconciledAgentWorkCreditAmountMicro = items.reduce(
-    (total, item) =>
-      item.itemType === "tool"
-        ? total
-        : total + (reconciledCreditAmounts.byItem.get(item) ?? 0),
+    (total, item) => total + (reconciledCreditAmounts.byItem.get(item) ?? 0),
     0
   );
+
   return {
     agentWorkCredits: microCreditsToCredits(
       reconciledAgentWorkCreditAmountMicro
@@ -190,6 +194,7 @@ function buildMessageConsumptionDetails({
   actions,
   allocation,
   toolDetailsOverridesByActionModelId,
+  toolsAttributedToAgentWork,
 }: {
   actions: AgentMCPActionResource[];
   allocation: MessageConsumptionAllocation;
@@ -197,26 +202,37 @@ function buildMessageConsumptionDetails({
     ModelId,
     ToolConsumptionDetailsOverride
   >;
+  toolsAttributedToAgentWork?: ToolsAttributedToAgentWork;
 }): MessageConsumptionDetails | null {
   const { attributionVersion, items, messageUsages, reconciledCreditAmounts } =
     allocation;
+  const [agentWorkItems, toolItems] = partition(
+    items,
+    (item) =>
+      item.itemType !== "tool" ||
+      (item.agentMCPActionId !== null &&
+        toolsAttributedToAgentWork?.actionModelIds.has(item.agentMCPActionId))
+  );
 
   const tools = buildToolDetails({
     actions,
-    items,
+    items: toolItems,
     reconciledCreditAmounts,
     toolDetailsOverridesByActionModelId,
   });
   if (!tools) {
     return null;
   }
+  const { agentWorkCredits } = buildConsumptionTotals({
+    items: agentWorkItems,
+    reconciledCreditAmounts,
+  });
 
   return {
     attributionVersion,
-    ...buildConsumptionTotals({
-      items,
-      reconciledCreditAmounts,
-    }),
+    agentWorkCredits:
+      agentWorkCredits +
+      (toolsAttributedToAgentWork?.additionalAttributedCredits ?? 0),
     tools,
     models: buildModelDetails({
       items,
@@ -234,6 +250,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
   items,
   runs,
   toolDetailsOverridesByActionModelId,
+  toolsAttributedToAgentWork,
   usages,
 }: {
   actions: AgentMCPActionResource[];
@@ -245,6 +262,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
     ModelId,
     ToolConsumptionDetailsOverride
   >;
+  toolsAttributedToAgentWork?: ToolsAttributedToAgentWork;
   usages: RunUsageWithRunKeyType[];
 }): MessageConsumptionDetails | null {
   const allocation = buildLatestMessageConsumptionAllocation({
@@ -263,5 +281,6 @@ export function buildLatestAvailableMessageConsumptionDetails({
     actions,
     allocation,
     toolDetailsOverridesByActionModelId,
+    toolsAttributedToAgentWork,
   });
 }
