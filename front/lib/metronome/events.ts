@@ -220,7 +220,6 @@ export function buildUsageEvents({
   }
 
   // A "user" event with no real user is a bug in the caller's attribution
-  // logic (see isProgrammaticUsageFromContext), not a legitimate case: it
   // would otherwise silently ship as user_id "unknown" and never surface.
   // Programmatic and free-origin usage are allowed to have no userId.
   if (usageType === USAGE_TYPE_USER && !userId) {
