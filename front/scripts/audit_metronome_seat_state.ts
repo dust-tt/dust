@@ -25,6 +25,7 @@ import {
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
+  getAwuAllocationForSeatType,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
@@ -345,6 +346,18 @@ async function auditWorkspace(
   );
 
   const allSeatIds = new Set<string>();
+  // Map every assigned seat to its seat type, and each seat type to the AWU
+  // it is entitled to grant, so we can flag seats holding MORE granted AWU
+  // than their allocation (credit stacking left by an un-emptied origin credit
+  // on a prior seat-type change — e.g. a pro 8000 grant stacked on max 40000).
+  const seatTypeBySeatId = new Map<string, MembershipSeatType>();
+  const allocationBySeatType = new Map<MembershipSeatType, number>();
+  for (const { seatType } of seatSubscriptions) {
+    allocationBySeatType.set(
+      seatType,
+      getAwuAllocationForSeatType(contract, seatType, productSeatTypes)
+    );
+  }
 
   // Per seat subscription: compare Metronome assignment vs Dust desired.
   for (const { seatType, subId } of seatSubscriptions) {
@@ -369,7 +382,10 @@ async function auditWorkspace(
     const missingInMetronome = setDiff([...desired], assignedSet);
     const staleInMetronome = setDiff(assignedSeatIds, desired);
 
-    assignedSeatIds.forEach((id) => allSeatIds.add(id));
+    assignedSeatIds.forEach((id) => {
+      allSeatIds.add(id);
+      seatTypeBySeatId.set(id, seatType);
+    });
     desired.forEach((id) => allSeatIds.add(id));
 
     logger.info(
@@ -439,6 +455,63 @@ async function auditWorkspace(
       seatsNonPositiveBalance,
     },
     "[SeatAudit] seat balances summary"
+  );
+
+  // Over-allocation (credit-stacking) detection. `starting_balance` is the
+  // total AWU granted to the seat this cycle, independent of how much has been
+  // consumed — so a seat granted MORE than its seat-type allocation is holding
+  // a leftover grant that a prior seat-type change never emptied (the pro→max
+  // stacking: 40000 max allocation + an orphaned 8000 pro grant =
+  // starting_balance 48000). This is the exact population `syncSeatCount` can
+  // no longer self-heal (empty-origin sees the user already converged on the
+  // new seat), so it needs a targeted credit correction.
+  const AWU_OVER_ALLOCATION_TOLERANCE = 1;
+  const overAllocatedSeats: Array<{
+    seatId: string;
+    seatType: MembershipSeatType;
+    allocation: number;
+    startingBalance: number;
+    currentBalance: number;
+    overGrantedAwu: number;
+  }> = [];
+  for (const [seatId, seatType] of seatTypeBySeatId) {
+    const allocation = allocationBySeatType.get(seatType);
+    if (allocation === undefined || allocation <= 0) {
+      continue;
+    }
+    const awu = balanceBySeatId
+      .get(seatId)
+      ?.find((b) => b.credit_type_id === awuCreditTypeId);
+    if (!awu) {
+      continue;
+    }
+    const overGrantedAwu = awu.starting_balance - allocation;
+    if (overGrantedAwu > AWU_OVER_ALLOCATION_TOLERANCE) {
+      overAllocatedSeats.push({
+        seatId,
+        seatType,
+        allocation,
+        startingBalance: awu.starting_balance,
+        currentBalance: awu.balance,
+        overGrantedAwu,
+      });
+    }
+  }
+  overAllocatedSeats.sort((a, b) => b.overGrantedAwu - a.overGrantedAwu);
+  const totalOverGrantedAwu = overAllocatedSeats.reduce(
+    (sum, s) => sum + s.overGrantedAwu,
+    0
+  );
+  logger.info(
+    {
+      workspaceId,
+      contractId,
+      allocationBySeatType: Object.fromEntries(allocationBySeatType),
+      overAllocatedSeatCount: overAllocatedSeats.length,
+      totalOverGrantedAwu,
+      overAllocatedSeats,
+    },
+    "[SeatAudit] over-allocated seats (credit stacking)"
   );
 
   if (!probe) {
