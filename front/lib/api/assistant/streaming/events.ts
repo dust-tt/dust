@@ -110,7 +110,7 @@ function isMessageEventParams(
   switch (eventType) {
     case "agent_action_success":
     case "agent_context_pruned":
-    case "agent_spend_checkpoint_reached":
+    case "agent_credit_spend_checkpoint_reached":
     case "agent_error":
     case "agent_generation_cancelled":
     case "agent_message_success":

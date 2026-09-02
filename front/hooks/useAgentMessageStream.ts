@@ -756,7 +756,7 @@ export function useAgentMessageStream({
           );
           break;
 
-        case "agent_spend_checkpoint_reached":
+        case "agent_credit_spend_checkpoint_reached":
           break;
 
         case "agent_generation_cancelled": {

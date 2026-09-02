@@ -1,6 +1,6 @@
 import {
+  checkCreditSpendCheckpointGate,
   checkPoolCreditGate,
-  checkSpendCheckpointGate,
 } from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -179,7 +179,7 @@ describe("checkPoolCreditGate", () => {
   });
 });
 
-describe("checkSpendCheckpointGate", () => {
+describe("checkCreditSpendCheckpointGate", () => {
   const FAKE_BOUNDS = { startMs: 0, endMs: 1 } as never;
 
   beforeEach(() => {
@@ -191,7 +191,7 @@ describe("checkSpendCheckpointGate", () => {
 
   it("does not notify when there is no user", async () => {
     const auth = makeAuth({ hasUser: false });
-    const result = await checkSpendCheckpointGate(auth);
+    const result = await checkCreditSpendCheckpointGate(auth);
     expect(result).toEqual({ crossed: false });
     expect(mockResolveSpendLimitCycleBounds).not.toHaveBeenCalled();
   });
@@ -199,7 +199,7 @@ describe("checkSpendCheckpointGate", () => {
   it("does not notify when the billing cycle can't be resolved", async () => {
     mockResolveSpendLimitCycleBounds.mockResolvedValue(null);
     const auth = makeAuth({ hasUser: true });
-    const result = await checkSpendCheckpointGate(auth);
+    const result = await checkCreditSpendCheckpointGate(auth);
     expect(result).toEqual({ crossed: false });
     expect(mockIsSpendCapCounterReached).not.toHaveBeenCalled();
   });
@@ -207,14 +207,14 @@ describe("checkSpendCheckpointGate", () => {
   it("does not notify when the counter has not reached the threshold", async () => {
     mockIsSpendCapCounterReached.mockResolvedValue(false);
     const auth = makeAuth({ hasUser: true });
-    const result = await checkSpendCheckpointGate(auth);
+    const result = await checkCreditSpendCheckpointGate(auth);
     expect(result).toEqual({ crossed: false });
   });
 
   it("notifies with the fixed threshold once the counter crosses it", async () => {
     mockIsSpendCapCounterReached.mockResolvedValue(true);
     const auth = makeAuth({ hasUser: true });
-    const result = await checkSpendCheckpointGate(auth);
+    const result = await checkCreditSpendCheckpointGate(auth);
     expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1000 });
     expect(mockIsSpendCapCounterReached).toHaveBeenCalledWith(auth, {
       user: { id: 42, sId: "user_test" },

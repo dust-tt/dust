@@ -1,7 +1,7 @@
 import type { CreditCheckResult } from "@app/lib/api/assistant/credit_check";
 import {
+  checkCreditSpendCheckpointGate,
   checkPoolCreditGate,
-  checkSpendCheckpointGate,
 } from "@app/lib/api/assistant/credit_check";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -73,7 +73,7 @@ export async function checkSpendCheckpointActivity(
     return { crossed: false, acknowledged: true };
   }
 
-  const result = await checkSpendCheckpointGate(auth);
+  const result = await checkCreditSpendCheckpointGate(auth);
   if (!result.crossed) {
     return { crossed: false, acknowledged: false };
   }
@@ -113,7 +113,7 @@ export async function checkSpendCheckpointActivity(
       conversationId: conversation.sId,
       step,
       event: {
-        type: "agent_spend_checkpoint_reached",
+        type: "agent_credit_spend_checkpoint_reached",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,

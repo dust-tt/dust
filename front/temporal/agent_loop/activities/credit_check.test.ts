@@ -32,7 +32,7 @@ vi.mock("@app/lib/auth", () => ({
 
 vi.mock("@app/lib/api/assistant/credit_check", () => ({
   checkPoolCreditGate: mockCheckPoolCreditGate,
-  checkSpendCheckpointGate: mockCheckSpendCheckpointGate,
+  checkCreditSpendCheckpointGate: mockCheckSpendCheckpointGate,
 }));
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
@@ -178,7 +178,7 @@ describe("checkSpendCheckpointActivity", () => {
       conversationId: "conv_id",
       step: 2,
       event: {
-        type: "agent_spend_checkpoint_reached",
+        type: "agent_credit_spend_checkpoint_reached",
         created: expect.any(Number),
         configurationId: "agent_config_id",
         messageId: "msg_id",
