@@ -330,7 +330,7 @@ export function WorkspacePage() {
               <ProjectsDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="frames">
-              <FramesDataTable owner={owner} />
+              <FramesDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="spaces">
               <SpaceDataTable owner={owner} loadOnInit />

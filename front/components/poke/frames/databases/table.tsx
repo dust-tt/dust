@@ -1,13 +1,13 @@
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { LiveDatabaseEntry } from "@app/lib/api/sandbox_functions/dsbx_db";
+import type { PokeFrameDatabase } from "@app/lib/api/poke/frames";
 import { formatFileSize } from "@app/lib/utils";
 import { usePokeFrameDatabases } from "@app/poke/swr/frames";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ColumnDef } from "@tanstack/react-table";
 
-const columns: ColumnDef<LiveDatabaseEntry>[] = [
+const columns: ColumnDef<PokeFrameDatabase>[] = [
   {
     accessorKey: "name",
     header: "Name",

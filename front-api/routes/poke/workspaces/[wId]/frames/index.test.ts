@@ -99,12 +99,15 @@ describe("GET /api/poke/workspaces/:wId/frames", () => {
     // Order matters: each makeTestFrameFunction call re-mocks the WorkOS session, so the target
     // workspace must be created last for the request to authenticate as its own super user.
     await makeTestFrameFunction({ isSuperUser: true });
-    const { workspace } = await makeTestFrameFunction({ isSuperUser: true });
+    const { workspace, frame } = await makeTestFrameFunction({
+      isSuperUser: true,
+    });
 
     const response = await honoApp.request(framesUrl(workspace.sId));
 
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.items).toHaveLength(1);
+    expect(data.items[0].sId).toBe(frame.sId);
   });
 });

@@ -1,4 +1,5 @@
 import type {
+  PokeFrameDatabase,
   PokeFrameDetails,
   PokeFrameListItem,
   PokeListFrameDatabases,
@@ -6,28 +7,37 @@ import type {
   PokeListFrames,
 } from "@app/lib/api/poke/frames";
 import type { PokePodFunction } from "@app/lib/api/poke/projects";
-import type { LiveDatabaseEntry } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
 interface UsePokeFramesProps {
   disabled?: boolean;
+  limit: number;
   owner: LightWorkspaceType;
 }
 
-export function usePokeFrames({ disabled, owner }: UsePokeFramesProps) {
+export interface PokeFramesData {
+  items: PokeFrameListItem[];
+  hasMore: boolean;
+  isLoadingMore: boolean;
+}
+
+export function usePokeFrames({ disabled, limit, owner }: UsePokeFramesProps) {
   const { fetcher } = useFetcher();
   const framesFetcher: Fetcher<PokeListFrames> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/frames`,
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/frames?limit=${limit}`,
     framesFetcher,
-    { disabled }
+    { disabled, keepPreviousData: true }
   );
 
   return {
-    data: data?.items ?? emptyArray<PokeFrameListItem>(),
-    hasMore: data?.hasMore ?? false,
+    data: {
+      items: data?.items ?? emptyArray<PokeFrameListItem>(),
+      hasMore: data?.hasMore ?? false,
+      isLoadingMore: isValidating && !!data,
+    },
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
@@ -102,7 +112,7 @@ export function usePokeFrameDatabases({
   );
 
   return {
-    data: data?.items ?? emptyArray<LiveDatabaseEntry>(),
+    data: data?.items ?? emptyArray<PokeFrameDatabase>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

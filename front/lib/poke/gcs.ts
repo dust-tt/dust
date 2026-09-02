@@ -19,5 +19,13 @@ export function makeGcsConsoleUrl(
     return null;
   }
 
-  return `https://console.cloud.google.com/storage/browser/${bucket}/${prefix}?project=${projectId}`;
+  // Percent-encode each path segment (not the whole prefix) so the `/` separators survive: some
+  // prefixes derive from user-supplied file names (e.g. a Frame's authored-source directory) that
+  // may contain spaces, `#`, or other characters that are not valid unescaped in a URL path.
+  const encodedPrefix = prefix
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+  return `https://console.cloud.google.com/storage/browser/${bucket}/${encodedPrefix}?project=${projectId}`;
 }

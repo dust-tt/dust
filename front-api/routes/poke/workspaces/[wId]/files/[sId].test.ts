@@ -19,6 +19,9 @@ describe("GET /api/poke/workspaces/:wId/files/:sId", () => {
     const data = await response.json();
     expect(data.file.sId).toBe(frame.sId);
     expect(data.file.contentType).toBe(frameV2ContentType);
+    // A Frame v2's own bytes are its manifest JSON, which Poke's dedicated Frame view never
+    // reads, so this endpoint deliberately serves an empty placeholder instead of fetching it.
+    expect(data.content).toBe("");
   });
 
   it("404s for an unknown file", async () => {

@@ -241,6 +241,9 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     {
       limit,
+      // Poke's own Frames table re-fetches from offset 0 with a growing `limit` instead (see
+      // `usePokeFrames`); `lastValue` stays wired for other API consumers that want true keyset
+      // pagination.
       lastValue,
       orderDirection,
     }: {

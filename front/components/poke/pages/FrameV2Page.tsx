@@ -3,7 +3,6 @@ import { FrameFunctionDataTable } from "@app/components/poke/frames/functions/ta
 import { FramePublicationSection } from "@app/components/poke/frames/publication";
 import { FrameStorageTable } from "@app/components/poke/frames/storage";
 import { ViewFrameTable } from "@app/components/poke/frames/view";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePokeFrameDetails } from "@app/poke/swr/frames";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
@@ -48,14 +47,6 @@ export function FrameV2Page({ frameId }: FrameV2PageProps) {
       <div className="text-sm text-muted-foreground">
         Frame ID: <code className="text-xs">{details.frame.sId}</code>
       </div>
-
-      <PluginList
-        pluginResourceTarget={{
-          resourceId: details.frame.sId,
-          resourceType: "files",
-          workspace: owner,
-        }}
-      />
 
       <ViewFrameTable details={details} owner={owner} />
       <FrameStorageTable storage={details.storage} />
