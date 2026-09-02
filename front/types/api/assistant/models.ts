@@ -25,4 +25,5 @@ export type GetEnabledModelsResponseType = {
   models: EnabledModelConfigurationType[];
   defaultModel: EnabledModelConfigurationType;
   streams: ModelStreamResolutionsType;
+  degradedModelIds: string[];
 };
