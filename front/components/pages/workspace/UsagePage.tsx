@@ -987,10 +987,9 @@ export function UsagePage() {
       creditsResetAt={creditsResetAt}
       isLoading={isMembersUsageLoading}
       isRefreshing={isMembersUsageRefreshing}
-      readOnly={!isCreditPriced}
       showSeatAndCredits={isCreditPriced}
       seatActionsDisabled={isSubscriptionCancelled}
-      showSpendLimit={!isFreePlanWorkspace}
+      showSpendLimit={isCreditPriced && !isFreePlanWorkspace}
       showModelTiersColumn={isWorkspaceAdmin}
       userModelTierSelectionByUserId={userModelTierSelectionByUserId}
       userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}

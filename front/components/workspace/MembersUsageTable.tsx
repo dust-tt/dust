@@ -826,9 +826,10 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
   showSpendLimit: boolean;
-  readOnly: boolean;
-  // Seat and credits usage columns plus the seat and spend limit row actions.
-  // Off for workspaces that are not on a credit plan.
+  // Disables every row action (Poke's read-only view).
+  readOnly?: boolean;
+  // Seat and credits usage columns plus the seat row actions. Off for
+  // workspaces that are not on a credit plan.
   showSeatAndCredits?: boolean;
   // Disables only the seat-assign/change/remove actions (e.g. while the
   // subscription has a cancellation scheduled), independent of `readOnly`.
@@ -868,7 +869,7 @@ export function MembersUsageTable({
   seatChangePendingMemberIds,
   isSeatBased,
   showSpendLimit,
-  readOnly,
+  readOnly = false,
   showSeatAndCredits = true,
   seatActionsDisabled = false,
   onChangeSeat,
@@ -966,10 +967,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showSeatAndCredits &&
-            showSpendLimit &&
-            hasSeat &&
-            m.seatType !== "free"
+            ...(showSpendLimit && hasSeat && m.seatType !== "free"
               ? [
                   {
                     kind: "item" as const,
