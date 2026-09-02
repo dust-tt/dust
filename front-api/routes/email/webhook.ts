@@ -13,6 +13,7 @@ import {
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
+  recordEmailRelay,
   relayEmailToOtherRegion,
   replyToError,
   resolveRelayedErrorReply,
@@ -140,6 +141,17 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
   }
 
   const email = emailRes.value;
+
+  if (
+    isRelayRequest &&
+    !(await recordEmailRelay(email.threadingHeaders.messageId))
+  ) {
+    logger.info(
+      { senderEmail: email.sender.email },
+      "[email] Ignoring duplicate inbound email relay"
+    );
+    return ctx.json({ success: true });
+  }
 
   // Acknowledge the webhook now — from here on, all errors should be sent as
   // a reply to the original sender, not surfaced to SendGrid. We finish the
