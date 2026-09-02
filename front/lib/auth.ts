@@ -1620,6 +1620,10 @@ export class Authenticator {
     return this.hasPermissionForAcls(verb, target.getAccessControlLists(this));
   }
 
+  can(verb: GrantVerb, target: WithAccessControl): boolean {
+    return this.hasPermission(verb, target);
+  }
+
   /**
    * Whether the caller holds `verb` on EVERY one of the given targets (conjunction).
    */
