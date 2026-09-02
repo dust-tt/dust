@@ -87,6 +87,8 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("usePodFunctionMutation");
     expect(instructions).toContain("## Persisting state in a Frame database");
     expect(instructions).toContain('db("comments")');
+    expect(instructions).toContain('from "@dust/sandbox"');
+    expect(instructions).not.toContain('from "@dust/pod"');
     expect(instructions).toContain("reconciles the declared schemas");
     expect(instructions).toContain("### React Component Rules");
     expect(instructions).toContain("legacy Frame");
