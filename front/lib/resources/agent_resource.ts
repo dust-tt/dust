@@ -1,6 +1,7 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentModel } from "@app/lib/models/agent/agent";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -12,6 +13,7 @@ import type {
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
@@ -94,6 +96,26 @@ export class AgentResource implements WithAccessControl {
     });
 
     return agent?.id ?? null;
+  }
+
+  async grantEditors(
+    auth: Authenticator,
+    { editors, transaction }: { editors: UserType[]; transaction: Transaction }
+  ): Promise<void> {
+    assert(this.kind === "custom");
+    assert(this.id !== null);
+    assert(auth.getNonNullableWorkspace().id === this.workspaceId);
+
+    const grantResult = await GroupPermissionResource.grantToUsers(auth, {
+      users: editors,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: this.id,
+      transaction,
+    });
+    if (grantResult.isErr()) {
+      throw grantResult.error;
+    }
   }
 
   getAccessControlLists(auth: Authenticator): AccessControlList[] {

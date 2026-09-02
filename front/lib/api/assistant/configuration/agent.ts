@@ -30,7 +30,6 @@ import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
-import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -84,30 +83,6 @@ const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
 const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
 const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
   "https://dust.tt/static/systemavatar/dust_avatar_full.png";
-
-async function grantAgentEditors(
-  auth: Authenticator,
-  {
-    agentModelId,
-    editors,
-    transaction,
-  }: {
-    agentModelId: ModelId;
-    editors: UserType[];
-    transaction: Transaction;
-  }
-): Promise<void> {
-  const grantResult = await GroupPermissionResource.grantToUsers(auth, {
-    users: editors,
-    grantType: "editor",
-    resourceType: "agent",
-    resourceId: agentModelId,
-    transaction,
-  });
-  if (grantResult.isErr()) {
-    throw grantResult.error;
-  }
-}
 
 /**
  * Creates a pending agent configuration.
@@ -165,8 +140,7 @@ export async function createPendingAgentConfiguration(
       transaction: t,
       authorId: user.id,
     });
-    await grantAgentEditors(auth, {
-      agentModelId: agentIdentity.id,
+    await AgentResource.fromAgentConfiguration(agent).grantEditors(auth, {
       editors: [user.toJSON()],
       transaction: t,
     });
@@ -969,11 +943,9 @@ export async function createAgentConfiguration(
           }
         }
 
-        await grantAgentEditors(auth, {
-          agentModelId: agentConfigurationInstance.agentId,
-          editors,
-          transaction: t,
-        });
+        await AgentResource.fromAgentConfiguration(
+          agentConfigurationInstance
+        ).grantEditors(auth, { editors, transaction: t });
       }
 
       return agentConfigurationInstance;
@@ -1635,8 +1607,18 @@ export async function updateAgentPermissions(
           transaction: t,
         });
         assert(agentModelId, "Unexpected: agent identity is missing");
-        await grantAgentEditors(auth, {
-          agentModelId,
+        assert(
+          agent.versionAuthorId !== null,
+          "Unexpected: custom agent author is missing"
+        );
+        const agentResource = AgentResource.fromAgentConfiguration({
+          agentId: agentModelId,
+          authorId: agent.versionAuthorId,
+          sId: agent.sId,
+          scope: agent.scope,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        });
+        await agentResource.grantEditors(auth, {
           editors: usersToAdd,
           transaction: t,
         });
