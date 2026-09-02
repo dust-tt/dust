@@ -173,9 +173,16 @@ function SizingPicker({
 function DemoPanelContent({
   type,
   onSwapType,
+  child,
 }: {
   type: PanelSizingType;
   onSwapType: (type: PanelSizingType) => void;
+  /** Picker for the panel one level deeper, when this panel has one. */
+  child?: {
+    label: string;
+    value: PanelSizingType | null;
+    onOpen: (type: PanelSizingType) => void;
+  };
 }) {
   return (
     <div className="flex flex-col gap-4 overflow-y-auto p-4">
@@ -192,6 +199,18 @@ function DemoPanelContent({
           hands focus back. Also try the ⤢ fullscreen toggle in the top bar.
         </p>
       </div>
+      {child && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {child.label}
+          </p>
+          <SizingPicker value={child.value} onChange={child.onOpen} />
+          <p className="text-xs text-muted-foreground">
+            Each panel only opens the level directly below it, so Panel 4 is
+            reachable from here — never from Panel 2.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -221,13 +240,10 @@ export default function Panels() {
           Open Panel 3 as…
         </p>
         <SizingPicker value={p3Type} onChange={setP3Type} />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Open Panel 4 as…
+        <p className="text-xs text-muted-foreground">
+          Panel 4 opens from inside Panel 3 — each panel only opens the level
+          directly below it.
         </p>
-        <SizingPicker value={p4Type} onChange={setP4Type} />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -240,7 +256,8 @@ export default function Panels() {
             compact.
           </li>
           <li>
-            Add Panel 4 as “shared” — it splits the space with the focus panel.
+            From inside Panel 3, add Panel 4 as “shared” — it splits the space
+            with the focus panel.
           </li>
           <li>
             Swap an open panel's type from inside it — the rules re-apply in
@@ -293,14 +310,28 @@ export default function Panels() {
         sizingType={p3Type ?? "default"}
         fullscreenEnabled
         isOpen={p3Type !== null}
-        onClose={() => setP3Type(null)}
+        // Closing a panel closes the deeper one it opened.
+        onClose={() => {
+          setP3Type(null);
+          setP4Type(null);
+        }}
         topBarLeft={
           <span className="text-sm font-medium text-foreground">
             Panel 3 · {p3Type}
           </span>
         }
       >
-        {p3Type && <DemoPanelContent type={p3Type} onSwapType={setP3Type} />}
+        {p3Type && (
+          <DemoPanelContent
+            type={p3Type}
+            onSwapType={setP3Type}
+            child={{
+              label: "Open Panel 4 as…",
+              value: p4Type,
+              onOpen: setP4Type,
+            }}
+          />
+        )}
       </PanelLayoutPanel>
 
       <PanelLayoutPanel
