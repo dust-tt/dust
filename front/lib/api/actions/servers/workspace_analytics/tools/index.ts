@@ -7,18 +7,16 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceManagerGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
-import type {
-  ConsumptionFilterInput,
-  TimeWindowInput,
-} from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import type { ConsumptionFilterInput } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import {
   DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
-  resolveTimeWindow,
-  toConsumptionPeriod,
   toConsumptionScope,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
+import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
+import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
 import type {
   ConsumptionTopDimension,
@@ -61,10 +59,15 @@ function excludeSkillManagement(
   };
 }
 
+function periodLabel(periodInput: ConsumptionPeriodInput): string {
+  return periodInput.kind === "cycle"
+    ? "the current billing cycle"
+    : `the last ${periodInput.days} days`;
+}
+
 function formatRankingText({
   dimension,
   label,
-  tz,
   rankBy,
   unit,
   rows,
@@ -72,7 +75,6 @@ function formatRankingText({
 }: {
   dimension: ConsumptionTopDimension;
   label: string;
-  tz: string;
   rankBy: ConsumptionTopRankBy;
   unit: ConsumptionTopUnit;
   rows: ResolvedConsumptionGroup[];
@@ -81,7 +83,7 @@ function formatRankingText({
   const metricLabel = rankBy === "credits" ? "credits" : `${unit}s`;
 
   if (rows.length === 0) {
-    return `No ${dimension} ${metricLabel} recorded for ${label} (${tz}).`;
+    return `No ${dimension} ${metricLabel} recorded for ${label}.`;
   }
 
   const lines = rows.map(
@@ -93,13 +95,13 @@ function formatRankingText({
   );
 
   // e.g.:
-  // Top agents for July 2026 (UTC), by credits, highest first:
+  // Top agents for the current billing cycle, by credits, highest first:
   // 1. Support Bot [agentXYZ] — 152.30 credits, 42 messages (3.62 per message)
   // 2. Sales Bot [agentABC] — 98.10 credits, 12 messages (8.18 per message)
   //
   // Credits over the whole window, every row included: 250.40.
   return (
-    `Top ${dimension}s for ${label} (${tz}), by ${metricLabel}, highest first:\n` +
+    `Top ${dimension}s for ${label}, by ${metricLabel}, highest first:\n` +
     `${lines.join("\n")}\n\n` +
     `Credits over the whole window, every row included: ` +
     `${totalCredits.toFixed(2)}.`
@@ -117,18 +119,15 @@ async function renderRanking(
     dimension: ConsumptionTopDimension;
     rankBy: ConsumptionTopRankBy;
     limit: number | undefined;
-    input: TimeWindowInput & ConsumptionFilterInput;
+    input: Pick<ConsumptionBody, "period" | "days"> & ConsumptionFilterInput;
   }
 ): Promise<ToolHandlerResult> {
-  const window = resolveTimeWindow(input);
-  if (window.isErr()) {
-    return new Err(new MCPError(window.error, { tracked: false }));
-  }
+  const periodInput = toConsumptionPeriodInput(input);
   const filter = toConsumptionScope(input);
 
   const result = await fetchConsumptionTopGroups(auth, {
     dimension,
-    period: toConsumptionPeriod(window.value),
+    period: await resolveConsumptionPeriod(auth, periodInput),
     limit: limit ?? DEFAULT_RESULTS,
     filter,
     rankBy,
@@ -150,11 +149,9 @@ async function renderRanking(
   );
   const rows = await resolveConsumptionGroupLabels(auth, dimension, groups);
 
-  const { label, timezone: tz } = window.value;
   const text = formatRankingText({
     dimension,
-    label,
-    tz,
+    label: periodLabel(periodInput),
     rankBy,
     unit: CONSUMPTION_TOP_DIMENSION_UNIT[dimension],
     rows,
@@ -257,10 +254,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const overview = result.value;
-    const label =
-      periodInput.kind === "cycle"
-        ? "the current billing cycle"
-        : `the last ${periodInput.days} days`;
+    const label = periodLabel(periodInput);
     const topAgent = overview.topAgent
       ? `${overview.topAgent.name} [${overview.topAgent.agentId}] ` +
         `(${overview.topAgent.credits.toFixed(2)} credits)`
@@ -288,7 +282,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_credit_timeseries: async (
-    { granularity = "day", breakdownBy, breakdownLimit, ...input },
+    { granularity, breakdownBy, breakdownLimit, timezone: tz, ...input },
     { auth }
   ) => {
     const deniedError = workspaceManagerGuard(auth);
@@ -296,20 +290,17 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(deniedError);
     }
 
-    const window = resolveTimeWindow(input, "last_30_days");
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
+    const periodInput = toConsumptionPeriodInput(input);
     const filter = toConsumptionScope(input);
 
     const result = await fetchConsumptionTimeseries(auth, {
-      period: toConsumptionPeriod(window.value),
+      period: await resolveConsumptionPeriod(auth, periodInput),
       granularity,
       mode: "period",
       breakdownBy,
       breakdownCount: breakdownLimit ?? DEFAULT_CREDIT_GROUPS,
       filter,
-      timezone: window.value.timezone,
+      timezone: tz,
     });
 
     if (result.isErr()) {
@@ -320,7 +311,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       );
     }
 
-    const { label, timezone: tz } = window.value;
+    const label = periodLabel(periodInput);
     const { groups, points } = result.value;
     const active = points.filter((point) =>
       Object.values(point.values).some((value) => value > 0)

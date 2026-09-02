@@ -5,7 +5,6 @@ import {
   DEFAULT_RESULTS,
   MAX_CREDIT_GROUPS,
   MAX_RESULTS,
-  timeWindowSchemaShape,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { ConsumptionPeriodSchema } from "@app/lib/api/analytics/consumption/schema";
 import {
@@ -14,6 +13,7 @@ import {
   CONSUMPTION_SCOPE_DIMENSIONS,
   CONSUMPTION_TOP_DIMENSIONS,
 } from "@app/lib/api/analytics/consumption/scope";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { z } from "zod";
 
 export const GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME =
@@ -27,17 +27,32 @@ const getAgentDetailsSchema = {
     ),
 };
 
+const consumptionPeriodSchemaShape = {
+  period: ConsumptionPeriodSchema.shape.period.describe(
+    "Time window: 'cycle' (default) covers the workspace's current billing " +
+      "cycle, 'days' covers the last N days."
+  ),
+  days: ConsumptionPeriodSchema.shape.days.describe(
+    "Number of days the window spans when period is 'days' (default 30). " +
+      "Ignored for 'cycle'."
+  ),
+};
+
 const getConsumptionOverviewSchema = {
-  ...ConsumptionPeriodSchema.shape,
+  ...consumptionPeriodSchemaShape,
   ...consumptionFilterSchema,
 };
 
 const getCreditTimeseriesSchema = {
-  ...timeWindowSchemaShape,
+  ...consumptionPeriodSchemaShape,
   ...consumptionFilterSchema,
+  timezone: timezoneSchema.describe(
+    "IANA timezone used to align the buckets. Defaults to UTC."
+  ),
   granularity: z
     .enum(["day", "week", "month"])
     .optional()
+    .default("day")
     .describe("Bucket granularity for the credit trend (default day)."),
   breakdownBy: z
     .enum(CONSUMPTION_SCOPE_DIMENSIONS)
@@ -81,7 +96,7 @@ const GROUP_BY_DESCRIPTION = "What to group results by.";
 
 const getTopEntitiesByCreditsSchema = {
   dimension: z.enum(CONSUMPTION_TOP_DIMENSIONS).describe(GROUP_BY_DESCRIPTION),
-  ...timeWindowSchemaShape,
+  ...consumptionPeriodSchemaShape,
   ...consumptionFilterSchema,
   limit: rankingLimitSchema,
 };
@@ -90,7 +105,7 @@ const getTopEntitiesByMessageCountSchema = {
   dimension: z
     .enum(CONSUMPTION_MESSAGE_DIMENSIONS)
     .describe(GROUP_BY_DESCRIPTION),
-  ...timeWindowSchemaShape,
+  ...consumptionPeriodSchemaShape,
   ...consumptionFilterSchema,
   limit: rankingLimitSchema,
 };
@@ -99,7 +114,7 @@ const getTopEntitiesByExecutionCountSchema = {
   dimension: z
     .enum(CONSUMPTION_INVOCATION_DIMENSIONS)
     .describe(GROUP_BY_DESCRIPTION),
-  ...timeWindowSchemaShape,
+  ...consumptionPeriodSchemaShape,
   ...consumptionFilterSchema,
   limit: rankingLimitSchema,
 };
@@ -108,8 +123,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME,
     description:
-      "Rank the workspace's entities by message volume over a " +
-      "time window (defaults to the current calendar month). Use this to " +
+      "Rank the workspace's entities by message volume over the current " +
+      "billing cycle or the last N days. Use this to " +
       "answer 'which user is most active this month', 'which agent is " +
       "used most', 'where do our messages come from, by source', or " +
       "'list the agent tags, most-used tags first'. Every value it " +
@@ -130,8 +145,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     name: GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME,
     description:
       "Rank the workspace's skills, or its MCP tools and integrations, by how " +
-      "many times they were executed over a time window (defaults to the " +
-      "current calendar month). Use this to answer 'which are the top " +
+      "many times they were executed over the current billing cycle " +
+      "or the last N days. Use this to answer 'which are the top " +
       "tools agents used most' or 'which skill runs most often'. One " +
       "run attributed to several skills counts for each, so skill rows " +
       "overlap. Use " +
@@ -185,8 +200,9 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: "get_credit_timeseries",
     description:
-      "Return credit consumption as a time series over a window (defaults to " +
-      "the last 30 days), bucketed by day, week or month. Use this to answer " +
+      "Return credit consumption as a time series over the current billing " +
+      "cycle or the last N days, bucketed by day, week or month. " +
+      "Use this to answer " +
       "'is credit spend trending up or down' or 'which week had the highest " +
       `spend'. For a single window use ${GET_CONSUMPTION_OVERVIEW_TOOL_NAME} ` +
       `for the total and ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} for the ` +
@@ -205,7 +221,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     name: GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME,
     description:
       "Rank the workspace's credit consumption by entity " +
-      "over a time window (defaults to the current calendar month). Use " +
+      "over the current billing cycle or the last N days. Use " +
       "this to break credit spending down by agent, or to answer 'which " +
       "agent costs the most' or 'which conversation was most expensive', " +
       "or to attribute credit spend by API key, tag, or model. Figures " +
