@@ -14,7 +14,6 @@ export function slackWorkflowErrorToApiError(
           message: error.message,
         },
       };
-    case "invalid_groups":
     case "invalid_spaces":
       return {
         status_code: 400,

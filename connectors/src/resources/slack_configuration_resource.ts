@@ -74,8 +74,7 @@ async function invalidateAutoGroupIdsForSpaces(
 
 export type WhitelistedBotType = {
   botName: string;
-  groupIds: string[];
-  spaceIds: string[] | null;
+  spaceIds: string[];
   createdAt: number;
 };
 
@@ -235,7 +234,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   async whitelistBot(
     botName: string,
-    { groupIds, spaceIds }: { groupIds: string[]; spaceIds: string[] | null },
+    { spaceIds }: { spaceIds: string[] | null },
     whitelistType: SlackbotWhitelistType
   ): Promise<Result<undefined, Error>> {
     const existingBot = await SlackBotWhitelistModel.findOne({
@@ -248,7 +247,6 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     if (existingBot) {
       await existingBot.update({
-        groupIds,
         spaceIds,
         whitelistType,
       });
@@ -258,7 +256,6 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         connectorId: this.connectorId,
         slackConfigurationId: this.id,
         botName,
-        groupIds,
         spaceIds,
         whitelistType,
       });
@@ -281,8 +278,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     return bots.map((bot) => ({
       botName: bot.botName,
-      groupIds: bot.groupIds ?? [],
-      spaceIds: bot.spaceIds,
+      spaceIds: bot.spaceIds ?? [],
       createdAt: bot.createdAt.getTime(),
     }));
   }
@@ -302,8 +298,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   // A whitelisted workflow reaches the spaces it was allowed on. Front owns which group stands for
-  // a space, so ask it at run time instead of keeping group ids here. Rows written before the
-  // whitelist moved to spaces still carry their group ids.
+  // a space, so ask it at run time instead of keeping group ids here.
   async getBotWhitelistedGroupIds(
     botName: string,
     {
@@ -323,8 +318,10 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       return new Err(new Error(`Workflow "${botName}" is not whitelisted.`));
     }
 
-    if (!bot.spaceIds) {
-      return new Ok(bot.groupIds ?? []);
+    if (!bot.spaceIds?.length) {
+      return new Err(
+        new Error(`Workflow "${botName}" is allowed on no space.`)
+      );
     }
 
     return getAutoGroupIdsForSpaces(bot.id, {

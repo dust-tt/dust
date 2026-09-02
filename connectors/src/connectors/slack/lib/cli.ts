@@ -270,7 +270,13 @@ export const slack = async ({
     }
 
     case "whitelist-bot": {
-      const { wId, botName, groupId, whitelistType, providerType } = args;
+      const {
+        wId,
+        botName,
+        spaceIds: spaceIdsArg,
+        whitelistType,
+        providerType,
+      } = args;
       if (!wId) {
         throw new Error("Missing --wId argument");
       }
@@ -324,21 +330,17 @@ export const slack = async ({
         );
       }
 
-      let groupIds: string[] = [];
+      let spaceIds: string[] | null = null;
       if (whitelistType === "summon_agent") {
-        if (!groupId) {
+        if (!spaceIdsArg) {
           throw new Error(
-            "Missing --groupId argument (required for summon_agent)"
+            "Missing --spaceIds argument (required for summon_agent). Pass the Company Space too, which the automations page and the Poke plugin always include"
           );
         }
-        groupIds = groupId.split(",").map((id) => id.trim());
+        spaceIds = spaceIdsArg.split(",").map((spaceId) => spaceId.trim());
       }
 
-      await slackConfig.whitelistBot(
-        botName,
-        { groupIds, spaceIds: null },
-        whitelistType
-      );
+      await slackConfig.whitelistBot(botName, { spaceIds }, whitelistType);
 
       return { success: true };
     }

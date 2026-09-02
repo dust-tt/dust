@@ -12,13 +12,11 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
 });
 
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
-import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { Err, Ok } from "@app/types/shared/result";
-import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 
 const CONNECTOR_ID = "1234";
@@ -49,15 +47,6 @@ async function setupTest({
   mockSlackBotDataSource({ connected: true });
 
   return setup;
-}
-
-async function createSpaceWithMemberGroup(workspace: LightWorkspaceType) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const space = await SpaceFactory.regular(workspace);
-
-  const memberGroup = await space.fetchManualMemberGroup(auth);
-
-  return { space, memberGroup };
 }
 
 function pokeSlackWorkflowsRequest(
@@ -93,7 +82,7 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
 
   it("lists the allowed workflows with their spaces", async () => {
     const { workspace, globalSpace } = await setupTest();
-    const { space } = await createSpaceWithMemberGroup(workspace);
+    const space = await SpaceFactory.regular(workspace);
     vi.spyOn(
       ConnectorsAPI.prototype,
       "getSlackBotSummoningWhitelist"
@@ -102,44 +91,7 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
         bots: [
           {
             botName: BOT_NAME,
-            groupIds: [],
             spaceIds: [globalSpace.sId, space.sId],
-            createdAt: CREATED_AT,
-          },
-        ],
-      })
-    );
-
-    const response = await pokeSlackWorkflowsRequest(workspace.sId, {
-      method: "GET",
-    });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      isSlackBotConnected: true,
-      workflows: [
-        {
-          botName: BOT_NAME,
-          spaces: [{ sId: space.sId, name: space.name }],
-          createdAt: CREATED_AT,
-        },
-      ],
-    });
-  });
-
-  it("lists a workflow allowed before spaces through its group ids", async () => {
-    const { workspace } = await setupTest();
-    const { space, memberGroup } = await createSpaceWithMemberGroup(workspace);
-    vi.spyOn(
-      ConnectorsAPI.prototype,
-      "getSlackBotSummoningWhitelist"
-    ).mockResolvedValue(
-      new Ok({
-        bots: [
-          {
-            botName: BOT_NAME,
-            groupIds: [memberGroup.sId],
-            spaceIds: null,
             createdAt: CREATED_AT,
           },
         ],
