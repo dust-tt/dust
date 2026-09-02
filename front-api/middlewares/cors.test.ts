@@ -13,8 +13,11 @@ function createApp() {
   const app = new Hono();
   app.use("*", cors);
   app.get("/", (ctx) => ctx.text("ok"));
+  app.all("/mcp", (ctx) => ctx.text("ok"));
   return app;
 }
+
+const EXTENSION_ORIGIN = "chrome-extension://adoiifkpgaibbkgbicbdhpeoffmblbeb";
 
 function getExposedHeaders(response: Response): string[] {
   return (
@@ -63,5 +66,44 @@ describe("cors middleware", () => {
     expect(
       response.headers.get("Access-Control-Allow-Headers")?.toLowerCase()
     ).toContain(FRAME_SHARE_TOKEN_HEADER);
+  });
+
+  it("rejects a non-allowlisted origin on regular endpoints", async () => {
+    const response = await createApp().request("/", {
+      headers: { Origin: EXTENSION_ORIGIN },
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("X-CORS-Reason")).toBe("origin");
+  });
+
+  it("allows any origin on /mcp without credentials", async () => {
+    // /mcp is Bearer-JWT-only (no cookies), so it is served as a public CORS
+    // endpoint for third-party MCP clients registered via DCR.
+    const response = await createApp().request("/mcp", {
+      method: "POST",
+      headers: { Origin: EXTENSION_ORIGIN },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBeNull();
+  });
+
+  it("answers /mcp preflight for any origin, echoing requested headers", async () => {
+    const response = await createApp().request("/mcp", {
+      method: "OPTIONS",
+      headers: {
+        Origin: EXTENSION_ORIGIN,
+        "Access-Control-Request-Headers": "authorization,content-type",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBeNull();
+    expect(
+      response.headers.get("Access-Control-Allow-Headers")?.toLowerCase()
+    ).toContain("authorization");
   });
 });
