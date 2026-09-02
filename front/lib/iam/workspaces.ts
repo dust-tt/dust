@@ -4,11 +4,7 @@ import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization"
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel } from "@app/lib/models/plan";
-import {
-  isCreditPricedFreePlan,
-  isFreePlan,
-  isUpgraded,
-} from "@app/lib/plans/plan_codes";
+import { isCreditPricedFreePlan, isFreePlan } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -107,26 +103,32 @@ export async function createWorkspaceInternal({
     if (isCreditPricedFreePlan(planCode)) {
       await activateCreditPricedFreePlanForWorkspace(auth);
     } else {
-      const newSubscription =
-        await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
-          workspaceId: workspace.sId,
-          planCode,
-          endDate,
-        });
-
-      if (isUpgraded(newSubscription.getPlan())) {
-        const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
-        if (orgRes.isErr()) {
-          logger.error(
-            { error: orgRes.error, workspaceId: workspace.sId },
-            "Failed to create WorkOS organization during workspace creation"
-          );
-        }
-      }
+      await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
+        workspaceId: workspace.sId,
+        planCode,
+        endDate,
+      });
     }
   }
 
-  return workspace;
+  // Every workspace gets a WorkOS organization (SSO/SCIM/domains/audit).
+  // Failures are logged but do not block workspace creation — callers can
+  // still complete signup, and getOrCreateWorkOSOrganization is idempotent.
+  const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
+  if (orgRes.isErr()) {
+    logger.error(
+      { error: orgRes.error, workspaceId: workspace.sId },
+      "Failed to create WorkOS organization during workspace creation"
+    );
+    return workspace;
+  }
+
+  // Re-fetch so the returned resource includes workOSOrganizationId; membership
+  // creation immediately after relies on that field to sync to WorkOS.
+  const refreshedWorkspace = await WorkspaceResource.fetchByModelId(
+    workspace.id
+  );
+  return refreshedWorkspace ?? workspace;
 }
 
 export async function findWorkspaceWithVerifiedDomain(user: {

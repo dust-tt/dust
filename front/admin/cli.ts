@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -71,6 +72,14 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         systemGroup,
         globalGroup,
       });
+
+      const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
+      if (orgRes.isErr()) {
+        logger.error(
+          { error: orgRes.error, workspaceId: w.sId },
+          "Failed to create WorkOS organization during workspace creation"
+        );
+      }
 
       args.wId = w.sId;
       return;
