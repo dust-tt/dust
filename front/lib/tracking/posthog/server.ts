@@ -23,6 +23,61 @@ function getClient(): PostHog | null {
 }
 
 export class PostHogServerSideTracking {
+  static trackTriggerBlocked({
+    userId,
+    workspaceId,
+    conversationId,
+    triggerId,
+    triggerKind,
+    triggerOrigin,
+    triggerExecutionMode,
+    agentConfigurationId,
+    webhookRequestId,
+    errorType,
+    statusCode,
+  }: {
+    userId: string;
+    workspaceId?: string;
+    conversationId: string;
+    triggerId: string;
+    triggerKind: string;
+    triggerOrigin: string;
+    triggerExecutionMode: string;
+    agentConfigurationId: string;
+    webhookRequestId?: number;
+    errorType: string;
+    statusCode: number;
+  }): void {
+    const client = getClient();
+    if (!client) {
+      return;
+    }
+
+    try {
+      client.capture({
+        distinctId: userId,
+        event: "trigger_blocked",
+        properties: {
+          workspace_id: workspaceId,
+          conversation_id: conversationId,
+          trigger_id: triggerId,
+          trigger_kind: triggerKind,
+          trigger_origin: triggerOrigin,
+          trigger_execution_mode: triggerExecutionMode,
+          agent_configuration_id: agentConfigurationId,
+          ...(webhookRequestId ? { webhook_request_id: webhookRequestId } : {}),
+          error_type: errorType,
+          status_code: statusCode,
+        },
+      });
+    } catch (err) {
+      logger.error(
+        { userId, workspaceId, triggerId, err },
+        "Failed to track blocked trigger on PostHog"
+      );
+    }
+  }
+
   /**
    * Alias an anonymous device ID to an identified user so that all pre-signup
    * events captured with `dust_anonymous_id` are merged into the user's
