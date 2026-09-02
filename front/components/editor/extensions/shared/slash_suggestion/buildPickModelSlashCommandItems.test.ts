@@ -1,5 +1,8 @@
 import { buildPickModelSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
-import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
+import type {
+  EnabledModelConfigurationType,
+  ModelSelectionLockReason,
+} from "@app/types/api/assistant/models";
 import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { AUTO_COMPLEX_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_FLASH_LITE_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
@@ -14,9 +17,9 @@ const Icon = () => null;
 
 function asSelectable(
   model: ModelConfigurationType,
-  unavailabilityReason: "premium" | "model_tier" | null = null,
+  lockReason: ModelSelectionLockReason | null = null,
   effortReasons: Partial<
-    Record<ReasoningEffort, "premium" | "model_tier" | "unsupported">
+    Record<ReasoningEffort, ModelSelectionLockReason | "unsupported">
   > = {}
 ): EnabledModelConfigurationType {
   const reasoningEfforts = (["light", "medium", "high"] as const)
@@ -28,11 +31,11 @@ function asSelectable(
 
   return {
     ...model,
-    isSelectable: unavailabilityReason !== "model_tier",
+    isSelectable: lockReason !== "model_access",
     selectionAvailability: {
       defaultReasoningEffort: model.defaultReasoningEffort,
       reasoningEfforts,
-      unavailabilityReason,
+      lockReason,
     },
   };
 }
@@ -120,7 +123,7 @@ describe("buildPickModelSlashCommandItems", () => {
       getModelIcon: () => Icon,
       models: [
         asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
-        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "model_tier"),
+        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "model_access"),
       ],
       query: "",
       streams: null,
@@ -133,14 +136,14 @@ describe("buildPickModelSlashCommandItems", () => {
     ).toEqual(["Basic", "Standard"]);
   });
 
-  it("omits efforts and tiers the backend marks as premium", () => {
+  it("omits efforts and tiers locked by the workspace plan", () => {
     const items = buildPickModelSlashCommandItems({
       getModelIcon: () => Icon,
       models: [
         asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, null, {
-          high: "premium",
+          high: "workspace_plan",
         }),
-        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "premium"),
+        asSelectable(AUTO_COMPLEX_MODEL_CONFIG, "workspace_plan"),
       ],
       query: "",
       streams: null,

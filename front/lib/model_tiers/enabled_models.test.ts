@@ -123,7 +123,7 @@ describe("withModelSelectability", () => {
     expect(sonnet?.selectionAvailability?.reasoningEfforts).toEqual([
       { effort: "light", unavailabilityReason: null },
       { effort: "medium", unavailabilityReason: null },
-      { effort: "high", unavailabilityReason: "model_tier" },
+      { effort: "high", unavailabilityReason: "model_access" },
     ]);
   });
 
@@ -220,17 +220,17 @@ describe("getModelsForAuth", () => {
       reasoningEfforts: [
         { effort: "light", unavailabilityReason: null },
         { effort: "medium", unavailabilityReason: null },
-        { effort: "high", unavailabilityReason: "premium" },
+        { effort: "high", unavailabilityReason: "workspace_plan" },
       ],
-      unavailabilityReason: null,
+      lockReason: null,
     });
     expect(singleEffortModel?.selectionAvailability?.reasoningEfforts).toEqual([
       { effort: "light", unavailabilityReason: "unsupported" },
       { effort: "medium", unavailabilityReason: "unsupported" },
       { effort: "high", unavailabilityReason: null },
     ]);
-    expect(premiumStream?.selectionAvailability?.unavailabilityReason).toBe(
-      "premium"
+    expect(premiumStream?.selectionAvailability?.lockReason).toBe(
+      "workspace_plan"
     );
     expect(defaultModel.selectionAvailability).toBeDefined();
   });
@@ -251,9 +251,7 @@ describe("getModelsForAuth", () => {
       effort: "high",
       unavailabilityReason: null,
     });
-    expect(
-      premiumStream?.selectionAvailability?.unavailabilityReason
-    ).toBeNull();
+    expect(premiumStream?.selectionAvailability?.lockReason).toBeNull();
   });
 });
 

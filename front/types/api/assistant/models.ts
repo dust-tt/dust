@@ -12,11 +12,11 @@ export type EnabledModelConfigurationType = ModelConfigurationType & {
   selectionAvailability?: ModelSelectionAvailabilityType;
 };
 
-export type ModelSelectionUnavailabilityReason = "premium" | "model_tier";
+export type ModelSelectionLockReason = "workspace_plan" | "model_access";
 
 export type ReasoningEffortSelectionUnavailabilityReason =
   | "unsupported"
-  | ModelSelectionUnavailabilityReason;
+  | ModelSelectionLockReason;
 
 export interface ReasoningEffortSelectionAvailabilityType {
   effort: ReasoningEffort;
@@ -29,7 +29,7 @@ export interface ModelSelectionAvailabilityType {
   // Reasoning models always report Light, Medium, and High so the slider keeps
   // a stable shape. Non-reasoning models report no effort stops.
   reasoningEfforts: ReasoningEffortSelectionAvailabilityType[];
-  unavailabilityReason: ModelSelectionUnavailabilityReason | null;
+  lockReason: ModelSelectionLockReason | null;
 }
 
 export type ModelStreamResolutionType = {

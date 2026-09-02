@@ -2,7 +2,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type {
   EnabledModelConfigurationType,
   ModelSelectionAvailabilityType,
-  ModelSelectionUnavailabilityReason,
+  ModelSelectionLockReason,
   ModelStreamResolutionsType,
   ReasoningEffortSelectionAvailabilityType,
 } from "@app/types/api/assistant/models";
@@ -23,16 +23,14 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import capitalize from "lodash/capitalize";
 
-// Shown when a whole-premium model row or a premium reasoning-effort stop is
-// locked because the workspace is on a legacy (non usage-based) plan.
-export const PREMIUM_MODEL_LOCKED_TOOLTIP =
+// Shown when a model or reasoning effort is locked by the workspace plan.
+export const WORKSPACE_PLAN_LOCKED_TOOLTIP =
   "This option isn't available on your workspace's current plan. " +
   "Contact your administrator to upgrade.";
 
-// Shown when a model row is locked because the model's tier is not enabled for
-// the workspace's current model-tier ceiling (independent of the plan: this
-// applies even on usage-based plans whose tier grants stop below the model).
-const MODEL_TIER_LOCKED_TOOLTIP =
+// Shown when a model or reasoning effort is outside the model access granted
+// through the workspace, a group, or the member directly.
+const MODEL_ACCESS_LOCKED_TOOLTIP =
   "Your current model access doesn't include this option. " +
   "Contact your administrator to get access.";
 
@@ -101,7 +99,7 @@ export function getTierLockReason(
   // payload lands (`useModels` returns an empty list while it is in flight), so
   // locking on absence would flash every row locked on each open. Default to
   // unlocked — the server refuses an out-of-tier stream at send time anyway.
-  return streamModel?.selectionAvailability?.unavailabilityReason ?? null;
+  return streamModel?.selectionAvailability?.lockReason ?? null;
 }
 
 export function getTierIdForMetaModelId(modelId: string): ModelTierId | null {
@@ -188,11 +186,11 @@ export interface ModelPickerSelectionModel {
   onRevert?: () => void;
 }
 
-export type ModelLockReason = ModelSelectionUnavailabilityReason;
+export type ModelLockReason = ModelSelectionLockReason;
 
 // One stop of the reasoning-effort slider. A null reason means it is available.
-// Unsupported efforts are unavailable; premium and model-tier efforts are
-// locked behind access controls.
+// Unsupported efforts are unavailable; workspace-plan and model-access
+// restrictions are locks.
 export type EffortStop = ReasoningEffortSelectionAvailabilityType;
 
 export function buildTierSelection(tierId: ModelTierId): ModelSelectionType {
@@ -321,15 +319,15 @@ export function getInitialEffort(
 export function getModelLockReason(
   model: ModelConfigurationType
 ): ModelLockReason | null {
-  return getSelectionAvailability(model)?.unavailabilityReason ?? null;
+  return getSelectionAvailability(model)?.lockReason ?? null;
 }
 
 export function getModelLockTooltip(reason: ModelLockReason): string {
   switch (reason) {
-    case "premium":
-      return PREMIUM_MODEL_LOCKED_TOOLTIP;
-    case "model_tier":
-      return MODEL_TIER_LOCKED_TOOLTIP;
+    case "workspace_plan":
+      return WORKSPACE_PLAN_LOCKED_TOOLTIP;
+    case "model_access":
+      return MODEL_ACCESS_LOCKED_TOOLTIP;
     default:
       assertNeverAndIgnore(reason);
       return "";
@@ -338,10 +336,10 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
 
 export function getEffortStopTooltip(stop: EffortStop): string | null {
   switch (stop.unavailabilityReason) {
-    case "premium":
-      return PREMIUM_MODEL_LOCKED_TOOLTIP;
-    case "model_tier":
-      return MODEL_TIER_LOCKED_TOOLTIP;
+    case "workspace_plan":
+      return WORKSPACE_PLAN_LOCKED_TOOLTIP;
+    case "model_access":
+      return MODEL_ACCESS_LOCKED_TOOLTIP;
     case "unsupported":
       return `This model doesn't support ${capitalize(stop.effort)} reasoning.`;
     case null:

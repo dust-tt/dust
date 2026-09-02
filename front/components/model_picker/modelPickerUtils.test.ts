@@ -5,12 +5,12 @@ import {
   getInitialEffort,
   getModelLockReason,
   getTierLockReason,
-  PREMIUM_MODEL_LOCKED_TOOLTIP,
+  WORKSPACE_PLAN_LOCKED_TOOLTIP,
 } from "@app/components/model_picker/modelPickerUtils";
 import type {
   EnabledModelConfigurationType,
   ModelSelectionAvailabilityType,
-  ModelSelectionUnavailabilityReason,
+  ModelSelectionLockReason,
 } from "@app/types/api/assistant/models";
 import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
@@ -28,9 +28,9 @@ const SONNET_AVAILABILITY: ModelSelectionAvailabilityType = {
   reasoningEfforts: [
     { effort: "light", unavailabilityReason: null },
     { effort: "medium", unavailabilityReason: null },
-    { effort: "high", unavailabilityReason: "premium" },
+    { effort: "high", unavailabilityReason: "workspace_plan" },
   ],
-  unavailabilityReason: null,
+  lockReason: null,
 };
 
 function withAvailability(
@@ -42,8 +42,8 @@ function withAvailability(
 
 function streamModel(
   modelId: ModelStreamIdType,
-  unavailabilityReason: ModelSelectionUnavailabilityReason | null,
-  isSelectable = unavailabilityReason !== "model_tier"
+  lockReason: ModelSelectionLockReason | null,
+  isSelectable = lockReason !== "model_access"
 ): EnabledModelConfigurationType {
   return {
     ...withAvailability(
@@ -55,7 +55,7 @@ function streamModel(
       {
         defaultReasoningEffort: "none",
         reasoningEfforts: [],
-        unavailabilityReason,
+        lockReason,
       }
     ),
     isSelectable,
@@ -93,12 +93,15 @@ describe("modelPickerUtils", () => {
       })
     ).toBe("This model doesn't support High reasoning.");
     expect(
-      getEffortStopTooltip({ effort: "high", unavailabilityReason: "premium" })
-    ).toBe(PREMIUM_MODEL_LOCKED_TOOLTIP);
+      getEffortStopTooltip({
+        effort: "high",
+        unavailabilityReason: "workspace_plan",
+      })
+    ).toBe(WORKSPACE_PLAN_LOCKED_TOOLTIP);
     expect(
       getEffortStopTooltip({
         effort: "medium",
-        unavailabilityReason: "model_tier",
+        unavailabilityReason: "model_access",
       })
     ).toBe(
       "Your current model access doesn't include this option. " +
@@ -110,14 +113,14 @@ describe("modelPickerUtils", () => {
     it("uses the stream model's backend-owned lock reason", () => {
       expect(
         getTierLockReason("complex", [
-          streamModel(AUTO_COMPLEX_MODEL_ID, "model_tier"),
+          streamModel(AUTO_COMPLEX_MODEL_ID, "model_access"),
         ])
-      ).toBe("model_tier");
+      ).toBe("model_access");
       expect(
         getTierLockReason("complex", [
-          streamModel(AUTO_COMPLEX_MODEL_ID, "premium"),
+          streamModel(AUTO_COMPLEX_MODEL_ID, "workspace_plan"),
         ])
-      ).toBe("premium");
+      ).toBe("workspace_plan");
       expect(
         getTierLockReason("fast", [streamModel(AUTO_FAST_MODEL_ID, null)])
       ).toBeNull();
@@ -129,7 +132,7 @@ describe("modelPickerUtils", () => {
 
     it("defaults to Basic when Standard is above the member's tier cap", () => {
       expect(
-        getDefaultTierId([streamModel(AUTO_MODEL_ID, "model_tier", false)])
+        getDefaultTierId([streamModel(AUTO_MODEL_ID, "model_access", false)])
       ).toBe("fast");
     });
 

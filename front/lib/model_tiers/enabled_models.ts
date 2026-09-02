@@ -8,7 +8,7 @@ import type {
   EnabledModelConfigurationType,
   GetEnabledModelsResponseType,
   ModelSelectionAvailabilityType,
-  ModelSelectionUnavailabilityReason,
+  ModelSelectionLockReason,
   ModelStreamResolutionsType,
   ModelStreamResolutionType,
   ReasoningEffortSelectionUnavailabilityReason,
@@ -69,14 +69,14 @@ function getEffortUnavailabilityReason(
   }
 
   if (!enabledModel.supportedReasoningEfforts[effort]) {
-    return "model_tier";
+    return "model_access";
   }
 
   if (
     !premiumOptionsAreSelectable &&
     getTierForModel(model.modelId, effort) === "premium"
   ) {
-    return "premium";
+    return "workspace_plan";
   }
 
   return null;
@@ -106,16 +106,16 @@ function getSelectionAvailability(
     ({ unavailabilityReason }) => unavailabilityReason === null
   );
 
-  let unavailabilityReason: ModelSelectionUnavailabilityReason | null = null;
+  let lockReason: ModelSelectionLockReason | null = null;
   if (selectableOptions.length === 0) {
     if (
-      options.some((option) => option.unavailabilityReason === "model_tier")
+      options.some((option) => option.unavailabilityReason === "model_access")
     ) {
-      unavailabilityReason = "model_tier";
+      lockReason = "model_access";
     } else if (
-      options.some((option) => option.unavailabilityReason === "premium")
+      options.some((option) => option.unavailabilityReason === "workspace_plan")
     ) {
-      unavailabilityReason = "premium";
+      lockReason = "workspace_plan";
     }
   }
 
@@ -127,7 +127,7 @@ function getSelectionAvailability(
     defaultReasoningEffort:
       defaultOption?.effort ?? selectableOptions[0]?.effort ?? "none",
     reasoningEfforts: usesReasoningEffort ? options : [],
-    unavailabilityReason,
+    lockReason,
   };
 }
 
