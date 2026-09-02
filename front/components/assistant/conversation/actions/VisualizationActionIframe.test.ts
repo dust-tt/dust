@@ -54,6 +54,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
+        isFrameAuthor: false,
         isPodEditor: false,
         isPodMember: false,
         user,
@@ -72,6 +73,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
+        isFrameAuthor: false,
         isPodEditor: true,
         isPodMember: false,
         user,
@@ -90,6 +92,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
+        isFrameAuthor: false,
         isPodEditor: false,
         isPodMember: true,
         user,
@@ -108,6 +111,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: false,
         isWorkspaceMember: false,
+        isFrameAuthor: false,
         isPodEditor: false,
         isPodMember: false,
         user: null,
@@ -123,6 +127,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
+        isFrameAuthor: false,
         isPodEditor: false,
         isPodMember: false,
         user,
@@ -161,6 +166,116 @@ describe("getSandboxFunctionInvocationAccessError", () => {
 });
 
 describe("VisualizationActionIframe", () => {
+  it("resolves Frame author status only when the iframe requests identity", async () => {
+    mocks.clientFetch.mockResolvedValue(
+      new Response(JSON.stringify({ isFrameAuthor: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const { container } = render(
+      createElement(VisualizationActionIframe, {
+        agentConfigurationId: null,
+        canInvokeFunctions: true,
+        conversationId: null,
+        frameId: "fil_frame",
+        scopedUserIdentity,
+        viewer: null,
+        visualization: {
+          code: "export default function Frame() {}",
+          complete: true,
+          identifier: "viz-fil_frame",
+        },
+        vizUrl: "https://viz.dust.tt",
+        workspaceId: "w_current",
+      })
+    );
+    const iframe = container.querySelector("iframe");
+    if (!iframe?.contentWindow) {
+      throw new Error("Expected the visualization iframe to be mounted.");
+    }
+    const postMessage = vi
+      .spyOn(iframe.contentWindow, "postMessage")
+      .mockImplementation(() => {});
+
+    expect(mocks.clientFetch).not.toHaveBeenCalled();
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: {
+          command: "getUserIdentity",
+          identifier: "viz-fil_frame",
+          messageUniqueId: "message-identity",
+          params: null,
+        },
+      })
+    );
+
+    await waitFor(() => {
+      expect(mocks.clientFetch).toHaveBeenCalledWith(
+        "/api/w/w_current/frames/fil_frame/permissions"
+      );
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({ isFrameAuthor: true }),
+        }),
+        { targetOrigin: "*" }
+      );
+    });
+  });
+
+  it("fails Frame author status closed when permission lookup fails", async () => {
+    mocks.clientFetch.mockResolvedValue(new Response(null, { status: 500 }));
+
+    const { container } = render(
+      createElement(VisualizationActionIframe, {
+        agentConfigurationId: null,
+        canInvokeFunctions: true,
+        conversationId: null,
+        frameId: "fil_frame",
+        scopedUserIdentity,
+        viewer: null,
+        visualization: {
+          code: "export default function Frame() {}",
+          complete: true,
+          identifier: "viz-fil_frame",
+        },
+        vizUrl: "https://viz.dust.tt",
+        workspaceId: "w_current",
+      })
+    );
+    const iframe = container.querySelector("iframe");
+    if (!iframe?.contentWindow) {
+      throw new Error("Expected the visualization iframe to be mounted.");
+    }
+    const postMessage = vi
+      .spyOn(iframe.contentWindow, "postMessage")
+      .mockImplementation(() => {});
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: {
+          command: "getUserIdentity",
+          identifier: "viz-fil_frame",
+          messageUniqueId: "message-identity",
+          params: null,
+        },
+      })
+    );
+
+    await waitFor(() => {
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({ isFrameAuthor: false }),
+        }),
+        { targetOrigin: "*" }
+      );
+    });
+  });
+
   it("routes a Frames v2 call through the rendered Frame identity", async () => {
     mocks.clientFetch.mockResolvedValue(
       new Response(

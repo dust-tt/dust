@@ -115,6 +115,11 @@ function userIdentityPolicyStrength(
       // The pod-scoped audience ranks above the workspace-wide, session-bound policy: a publish
       // moving to it always commits the policy before exposing the new bundle.
       return 3;
+    case "frame_author_required":
+      // Source write access is the strictest policy. On a Frame outside a Pod it is scoped to
+      // conversation access; inside a Pod it follows the Pod's write permission. A legacy Pod
+      // Function cannot satisfy it and therefore fails closed.
+      return 4;
     default:
       // The stored policy can be a value this revision does not know: one from a newer revision
       // in a mixed-version deploy, or a retired policy (e.g. `pod_editor_required`). Rank it

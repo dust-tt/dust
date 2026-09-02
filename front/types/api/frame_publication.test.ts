@@ -36,7 +36,7 @@ const publication = {
     {
       name: "add-task",
       bundleSha256: SHA256,
-      userIdentity: "workspace_user_required",
+      userIdentity: "frame_author_required",
       inputSchema: { type: "object" },
       outputSchema: { type: "object" },
     },

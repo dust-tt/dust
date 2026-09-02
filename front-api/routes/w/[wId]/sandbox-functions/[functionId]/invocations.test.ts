@@ -21,6 +21,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type {
   SandboxFunctionInvocationEvent,
   SandboxFunctionUserIdentityPolicy,
@@ -31,6 +32,10 @@ import {
   frameV2ContentType,
   sandboxFunctionContentType,
 } from "@app/types/files";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+} from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -168,10 +173,12 @@ async function createFramePublicationFunction({
   adminAuth,
   frame,
   publicationId,
+  userIdentity = "optional",
 }: {
   adminAuth: Authenticator;
   frame: Awaited<ReturnType<typeof FileFactory.create>>;
   publicationId: string;
+  userIdentity?: SandboxFunctionUserIdentityPolicy;
 }) {
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(
@@ -183,7 +190,7 @@ async function createFramePublicationFunction({
           {
             name: "run-function",
             description: "Run the Frame function.",
-            userIdentity: "optional",
+            userIdentity,
             executionMode: "durable",
             defaultStake: "low",
             bundleCode: "export default () => ({ ok: true });",
@@ -211,10 +218,16 @@ async function setupFrameV2Function({
   shareScope = "workspace_and_emails",
   featureFlag = "frames_v2",
   standalone = false,
+  userIdentity = "optional",
+  addCallerToSpace = false,
+  withSourcePath = userIdentity === "frame_author_required",
 }: {
   shareScope?: FileShareScope;
   featureFlag?: "frames_v2" | "sandbox_functions";
   standalone?: boolean;
+  userIdentity?: SandboxFunctionUserIdentityPolicy;
+  addCallerToSpace?: boolean;
+  withSourcePath?: boolean;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
@@ -228,24 +241,43 @@ async function setupFrameV2Function({
       })
     : null;
   const publicationId = "publication-1";
+  const sourceMountPath = conversation
+    ? `${getConversationFilesBasePath({
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+      })}App/${FRAME_MANIFEST_FILE}`
+    : `${getPodFilesBasePath({
+        workspaceId: workspace.sId,
+        podId: space.sId,
+      })}App/${FRAME_MANIFEST_FILE}`;
+  // A ready conversation file normally claims a source mount automatically. Omit its conversation
+  // scope only for the missing-source fixture so the Resource lifecycle leaves it unmounted.
+  const sourceScopeMetadata = conversation
+    ? userIdentity === "frame_author_required" && !withSourcePath
+      ? {}
+      : { conversationId: conversation.sId }
+    : { spaceId: space.sId };
   const frame = await FileFactory.create(adminAuth, null, {
     contentType: frameV2ContentType,
-    fileName: "app.frame.json",
+    fileName: FRAME_MANIFEST_FILE,
     fileSize: 100,
     status: "ready",
-    useCase: "conversation",
+    useCase:
+      userIdentity === "frame_author_required" && !standalone
+        ? "project_context"
+        : "conversation",
     useCaseMetadata: {
-      ...(conversation
-        ? { conversationId: conversation.sId }
-        : { spaceId: space.sId }),
+      ...sourceScopeMetadata,
       activePublicationId: publicationId,
     },
+    mountFilePath: withSourcePath ? sourceMountPath : null,
   });
   await frame.setShareScope(adminAuth, shareScope);
   const sandboxFunction = await createFramePublicationFunction({
     adminAuth,
     frame,
     publicationId,
+    userIdentity,
   });
 
   // The last mock request owns the route session.
@@ -253,6 +285,16 @@ async function setupFrameV2Function({
     role: "user",
     workspace,
   });
+  if (addCallerToSpace) {
+    const [memberGroup] = await space.fetchRegularAutoGroups(adminAuth);
+    if (!memberGroup) {
+      throw new Error("Expected the project member group to exist.");
+    }
+    const addMemberResult = await memberGroup.dangerouslyAddMember(adminAuth, {
+      user: user.toJSON(),
+    });
+    expect(addMemberResult.isOk()).toBe(true);
+  }
   return {
     adminAuth,
     frame,
@@ -545,6 +587,73 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         status: "created",
       },
     });
+  });
+
+  it("allows a standalone conversation author to invoke a frame-author-required function", async () => {
+    const { workspace, frame } = await setupFrameV2Function({
+      standalone: true,
+      userIdentity: "frame_author_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("allows a Pod source writer to invoke a frame-author-required function", async () => {
+    const { workspace, frame } = await setupFrameV2Function({
+      addCallerToSpace: true,
+      userIdentity: "frame_author_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("denies a readable Pod user who cannot write a frame-author-required function's source", async () => {
+    const { adminAuth, workspace, frame, space } = await setupFrameV2Function({
+      userIdentity: "frame_author_required",
+    });
+    const globalGroupResult =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    expect(globalGroupResult.isOk()).toBe(true);
+    if (globalGroupResult.isOk()) {
+      await SpaceFactory.attachGroup(space, globalGroupResult.value);
+    }
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+    });
+
+    expect(response.status).toBe(401);
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("denies frame-author-required invocation when the source path is missing", async () => {
+    const { workspace, frame, sandboxFunction } = await setupFrameV2Function({
+      standalone: true,
+      userIdentity: "frame_author_required",
+      withSourcePath: false,
+    });
+    expect(sandboxFunction.userIdentity).toBe("frame_author_required");
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+    });
+
+    expect(response.status).toBe(401);
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
   });
 
   it("keeps an in-flight Frame invocation streamable after a new publication activates", async () => {

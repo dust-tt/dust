@@ -1,3 +1,4 @@
+import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
 import type { SandboxFunctionInvocationErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -135,6 +136,17 @@ export async function authorizeSandboxFunctionInvocation(
         ? { authorized: true, user, runtimeSpaceId, pod }
         : authorizationError(
             `This ${functionKind} requires a member of its Pod.`
+          );
+    }
+    case "frame_author_required": {
+      const authorized =
+        user !== null &&
+        frame !== null &&
+        (await canWriteFrameV2Source(auth, frame));
+      return authorized
+        ? { authorized: true, user, runtimeSpaceId, pod }
+        : authorizationError(
+            "This Frame function requires permission to modify its source files."
           );
     }
     default:
