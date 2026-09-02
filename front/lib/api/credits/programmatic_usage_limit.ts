@@ -11,6 +11,7 @@ import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import {
   clearMetronomeProgrammaticCapAlerts,
   upsertMetronomeProgrammaticCapAlerts,
+  WARNING_BALANCE_RATIO,
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -188,12 +189,43 @@ async function readProgrammaticSpendLimitCountWithLazySeed(
 export async function isProgrammaticSpendLimitRateCapReached(
   auth: Authenticator
 ): Promise<boolean> {
+  return isProgrammaticSpendLimitRateThresholdReached(auth, { ratio: 1 });
+}
+
+/**
+ * "Near limit" (soft warning) counterpart of
+ * `isProgrammaticSpendLimitRateCapReached`: the same Redis fixed-window counter
+ * compared against `WARNING_BALANCE_RATIO` (80%) of the monthly cap instead of
+ * the full cap. Rate-limiter counterpart of the Metronome-driven
+ * `isWorkspaceProgrammaticWarningReached`. Returns `false` with no positive cap,
+ * no billing period, or on a Redis read error (fail-open).
+ */
+export async function isProgrammaticSpendLimitRateWarningReached(
+  auth: Authenticator
+): Promise<boolean> {
+  return isProgrammaticSpendLimitRateThresholdReached(auth, {
+    ratio: WARNING_BALANCE_RATIO,
+  });
+}
+
+/**
+ * Reads the workspace programmatic spend-cap counter over the current contract
+ * billing cycle and compares it against `ratio × monthly cap`. Only enforces a
+ * *positive* cap: a cap of 0 means "always depleted", owned by the programmatic
+ * credit-state machine (`isProgrammaticApiBlocked`), so this defers there.
+ * Returns `false` with no positive cap, no billing period, or on a Redis read
+ * error (fail-open).
+ */
+async function isProgrammaticSpendLimitRateThresholdReached(
+  auth: Authenticator,
+  { ratio }: { ratio: number }
+): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
 
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-  const threshold = config?.programmaticMonthlyCapAwuCredits ?? 0;
-  if (threshold <= 0) {
+  const cap = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  if (cap <= 0) {
     return false;
   }
 
@@ -217,7 +249,7 @@ export async function isProgrammaticSpendLimitRateCapReached(
 
   // The counter stores microCredits; scale the credit threshold up so the
   // comparison stays integer-on-integer.
-  return count >= roundCreditsToMicroCredits(threshold);
+  return count >= roundCreditsToMicroCredits(cap * ratio);
 }
 
 /**

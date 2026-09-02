@@ -3,10 +3,10 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { isUserBlocked } from "@app/lib/api/credits/access_control";
 import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { isUserBlocked } from "@app/lib/metronome/user_block";
 import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -16,7 +16,6 @@ import { jobSkill } from "@app/lib/resources/skill/code_defined/global/job";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
@@ -151,10 +150,7 @@ export async function isEligibleForNudge(
 
   if (user) {
     if (isCreditPricedWorkspace(auth)) {
-      const workspace = renderLightWorkspaceType({
-        workspace: auth.getNonNullableWorkspace(),
-      });
-      if (await isUserBlocked(workspace, user)) {
+      if (await isUserBlocked(auth, user)) {
         return false;
       }
     } else {

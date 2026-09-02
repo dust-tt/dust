@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
 import {
   microCreditsToCredits,
@@ -27,6 +28,7 @@ import type {
 import {
   getCachedDefaultCapThresholdsBySeatType,
   getCachedPerUserCapAlertIds,
+  USER_AWU_WARNING_PERCENTAGE,
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import {
@@ -47,7 +49,7 @@ import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   getFairUseAwuCreditsStatus,
-  isUserAwuWarned,
+  isUserAwuWarnedByMetronome,
 } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -159,8 +161,9 @@ export type MemberUsageType = {
   // Per-user credit state machine state (personal-credits → pool → capped
   // progression) persisted on the membership. Surfaced for debugging.
   creditState: UserCreditState;
-  // Whether the user has consumed ≥ 80% of their effective limit. Driven by
-  // the nearLimit Redis flag (see user_block.ts). Poke-only.
+  // Whether the user has consumed ≥ 80% of their effective limit. With the
+  // rate-cap flag on, derived from the Redis rate-limiter counter; with it off,
+  // from the Metronome nearLimit flag (see user_block.ts). Poke-only.
   nearLimit: boolean;
   // Per-user fair-use AWU credit usage (credits, with decimals) backed by the
   // microCredit rate-limit counter. Applies to non-credit-based plans
@@ -2008,13 +2011,28 @@ export async function getMembersUsage({
       userIds: memberships.map((m) => m.userId),
     });
 
-  // Bulk-fetch near-limit flags from Redis (poke-only, gated on includeAlertLinks).
+  // With the rate-cap flag on, the per-user "near limit" (≥ 80% of the effective
+  // cap) is derived from the Redis rate-limiter counter below; with it off, from
+  // the Metronome near-limit flag. Matches the flag-aware enforcement in
+  // `lib/api/credits/access_control.ts`.
+  const featureFlags = await getFeatureFlags(auth);
+  const spendCapEnabled = featureFlags.includes(
+    "enforce_user_spend_limit_rate_cap"
+  );
+
+  // Bulk-fetch Metronome near-limit flags from Redis (poke-only). Still needed
+  // when the rate-cap flag is on: free/none seats have no cycle cap for the
+  // rate-limiter counter to model, so they fall back to this flag (driven by
+  // their lifetime credit-balance alert).
   const nearLimitByUserId = includeAlertLinks
     ? new Map(
         await concurrentExecutor(
           users,
           async (u) =>
-            [u.sId, await isUserAwuWarned(workspace.sId, u.sId)] as const,
+            [
+              u.sId,
+              await isUserAwuWarnedByMetronome(workspace.sId, u.sId),
+            ] as const,
           { concurrency: 8 }
         )
       )
@@ -2193,6 +2211,11 @@ export async function getMembersUsage({
       groupCapAwuCredits,
       defaultAwuCredits: effectiveDefaultAwuCredits,
     });
+    const effectiveSpendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
+      overrideAwuCredits,
+      groupCapAwuCredits,
+      defaultAwuCredits: effectiveDefaultAwuCredits,
+    });
     const effectiveCapAlert =
       spendLimitSource === "override"
         ? (perUserOverrideAlerts.get(userId) ?? null)
@@ -2213,6 +2236,24 @@ export async function getMembersUsage({
       membership.seatType === "free"
         ? (freeCreditAlertIds?.get(metronomeUserId) ?? null)
         : null;
+
+    const rateLimiterSpendAwuCredits = includeAlertLinks
+      ? (rateLimiterSpendByUserId.get(userId) ?? 0)
+      : null;
+    // Poke-only near-limit. With the rate-cap flag on, use the rate-limiter
+    // counter ≥ 80% of the effective cap — but only for seats that actually
+    // have a cycle cap. Free/none seats (no effective cap) have no counter to
+    // model their lifetime balance, so they fall back to the Metronome
+    // near-limit flag, same as when the flag is off.
+    const hasCycleCap =
+      effectiveSpendLimitAwuCredits !== null &&
+      effectiveSpendLimitAwuCredits > 0;
+    const nearLimit =
+      includeAlertLinks &&
+      (spendCapEnabled && hasCycleCap
+        ? (rateLimiterSpendAwuCredits ?? 0) >=
+          USER_AWU_WARNING_PERCENTAGE * effectiveSpendLimitAwuCredits
+        : (nearLimitByUserId.get(userId) ?? false));
 
     return [
       {
@@ -2241,14 +2282,8 @@ export async function getMembersUsage({
         nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
-        spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
-          overrideAwuCredits,
-          groupCapAwuCredits,
-          defaultAwuCredits: effectiveDefaultAwuCredits,
-        }),
-        rateLimiterSpendAwuCredits: includeAlertLinks
-          ? (rateLimiterSpendByUserId.get(userId) ?? 0)
-          : null,
+        spendLimitAwuCredits: effectiveSpendLimitAwuCredits,
+        rateLimiterSpendAwuCredits,
         metronomeConsumedAwuCredits: includeAlertLinks
           ? (metronomeConsumedByUserId.get(userId) ?? 0)
           : null,
@@ -2258,7 +2293,7 @@ export async function getMembersUsage({
         freeCreditLowAlert: freeCreditAlerts?.low ?? null,
         freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
         creditState: membership.creditState,
-        nearLimit: nearLimitByUserId.get(userId) ?? false,
+        nearLimit,
         fairUse: fairUseByUserId.get(userId) ?? null,
       },
     ];
