@@ -16,7 +16,7 @@ describe("AgentResource", () => {
     testContext = await createResourceTest({ role: "user" });
   });
 
-  it("uses the stable id for custom-agent editor permissions", async () => {
+  it("applies author, admin, and editor permissions to custom agents", async () => {
     const resource = AgentResource.fromAgentConfiguration({
       agentId: AGENT_MODEL_ID,
       authorId: testContext.user.id,
@@ -45,20 +45,20 @@ describe("AgentResource", () => {
 
     expect(resource.id).toBe(AGENT_MODEL_ID);
     expect([
-      resource.canRead(testContext.authenticator),
-      resource.canWrite(testContext.authenticator),
-      resource.canAdministrate(testContext.authenticator),
+      testContext.authenticator.hasPermission("read", resource),
+      testContext.authenticator.hasPermission("write", resource),
+      testContext.authenticator.hasPermission("admin", resource),
     ]).toEqual([true, true, true]);
     expect([
-      resource.canRead(otherAuth),
-      resource.canWrite(otherAuth),
-      resource.canAdministrate(otherAuth),
+      otherAuth.hasPermission("read", resource),
+      otherAuth.hasPermission("write", resource),
+      otherAuth.hasPermission("admin", resource),
     ]).toEqual([false, false, false]);
     expect([
-      resource.canRead(adminAuth),
-      resource.canWrite(adminAuth),
-      resource.canAdministrate(adminAuth),
-    ]).toEqual([true, true, true]);
+      adminAuth.hasPermission("read", resource),
+      adminAuth.hasPermission("write", resource),
+      adminAuth.hasPermission("admin", resource),
+    ]).toEqual([true, false, true]);
 
     const grantResult = await GroupPermissionResource.grantToUser(
       testContext.authenticator,
@@ -73,9 +73,9 @@ describe("AgentResource", () => {
     await otherAuth.refresh();
 
     expect([
-      resource.canRead(otherAuth),
-      resource.canWrite(otherAuth),
-      resource.canAdministrate(otherAuth),
+      otherAuth.hasPermission("read", resource),
+      otherAuth.hasPermission("write", resource),
+      otherAuth.hasPermission("admin", resource),
     ]).toEqual([true, true, true]);
   });
 
@@ -97,9 +97,9 @@ describe("AgentResource", () => {
       testContext.workspace.sId
     );
 
-    expect(resource.canRead(otherAuth)).toBe(true);
-    expect(resource.canWrite(otherAuth)).toBe(false);
-    expect(resource.canAdministrate(otherAuth)).toBe(false);
+    expect(otherAuth.hasPermission("read", resource)).toBe(true);
+    expect(otherAuth.hasPermission("write", resource)).toBe(false);
+    expect(otherAuth.hasPermission("admin", resource)).toBe(false);
   });
 
   it("keeps code-defined global agents read-only and audience-scoped", async () => {
@@ -121,12 +121,18 @@ describe("AgentResource", () => {
       testContext.workspace.sId
     );
 
-    expect(helper.canRead(testContext.authenticator)).toBe(true);
-    expect(helper.canWrite(testContext.authenticator)).toBe(false);
-    expect(helper.canAdministrate(testContext.authenticator)).toBe(false);
-    expect(analyst.canRead(testContext.authenticator)).toBe(false);
-    expect(analyst.canRead(managerAuth)).toBe(true);
-    expect(analyst.canWrite(managerAuth)).toBe(false);
-    expect(analyst.canAdministrate(managerAuth)).toBe(false);
+    expect(testContext.authenticator.hasPermission("read", helper)).toBe(true);
+    expect(testContext.authenticator.hasPermission("write", helper)).toBe(
+      false
+    );
+    expect(testContext.authenticator.hasPermission("admin", helper)).toBe(
+      false
+    );
+    expect(testContext.authenticator.hasPermission("read", analyst)).toBe(
+      false
+    );
+    expect(managerAuth.hasPermission("read", analyst)).toBe(true);
+    expect(managerAuth.hasPermission("write", analyst)).toBe(false);
+    expect(managerAuth.hasPermission("admin", analyst)).toBe(false);
   });
 });
