@@ -185,9 +185,10 @@ function PanelSection({
       className={[
         "relative flex h-full min-w-0 flex-none flex-col overflow-x-clip overflow-y-hidden",
         isNav ? "bg-app-background" : "",
+        hidden ? "opacity-0" : "opacity-100",
         dragging
           ? ""
-          : "transition-[width] duration-[260ms] ease-[cubic-bezier(.4,0,.2,1)]",
+          : "transition-[width,opacity] duration-[260ms] ease-[cubic-bezier(.4,0,.2,1)]",
       ].join(" ")}
       style={{ width }}
       {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
@@ -398,6 +399,9 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       }
     }
     if (next !== null && next !== focusIdx) {
+      // Microtask (not render-phase setState): the ref mutations below make
+      // render-phase updates unsafe under StrictMode's double render. The
+      // layout stays correct in the meantime via the effectiveFocus fallback.
       const value = next;
       Promise.resolve().then(() => setFocusIdx(value));
     }
@@ -591,9 +595,15 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       return { nav, p2: 0, p3: 0, p4: 0 };
     }
 
+    // Inner card width derived from the model (not measured): during nav
+    // show/hide the card animates, and measuring it would retarget the panel
+    // transitions every frame. CARD_BORDER accounts for the card's border.
+    const cardInner = (targetNav: number) =>
+      Math.max(0, W - targetNav - (targetNav > 0 ? NAV_CARD_GAP : 0) - 2);
+
     // Fullscreen: one panel takes the whole card, nav is already hidden.
     if (effectiveFullscreen !== null) {
-      const inner = cardW > 0 ? cardW : W;
+      const inner = cardInner(0);
       return {
         nav: 0,
         p2: effectiveFullscreen === 0 ? inner : 0,
@@ -603,9 +613,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     }
 
     const splits = Math.max(0, visible.length - 1) * SPLIT_HANDLE;
-    const inner =
-      cardW > 0 ? cardW : Math.max(0, W - nav - (nav > 0 ? NAV_CARD_GAP : 0));
-    const available = Math.max(0, inner - splits);
+    const available = Math.max(0, cardInner(nav) - splits);
 
     // While dragging a splitter, only its two panels move; the third column
     // keeps its start-of-drag width.
