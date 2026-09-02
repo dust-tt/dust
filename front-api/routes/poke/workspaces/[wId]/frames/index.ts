@@ -4,8 +4,12 @@ import { listWorkspaceFrames } from "@app/lib/api/poke/frames";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
+import frameId from "./[frameId]";
+
 // Mounted at /api/poke/workspaces/:wId/frames.
 const app = pokeApp();
+
+app.route("/:frameId", frameId);
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListFrames> => {
