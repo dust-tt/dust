@@ -150,6 +150,8 @@ export function FilesBrowser({
     : null;
   const setCurrentFolderId = onCurrentFolderIdChange ?? setInternalFolderId;
 
+  // "grid" only swaps the selector's icon — grid rendering is not implemented
+  // in this sandbox; the table renders either way.
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [searchScope, setSearchScope] = useState<"folder" | "all">("folder");
   const [deleteFileId, setDeleteFileId] = useState<string | null>(null);

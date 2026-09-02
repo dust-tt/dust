@@ -1,3 +1,6 @@
+// NOTE: This playground predates the Inbox panel rework (sizing types,
+// files/credits side panels, file previews opening in panels, fullscreen).
+// Inbox.tsx is the reference implementation of the PanelLayout wiring.
 import {
   Archive,
   Attachment01,

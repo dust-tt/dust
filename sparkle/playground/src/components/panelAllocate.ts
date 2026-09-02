@@ -1,4 +1,13 @@
-/** Focus-based sizing: compact panels hold their width, focus takes the rest. */
+/**
+ * Focus-based sizing: compact panels hold their width, focus takes the rest.
+ *
+ * Worked examples (minimal 384, compact 512 — the playground defaults):
+ *   allocateFocusPanels(1500, [compact, focus])         → [512, 988]
+ *   allocateFocusPanels(1500, [compact, focus, shared]) → [476, 512, 512]
+ *     (the compact panel shrinks toward minimal so the flex panels can both
+ *      reach their own compact width)
+ *   allocateFocusPanels(900, [compact, focus])          → [388, 512]
+ */
 
 export type PanelRole = "focus" | "shared" | "compact";
 

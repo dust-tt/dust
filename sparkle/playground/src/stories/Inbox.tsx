@@ -101,6 +101,7 @@ import {
   PanelLayout,
   PanelLayoutNav,
   PanelLayoutPanel,
+  type PanelSizingType,
 } from "../components/PanelLayout";
 import { ProfilePanel } from "../components/Profile";
 import {
@@ -156,6 +157,102 @@ type PodTabsState = {
 };
 
 type SelectedCitation = { title: string; icon?: string };
+
+// A side panel opened next to a conversation. Wiring summary (P3 also hosts
+// full conversations; P4 only ever hosts side panels):
+//
+//   kind      sizing                        content
+//   citation  shared (frame icon → focus)   placeholder preview (see note below)
+//   file      shared (frame type → focus)   FilePreviewPanel, fullscreen enabled
+//   files     secondary                     FilesBrowser over conversation files
+//   credits   secondary                     fake credit usage panel
+type SidePanelView =
+  | { kind: "citation"; citation: SelectedCitation }
+  | { kind: "file"; dataSource: DataSource }
+  | { kind: "files" }
+  | { kind: "credits" };
+
+// Map a message-citation icon onto the DataSource file-type vocabulary so the
+// conversation Files panel can reuse the pod FilesBrowser.
+function citationFileType(icon?: string): DataSourceFileType {
+  switch (icon) {
+    case "table":
+      return "xlsx";
+    case "image":
+      return "png";
+    case "frame":
+      return "frame";
+    case "notion":
+    case "slack":
+      return "md";
+    default:
+      return "doc";
+  }
+}
+
+// Files "in" a conversation: derived from its message citations, shaped as
+// DataSources. Conversations without their own messages render a random
+// message set (see ConversationView), so those fall back to the whole pool's
+// citations.
+function conversationFilesFor(
+  conversation: Conversation | null | undefined,
+  pool: Conversation[]
+): DataSource[] {
+  const messageSources = conversation?.messages?.length ? [conversation] : pool;
+  const seen = new Set<string>();
+  const files: DataSource[] = [];
+  for (const source of messageSources) {
+    for (const item of source.messages ?? []) {
+      if (item.kind !== "message") continue;
+      for (const citation of item.citations ?? []) {
+        if (seen.has(citation.id)) continue;
+        seen.add(citation.id);
+        files.push({
+          id: `conv-file-${citation.id}`,
+          kind: "file",
+          fileName: citation.title,
+          parentId: null,
+          source: "pod",
+          fileType: citationFileType(citation.icon),
+          createdBy: item.ownerId,
+          createdAt: item.timestamp,
+          updatedAt: item.timestamp,
+        });
+      }
+    }
+  }
+  return files;
+}
+
+function sidePanelLabel(view: SidePanelView): string {
+  switch (view.kind) {
+    case "citation":
+      return view.citation.title;
+    case "file":
+      return view.dataSource.fileName;
+    case "files":
+      return "Files";
+    case "credits":
+      return "Credit usage";
+  }
+}
+
+// Sizing: file previews share the space with the focus panel — unless the
+// file is a frame, which takes focus itself; files/credits lists stay
+// secondary.
+function sidePanelSizing(view: SidePanelView): PanelSizingType {
+  const previewSizing = (isFrame: boolean): PanelSizingType =>
+    isFrame ? "default" : "shared";
+  switch (view.kind) {
+    case "citation":
+      return previewSizing(view.citation.icon === "frame");
+    case "file":
+      return previewSizing(view.dataSource.fileType === "frame");
+    case "files":
+    case "credits":
+      return "secondary";
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -241,25 +338,15 @@ function Inbox() {
   const [p2View, setP2View] = useState<P2View>({ kind: "inbox" });
 
   // P3: conversation from a space (level 2), a file opened from a pod's
-  // files screen, or a side panel opened from a level-1 conversation
-  // (citation preview, files, credit usage)
+  // files screen, or a side panel opened from the level-1 conversation.
   type P3View =
     | { kind: "conversation"; conversationId: string }
-    | { kind: "citation"; citation: SelectedCitation }
-    | { kind: "file"; dataSource: DataSource }
-    | { kind: "files" }
-    | { kind: "credits" };
+    | SidePanelView;
 
   const [p3View, setP3View] = useState<P3View | null>(null);
 
-  // P4: side panel opened from a level-2 conversation
-  type P4View =
-    | { kind: "citation"; citation: SelectedCitation }
-    | { kind: "file"; dataSource: DataSource }
-    | { kind: "files" }
-    | { kind: "credits" };
-
-  const [p4View, setP4View] = useState<P4View | null>(null);
+  // P4: side panel opened from a level-2 conversation.
+  const [p4View, setP4View] = useState<SidePanelView | null>(null);
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
@@ -1216,7 +1303,10 @@ function Inbox() {
     );
   })();
 
-  // ── P3 content ────────────────────────────────────────────────────────────
+  // ── P3 / P4 content ───────────────────────────────────────────────────────
+  // NOTE: message citations open this placeholder (they are titles, not
+  // DataSources); files opened from a Files panel or a pod render the real
+  // FilePreviewPanel. Map citations to DataSources if these should unify.
   const citationPreview = (citation: SelectedCitation) => (
     <div className="flex h-full flex-col gap-3 p-4">
       <p className="text-sm font-medium text-foreground">{citation.title}</p>
@@ -1226,95 +1316,52 @@ function Inbox() {
     </div>
   );
 
-  // Files "in" a conversation: derived from its message citations, shaped as
-  // DataSources so the conversation Files panel reuses the pod FilesBrowser.
-  const citationFileType = (icon?: string): DataSourceFileType => {
-    switch (icon) {
-      case "table":
-        return "xlsx";
-      case "image":
-        return "png";
-      case "frame":
-        return "frame";
-      case "notion":
-      case "slack":
-        return "md";
-      default:
-        return "doc";
+  // Shared renderer for the side-panel kinds; P3 additionally hosts full
+  // conversations (handled below). `filesSource` is the conversation whose
+  // files the "files" kind lists; opening one replaces the panel's content
+  // with the file preview in place.
+  const sidePanelContent = (
+    view: SidePanelView,
+    setView: (view: SidePanelView) => void,
+    filesSource: Conversation | null | undefined
+  ) => {
+    switch (view.kind) {
+      case "citation":
+        return citationPreview(view.citation);
+      case "file":
+        return (
+          <FilePreviewPanel dataSource={view.dataSource} variant="document" />
+        );
+      case "files":
+        return (
+          <ConversationFilesPanel
+            files={conversationFilesFor(filesSource, conversationsWithMessages)}
+            onFileOpen={(dataSource) => setView({ kind: "file", dataSource })}
+          />
+        );
+      case "credits":
+        return <ConversationCreditPanel />;
     }
-  };
-
-  const conversationFilesFor = (
-    conversation: Conversation | null | undefined
-  ): DataSource[] => {
-    // Conversations without their own messages render a random message set
-    // (see ConversationView), so fall back to the whole pool's citations.
-    const messageSources = conversation?.messages?.length
-      ? [conversation]
-      : conversationsWithMessages;
-    const seen = new Set<string>();
-    const files: DataSource[] = [];
-    for (const source of messageSources) {
-      for (const item of source.messages ?? []) {
-        if (item.kind !== "message") continue;
-        for (const citation of item.citations ?? []) {
-          if (seen.has(citation.id)) continue;
-          seen.add(citation.id);
-          files.push({
-            id: `conv-file-${citation.id}`,
-            kind: "file",
-            fileName: citation.title,
-            parentId: null,
-            source: "pod",
-            fileType: citationFileType(citation.icon),
-            createdBy: item.ownerId,
-            createdAt: item.timestamp,
-            updatedAt: item.timestamp,
-          });
-        }
-      }
-    }
-    return files;
   };
 
   const p3Label =
-    p3View?.kind === "conversation"
-      ? (p3Conversation?.title ?? "Conversation")
-      : p3View?.kind === "citation"
-        ? p3View.citation.title
-        : p3View?.kind === "file"
-          ? p3View.dataSource.fileName
-          : p3View?.kind === "files"
-            ? "Files"
-            : p3View?.kind === "credits"
-              ? "Credit usage"
-              : "Panel 3";
+    p3View === null
+      ? "Panel 3"
+      : p3View.kind === "conversation"
+        ? (p3Conversation?.title ?? "Conversation")
+        : sidePanelLabel(p3View);
 
-  // Sizing: conversations take focus; file previews share the space with the
-  // focus panel — unless the file is a frame, which takes focus itself; the
-  // files/credits lists stay secondary.
-  const previewSizing = (isFrame: boolean) =>
-    isFrame ? ("default" as const) : ("shared" as const);
-
-  const p3SizingType =
-    p3View?.kind === "conversation"
-      ? "default"
-      : p3View?.kind === "citation"
-        ? previewSizing(p3View.citation.icon === "frame")
-        : p3View?.kind === "file"
-          ? previewSizing(p3View.dataSource.fileType === "frame")
-          : "secondary";
-
-  const p4SizingType =
-    p4View?.kind === "citation"
-      ? previewSizing(p4View.citation.icon === "frame")
-      : p4View?.kind === "file"
-        ? previewSizing(p4View.dataSource.fileType === "frame")
-        : "secondary";
+  const p3SizingType: PanelSizingType =
+    p3View === null
+      ? "secondary"
+      : p3View.kind === "conversation"
+        ? "default"
+        : sidePanelSizing(p3View);
 
   const p3Content = (() => {
     if (!p3View) return null;
-    if (p3View.kind === "conversation" && p3Conversation)
+    if (p3View.kind === "conversation") {
+      if (!p3Conversation) return null;
       return (
         <ConversationView
           conversation={p3Conversation}
@@ -1327,52 +1374,18 @@ function Inbox() {
           }
         />
       );
-    if (p3View.kind === "citation") return citationPreview(p3View.citation);
-    if (p3View.kind === "file")
-      return (
-        <FilePreviewPanel dataSource={p3View.dataSource} variant="document" />
-      );
-    if (p3View.kind === "files")
-      return (
-        <ConversationFilesPanel
-          files={conversationFilesFor(selectedConversation)}
-          // Opening a file replaces the files panel with its preview.
-          onFileOpen={(dataSource) => setP3View({ kind: "file", dataSource })}
-        />
-      );
-    if (p3View.kind === "credits") return <ConversationCreditPanel />;
-    return null;
+    }
+    return sidePanelContent(p3View, setP3View, selectedConversation);
   })();
 
-  // ── P4 content ────────────────────────────────────────────────────────────
-  const p4Label =
-    p4View?.kind === "citation"
-      ? p4View.citation.title
-      : p4View?.kind === "file"
-        ? p4View.dataSource.fileName
-        : p4View?.kind === "files"
-          ? "Files"
-          : p4View?.kind === "credits"
-            ? "Credit usage"
-            : "Attachment";
+  const p4Label = p4View === null ? "Attachment" : sidePanelLabel(p4View);
 
-  const p4Content = (() => {
-    if (!p4View) return null;
-    if (p4View.kind === "citation") return citationPreview(p4View.citation);
-    if (p4View.kind === "file")
-      return (
-        <FilePreviewPanel dataSource={p4View.dataSource} variant="document" />
-      );
-    if (p4View.kind === "files")
-      return (
-        <ConversationFilesPanel
-          files={conversationFilesFor(p3Conversation)}
-          onFileOpen={(dataSource) => setP4View({ kind: "file", dataSource })}
-        />
-      );
-    if (p4View.kind === "credits") return <ConversationCreditPanel />;
-    return null;
-  })();
+  const p4SizingType: PanelSizingType =
+    p4View === null ? "secondary" : sidePanelSizing(p4View);
+
+  const p4Content = p4View
+    ? sidePanelContent(p4View, setP4View, p3Conversation)
+    : null;
 
   // ── Panel top bars ────────────────────────────────────────────────────────
   // Mirrors front's conversation title actions: credit usage, files, "...".
