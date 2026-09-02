@@ -3,7 +3,6 @@ import path from "node:path";
 import { loadFramePublicationDescriptor } from "@app/lib/api/frames/publication_storage";
 import type { PokePodFunction } from "@app/lib/api/poke/projects";
 import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import type { LiveDatabaseEntry } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { listDatabasesOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
@@ -22,7 +21,7 @@ import {
 import type { FileStatus } from "@app/types/files";
 import type { PokeSandboxType } from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 export type PokeFrameListItem = {
@@ -94,7 +93,13 @@ export async function listWorkspaceFrames(
   const frameModelIds = frames.map((frame) => frame.id);
 
   const [functionCounts, sandboxStatuses, authors] = await Promise.all([
-    SandboxFunctionResource.countByFrameModelIds(auth, frameModelIds),
+    SandboxFunctionResource.countByFrameModelIds(
+      auth,
+      frames.map((frame) => ({
+        frameModelId: frame.id,
+        activePublicationId: frame.useCaseMetadata?.activePublicationId ?? null,
+      }))
+    ),
     FrameSandboxAdapter.fetchSandboxStatusesByFrameModelIds(
       auth,
       frameModelIds
@@ -197,20 +202,19 @@ export async function getFrameDetails(
   const owner = auth.getNonNullableWorkspace();
   const publicationId = frame.useCaseMetadata?.activePublicationId ?? null;
 
-  const [functionCounts, sandboxStatuses, authors, sandbox] = await Promise.all(
-    [
-      SandboxFunctionResource.countByFrameModelIds(auth, [frame.id]),
-      FrameSandboxAdapter.fetchSandboxStatusesByFrameModelIds(auth, [frame.id]),
-      UserResource.fetchByModelIds(removeNulls([frame.userId])),
-      FrameSandboxAdapter.fetchSandbox(auth, frame),
-    ]
-  );
+  const [functionCounts, authors, sandbox] = await Promise.all([
+    SandboxFunctionResource.countByFrameModelIds(auth, [
+      { frameModelId: frame.id, activePublicationId: publicationId },
+    ]),
+    UserResource.fetchByModelIds(removeNulls([frame.userId])),
+    FrameSandboxAdapter.fetchSandbox(auth, frame),
+  ]);
 
   const [author] = authors;
 
   const listItem = toPokeFrameListItem(frame, {
     functionCount: functionCounts.get(frame.id) ?? 0,
-    sandboxStatus: sandboxStatuses.get(frame.id) ?? null,
+    sandboxStatus: sandbox?.status ?? null,
     author,
   });
 
@@ -296,8 +300,16 @@ export async function listFrameFunctions(
   });
 }
 
+// Mirrors `LiveDatabaseEntry` from the sandbox-functions layer, but declared here so client code
+// (the SWR hook, the table component) never imports that server-internal module (see
+// `PokePodDatabase` in `lib/api/poke/projects.ts` for the same pattern on the pod side).
+export type PokeFrameDatabase = {
+  name: string;
+  sizeBytes: number;
+};
+
 export type PokeListFrameDatabases = {
-  items: LiveDatabaseEntry[];
+  items: PokeFrameDatabase[];
 };
 
 /**
@@ -308,7 +320,7 @@ export type PokeListFrameDatabases = {
 export async function listFrameDatabases(
   auth: Authenticator,
   frame: FileResource
-): Promise<Result<LiveDatabaseEntry[], SandboxFunctionError>> {
+): Promise<Result<PokeFrameDatabase[], SandboxFunctionError>> {
   const ensureResult = await ensureFrameSandboxReady(auth, frame);
   if (ensureResult.isErr()) {
     return new Err(
@@ -319,5 +331,18 @@ export async function listFrameDatabases(
     );
   }
 
-  return listDatabasesOnReadySandbox(auth, ensureResult.value.sandbox);
+  const databasesResult = await listDatabasesOnReadySandbox(
+    auth,
+    ensureResult.value.sandbox
+  );
+  if (databasesResult.isErr()) {
+    return databasesResult;
+  }
+
+  return new Ok(
+    databasesResult.value.map((entry) => ({
+      name: entry.name,
+      sizeBytes: entry.sizeBytes,
+    }))
+  );
 }

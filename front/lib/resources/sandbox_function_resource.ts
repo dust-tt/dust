@@ -679,12 +679,29 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
   }
 
-  /** One grouped count per Frame — the Poke Frames list must not query per row. */
+  /**
+   * One grouped count per Frame's *active* publication — the Poke Frames list must not query per
+   * row, and must not count functions from publications that are no longer served (a frame keeps
+   * every past publication's function rows around, so a plain per-file count would grow with
+   * every publish instead of matching what `listByFramePublication` actually serves).
+   */
   static async countByFrameModelIds(
     auth: Authenticator,
-    frameModelIds: ModelId[]
+    framePublications: {
+      frameModelId: ModelId;
+      activePublicationId: string | null;
+    }[]
   ): Promise<Map<ModelId, number>> {
-    if (frameModelIds.length === 0) {
+    const activePairs = framePublications.filter(
+      (
+        framePublication
+      ): framePublication is {
+        frameModelId: ModelId;
+        activePublicationId: string;
+      } => framePublication.activePublicationId !== null
+    );
+
+    if (activePairs.length === 0) {
       return new Map();
     }
 
@@ -692,9 +709,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       attributes: ["fileId", [fn("COUNT", col("id")), "functionCount"]],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        fileId: { [Op.in]: frameModelIds },
+        // Exact (fileId, publicationId) pairs rather than independent `IN` lists: publication ids
+        // are not guaranteed distinct across frames (test fixtures reuse the same literal id), so
+        // crossing the two lists could attribute one frame's functions to another.
+        [Op.or]: activePairs.map(({ frameModelId, activePublicationId }) => ({
+          fileId: frameModelId,
+          publicationId: activePublicationId,
+        })),
       },
-      group: ["fileId"],
+      group: ["fileId", "publicationId"],
       raw: true,
     });
 
