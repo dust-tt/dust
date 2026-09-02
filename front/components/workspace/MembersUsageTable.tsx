@@ -733,10 +733,6 @@ function buildPoolCreditUsageColumn(
   };
 }
 
-// Poke-only: flags a member whose total consumption (seat + pool/overage) is
-// running ahead of the billing cycle's elapsed time, using the same
-// `overallUsageTarget` pace classification the API derives from
-// `computeCreditUsageStatus`.
 const offPaceColumn: ColumnDef<RowData, string> = {
   id: "overallUsageTarget" as const,
   header: "",

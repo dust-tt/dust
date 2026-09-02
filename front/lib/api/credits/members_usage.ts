@@ -177,9 +177,7 @@ export type MemberUsageType = {
   // (null otherwise, or when the billing cycle can't be resolved).
   seatUsageTarget: CreditUsageTarget | null;
   // Same pace classification as `seatUsageTarget`, but against the member's
-  // total effective spend limit (seat allowance + pool/overage) rather than
-  // just the seat allowance. Poke-only (null otherwise, or when the billing
-  // cycle or effective limit can't be resolved).
+  // total effective spend limit (seat allowance + pool/overage).
   overallUsageTarget: CreditUsageTarget | null;
   // Per-user fair-use AWU credit usage (credits, with decimals) backed by the
   // microCredit rate-limit counter. Applies to non-credit-based plans
@@ -2517,8 +2515,6 @@ export async function getMembersUsage({
             nowMs: Date.now(),
           })?.target ?? null)
         : null;
-    // Same pace classification, but against the total effective limit (seat
-    // allowance + pool/overage) rather than just the seat allowance.
     const overallUsageTarget =
       billingCycle && effectiveSpendLimitAwuCredits !== null
         ? (computeCreditUsageStatus({
