@@ -9,6 +9,7 @@ import {
 import { evaluateInboundAuth } from "@app/lib/api/assistant/email/inbound_auth";
 import { validateSendgridParseWebhookSignature } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
 import {
+  EMAIL_WEBHOOK_RELAY_ID_HEADER,
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
@@ -34,6 +35,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import relayStatus from "./relay-status";
 
@@ -44,11 +47,15 @@ export type PostResponseBody = {
 // SendGrid Parse limits inbound mail to ~30MB; matches the original
 // `SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb"` enforced by `raw-body`.
 const SENDGRID_PARSE_WEBHOOK_MAX_SIZE_BYTES = 30 * 1024 * 1024;
+const RelayHeadersSchema = z.object({
+  [EMAIL_WEBHOOK_RELAY_ID_HEADER]: z.string().uuid().optional(),
+});
 
 // Mounted at /api/email/webhook.
 const app = createHono();
 
 app.route("/relay-status", relayStatus);
+app.use("/", validate("header", RelayHeadersSchema));
 
 /** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
@@ -138,7 +145,8 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
   const email = emailRes.value;
 
-  if (isRelayRequest && !(await recordEmailRelayReceipt(headers))) {
+  const relayId = ctx.req.valid("header")[EMAIL_WEBHOOK_RELAY_ID_HEADER];
+  if (isRelayRequest && !(await recordEmailRelayReceipt(relayId))) {
     logger.info(
       { senderEmail: email.sender.email },
       "[email] Ignoring duplicate inbound email relay"
