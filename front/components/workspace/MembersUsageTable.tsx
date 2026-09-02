@@ -622,7 +622,8 @@ function computeSeatUsage({
 const seatUsageColumn: ColumnDef<RowData, string> = {
   id: "seatUsage" as const,
   header: "Seat usage",
-  enableSorting: false,
+  enableSorting: true,
+  sortDescFirst: true,
   accessorFn: (row) =>
     computeSeatUsage({
       seatType: row.seatType,
