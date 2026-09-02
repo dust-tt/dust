@@ -9,6 +9,7 @@ import type {
   ConsumptionPeriodSelection,
 } from "@app/lib/analytics/consumption_period";
 import {
+  consumptionGranularityLabel,
   DEFAULT_CONSUMPTION_GRANULARITY,
   findPartialTimestamp,
   formatConsumptionDate,
@@ -466,7 +467,7 @@ export function ConsumptionChart({
         <ButtonsSwitchList value={mode} size="xs">
           <ButtonsSwitch
             value="period"
-            label="Per period"
+            label={consumptionGranularityLabel(granularity)}
             onClick={() => handleModeChange("period")}
           />
           <ButtonsSwitch

@@ -4,6 +4,7 @@ import {
   CONSUMPTION_CHART_BREAKDOWN_COUNT,
   ConsumptionDailyChart,
 } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
+import { consumptionGranularityLabel } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTimeseriesMode } from "@app/lib/api/analytics/consumption/timeseries";
 import {
   usePokeConsumptionOverview,
@@ -115,7 +116,7 @@ export function PokeConsumptionChart({
     <ButtonsSwitchList value={mode} size="xs">
       <ButtonsSwitch
         value="period"
-        label="Per period"
+        label={consumptionGranularityLabel("day")}
         onClick={() => setMode("period")}
       />
       <ButtonsSwitch
