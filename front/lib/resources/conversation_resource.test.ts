@@ -84,7 +84,7 @@ const setupTestAgents = async (
     user.sId,
     workspace.sId
   );
-  return Promise.all([
+  const agents = await Promise.all([
     AgentConfigurationFactory.createTestAgent(auth, {
       name: `Test Agent 1 ${user.name}`,
       description: "Hidden test agent",
@@ -96,6 +96,8 @@ const setupTestAgents = async (
       scope: "visible",
     }),
   ]);
+
+  return agents;
 };
 
 const dateFromDaysAgo = (days: number) => {
