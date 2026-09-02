@@ -278,6 +278,31 @@ export const makeSpendLimitCycleWindowBounds = (
   };
 };
 
+// Fixed-window counter backing the free-seat *lifetime* spend allowance.
+// Distinct base key from the per-cycle spend-cap key above: free seats carry a
+// lifetime credit balance (not a per-cycle cap), so their counter never rolls
+// over. Paired with `makeSpendLimitLifetimeWindowBounds` (a stable, non-cycle
+// label), it is a single per-user key that accumulates for the seat's lifetime.
+export const makeFreeSeatLifetimeAwuCreditsRateLimitKeyForUser = (
+  owner: LightWorkspaceType,
+  user: UserType
+) => {
+  return `workspace:${owner.id}:user:${user.id}:free_seat_lifetime_awu_microcredit_count`;
+};
+
+// Never-rolling fixed-window bounds for the free-seat lifetime counter. The
+// label is stable (not cycle-derived) so the counter is a single lasting key,
+// and `windowEndMs` is far in the future so it never expires under the
+// PEXPIREAT grace. Mirror of `makeSpendLimitCycleWindowBounds` for the lifetime
+// dimension.
+const FREE_SEAT_LIFETIME_WINDOW_END_MS = Date.UTC(2100, 0, 1);
+export const makeSpendLimitLifetimeWindowBounds = (): FixedWindowBounds => {
+  return {
+    label: "lifetime",
+    windowEndMs: FREE_SEAT_LIFETIME_WINDOW_END_MS,
+  };
+};
+
 // Fixed-window counter backing the admin-configured per-API-key spend cap.
 // Keyed by the key model id (the calling key is active, and key names are
 // unique among active keys, so id and name are 1:1 here). Bucketed on the

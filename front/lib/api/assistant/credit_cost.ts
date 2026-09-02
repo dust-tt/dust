@@ -5,7 +5,10 @@ import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
+import {
+  recordFreeSeatLifetimeUsage,
+  recordUserSpendLimitUsage,
+} from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
@@ -15,6 +18,7 @@ import {
 import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
@@ -211,6 +215,21 @@ export async function computeAndStoreAgentMessageCredits(
           incrementBy: recordedCostDelta,
           cycle: spendLimitCycleOverrideForAuth(auth),
         });
+
+        // Free seats accrue against a lifetime counter (their enforced limiter)
+        // instead of the per-cycle cap. Their per-cycle counter above is
+        // recorded but never read.
+        const membership =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: auth.getNonNullableWorkspace(),
+          });
+        if (membership?.seatType === "free") {
+          await recordFreeSeatLifetimeUsage(auth, {
+            user,
+            incrementBy: recordedCostDelta,
+          });
+        }
       }
 
       // Per-API-key cap, for calls authenticated with an API key.
