@@ -10,12 +10,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  InfoCircle,
   Input,
   Label,
   SearchInput,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { InformationCircleIcon } from "@heroicons/react/20/solid";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
@@ -73,7 +73,7 @@ function BooleanConfigurationInput({
           <Tooltip
             trigger={
               <Icon
-                visual={InformationCircleIcon}
+                visual={InfoCircle}
                 size="xs"
                 className="cursor-help text-primary-400 hover:text-primary-600"
               />
@@ -133,7 +133,7 @@ function NumberConfigurationInput({
           <Tooltip
             trigger={
               <Icon
-                visual={InformationCircleIcon}
+                visual={InfoCircle}
                 size="xs"
                 className="cursor-help text-primary-400 hover:text-primary-600"
               />
@@ -200,7 +200,7 @@ function StringConfigurationInput({
           <Tooltip
             trigger={
               <Icon
-                visual={InformationCircleIcon}
+                visual={InfoCircle}
                 size="xs"
                 className="cursor-help text-primary-400 hover:text-primary-600"
               />
@@ -278,7 +278,7 @@ function EnumConfigurationInput({
             <Tooltip
               trigger={
                 <Icon
-                  visual={InformationCircleIcon}
+                  visual={InfoCircle}
                   size="xs"
                   className="cursor-help text-primary-400 hover:text-primary-600"
                 />
