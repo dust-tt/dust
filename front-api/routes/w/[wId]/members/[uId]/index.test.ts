@@ -1,4 +1,5 @@
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -242,6 +243,29 @@ describe("POST /api/w/:wId/members/:uId", () => {
       expect(response.status).toBe(403);
       const data = await response.json();
       expect(data.error.type).toBe("workspace_auth_error");
+    });
+  });
+
+  describe("forced role changes", () => {
+    it("should allow a regular user to force their role when debug tools are enabled", async () => {
+      const { auth, workspace, user } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await FeatureFlagFactory.basic(auth, "show_debug_tools");
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, user.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "admin", force: "true" }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.member.workspaces[0].role).toBe("admin");
     });
   });
 

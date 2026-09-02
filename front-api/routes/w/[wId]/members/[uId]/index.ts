@@ -107,13 +107,11 @@ app.post(
     const featureFlags = await getFeatureFlags(auth);
     const body = ctx.req.valid("json");
 
-    // Allow Dust Super User to force role for testing
-    const allowForSuperUserTesting =
-      showDebugTools(featureFlags) &&
-      auth.isDustSuperUser() &&
-      body.force === "true";
+    // Allow users with debug tools enabled to force role for testing.
+    const allowForDebugToolsTesting =
+      showDebugTools(featureFlags) && body.force === "true";
 
-    if (!auth.isManager() && !allowForSuperUserTesting) {
+    if (!auth.isManager() && !allowForDebugToolsTesting) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -148,7 +146,7 @@ app.post(
     if (
       (targetIsAdmin || assigningAdmin) &&
       !auth.isAdmin() &&
-      !allowForSuperUserTesting
+      !allowForDebugToolsTesting
     ) {
       return apiError(ctx, {
         status_code: 403,
