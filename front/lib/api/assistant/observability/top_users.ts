@@ -1,4 +1,3 @@
-import type { WorkspaceTopUserRow } from "@app/lib/api/analytics/workspace_analytics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
@@ -16,6 +15,14 @@ type TopUserBucket = {
 
 type TopUsersAggs = {
   by_user?: estypes.AggregationsMultiBucketAggregateBase<TopUserBucket>;
+};
+
+type WorkspaceTopUserRow = {
+  userId: string;
+  name: string;
+  imageUrl: string | null;
+  messageCount: number;
+  agentCount: number;
 };
 
 function getUserDisplayName(user: UserResource | undefined): string {

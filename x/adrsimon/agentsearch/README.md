@@ -88,7 +88,7 @@ The export enumerates every space the caller can read, pods included. That is fi
 
 Agent configuration comes from `getAgentConfigurationsForView` with `dangerouslySkipPermissionFiltering`, so unpublished agents and spaces the caller cannot read are included — this is an admin-side corpus.
 
-Usage comes from **Elasticsearch, not Postgres**: `fetchAgentExportRows` (`front/lib/api/analytics/agents_export.ts`) over `front.agent_message_consumption_analytics`, the same path as `GET /api/w/:wId/analytics/agents-export`. Messages are a cardinality aggregation on `agent_message_id`, because consumption documents are split per LLM step and per tool call. The per-group breakdown is a nested terms aggregation on `user.group_ids`, and feedbacks come from `front.agent_message_analytics`, where they live as a nested field.
+Usage comes from **Elasticsearch, not Postgres**: `fetchAgentExportRows` (`front/lib/api/analytics/agents_export.ts`) over `front.agent_message_consumption_analytics`, the same helper used by `GET /api/w/:wId/analytics/export?table=agents&startDate=...&endDate=...`. Messages are a cardinality aggregation on `agent_message_id`, because consumption documents are split per LLM step and per tool call. The per-group breakdown is a nested terms aggregation on `user.group_ids`, and feedbacks come from `front.agent_message_analytics`, where they live as a nested field.
 
 See `assets/agents_skeleton.json` for the exact shape.
 
