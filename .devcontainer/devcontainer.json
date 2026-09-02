@@ -8,18 +8,27 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "remoteUser": "root",
   "runArgs": [
-    "--init"
+    "--init",
+    "-p",
+    "3000:3000",
+    "-p",
+    "3010:3010",
+    "-p",
+    "3011:3011",
+    "-p",
+    "3001:3001",
+    "-p",
+    "3007:3007",
+    "-p",
+    "6333:6333",
+    "-p",
+    "7233:7233",
+    "-p",
+    "8233:8233"
   ],
-  "forwardPorts": [
-    3000,
-    3010,
-    3011,
-    3001,
-    3007,
-    6333,
-    7233,
-    8233
-  ],
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
   "remoteEnv": {
     "DUST_IN_CONTAINER": "1",
     "OP_SERVICE_ACCOUNT_TOKEN": "${localEnv:OP_SERVICE_ACCOUNT_TOKEN}",
@@ -27,7 +36,8 @@
     "DEV_WORKOS_USER_EMAIL": "${localEnv:DEV_WORKOS_USER_EMAIL}",
     "DEV_WORKOS_USER_ID": "${localEnv:DEV_WORKOS_USER_ID}",
     "DEV_WORKOS_USER_PASSWORD": "${localEnv:DEV_WORKOS_USER_PASSWORD}",
-    "SHELL": "/bin/zsh"
+    "SHELL": "/bin/zsh",
+    "SSH_AUTH_SOCK": "/ssh-agent"
   },
   "mounts": [
     "source=dust-dev-node-modules,target=/workspace/node_modules,type=volume",
@@ -40,7 +50,8 @@
     "source=dust-dev-sparkle-dist,target=/workspace/sparkle/dist,type=volume",
     "source=dust-dev-data,target=/var/lib/dust-dev,type=volume",
     "source=dust-dev-gcloud-config,target=/root/.config/gcloud,type=volume",
-    "source=dust-dev-git-spice-config,target=/root/.config/git-spice,type=volume"
+    "source=dust-dev-git-spice-config,target=/root/.config/git-spice,type=volume",
+    "source=/run/host-services/ssh-auth.sock,target=/ssh-agent,type=bind"
   ],
   "postCreateCommand": "bash dev/scripts/install.sh",
   "postStartCommand": "DUST_OFFER_START_APPS=1 bash dev/scripts/infra.sh",
@@ -54,6 +65,8 @@
         "eamodio.gitlens"
       ],
       "settings": {
+        "remote.autoForwardPorts": false,
+        "remote.restoreForwardedPorts": false,
         "terminal.integrated.defaultProfile.linux": "zsh",
         "terminal.integrated.profiles.linux": {
           "zsh": {

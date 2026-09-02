@@ -74,6 +74,11 @@ DEV_VOLUMES=(
   "${VOLUME_PREFIX}-git-spice-config:/root/.config/git-spice"
 )
 
+# Host SSH agent via Docker Desktop / OrbStack virtual socket (not a real Mac
+# path). Keep in sync with .devcontainer/devcontainer.json.
+SSH_AUTH_SOCK_MOUNT_SRC="/run/host-services/ssh-auth.sock"
+SSH_AUTH_SOCK_MOUNT_DST="/ssh-agent"
+
 BUILD=0
 RESET_VOLUMES=0
 SHELL_ONLY=0
@@ -103,7 +108,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 collect_env_args() {
-  ENV_ARGS=(-e DUST_IN_CONTAINER=1)
+  ENV_ARGS=(-e DUST_IN_CONTAINER=1 -e "SSH_AUTH_SOCK=${SSH_AUTH_SOCK_MOUNT_DST}")
   for var in \
     OP_SERVICE_ACCOUNT_TOKEN \
     OP_ENVIRONMENT_ID \
@@ -125,6 +130,7 @@ exec_interactive() {
     -e LANG=C.UTF-8 \
     -e LC_ALL=C.UTF-8 \
     -e DUST_IN_CONTAINER=1 \
+    -e "SSH_AUTH_SOCK=${SSH_AUTH_SOCK_MOUNT_DST}" \
     "${ENV_ARGS[@]}" \
     "$CONTAINER_NAME" \
     "${cmd[@]}"
@@ -148,6 +154,7 @@ ensure_container_running() {
     -e LANG=C.UTF-8 \
     -e LC_ALL=C.UTF-8 \
     -e DUST_IN_CONTAINER=1 \
+    -e "SSH_AUTH_SOCK=${SSH_AUTH_SOCK_MOUNT_DST}" \
     -p 3000:3000 \
     -p 3010:3010 \
     -p 3011:3011 \
@@ -157,6 +164,7 @@ ensure_container_running() {
     -p 7233:7233 \
     -p 8233:8233 \
     -v "$REPO_ROOT:/workspace" \
+    -v "${SSH_AUTH_SOCK_MOUNT_SRC}:${SSH_AUTH_SOCK_MOUNT_DST}" \
     "${VOLUME_ARGS[@]}" \
     "${ENV_ARGS[@]}" \
     "$IMAGE_NAME" \
