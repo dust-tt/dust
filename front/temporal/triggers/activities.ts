@@ -167,18 +167,14 @@ async function createConversationForAgentConfiguration({
       errorType === "rate_limit_error" ||
       errorType === "no_seat"
     ) {
-      PostHogServerSideTracking.trackTriggerBlocked({
-        userId: auth.getNonNullableUser().sId,
-        workspaceId: auth.workspace()?.sId,
-        conversationId: newConversation.sId,
-        triggerId: trigger.sId,
-        triggerKind: trigger.kind,
-        triggerOrigin: trigger.origin,
-        triggerExecutionMode: trigger.executionMode,
-        agentConfigurationId: trigger.agentConfigurationId,
-        webhookRequestId: webhookRequest?.id,
-        errorType,
-        statusCode: messageRes.error.status_code,
+      PostHogServerSideTracking.trackEvent({
+        distinctId: auth.getNonNullableUser().sId,
+        event: "trigger_blocked",
+        properties: {
+          workspace_id: auth.getNonNullableWorkspace().sId,
+          trigger_id: trigger.sId,
+          error_type: errorType,
+        },
       });
     }
 

@@ -23,30 +23,14 @@ function getClient(): PostHog | null {
 }
 
 export class PostHogServerSideTracking {
-  static trackTriggerBlocked({
-    userId,
-    workspaceId,
-    conversationId,
-    triggerId,
-    triggerKind,
-    triggerOrigin,
-    triggerExecutionMode,
-    agentConfigurationId,
-    webhookRequestId,
-    errorType,
-    statusCode,
+  static trackEvent({
+    distinctId,
+    event,
+    properties,
   }: {
-    userId: string;
-    workspaceId?: string;
-    conversationId: string;
-    triggerId: string;
-    triggerKind: string;
-    triggerOrigin: string;
-    triggerExecutionMode: string;
-    agentConfigurationId: string;
-    webhookRequestId?: number;
-    errorType: string;
-    statusCode: number;
+    distinctId: string;
+    event: string;
+    properties?: Record<string, string | number | boolean>;
   }): void {
     const client = getClient();
     if (!client) {
@@ -54,26 +38,11 @@ export class PostHogServerSideTracking {
     }
 
     try {
-      client.capture({
-        distinctId: userId,
-        event: "trigger_blocked",
-        properties: {
-          workspace_id: workspaceId,
-          conversation_id: conversationId,
-          trigger_id: triggerId,
-          trigger_kind: triggerKind,
-          trigger_origin: triggerOrigin,
-          trigger_execution_mode: triggerExecutionMode,
-          agent_configuration_id: agentConfigurationId,
-          ...(webhookRequestId ? { webhook_request_id: webhookRequestId } : {}),
-          error_type: errorType,
-          status_code: statusCode,
-        },
-      });
+      client.capture({ distinctId, event, properties });
     } catch (err) {
       logger.error(
-        { userId, workspaceId, triggerId, err },
-        "Failed to track blocked trigger on PostHog"
+        { distinctId, event, err },
+        "Failed to capture event on PostHog"
       );
     }
   }
