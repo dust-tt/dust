@@ -1297,13 +1297,13 @@ function Pods() {
     return (
       <div className="flex items-center gap-2">
         {memberAvatars.length > 0 && (
-          <div className="hidden md:flex md:h-9 md:items-center">
+          <div className="hidden md:flex md:items-center">
             <Avatar.Stack
               avatars={memberAvatars}
               nbVisibleItems={memberAvatars.length}
               orientation="horizontal"
               hasMagnifier={false}
-              size="sm"
+              size="xs"
             />
           </div>
         )}
@@ -2010,9 +2010,10 @@ function Pods() {
           {p3Content}
         </PanelLayoutPanel>
 
-        {/* P4 — Level 3: citation / attachment */}
+        {/* P4 — Level 3: citation / attachment (never takes focus) */}
         <PanelLayoutPanel
           label={p4Label}
+          sizingType="secondary"
           isOpen={p4Citation !== null}
           onClose={() => setP4Citation(null)}
           topBarLeft={p4TopBarLeft}

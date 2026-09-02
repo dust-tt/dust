@@ -33,7 +33,7 @@ export interface MessageReactionData {
 export interface MessageCitationData {
   id: string;
   title: string;
-  icon: "table" | "document" | "slack" | "notion" | "image";
+  icon: "table" | "document" | "slack" | "notion" | "image" | "frame";
   imgSrc?: string;
 }
 
@@ -163,6 +163,7 @@ export type DataSourceFileType =
   | "pptx"
   | "txt"
   | "md"
+  | "png"
   | "frame";
 
 export type DataSourceSource = "pod" | "company";

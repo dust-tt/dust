@@ -1,6 +1,5 @@
 import {
   Archive,
-  Attachment01,
   Avatar,
   Bell01,
   Brackets,
@@ -9,6 +8,7 @@ import {
   CheckCircle,
   CheckDone01,
   ChevronDown,
+  CoinsStacked01,
   Cube01,
   CubeOutline,
   Dialog,
@@ -29,6 +29,7 @@ import {
   Edit04,
   Eye,
   File02,
+  Folder,
   FolderOpen,
   Heart,
   Icon,
@@ -79,8 +80,13 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import {
+  ConversationCreditPanel,
+  ConversationFilesPanel,
+} from "../components/ConversationSidePanels";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
+import { FilePreviewPanel } from "../components/FilePreviewPanel";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -102,6 +108,8 @@ import {
   type Conversation,
   createConversationsWithMessages,
   createSpace,
+  type DataSource,
+  type DataSourceFileType,
   getAgentById,
   getMembersBySpaceId,
   getRandomAgents,
@@ -232,15 +240,26 @@ function Inbox() {
 
   const [p2View, setP2View] = useState<P2View>({ kind: "inbox" });
 
-  // P3: conversation from a space (level 2) OR citation from a level-1 conversation
+  // P3: conversation from a space (level 2), a file opened from a pod's
+  // files screen, or a side panel opened from a level-1 conversation
+  // (citation preview, files, credit usage)
   type P3View =
     | { kind: "conversation"; conversationId: string }
-    | { kind: "citation"; citation: SelectedCitation };
+    | { kind: "citation"; citation: SelectedCitation }
+    | { kind: "file"; dataSource: DataSource }
+    | { kind: "files" }
+    | { kind: "credits" };
 
   const [p3View, setP3View] = useState<P3View | null>(null);
 
-  // P4: citation/attachment opened from a level-2 conversation
-  const [p4Citation, setP4Citation] = useState<SelectedCitation | null>(null);
+  // P4: side panel opened from a level-2 conversation
+  type P4View =
+    | { kind: "citation"; citation: SelectedCitation }
+    | { kind: "file"; dataSource: DataSource }
+    | { kind: "files" }
+    | { kind: "credits" };
+
+  const [p4View, setP4View] = useState<P4View | null>(null);
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
@@ -989,7 +1008,7 @@ function Inbox() {
         onClick={() => {
           setP2View({ kind: "space", spaceId: space.id });
           setP3View(null);
-          setP4Citation(null);
+          setP4View(null);
         }}
       />
     );
@@ -1036,22 +1055,22 @@ function Inbox() {
               kind: "conversation",
               conversationId: conversation.id,
             });
-            setP4Citation(null);
+            setP4View(null);
           }}
           onSpaceClick={(space) => {
             setP2View({ kind: "space", spaceId: space.id });
             setP3View(null);
-            setP4Citation(null);
+            setP4View(null);
           }}
           onMyPodClick={() => {
             setP2View({ kind: "conversations" });
             setP3View(null);
-            setP4Citation(null);
+            setP4View(null);
           }}
           onAutomationsClick={() => {
             setP2View({ kind: "automations" });
             setP3View(null);
-            setP4Citation(null);
+            setP4View(null);
           }}
         />
       );
@@ -1073,7 +1092,7 @@ function Inbox() {
           conversationsWithMessages={conversationsWithMessages}
           onCitationOpen={(citation) => {
             setP3View({ kind: "citation", citation });
-            setP4Citation(null);
+            setP4View(null);
           }}
         />
       );
@@ -1089,7 +1108,7 @@ function Inbox() {
               kind: "conversation",
               conversationId: conversation.id,
             });
-            setP4Citation(null);
+            setP4View(null);
           }}
           activeTab="conversations"
           podVariant="personal"
@@ -1124,7 +1143,7 @@ function Inbox() {
               kind: "conversation",
               conversationId: conversation.id,
             });
-            setP4Citation(null);
+            setP4View(null);
           }}
           onInviteMembers={
             podContext.variant === "shared"
@@ -1148,6 +1167,11 @@ function Inbox() {
           }
           dynamicFileTabIds={dynamicFileTabIds}
           onAddFileToTopbar={handlePodFileDrop}
+          // Pod files open in a panel (frames take focus, others share).
+          onFileOpen={(dataSource) => {
+            setP3View({ kind: "file", dataSource });
+            setP4View(null);
+          }}
           onFileDragChange={handlePodFileDragChange}
           fileToRevealInKnowledge={fileToRevealInKnowledge}
           onFileToRevealInKnowledgeHandled={() =>
@@ -1193,12 +1217,100 @@ function Inbox() {
   })();
 
   // ── P3 content ────────────────────────────────────────────────────────────
+  const citationPreview = (citation: SelectedCitation) => (
+    <div className="flex h-full flex-col gap-3 p-4">
+      <p className="text-sm font-medium text-foreground">{citation.title}</p>
+      <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
+        Document preview placeholder
+      </div>
+    </div>
+  );
+
+  // Files "in" a conversation: derived from its message citations, shaped as
+  // DataSources so the conversation Files panel reuses the pod FilesBrowser.
+  const citationFileType = (icon?: string): DataSourceFileType => {
+    switch (icon) {
+      case "table":
+        return "xlsx";
+      case "image":
+        return "png";
+      case "frame":
+        return "frame";
+      case "notion":
+      case "slack":
+        return "md";
+      default:
+        return "doc";
+    }
+  };
+
+  const conversationFilesFor = (
+    conversation: Conversation | null | undefined
+  ): DataSource[] => {
+    // Conversations without their own messages render a random message set
+    // (see ConversationView), so fall back to the whole pool's citations.
+    const messageSources = conversation?.messages?.length
+      ? [conversation]
+      : conversationsWithMessages;
+    const seen = new Set<string>();
+    const files: DataSource[] = [];
+    for (const source of messageSources) {
+      for (const item of source.messages ?? []) {
+        if (item.kind !== "message") continue;
+        for (const citation of item.citations ?? []) {
+          if (seen.has(citation.id)) continue;
+          seen.add(citation.id);
+          files.push({
+            id: `conv-file-${citation.id}`,
+            kind: "file",
+            fileName: citation.title,
+            parentId: null,
+            source: "pod",
+            fileType: citationFileType(citation.icon),
+            createdBy: item.ownerId,
+            createdAt: item.timestamp,
+            updatedAt: item.timestamp,
+          });
+        }
+      }
+    }
+    return files;
+  };
+
   const p3Label =
     p3View?.kind === "conversation"
       ? (p3Conversation?.title ?? "Conversation")
       : p3View?.kind === "citation"
         ? p3View.citation.title
-        : "Panel 3";
+        : p3View?.kind === "file"
+          ? p3View.dataSource.fileName
+          : p3View?.kind === "files"
+            ? "Files"
+            : p3View?.kind === "credits"
+              ? "Credit usage"
+              : "Panel 3";
+
+  // Sizing: conversations take focus; file previews share the space with the
+  // focus panel — unless the file is a frame, which takes focus itself; the
+  // files/credits lists stay secondary.
+  const previewSizing = (isFrame: boolean) =>
+    isFrame ? ("default" as const) : ("shared" as const);
+
+  const p3SizingType =
+    p3View?.kind === "conversation"
+      ? "default"
+      : p3View?.kind === "citation"
+        ? previewSizing(p3View.citation.icon === "frame")
+        : p3View?.kind === "file"
+          ? previewSizing(p3View.dataSource.fileType === "frame")
+          : "secondary";
+
+  const p4SizingType =
+    p4View?.kind === "citation"
+      ? previewSizing(p4View.citation.icon === "frame")
+      : p4View?.kind === "file"
+        ? previewSizing(p4View.dataSource.fileType === "frame")
+        : "secondary";
 
   const p3Content = (() => {
     if (!p3View) return null;
@@ -1210,46 +1322,105 @@ function Inbox() {
           users={mockUsers}
           agents={mockAgents}
           conversationsWithMessages={conversationsWithMessages}
-          onCitationOpen={(citation) => setP4Citation(citation)}
+          onCitationOpen={(citation) =>
+            setP4View({ kind: "citation", citation })
+          }
         />
       );
-    if (p3View.kind === "citation")
+    if (p3View.kind === "citation") return citationPreview(p3View.citation);
+    if (p3View.kind === "file")
       return (
-        <div className="flex h-full flex-col gap-3 p-4">
-          <p className="text-sm font-medium text-foreground">
-            {p3View.citation.title}
-          </p>
-          <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
-            Document preview placeholder
-          </div>
-        </div>
+        <FilePreviewPanel dataSource={p3View.dataSource} variant="document" />
       );
+    if (p3View.kind === "files")
+      return (
+        <ConversationFilesPanel
+          files={conversationFilesFor(selectedConversation)}
+          // Opening a file replaces the files panel with its preview.
+          onFileOpen={(dataSource) => setP3View({ kind: "file", dataSource })}
+        />
+      );
+    if (p3View.kind === "credits") return <ConversationCreditPanel />;
     return null;
   })();
 
   // ── P4 content ────────────────────────────────────────────────────────────
-  const p4Label = p4Citation?.title ?? "Attachment";
-  const p4Content = p4Citation ? (
-    <div className="flex h-full flex-col gap-3 p-4">
-      <p className="text-sm font-medium text-foreground">{p4Citation.title}</p>
-      <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
-        Document preview placeholder
-      </div>
-    </div>
-  ) : null;
+  const p4Label =
+    p4View?.kind === "citation"
+      ? p4View.citation.title
+      : p4View?.kind === "file"
+        ? p4View.dataSource.fileName
+        : p4View?.kind === "files"
+          ? "Files"
+          : p4View?.kind === "credits"
+            ? "Credit usage"
+            : "Attachment";
+
+  const p4Content = (() => {
+    if (!p4View) return null;
+    if (p4View.kind === "citation") return citationPreview(p4View.citation);
+    if (p4View.kind === "file")
+      return (
+        <FilePreviewPanel dataSource={p4View.dataSource} variant="document" />
+      );
+    if (p4View.kind === "files")
+      return (
+        <ConversationFilesPanel
+          files={conversationFilesFor(p3Conversation)}
+          onFileOpen={(dataSource) => setP4View({ kind: "file", dataSource })}
+        />
+      );
+    if (p4View.kind === "credits") return <ConversationCreditPanel />;
+    return null;
+  })();
 
   // ── Panel top bars ────────────────────────────────────────────────────────
-  const conversationActions = (
-    <>
-      <Button
-        size="sm"
-        variant="ghost-secondary"
-        icon={Attachment01}
-        isSelect
-      />
-      <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
-    </>
-  );
+  // Mirrors front's conversation title actions: credit usage, files, "...".
+  // `target` is the slot the side panel opens into (P3 for a level-1
+  // conversation, P4 for a level-2 one); clicking again toggles it closed.
+  const conversationActionsFor = (target: "p3" | "p4") => {
+    const currentKind = target === "p3" ? p3View?.kind : p4View?.kind;
+    const toggle = (kind: "files" | "credits") => {
+      if (target === "p3") {
+        setP3View(currentKind === kind ? null : { kind });
+        setP4View(null);
+      } else {
+        setP4View(currentKind === kind ? null : { kind });
+      }
+    };
+    return (
+      <>
+        <Button
+          size="sm"
+          variant="ghost-secondary"
+          icon={CoinsStacked01}
+          tooltip="Credit usage"
+          onClick={() => toggle("credits")}
+        />
+        <Button
+          size="sm"
+          variant="ghost-secondary"
+          icon={Folder}
+          tooltip="Files"
+          onClick={() => toggle("files")}
+        />
+        {/* Fake conversation menu — options are listed but do nothing. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent collisionPadding={8}>
+            <DropdownMenuItem label="Rename" icon={Edit04} />
+            <DropdownMenuItem label="Copy link" icon={Link01} />
+            <DropdownMenuItem label="Mute notifications" icon={Bell01} />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem label="Archive" icon={Archive} />
+            <DropdownMenuItem label="Delete" icon={Trash01} variant="warning" />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </>
+    );
+  };
 
   const podTopBarLeft =
     podContext?.variant === "shared" ? (
@@ -1362,13 +1533,13 @@ function Inbox() {
     return (
       <div className="flex items-center gap-2">
         {memberAvatars.length > 0 && (
-          <div className="hidden md:flex md:h-9 md:items-center">
+          <div className="hidden md:flex md:items-center">
             <Avatar.Stack
               avatars={memberAvatars}
               nbVisibleItems={memberAvatars.length}
               orientation="horizontal"
               hasMagnifier={false}
-              size="sm"
+              size="xs"
             />
           </div>
         )}
@@ -1496,40 +1667,20 @@ function Inbox() {
   })();
 
   const p2TopBarRight = (() => {
-    if (p2View.kind === "conversation") return conversationActions;
+    if (p2View.kind === "conversation") return conversationActionsFor("p3");
     if (podContext) return podTopBarRight;
     return null;
   })();
 
-  const p3TopBarLeft = (() => {
-    if (p3View?.kind === "conversation" && p3Conversation)
-      return (
-        <Breadcrumbs
-          items={[{ label: p3Conversation.title }]}
-          size="sm"
-          hasLighterFont
-        />
-      );
-    if (p3View?.kind === "citation")
-      return (
-        <Breadcrumbs
-          items={[{ label: p3View.citation.title }]}
-          size="sm"
-          hasLighterFont
-        />
-      );
-    return null;
-  })();
+  const p3TopBarLeft = p3View ? (
+    <Breadcrumbs items={[{ label: p3Label }]} size="sm" hasLighterFont />
+  ) : null;
 
   const p3TopBarRight =
-    p3View?.kind === "conversation" ? conversationActions : null;
+    p3View?.kind === "conversation" ? conversationActionsFor("p4") : null;
 
-  const p4TopBarLeft = p4Citation ? (
-    <Breadcrumbs
-      items={[{ label: p4Citation.title }]}
-      size="sm"
-      hasLighterFont
-    />
+  const p4TopBarLeft = p4View ? (
+    <Breadcrumbs items={[{ label: p4Label }]} size="sm" hasLighterFont />
   ) : null;
 
   // ── Sidebar (Nav) top bar ─────────────────────────────────────────────────
@@ -1579,7 +1730,7 @@ function Inbox() {
                 onClick={() => {
                   setP2View({ kind: "welcome" });
                   setP3View(null);
-                  setP4Citation(null);
+                  setP4View(null);
                 }}
               />
             </div>
@@ -1687,7 +1838,7 @@ function Inbox() {
                 onClick={() => {
                   setP2View({ kind: "inbox" });
                   setP3View(null);
-                  setP4Citation(null);
+                  setP4View(null);
                 }}
               />
               <NavigationListItem
@@ -1697,7 +1848,7 @@ function Inbox() {
                 onClick={() => {
                   setP2View({ kind: "conversations" });
                   setP3View(null);
-                  setP4Citation(null);
+                  setP4View(null);
                 }}
               />
               <NavigationListItem
@@ -1707,7 +1858,7 @@ function Inbox() {
                 onClick={() => {
                   setP2View({ kind: "automations" });
                   setP3View(null);
-                  setP4Citation(null);
+                  setP4View(null);
                 }}
               />
             </NavigationList>
@@ -1787,7 +1938,7 @@ function Inbox() {
                                       spaceId: space.id,
                                     });
                                     setP3View(null);
-                                    setP4Citation(null);
+                                    setP4View(null);
                                     setPodBrowseSearch("");
                                   }}
                                 >
@@ -1889,7 +2040,7 @@ function Inbox() {
                           conversationId: c.id,
                         });
                         setP3View(null);
-                        setP4Citation(null);
+                        setP4View(null);
                       }}
                     />
                   ))}
@@ -1950,7 +2101,7 @@ function Inbox() {
               e.stopPropagation();
               setP2View({ kind: "profile" });
               setP3View(null);
-              setP4Citation(null);
+              setP4View(null);
             }}
           />
           <DropdownMenuItem
@@ -2020,13 +2171,20 @@ function Inbox() {
           {p2Content}
         </PanelLayoutPanel>
 
-        {/* P3 — Level 2: conversation from space, or citation from P2 conversation */}
+        {/* P3 — Level 2: conversation from space (takes focus), or a side
+            panel from the P2 conversation (citation/files/credits — secondary,
+            leaves focus where it is) */}
         <PanelLayoutPanel
           label={p3Label}
+          sizingType={p3SizingType}
+          // Any file view gets fullscreen, wherever it was opened from.
+          fullscreenEnabled={
+            p3View?.kind === "file" || p3View?.kind === "citation"
+          }
           isOpen={p3View !== null}
           onClose={() => {
             setP3View(null);
-            setP4Citation(null);
+            setP4View(null);
           }}
           topBarLeft={p3TopBarLeft}
           topBarRight={p3TopBarRight}
@@ -2034,11 +2192,15 @@ function Inbox() {
           {p3Content}
         </PanelLayoutPanel>
 
-        {/* P4 — Level 3: citation / attachment */}
+        {/* P4 — Level 3: citation / files / credits */}
         <PanelLayoutPanel
           label={p4Label}
-          isOpen={p4Citation !== null}
-          onClose={() => setP4Citation(null)}
+          sizingType={p4SizingType}
+          fullscreenEnabled={
+            p4View?.kind === "file" || p4View?.kind === "citation"
+          }
+          isOpen={p4View !== null}
+          onClose={() => setP4View(null)}
           topBarLeft={p4TopBarLeft}
         >
           {p4Content}

@@ -1,6 +1,4 @@
 import {
-  ActionFrame,
-  AnimatedText,
   Archive,
   ArrowRight,
   Avatar,
@@ -8,10 +6,8 @@ import {
   ButtonsSwitch,
   ButtonsSwitchList,
   Check,
-  CheckDone01,
   CheckDouble,
   Chip,
-  CloudArrowLeftRight,
   ContentMessage,
   ConversationListItem,
   Dialog,
@@ -33,17 +29,13 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
-  File01,
   File02,
-  Folder,
   Icon,
   Input,
-  List,
   ListGroup,
   ListItemSection,
   MagicWand02,
   MessageChatSquare,
-  Plus,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -53,13 +45,11 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  Table,
   Tabs,
   TabsContent,
   Trash01,
   TypingAnimation,
   Upload01,
-  UploadCloud02,
   Users01,
   XClose,
   Zap,
@@ -81,15 +71,9 @@ import {
 
 import { getAgentById } from "../data/agents";
 import {
-  getDataSourceChildren,
-  getDataSourceIcon,
   getDataSourcesBySpaceId,
-  getDataSourcesInFolderTree,
-  getFolderPath,
-  getItemTypeLabel,
   isDataSourceFolder,
   moveDataSource,
-  sortDataSourcesForDisplay,
 } from "../data/dataSources";
 import {
   enrichMyPodConversationParticipants,
@@ -105,7 +89,6 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
-import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import {
   PodCustomizationSection,
   type PodTabCustomizationItem,
@@ -113,6 +96,7 @@ import {
 import { EmptyState } from "./EmptyState";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
+import { FilesBrowser } from "./FilesBrowser";
 import { FrameSheetHeader } from "./FrameSheetHeader";
 import {
   DATA_SOURCE_FILE_DRAG_MIME,
@@ -144,6 +128,8 @@ interface GroupConversationViewProps {
   onTabChange?: (tab: string) => void;
   dynamicFileTabIds?: string[];
   onAddFileToTopbar?: (fileId: string) => void;
+  /** When set, opening a file calls this instead of the built-in sheet. */
+  onFileOpen?: (dataSource: DataSource) => void;
   onFileDragChange?: (fileId: string | null, fileName?: string | null) => void;
   fileToRevealInKnowledge?: string | null;
   onFileToRevealInKnowledgeHandled?: () => void;
@@ -1245,7 +1231,7 @@ function GroupConversationTabContent({
   if (topBox) {
     return (
       <TabsContent value={value}>
-        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-4">
           <div
             className={cn(
               "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
@@ -1326,6 +1312,7 @@ export function GroupConversationView({
   onTabChange,
   dynamicFileTabIds = [],
   onAddFileToTopbar,
+  onFileOpen,
   onFileDragChange,
   fileToRevealInKnowledge = null,
   onFileToRevealInKnowledgeHandled,
@@ -1339,31 +1326,6 @@ export function GroupConversationView({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hideTriggeredConversations, setHideTriggeredConversations] =
     useState(false);
-  // Shared "Create" CTA for the Files tab so the empty state and the populated
-  // toolbar expose the exact same button and menu.
-  const renderCreateFilesMenu = () => (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="primary" icon={Plus} label="Create" isSelect />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuItem icon={File01} label="Doc" onClick={() => {}} />
-        <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
-        <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
-        <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
-        <DropdownMenuItem
-          icon={UploadCloud02}
-          label="Upload File"
-          onClick={() => {}}
-        />
-        <DropdownMenuItem
-          icon={CloudArrowLeftRight}
-          label="From Company data"
-          onClick={() => {}}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
   const [selectedConversationRow, setSelectedConversationRow] = useState<{
     rowId: string;
     conversationId: string;
@@ -1479,15 +1441,7 @@ export function GroupConversationView({
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
     getDataSourcesBySpaceId(space.id)
   );
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedDataSourceId, setSelectedDataSourceId] = useState<
-    string | null
-  >(null);
   const [knowledgeSearchText, setKnowledgeSearchText] = useState("");
-  const [filesViewMode, setFilesViewMode] = useState<"list" | "grid">("list");
-  const [filesSearchScope, setFilesSearchScope] = useState<"folder" | "all">(
-    "folder"
-  );
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [revealedFileIdInKnowledge, setRevealedFileIdInKnowledge] = useState<
     string | null
@@ -1668,6 +1622,8 @@ export function GroupConversationView({
         setCurrentFolderId(item.dataSource.id);
         setKnowledgeSearchText("");
         setRevealedFileIdInKnowledge(null);
+      } else if (onFileOpen) {
+        onFileOpen(item.dataSource);
       } else {
         setSelectedDataSource(item.dataSource);
         setIsDocumentSheetOpen(true);
@@ -2277,7 +2233,6 @@ export function GroupConversationView({
     setRevealedFileIdInKnowledge(null);
     setDraggingFileId(null);
     setDropHoverTargetId(null);
-    setFilesSearchScope("folder");
   }, [space.id]);
 
   useEffect(() => {
@@ -2296,7 +2251,6 @@ export function GroupConversationView({
     setActiveTab("knowledge");
     setCurrentFolderId(file.parentId);
     setKnowledgeSearchText("");
-    setFilesSearchScope("folder");
     setRevealedFileIdInKnowledge(file.id);
     onFileToRevealInKnowledgeHandled?.();
   }, [
@@ -2305,20 +2259,6 @@ export function GroupConversationView({
     onFileToRevealInKnowledgeHandled,
     setActiveTab,
   ]);
-
-  useEffect(() => {
-    setFilesSearchScope("folder");
-  }, [currentFolderId]);
-
-  const isKnowledgeSearchActive = knowledgeSearchText.trim().length > 0;
-
-  const currentFolder = useMemo(
-    () =>
-      currentFolderId
-        ? dataSources.find((item) => item.id === currentFolderId)
-        : undefined,
-    [currentFolderId, dataSources]
-  );
 
   const handleFileDragEnd = useCallback(() => {
     setDraggingFileId(null);
@@ -2405,155 +2345,6 @@ export function GroupConversationView({
     },
     [dataSources, draggingFileId, handleFileDragEnd, handleMoveFile]
   );
-
-  const visibleItems = useMemo(
-    () =>
-      sortDataSourcesForDisplay(
-        getDataSourceChildren(dataSources, currentFolderId)
-      ),
-    [dataSources, currentFolderId]
-  );
-
-  const folderBreadcrumbItems = useMemo((): BreadcrumbsItem[] => {
-    const path = getFolderPath(dataSources, currentFolderId);
-    const isDragActive = draggingFileId !== null;
-
-    const getDropProps = (
-      targetId: string,
-      targetParentId: string | null
-    ): Pick<
-      BreadcrumbsItem,
-      "isPulsing" | "isDropHighlight" | "onDragOver" | "onDragLeave" | "onDrop"
-    > => ({
-      isPulsing: isDragActive,
-      isDropHighlight: dropHoverTargetId === targetId,
-      onDragOver: (event) => handleDragOverTarget(targetId, event),
-      onDragLeave: (event) => {
-        event.preventDefault();
-      },
-      onDrop: (event) => handleDropOnTarget(targetId, targetParentId, event),
-    });
-
-    const items: BreadcrumbsItem[] = [
-      currentFolderId === null
-        ? { label: "Files", icon: Folder }
-        : {
-            label: "Files",
-            icon: Folder,
-            onClick: () => {
-              setCurrentFolderId(null);
-              setKnowledgeSearchText("");
-              setRevealedFileIdInKnowledge(null);
-            },
-            ...getDropProps("root", null),
-          },
-    ];
-
-    path.forEach((folder, index) => {
-      const isLast = index === path.length - 1;
-      if (isLast) {
-        items.push({ label: folder.fileName, icon: Folder });
-        return;
-      }
-
-      items.push({
-        label: folder.fileName,
-        icon: Folder,
-        onClick: () => {
-          setCurrentFolderId(folder.id);
-          setRevealedFileIdInKnowledge(null);
-        },
-        ...getDropProps(folder.id, folder.id),
-      });
-    });
-
-    return items;
-  }, [
-    currentFolderId,
-    dataSources,
-    draggingFileId,
-    dropHoverTargetId,
-    handleDragOverTarget,
-    handleDropOnTarget,
-  ]);
-
-  const tableItems = useMemo(() => {
-    const searchLower = knowledgeSearchText.trim().toLowerCase();
-    const searchSource =
-      searchLower && filesSearchScope === "folder" && currentFolderId
-        ? getDataSourcesInFolderTree(dataSources, currentFolderId)
-        : dataSources;
-
-    const base = searchLower
-      ? sortDataSourcesForDisplay(
-          searchSource.filter((dataSource) =>
-            dataSource.fileName.toLowerCase().includes(searchLower)
-          )
-        )
-      : visibleItems;
-
-    return base.map((dataSource) => {
-      const item = {
-        ...dataSource,
-        onClick: () => {
-          if (isDataSourceFolder(dataSource)) {
-            setCurrentFolderId(dataSource.id);
-            setKnowledgeSearchText("");
-            setRevealedFileIdInKnowledge(null);
-            return;
-          }
-
-          setSelectedDataSource(dataSource);
-          setIsDocumentSheetOpen(true);
-          setRevealedFileIdInKnowledge(null);
-        },
-      };
-
-      if (isKnowledgeSearchActive) {
-        return item;
-      }
-
-      if (isDataSourceFolder(dataSource)) {
-        return {
-          ...item,
-          onDragOver: (event: DragEvent<HTMLTableRowElement>) =>
-            handleDragOverTarget(dataSource.id, event),
-          onDragLeave: (event: DragEvent<HTMLTableRowElement>) => {
-            event.preventDefault();
-          },
-          onDrop: (event: DragEvent<HTMLTableRowElement>) =>
-            handleDropOnTarget(dataSource.id, dataSource.id, event),
-          isDropHighlight: dropHoverTargetId === dataSource.id,
-        };
-      }
-
-      return {
-        ...item,
-        draggable: true,
-        onDragStart: (event: DragEvent<HTMLTableRowElement>) =>
-          handleFileDragStart(dataSource.id, dataSource.fileName, event),
-        onDragEnd: handleFileDragEnd,
-        isDragging: draggingFileId === dataSource.id,
-        isDropHighlight:
-          dropHoverTargetId === dataSource.id ||
-          revealedFileIdInKnowledge === dataSource.id,
-      };
-    });
-  }, [
-    dataSources,
-    draggingFileId,
-    dropHoverTargetId,
-    handleDragOverTarget,
-    handleDropOnTarget,
-    handleFileDragEnd,
-    handleFileDragStart,
-    isKnowledgeSearchActive,
-    knowledgeSearchText,
-    filesSearchScope,
-    currentFolderId,
-    visibleItems,
-    revealedFileIdInKnowledge,
-  ]);
 
   // Transform spaceMemberIds into Member objects with joinedAt dates
   const members: Member[] = useMemo(() => {
@@ -3256,17 +3047,6 @@ export function GroupConversationView({
     };
   }, [checkedSummaryItems, handleCleanTodoItems]);
 
-  // Handle delete confirmation
-  const handleDeleteConfirm = () => {
-    if (selectedDataSourceId) {
-      setDataSources((prev) =>
-        prev.filter((ds) => ds.id !== selectedDataSourceId)
-      );
-      setSelectedDataSourceId(null);
-    }
-    setDeleteDialogOpen(false);
-  };
-
   // Handle remove member confirmation
   const handleRemoveMemberConfirm = () => {
     if (selectedMemberIdToRemove) {
@@ -3294,153 +3074,6 @@ export function GroupConversationView({
       year: "numeric",
     });
   };
-
-  // Create table columns
-  const columns: ColumnDef<DataSource & { onClick?: () => void }>[] = useMemo(
-    () => [
-      {
-        accessorKey: "fileName",
-        header: "File name",
-        id: "fileName",
-        sortingFn: (rowA, rowB) => {
-          const a = rowA.original;
-          const b = rowB.original;
-          if (a.kind !== b.kind) {
-            return a.kind === "folder" ? -1 : 1;
-          }
-          return a.fileName.localeCompare(b.fileName);
-        },
-        meta: {
-          className: "w-full",
-        },
-        cell: (info) => {
-          const icon = getDataSourceIcon(info.row.original);
-          return (
-            <DataTable.CellContent>
-              <div className="flex items-center gap-2">
-                {icon && <Icon visual={icon} size="sm" />}
-                <span>{info.getValue() as string}</span>
-              </div>
-            </DataTable.CellContent>
-          );
-        },
-      },
-      {
-        accessorKey: "source",
-        header: "Source",
-        id: "source",
-        meta: {
-          className: "w-[84px]",
-        },
-        cell: (info) => {
-          const source = info.getValue() as DataSource["source"];
-          if (source !== "company") {
-            return <DataTable.BasicCellContent label="" />;
-          }
-
-          return (
-            <DataTable.CellContent>
-              <Icon
-                visual={CloudArrowLeftRight}
-                size="sm"
-                className="text-muted-foreground"
-              />
-            </DataTable.CellContent>
-          );
-        },
-      },
-      {
-        accessorKey: "fileType",
-        header: "Type",
-        id: "fileType",
-        sortingFn: (rowA, rowB) =>
-          getItemTypeLabel(rowA.original).localeCompare(
-            getItemTypeLabel(rowB.original)
-          ),
-        meta: {
-          className: "w-[84px]",
-        },
-        cell: (info) => (
-          <DataTable.BasicCellContent
-            label={getItemTypeLabel(info.row.original)}
-          />
-        ),
-      },
-      {
-        accessorKey: "createdBy",
-        header: "Created by",
-        id: "createdBy",
-        meta: {
-          className: "w-[140px]",
-        },
-        cell: (info) => {
-          const userId = info.getValue() as string;
-          const user = getUserById(userId);
-          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
-          return (
-            <DataTable.CellContent>
-              <div className="flex items-center gap-2">
-                <Avatar
-                  name={user.fullName}
-                  visual={user.portrait}
-                  size="xs"
-                  isRounded={true}
-                />
-                <span className="text-sm">{user.fullName}</span>
-              </div>
-            </DataTable.CellContent>
-          );
-        },
-      },
-      {
-        accessorKey: "updatedAt",
-        header: "Last Updated",
-        id: "lastUpdated",
-        meta: {
-          className: "w-[100px]",
-        },
-        cell: (info) => {
-          const date = info.getValue() as Date;
-          return <DataTable.BasicCellContent label={formatDate(date)} />;
-        },
-      },
-      {
-        id: "actions",
-        header: "",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info) => {
-          const dataSource = info.row.original;
-          const menuItems = [
-            ...(onAddFileToTopbar && dataSource.kind === "file"
-              ? [
-                  {
-                    kind: "item" as const,
-                    label: "Add to Topbar",
-                    icon: File02,
-                    onClick: () => onAddFileToTopbar(dataSource.id),
-                  },
-                ]
-              : []),
-            {
-              kind: "item" as const,
-              label: "Delete",
-              icon: Trash01,
-              variant: "warning" as const,
-              onClick: () => {
-                setSelectedDataSourceId(dataSource.id);
-                setDeleteDialogOpen(true);
-              },
-            },
-          ];
-
-          return <DataTable.MoreButton menuItems={menuItems} />;
-        },
-      },
-    ],
-    [onAddFileToTopbar]
-  );
 
   // Create member table columns
   const memberColumns: ColumnDef<Member>[] = useMemo(
@@ -3571,6 +3204,11 @@ export function GroupConversationView({
     });
   }, [members, membersSearchText]);
   const isShowingTodoSuggestions = todoSuggestionStatus !== "idle";
+  const showMineGroupAll =
+    !hideConversationFilters &&
+    (podVariant === "personal" || spaceMemberIds.length > 1);
+  const showTriggeredToggle =
+    !hideConversationFilters && podVariant !== "personal";
 
   return (
     <div className="flex h-full w-full h-full flex-col bg-background">
@@ -3604,85 +3242,92 @@ export function GroupConversationView({
             />
           )}
           {hasHistory && (
-            <div className="flex flex-row items-center justify-between gap-3">
-              {!hideConversationFilters &&
-                (podVariant === "personal" || spaceMemberIds.length > 1) && (
-                  <ButtonsSwitchList
-                    defaultValue={goodToKnowFilter}
-                    onValueChange={(value) => {
-                      if (
-                        value === "all" ||
-                        value === "shared" ||
-                        value === "mine"
-                      ) {
-                        setGoodToKnowFilter(value);
+            <div className="flex w-full flex-wrap items-center gap-2">
+              {(showMineGroupAll || showTriggeredToggle) && (
+                <div className="flex flex-none flex-nowrap items-center gap-2">
+                  {showMineGroupAll && (
+                    <ButtonsSwitchList
+                      defaultValue={goodToKnowFilter}
+                      onValueChange={(value) => {
+                        if (
+                          value === "all" ||
+                          value === "shared" ||
+                          value === "mine"
+                        ) {
+                          setGoodToKnowFilter(value);
+                        }
+                      }}
+                    >
+                      <ButtonsSwitch
+                        value="mine"
+                        label="Mine"
+                        tooltip="Conversations where you have sent a message."
+                      />
+                      <ButtonsSwitch
+                        value="shared"
+                        label="Group"
+                        tooltip="Conversations with more than one person"
+                      />
+                      <ButtonsSwitch
+                        value="all"
+                        label="All"
+                        tooltip="Every conversation in this Pod."
+                      />
+                    </ButtonsSwitchList>
+                  )}
+                  {showTriggeredToggle && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      icon={hideTriggeredConversations ? ZapOff : Zap}
+                      tooltip={
+                        hideTriggeredConversations
+                          ? "Show triggered"
+                          : "Hide triggered"
+                      }
+                      className="shrink-0"
+                      onClick={() =>
+                        setHideTriggeredConversations((current) => !current)
+                      }
+                    />
+                  )}
+                </div>
+              )}
+              <div className="flex min-w-[20rem] flex-1 items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <SearchInputWithPopover
+                    name="conversation-search"
+                    value={searchText}
+                    onChange={(value) => {
+                      setSearchText(value);
+                      if (!value.trim()) {
+                        setIsSearchOpen(false);
                       }
                     }}
-                  >
-                    <ButtonsSwitch
-                      value="mine"
-                      label="Mine"
-                      tooltip="Conversations where you have sent a message."
-                    />
-                    <ButtonsSwitch
-                      value="shared"
-                      label="Group"
-                      tooltip="Conversations with more than one person"
-                    />
-                    <ButtonsSwitch
-                      value="all"
-                      label="All"
-                      tooltip="Every conversation in this Pod."
-                    />
-                  </ButtonsSwitchList>
-                )}
-              {!hideConversationFilters && podVariant !== "personal" && (
+                    open={isSearchOpen}
+                    onOpenChange={setIsSearchOpen}
+                    placeholder="Search..."
+                    items={searchResults}
+                    availableHeight
+                    noResults={
+                      searchText.trim()
+                        ? "No results found"
+                        : "Start typing to search"
+                    }
+                    onItemSelect={handleSearchItemSelect}
+                    renderItem={(item, selected) => (
+                      <SearchResultItem item={item} selected={selected} />
+                    )}
+                  />
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  icon={hideTriggeredConversations ? ZapOff : Zap}
-                  tooltip={
-                    hideTriggeredConversations
-                      ? "Show triggered"
-                      : "Hide triggered"
-                  }
+                  icon={CheckDouble}
+                  label="Mark all as read"
                   className="shrink-0"
-                  onClick={() =>
-                    setHideTriggeredConversations((current) => !current)
-                  }
                 />
-              )}
-              <SearchInputWithPopover
-                name="conversation-search"
-                value={searchText}
-                onChange={(value) => {
-                  setSearchText(value);
-                  if (!value.trim()) {
-                    setIsSearchOpen(false);
-                  }
-                }}
-                open={isSearchOpen}
-                onOpenChange={setIsSearchOpen}
-                placeholder="Search..."
-                items={searchResults}
-                availableHeight
-                noResults={
-                  searchText.trim()
-                    ? "No results found"
-                    : "Start typing to search"
-                }
-                onItemSelect={handleSearchItemSelect}
-                renderItem={(item, selected) => (
-                  <SearchResultItem item={item} selected={selected} />
-                )}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                icon={CheckDouble}
-                label="Mark all as read"
-                className="shrink-0"
-              />
+              </div>
             </div>
           )}
           {visibleConversations.length > 0 && (
@@ -4206,109 +3851,37 @@ export function GroupConversationView({
         </GroupConversationTabContent>
 
         {/* Files Tab */}
-        <GroupConversationTabContent
-          value="knowledge"
-          contentClassName="gap-3"
-          topBox={
-            dataSources.length > 0 ? (
-              <SearchInput
-                name="knowledge-search"
-                value={knowledgeSearchText}
-                onChange={setKnowledgeSearchText}
-                placeholder="Search files..."
-                className="w-full max-w-xl"
-              />
-            ) : undefined
-          }
-        >
-          {dataSources.length === 0 ? (
-            <EmptyCTA
-              message="No files in this room yet."
-              action={renderCreateFilesMenu()}
-            />
-          ) : (
-            <>
-              <div className="flex items-center justify-between gap-2">
-                {renderCreateFilesMenu()}
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      icon={filesViewMode === "list" ? CheckDone01 : List}
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuRadioGroup
-                      value={filesViewMode}
-                      onValueChange={(value) => {
-                        if (value === "list" || value === "grid") {
-                          setFilesViewMode(value);
-                        }
-                      }}
-                    >
-                      <DropdownMenuRadioItem
-                        value="list"
-                        label="List"
-                        icon={CheckDone01}
-                      />
-                      <DropdownMenuRadioItem
-                        value="grid"
-                        label="Grid"
-                        icon={List}
-                      />
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {!isKnowledgeSearchActive && currentFolderId !== null && (
-                <div className="flex items-center gap-2">
-                  {draggingFileId !== null && (
-                    <AnimatedText variant="muted" className="text-sm italic">
-                      Move to
-                    </AnimatedText>
-                  )}
-                  <Breadcrumbs
-                    items={folderBreadcrumbItems}
-                    size="sm"
-                    hasLighterFont
-                  />
-                </div>
-              )}
-              {isKnowledgeSearchActive && currentFolderId !== null && (
-                <ButtonsSwitchList
-                  key={currentFolderId}
-                  defaultValue={filesSearchScope}
-                  size="xs"
-                  className="w-fit self-start"
-                  onValueChange={(value) => {
-                    if (value === "folder" || value === "all") {
-                      setFilesSearchScope(value);
-                    }
-                  }}
-                >
-                  <ButtonsSwitch
-                    value="folder"
-                    label={`In ${currentFolder?.fileName ?? "folder"}`}
-                  />
-                  <ButtonsSwitch value="all" label="All files" />
-                </ButtonsSwitchList>
-              )}
-              {tableItems.length === 0 && !isKnowledgeSearchActive ? (
-                <div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border bg-muted-background p-12">
-                  <p className="text-center text-sm text-muted-foreground">
-                    This folder is empty.
-                  </p>
-                </div>
-              ) : (
-                <DataTable
-                  columns={columns}
-                  data={tableItems}
-                  sorting={[{ id: "fileName", desc: false }]}
-                />
-              )}
-            </>
-          )}
+        <GroupConversationTabContent value="knowledge" contentClassName="gap-3">
+          <FilesBrowser
+            dataSources={dataSources}
+            searchText={knowledgeSearchText}
+            onSearchTextChange={setKnowledgeSearchText}
+            currentFolderId={currentFolderId}
+            onCurrentFolderIdChange={setCurrentFolderId}
+            revealedFileId={revealedFileIdInKnowledge}
+            onClearRevealedFile={() => setRevealedFileIdInKnowledge(null)}
+            emptyMessage="No files in this room yet."
+            onAddFileToTopbar={onAddFileToTopbar}
+            onFileOpen={(dataSource) => {
+              if (onFileOpen) {
+                onFileOpen(dataSource);
+              } else {
+                setSelectedDataSource(dataSource);
+                setIsDocumentSheetOpen(true);
+              }
+            }}
+            onDeleteFile={(fileId) =>
+              setDataSources((prev) => prev.filter((ds) => ds.id !== fileId))
+            }
+            dnd={{
+              draggingFileId,
+              dropHoverTargetId,
+              onDragOverTarget: handleDragOverTarget,
+              onDropOnTarget: handleDropOnTarget,
+              onFileDragStart: handleFileDragStart,
+              onFileDragEnd: handleFileDragEnd,
+            }}
+          />
         </GroupConversationTabContent>
 
         {dynamicFileTabIds.map((dataSourceId) => {
@@ -4712,48 +4285,6 @@ export function GroupConversationView({
               label: "Confirm",
               variant: "warning",
               onClick: handlePublicToggleConfirm,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete DataSource Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setDeleteDialogOpen(false);
-            setSelectedDataSourceId(null);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Delete file?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            {selectedDataSourceId && (
-              <div>
-                Are you sure you want to delete "
-                {dataSources.find((ds) => ds.id === selectedDataSourceId)
-                  ?.fileName || "this file"}
-                "? This action cannot be undone.
-              </div>
-            )}
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setDeleteDialogOpen(false);
-                setSelectedDataSourceId(null);
-              },
-            }}
-            rightButtonProps={{
-              label: "Delete",
-              variant: "warning",
-              onClick: handleDeleteConfirm,
             }}
           />
         </DialogContent>

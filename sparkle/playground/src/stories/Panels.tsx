@@ -98,6 +98,7 @@ export default function Panels() {
 
       <PanelLayoutPanel
         label={selectedFrame ?? "Co-edition"}
+        sizingType="shared"
         isOpen={p4Open}
         onClose={closeP4}
       />

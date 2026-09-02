@@ -3,7 +3,9 @@ import {
   Button,
   LayoutLeft,
   LayoutRight,
+  Maximize01,
   Menu01,
+  Minimize01,
   XClose,
 } from "@dust-tt/sparkle";
 import { customColors } from "@dust-tt/sparkle/lib/colors";
@@ -16,39 +18,30 @@ import {
   useState,
   type ReactElement,
   type ReactNode,
-  type UIEvent,
 } from "react";
+
+import { allocateFocusPanels, applySplitDrag } from "./panelAllocate";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MOBILE_BREAKPOINT = 768;
-const WIDE_BREAKPOINT = 1800;
-const COMFORTABLE_PANEL = 520;
 const MIN_NAV = 160,
   MAX_NAV = 320;
-const MIN_P2 = 260,
-  MAX_P2 = 960;
-const MIN_P3 = 260,
-  MAX_P3 = 1200;
-const MIN_P4 = 260;
-const MIN_MAIN = 320;
-const P3_OPEN_HIDE_NAV_BELOW = 1280;
+const PANEL_MINIMAL = 384; // --breakpoint-xxs — hard floor for any panel
+const PANEL_COMPACT = 512; // --breakpoint-xs — width of non-focus panels
+// Panel-count caps by stage width. Principle: a column count unlocks only
+// when every panel can sit at ≥ compact width, and the sidebar joins only
+// when it fits on top of that — between the two thresholds the layout shows
+// the panels with the nav hidden. Under 14" (NAV_AUTOHIDE_BELOW, a
+// device-anchored choice) the nav also yields as soon as a second panel
+// opens. Never more than four panels.
+const NAV_AUTOHIDE_BELOW = 1512;
+const THREE_PANELS_FROM = 1600;
+const NAV_WITH_THREE_PANELS_FROM = 1900;
+const FOUR_PANELS_FROM = 2100;
+const NAV_WITH_FOUR_PANELS_FROM = 2400;
 const NAV_CARD_GAP = 6;
 const SPLIT_HANDLE = 1;
-const CARD_EDGES = 2;
-
-function lockHorizontalScroll(e: UIEvent<HTMLElement>) {
-  if (e.currentTarget.scrollLeft !== 0) {
-    e.currentTarget.scrollLeft = 0;
-  }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  if (max < min) {
-    return min;
-  }
-  return Math.max(min, Math.min(max, value));
-}
 
 // ── Drag-resize factory ───────────────────────────────────────────────────────
 
@@ -95,24 +88,19 @@ interface PanelTopBarProps {
   right?: ReactNode;
   /** When false, the bottom border fades out (used until content scrolls). */
   hasBorder?: boolean;
-  /** Extra horizontal inset so titles clear the rounded card’s 12px corner. */
-  inCard?: boolean;
 }
 
 export function PanelTopBar({
   left,
   right,
   hasBorder = true,
-  inCard = false,
 }: PanelTopBarProps) {
   return (
     <header
       className={[
-        "group/topbar flex h-[52px] flex-none items-center justify-between gap-2 overflow-x-clip whitespace-nowrap border-b transition-colors duration-200",
-        inCard ? "px-4" : "px-2",
+        "group/topbar flex h-[52px] flex-none items-center justify-between gap-2 overflow-x-clip whitespace-nowrap border-b transition-colors duration-200 px-2",
         hasBorder ? "border-separator" : "border-transparent",
       ].join(" ")}
-      onScroll={lockHorizontalScroll}
     >
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         {left}
@@ -202,7 +190,6 @@ function PanelSection({
           : "transition-[width] duration-[260ms] ease-[cubic-bezier(.4,0,.2,1)]",
       ].join(" ")}
       style={{ width }}
-      onScroll={lockHorizontalScroll}
       {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
     >
       {cloneElement(topBar, { hasBorder: isScrolled })}
@@ -276,12 +263,32 @@ PanelLayoutNav.displayName = "PanelLayoutNav";
 
 // ── PanelLayoutPanel ──────────────────────────────────────────────────────────
 
+export type PanelSizingType = "default" | "secondary" | "shared";
+
 export interface PanelLayoutPanelProps {
   label: string;
   /** Controlled: whether this panel is open. P2 (index 0) is always open. */
   isOpen: boolean;
   /** Called when the panel's close button / back button is triggered. */
   onClose: () => void;
+  /**
+   * default — takes focus when it enters; the focus panel gets the remaining
+   * space while every other panel sits at its compact width.
+   * secondary — never takes focus, always sits at its compact width.
+   * shared — never takes focus, but splits the remaining space 50/50 with it.
+   */
+  sizingType?: PanelSizingType;
+  /** Hard floor: manual resize and the shrink cascade never go below this. */
+  minimalWidth?: number;
+  /** Width the panel holds when it is not the focus panel. */
+  compactWidth?: number;
+  /**
+   * Shows a fullscreen toggle (left of the close button). Fullscreen gives
+   * the panel the whole card and hides the navigation; it exits when toggled
+   * again, when the panel closes or its content stops being fullscreen-able,
+   * or when any panel enters or leaves.
+   */
+  fullscreenEnabled?: boolean;
   topBarLeft?: ReactNode;
   topBarRight?: ReactNode;
   children?: ReactNode;
@@ -320,48 +327,142 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   const p3Open = !!p3?.props.isOpen;
   const p4Open = !!p4?.props.isOpen;
 
+  // Per-panel meta, indexed [P2, P3, P4].
+  const panelEls = [p2, p3, p4];
+  const panelOpen = [!!p2, !!p3 && p3Open, !!p4 && p4Open];
+  const sizingTypes = panelEls.map((p) => p?.props.sizingType ?? "default");
+  const minimalWidths = panelEls.map(
+    (p) => p?.props.minimalWidth ?? PANEL_MINIMAL
+  );
+  const compactWidths = panelEls.map(
+    (p) => p?.props.compactWidth ?? PANEL_COMPACT
+  );
+
   // ── Internal geometry state ─────────────────────────────────────────────
   const [navW, setNavW] = useState(312);
-  const [p2W, setP2W] = useState<number | null>(null);
-  const [p3W, setP3W] = useState<number | null>(null);
+  /** Live left-panel width while a split handle is being dragged. */
+  const [dragLeftW, setDragLeftW] = useState(0);
+  const [dragHandle, setDragHandle] = useState<"p2-p3" | "p3-p4" | null>(null);
+  const [dragFreeze, setDragFreeze] = useState<{
+    p2: number;
+    p3: number;
+    p4: number;
+  } | null>(null);
+  /** Session-only manual widths from splitter drags, cleared whenever the
+   *  visible panel set or focus changes (a new panel resets everyone). */
+  const [manualWidths, setManualWidths] = useState<(number | null)[]>([
+    null,
+    null,
+    null,
+  ]);
+
+  // ── Focus panel ─────────────────────────────────────────────────────────
+  // Focus = last entered "default"-type panel. Secondary and shared panels
+  // never take focus. When the focus panel closes, focus returns to the
+  // nearest upper (lower-index) open default panel.
+  const [focusIdx, setFocusIdx] = useState(0);
+
+  const prevOpenRef = useRef(panelOpen);
+  const prevTypesRef = useRef(sizingTypes);
+  if (
+    prevOpenRef.current.some((wasOpen, i) => wasOpen !== panelOpen[i]) ||
+    prevTypesRef.current.some((type, i) => type !== sizingTypes[i])
+  ) {
+    const prev = prevOpenRef.current;
+    const prevTypes = prevTypesRef.current;
+    let next: number | null = null;
+    for (let i = 0; i < panelOpen.length; i++) {
+      // A panel "enters" as default when it opens as default, or when its
+      // content swaps from a secondary kind to a default one while open.
+      const becameDefault =
+        prevTypes[i] !== "default" && sizingTypes[i] === "default";
+      if (
+        panelOpen[i] &&
+        sizingTypes[i] === "default" &&
+        (!prev[i] || becameDefault)
+      ) {
+        next = i; // deepest newly-entered default panel wins
+      }
+    }
+    // The focus panel relinquishes focus when it closes, or when its content
+    // is replaced by a secondary/shared kind while open — both fall back to
+    // the nearest upper open default panel.
+    const focusLost =
+      !panelOpen[focusIdx] || sizingTypes[focusIdx] !== "default";
+    if (next === null && focusLost) {
+      for (let i = focusIdx - 1; i >= 0; i--) {
+        if (panelOpen[i] && sizingTypes[i] === "default") {
+          next = i;
+          break;
+        }
+      }
+    }
+    if (next !== null && next !== focusIdx) {
+      const value = next;
+      Promise.resolve().then(() => setFocusIdx(value));
+    }
+    prevOpenRef.current = panelOpen;
+    prevTypesRef.current = sizingTypes;
+  }
+
+  // The state can lag the props by one microtask — derive the effective focus.
+  const effectiveFocus = (() => {
+    if (panelOpen[focusIdx] && sizingTypes[focusIdx] === "default") {
+      return focusIdx;
+    }
+    for (let i = focusIdx - 1; i >= 0; i--) {
+      if (panelOpen[i] && sizingTypes[i] === "default") {
+        return i;
+      }
+    }
+    for (let i = panelOpen.length - 1; i >= 0; i--) {
+      if (panelOpen[i] && sizingTypes[i] === "default") {
+        return i;
+      }
+    }
+    for (let i = panelOpen.length - 1; i >= 0; i--) {
+      if (panelOpen[i]) {
+        return i;
+      }
+    }
+    return 0;
+  })();
+
+  const focusRef = useRef(effectiveFocus);
+  focusRef.current = effectiveFocus;
 
   const [navIntent, setNavIntent] = useState(true);
   const [navOverlay, setNavOverlay] = useState(false);
   const [navPeek, setNavPeek] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [stageW, setStageW] = useState(0);
+  const [cardW, setCardW] = useState(0);
   const [dragging, setDragging] = useState(false);
 
   useLayoutEffect(() => {
-    let last = -1;
-    let timer = 0;
+    const stage = stageRef.current;
+    if (!stage) {
+      return;
+    }
     const measure = () => {
-      if (!stageRef.current) return;
-      const w = stageRef.current.getBoundingClientRect().width;
-      if (Math.abs(w - last) > 0.5) {
-        last = w;
-        setStageW(w);
-        // Seed proportional defaults on first valid measure
-        setP2W((prev) => prev ?? Math.max(MIN_P2, Math.round(w * 0.3)));
-        setP3W((prev) => prev ?? Math.max(MIN_P3, Math.round(w * 0.5)));
-        setDragging(true);
-        clearTimeout(timer);
-        timer = window.setTimeout(() => setDragging(false), 80);
+      setStageW(stage.getBoundingClientRect().width);
+      const card = cardRef.current;
+      if (card) {
+        setCardW(card.clientWidth);
       }
     };
     measure();
-    const id = setInterval(measure, 60);
-    window.addEventListener("resize", measure);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("resize", measure);
-      clearTimeout(timer);
-    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+    return () => observer.disconnect();
   }, []);
 
   const isMobile = stageW > 0 && stageW < MOBILE_BREAKPOINT;
-  const isWide = stageW >= WIDE_BREAKPOINT;
 
   // Restore nav when transitioning from mobile to desktop
   const prevIsMobile = useRef(isMobile);
@@ -370,19 +471,90 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     prevIsMobile.current = isMobile;
   }
 
-  // ── Derived visibility ──────────────────────────────────────────────────
-  // Standard (14" laptop): hide nav when P3 is open below 1280, and whenever
-  // P4 is open. Wide: keep nav inline whenever the user wants it.
-  const spaceTight =
-    stageW > 0
-      ? p3Open
-        ? stageW < P3_OPEN_HIDE_NAV_BELOW
-        : navW + MIN_MAIN > stageW
-      : false;
+  // ── Visible panels ──────────────────────────────────────────────────────
+  // Count cap by stage width; beyond it, upper-most non-focus panels hide
+  // (the focus panel always stays visible).
+  const maxPanels =
+    stageW === 0 || stageW >= FOUR_PANELS_FROM
+      ? 4
+      : stageW >= THREE_PANELS_FROM
+        ? 3
+        : 2;
 
-  const showNavInline =
-    navIntent && !isMobile && (isWide || (!spaceTight && !p4Open));
+  const openCount = panelOpen.filter(Boolean).length;
+  let visible = [0, 1, 2].filter((i) => panelOpen[i]);
+  while (visible.length > maxPanels) {
+    const evict = visible.find((i) => i !== effectiveFocus);
+    if (evict === undefined) {
+      break;
+    }
+    visible = visible.filter((i) => i !== evict);
+  }
+  const panelEvicted = visible.length < openCount;
+
+  // ── Fullscreen ────────────────────────────────────────────────────────────
+  // One panel can take the whole card (nav hidden, other panels at width 0).
+  // Purely presentational: focus, sizing and manual widths are untouched, so
+  // exiting restores the exact previous layout.
+  const fullscreenFlags = panelEls.map((p) => !!p?.props.fullscreenEnabled);
+  const [fullscreenIdx, setFullscreenIdx] = useState<number | null>(null);
+  const effectiveFullscreen =
+    fullscreenIdx !== null &&
+    !isMobile &&
+    visible.includes(fullscreenIdx) &&
+    fullscreenFlags[fullscreenIdx]
+      ? fullscreenIdx
+      : null;
+
+  const minWidthOf = (indices: number[]) =>
+    indices.reduce((sum, i) => sum + minimalWidths[i], 0) +
+    Math.max(0, indices.length - 1) * SPLIT_HANDLE;
+
+  // ── Derived visibility ──────────────────────────────────────────────────
+  // The sidebar never outlives a panel: it hides whenever an open panel had
+  // to be evicted (or one is fullscreen). Under 14" it also yields as soon
+  // as a second panel opens; otherwise it hides only when it genuinely
+  // doesn't fit next to the visible panels.
+  const spaceTight =
+    stageW > 0 &&
+    (panelEvicted ||
+      effectiveFullscreen !== null ||
+      (stageW < NAV_AUTOHIDE_BELOW && visible.length >= 2) ||
+      (stageW < NAV_WITH_THREE_PANELS_FROM && visible.length >= 3) ||
+      (stageW < NAV_WITH_FOUR_PANELS_FROM && visible.length >= 4) ||
+      navW + NAV_CARD_GAP + minWidthOf(visible) > stageW);
+
+  const showNavInline = navIntent && !isMobile && !spaceTight;
   const navHidden = !showNavInline;
+
+  // Even within the count cap, evict upper-most non-focus panels that cannot
+  // fit at their minimal width.
+  const contentBudget = stageW - (showNavInline ? navW + NAV_CARD_GAP : 0);
+  while (
+    visible.length > 1 &&
+    stageW > 0 &&
+    minWidthOf(visible) > contentBudget
+  ) {
+    const evict = visible.find((i) => i !== effectiveFocus);
+    if (evict === undefined) {
+      break;
+    }
+    visible = visible.filter((i) => i !== evict);
+  }
+
+  // A panel entering or leaving resets everyone to compact sizing and exits
+  // fullscreen.
+  const visibleKey = `${visible.join(",")}|${effectiveFocus}`;
+  const prevVisibleKey = useRef(visibleKey);
+  if (prevVisibleKey.current !== visibleKey) {
+    if (manualWidths.some((w) => w !== null)) {
+      Promise.resolve().then(() => setManualWidths([null, null, null]));
+    }
+    if (fullscreenIdx !== null) {
+      Promise.resolve().then(() => setFullscreenIdx(null));
+    }
+    prevVisibleKey.current = visibleKey;
+  }
 
   const prevNavHidden = useRef(navHidden);
   if (prevNavHidden.current !== navHidden) {
@@ -398,64 +570,95 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   const isPeek = !navOverlay && navPeek && navHidden;
 
   // ── Layout widths ───────────────────────────────────────────────────────
-  // Panel pixel widths must fit the column row: nav + optional 6px gap +
-  // card (panels + 1px splits). Overflowing that row lets overflow:hidden
-  // ancestors take a scrollLeft, which clips the left inset of the top bar
-  // and the conversation list together.
   const layout = (() => {
     const W = Math.max(0, stageW);
-    const resolvedP2W = p2W ?? Math.max(MIN_P2, Math.round(W * 0.3));
-    const resolvedP3W = p3W ?? Math.max(MIN_P3, Math.round(W * 0.5));
-    let nav = 0,
-      w2 = 0,
-      w3 = 0,
-      w4 = 0;
 
     if (isMobile) {
-      if (p4Open) w4 = W;
-      else if (p3Open) w3 = W;
-      else if (navIntent) nav = W;
-      else w2 = W;
-    } else if (p4Open) {
-      nav = showNavInline ? navW : 0;
-      const showP2WithP4 = isWide && W - nav >= 3 * COMFORTABLE_PANEL;
-      const gap = nav > 0 && showP2WithP4 ? NAV_CARD_GAP : 0;
-      const splits = showP2WithP4 ? 2 * SPLIT_HANDLE : SPLIT_HANDLE;
-      const available = Math.max(0, W - nav - gap - splits - CARD_EDGES);
-
-      if (showP2WithP4) {
-        const minP4Share = Math.min(
-          COMFORTABLE_PANEL,
-          Math.max(MIN_P4, available - MIN_P2 - MIN_P3)
-        );
-        w2 = clamp(
-          resolvedP2W,
-          MIN_P2,
-          Math.min(MAX_P2, available - MIN_P3 - minP4Share)
-        );
-        w3 = clamp(
-          resolvedP3W,
-          MIN_P3,
-          Math.min(MAX_P3, available - w2 - minP4Share)
-        );
-        w4 = available - w2 - w3;
-      } else {
-        w3 = clamp(resolvedP3W, MIN_P3, Math.min(MAX_P3, available - MIN_P4));
-        w4 = Math.max(0, available - w3);
+      if (p4Open) {
+        return { nav: 0, p2: 0, p3: 0, p4: W };
       }
-    } else if (p3Open) {
-      nav = showNavInline ? navW : 0;
-      const gap = nav > 0 ? NAV_CARD_GAP : 0;
-      const available = Math.max(0, W - nav - gap - SPLIT_HANDLE - CARD_EDGES);
-      w2 = Math.min(resolvedP2W, Math.max(MIN_P2, available - MIN_P3));
-      w3 = Math.max(0, available - w2);
-    } else {
-      nav = showNavInline ? navW : 0;
-      const gap = nav > 0 ? NAV_CARD_GAP : 0;
-      w2 = Math.max(0, W - nav - gap - CARD_EDGES);
+      if (p3Open) {
+        return { nav: 0, p2: 0, p3: W, p4: 0 };
+      }
+      if (navIntent) {
+        return { nav: W, p2: 0, p3: 0, p4: 0 };
+      }
+      return { nav: 0, p2: W, p3: 0, p4: 0 };
     }
-    return { nav, p2: w2, p3: w3, p4: w4 };
+
+    const nav = showNavInline ? navW : 0;
+    if (visible.length === 0) {
+      return { nav, p2: 0, p3: 0, p4: 0 };
+    }
+
+    // Fullscreen: one panel takes the whole card, nav is already hidden.
+    if (effectiveFullscreen !== null) {
+      const inner = cardW > 0 ? cardW : W;
+      return {
+        nav: 0,
+        p2: effectiveFullscreen === 0 ? inner : 0,
+        p3: effectiveFullscreen === 1 ? inner : 0,
+        p4: effectiveFullscreen === 2 ? inner : 0,
+      };
+    }
+
+    const splits = Math.max(0, visible.length - 1) * SPLIT_HANDLE;
+    const inner =
+      cardW > 0 ? cardW : Math.max(0, W - nav - (nav > 0 ? NAV_CARD_GAP : 0));
+    const available = Math.max(0, inner - splits);
+
+    // While dragging a splitter, only its two panels move; the third column
+    // keeps its start-of-drag width.
+    if (dragHandle && dragFreeze) {
+      const has = (i: number) => visible.includes(i);
+      if (dragHandle === "p2-p3" && has(0) && has(1)) {
+        const frozenP4 = has(2) ? dragFreeze.p4 : 0;
+        const split = applySplitDrag({
+          available,
+          mouse: dragLeftW,
+          leftMin: minimalWidths[0],
+          neighborMin: minimalWidths[1],
+          frozenOther: frozenP4,
+        });
+        return { nav, p2: split.left, p3: split.neighbor, p4: frozenP4 };
+      }
+      if (dragHandle === "p3-p4" && has(1) && has(2)) {
+        const frozenP2 = has(0) ? dragFreeze.p2 : 0;
+        const split = applySplitDrag({
+          available,
+          mouse: dragLeftW,
+          leftMin: minimalWidths[1],
+          neighborMin: minimalWidths[2],
+          frozenOther: frozenP2,
+        });
+        return { nav, p2: frozenP2, p3: split.left, p4: split.neighbor };
+      }
+    }
+
+    const specs = visible.map((i) => ({
+      // A manual width pins the panel: a resized shared panel stops splitting
+      // 50/50 and holds its width, the focus panel takes the remainder again.
+      // (Cleared with manualWidths whenever the visible set or focus changes.)
+      role:
+        i === effectiveFocus
+          ? ("focus" as const)
+          : sizingTypes[i] === "shared" && manualWidths[i] === null
+            ? ("shared" as const)
+            : ("compact" as const),
+      minimal: minimalWidths[i],
+      compact: manualWidths[i] ?? compactWidths[i],
+    }));
+
+    const widths = allocateFocusPanels(available, specs);
+    const byIdx = [0, 0, 0];
+    visible.forEach((idx, k) => {
+      byIdx[idx] = widths[k];
+    });
+    return { nav, p2: byIdx[0], p3: byIdx[1], p4: byIdx[2] };
   })();
+
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
 
   // ── Drag factories ──────────────────────────────────────────────────────
   const drag = useCallback(
@@ -464,11 +667,48 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       set: (v: number) => void;
       min: number;
       max: number;
+      handle?: "p2-p3" | "p3-p4";
     }) =>
       makeDragResize({
-        ...opts,
-        onStart: () => setDragging(true),
-        onEnd: () => setDragging(false),
+        getCurrent: opts.getCurrent,
+        set: opts.set,
+        min: opts.min,
+        max: opts.max,
+        onStart: () => {
+          setDragging(true);
+          if (!opts.handle) {
+            return;
+          }
+          const current = layoutRef.current;
+          setDragFreeze({
+            p2: current.p2,
+            p3: current.p3,
+            p4: current.p4,
+          });
+          setDragLeftW(
+            Math.round(opts.handle === "p2-p3" ? current.p2 : current.p3)
+          );
+          setDragHandle(opts.handle);
+        },
+        onEnd: () => {
+          if (opts.handle) {
+            const current = layoutRef.current;
+            const widths = [current.p2, current.p3, current.p4];
+            const adjacent = opts.handle === "p2-p3" ? [0, 1] : [1, 2];
+            // The manual width sticks on the non-focus side(s); the focus
+            // panel keeps flexing with the window.
+            setManualWidths((prev) =>
+              prev.map((v, i) =>
+                adjacent.includes(i) && i !== focusRef.current && widths[i] > 0
+                  ? Math.round(widths[i])
+                  : v
+              )
+            );
+          }
+          setDragHandle(null);
+          setDragFreeze(null);
+          setDragging(false);
+        },
       }),
     []
   );
@@ -479,7 +719,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       setNavIntent(false);
       return;
     }
-    if (!isMobile && (isWide || (!spaceTight && !p4Open))) {
+    if (!isMobile && !spaceTight) {
       setNavIntent(true);
       return;
     }
@@ -513,7 +753,14 @@ export function PanelLayout({ children }: PanelLayoutProps) {
           --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.blue[400]}00, ${customColors.blue[400]}00, ${customColors.blue[400]}80, ${customColors.blue[400]}99, ${customColors.blue[400]}80, ${customColors.blue[400]}00, ${customColors.blue[400]}00);
         }
       `}</style>
-      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-app-background py-1 pr-1">
+      <div
+        className={[
+          "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-app-background py-1 pr-1",
+          // With the sidebar collapsed, keep the card off the window edge with
+          // the same gutter it has on the other sides.
+          navHidden ? "pl-1" : "",
+        ].join(" ")}
+      >
         <div
           ref={stageRef}
           className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden"
@@ -564,8 +811,8 @@ export function PanelLayout({ children }: PanelLayoutProps) {
 
           {/* ── Content card (P2–P4) ── */}
           <div
+            ref={cardRef}
             className="flex min-h-0 min-w-0 flex-1 overflow-x-clip overflow-y-hidden rounded-xl border bg-background shadow-sm"
-            onScroll={lockHorizontalScroll}
           >
             {p2 && (
               <PanelSection
@@ -575,7 +822,6 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                 dragging={dragging}
                 topBar={
                   <PanelTopBar
-                    inCard
                     left={
                       <>
                         {navHidden && navToggleButton}
@@ -593,20 +839,16 @@ export function PanelLayout({ children }: PanelLayoutProps) {
               variant="split"
               visible={layout.p2 > 0 && layout.p3 > 0}
               onPointerDown={drag({
-                getCurrent: () =>
-                  p2W ?? Math.max(MIN_P2, Math.round(stageW * 0.3)),
-                set: setP2W,
-                min: MIN_P2,
-                max: Math.min(
-                  MAX_P2,
-                  Math.max(
-                    MIN_P2,
-                    stageW -
-                      layout.nav -
-                      (layout.p3 > 0 ? MIN_P3 : 0) -
-                      (layout.p4 > 0 ? MIN_P4 : 0)
-                  )
+                getCurrent: () => layout.p2,
+                set: setDragLeftW,
+                min: minimalWidths[0],
+                max: Math.max(
+                  minimalWidths[0],
+                  (cardW > 0 ? cardW : stageW) -
+                    minimalWidths[1] -
+                    (layout.p4 > 0 ? layout.p4 : 0)
                 ),
+                handle: "p2-p3",
               })}
             />
 
@@ -618,7 +860,6 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                 dragging={dragging}
                 topBar={
                   <PanelTopBar
-                    inCard
                     left={
                       isMobile ? (
                         <Button
@@ -630,10 +871,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                         />
                       ) : (
                         <>
-                          {p4Open &&
-                            navHidden &&
-                            layout.p2 === 0 &&
-                            navToggleButton}
+                          {navHidden && layout.p2 === 0 && navToggleButton}
                           {p3.props.topBarLeft}
                         </>
                       )
@@ -641,6 +879,27 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                     right={
                       <>
                         {!isMobile && p3.props.topBarRight}
+                        {!isMobile && fullscreenFlags[1] && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={
+                              effectiveFullscreen === 1
+                                ? Minimize01
+                                : Maximize01
+                            }
+                            onClick={() =>
+                              setFullscreenIdx(
+                                effectiveFullscreen === 1 ? null : 1
+                              )
+                            }
+                            tooltip={
+                              effectiveFullscreen === 1
+                                ? "Exit full screen"
+                                : "Open in full screen"
+                            }
+                          />
+                        )}
                         {!isMobile && (
                           <Button
                             variant="ghost"
@@ -662,14 +921,16 @@ export function PanelLayout({ children }: PanelLayoutProps) {
               variant="split"
               visible={layout.p3 > 0 && layout.p4 > 0}
               onPointerDown={drag({
-                getCurrent: () =>
-                  p3W ?? Math.max(MIN_P3, Math.round(stageW * 0.5)),
-                set: setP3W,
-                min: MIN_P3,
-                max: Math.min(
-                  MAX_P3,
-                  Math.max(MIN_P3, stageW - layout.nav - layout.p2 - MIN_P4)
+                getCurrent: () => layout.p3,
+                set: setDragLeftW,
+                min: minimalWidths[1],
+                max: Math.max(
+                  minimalWidths[1],
+                  (cardW > 0 ? cardW : stageW) -
+                    minimalWidths[2] -
+                    (layout.p2 > 0 ? layout.p2 : 0)
                 ),
+                handle: "p3-p4",
               })}
             />
 
@@ -681,7 +942,6 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                 dragging={dragging}
                 topBar={
                   <PanelTopBar
-                    inCard
                     left={
                       isMobile ? (
                         <Button
@@ -692,12 +952,39 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                           tooltip="Back"
                         />
                       ) : (
-                        p4.props.topBarLeft
+                        <>
+                          {navHidden &&
+                            layout.p2 === 0 &&
+                            layout.p3 === 0 &&
+                            navToggleButton}
+                          {p4.props.topBarLeft}
+                        </>
                       )
                     }
                     right={
                       <>
                         {!isMobile && p4.props.topBarRight}
+                        {!isMobile && fullscreenFlags[2] && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={
+                              effectiveFullscreen === 2
+                                ? Minimize01
+                                : Maximize01
+                            }
+                            onClick={() =>
+                              setFullscreenIdx(
+                                effectiveFullscreen === 2 ? null : 2
+                              )
+                            }
+                            tooltip={
+                              effectiveFullscreen === 2
+                                ? "Exit full screen"
+                                : "Open in full screen"
+                            }
+                          />
+                        )}
                         {!isMobile && (
                           <Button
                             variant="ghost"
