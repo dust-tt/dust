@@ -17,7 +17,7 @@ import {
   buildHttpStatusErrorEvent,
   httpErrorMessage,
 } from "@app/lib/model_constructors/utils/classify_http_status";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { classifyStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
 import type {
   GenerateContentResponse,
   GenerateContentResponseUsageMetadata,
@@ -264,21 +264,24 @@ function apiErrorToErrorEvent(
   });
 }
 
+function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError;
+}
+
 // Maps any error thrown by the Google SDK while streaming into a unified
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
 export function streamErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: unknown
 ): ErrorEvent {
-  if (error instanceof ApiError) {
+  if (isApiError(error)) {
     return apiErrorToErrorEvent(metadata, error);
   }
-  return buildErrorEvent({
-    errorSource: "provider",
+
+  return classifyStreamError({
+    error,
     metadata,
-    type: "unknown_error",
-    message: `Unknown error from Google: ${normalizeError(error).message}`,
-    originalError: error,
+    providerName: "Google",
   });
 }
 

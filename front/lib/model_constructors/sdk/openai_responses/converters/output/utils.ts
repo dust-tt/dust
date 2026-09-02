@@ -1,4 +1,5 @@
 import { logOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_logging";
+import { openaiStreamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -18,18 +19,14 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
 import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { APIConnectionError, APIError } from "openai";
 import type {
   Response as OpenAIResponse,
   ResponseCreatedEvent,
+  ResponseError,
   ResponseOutputItem,
   ResponseStreamEvent,
   ResponseUsage,
@@ -280,29 +277,86 @@ export function usageToTokenUsageEvent(
   };
 }
 
-function isApiConnectionError(err: unknown): err is APIConnectionError {
-  return err instanceof APIConnectionError;
-}
-
-function isApiError(err: unknown): err is APIError {
-  return err instanceof APIError;
-}
-
-// A stream error classified into the categories we surface. `APIConnectionError`
-// is checked before `APIError` since the former extends the latter.
-type ClassifiedStreamError =
-  | { kind: "connection"; error: APIConnectionError }
-  | { kind: "api"; error: APIError }
-  | { kind: "unknown" };
-
-function classifyStreamError(error: unknown): ClassifiedStreamError {
-  if (isApiConnectionError(error)) {
-    return { kind: "connection", error };
+// A failed Response is an in-band result, not a thrown transport error.
+// The provider's stable error code determines its type and fault domain.
+function responseErrorToErrorEvent(
+  metadata: EndpointMetadata,
+  error: ResponseError | null
+): ErrorEvent {
+  if (error === null) {
+    return buildErrorEvent({
+      errorSource: "unknown",
+      metadata,
+      type: "unknown_error",
+      message: "Provider reported a failed response without error details.",
+    });
   }
-  if (isApiError(error)) {
-    return { kind: "api", error };
+
+  switch (error.code) {
+    case "server_error":
+      return buildErrorEvent({
+        errorSource: "provider",
+        metadata,
+        type: "server_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "vector_store_timeout":
+      return buildErrorEvent({
+        errorSource: "provider",
+        metadata,
+        type: "timeout_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "rate_limit_exceeded":
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "rate_limit_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "bio_policy":
+    case "image_content_policy_violation":
+      return buildErrorEvent({
+        errorSource: "unknown",
+        metadata,
+        type: "refusal_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "invalid_prompt":
+    case "invalid_image":
+    case "invalid_image_format":
+    case "invalid_base64_image":
+    case "invalid_image_url":
+    case "image_too_large":
+    case "image_too_small":
+    case "image_parse_error":
+    case "invalid_image_mode":
+    case "image_file_too_large":
+    case "unsupported_image_media_type":
+    case "empty_image_file":
+    case "failed_to_download_image":
+    case "image_file_not_found":
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "invalid_request_error",
+        message: error.message,
+        originalError: error,
+      });
+    default:
+      assertNeverAndIgnore(error.code);
+      return buildErrorEvent({
+        errorSource: "unknown",
+        metadata,
+        type: "unknown_error",
+        message: error.message,
+        originalError: error,
+      });
   }
-  return { kind: "unknown" };
 }
 
 // Maps any error thrown by the OpenAI SDK while streaming into a unified
@@ -310,37 +364,8 @@ function classifyStreamError(error: unknown): ClassifiedStreamError {
 export function makeStreamErrorToErrorEvent(
   providerName: string
 ): OutputEventConverters["streamErrorToErrorEvent"] {
-  return (metadata: EndpointMetadata, error: unknown): ErrorEvent => {
-    const classified = classifyStreamError(error);
-    switch (classified.kind) {
-      case "connection":
-        return buildErrorEvent({
-          errorSource: "provider",
-          metadata,
-          type: "network_error",
-          message: `Network error connecting to ${providerName}: ${classified.error.message}`,
-          originalError: error,
-        });
-      case "api":
-        return buildHttpStatusErrorEvent({
-          metadata,
-          status: classified.error.status,
-          provider: providerName,
-          detail: classified.error.message,
-          originalError: error,
-        });
-      case "unknown":
-        return buildErrorEvent({
-          errorSource: "provider",
-          metadata,
-          type: "unknown_error",
-          message: `Unknown error from ${providerName}`,
-          originalError: error,
-        });
-      default:
-        assertNever(classified);
-    }
-  };
+  return (metadata, error) =>
+    openaiStreamErrorToErrorEvent(metadata, error, providerName);
 }
 
 export const streamErrorToErrorEvent = makeStreamErrorToErrorEvent("OpenAI");
@@ -531,10 +556,7 @@ export async function* rawOutputToEvents(
         stopReason = event.response.status ?? null;
         break;
       case "response.failed":
-        yield converters.streamErrorToErrorEvent(
-          metadata,
-          event.response.error
-        );
+        yield responseErrorToErrorEvent(metadata, event.response.error);
         return;
       case "response.incomplete":
         yield buildErrorEvent({
@@ -652,7 +674,7 @@ export function responseToEvents(
 ): NonDeltaResponseEvent[] {
   // Terminal failure states surface as a single error event.
   if (response.status === "failed") {
-    return [converters.streamErrorToErrorEvent(metadata, response.error)];
+    return [responseErrorToErrorEvent(metadata, response.error)];
   }
   if (response.status === "incomplete") {
     return [

@@ -1,6 +1,6 @@
 import { convertToOldEvent } from "@app/lib/api/llm/transitionLLM";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { streamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_completions/converters/output/utils";
+import { openaiStreamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import {
   APIConnectionError,
@@ -16,6 +16,10 @@ const metadata: EndpointMetadata = {
   region: "global",
   model: "glm-5p2",
 };
+
+function streamErrorToErrorEvent(metadata: EndpointMetadata, error: unknown) {
+  return openaiStreamErrorToErrorEvent(metadata, error, "Fireworks");
+}
 
 const llmMetadata: LLMClientMetadata = {
   clientId: "fireworks",
