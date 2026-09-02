@@ -16,6 +16,7 @@ import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
+  forceUserRole,
   sendOnboardingConversation,
   showDebugTools,
 } from "@app/lib/development";
@@ -46,6 +47,7 @@ import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
+import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
@@ -79,9 +81,11 @@ import {
   Separator,
   Shapes,
   ShapesPlus,
+  ShieldTick,
   SlackLogo,
   Terminal,
   User01,
+  UsersCheck,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -238,6 +242,29 @@ export function UserMenu({
       },
       [createConversationWithMessage, owner, router, sendNotification]
     )
+  );
+
+  const forceRoleUpdate = useMemo(
+    () => async (role: "user" | "admin" | "manager") => {
+      const result = await forceUserRole(user, owner, role, featureFlags);
+      if (result.isOk()) {
+        sendNotification({
+          title: "Success !",
+          description: result.value + " (reloading...)",
+          type: "success",
+        });
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        sendNotification({
+          title: "Error !",
+          description: result.error,
+          type: "error",
+        });
+      }
+    },
+    [owner, sendNotification, user, featureFlags]
   );
 
   const handleSendOnboarding = useMemo(
@@ -563,6 +590,31 @@ export function UserMenu({
                         }}
                         icon={Shapes}
                       />
+                    )}
+                    {isDevelopment() && (
+                      <>
+                        {!isOnlyAdmin(owner) && (
+                          <DropdownMenuItem
+                            label="Become Admin"
+                            onClick={() => forceRoleUpdate("admin")}
+                            icon={ShieldTick}
+                          />
+                        )}
+                        {!isOnlyManager(owner) && (
+                          <DropdownMenuItem
+                            label="Become Manager"
+                            onClick={() => forceRoleUpdate("manager")}
+                            icon={UsersCheck}
+                          />
+                        )}
+                        {!isOnlyUser(owner) && (
+                          <DropdownMenuItem
+                            label="Become User"
+                            onClick={() => forceRoleUpdate("user")}
+                            icon={User01}
+                          />
+                        )}
+                      </>
                     )}
                     <DropdownMenuItem
                       label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
