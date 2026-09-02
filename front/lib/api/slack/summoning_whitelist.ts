@@ -4,11 +4,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
-import type { SpaceMemberGroup } from "@app/lib/api/spaces";
-import { listSpaceMemberGroups } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import type { SpaceMemberGroup } from "@app/lib/resources/space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -68,7 +67,7 @@ async function listSelectableSpaceMemberGroups(
     includeProjectSpaces: true,
   });
 
-  return listSpaceMemberGroups(
+  return SpaceResource.listMemberGroupsForSpaces(
     auth,
     spaces.filter((space) => space.isRegular() || space.isProject())
   );

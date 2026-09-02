@@ -48,13 +48,14 @@ import {
   SlackChatBotMessageModel,
 } from "@connectors/lib/models/slack";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
+import { getSpaceGroupIds } from "@connectors/lib/slack/space_groups";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { SlackBotWhitelistEntry } from "@connectors/resources/slack_configuration_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import {
-  cacheWithRedis,
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
@@ -775,54 +776,47 @@ async function processErrorResult(
   }
 }
 
-const SPACE_GROUP_IDS_CACHE_TTL_MS = 5 * 60 * 1000;
-
-async function fetchSpaceGroupIds(
-  connector: ConnectorResource,
-  reach: { whitelistModelId: ModelId; spaceIds: string[] }
-): Promise<string[]> {
-  const dustAPI = new DustAPI(
-    { url: apiConfig.getDustFrontAPIUrl() },
-    {
-      workspaceId: connector.workspaceId,
-      apiKey: connector.workspaceAPIKey,
-    },
-    logger
-  );
-
-  const groupIdsRes = await dustAPI.getSpaceGroupIds({
-    spaceIds: reach.spaceIds,
-  });
-  if (groupIdsRes.isErr()) {
-    throw new Error(groupIdsRes.error.message);
-  }
-
-  return groupIdsRes.value;
-}
-
-const getSpaceGroupIds = cacheWithRedis(
-  fetchSpaceGroupIds,
-  (connector, reach) => `${reach.whitelistModelId}`,
-  { ttlMs: SPACE_GROUP_IDS_CACHE_TTL_MS }
-);
-
 // A whitelisted workflow reaches the spaces it was allowed on. Front owns which group stands for a
 // space, so ask it at run time instead of keeping group ids here.
 async function getWorkflowGroupIds(
   connector: ConnectorResource,
   slackConfig: SlackConfigurationResource,
-  botName: string
+  { botName }: { botName: string }
 ): Promise<Result<string[], Error>> {
-  const reach = await slackConfig.getBotReach(botName);
-  if (!reach?.spaceIds) {
-    return new Ok(reach?.groupIds ?? []);
+  const entry = await slackConfig.getBotWhitelistEntry(botName);
+  if (!entry) {
+    return new Err(new Error(`Workflow "${botName}" is not whitelisted.`));
+  }
+
+  const groupIdsRes = await resolveWorkflowGroupIds(connector, entry);
+  if (groupIdsRes.isErr()) {
+    return groupIdsRes;
+  }
+
+  // No group means an empty X-Dust-Group-Ids header, which a system key reads as the whole
+  // workspace. Fail instead.
+  if (groupIdsRes.value.length === 0) {
+    return new Err(new Error(`Workflow "${botName}" reaches no group.`));
+  }
+
+  return groupIdsRes;
+}
+
+async function resolveWorkflowGroupIds(
+  connector: ConnectorResource,
+  entry: SlackBotWhitelistEntry
+): Promise<Result<string[], Error>> {
+  const { whitelistModelId, groupIds, spaceIds } = entry;
+  if (!spaceIds) {
+    return new Ok(groupIds);
   }
 
   try {
     return new Ok(
-      await getSpaceGroupIds(connector, {
-        whitelistModelId: reach.whitelistModelId,
-        spaceIds: reach.spaceIds,
+      await getSpaceGroupIds(whitelistModelId, {
+        workspaceId: connector.workspaceId,
+        workspaceAPIKey: connector.workspaceAPIKey,
+        spaceIds,
       })
     );
   } catch (err) {
@@ -1000,11 +994,9 @@ async function answerMessage(
     if (!botName) {
       throw new Error("Failed to get bot name. Should never happen.");
     }
-    const groupIdsRes = await getWorkflowGroupIds(
-      connector,
-      slackConfig,
-      botName
-    );
+    const groupIdsRes = await getWorkflowGroupIds(connector, slackConfig, {
+      botName,
+    });
     if (groupIdsRes.isErr()) {
       return new Err(groupIdsRes.error);
     }

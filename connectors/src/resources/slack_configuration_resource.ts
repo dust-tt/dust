@@ -5,6 +5,7 @@ import {
   SlackConfigurationModel,
   SlackMessagesModel,
 } from "@connectors/lib/models/slack";
+import { invalidateSpaceGroupIds } from "@connectors/lib/slack/space_groups";
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -20,7 +21,7 @@ import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-export type BotReachType = {
+export type SlackBotWhitelistEntry = {
   whitelistModelId: ModelId;
   groupIds: string[];
   spaceIds: string[] | null;
@@ -206,6 +207,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         spaceIds,
         whitelistType,
       });
+      await invalidateSpaceGroupIds(existingBot.id);
     } else {
       await SlackBotWhitelistModel.create({
         connectorId: this.connectorId,
@@ -256,7 +258,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   // What the bot is whitelisted for: spaces, or group ids for a row written before the whitelist
   // moved to spaces.
-  async getBotReach(botName: string): Promise<BotReachType | null> {
+  async getBotWhitelistEntry(
+    botName: string
+  ): Promise<SlackBotWhitelistEntry | null> {
     const bot = await SlackBotWhitelistModel.findOne({
       where: {
         connectorId: this.connectorId,

@@ -34,6 +34,13 @@ type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 
 // if caching big objects, there is a possible race condition (mulitple calls to
 // caching), therefore, we use a lock
+export function buildCacheWithRedisKey(
+  cacheId: string,
+  resolverKey: string
+): string {
+  return `cacheWithRedis-${cacheId}-${resolverKey}`;
+}
+
 export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
@@ -50,7 +57,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   return async (...args: Args): Promise<JsonSerializable<T>> => {
     const redis = await redisClient({ origin: "cache_with_redis" });
 
-    const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+    const key = buildCacheWithRedisKey(fn.name, resolver(...args));
 
     let cacheVal = await redis.get(key);
     if (cacheVal) {

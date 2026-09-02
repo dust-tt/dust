@@ -2,7 +2,6 @@ import { createReadStream } from "fs";
 import { createInterface } from "readline";
 
 import config from "@app/lib/api/config";
-import { listSpaceMemberGroups } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -66,10 +65,10 @@ async function listSpaceIdsByGroupId(
     (space) => space.isRegular() || space.isProject()
   );
 
-  const spaceMemberGroups = await listSpaceMemberGroups(auth, [
-    globalSpace,
-    ...candidateSpaces,
-  ]);
+  const spaceMemberGroups = await SpaceResource.listMemberGroupsForSpaces(
+    auth,
+    [globalSpace, ...candidateSpaces]
+  );
   const representedSpaceById = new Map(
     spaceMemberGroups.map(({ space }) => [space.id, space])
   );

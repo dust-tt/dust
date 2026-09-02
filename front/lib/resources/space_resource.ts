@@ -23,8 +23,16 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
-import type { GrantType, GrantVerb } from "@app/types/group_permissions";
-import { SPACE_EDITOR_GRANT_TYPE } from "@app/types/group_permissions";
+import type {
+  GrantSpec,
+  GrantType,
+  GrantVerb,
+} from "@app/types/group_permissions";
+import {
+  grantKey,
+  SPACE_EDITOR_GRANT_TYPE,
+  SPACE_MEMBER_GRANT_TYPE,
+} from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -133,6 +141,19 @@ const EMPTY_SPACE_GRANT_ENRICHMENT: SpaceGrantEnrichment = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export type SpaceMemberGroup = {
+  space: SpaceResource;
+  memberGroup: GroupResource;
+};
+
+function memberGrant(space: SpaceResource): GrantSpec {
+  return {
+    grantType: SPACE_MEMBER_GRANT_TYPE,
+    resourceType: "space",
+    resourceId: space.id,
+  };
+}
+
 export class SpaceResource extends BaseResource<SpaceModel> {
   static model: ModelStaticSoftDeletable<SpaceModel> = SpaceModel;
 
@@ -1764,6 +1785,33 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       [...editorGroupsByGrant.values()].map((group) => group.sId)
     );
     return autoGroups.filter((group) => !editorGroupIds.has(group.sId));
+  }
+
+  // The group that stands for a space: its own regular_auto member group, which lives and dies with
+  // the space and cannot be attached to another one. The Company Space has no such group — everyone
+  // in the workspace belongs to it — so the workspace global group stands for it. A provisioned
+  // group would drift the moment an admin attaches it elsewhere.
+  static async listMemberGroupsForSpaces(
+    auth: Authenticator,
+    spaces: SpaceResource[]
+  ): Promise<SpaceMemberGroup[]> {
+    const [memberGroupByGrantKey, globalGroupRes] = await Promise.all([
+      GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+        grants: spaces.filter((space) => !space.isGlobal()).map(memberGrant),
+      }),
+      GroupResource.fetchWorkspaceGlobalGroup(auth),
+    ]);
+    const globalGroup = globalGroupRes.isOk() ? globalGroupRes.value : null;
+
+    return removeNulls(
+      spaces.map((space) => {
+        const memberGroup = space.isGlobal()
+          ? globalGroup
+          : memberGroupByGrantKey.get(grantKey(memberGrant(space)));
+
+        return memberGroup ? { space, memberGroup } : null;
+      })
+    );
   }
 
   // The groups that make up this space's membership: its member group and, for projects, its editor
