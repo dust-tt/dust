@@ -384,9 +384,6 @@ export function PokeMessageConsumptionInspector({
                       >
                         Direct message by model
                       </h3>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Provider and model mix for the originating message.
-                      </p>
                       <ul className="mt-3 space-y-2">
                         {details.models.map((model) => (
                           <ModelRow
@@ -413,9 +410,6 @@ export function PokeMessageConsumptionInspector({
                           >
                             Tools
                           </h3>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Every tool, ranked by its share of the bill.
-                          </p>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {rankedTools.length} tool

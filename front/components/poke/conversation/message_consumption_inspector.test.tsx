@@ -115,6 +115,9 @@ describe("PokeMessageConsumptionInspector", () => {
     );
 
     expect(screen.getByText("Direct message by model")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Provider and model mix for the originating message.")
+    ).not.toBeInTheDocument();
     expect(screen.getByText("GPT-5 mini")).toBeInTheDocument();
     expect(screen.queryByText("openai / gpt-5-mini")).not.toBeInTheDocument();
     expect(screen.getByText("10.3 credits")).toBeInTheDocument();
@@ -122,6 +125,9 @@ describe("PokeMessageConsumptionInspector", () => {
     expect(screen.getByText("1.3 credits")).toBeInTheDocument();
     expect(screen.getByText("Run Research agent")).toBeInTheDocument();
     expect(screen.getByText("Workspace search")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Every tool, ranked by its share of the bill.")
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText("search / semantic_search")
     ).not.toBeInTheDocument();
