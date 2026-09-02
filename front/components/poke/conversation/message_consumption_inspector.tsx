@@ -1,11 +1,7 @@
 import { getActionStepIcon } from "@app/components/assistant/conversation/actions/inline/utils";
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import {
-  formatCreditsPrecise,
-  formatCreditValue,
-  toolUsageLabel,
-} from "@app/lib/client/credits";
+import { formatCreditValue, toolUsageLabel } from "@app/lib/client/credits";
 import { usePokeMessageConsumption } from "@app/poke/swr/message_consumption";
 import type {
   AgentMessageConsumptionModelDetails,
@@ -23,10 +19,6 @@ import {
   ProgressBar,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-function formatPreciseCreditValue(credits: number): string {
-  return `${formatCreditsPrecise(credits)} credit${pluralize(credits)}`;
-}
 
 function formatShare(credits: number, totalCredits: number): string {
   if (totalCredits <= 0 || credits <= 0) {
@@ -80,14 +72,11 @@ function ModelRow({ directMessageCredits, isDark, model }: ModelRowProps) {
           <p className="truncate text-sm font-medium text-foreground">
             {model.displayName}
           </p>
-          <p className="truncate font-mono text-xs text-muted-foreground">
-            {model.providerId} / {model.modelId}
-          </p>
         </div>
       </div>
       <div className="shrink-0 text-right">
         <p className="text-sm font-semibold tabular-nums text-foreground">
-          {formatPreciseCreditValue(model.attributedCredits)}
+          {formatCreditValue(model.attributedCredits)}
         </p>
         <p className="text-xs tabular-nums text-muted-foreground">
           {formatShare(model.attributedCredits, directMessageCredits)} of direct
@@ -138,13 +127,13 @@ function ToolRow({ tool, totalCredits }: ToolRowProps) {
         <div>
           <dt className="text-xs text-muted-foreground">Attributed</dt>
           <dd className="text-sm font-semibold tabular-nums text-foreground">
-            {formatPreciseCreditValue(tool.attributedCredits)}
+            {formatCreditValue(tool.attributedCredits)}
           </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">Direct tool charge</dt>
           <dd className="text-sm font-semibold tabular-nums text-foreground">
-            {formatPreciseCreditValue(tool.directCredits)}
+            {formatCreditValue(tool.directCredits)}
           </dd>
         </div>
       </dl>
@@ -385,9 +374,7 @@ export function PokeMessageConsumptionInspector({
                               Context and reasoning
                             </dt>
                             <dd className="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                              {formatPreciseCreditValue(
-                                details.agentWorkCredits
-                              )}{" "}
+                              {formatCreditValue(details.agentWorkCredits)}{" "}
                               <span className="font-normal text-muted-foreground">
                                 {formatShare(
                                   details.agentWorkCredits,
@@ -402,7 +389,7 @@ export function PokeMessageConsumptionInspector({
                               Tools
                             </dt>
                             <dd className="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                              {formatPreciseCreditValue(toolCredits)}{" "}
+                              {formatCreditValue(toolCredits)}{" "}
                               <span className="font-normal text-muted-foreground">
                                 {formatShare(toolCredits, totalCredits)}
                               </span>
@@ -412,7 +399,7 @@ export function PokeMessageConsumptionInspector({
                         {!isReconciled && attributionDeltaCredits !== null && (
                           <p className="mt-3 text-xs text-warning">
                             Attribution differs from the authoritative bill by{" "}
-                            {formatPreciseCreditValue(attributionDeltaCredits)}.
+                            {formatCreditValue(attributionDeltaCredits)}.
                           </p>
                         )}
                       </div>

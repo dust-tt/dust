@@ -78,7 +78,7 @@ describe("PokeMessageConsumptionInspector", () => {
               providerId: "openai",
               modelId: "gpt-5-mini",
               displayName: "GPT-5 mini",
-              attributedCredits: 10,
+              attributedCredits: 10.26,
             },
           ],
           tools: [
@@ -87,8 +87,8 @@ describe("PokeMessageConsumptionInspector", () => {
               internalMCPServerName: "search",
               toolName: "semantic_search",
               callCount: 2,
-              attributedCredits: 3,
-              directCredits: 1,
+              attributedCredits: 3.26,
+              directCredits: 1.26,
               pending: true,
             },
             {
@@ -96,7 +96,7 @@ describe("PokeMessageConsumptionInspector", () => {
               internalMCPServerName: "run_agent",
               toolName: "run_research",
               callCount: 1,
-              attributedCredits: 22,
+              attributedCredits: 21.74,
               directCredits: 2,
               pending: false,
             },
@@ -116,7 +116,10 @@ describe("PokeMessageConsumptionInspector", () => {
 
     expect(screen.getByText("Direct message by model")).toBeInTheDocument();
     expect(screen.getByText("GPT-5 mini")).toBeInTheDocument();
-    expect(screen.getByText("openai / gpt-5-mini")).toBeInTheDocument();
+    expect(screen.queryByText("openai / gpt-5-mini")).not.toBeInTheDocument();
+    expect(screen.getByText("10.3 credits")).toBeInTheDocument();
+    expect(screen.getByText("3.3 credits")).toBeInTheDocument();
+    expect(screen.getByText("1.3 credits")).toBeInTheDocument();
     expect(screen.getByText("Run Research agent")).toBeInTheDocument();
     expect(screen.getByText("Workspace search")).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
