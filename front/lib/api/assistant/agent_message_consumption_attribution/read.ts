@@ -1,4 +1,5 @@
 import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import type { ToolConsumptionDetailsOverride } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
 import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
@@ -8,14 +9,16 @@ import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
+import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * Builds the end-user explanation for one agent message. Provider and token facts stay behind this
- * interface. It uses the newest complete attribution version stored for the message and assigns
- * each direct sub-agent subtree to its originating run-agent tool. If no version covers the
- * message's current runs and tools, the exact bill remains available while details are withheld.
+ * interface. It uses the newest complete attribution version stored for the message, assigns each
+ * visible sub-agent subtree to its originating run-agent tool, and folds hidden helper sub-agents
+ * into the parent agent's work. If no version covers the message's current runs and tools, the
+ * exact bill remains available while details are withheld.
  */
 export async function getAgentMessageConsumption(
   auth: Authenticator,
@@ -98,6 +101,27 @@ export async function getAgentMessageConsumption(
     (total, subAgent) => total + subAgent.billedCredits,
     0
   );
+  const hiddenHelperActionIds = new Set<ModelId>(
+    facts.actions.flatMap((action) => {
+      const { toolConfiguration } = action;
+      return isLightServerSideMCPToolConfiguration(toolConfiguration) &&
+        toolConfiguration.childAgentId &&
+        isHiddenHelperSubAgentId(toolConfiguration.childAgentId)
+        ? [action.id]
+        : [];
+    })
+  );
+  for (const subAgent of subAgents) {
+    if (
+      subAgent.agentConfigurationId &&
+      isHiddenHelperSubAgentId(subAgent.agentConfigurationId)
+    ) {
+      hiddenHelperActionIds.add(subAgent.action.id);
+    }
+  }
+  const visibleSubAgents = subAgents.filter(
+    ({ action }) => !hiddenHelperActionIds.has(action.id)
+  );
   const totalBilledCredits = (facts.billedCredits ?? 0) + subAgentBilledCredits;
 
   const unavailableResponse: AgentMessageConsumptionResponse = {
@@ -119,7 +143,7 @@ export async function getAgentMessageConsumption(
 
   const agentConfigurationIds = [
     ...new Set(
-      subAgents.flatMap((subAgent) =>
+      visibleSubAgents.flatMap((subAgent) =>
         subAgent.agentConfigurationId ? [subAgent.agentConfigurationId] : []
       )
     ),
@@ -132,7 +156,7 @@ export async function getAgentMessageConsumption(
     ModelId,
     ToolConsumptionDetailsOverride
   >(
-    subAgents.map((subAgent) => {
+    visibleSubAgents.map((subAgent) => {
       const agentLabel = subAgent.agentConfigurationId
         ? agentLabels.get(subAgent.agentConfigurationId)
         : null;
@@ -165,10 +189,47 @@ export async function getAgentMessageConsumption(
   }
 
   const { models: _models, ...messageDetails } = details;
+  const hiddenHelperToolKeys = new Set(
+    facts.actions.flatMap((action) => {
+      if (!hiddenHelperActionIds.has(action.id)) {
+        return [];
+      }
+      const { internalMCPServerName, toolName } = action.toJSON();
+      return [`${internalMCPServerName ?? "external"}:${toolName}`];
+    })
+  );
+  const hiddenHelperToolCredits = messageDetails.tools.reduce(
+    (total, tool) =>
+      hiddenHelperToolKeys.has(
+        `${tool.internalMCPServerName ?? "external"}:${tool.toolName}`
+      )
+        ? total + tool.attributedCredits
+        : total,
+    0
+  );
+  const hiddenHelperSubAgentBilledCredits = subAgents.reduce(
+    (total, subAgent) =>
+      hiddenHelperActionIds.has(subAgent.action.id)
+        ? total + subAgent.billedCredits
+        : total,
+    0
+  );
 
   return {
     billedCredits: facts.billedCredits,
     totalBilledCredits,
-    details: messageDetails,
+    details: {
+      ...messageDetails,
+      agentWorkCredits:
+        messageDetails.agentWorkCredits +
+        hiddenHelperToolCredits +
+        hiddenHelperSubAgentBilledCredits,
+      tools: messageDetails.tools.filter(
+        (tool) =>
+          !hiddenHelperToolKeys.has(
+            `${tool.internalMCPServerName ?? "external"}:${tool.toolName}`
+          )
+      ),
+    },
   };
 }

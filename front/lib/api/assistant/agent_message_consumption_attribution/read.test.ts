@@ -9,6 +9,7 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
@@ -334,6 +335,106 @@ describe("getAgentMessageConsumption", () => {
     });
   });
 
+  it("attributes hidden helper sub-agent usage to the parent agent", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      runUsageModelId,
+      agentMessage,
+    } = await setupMessage();
+    const childConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST_TASK,
+      messagesCreatedAt: [],
+      depth: 1,
+    });
+    const { messageRow: childUserMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation: childConversation,
+        content: "Research this",
+        agenticMessageType: "run_agent",
+        agenticOriginMessageId: agentMessage.sId,
+        authorless: true,
+      });
+    const childAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: childConversation.id,
+        rank: 1,
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST_TASK,
+        parentId: childUserMessage.id,
+      });
+    if (!childAgentMessage.agentMessageId) {
+      throw new Error("Child agent message was not created.");
+    }
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: childAgentMessage.agentMessageId,
+      costCredits: 20,
+    });
+
+    const runAgentServerId = internalMCPServerNameToSId({
+      name: "run_agent",
+      workspaceId: workspace.id,
+      prefix: 1,
+    });
+    const { action: runChildAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessage.agentMessageId,
+        status: "succeeded",
+        dustRunId: run.dustRunId,
+        functionCallName: "run_dust_task",
+        toolName: "run_dust_task",
+        toolServerId: runAgentServerId,
+      }
+    );
+    await runChildAction.updateStepContext({
+      ...runChildAction.stepContext,
+      resumeState: {
+        conversationId: childConversation.sId,
+        userMessageId: childUserMessage.sId,
+      },
+    });
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: [
+        ...modelRecords(runUsageModelId),
+        {
+          itemType: "tool",
+          runUsageModelId,
+          action: runChildAction,
+          inputTokensCount: 20,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 6_000_000,
+          directCreditAmountMicro: 4_000_000,
+        },
+      ],
+      pendingToolItems: [],
+    });
+
+    const consumption = await getAgentMessageConsumption(auth, {
+      conversation,
+      agentMessageId: agentMessage.sId,
+    });
+
+    expect(consumption).toMatchObject({
+      billedCredits: BILLED_CREDITS,
+      totalBilledCredits: 30,
+      details: {
+        agentWorkCredits: 30,
+        tools: [],
+      },
+    });
+  });
+
   it("exposes a blocked tool as pending without inventing a direct charge", async () => {
     const {
       auth,
@@ -349,6 +450,24 @@ describe("getAgentMessageConsumption", () => {
       agentMessageModelId: agentMessage.agentMessageId,
       dustRunId: run.dustRunId,
     });
+    const runAgentServerId = internalMCPServerNameToSId({
+      name: "run_agent",
+      workspaceId: workspace.id,
+      prefix: 1,
+    });
+    const { action: hiddenHelperAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessage.agentMessageId,
+        dustRunId: run.dustRunId,
+        functionCallName: "run_dust-task",
+        toolName: "run_dust-task",
+        toolServerId: runAgentServerId,
+        childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
+      }
+    );
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
@@ -362,6 +481,12 @@ describe("getAgentMessageConsumption", () => {
           outputTokensCount: 5,
           grossAttributedCreditAmountMicro: 1_000_000,
         },
+        {
+          action: hiddenHelperAction,
+          runUsageModelId,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 1_000_000,
+        },
       ],
     });
 
@@ -370,13 +495,16 @@ describe("getAgentMessageConsumption", () => {
       agentMessageId: agentMessage.sId,
     });
 
-    expect(consumption?.details?.tools).toEqual([
-      expect.objectContaining({
-        callCount: 1,
-        directCredits: 0,
-        pending: true,
-      }),
-    ]);
+    expect(consumption?.details).toMatchObject({
+      agentWorkCredits: 9,
+      tools: [
+        expect.objectContaining({
+          callCount: 1,
+          directCredits: 0,
+          pending: true,
+        }),
+      ],
+    });
   });
 
   it("assigns an unattributed billed residual to agent work", async () => {

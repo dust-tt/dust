@@ -7332,7 +7332,7 @@
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption": {
       "get": {
         "summary": "Get an agent message credit attribution",
-        "description": "Returns direct and total billed credits. Run-agent tool rows combine invocation cost with the bill of their sub-agent subtree.",
+        "description": "Returns direct and total billed credits. User-visible run-agent tool rows combine invocation cost with the bill of their sub-agent subtree; hidden helper agents are included in the parent agent's work.",
         "tags": [
           "Private Messages"
         ],
@@ -7391,7 +7391,7 @@
                     "details": {
                       "type": "object",
                       "nullable": true,
-                      "description": "Additive attribution reconciled to totalBilledCredits through model input rows. Each run-agent tool row includes its sub-agent subtree's bill. Null when no stored version is complete.",
+                      "description": "Additive attribution reconciled to totalBilledCredits through model input rows. User-visible run-agent tool rows include their sub-agent subtree's bill; hidden helper agents are included in agentWorkCredits. Null when no stored version is complete.",
                       "required": [
                         "attributionVersion",
                         "agentWorkCredits",
@@ -7404,7 +7404,7 @@
                         },
                         "agentWorkCredits": {
                           "type": "number",
-                          "description": "Non-tool work for the originating message after assigning billing reconciliation exclusively to model input rows."
+                          "description": "Work attributed to the originating agent, including hidden helper agents, after assigning billing reconciliation exclusively to model input rows."
                         },
                         "tools": {
                           "type": "array",
@@ -7435,7 +7435,7 @@
                               },
                               "attributedCredits": {
                                 "type": "number",
-                                "description": "Share of total billed credits after input-only reconciliation. Run-agent tools include their sub-agent subtree's bill."
+                                "description": "Share of total billed credits after input-only reconciliation. User-visible run-agent tools include their sub-agent subtree's bill."
                               },
                               "directCredits": {
                                 "type": "number"
