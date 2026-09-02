@@ -31,10 +31,7 @@ import {
   USER_AWU_WARNING_PERCENTAGE,
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
-import {
-  getCachedCustomerPerUserCreditBalances,
-  listMetronomeSeatBalances,
-} from "@app/lib/metronome/client";
+import { getCachedCustomerPerUserCreditBalances } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   getCreditTypeAwuId,
@@ -45,7 +42,10 @@ import { getPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { SeatData } from "@app/lib/metronome/seats";
-import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
+import {
+  getCachedSeatBalances,
+  getCachedSeatDataByUserId,
+} from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   getFairUseAwuCreditsStatus,
@@ -752,26 +752,26 @@ export async function fetchSeatDataForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId) {
     return new Map();
   }
-  try {
-    const seatData = await getCachedSeatDataByUserId({
-      metronomeCustomerId,
-      contractId: metronomeContractId,
-    });
-    // null: another process holds the fetch lock (skipIfLocked). Degrade
-    // rather than piling a duplicate Metronome fan-out on top.
-    if (!seatData) {
-      return new Map();
-    }
-    return new Map(Object.entries(seatData));
-  } catch (err) {
+  const seatDataResult = await getCachedSeatDataByUserId({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+  });
+  if (seatDataResult.isErr()) {
     // No uncached fallback: a failing loader means Metronome is already under
     // pressure, and refetching would amplify it (see the 429 storm of 2026-08).
     logger.warn(
-      { err: normalizeError(err), metronomeCustomerId },
+      { err: seatDataResult.error, metronomeCustomerId },
       "[MembersUsage] Failed to read cached seat data, degrading to empty map"
     );
     return new Map();
   }
+  const seatData = seatDataResult.value;
+  // null: another process holds the fetch lock (skipIfLocked). Degrade
+  // rather than piling a duplicate Metronome fan-out on top.
+  if (!seatData) {
+    return new Map();
+  }
+  return new Map(Object.entries(seatData));
 }
 
 // Live per-seat AWU balance remaining for paid (seat-managed) seats, keyed by
@@ -792,21 +792,25 @@ async function fetchSeatBalancesForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId || userIds.length === 0) {
     return new Map();
   }
-  const result = await listMetronomeSeatBalances({
+  const balanceByUserId = new Map<string, number>();
+  const balancesResult = await getCachedSeatBalances({
     metronomeCustomerId,
     metronomeContractId,
     seatIds: userIds,
   });
-  const balanceByUserId = new Map<string, number>();
-  if (result.isErr()) {
+  if (balancesResult.isErr()) {
     logger.warn(
-      { err: result.error, metronomeCustomerId },
+      { err: balancesResult.error, metronomeCustomerId },
       "[MembersUsage] Failed to fetch seat balances, degrading to empty map"
     );
     return balanceByUserId;
   }
+  const balances = balancesResult.value;
+  if (balances === null) {
+    return balanceByUserId;
+  }
   const awuCreditTypeId = getCreditTypeAwuId();
-  for (const seat of result.value) {
+  for (const seat of balances) {
     const awu = seat.balances.find((b) => b.credit_type_id === awuCreditTypeId);
     if (awu) {
       balanceByUserId.set(seat.seat_id, awu.balance);
