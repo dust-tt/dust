@@ -6,11 +6,6 @@ import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/tools";
-import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
-import {
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
@@ -18,15 +13,18 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { AUTO_FAST_MODEL_CONFIG } from "@app/types/assistant/models/auto";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
 export function _getHelperGlobalAgent({
   auth,
-  featureFlags,
+  autoDefaultModelConfig,
   mcpServerViews,
 }: {
   auth: Authenticator;
-  featureFlags: WhitelistableFeature[];
+  // The stream meta-model the @dust agent defaults to: the highest one the
+  // member's model-tier cap allows (Standard, or Basic when capped).
+  autoDefaultModelConfig: ModelConfigurationType | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let prompt = `<primary_goal>
@@ -64,19 +62,16 @@ The user you're interacting with is granted with the role ${role}. Their name is
 </user_context>`;
   }
 
-  const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(auth, undefined, { featureFlags })
-    : getSmallWhitelistedModel(auth, undefined, { featureFlags });
+  // Same default stream as the @dust agent. The sentinel is resolved to a
+  // concrete model + effort at message-send time by resolveModel().
+  const modelConfiguration = autoDefaultModelConfig ?? AUTO_FAST_MODEL_CONFIG;
 
-  const model: AgentModelConfigurationType = modelConfiguration
-    ? {
-        providerId: modelConfiguration?.providerId,
-        modelId: modelConfiguration?.modelId,
-        temperature: 0.2,
-        reasoningEffort: modelConfiguration?.defaultReasoningEffort,
-      }
-    : dummyModelConfiguration;
-  const status = modelConfiguration ? "active" : "disabled_by_admin";
+  const model: AgentModelConfigurationType = {
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
+    temperature: 0.2,
+    reasoningEffort: modelConfiguration.defaultReasoningEffort,
+  };
 
   const sId = GLOBAL_AGENTS_SID.HELPER;
   const metadata = getGlobalAgentMetadata(sId);
@@ -103,7 +98,7 @@ The user you're interacting with is granted with the role ${role}. Their name is
     instructions: prompt + globalAgentGuidelines,
     instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
-    status: status,
+    status: "active",
     userFavorite: false,
     scope: "global",
     model: model,

@@ -176,7 +176,7 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.HELPER:
       agentConfiguration = _getHelperGlobalAgent({
         auth,
-        featureFlags,
+        autoDefaultModelConfig,
         mcpServerViews,
       });
       break;
@@ -880,22 +880,20 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
-      agentConfiguration = _getDustTaskGlobalAgent(auth, {
+      agentConfiguration = _getDustTaskGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        excludeProviders,
-        featureFlags,
+        autoDefaultModelConfig,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
       agentConfiguration = _getArchivedBrowserSummaryAgent();
       break;
     case GLOBAL_AGENTS_SID.DUST_PLANNING:
-      agentConfiguration = _getPlanningAgent(auth, {
+      agentConfiguration = _getPlanningAgent({
         settings,
-        excludeProviders,
-        featureFlags,
+        autoDefaultModelConfig,
       });
       break;
     case GLOBAL_AGENTS_SID.SIDEKICK:
