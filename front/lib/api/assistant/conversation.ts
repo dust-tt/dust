@@ -83,7 +83,10 @@ import {
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
@@ -3123,6 +3126,23 @@ async function isMessagesLimitReached(
       result.isOk() &&
       result.value >= roundCreditsToMicroCredits(maxAwuCredits)
     ) {
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          userId: user.sId,
+          messageOrigin: context.origin,
+          fairUseAwuCreditsUsed: microCreditsToCredits(result.value),
+          fairUseAwuCreditsLimit: maxAwuCredits,
+          fairUseAwuCreditsTimeframe: maxAwuCreditsTimeframe,
+        },
+        "Fair-use AWU credit limit triggered."
+      );
+      statsDMetrics.increment(
+        "assistant.rate_limiter.fair_use_awu.limit_triggered",
+        1,
+        [`workspace_id:${owner.sId}`, `message_origin:${context.origin}`]
+      );
+
       return {
         isLimitReached: true,
         limitType: "plan_message_limit_exceeded",
