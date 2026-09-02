@@ -55,10 +55,7 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
     USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
 );
 
-// Auth methods with no human behind them: a workspace API key, or the workspace's
-// own system key used internally (e.g. sub-agent runs). Both must classify as
-// programmatic, otherwise their usage falls back to the "user" bucket with no
-// real user to attribute it to.
+// Auth methods with no human behind them
 const PROGRAMMATIC_AUTH_METHODS = ["api_key", "system_api_key"];
 
 export function isProgrammaticUsageFromContext({
