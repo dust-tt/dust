@@ -51,6 +51,8 @@ import assert from "assert";
 import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
+import { col, fn, Op } from "sequelize";
+import { z } from "zod";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
@@ -68,6 +70,14 @@ export interface FramePublicationFunctionDefinition {
 }
 
 export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
+
+// A `findAll` carrying an aggregate attribute returns plain rows rather than model instances, so
+// the model's declared types do not describe them. Parsed instead of cast so a shape change fails
+// loudly. `functionCount` is coerced because aggregates arrive as strings from some drivers.
+const FrameFunctionCountRowSchema = z.object({
+  fileId: z.number(),
+  functionCount: z.coerce.number(),
+});
 
 /**
  * Sha256 hex of a published bundle's utf8 bytes — the same bytes uploadContent writes and the
@@ -667,6 +677,57 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       where: { fileId: frame.id, publicationId },
       includeFrameFunctions: true,
     });
+  }
+
+  /**
+   * One grouped count per Frame's *active* publication — the Poke Frames list must not query per
+   * row, and must not count functions from publications that are no longer served (a frame keeps
+   * every past publication's function rows around, so a plain per-file count would grow with
+   * every publish instead of matching what `listByFramePublication` actually serves).
+   */
+  static async countByFrameModelIds(
+    auth: Authenticator,
+    framePublications: {
+      frameModelId: ModelId;
+      activePublicationId: string | null;
+    }[]
+  ): Promise<Map<ModelId, number>> {
+    const activePairs = framePublications.filter(
+      (
+        framePublication
+      ): framePublication is {
+        frameModelId: ModelId;
+        activePublicationId: string;
+      } => framePublication.activePublicationId !== null
+    );
+
+    if (activePairs.length === 0) {
+      return new Map();
+    }
+
+    const rows = await SandboxFunctionModel.findAll({
+      attributes: ["fileId", [fn("COUNT", col("id")), "functionCount"]],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        // Exact (fileId, publicationId) pairs rather than independent `IN` lists: publication ids
+        // are not guaranteed distinct across frames (test fixtures reuse the same literal id), so
+        // crossing the two lists could attribute one frame's functions to another.
+        [Op.or]: activePairs.map(({ frameModelId, activePublicationId }) => ({
+          fileId: frameModelId,
+          publicationId: activePublicationId,
+        })),
+      },
+      group: ["fileId", "publicationId"],
+      raw: true,
+    });
+
+    return new Map(
+      rows.map((row) => {
+        const { fileId, functionCount } =
+          FrameFunctionCountRowSchema.parse(row);
+        return [fileId, functionCount];
+      })
+    );
   }
 
   static async fetchByFramePublicationAndSlug(

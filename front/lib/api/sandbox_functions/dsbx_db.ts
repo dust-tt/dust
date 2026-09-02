@@ -471,12 +471,12 @@ export interface LiveDatabaseEntry {
   sizeBytes: number;
 }
 
-/** `dsbx db list`: enumerate the live `{db}.db` files with their sizes (WAL included). */
-export async function listDatabasesOnSandbox(
+/** `dsbx db list` against an already-ready sandbox, whatever owns it (Pod or Frame). */
+export async function listDatabasesOnReadySandbox(
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  sandbox: SandboxResource
 ): Promise<Result<LiveDatabaseEntry[], SandboxFunctionError>> {
-  const result = await execDbCommand(auth, space, {
+  const result = await execDbCommandOnReadySandbox(auth, sandbox, {
     command: `${DSBX_BIN_PATH} db list`,
     schema: listEnvelopeSchema,
     what: "dsbx db list",
@@ -494,6 +494,24 @@ export async function listDatabasesOnSandbox(
     );
   }
   return new Err(dbErrorToSandboxFunctionError(null, envelope, "internal"));
+}
+
+/** `dsbx db list`: enumerate the live `{db}.db` files with their sizes (WAL included). */
+export async function listDatabasesOnSandbox(
+  auth: Authenticator,
+  { space }: { space: SpaceResource }
+): Promise<Result<LiveDatabaseEntry[], SandboxFunctionError>> {
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+
+  return listDatabasesOnReadySandbox(auth, ensureResult.value.sandbox);
 }
 
 // `dsbx db schema` writes the regenerated file and prints only `{ok}`.

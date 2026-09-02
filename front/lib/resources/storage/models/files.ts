@@ -21,6 +21,7 @@ import type {
   FileUseCase,
   FileUseCaseMetadata,
 } from "@app/types/files";
+import { frameV2ContentType } from "@app/types/files";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
@@ -115,6 +116,15 @@ FileModel.init(
         fields: ["workspaceId", "mountFilePath"],
         unique: true,
         where: { mountFilePath: { [Op.ne]: null } },
+      },
+      {
+        // Poke's workspace Frames list orders by updatedAt within a workspace. Partial so the
+        // index stays small: Frames are a tiny fraction of the files table. Plain ascending —
+        // Postgres scans a btree backwards at the same cost, so this serves ORDER BY DESC.
+        name: "files_workspace_id_frame_v2_updated_at",
+        fields: ["workspaceId", "updatedAt"],
+        concurrently: true,
+        where: { contentType: frameV2ContentType },
       },
       {
         fields: ["fileSystemNodeId"],

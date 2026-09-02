@@ -6,7 +6,9 @@ import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
 } from "@app/lib/resources/storage/models/sandbox_function";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { makeTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -728,5 +730,55 @@ describe("SandboxFunctionResource", () => {
     await expect(
       SandboxFunctionResource.fetchById(adminAuth, sandboxFunction.sId)
     ).resolves.toMatchObject({ id: sandboxFunction.id });
+  });
+
+  it("counts a Frame's functions from its active publication only", async () => {
+    const { adminAuth, frame } = await makeTestFrameFunction();
+
+    // Simulates a stale prior publish: its function rows remain in the table (they are never
+    // pruned), but they must not be counted once a newer publication is active.
+    await withTransaction((transaction) =>
+      SandboxFunctionResource.createForFramePublication(
+        adminAuth,
+        {
+          frame,
+          publicationId: "publication-0",
+          functions: [
+            {
+              name: "stale-function",
+              description: "A function from a superseded publication.",
+              userIdentity: "optional",
+              executionMode: "durable",
+              defaultStake: "low",
+              bundleCode:
+                "export default { fetch: async () => Response.json({}) };",
+              inputSchema,
+              outputSchema,
+            },
+          ],
+        },
+        transaction
+      )
+    );
+
+    const counts = await SandboxFunctionResource.countByFrameModelIds(
+      adminAuth,
+      [{ frameModelId: frame.id, activePublicationId: "publication-1" }]
+    );
+
+    expect(counts.get(frame.id)).toBe(1);
+  });
+
+  it("returns an empty map for a frame with no active publication, without querying", async () => {
+    const findAllSpy = vi.spyOn(SandboxFunctionModel, "findAll");
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const counts = await SandboxFunctionResource.countByFrameModelIds(
+      authenticator,
+      [{ frameModelId: 1, activePublicationId: null }]
+    );
+
+    expect(counts.size).toBe(0);
+    expect(findAllSpy).not.toHaveBeenCalled();
   });
 });
