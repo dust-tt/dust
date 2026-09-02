@@ -1,7 +1,7 @@
 import { PokeJsonBlock } from "@app/components/poke/sandbox_functions/json_block";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 import type { PokeSandboxFunctionMCPAction } from "@app/lib/api/poke/sandbox_functions";
-import { usePokeSandboxFunctionMCPActionOutput } from "@app/poke/swr/pod_function_details";
+import { usePokeSandboxFunctionMCPActionOutput } from "@app/poke/swr/frame_function_details";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -10,7 +10,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   ContentMessageInline,
-  LinkWrapper,
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -41,7 +40,7 @@ interface InvocationMCPActionsProps {
   functionId: string;
   invocationId: string;
   owner: LightWorkspaceType;
-  projectId: string;
+  frameId: string;
 }
 
 export function InvocationMCPActions({
@@ -49,7 +48,7 @@ export function InvocationMCPActions({
   functionId,
   invocationId,
   owner,
-  projectId,
+  frameId,
 }: InvocationMCPActionsProps) {
   if (actions.length === 0) {
     return (
@@ -68,7 +67,7 @@ export function InvocationMCPActions({
             functionId={functionId}
             invocationId={invocationId}
             owner={owner}
-            projectId={projectId}
+            frameId={frameId}
           />
           {idx < actions.length - 1 && <Separator />}
         </div>
@@ -82,7 +81,7 @@ interface MCPActionRowProps {
   functionId: string;
   invocationId: string;
   owner: LightWorkspaceType;
-  projectId: string;
+  frameId: string;
 }
 
 function MCPActionRow({
@@ -90,13 +89,13 @@ function MCPActionRow({
   functionId,
   invocationId,
   owner,
-  projectId,
+  frameId,
 }: MCPActionRowProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const { output, isLoading, isError } = usePokeSandboxFunctionMCPActionOutput({
     owner,
-    projectId,
+    frameId,
     functionId,
     invocationId,
     actionId: action.sId,
@@ -125,12 +124,12 @@ function MCPActionRow({
       <CollapsibleContent>
         <div className="flex flex-col gap-2 pb-2 pl-4">
           {action.mcpServerViewId && (
-            <LinkWrapper
-              href={`/poke/${owner.sId}/spaces/${projectId}/mcp_server_views/${action.mcpServerViewId}`}
-              className="text-xs text-highlight-500"
-            >
-              View MCP server view
-            </LinkWrapper>
+            // Not a link: the MCP server view detail page is addressed by the space that holds
+            // the view, and a Frame is not a space. The id is shown so it can be looked up from
+            // the workspace's MCP tab.
+            <p className="text-xs text-muted-foreground">
+              MCP server view: {action.mcpServerViewId}
+            </p>
           )}
           <PokeJsonBlock defaultOpen label="Inputs" value={action.inputs} />
           {!action.hasOutput ? (

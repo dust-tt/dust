@@ -1,10 +1,10 @@
-import { InvocationMCPActions } from "@app/components/poke/projects/pod_functions/mcp_actions";
+import { InvocationMCPActions } from "@app/components/poke/frames/functions/mcp_actions";
 import { PokeJsonBlock } from "@app/components/poke/sandbox_functions/json_block";
 import type { PokeSandboxFunctionInvocation } from "@app/lib/api/poke/sandbox_functions";
 import {
   usePokeSandboxFunctionInvocation,
   usePokeSandboxFunctionInvocations,
-} from "@app/poke/swr/pod_function_details";
+} from "@app/poke/swr/frame_function_details";
 import type {
   SandboxFunctionInvocationOrigin,
   SandboxFunctionInvocationStatus,
@@ -65,17 +65,17 @@ function elapsedLabel(
   return `~${(elapsedMs / 1000).toFixed(1)}s`;
 }
 
-interface PodFunctionInvocationsProps {
+interface FrameFunctionInvocationsProps {
   functionId: string;
   owner: LightWorkspaceType;
-  projectId: string;
+  frameId: string;
 }
 
-export function PodFunctionInvocations({
+export function FrameFunctionInvocations({
   functionId,
   owner,
-  projectId,
-}: PodFunctionInvocationsProps) {
+  frameId,
+}: FrameFunctionInvocationsProps) {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [status, setStatus] = useState<
     SandboxFunctionInvocationStatus | undefined
@@ -87,7 +87,7 @@ export function PodFunctionInvocations({
   const { invocations, isLoading, isError } = usePokeSandboxFunctionInvocations(
     {
       owner,
-      projectId,
+      frameId,
       functionId,
       limit,
       status,
@@ -177,7 +177,7 @@ export function PodFunctionInvocations({
                     functionId={functionId}
                     invocation={invocation}
                     owner={owner}
-                    projectId={projectId}
+                    frameId={frameId}
                   />
                   {idx < invocations.length - 1 && <Separator />}
                 </div>
@@ -204,14 +204,14 @@ interface InvocationRowProps {
   functionId: string;
   invocation: PokeSandboxFunctionInvocation;
   owner: LightWorkspaceType;
-  projectId: string;
+  frameId: string;
 }
 
 function InvocationRow({
   functionId,
   invocation,
   owner,
-  projectId,
+  frameId,
 }: InvocationRowProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -221,7 +221,7 @@ function InvocationRow({
     isError,
   } = usePokeSandboxFunctionInvocation({
     owner,
-    projectId,
+    frameId,
     functionId,
     invocationId: invocation.sId,
     disabled: !isOpen,
@@ -281,7 +281,7 @@ function InvocationRow({
               functionId={functionId}
               invocationId={invocation.sId}
               owner={owner}
-              projectId={projectId}
+              frameId={frameId}
             />
           </div>
         )}

@@ -15,6 +15,7 @@ import { DataSourceViewPage } from "@dust-tt/front/components/poke/pages/DataSou
 import { EmailTemplatesPage } from "@dust-tt/front/components/poke/pages/EmailTemplatesPage";
 import { FeatureFlagDetailPage } from "@dust-tt/front/components/poke/pages/FeatureFlagDetailPage";
 import { FeatureFlagsPage } from "@dust-tt/front/components/poke/pages/FeatureFlagsPage";
+import { FrameFunctionPage } from "@dust-tt/front/components/poke/pages/FrameFunctionPage";
 import { FramePage } from "@dust-tt/front/components/poke/pages/FramePage";
 import { GlobalAgentFeedbacksPage } from "@dust-tt/front/components/poke/pages/GlobalAgentFeedbacksPage";
 import { GroupPage } from "@dust-tt/front/components/poke/pages/GroupPage";
@@ -143,6 +144,10 @@ export const routes: RouteObject[] = [
           },
           { path: "groups/:groupId", element: <GroupPage /> },
           { path: "files/:sId", element: <FramePage /> },
+          {
+            path: "files/:sId/functions/:functionId",
+            element: <FrameFunctionPage />,
+          },
           { path: "skills/:sId", element: <SkillDetailsPage /> },
           {
             path: "suggestions/:suggestionId",
