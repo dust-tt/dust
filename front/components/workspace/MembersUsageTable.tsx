@@ -895,6 +895,8 @@ export function MembersUsageTable({
   const rows: RowData[] = useMemo(
     () =>
       members.map((m) => {
+        const hasSeat = m.seatType !== null && m.seatType !== "none";
+        const canEditSeat = showSeatAndCredits && isSeatBased && hasSeat;
         const resolvedModelTiers = showModelTiersColumn
           ? resolveModelTiersForUser({
               userId: m.sId,
@@ -943,7 +945,7 @@ export function MembersUsageTable({
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
-            ...(showSeatAndCredits && (!m.seatType || m.seatType === "none")
+            ...(showSeatAndCredits && !hasSeat
               ? [
                   {
                     kind: "item" as const,
@@ -953,10 +955,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showSeatAndCredits &&
-            isSeatBased &&
-            m.seatType &&
-            m.seatType !== "none"
+            ...(canEditSeat
               ? [
                   {
                     kind: "item" as const,
@@ -968,9 +967,8 @@ export function MembersUsageTable({
               : []),
             ...(showSeatAndCredits &&
             showSpendLimit &&
-            m.seatType &&
-            m.seatType !== "free" &&
-            m.seatType !== "none"
+            hasSeat &&
+            m.seatType !== "free"
               ? [
                   {
                     kind: "item" as const,
@@ -1007,10 +1005,7 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showSeatAndCredits &&
-            isSeatBased &&
-            m.seatType &&
-            m.seatType !== "none"
+            ...(canEditSeat
               ? [
                   {
                     kind: "item" as const,
