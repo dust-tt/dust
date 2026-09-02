@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
@@ -28,7 +29,15 @@ vi.mock("@app/lib/resources/space_resource", () => ({
   SpaceResource: {
     fetchById: vi.fn().mockResolvedValue({
       id: "test-space-id",
-      canRead: vi.fn().mockReturnValue(true),
+      getAccessControlLists: vi
+        .fn()
+        .mockImplementation((auth: Authenticator) => [
+          {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            roles: [],
+            grantedVerbs: ["read"],
+          },
+        ]),
     }),
   },
 }));
