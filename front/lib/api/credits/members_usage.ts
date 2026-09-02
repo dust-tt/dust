@@ -68,7 +68,10 @@ import {
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { CreditUsageStatus } from "@app/types/api/credits/usage_status";
+import type {
+  CreditUsageStatus,
+  CreditUsageTarget,
+} from "@app/types/api/credits/usage_status";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
@@ -165,6 +168,11 @@ export type MemberUsageType = {
   // rate-cap flag on, derived from the Redis rate-limiter counter; with it off,
   // from the Metronome nearLimit flag (see user_block.ts). Poke-only.
   nearLimit: boolean;
+  // Classifies seat-allowance consumption against how far the billing cycle
+  // has elapsed: "elevated"/"critical" mean the member is burning through
+  // their seat allowance faster than a linear pace would predict. Poke-only
+  // (null otherwise, or when the billing cycle can't be resolved).
+  seatUsageTarget: CreditUsageTarget | null;
   // Per-user fair-use AWU credit usage (credits, with decimals) backed by the
   // microCredit rate-limit counter. Applies to non-credit-based plans
   // (free/trial) where a fair-use limit is set. Null when the plan carries no
@@ -1572,6 +1580,7 @@ export async function getMemberUsage({
     freeCreditEmptyAlert: null,
     creditState: membership.creditState,
     nearLimit: false,
+    seatUsageTarget: null,
   };
 
   return {
@@ -2041,13 +2050,15 @@ export async function getMembersUsage({
   // Bulk-fetch the Redis fixed-window spend-cap counter per user (poke-only), to
   // display beside the Elasticsearch-derived usage. The counter is bucketed on
   // the current contract billing cycle — resolve the window once, then read each
-  // user's key.
+  // user's key. The same cycle also backs the per-member seat-usage pace below.
   const rateLimiterSpendByUserId = new Map<string, number>();
+  let billingCycle: BillingCycle | null = null;
   if (includeAlertLinks) {
     const periodResult = await getCachedMetronomeCurrentBillingPeriod(
       workspace.sId
     );
     if (periodResult.isOk() && periodResult.value) {
+      billingCycle = periodResult.value;
       const bounds = makeSpendLimitCycleWindowBounds(
         periodResult.value.cycleStart,
         periodResult.value.cycleEnd
@@ -2255,6 +2266,37 @@ export async function getMembersUsage({
           USER_AWU_WARNING_PERCENTAGE * effectiveSpendLimitAwuCredits
         : (nearLimitByUserId.get(userId) ?? false));
 
+    // Seat-allowance consumption used for pace classification below: free
+    // seats track their live Metronome balance instead of the period spend
+    // (same distinction the seat-usage ring draws client-side). A missing
+    // entry means the balance read failed (the fetcher degrades to an empty
+    // map on Metronome failure), not that the balance is zero, so it must
+    // stay unknown rather than be treated as fully consumed.
+    const freeBalanceAwu = freeBalanceByUserId.get(userId) ?? null;
+    const seatAllowanceAwu =
+      effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null;
+    const seatConsumedAwu =
+      membership.seatType === "free"
+        ? seatAllowanceAwu !== null && freeBalanceAwu !== null
+          ? Math.max(0, seatAllowanceAwu - freeBalanceAwu)
+          : null
+        : consumedFromAllowanceAwuCredits;
+    // Free seats have a lifetime, non-renewing grant, not a recurring
+    // billing-cycle allowance, so the billing-cycle pace classification
+    // (on-track/orange/critical) doesn't apply to them.
+    const seatUsageTarget =
+      billingCycle &&
+      membership.seatType !== "free" &&
+      seatAllowanceAwu !== null &&
+      seatConsumedAwu !== null
+        ? (computeCreditUsageStatus({
+            consumedAwuCredits: seatConsumedAwu,
+            limitAwuCredits: seatAllowanceAwu,
+            billingCycle,
+            nowMs: Date.now(),
+          })?.target ?? null)
+        : null;
+
     return [
       {
         sId: userId,
@@ -2269,7 +2311,7 @@ export async function getMembersUsage({
           effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
         seatBalanceAwu:
           membership.seatType === "free"
-            ? (freeBalanceByUserId.get(userId) ?? 0)
+            ? freeBalanceAwu
             : effectiveAllocationAwu > 0
               ? (seatBalanceByUserId.get(userId) ?? null)
               : null,
@@ -2295,6 +2337,7 @@ export async function getMembersUsage({
         creditState: membership.creditState,
         nearLimit,
         fairUse: fairUseByUserId.get(userId) ?? null,
+        seatUsageTarget,
       },
     ];
   });

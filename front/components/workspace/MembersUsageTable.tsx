@@ -26,6 +26,7 @@ import {
 import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
+import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -38,11 +39,13 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Clock,
+  cn,
   createSelectionColumn,
   DataTable,
   Icon,
   LoadingBlock,
   ProgressBar,
+  ProgressRing,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -84,6 +87,7 @@ type RowData = {
   consumedAwuCredits: number;
   consumedFromAllowanceAwuCredits: number;
   consumedFromPoolAwuCredits: number;
+  seatUsageTarget: CreditUsageTarget | null;
   spendLimitAwuCredits: number | null;
   spendLimitSource: EffectiveSpendLimitSource;
   scheduledSeatType: MembershipSeatType | null;
@@ -484,6 +488,168 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   },
 };
 
+const seatsIconColumn: ColumnDef<RowData, string> = {
+  id: "seatsIcon" as const,
+  header: "Seats",
+  enableSorting: false,
+  accessorFn: (row) => row.seatType ?? "",
+  cell: (info: Info) => {
+    if (info.row.original.isSeatChangePending) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <Spinner size="xs" />
+        </DataTable.CellContent>
+      );
+    }
+    const { seatType, scheduledSeatType, scheduledSeatChangeAt } =
+      info.row.original;
+    if (!seatType) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <span className="text-sm text-muted-foreground">--</span>
+        </DataTable.CellContent>
+      );
+    }
+    const tooltipLabel = scheduledSeatType
+      ? getScheduledSeatChangeLabel(
+          seatType,
+          scheduledSeatType,
+          scheduledSeatChangeAt
+        )
+      : `${seatTypeDisplayName(seatType)} seat`;
+    return (
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={tooltipLabel}
+          trigger={
+            <span className="flex cursor-default items-center justify-center">
+              <SeatTypeIcon seatType={seatType} />
+            </span>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-16",
+    headerAlign: "center",
+  },
+};
+
+function computeSeatUsage({
+  seatType,
+  memberUsageLimit,
+  seatBalanceAwu,
+  consumedFromAllowanceAwuCredits,
+}: {
+  seatType: MembershipSeatType | null;
+  memberUsageLimit: number | null;
+  seatBalanceAwu: number | null;
+  consumedFromAllowanceAwuCredits: number;
+}): {
+  percent: number;
+  isOverAllowance: boolean;
+  consumed: number;
+  allowance: number;
+} {
+  const allowance = memberUsageLimit ?? 0;
+  const isFreeWithBalance =
+    seatType === "free" &&
+    typeof seatBalanceAwu === "number" &&
+    typeof memberUsageLimit === "number";
+  const consumed = isFreeWithBalance
+    ? Math.max(0, memberUsageLimit - seatBalanceAwu)
+    : consumedFromAllowanceAwuCredits;
+  if (allowance <= 0) {
+    return {
+      percent: consumed > 0 ? 100 : 0,
+      isOverAllowance: consumed > 0,
+      consumed,
+      allowance,
+    };
+  }
+  return {
+    percent: Math.min(100, (consumed / allowance) * 100),
+    isOverAllowance: consumed > allowance,
+    consumed,
+    allowance,
+  };
+}
+
+const seatUsageColumn: ColumnDef<RowData, string> = {
+  id: "seatUsage" as const,
+  header: "Seat usage",
+  enableSorting: false,
+  accessorFn: (row) =>
+    computeSeatUsage({
+      seatType: row.seatType,
+      memberUsageLimit: row.memberUsageLimit,
+      seatBalanceAwu: row.seatBalanceAwu,
+      consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
+    }).percent.toString(),
+  cell: (info: Info) => {
+    const {
+      seatType,
+      memberUsageLimit,
+      seatBalanceAwu,
+      seatUsageTarget,
+      isSeatChangePending,
+    } = info.row.original;
+    if (
+      isSeatChangePending ||
+      !seatType ||
+      memberUsageLimit === null ||
+      memberUsageLimit <= 0
+    ) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <span className="text-sm text-muted-foreground">--</span>
+        </DataTable.CellContent>
+      );
+    }
+    const { percent, consumed, allowance } = computeSeatUsage({
+      seatType,
+      memberUsageLimit,
+      seatBalanceAwu,
+      consumedFromAllowanceAwuCredits:
+        info.row.original.consumedFromAllowanceAwuCredits,
+    });
+    const isOffPace =
+      seatUsageTarget === "elevated" || seatUsageTarget === "critical";
+    const colorClassName =
+      percent >= 100
+        ? "text-red-500"
+        : isOffPace
+          ? "text-warning-500"
+          : "text-muted-foreground";
+    return (
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={`${formatCredits(consumed)} / ${formatCredits(allowance)} credits used`}
+          trigger={
+            <div className="flex items-center gap-2">
+              <span className={cn("text-xs font-medium", colorClassName)}>
+                {Math.round(percent)}%
+              </span>
+              <ProgressRing
+                percentage={percent}
+                label="Seat usage"
+                className={colorClassName}
+              />
+            </div>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-24",
+    headerAlign: "center",
+  },
+};
+
 function buildConsumedAwuCreditsColumn(
   creditsResetAt: string | null
 ): ColumnDef<RowData, string> {
@@ -608,7 +774,17 @@ function buildColumns({
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
     ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
-    seatTypeColumn,
+    ...(() => {
+      switch (variant) {
+        case "compact":
+          return [seatsIconColumn, seatUsageColumn];
+        case "legacy":
+          return [seatTypeColumn];
+        default:
+          assertNeverAndIgnore(variant);
+          return [seatTypeColumn];
+      }
+    })(),
     {
       ...buildConsumedAwuCreditsColumn(creditsResetAt),
       meta: { className: "w-64" },
@@ -722,6 +898,7 @@ export function MembersUsageTable({
           consumedAwuCredits: m.consumedAwuCredits,
           consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
           consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
+          seatUsageTarget: m.seatUsageTarget,
           spendLimitAwuCredits: m.spendLimitAwuCredits,
           spendLimitSource: m.spendLimitSource,
           scheduledSeatType: m.scheduledSeatType,
