@@ -3,8 +3,9 @@ import { useSlackPersonalFooterRemovalToggle } from "@app/hooks/useSlackPersonal
 import type { WorkspaceType } from "@app/types/user";
 import { SliderToggle } from "@dust-tt/sparkle";
 
-const LABEL = '"Sent via Agent" Slack footer';
-const DESCRIPTION =
+export const SLACK_PERSONAL_FOOTER_REMOVAL_LABEL =
+  '"Sent via Agent" Slack footer';
+export const SLACK_PERSONAL_FOOTER_REMOVAL_DESCRIPTION =
   'Whether agents can remove the "Sent via Agent" footer on Slack messages posted with user credentials';
 
 export function SlackPersonalFooterRemovalToggle({
@@ -17,8 +18,8 @@ export function SlackPersonalFooterRemovalToggle({
 
   return (
     <GovernanceSettingRowLayout
-      label={LABEL}
-      description={DESCRIPTION}
+      label={SLACK_PERSONAL_FOOTER_REMOVAL_LABEL}
+      description={SLACK_PERSONAL_FOOTER_REMOVAL_DESCRIPTION}
       action={
         <SliderToggle
           selected={isEnabled}

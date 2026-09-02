@@ -12,6 +12,7 @@ import {
   useElapsedSeconds,
 } from "@app/hooks/utils/voice";
 import { clientFetch } from "@app/lib/egress/client";
+import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import type { GetTranscribeTokenResponseBody } from "@app/types/api/transcribe";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -301,7 +302,7 @@ export function useVoiceLiveTranscriberService({
     shutdownTimeoutRef.current = setTimeout(finishShutdown, 2000);
   }, [status, cleanup, finishShutdown]);
 
-  return owner.metadata?.allowVoiceTranscription !== false
+  return isVoiceTranscriptionAllowed(owner)
     ? { status, level, elapsedSeconds, startRecording, stopRecording }
     : quackingVoiceTranscriptService;
 }

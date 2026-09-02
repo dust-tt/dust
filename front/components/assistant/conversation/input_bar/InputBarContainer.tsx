@@ -59,6 +59,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
+import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
@@ -1576,7 +1577,7 @@ const InputBarContainer = ({
 
   const canShowVoicePicker =
     !subscription.plan.isByok &&
-    owner.metadata?.allowVoiceTranscription !== false &&
+    isVoiceTranscriptionAllowed(owner) &&
     actions.includes("voice") &&
     !isCompact;
 
@@ -1675,7 +1676,7 @@ const InputBarContainer = ({
             </div>
           )}
           {!subscription.plan.isByok &&
-            owner.metadata?.allowVoiceTranscription !== false &&
+            isVoiceTranscriptionAllowed(owner) &&
             actions.includes("voice") && (
               <div
                 className={cn(

@@ -32,6 +32,7 @@ import {
   getPodRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
+import { arePrivateConversationUrlsDefault } from "@app/lib/workspace_policies";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import {
   getConversationDisplayTitle,
@@ -359,7 +360,7 @@ export function ConversationMenu({
   const canLeave = conversationParticipationOptions.includes("leave");
   const canDelete = conversationParticipationOptions.includes("delete");
   const isPrivateConversationUrlsByDefaultEnabled =
-    owner.metadata?.privateConversationUrlsByDefault === true;
+    arePrivateConversationUrlsDefault(owner);
   const isPodConversationWithOwnUrl =
     conversation !== undefined && isPodConversation(conversation);
   const conversationUrlAccessMode = getConversationUrlAccessMode(

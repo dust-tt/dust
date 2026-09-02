@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
@@ -13,7 +14,7 @@ export function useVoiceTranscriptionToggle({
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
-    owner.metadata?.allowVoiceTranscription !== false
+    isVoiceTranscriptionAllowed(owner)
   );
 
   const doToggleVoiceTranscription = async () => {

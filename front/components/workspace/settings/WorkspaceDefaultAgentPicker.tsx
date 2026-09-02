@@ -9,8 +9,8 @@ import type { WorkspaceType } from "@app/types/user";
 import { Avatar, Button, Robot } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
-const LABEL = "Default agent";
-const DESCRIPTION =
+export const WORKSPACE_DEFAULT_AGENT_LABEL = "Default agent";
+export const WORKSPACE_DEFAULT_AGENT_DESCRIPTION =
   "The agent pre-selected when anyone starts a new conversation in this workspace";
 
 interface WorkspaceDefaultAgentPickerProps {
@@ -72,8 +72,8 @@ function DefaultAgentRow({ owner }: WorkspaceDefaultAgentPickerProps) {
 
   return (
     <GovernanceSettingRowLayout
-      label={LABEL}
-      description={DESCRIPTION}
+      label={WORKSPACE_DEFAULT_AGENT_LABEL}
+      description={WORKSPACE_DEFAULT_AGENT_DESCRIPTION}
       action={
         <AgentPicker
           owner={owner}
