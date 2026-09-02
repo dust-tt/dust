@@ -54,6 +54,12 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
     // Note: we should maybe remove this check and fully trust the Cloudflare Access token.
     // Kept for now to be symmetric with the WorkOS fallback.
     if (!isDustInternalEmail(identity.email)) {
+      logger.warn(
+        {
+          email: identity.email,
+        },
+        "[Poke Auth] Cloudflare Access token user is not a Dust internal email"
+      );
       return apiError(ctx, {
         status_code: 401,
         api_error: {
@@ -70,6 +76,11 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
       },
     });
 
+    logger.info(
+      { email: identity.email },
+      "[Poke Auth] User logged in Poke via Cloudflare Access token"
+    );
+
     const pokeRoles = await getPokeRolesForUser(identity.email);
     ctx.set("auth", auth);
     ctx.set("pokeRoles", pokeRoles);
@@ -79,7 +90,7 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
 
   if (accessConfig && !accessToken && !isDevelopment()) {
     logger.warn(
-      "Poke request missing Cloudflare Access token; falling back to WorkOS super-user session"
+      "[Poke Auth] Request missing Cloudflare Access token; falling back to WorkOS super-user session"
     );
   }
 
@@ -91,6 +102,10 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
   const user = await Authenticator.userFromSession(sessionResult);
   // WorkOS fallback still requires a provisioned Dust user with the DB flag.
   if (!user || !user.isDustSuperUser || !isDustInternalEmail(user.email)) {
+    logger.warn(
+      { userId: user?.sId, email: user?.email },
+      "[Poke Auth] WorkOS fallback user is not a Dust internal email"
+    );
     return apiError(ctx, {
       status_code: 401,
       api_error: {
@@ -102,6 +117,14 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
 
   const auth = await Authenticator.fromDustSuperUser({ user });
   const pokeRoles = await getPokeRolesForUser(user.email);
+
+  logger.info(
+    {
+      userId: user.sId,
+      email: user.email,
+    },
+    "[Poke Auth] User logged in Poke via WorkOS fallback"
+  );
 
   ctx.set("auth", auth);
   ctx.set("pokeRoles", pokeRoles);
