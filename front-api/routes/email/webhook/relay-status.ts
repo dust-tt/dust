@@ -13,11 +13,10 @@ type GetResponseBody = {
   received: boolean;
 };
 
-const app = createHono();
 const RelayHeadersSchema = z.object({
   [EMAIL_WEBHOOK_RELAY_ID_HEADER]: z.string().uuid(),
 });
-app.use("/", validate("header", RelayHeadersSchema));
+const app = createHono().use("/", validate("header", RelayHeadersSchema));
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetResponseBody> => {
@@ -32,7 +31,10 @@ app.get("/", async (ctx): HandlerResult<GetResponseBody> => {
     });
   }
 
-  const relayId = ctx.req.valid("header")[EMAIL_WEBHOOK_RELAY_ID_HEADER];
+  const relayId = ctx.req.header(EMAIL_WEBHOOK_RELAY_ID_HEADER);
+  if (!relayId) {
+    throw new Error("Relay ID header was not validated");
+  }
   return ctx.json({ received: await hasEmailRelayReceipt(relayId) });
 });
 
