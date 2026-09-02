@@ -76,6 +76,14 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import {
+  ConversationActions,
+  isFileView,
+  type SidePanelView,
+  sidePanelContent,
+  sidePanelLabel,
+  sidePanelSizing,
+} from "../components/ConversationSidePanels";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
@@ -127,14 +135,6 @@ import {
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
-import {
-  ConversationActions,
-  isFileView,
-  type SidePanelView,
-  sidePanelContent,
-  sidePanelLabel,
-  sidePanelSizing,
-} from "./conversationSidePanels";
 import TemplateSelection, { type Template } from "./TemplateSelection";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
