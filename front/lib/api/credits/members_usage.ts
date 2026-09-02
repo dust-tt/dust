@@ -2268,15 +2268,27 @@ export async function getMembersUsage({
 
     // Seat-allowance consumption used for pace classification below: free
     // seats track their live Metronome balance instead of the period spend
-    // (same distinction the seat-usage ring draws client-side).
+    // (same distinction the seat-usage ring draws client-side). A missing
+    // entry means the balance read failed (the fetcher degrades to an empty
+    // map on Metronome failure), not that the balance is zero, so it must
+    // stay unknown rather than be treated as fully consumed.
+    const freeBalanceAwu = freeBalanceByUserId.get(userId) ?? null;
     const seatAllowanceAwu =
       effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null;
     const seatConsumedAwu =
-      membership.seatType === "free" && seatAllowanceAwu !== null
-        ? Math.max(0, seatAllowanceAwu - (freeBalanceByUserId.get(userId) ?? 0))
+      membership.seatType === "free"
+        ? seatAllowanceAwu !== null && freeBalanceAwu !== null
+          ? Math.max(0, seatAllowanceAwu - freeBalanceAwu)
+          : null
         : consumedFromAllowanceAwuCredits;
+    // Free seats have a lifetime, non-renewing grant, not a recurring
+    // billing-cycle allowance, so the billing-cycle pace classification
+    // (on-track/orange/critical) doesn't apply to them.
     const seatUsageTarget =
-      billingCycle && seatAllowanceAwu !== null
+      billingCycle &&
+      membership.seatType !== "free" &&
+      seatAllowanceAwu !== null &&
+      seatConsumedAwu !== null
         ? (computeCreditUsageStatus({
             consumedAwuCredits: seatConsumedAwu,
             limitAwuCredits: seatAllowanceAwu,
@@ -2299,7 +2311,7 @@ export async function getMembersUsage({
           effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
         seatBalanceAwu:
           membership.seatType === "free"
-            ? (freeBalanceByUserId.get(userId) ?? 0)
+            ? freeBalanceAwu
             : effectiveAllocationAwu > 0
               ? (seatBalanceByUserId.get(userId) ?? null)
               : null,
