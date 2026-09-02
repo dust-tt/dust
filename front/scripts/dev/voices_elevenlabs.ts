@@ -1,8 +1,8 @@
-import { getElevenLabsClient } from "@app/lib/api/actions/servers/elevenlabs/utils";
 import type {
   VoiceGender,
   VoiceUseCase,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
+import { getElevenLabs } from "@app/lib/utils/transcribe_service";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { Voice } from "@elevenlabs/elevenlabs-js/api/types";
@@ -213,7 +213,7 @@ function tsArray(selected: CandidateVoice[]) {
 }
 
 async function getElevenLabsVoices(logger: Logger) {
-  const client = getElevenLabsClient();
+  const client = getElevenLabs();
 
   const resp = await client.voices.getAll();
   const voices = resp.voices;

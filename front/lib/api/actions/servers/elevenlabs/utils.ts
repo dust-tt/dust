@@ -4,12 +4,9 @@ import type {
   VoiceUseCase,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { VOICE_LANGUAGES } from "@app/lib/api/actions/servers/speech_generator/metadata";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
+import { getElevenLabs } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
-import { dustManagedServiceCredentials } from "@app/types/api/credentials";
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { Voice } from "@elevenlabs/elevenlabs-js/api/types";
-import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 
 interface VoiceDefinition {
   voiceId: string;
@@ -168,7 +165,7 @@ async function fetchVoices(): Promise<VoiceDefinition[]> {
   }
 
   try {
-    const client = getElevenLabsClient();
+    const client = getElevenLabs();
     const resp = await client.voices.getAll();
     const definitions = resp.voices
       .map(toVoiceDefinition)
@@ -255,19 +252,6 @@ export async function resolveDefaultVoiceId({
 
   // 5) Final safety fallback.
   return DEFAULT_GENDER_FALLBACK[gender];
-}
-
-export function getElevenLabsClient() {
-  const credentials = dustManagedServiceCredentials();
-  const environment =
-    regionsConfig.getCurrentRegion() === "europe-west1"
-      ? ElevenLabsEnvironment.ProductionEu
-      : ElevenLabsEnvironment.ProductionUs;
-
-  return new ElevenLabsClient({
-    apiKey: credentials.ELEVENLABS_API_KEY,
-    environment,
-  });
 }
 
 export async function streamToBase64(

@@ -1,9 +1,11 @@
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import {
+  getElevenLabs,
+  REGION_TO_ELEVENLABS_ENVIRONMENT,
+} from "@app/lib/utils/transcribe_service";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import type { GetTranscribeTokenResponseBody } from "@app/types/api/transcribe";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -38,22 +40,13 @@ app.get("/", async (ctx): HandlerResult<GetTranscribeTokenResponseBody> => {
     });
   }
 
-  const isEu = regionsConfig.getCurrentRegion() === "europe-west1";
-
-  const elevenlabs = new ElevenLabsClient({
-    apiKey,
-    environment: isEu
-      ? ElevenLabsEnvironment.ProductionEu
-      : ElevenLabsEnvironment.ProductionUs,
-  });
-
   try {
+    const elevenlabs = getElevenLabs();
     const { token } =
       await elevenlabs.tokens.singleUse.create("realtime_scribe");
+    const region = regionsConfig.getCurrentRegion();
 
-    const baseUri = isEu
-      ? "wss://api.eu.elevenlabs.io"
-      : "wss://api.elevenlabs.io";
+    const baseUri = REGION_TO_ELEVENLABS_ENVIRONMENT[region].websocketUrl;
 
     return ctx.json({ token, baseUri });
   } catch (err) {
