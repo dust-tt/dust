@@ -147,12 +147,14 @@ jobs:
 
   # Components on the build-once path: one build, pushed to the global registry and, for
   # now, to both regional registries so the regional values files keep resolving.
+  # Front and marketing stay on the regional matrix: their images still bake
+  # region-specific NEXT_PUBLIC_* values at build time.
   build-once:
     permissions:
       contents: read
       id-token: write
     needs: [prepare, notify-start]
-    if: ${{ !failure() && !cancelled() && inputs.component == 'connectors' }}
+    if: ${{ !failure() && !cancelled() && contains(fromJSON('["connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -211,7 +213,7 @@ jobs:
       contents: read
       id-token: write
     needs: [prepare, notify-start, create-matrix, verify-sandbox-images]
-    if: ${{ !failure() && !cancelled() && inputs.component != 'connectors' && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
+    if: ${{ !failure() && !cancelled() && !contains(fromJSON('["connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
