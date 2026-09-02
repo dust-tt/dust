@@ -2,13 +2,12 @@ import { useRunBlock } from "@app/lib/swr/apps";
 import type { AppType, SpecificationBlockType } from "@app/types/app";
 import type { TraceType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Clipboard, Hoverable } from "@dust-tt/sparkle";
+import { Button, Clipboard, Hoverable, InfoCircle } from "@dust-tt/sparkle";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   ExclamationCircleIcon,
-  InformationCircleIcon,
 } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
@@ -301,7 +300,7 @@ function InnerLogs({ trace }: { trace: TraceType }) {
   return (
     <div className="flex flex-row">
       <div className="flex flex-initial">
-        <InformationCircleIcon className="mt-0.5 h-4 w-4 text-primary-500" />
+        <InfoCircle className="mt-0.5 h-4 w-4 text-primary-500" />
       </div>
       <div className="flex flex-1 font-mono">
         <ValueViewer value={logs} topLevel={true} k={null} block={null} />

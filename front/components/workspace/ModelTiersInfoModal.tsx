@@ -16,9 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  InfoCircle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -206,7 +206,7 @@ export function ModelTiersInfoButton({ className }: ModelTiersInfoButtonProps) {
       <Button
         variant="ghost"
         size="xs"
-        icon={InformationCircleIcon}
+        icon={InfoCircle}
         tooltip="How model tiers work"
         className={className}
         onClick={(event) => {
