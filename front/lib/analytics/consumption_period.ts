@@ -42,6 +42,12 @@ const CONSUMPTION_GRANULARITY_LABELS: Record<ConsumptionGranularity, string> = {
   month: "Monthly",
 };
 
+export function consumptionGranularityFromKey(
+  key: string
+): ConsumptionGranularity | null {
+  return CONSUMPTION_GRANULARITY_OPTIONS.find((o) => o === key) ?? null;
+}
+
 export function consumptionGranularityLabel(
   granularity: ConsumptionGranularity
 ): string {

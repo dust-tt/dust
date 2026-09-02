@@ -5,6 +5,7 @@ import type {
 import {
   CONSUMPTION_GRANULARITY_OPTIONS,
   CONSUMPTION_PERIOD_OPTIONS,
+  consumptionGranularityFromKey,
   consumptionGranularityLabel,
   consumptionPeriodFromKey,
   consumptionPeriodKey,
@@ -84,11 +85,9 @@ export function ConsumptionGranularitySelector({
         <DropdownMenuRadioGroup
           value={granularity}
           onValueChange={(value) => {
-            const match = CONSUMPTION_GRANULARITY_OPTIONS.find(
-              (o) => o === value
-            );
-            if (match) {
-              onGranularityChange(match);
+            const selection = consumptionGranularityFromKey(value);
+            if (selection) {
+              onGranularityChange(selection);
             }
           }}
         >

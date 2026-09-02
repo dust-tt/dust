@@ -8,8 +8,8 @@ import type {
   ConsumptionPeriodSelection,
 } from "@app/lib/analytics/consumption_period";
 import {
-  CONSUMPTION_GRANULARITY_OPTIONS,
   CONSUMPTION_PERIOD_DAY_OPTIONS,
+  consumptionGranularityFromKey,
   DEFAULT_CONSUMPTION_GRANULARITY,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
@@ -107,10 +107,10 @@ function readGranularity(
   value: string | string[] | undefined
 ): ConsumptionGranularity {
   const [first] = readValues(value);
-  const match = CONSUMPTION_GRANULARITY_OPTIONS.find(
-    (option) => option === first
+  return (
+    consumptionGranularityFromKey(first ?? "") ??
+    DEFAULT_CONSUMPTION_GRANULARITY
   );
-  return match ?? DEFAULT_CONSUMPTION_GRANULARITY;
 }
 
 /**
