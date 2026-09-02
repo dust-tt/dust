@@ -55,17 +55,23 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
     USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
 );
 
+// Auth methods with no human behind them: a workspace API key, or the workspace's
+// own system key used internally (e.g. sub-agent runs). Both must classify as
+// programmatic, otherwise their usage falls back to the "user" bucket with no
+// real user to attribute it to.
+const PROGRAMMATIC_AUTH_METHODS = ["api_key", "system_api_key"];
+
 export function isProgrammaticUsageFromContext({
   authMethod,
   userMessageOrigin,
 }: {
   // Persisted historical values predate the AuthMethodType union, so keep the input broad and
-  // reproduce the live rule by recognizing the one auth method that changes classification.
+  // reproduce the live rule by recognizing the auth methods that change classification.
   authMethod: string | null;
   userMessageOrigin: UserMessageOrigin;
 }): boolean {
   return (
-    authMethod === "api_key" ||
+    (authMethod !== null && PROGRAMMATIC_AUTH_METHODS.includes(authMethod)) ||
     USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
   );
 }
@@ -108,7 +114,7 @@ export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContain
   return {
     bool: {
       should: [
-        { term: { auth_method: "api_key" } },
+        { terms: { auth_method: PROGRAMMATIC_AUTH_METHODS } },
         { bool: { must_not: { exists: { field: "context_origin" } } } },
         { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
       ],
