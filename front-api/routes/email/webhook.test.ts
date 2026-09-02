@@ -35,6 +35,20 @@ vi.mock("@app/lib/api/email", async (importOriginal) => {
 });
 
 vi.mock(
+  "@app/lib/api/assistant/email/email_trigger",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/assistant/email/email_trigger")
+      >();
+    return {
+      ...actual,
+      userAndWorkspaceFromEmail: vi.fn(actual.userAndWorkspaceFromEmail),
+    };
+  }
+);
+
+vi.mock(
   "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature",
   async (importOriginal) => {
     const actual =
@@ -49,6 +63,7 @@ vi.mock(
   }
 );
 
+import { userAndWorkspaceFromEmail } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmailToRecipients } from "@app/lib/api/email";
 
 process.env.EMAIL_WEBHOOK_SECRET ||= "test-email-webhook-secret";
@@ -104,6 +119,7 @@ const postWebhook = async (
 describe("POST /api/email/webhook", () => {
   beforeEach(() => {
     vi.mocked(sendEmailToRecipients).mockClear();
+    vi.mocked(userAndWorkspaceFromEmail).mockClear();
   });
 
   it("rejects requests without valid authorization", async () => {
@@ -111,6 +127,14 @@ describe("POST /api/email/webhook", () => {
       Authorization: "Basic invalid",
     });
     expect(response.status).toBe(403);
+  });
+
+  it("rejects malformed relay IDs", async () => {
+    const response = await postWebhook("someone@example.com", {
+      ...RELAY_AUTH_HEADERS,
+      [EMAIL_WEBHOOK_RELAY_ID_HEADER]: "not-a-uuid",
+    });
+    expect(response.status).toBe(400);
   });
 
   it("relays with the source error type when no local workspace has email agents enabled", async () => {
@@ -250,6 +274,7 @@ describe("POST /api/email/webhook", () => {
       headers
     );
     expect(secondResponse.status).toBe(200);
+    expect(userAndWorkspaceFromEmail).toHaveBeenCalledOnce();
     expect(sendEmailToRecipients).toHaveBeenCalledOnce();
   });
 

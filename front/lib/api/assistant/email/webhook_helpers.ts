@@ -192,10 +192,9 @@ function makeEmailRelayKey(relayId: string): string {
 }
 
 export async function recordEmailRelayReceipt(
-  headers: EmailWebhookHeaders
+  relayId: string | undefined
 ): Promise<boolean> {
-  const relayId = headers[EMAIL_WEBHOOK_RELAY_ID_HEADER];
-  if (!isString(relayId)) {
+  if (!relayId) {
     // Keep accepting relays sent by versions deployed before relay retries.
     return true;
   }
@@ -207,11 +206,6 @@ export async function recordEmailRelayReceipt(
   });
 
   return result === "OK";
-}
-
-export function getEmailRelayId(headers: EmailWebhookHeaders): string | null {
-  const relayId = headers[EMAIL_WEBHOOK_RELAY_ID_HEADER];
-  return isString(relayId) ? relayId : null;
 }
 
 export async function hasEmailRelayReceipt(relayId: string): Promise<boolean> {
