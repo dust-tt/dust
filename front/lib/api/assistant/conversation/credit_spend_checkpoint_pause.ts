@@ -58,7 +58,7 @@ async function findPausedAgentMessage(
         model: AgentMessageModel,
         as: "agentMessage",
         required: true,
-        attributes: ["id", "spendCheckpointStatus"],
+        attributes: ["id", "creditSpendCheckpointStatus"],
       },
     ],
   });
@@ -69,7 +69,7 @@ async function findPausedAgentMessage(
     );
   }
 
-  if (message.agentMessage.spendCheckpointStatus !== "paused") {
+  if (message.agentMessage.creditSpendCheckpointStatus !== "paused") {
     return new Err(
       new DustError(
         "agent_message_not_resumable",
@@ -135,7 +135,7 @@ async function findPausedAgentMessage(
   });
 }
 
-async function clearSpendCheckpointPause(
+async function clearCreditSpendCheckpointPause(
   auth: Authenticator,
   {
     agentMessageModelId,
@@ -144,13 +144,13 @@ async function clearSpendCheckpointPause(
 ): Promise<{ applied: boolean }> {
   const [updatedCount] = await AgentMessageModel.update(
     {
-      spendCheckpointStatus: acknowledge ? "acknowledged" : null,
+      creditSpendCheckpointStatus: acknowledge ? "acknowledged" : null,
     },
     {
       where: {
         id: agentMessageModelId,
         workspaceId: auth.getNonNullableWorkspace().id,
-        spendCheckpointStatus: "paused",
+        creditSpendCheckpointStatus: "paused",
       },
     }
   );
@@ -158,7 +158,7 @@ async function clearSpendCheckpointPause(
   return { applied: updatedCount > 0 };
 }
 
-export async function continueSpendCheckpointPause(
+export async function continueCreditSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
   { messageId }: { messageId: string }
@@ -182,7 +182,7 @@ export async function continueSpendCheckpointPause(
     userMessageOrigin,
   } = foundRes.value;
 
-  const { applied } = await clearSpendCheckpointPause(auth, {
+  const { applied } = await clearCreditSpendCheckpointPause(auth, {
     agentMessageModelId,
     acknowledge: true,
   });
@@ -256,7 +256,7 @@ async function writeSmoothShutdownRecap(
   });
 }
 
-export async function declineSpendCheckpointPause(
+export async function declineCreditSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
   { messageId }: { messageId: string }
@@ -279,7 +279,7 @@ export async function declineSpendCheckpointPause(
     userMessageOrigin,
   } = foundRes.value;
 
-  const { applied } = await clearSpendCheckpointPause(auth, {
+  const { applied } = await clearCreditSpendCheckpointPause(auth, {
     agentMessageModelId,
     acknowledge: false,
   });

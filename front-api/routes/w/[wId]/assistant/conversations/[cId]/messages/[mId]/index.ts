@@ -21,6 +21,7 @@ import { z } from "zod";
 import actions from "./actions";
 import answerQuestion from "./answer-question";
 import consumption from "./consumption";
+import creditSpendCheckpoint from "./credit-spend-checkpoint";
 import edit from "./edit";
 import editAndValidateAction from "./edit-and-validate-action";
 import events from "./events";
@@ -32,7 +33,6 @@ import resolveAuthentication from "./resolve-authentication";
 import resolveFileAuthorization from "./resolve-file-authorization";
 import retry from "./retry";
 import skills from "./skills";
-import spendCheckpoint from "./spend-checkpoint";
 import validateAction from "./validate-action";
 
 const ParamsSchema = z.object({
@@ -302,6 +302,6 @@ app.route("/resolve-file-authorization", resolveFileAuthorization);
 app.route("/retry", retry);
 app.route("/skills", skills);
 app.route("/validate-action", validateAction);
-app.route("/spend-checkpoint", spendCheckpoint);
+app.route("/credit-spend-checkpoint", creditSpendCheckpoint);
 
 export default app;

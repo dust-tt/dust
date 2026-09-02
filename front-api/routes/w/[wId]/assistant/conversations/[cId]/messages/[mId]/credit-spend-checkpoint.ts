@@ -1,7 +1,7 @@
 import {
-  continueSpendCheckpointPause,
-  declineSpendCheckpointPause,
-} from "@app/lib/api/assistant/conversation/spend_checkpoint_pause";
+  continueCreditSpendCheckpointPause,
+  declineCreditSpendCheckpointPause,
+} from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { Result } from "@app/types/shared/result";
@@ -16,18 +16,18 @@ const ParamsSchema = z.object({
   mId: z.string(),
 });
 
-const SpendCheckpointDecisionSchema = z.object({
+const CreditSpendCheckpointDecisionSchema = z.object({
   decision: z.enum(["continue", "decline"]),
 });
 
-// Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/spend-checkpoint.
+// Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/credit-spend-checkpoint.
 const app = workspaceApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),
-  validate("json", SpendCheckpointDecisionSchema),
+  validate("json", CreditSpendCheckpointDecisionSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const { cId, mId } = ctx.req.valid("param");
@@ -48,12 +48,12 @@ app.post(
     let result: Result<void, DustError | Error>;
     switch (decision) {
       case "continue":
-        result = await continueSpendCheckpointPause(auth, conversation, {
+        result = await continueCreditSpendCheckpointPause(auth, conversation, {
           messageId: mId,
         });
         break;
       case "decline":
-        result = await declineSpendCheckpointPause(auth, conversation, {
+        result = await declineCreditSpendCheckpointPause(auth, conversation, {
           messageId: mId,
         });
         break;
