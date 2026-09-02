@@ -108,7 +108,6 @@ app.post(
     const featureFlags = await getFeatureFlags(auth);
     const body = ctx.req.valid("json");
 
-    // Allow users in Dust's company workspace to force role for testing.
     const allowForDustWorkspaceTesting =
       isDustCompanyPlan(auth.getNonNullablePlan().code) &&
       showDebugTools(featureFlags) &&
