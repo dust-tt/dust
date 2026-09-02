@@ -389,33 +389,33 @@ export function SeatCard({
       size="sm"
       selected={isSelected}
       onClick={onClick}
-      className="w-full flex-col items-stretch gap-2"
+      className="grid w-full grid-cols-2 items-start gap-4 ring-0"
     >
-      <div className="flex w-full items-center justify-between">
-        <div className="flex min-w-0 basis-1/2 items-center gap-2">
-          <div
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-lg",
-              iconBackgroundClass
-            )}
-          >
-            <Icon
-              visual={seatIcon}
-              size="sm"
-              className={getSeatIconColorClass(seatType)}
-            />
-          </div>
+      <div className="flex min-w-0 items-start gap-2">
+        <div
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+            iconBackgroundClass
+          )}
+        >
+          <Icon
+            visual={seatIcon}
+            size="sm"
+            className={getSeatIconColorClass(seatType)}
+          />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
           <span className="text-base font-semibold text-foreground">
             {stripYearlySuffix(info.name)}
           </span>
+          {info.awuCredits > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {formatAwuCredits(info)}
+            </span>
+          )}
         </div>
-        <div className="flex min-w-0 basis-1/2 justify-end">{badge}</div>
       </div>
-      {info.awuCredits > 0 && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span className="text-xs">{formatAwuCredits(info)}</span>
-        </div>
-      )}
+      <div className="min-w-0 pt-0.5 text-left tabular-nums">{badge}</div>
     </Card>
   );
 }

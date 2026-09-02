@@ -419,7 +419,7 @@ export function InviteEmailButtonWithModal({
                     />
                   </div>
                 )}
-                <div className="flex max-h-64 flex-col gap-2 overflow-y-auto pr-1">
+                <div className="flex flex-col gap-2">
                   {seatTypesByFrequency[activeFrequency].map((seatType) => {
                     const info = seatPlans[seatType];
                     if (!info) {
