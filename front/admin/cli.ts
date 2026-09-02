@@ -8,18 +8,16 @@ import {
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
+import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -30,7 +28,6 @@ import {
   getWebhookRequestPayloadFromGCS,
   processWebhookRequest,
 } from "@app/lib/triggers/webhook";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import {
@@ -55,31 +52,12 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --name argument");
       }
 
-      const w = await WorkspaceResource.makeNew({
-        sId: generateRandomModelSId(),
+      const w = await createWorkspaceInternal({
         name: args.name,
+        isBusiness: false,
+        planCode: null,
+        endDate: null,
       });
-
-      const lightWorkspace = renderLightWorkspaceType({ workspace: w });
-
-      const { systemGroup, globalGroup } =
-        await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
-
-      const auth = await Authenticator.internalAdminForWorkspace(
-        lightWorkspace.sId
-      );
-      await SpaceResource.makeDefaultsForWorkspace(auth, {
-        systemGroup,
-        globalGroup,
-      });
-
-      const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
-      if (orgRes.isErr()) {
-        logger.error(
-          { error: orgRes.error, workspaceId: w.sId },
-          "Failed to create WorkOS organization during workspace creation"
-        );
-      }
 
       args.wId = w.sId;
       return;

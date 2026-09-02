@@ -1121,13 +1121,18 @@ export class Authenticator {
   static async internalAdminForWorkspace(
     workspaceId: string,
     options?: {
-      dangerouslyRequestAllGroups: boolean;
+      dangerouslyRequestAllGroups?: boolean;
       // Only applies when dangerouslyRequestAllGroups is true. Overrides the group kinds fetched,
       // e.g. to include editor groups that are excluded by default.
       groupKinds?: GroupKind[];
+      transaction?: Transaction;
     }
   ): Promise<Authenticator> {
-    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    const transaction = options?.transaction;
+    const workspace = await WorkspaceResource.fetchById(
+      workspaceId,
+      transaction
+    );
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
@@ -1138,14 +1143,21 @@ export class Authenticator {
           return GroupResource.internalFetchAllWorkspaceGroups({
             workspaceId: workspace.id,
             ...(options.groupKinds ? { groupKinds: options.groupKinds } : {}),
+            transaction,
           });
         } else {
           const globalGroup =
-            await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);
+            await GroupResource.internalFetchWorkspaceGlobalGroup(
+              workspace.id,
+              transaction
+            );
           return globalGroup ? [globalGroup] : [];
         }
       })(),
-      SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(
+        workspace.id,
+        transaction
+      ),
     ]);
 
     const providersHealth = await this.fetchByokProvidersHealth(

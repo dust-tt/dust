@@ -298,9 +298,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async makeNew(
-    blob: CreationAttributes<WorkspaceModel>
+    blob: CreationAttributes<WorkspaceModel>,
+    transaction?: Transaction
   ): Promise<WorkspaceResource> {
-    return WorkspaceResource.store.create(blob);
+    return WorkspaceResource.store.create(blob, transaction);
   }
 
   static async fetchById(
@@ -946,9 +947,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateWorkOSOrganizationId(
     id: ModelId,
-    workOSOrganizationId: string | null
+    workOSOrganizationId: string | null,
+    transaction?: Transaction
   ): Promise<Result<void, Error>> {
-    return this.updateByModelIdAndCheckExistence(id, { workOSOrganizationId });
+    return this.updateByModelIdAndCheckExistence(
+      id,
+      { workOSOrganizationId },
+      transaction
+    );
   }
 
   static async disableSSOEnforcement(
@@ -1101,7 +1107,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateByModelIdAndCheckExistence(
     id: ModelId,
-    updateValues: ResourceUpdateBlob<WorkspaceModel>
+    updateValues: ResourceUpdateBlob<WorkspaceModel>,
+    transaction?: Transaction
   ): Promise<Result<void, Error>> {
     if (updateValues.conversationsRetentionDays !== undefined) {
       const retentionDays = updateValues.conversationsRetentionDays;
@@ -1120,6 +1127,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
     const workspace = await this.model.findOne({
       where: { id },
+      transaction,
     });
 
     if (!workspace) {
@@ -1127,7 +1135,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     }
 
     const workspaceResource = new this(this.model, workspace.get());
-    await workspaceResource.update(updateValues);
+    await workspaceResource.update(updateValues, transaction);
 
     return new Ok(undefined);
   }

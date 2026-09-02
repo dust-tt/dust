@@ -42,6 +42,29 @@ vi.mock("@app/lib/api/cells/config", () => ({
   },
 }));
 
+class WorkOSNotFoundError extends Error {
+  status = 404;
+  code = "entity_not_found";
+
+  constructor() {
+    super("not found");
+  }
+}
+
+function mockOrganization(
+  partial: Pick<Organization, "id" | "name" | "externalId">
+): Organization {
+  return {
+    object: "organization",
+    allowProfilesOutsideOrganization: false,
+    domains: [],
+    createdAt: "2020-01-01T00:00:00.000Z",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+    metadata: {},
+    ...partial,
+  };
+}
+
 describe("getOrCreateWorkOSOrganization membership sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,16 +87,15 @@ describe("getOrCreateWorkOSOrganization membership sync", () => {
     };
 
     mockGetOrganizationByExternalId.mockRejectedValue(
-      Object.assign(new Error("not found"), {
-        status: 404,
-        code: "entity_not_found",
+      new WorkOSNotFoundError()
+    );
+    mockCreateOrganization.mockResolvedValue(
+      mockOrganization({
+        id: "org_new",
+        name: workspace.name,
+        externalId: workspace.sId,
       })
     );
-    mockCreateOrganization.mockResolvedValue({
-      id: "org_new",
-      name: workspace.name,
-      externalId: workspace.sId,
-    } as Organization);
 
     const result = await getOrCreateWorkOSOrganization(lightWorkspace);
 
@@ -101,11 +123,13 @@ describe("getOrCreateWorkOSOrganization membership sync", () => {
       workOSOrganizationId: null,
     };
 
-    mockGetOrganizationByExternalId.mockResolvedValue({
-      id: "org_existing",
-      name: workspace.name,
-      externalId: workspace.sId,
-    } as Organization);
+    mockGetOrganizationByExternalId.mockResolvedValue(
+      mockOrganization({
+        id: "org_existing",
+        name: workspace.name,
+        externalId: workspace.sId,
+      })
+    );
 
     const result = await getOrCreateWorkOSOrganization(lightWorkspace);
 
@@ -129,11 +153,13 @@ describe("getOrCreateWorkOSOrganization membership sync", () => {
       workOSOrganizationId: "org_already",
     };
 
-    mockGetOrganizationByExternalId.mockResolvedValue({
-      id: "org_already",
-      name: workspace.name,
-      externalId: workspace.sId,
-    } as Organization);
+    mockGetOrganizationByExternalId.mockResolvedValue(
+      mockOrganization({
+        id: "org_already",
+        name: workspace.name,
+        externalId: workspace.sId,
+      })
+    );
 
     const spy = vi.spyOn(MembershipResource, "getActiveMemberships");
 
@@ -159,16 +185,15 @@ describe("getOrCreateWorkOSOrganization membership sync", () => {
     };
 
     mockGetOrganizationByExternalId.mockRejectedValue(
-      Object.assign(new Error("not found"), {
-        status: 404,
-        code: "entity_not_found",
+      new WorkOSNotFoundError()
+    );
+    mockCreateOrganization.mockResolvedValue(
+      mockOrganization({
+        id: "org_skip",
+        name: workspace.name,
+        externalId: workspace.sId,
       })
     );
-    mockCreateOrganization.mockResolvedValue({
-      id: "org_skip",
-      name: workspace.name,
-      externalId: workspace.sId,
-    } as Organization);
 
     const result = await getOrCreateWorkOSOrganization(lightWorkspace);
 

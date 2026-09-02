@@ -22,26 +22,20 @@ import {
 } from "@workos-inc/node";
 import assert from "assert";
 import uniqueId from "lodash/uniqueId";
+import type { Transaction } from "sequelize";
 
 /**
  * Ensure active Dust memberships exist as WorkOS organization memberships.
  * Idempotent create-or-update via `updateWorkOSMembershipRole`.
  * Users without a `workOSUserId` are skipped (they cannot be linked yet).
+ *
+ * `workspace.workOSOrganizationId` must already be set.
  */
-async function syncActiveMembershipsToWorkOSOrganization({
-  workspace,
-  organizationId,
-}: {
-  workspace: LightWorkspaceType;
-  organizationId: string;
-}): Promise<void> {
-  const workspaceWithOrg: LightWorkspaceType = {
-    ...workspace,
-    workOSOrganizationId: organizationId,
-  };
-
+async function syncActiveMembershipsToWorkOSOrganization(
+  workspace: LightWorkspaceType
+): Promise<void> {
   const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace: workspaceWithOrg,
+    workspace,
   });
 
   await concurrentExecutor(
@@ -53,7 +47,7 @@ async function syncActiveMembershipsToWorkOSOrganization({
 
       await MembershipResource.updateWorkOSMembershipRole({
         user: new UserResource(UserModel, membership.user),
-        workspace: workspaceWithOrg,
+        workspace,
         newRole: membership.role,
       });
     },
@@ -63,7 +57,7 @@ async function syncActiveMembershipsToWorkOSOrganization({
 
 export async function getOrCreateWorkOSOrganization(
   workspace: LightWorkspaceType,
-  { domain }: { domain?: string } = {}
+  { domain, transaction }: { domain?: string; transaction?: Transaction } = {}
 ): Promise<Result<Organization, Error>> {
   try {
     const organizationRes = await getWorkOSOrganization(workspace);
@@ -71,16 +65,15 @@ export async function getOrCreateWorkOSOrganization(
       return new Err(organizationRes.error);
     }
 
-    const existingOrganization = organizationRes.value;
     // Sync members when first linking this workspace to WorkOS (missing DB id)
     // or when creating a brand-new org. Skip on subsequent lookups (e.g. domains
     // GET) so we do not re-walk every membership on hot paths.
     const shouldSyncMemberships =
-      !workspace.workOSOrganizationId || !existingOrganization;
+      !workspace.workOSOrganizationId || !organizationRes.value;
 
-    let organization = existingOrganization;
-    if (!organization) {
-      organization = await getWorkOS().organizations.createOrganization({
+    const organization =
+      organizationRes.value ??
+      (await getWorkOS().organizations.createOrganization({
         name: workspace.name,
         externalId: workspace.sId,
         metadata: {
@@ -95,20 +88,20 @@ export async function getOrCreateWorkOSOrganization(
               },
             ]
           : undefined,
-      });
-    }
+      }));
 
     if (workspace.workOSOrganizationId !== organization.id) {
       await WorkspaceResource.updateWorkOSOrganizationId(
         workspace.id,
-        organization.id
+        organization.id,
+        transaction
       );
     }
 
     if (shouldSyncMemberships) {
       await syncActiveMembershipsToWorkOSOrganization({
-        workspace,
-        organizationId: organization.id,
+        ...workspace,
+        workOSOrganizationId: organization.id,
       });
     }
 

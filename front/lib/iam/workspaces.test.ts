@@ -2,6 +2,7 @@ import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Organization } from "@workos-inc/node";
+import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetOrCreateWorkOSOrganization } = vi.hoisted(() => ({
@@ -33,21 +34,41 @@ vi.mock(
   }
 );
 
+function mockOrganization(
+  partial: Pick<Organization, "id" | "name" | "externalId">
+): Organization {
+  return {
+    object: "organization",
+    allowProfilesOutsideOrganization: false,
+    domains: [],
+    createdAt: "2020-01-01T00:00:00.000Z",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+    metadata: {},
+    ...partial,
+  };
+}
+
 describe("createWorkspaceInternal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetOrCreateWorkOSOrganization.mockImplementation(
-      async (workspace: { id: number; sId: string; name: string }) => {
+      async (
+        workspace: { id: number; sId: string; name: string },
+        { transaction }: { transaction?: Transaction } = {}
+      ) => {
         const organizationId = `org_${workspace.sId}`;
         await WorkspaceResource.updateWorkOSOrganizationId(
           workspace.id,
-          organizationId
+          organizationId,
+          transaction
         );
-        return new Ok({
-          id: organizationId,
-          name: workspace.name,
-          externalId: workspace.sId,
-        } as Organization);
+        return new Ok(
+          mockOrganization({
+            id: organizationId,
+            name: workspace.name,
+            externalId: workspace.sId,
+          })
+        );
       }
     );
   });
@@ -65,24 +86,29 @@ describe("createWorkspaceInternal", () => {
       expect.objectContaining({
         sId: workspace.sId,
         name: "WorkOS Org Workspace",
-      })
+      }),
+      expect.objectContaining({ transaction: expect.anything() })
     );
     expect(workspace.workOSOrganizationId).toBe(`org_${workspace.sId}`);
   });
 
-  it("still returns the workspace when WorkOS organization creation fails", async () => {
+  it("rolls back the workspace when WorkOS organization creation fails", async () => {
     mockGetOrCreateWorkOSOrganization.mockResolvedValueOnce(
       new Err(new Error("WorkOS unavailable"))
     );
 
-    const workspace = await createWorkspaceInternal({
-      name: "Workspace Without Org",
-      isBusiness: false,
-      planCode: null,
-      endDate: null,
-    });
+    await expect(
+      createWorkspaceInternal({
+        name: "Workspace Without Org",
+        isBusiness: false,
+        planCode: null,
+        endDate: null,
+      })
+    ).rejects.toThrow("WorkOS unavailable");
 
-    expect(workspace.sId).toBeDefined();
-    expect(workspace.workOSOrganizationId).toBeNull();
+    const leftover = await WorkspaceResource.fetchByName(
+      "Workspace Without Org"
+    );
+    expect(leftover).toBeNull();
   });
 });

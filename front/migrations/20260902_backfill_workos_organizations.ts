@@ -7,6 +7,14 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Op, literal } from "sequelize";
 
+type BackfillStats = {
+  scanned: number;
+  created: number;
+  membersToSync: number;
+  membersSkippedNoWorkOSUserId: number;
+  errors: number;
+};
+
 /**
  * Backfill WorkOS organizations for workspaces that are missing one.
  *
@@ -57,23 +65,17 @@ makeScript(
       "Starting WorkOS organization backfill"
     );
 
-    const stats = {
-      scanned: 0,
-      created: 0,
-      membersToSync: 0,
-      membersSkippedNoWorkOSUserId: 0,
-      errors: 0,
-    };
+    const results: Omit<BackfillStats, "scanned">[] = [];
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        stats.scanned++;
-        await backfillWorkspaceWorkOSOrganization({
-          workspace,
-          execute,
-          logger,
-          stats,
-        });
+        results.push(
+          await backfillWorkspaceWorkOSOrganization({
+            workspace,
+            execute,
+            logger,
+          })
+        );
       },
       {
         concurrency,
@@ -91,6 +93,17 @@ makeScript(
       }
     );
 
+    const stats: BackfillStats = {
+      scanned: results.length,
+      created: results.reduce((sum, r) => sum + r.created, 0),
+      membersToSync: results.reduce((sum, r) => sum + r.membersToSync, 0),
+      membersSkippedNoWorkOSUserId: results.reduce(
+        (sum, r) => sum + r.membersSkippedNoWorkOSUserId,
+        0
+      ),
+      errors: results.reduce((sum, r) => sum + r.errors, 0),
+    };
+
     logger.info({ ...stats }, "WorkOS organization backfill completed");
   }
 );
@@ -99,19 +112,11 @@ async function backfillWorkspaceWorkOSOrganization({
   workspace,
   execute,
   logger,
-  stats,
 }: {
   workspace: LightWorkspaceType;
   execute: boolean;
   logger: Logger;
-  stats: {
-    scanned: number;
-    created: number;
-    membersToSync: number;
-    membersSkippedNoWorkOSUserId: number;
-    errors: number;
-  };
-}): Promise<void> {
+}): Promise<Omit<BackfillStats, "scanned">> {
   const workspaceLogger = logger.child({
     workspaceId: workspace.sId,
     workspaceModelId: workspace.id,
@@ -133,9 +138,6 @@ async function backfillWorkspaceWorkOSOrganization({
   const membersWithoutWorkOSUserId =
     memberships.length - membersWithWorkOSUserId;
 
-  stats.membersToSync += membersWithWorkOSUserId;
-  stats.membersSkippedNoWorkOSUserId += membersWithoutWorkOSUserId;
-
   workspaceLogger.info(
     {
       domain: domain ?? null,
@@ -148,8 +150,12 @@ async function backfillWorkspaceWorkOSOrganization({
   );
 
   if (!execute) {
-    stats.created++;
-    return;
+    return {
+      created: 1,
+      membersToSync: membersWithWorkOSUserId,
+      membersSkippedNoWorkOSUserId: membersWithoutWorkOSUserId,
+      errors: 0,
+    };
   }
 
   const orgRes = await getOrCreateWorkOSOrganization(
@@ -158,15 +164,18 @@ async function backfillWorkspaceWorkOSOrganization({
   );
 
   if (orgRes.isErr()) {
-    stats.errors++;
     workspaceLogger.error(
       { error: orgRes.error.message },
       "Failed to create WorkOS organization"
     );
-    return;
+    return {
+      created: 0,
+      membersToSync: membersWithWorkOSUserId,
+      membersSkippedNoWorkOSUserId: membersWithoutWorkOSUserId,
+      errors: 1,
+    };
   }
 
-  stats.created++;
   workspaceLogger.info(
     {
       organizationId: orgRes.value.id,
@@ -175,4 +184,11 @@ async function backfillWorkspaceWorkOSOrganization({
     },
     "Created WorkOS organization and synced active members"
   );
+
+  return {
+    created: 1,
+    membersToSync: membersWithWorkOSUserId,
+    membersSkippedNoWorkOSUserId: membersWithoutWorkOSUserId,
+    errors: 0,
+  };
 }

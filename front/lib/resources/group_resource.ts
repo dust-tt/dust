@@ -659,30 +659,40 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(r);
   }
 
-  static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
+  static async makeDefaultsForWorkspace(
+    workspace: LightWorkspaceType,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
     const existingGroups = (
       await GroupModel.findAll({
         where: {
           workspaceId: workspace.id,
         },
+        transaction,
       })
     ).map((group) => new this(GroupModel, group.get()));
     const systemGroup =
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingGroups.find((v) => v.kind === "system") ||
-      (await GroupResource.makeNew({
-        name: "System",
-        kind: "system",
-        workspaceId: workspace.id,
-      }));
+      (await GroupResource.makeNew(
+        {
+          name: "System",
+          kind: "system",
+          workspaceId: workspace.id,
+        },
+        { transaction }
+      ));
     const globalGroup =
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingGroups.find((v) => v.kind === "global") ||
-      (await GroupResource.makeNew({
-        name: "Workspace",
-        kind: "global",
-        workspaceId: workspace.id,
-      }));
+      (await GroupResource.makeNew(
+        {
+          name: "Workspace",
+          kind: "global",
+          workspaceId: workspace.id,
+        },
+        { transaction }
+      ));
     return {
       systemGroup,
       globalGroup,

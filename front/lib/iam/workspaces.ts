@@ -11,9 +11,9 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
 
 export async function createWorkspace(
   session: SessionWithUser,
@@ -74,24 +74,61 @@ export async function createWorkspaceInternal({
     };
   }
 
-  const workspace = await WorkspaceResource.makeNew({
-    sId: generateRandomModelSId(),
-    name,
-    metadata,
+  // Core workspace rows + WorkOS org id are created atomically. If WorkOS
+  // provisioning fails we roll back so we never leave a workspace without an
+  // organization. Post-commit seeding (MCP, plan, governance) can fail without
+  // undoing the WorkOS link.
+  const workspace = await withTransaction(async (transaction) => {
+    const created = await WorkspaceResource.makeNew(
+      {
+        sId: generateRandomModelSId(),
+        name,
+        metadata,
+      },
+      transaction
+    );
+
+    const lightWorkspace = renderLightWorkspaceType({ workspace: created });
+
+    const { systemGroup, globalGroup } =
+      await GroupResource.makeDefaultsForWorkspace(lightWorkspace, {
+        transaction,
+      });
+
+    const auth = await Authenticator.internalAdminForWorkspace(
+      lightWorkspace.sId,
+      { transaction }
+    );
+    await SpaceResource.makeDefaultsForWorkspace(
+      auth,
+      {
+        systemGroup,
+        globalGroup,
+      },
+      transaction
+    );
+
+    const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace, {
+      transaction,
+    });
+    if (orgRes.isErr()) {
+      throw orgRes.error;
+    }
+
+    const refreshedWorkspace = await WorkspaceResource.fetchByModelId(
+      created.id,
+      transaction
+    );
+    if (!refreshedWorkspace?.workOSOrganizationId) {
+      throw new Error(
+        "WorkOS organization was created but workspace was not updated."
+      );
+    }
+
+    return refreshedWorkspace;
   });
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
-
-  const { systemGroup, globalGroup } =
-    await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
-
-  const auth = await Authenticator.internalAdminForWorkspace(
-    lightWorkspace.sId
-  );
-  await SpaceResource.makeDefaultsForWorkspace(auth, {
-    systemGroup,
-    globalGroup,
-  });
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   // Seed default governance capability state (no-op until Phase 2 capabilities register seeders).
   await seedWorkspaceCapabilities(auth);
@@ -111,24 +148,7 @@ export async function createWorkspaceInternal({
     }
   }
 
-  // Every workspace gets a WorkOS organization (SSO/SCIM/domains/audit).
-  // Failures are logged but do not block workspace creation — callers can
-  // still complete signup, and getOrCreateWorkOSOrganization is idempotent.
-  const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
-  if (orgRes.isErr()) {
-    logger.error(
-      { error: orgRes.error, workspaceId: workspace.sId },
-      "Failed to create WorkOS organization during workspace creation"
-    );
-    return workspace;
-  }
-
-  // Re-fetch so the returned resource includes workOSOrganizationId; membership
-  // creation immediately after relies on that field to sync to WorkOS.
-  const refreshedWorkspace = await WorkspaceResource.fetchByModelId(
-    workspace.id
-  );
-  return refreshedWorkspace ?? workspace;
+  return workspace;
 }
 
 export async function findWorkspaceWithVerifiedDomain(user: {
