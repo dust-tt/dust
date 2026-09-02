@@ -19,10 +19,10 @@ import type { LightWorkspaceType } from "@app/types/user";
  * Based on `20250602_migrate_organizations.ts`, but creates for all missing
  * orgs rather than only domain/paid workspaces.
  *
- * Usage:
- *   npx tsx front/migrations/20260902_backfill_workos_organizations.ts
- *   npx tsx front/migrations/20260902_backfill_workos_organizations.ts --execute
- *   npx tsx front/migrations/20260902_backfill_workos_organizations.ts --wId=xxx --execute
+ * Usage (from `front/`):
+ *   npx tsx -r tsconfig-paths/register migrations/20260902_backfill_workos_organizations.ts
+ *   npx tsx -r tsconfig-paths/register migrations/20260902_backfill_workos_organizations.ts --execute
+ *   npx tsx -r tsconfig-paths/register migrations/20260902_backfill_workos_organizations.ts --wId=xxx --execute
  */
 makeScript(
   {
