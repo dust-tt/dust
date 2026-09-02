@@ -37,7 +37,7 @@ app.patch(
       });
     }
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -159,7 +159,7 @@ app.patch(
     }
 
     // Audit log when an admin who is not a member of the space updates its permissions.
-    if (!space.canRead(auth)) {
+    if (!auth.can("read", space)) {
       const user = auth.user();
       auditLog(
         {

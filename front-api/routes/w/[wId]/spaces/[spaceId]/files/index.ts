@@ -93,7 +93,7 @@ app.post(
       });
     }
 
-    if (!space.canWrite(auth)) {
+    if (!auth.can("write", space)) {
       return apiError(c, {
         status_code: 403,
         api_error: {

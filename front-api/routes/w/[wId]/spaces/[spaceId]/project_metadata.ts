@@ -63,7 +63,7 @@ app.patch(
       });
     }
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

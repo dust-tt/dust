@@ -36,7 +36,7 @@ app.patch(
     const space = ctx.get("space");
     const dataSource = ctx.get("dataSource");
 
-    if (space.isSystem() && !space.canAdministrate(auth)) {
+    if (space.isSystem() && !auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -46,7 +46,7 @@ app.patch(
         },
       });
     }
-    if (space.isGlobal() && !space.canWrite(auth)) {
+    if (space.isGlobal() && !auth.can("write", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -98,7 +98,7 @@ app.delete(
     const space = ctx.get("space");
     const dataSource = ctx.get("dataSource");
 
-    if (space.isSystem() && !space.canAdministrate(auth)) {
+    if (space.isSystem() && !auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -108,7 +108,7 @@ app.delete(
         },
       });
     }
-    if (space.isGlobal() && !space.canWrite(auth)) {
+    if (space.isGlobal() && !auth.can("write", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -120,10 +120,10 @@ app.delete(
     }
 
     const isAuthorized =
-      space.canWrite(auth) ||
+      auth.can("write", space) ||
       // Remote database connectors can also be deleted by system-space admins.
       (space.isSystem() &&
-        space.canAdministrate(auth) &&
+        auth.can("admin", space) &&
         isRemoteDatabase(dataSource));
     if (!isAuthorized) {
       return apiError(ctx, {

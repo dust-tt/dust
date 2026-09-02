@@ -43,7 +43,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const [space] = await SpaceResource.fetchByModelIds(auth, [taskRow.spaceId]);
-  if (!space || !space.canRead(auth) || !space.isProject()) {
+  if (!space || !auth.can("read", space) || !space.isProject()) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {

@@ -71,7 +71,7 @@ app.get(
     if (
       !space ||
       space.isConversations() ||
-      !space.canReadOrAdministrate(auth)
+      (!auth.can("read", space) && !auth.can("admin", space))
     ) {
       return apiError(ctx, {
         status_code: 404,

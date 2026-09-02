@@ -100,7 +100,7 @@ app.post(
       });
     }
 
-    if (!space.canWrite(auth)) {
+    if (!auth.can("write", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

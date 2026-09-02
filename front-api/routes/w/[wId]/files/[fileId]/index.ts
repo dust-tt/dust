@@ -282,7 +282,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const isFileAuthor = file.userId === auth.user()?.id;
   const isUploadUseCase =
     file.useCase === "upsert_table" || file.useCase === "folders_document";
-  const canWriteInSpace = space ? space.canWrite(auth) : false;
+  const canWriteInSpace = space ? auth.can("write", space) : false;
 
   if (
     isUploadUseCase &&
@@ -362,7 +362,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const isFileAuthor = file.userId === auth.user()?.id;
   const isUploadUseCase =
     file.useCase === "upsert_table" || file.useCase === "folders_document";
-  const canWriteInSpace = space ? space.canWrite(auth) : false;
+  const canWriteInSpace = space ? auth.can("write", space) : false;
 
   if (
     isUploadUseCase &&
@@ -533,7 +533,7 @@ async function checkFileAccess(
     file.useCase === "folders_document" ||
     file.useCase === "project_context"
   ) {
-    if (!space || !space.canRead(auth)) {
+    if (!space || !auth.can("read", space)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
