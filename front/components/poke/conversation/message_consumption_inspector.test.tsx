@@ -119,8 +119,16 @@ describe("PokeMessageConsumptionInspector", () => {
       })
     );
 
-    expect(screen.getByText("Direct message by model")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Direct message by model")
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("By model")).toBeInTheDocument();
     expect(screen.getByText("Attribution")).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("heading", { level: 3 })
+        .map((heading) => heading.textContent)
+    ).toEqual(["Attribution", "Tools", "By model"]);
     expect(screen.queryByText("Additive attribution")).not.toBeInTheDocument();
     expect(screen.queryByText("Direct message")).not.toBeInTheDocument();
     expect(screen.queryByText("Sub-agent tree")).not.toBeInTheDocument();

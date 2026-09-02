@@ -309,30 +309,6 @@ export function PokeMessageConsumptionInspector({
                     )}
                   </section>
 
-                  {details.models.length > 0 && (
-                    <section
-                      aria-labelledby={`message-${messageId}-models-heading`}
-                      className="border-t border-border pt-5"
-                    >
-                      <h3
-                        id={`message-${messageId}-models-heading`}
-                        className="text-sm font-semibold text-foreground"
-                      >
-                        Direct message by model
-                      </h3>
-                      <ul className="mt-3 space-y-2">
-                        {details.models.map((model) => (
-                          <ModelRow
-                            key={`${model.providerId}:${model.modelId}`}
-                            directMessageCredits={directMessageCredits ?? 0}
-                            isDark={isDark}
-                            model={model}
-                          />
-                        ))}
-                      </ul>
-                    </section>
-                  )}
-
                   {rankedTools.length > 0 && (
                     <section
                       aria-labelledby={`message-${messageId}-tools-heading`}
@@ -364,6 +340,30 @@ export function PokeMessageConsumptionInspector({
                             key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
                             tool={tool}
                             totalCredits={totalCredits}
+                          />
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+
+                  {details.models.length > 0 && (
+                    <section
+                      aria-labelledby={`message-${messageId}-models-heading`}
+                      className="border-t border-border pt-5"
+                    >
+                      <h3
+                        id={`message-${messageId}-models-heading`}
+                        className="text-sm font-semibold text-foreground"
+                      >
+                        By model
+                      </h3>
+                      <ul className="mt-3 space-y-2">
+                        {details.models.map((model) => (
+                          <ModelRow
+                            key={`${model.providerId}:${model.modelId}`}
+                            directMessageCredits={directMessageCredits ?? 0}
+                            isDark={isDark}
+                            model={model}
                           />
                         ))}
                       </ul>
