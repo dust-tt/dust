@@ -116,6 +116,32 @@ function requestFrameCall({
   });
 }
 
+function requestFrameCallById({
+  workspaceId,
+  token,
+  frameId,
+  functionName = "get-status",
+  input = { scope: "current" },
+}: {
+  workspaceId: string;
+  token: string;
+  frameId: string;
+  functionName?: string;
+  input?: unknown;
+}) {
+  return honoApp.request(
+    `/api/v1/w/${workspaceId}/sandbox/frames/${frameId}/call`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ functionName, input }),
+    }
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSandboxFunctionInvocationEvents).mockReturnValue(
@@ -129,7 +155,24 @@ beforeEach(() => {
   );
 });
 
-describe("POST /api/v1/w/:wId/sandbox/frames/call", () => {
+describe("sandbox Frame calls", () => {
+  it("calls an active Frame function by its stable ID", async () => {
+    const context = await setup();
+
+    const response = await requestFrameCallById({
+      workspaceId: context.workspace.sId,
+      token: context.token,
+      frameId: context.frame.sId,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      frameId: context.frame.sId,
+      functionName: "get-status",
+      result: { status: "ready" },
+    });
+  });
+
   it("calls an active Frame function resolved from its source folder", async () => {
     const context = await setup();
 

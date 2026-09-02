@@ -132,10 +132,10 @@ async fn run() -> anyhow::Result<()> {
         },
         Commands::Frame { command } => match command {
             commands::frame::FrameCommand::Call {
-                source,
+                target,
                 function_name,
                 input,
-            } => commands::cmd_frame_call(&source, &function_name, input.as_deref()).await?,
+            } => commands::cmd_frame_call(&target, &function_name, input.as_deref()).await?,
             commands::frame::FrameCommand::Create {
                 directory,
                 name,
@@ -214,34 +214,36 @@ mod tests {
 
     #[test]
     fn parses_frame_call() {
-        let cli = Cli::try_parse_from([
-            "dsbx",
-            "frame",
-            "call",
+        for target in [
+            "fil_abc123XYZ",
             "/files/conversation-conv_123/Status/manifest.json",
-            "get-status",
-            "--input",
-            r#"{"scope":"current"}"#,
-        ])
-        .expect("should parse");
+        ] {
+            let cli = Cli::try_parse_from([
+                "dsbx",
+                "frame",
+                "call",
+                target,
+                "get-status",
+                "--input",
+                r#"{"scope":"current"}"#,
+            ])
+            .expect("should parse");
 
-        match cli.command {
-            Commands::Frame {
-                command:
-                    commands::frame::FrameCommand::Call {
-                        source,
-                        function_name,
-                        input,
-                    },
-            } => {
-                assert_eq!(
-                    source,
-                    std::path::PathBuf::from("/files/conversation-conv_123/Status/manifest.json")
-                );
-                assert_eq!(function_name, "get-status");
-                assert_eq!(input.as_deref(), Some(r#"{"scope":"current"}"#));
+            match cli.command {
+                Commands::Frame {
+                    command:
+                        commands::frame::FrameCommand::Call {
+                            target: parsed_target,
+                            function_name,
+                            input,
+                        },
+                } => {
+                    assert_eq!(parsed_target, target);
+                    assert_eq!(function_name, "get-status");
+                    assert_eq!(input.as_deref(), Some(r#"{"scope":"current"}"#));
+                }
+                _ => panic!("expected Frame call subcommand"),
             }
-            _ => panic!("expected Frame call subcommand"),
         }
     }
 

@@ -12,7 +12,7 @@ import type { DustFileSystemError } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export class FrameFunctionCallFromSourceError extends Error {
+export class FrameFunctionCallError extends Error {
   constructor(
     readonly code:
       | "invalid_source"
@@ -22,7 +22,7 @@ export class FrameFunctionCallFromSourceError extends Error {
     message: string
   ) {
     super(message);
-    this.name = "FrameFunctionCallFromSourceError";
+    this.name = "FrameFunctionCallError";
   }
 }
 
@@ -44,16 +44,59 @@ export function isFrameFunctionExecutionError(
   return error instanceof FrameFunctionExecutionError;
 }
 
-export type CallFrameFunctionFromSourceError =
-  | DustFileSystemError
-  | FrameFunctionCallFromSourceError
+export type CallFrameFunctionError =
+  | FrameFunctionCallError
   | FrameFunctionExecutionError;
 
-export type CallFrameFunctionFromSourceResult = {
+export type CallFrameFunctionFromSourceError =
+  | DustFileSystemError
+  | CallFrameFunctionError;
+
+export type CallFrameFunctionResult = {
   frameId: string;
   functionName: string;
   result: unknown;
 };
+
+/** Invoke one function from a Frame's active publication after checking use rights. */
+export async function callFrameFunction(
+  auth: Authenticator,
+  {
+    frameId,
+    functionName,
+    input,
+  }: {
+    frameId: string;
+    functionName: string;
+    input?: unknown;
+  }
+): Promise<Result<CallFrameFunctionResult, CallFrameFunctionError>> {
+  const sandboxFunction = await resolveActiveFrameFunctionForUse(auth, {
+    frameId,
+    functionName,
+  });
+  if (!sandboxFunction) {
+    return new Err(
+      new FrameFunctionCallError(
+        "function_not_found",
+        `No active function named "${functionName}" found for this Frame.`
+      )
+    );
+  }
+
+  const callResult = await callSandboxFunction(auth, sandboxFunction, input);
+  if (callResult.isErr()) {
+    return new Err(
+      new FrameFunctionExecutionError(functionName, callResult.error)
+    );
+  }
+
+  return new Ok({
+    frameId,
+    functionName,
+    result: callResult.value,
+  });
+}
 
 /** Resolve a registered Frame from its mounted source and invoke its active function. */
 export async function callFrameFunctionFromSource(
@@ -69,13 +112,11 @@ export async function callFrameFunctionFromSource(
     functionName: string;
     input?: unknown;
   }
-): Promise<
-  Result<CallFrameFunctionFromSourceResult, CallFrameFunctionFromSourceError>
-> {
+): Promise<Result<CallFrameFunctionResult, CallFrameFunctionFromSourceError>> {
   const normalizedSourcePath = DustFileSystem.normalizeScopedPath(sourcePath);
   if (!normalizedSourcePath || !normalizedSourcePath.includes("/")) {
     return new Err(
-      new FrameFunctionCallFromSourceError(
+      new FrameFunctionCallError(
         "invalid_source",
         "Frame source must point to its folder or manifest.json."
       )
@@ -93,7 +134,7 @@ export async function callFrameFunctionFromSource(
   const dustFs = fsResult.value;
   if (!dustFs.isGCSBacked()) {
     return new Err(
-      new FrameFunctionCallFromSourceError(
+      new FrameFunctionCallError(
         "invalid_source",
         "Frames v2 calls do not support the database-backed filesystem."
       )
@@ -109,7 +150,7 @@ export async function callFrameFunctionFromSource(
     );
   if (!readableMount) {
     return new Err(
-      new FrameFunctionCallFromSourceError(
+      new FrameFunctionCallError(
         "unauthorized",
         "Read access to the Frame source folder is required."
       )
@@ -119,10 +160,7 @@ export async function callFrameFunctionFromSource(
   const mountFilePath = dustFs.toMountFilePath(manifestPath);
   if (!mountFilePath) {
     return new Err(
-      new FrameFunctionCallFromSourceError(
-        "invalid_source",
-        "Invalid Frame source path."
-      )
+      new FrameFunctionCallError("invalid_source", "Invalid Frame source path.")
     );
   }
   const [frame] = await FileResource.fetchByMountFilePaths(auth, [
@@ -130,36 +168,16 @@ export async function callFrameFunctionFromSource(
   ]);
   if (!frame?.isFrameV2) {
     return new Err(
-      new FrameFunctionCallFromSourceError(
+      new FrameFunctionCallError(
         "frame_not_found",
         `No registered Frames v2 package found at ${normalizedSourcePath}.`
       )
     );
   }
 
-  const sandboxFunction = await resolveActiveFrameFunctionForUse(auth, {
+  return callFrameFunction(auth, {
     frameId: frame.sId,
     functionName,
-  });
-  if (!sandboxFunction) {
-    return new Err(
-      new FrameFunctionCallFromSourceError(
-        "function_not_found",
-        `No active function named "${functionName}" found for this Frame.`
-      )
-    );
-  }
-
-  const callResult = await callSandboxFunction(auth, sandboxFunction, input);
-  if (callResult.isErr()) {
-    return new Err(
-      new FrameFunctionExecutionError(functionName, callResult.error)
-    );
-  }
-
-  return new Ok({
-    frameId: frame.sId,
-    functionName,
-    result: callResult.value,
+    input,
   });
 }

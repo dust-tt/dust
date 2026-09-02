@@ -18,6 +18,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import call from "./call";
+import callById from "./call_by_id";
 import register from "./register";
 import share from "./share";
 
@@ -72,6 +73,7 @@ const app = sandboxApp();
 
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
 app.route("/call", call);
+app.route("/:frameId/call", callById);
 app.route("/register", register);
 app.route("/share", share);
 

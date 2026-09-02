@@ -22,8 +22,8 @@ const FILES_ROOT: &str = "/files";
 pub enum FrameCommand {
     /// Invoke a named function from a Frame's active publication
     Call {
-        /// Absolute path to the Frame folder or manifest under /files
-        source: PathBuf,
+        /// Frame ID, or absolute path to its folder or manifest under /files
+        target: String,
         /// Bare function name declared in the manifest
         function_name: String,
         /// JSON input passed to the function

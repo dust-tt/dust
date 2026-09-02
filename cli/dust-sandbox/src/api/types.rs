@@ -5,7 +5,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FrameCallRequest<'a> {
+pub struct FrameCallByIdRequest<'a> {
+    pub function_name: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input: Option<&'a serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameCallFromSourceRequest<'a> {
     pub source_path: &'a str,
     pub function_name: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]

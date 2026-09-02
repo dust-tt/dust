@@ -1,19 +1,24 @@
 import {
   type CallFrameFunctionResult,
-  callFrameFunctionFromSource,
+  callFrameFunction,
 } from "@app/lib/api/frames/call_frame_function";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { isResourceSId } from "@app/lib/resources/string_ids";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import {
-  FrameFunctionCallFromSourceRequestSchema,
+  FrameFunctionCallRequestSchema,
   frameFunctionCallApiError,
 } from "./call_utils";
+
+const FrameCallParamsSchema = z.object({
+  frameId: z.string().refine((value) => isResourceSId("file", value)),
+});
 
 const app = sandboxApp();
 
@@ -23,7 +28,8 @@ const app = sandboxApp();
  */
 app.post(
   "/",
-  validate("json", FrameFunctionCallFromSourceRequestSchema),
+  validate("param", FrameCallParamsSchema),
+  validate("json", FrameFunctionCallRequestSchema),
   async (ctx): HandlerResult<CallFrameFunctionResult> => {
     const auth = ctx.get("auth");
     const claims = ctx.get("sandboxClaims");
@@ -46,19 +52,8 @@ app.post(
       });
     }
 
-    const conversation = await ConversationResource.fetchById(auth, claims.cId);
-    if (!conversation) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "conversation_not_found",
-          message: `Conversation ${claims.cId} not found.`,
-        },
-      });
-    }
-
-    const result = await callFrameFunctionFromSource(auth, {
-      conversation: conversation.toJSON(),
+    const result = await callFrameFunction(auth, {
+      frameId: ctx.req.valid("param").frameId,
       ...ctx.req.valid("json"),
     });
     if (result.isErr()) {
