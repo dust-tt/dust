@@ -1,4 +1,3 @@
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   COST_PALETTE,
   OTHER_LABEL,
@@ -12,7 +11,6 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
-import { AnalyticsFilterDropdown } from "@app/components/workspace/analytics/AnalyticsFilterDropdown";
 import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import {
   isScopeDimension,
@@ -26,7 +24,6 @@ import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownlo
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
-import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import {
@@ -41,13 +38,6 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-interface AwuUsageFromAnalyticsChartProps {
-  workspaceId: string;
-  period: ObservabilityTimeRangeType;
-  filter: AnalyticsFilter;
-  onFilterChange: (next: AnalyticsFilter) => void;
-}
 
 export type Granularity = "day" | "week" | "month";
 export type AnalyticsGroupBy =
@@ -69,14 +59,6 @@ const GROUP_BY_OPTIONS: GroupByOption[] = [
   { value: "api_key", label: "By API Key" },
   { value: "model", label: "By Model" },
 ];
-
-// "By User" is redundant when the chart is already scoped to a single user.
-const PERSONAL_GROUP_BY_OPTIONS: GroupByOption[] = GROUP_BY_OPTIONS.filter(
-  (o) => o.value !== "user"
-);
-
-// Personal usage chart covers a fixed trailing window (no period selector).
-const PERSONAL_USAGE_DAYS = 30;
 
 const GRANULARITY_OPTIONS: { value: Granularity; label: string }[] = [
   { value: "day", label: "Daily" },
@@ -668,102 +650,6 @@ export function BaseAwuUsageFromAnalyticsChart({
         days={days}
       />
     </ChartContainer>
-  );
-}
-
-export function AwuUsageFromAnalyticsChart({
-  workspaceId,
-  period,
-  filter,
-  onFilterChange,
-}: AwuUsageFromAnalyticsChartProps) {
-  const [granularity, setGranularity] = useState<Granularity>("day");
-  const [groupBy, setGroupBy] = useState<AnalyticsGroupBy | undefined>(
-    undefined
-  );
-  const [groupByCount, setGroupByCount] = useState<number>(5);
-
-  const { awuUsageData, isAwuUsageLoading, isAwuUsageError } =
-    useAwuUsageFromAnalytics({
-      workspaceId,
-      groupBy,
-      groupByCount,
-      granularity,
-      days: period,
-      filter: scopeFilterToIds(filter),
-    });
-
-  return (
-    <BaseAwuUsageFromAnalyticsChart
-      awuUsageData={awuUsageData}
-      isAwuUsageLoading={isAwuUsageLoading}
-      isAwuUsageError={!!isAwuUsageError}
-      granularity={granularity}
-      setGranularity={setGranularity}
-      groupBy={groupBy}
-      setGroupBy={setGroupBy}
-      groupByCount={groupByCount}
-      setGroupByCount={setGroupByCount}
-      days={period}
-      exportUrlPrefix={`/api/w/${workspaceId}/analytics/awu-usage-analytics`}
-      filter={filter}
-      onFilterChange={onFilterChange}
-      filterDropdown={
-        <AnalyticsFilterDropdown
-          filter={filter}
-          onFilterChange={onFilterChange}
-        />
-      }
-    />
-  );
-}
-
-interface MyAwuUsageFromAnalyticsChartProps {
-  workspaceId: string;
-  disabled?: boolean;
-}
-
-// Personal credit usage chart scoped to the authenticated user. Same chart as
-// the workspace-wide analytics one, but fetches from the user-scoped endpoint so
-// any member can track their own usage.
-export function MyAwuUsageFromAnalyticsChart({
-  workspaceId,
-  disabled,
-}: MyAwuUsageFromAnalyticsChartProps) {
-  const [granularity, setGranularity] = useState<Granularity>("day");
-  const [groupBy, setGroupBy] = useState<AnalyticsGroupBy | undefined>(
-    undefined
-  );
-  const [groupByCount, setGroupByCount] = useState<number>(5);
-
-  const exportUrlPrefix = `/api/w/${workspaceId}/credits/my-usage-analytics`;
-
-  const { awuUsageData, isAwuUsageLoading, isAwuUsageError } =
-    useAwuUsageFromAnalytics({
-      workspaceId,
-      groupBy,
-      groupByCount,
-      granularity,
-      days: PERSONAL_USAGE_DAYS,
-      disabled,
-      urlPrefix: exportUrlPrefix,
-    });
-
-  return (
-    <BaseAwuUsageFromAnalyticsChart
-      awuUsageData={awuUsageData}
-      isAwuUsageLoading={isAwuUsageLoading}
-      isAwuUsageError={!!isAwuUsageError}
-      granularity={granularity}
-      setGranularity={setGranularity}
-      groupBy={groupBy}
-      setGroupBy={setGroupBy}
-      groupByCount={groupByCount}
-      setGroupByCount={setGroupByCount}
-      days={PERSONAL_USAGE_DAYS}
-      exportUrlPrefix={exportUrlPrefix}
-      groupByOptions={PERSONAL_GROUP_BY_OPTIONS}
-    />
   );
 }
 
