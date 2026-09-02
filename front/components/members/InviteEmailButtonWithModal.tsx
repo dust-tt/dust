@@ -6,6 +6,7 @@ import {
   formatPriceCents,
   getAvailableFrequencies,
   groupSeatTypesByFrequency,
+  includedSeatsOpen,
   SeatCard,
   sortSeatTypes,
 } from "@app/components/workspace/SeatCard";
@@ -87,6 +88,11 @@ function seatBadge(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): ReactNode {
+  const openCount = includedSeatsOpen(info);
+  if (openCount > 0) {
+    return <Chip size="xs" color="primary" label={`${openCount} Available`} />;
+  }
+
   if (seatType === "free") {
     return <Chip size="xs" color="primary" label="If eligible" />;
   }
