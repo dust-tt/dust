@@ -386,7 +386,7 @@ export function PoolUsagePage() {
                   totalRowCount={totalMembers}
                   sorting={sorting}
                   setSorting={handleSetSorting}
-                  showGroupsColumn={groups.length > 0}
+                  showGroupsColumn={false}
                   showModelTiersColumn
                   userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
                   groupModelTiersByGroupId={groupModelTiersByGroupId}
