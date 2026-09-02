@@ -3,7 +3,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import {
   allowSlackWorkflow,
-  listSlackWorkflowGroups,
+  listSlackWorkflowWhitelistableGroups,
 } from "@app/lib/api/slack/summoning_whitelist";
 import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types/connectors/admin/cli";
@@ -119,7 +119,7 @@ export const slackWhitelistBotPlugin = createPlugin({
       return new Err(new Error("Data source not found."));
     }
 
-    const groups = await listSlackWorkflowGroups(auth);
+    const groups = await listSlackWorkflowWhitelistableGroups(auth);
 
     return new Ok({
       groupIds: groups.map((group) => ({
