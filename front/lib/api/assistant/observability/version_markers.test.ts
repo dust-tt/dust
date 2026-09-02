@@ -89,19 +89,23 @@ describe("fetchVersionMarkers", () => {
 
     expect(searchConsumptionAnalytics).toHaveBeenCalledOnce();
 
-    const [query, options] = vi.mocked(searchConsumptionAnalytics).mock
-      .calls[0];
-
-    const filters = (query as { bool: { filter: unknown[] } }).bool.filter;
-    const hasAgentFilter = filters.some(
-      (f: any) =>
-        f?.term?.["agent.attributed_id"] === "agent-xyz" ||
-        f?.terms?.["agent.attributed_id"]?.includes("agent-xyz")
+    expect(searchConsumptionAnalytics).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bool: expect.objectContaining({
+          filter: expect.arrayContaining([
+            expect.objectContaining({
+              term: { "agent.attributed_id": "agent-xyz" },
+            }),
+          ]),
+        }),
+      }),
+      expect.objectContaining({
+        size: 0,
+        aggregations: expect.objectContaining({
+          by_version: expect.anything(),
+        }),
+      })
     );
-    expect(hasAgentFilter).toBe(true);
-
-    expect(options?.size).toBe(0);
-    expect(options?.aggregations?.by_version).toBeDefined();
   });
 
   it("defaults timestamp to 0 when first_seen is missing", async () => {
