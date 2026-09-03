@@ -39,9 +39,14 @@ const PERIOD: ConsumptionPeriod = {
   endDate: new Date(PERIOD_END_MS).toISOString(),
 };
 
-function dayBucket(dayIndex: number, microCredits: number) {
+function dayBucket(
+  dayIndex: number,
+  microCredits: number,
+  activeUsers: number = 0
+) {
   return {
     key: PERIOD_START_MS + dayIndex * DAY_MS,
+    active_users: { value: activeUsers },
     metric: { value: microCredits },
   };
 }
@@ -151,14 +156,41 @@ describe("fetchConsumptionTimeseries", () => {
     });
   });
 
+  it("counts active users in each consumption bucket", async () => {
+    const { auth, period } = await setup();
+    mockBuckets([dayBucket(0, 2_000_000, 4), dayBucket(1, 1_500_000, 2)]);
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "period",
+    });
+
+    const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(options?.aggregations?.by_date?.aggs?.active_users).toEqual({
+      cardinality: {
+        field: "user.id",
+        precision_threshold: 40_000,
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.points.map((point) => point.activeUsers)).toEqual([
+      4, 2,
+    ]);
+  });
+
   it("zeroes buckets that have not started yet", async () => {
     const { auth, period } = await setup();
     mockBuckets([
-      dayBucket(0, 2_000_000),
-      dayBucket(2, 500_000), // Today, still filling.
+      dayBucket(0, 2_000_000, 2),
+      dayBucket(2, 500_000, 1), // Today, still filling.
       // A future bucket carrying a value: clock skew, or a document indexed
       // ahead of time. Either way it has not happened.
-      dayBucket(3, 9_000_000),
+      dayBucket(3, 9_000_000, 9),
     ]);
 
     const result = await fetchConsumptionTimeseries(auth, {
@@ -174,6 +206,9 @@ describe("fetchConsumptionTimeseries", () => {
     expect(
       result.value.points.map((point) => point.values[TOTAL_GROUP_KEY])
     ).toEqual([2, 0.5, 0]);
+    expect(result.value.points.map((point) => point.activeUsers)).toEqual([
+      2, 1, 0,
+    ]);
   });
 
   it("scopes the query to the requested dimension filters", async () => {
@@ -200,11 +235,11 @@ describe("fetchConsumptionTimeseries", () => {
   it("stops the cumulative total at today rather than plateauing", async () => {
     const { auth, period } = await setup();
     mockBuckets([
-      dayBucket(0, 2_000_000),
-      dayBucket(1, 1_500_000),
-      dayBucket(2, 500_000), // Today, still filling.
-      dayBucket(3, 0), // Not happened yet.
-      dayBucket(4, 0),
+      dayBucket(0, 2_000_000, 2),
+      dayBucket(1, 1_500_000, 3),
+      dayBucket(2, 500_000, 1), // Today, still filling.
+      dayBucket(3, 0, 5), // Not happened yet.
+      dayBucket(4, 0, 5),
     ]);
 
     const result = await fetchConsumptionTimeseries(auth, {
@@ -221,6 +256,10 @@ describe("fetchConsumptionTimeseries", () => {
     expect(
       result.value.points.map((point) => point.values[TOTAL_GROUP_KEY])
     ).toEqual([2, 3.5, 4, 0, 0]);
+    // Active users remain a per-bucket count even when credits accumulate.
+    expect(result.value.points.map((point) => point.activeUsers)).toEqual([
+      2, 3, 1, 0, 0,
+    ]);
   });
 
   describe("breakdown", () => {
