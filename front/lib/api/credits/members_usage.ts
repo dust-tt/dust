@@ -1822,7 +1822,16 @@ async function resolveMembersUsagePageUsers({
   workspace: LightWorkspaceType;
   paginationParams: MembersUsagePaginationInput;
   restrictToUserIds: string[] | undefined;
-}): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+}): Promise<
+  Result<
+    {
+      users: UserResource[];
+      total: number;
+      premiumMessageUsageByUserId?: Map<string, PremiumModelMessageUsage>;
+    },
+    Error
+  >
+> {
   const { orderColumn, orderDirection, offset, limit } = paginationParams;
   const searchTerm = paginationParams.search ?? "";
 
@@ -1858,6 +1867,10 @@ async function resolveMembersUsagePageUsers({
 
   const sortKeyByUserId = new Map<string, number | string>();
   const overageLimitByUserId = new Map<string, number>();
+  const premiumMessageUsageByUserId = new Map<
+    string,
+    PremiumModelMessageUsage
+  >();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
@@ -2054,6 +2067,7 @@ async function resolveMembersUsagePageUsers({
       );
       for (const [sId, usage] of entries) {
         sortKeyByUserId.set(sId, usage.usedMessages);
+        premiumMessageUsageByUserId.set(sId, usage);
       }
       break;
     }
@@ -2087,7 +2101,14 @@ async function resolveMembersUsagePageUsers({
     return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
   });
 
-  return new Ok({ users: sortedUsers.slice(offset, offset + limit), total });
+  return new Ok({
+    users: sortedUsers.slice(offset, offset + limit),
+    total,
+    premiumMessageUsageByUserId:
+      orderColumn === "premiumMessageUsage"
+        ? premiumMessageUsageByUserId
+        : undefined,
+  });
 }
 
 export async function getMembersUsage({
@@ -2138,7 +2159,11 @@ export async function getMembersUsage({
     return { members: [], total: 0, creditsResetAt };
   }
 
-  const { users, total } = usersResult.value;
+  const {
+    users,
+    total,
+    premiumMessageUsageByUserId: precomputedPremiumMessageUsageByUserId,
+  } = usersResult.value;
 
   if (users.length === 0) {
     return { members: [], total, creditsResetAt };
@@ -2384,17 +2409,31 @@ export async function getMembersUsage({
   if (includeAlertLinks) {
     const plan = auth.plan();
     if (plan && !isCreditPricedPlan(plan)) {
-      const entries = await concurrentExecutor(
-        users,
-        async (u) =>
-          [
+      if (precomputedPremiumMessageUsageByUserId) {
+        // Already read from Redis while sorting the full matching set by
+        // this same column; avoid reading it again for the page.
+        for (const u of users) {
+          premiumMessageUsageByUserId.set(
             u.sId,
-            await getPremiumModelMessageUsage({ workspace, user: u.toJSON() }),
-          ] as const,
-        { concurrency: 8 }
-      );
-      for (const [sId, usage] of entries) {
-        premiumMessageUsageByUserId.set(sId, usage);
+            precomputedPremiumMessageUsageByUserId.get(u.sId) ?? null
+          );
+        }
+      } else {
+        const entries = await concurrentExecutor(
+          users,
+          async (u) =>
+            [
+              u.sId,
+              await getPremiumModelMessageUsage({
+                workspace,
+                user: u.toJSON(),
+              }),
+            ] as const,
+          { concurrency: 8 }
+        );
+        for (const [sId, usage] of entries) {
+          premiumMessageUsageByUserId.set(sId, usage);
+        }
       }
     }
   }

@@ -752,15 +752,10 @@ function buildPoolCreditUsageColumn(
 const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
   id: "premiumMessageUsage" as const,
   header: () => (
-    <div className="flex flex-col">
-      <span className="flex items-center gap-1">
-        <Icon visual={CoinsStacked03} size="xs" />
-        Premium messages
-      </span>
-      <span className="text-xs font-normal text-muted-foreground">
-        Resets weekly
-      </span>
-    </div>
+    <span className="flex items-center gap-1">
+      <Icon visual={CoinsStacked03} size="xs" />
+      Premium messages
+    </span>
   ),
   accessorFn: (row) => (row.premiumMessageUsage?.usedMessages ?? 0).toString(),
   cell: (info: Info) => {
@@ -772,7 +767,7 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
         </DataTable.CellContent>
       );
     }
-    const { usedMessages, limitMessages } = usage;
+    const { usedMessages, limitMessages, nextRefill } = usage;
     const percentage =
       limitMessages > 0
         ? Math.min(100, (usedMessages / limitMessages) * 100)
@@ -806,6 +801,16 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
             ]}
           />
         </div>
+        {nextRefill && (
+          <span className="text-xs font-normal text-muted-foreground">
+            +{nextRefill.messages} on{" "}
+            {new Date(nextRefill.availableAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              timeZone: "UTC",
+            })}
+          </span>
+        )}
       </div>
     );
   },
