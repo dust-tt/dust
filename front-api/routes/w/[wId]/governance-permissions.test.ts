@@ -192,18 +192,15 @@ describe("PATCH /api/w/:wId/governance-permissions", () => {
   });
 
   it("rejects a groups configuration referencing a non-manageable group", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
 
-    // `regular_auto` groups back spaces and are not user-managed, so they cannot be granted here.
-    const autoGroup = await GroupFactory.regularAuto(workspace, "auto");
-
     const response = await patchGovernancePermission(workspace, {
       grantType: "publish",
       resourceType: "agent",
-      configuration: { scope: "groups", groupIds: [autoGroup.sId] },
+      configuration: { scope: "groups", groupIds: [globalGroup.sId] },
     });
 
     expect(response.status).toBe(400);

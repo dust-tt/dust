@@ -180,18 +180,13 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
 
     it("returns 400 on a non-provisioned group", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
-      const regularGroup = await GroupResource.makeNew({
-        name: "Space group",
-        workspaceId: workspace.id,
-        kind: "regular_auto",
-      });
-      await createPrivateApiMockRequest({
+      const { globalGroup } = await createPrivateApiMockRequest({
         method: "PUT",
         role: "admin",
         workspace,
       });
 
-      const response = await putLimit(workspace.sId, regularGroup.sId, {
+      const response = await putLimit(workspace.sId, globalGroup.sId, {
         kind: "limited",
         awuCredits: 1500,
       });
