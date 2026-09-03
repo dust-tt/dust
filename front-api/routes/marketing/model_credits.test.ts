@@ -26,12 +26,22 @@ describe("GET /api/marketing/model-credits", () => {
       (model: { modelId: string }) => model.modelId
     );
 
-    // Entirely feature-flagged providers (no GA model yet).
+    // Models that remain feature-flagged.
     expect(modelIds).not.toContain("deepseek-chat");
-    expect(modelIds).not.toContain("grok-4.5");
     expect(modelIds).not.toContain("o1");
     // Gated by featureFlag even though plansWithAdvancedModels is also set.
     expect(modelIds).not.toContain("claude-opus-4-6");
+  });
+
+  it("includes released Grok models", async () => {
+    const response = await honoApp.request("/api/marketing/model-credits");
+    const body = await response.json();
+    const modelIds = body.models.map(
+      (model: { modelId: string }) => model.modelId
+    );
+
+    expect(modelIds).toContain("grok-4.5");
+    expect(modelIds).toContain("grok-4.6");
   });
 
   it("excludes legacy models", async () => {
