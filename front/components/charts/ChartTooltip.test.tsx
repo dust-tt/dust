@@ -21,12 +21,8 @@ describe("ChartTooltipCard", () => {
 
     expect(activeUsersValue).toHaveClass("tabular-nums");
     expect(activeUsersValue).not.toHaveClass("font-mono");
-    expect(creditsRow).toHaveClass(
-      "mt-1",
-      "border-t",
-      "border-border/50",
-      "pt-1"
-    );
+    expect(creditsRow?.parentElement).toHaveClass("space-y-1.5");
+    expect(creditsRow).toHaveClass("border-t", "border-border/50", "pt-1");
     expect(footer).toHaveClass("mt-1", "border-t", "border-border/50", "pt-1");
   });
 });

@@ -59,7 +59,7 @@ export function ChartTooltipCard({
       className="min-w-32 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
     >
       {title && <div className="mb-1 font-medium text-foreground">{title}</div>}
-      <ul>
+      <ul className="space-y-1.5">
         {visibleRows.map((r, index) => {
           const rowKey = r.key ?? r.label;
           const isActive = rowKey === activeKey;
@@ -71,10 +71,7 @@ export function ChartTooltipCard({
               key={rowKey}
               className={cn(
                 "flex items-center gap-2 rounded",
-                index > 0 &&
-                  (hasSeparator
-                    ? "mt-1 border-t border-border/50 pt-1"
-                    : "mt-1.5"),
+                hasSeparator && "border-t border-border/50 pt-1",
                 isActive && "-mx-1.5 bg-muted-background/60 px-1.5"
               )}
             >
