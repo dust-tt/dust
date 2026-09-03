@@ -130,7 +130,7 @@ export type ProviderVisibility = "public" | "private";
  * own. This is because the Microsoft API does not allow to query a document or
  * list its children using its id alone. We compute an internal id that contains all
  * information. More details here:
- * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
+ * https://app.notion.com/p/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
   expandable: boolean;

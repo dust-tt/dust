@@ -113,7 +113,7 @@ pub struct Chunk {
 /// not the case for Microsoft. Therefore, for microsoft, instead of using the
 /// provider id directly, we compute our own document id containing all
 /// information for the querying the document using Microsoft's API. More details
-/// [here](https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4)
+/// [here](https://app.notion.com/p/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4)
 ///
 /// Parents array
 /// -------------

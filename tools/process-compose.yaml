@@ -331,7 +331,7 @@ processes:
     disabled: true
 
   ngrok:
-    # Doc: https://www.notion.so/dust-tt/Runbook-Local-Setup-Slack-2ad003fc529d4144bb0ee61b7fd797c9?source=copy_link#2a728599d941807fb71dccb4addc0234
+    # Doc: https://app.notion.com/p/dust-tt/Runbook-Local-Setup-Slack-2ad003fc529d4144bb0ee61b7fd797c9?source=copy_link#2a728599d941807fb71dccb4addc0234
     command: "ngrok start localhost-via-https"
     namespace: 90-optional
     disabled: true
@@ -377,7 +377,7 @@ processes:
     disabled: true
 
   stripe:
-    # Doc: https://www.notion.so/dust-tt/Runbook-Local-Dev-setup-720bffc7d67a447184cb957e9471380c?source=copy_link#5814f227351d4d258422e21e8de39c82/
+    # Doc: https://app.notion.com/p/dust-tt/Runbook-Local-Dev-setup-720bffc7d67a447184cb957e9471380c?source=copy_link#5814f227351d4d258422e21e8de39c82/
     command: "stripe listen --forward-to localhost:3000/api/stripe/webhook"
     namespace: 90-optional
     disabled: true

@@ -118,7 +118,7 @@ function checkWorkspaceIsolation<MS extends ModelStatic<Model>>(
       throw new Error(
         `Query attempted without workspaceId on ${modelName}. All workspace-aware model ` +
           "queries must be scoped to a specific workspaceId for query isolation. " +
-          "See Runbook https://www.notion.so/dust-tt/Runbook-WorkspaceAwareModel-Workspace-Isolation-Enforcement-2d128599d94180dbbbace7cffcd958f6"
+          "See Runbook https://app.notion.com/p/dust-tt/Runbook-WorkspaceAwareModel-Workspace-Isolation-Enforcement-2d128599d94180dbbbace7cffcd958f6"
       );
     }
 

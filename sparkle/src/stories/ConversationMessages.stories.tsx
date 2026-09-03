@@ -157,7 +157,7 @@ export const WithAttachments: Story = {
                   secondaryIcon: NotionLogo,
                   size: "sm",
                 }}
-                href="https://notion.so"
+                href="https://app.notion.com"
                 target="_blank"
               />
             </div>

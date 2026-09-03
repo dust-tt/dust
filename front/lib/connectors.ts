@@ -20,6 +20,8 @@ function getConnectorOrder() {
 
 type ComparableByProvider = { connectorProvider: ConnectorProvider | null };
 
+const NOTION_HOSTS = ["notion.so", "notion.site", "app.notion.com"];
+
 function compareByImportance(
   a: ComparableByProvider,
   b: ComparableByProvider
@@ -241,7 +243,10 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
   },
   notion: {
     matcher: (url: URL): boolean => {
-      return url.hostname.includes("notion.so");
+      return NOTION_HOSTS.some(
+        (host) =>
+          url.hostname === host || url.hostname.endsWith(`.${host}`)
+      );
     },
     extractor: (url: URL): NodeCandidate => {
       // Get the last part of the path, which contains the ID
