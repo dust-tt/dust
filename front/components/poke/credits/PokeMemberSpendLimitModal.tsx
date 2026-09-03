@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
 import type { GroupType } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import {
   Avatar,
   Chip,
@@ -18,7 +19,7 @@ import {
   Users01,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface PokeMemberSpendLimitModalProps {
   isOpen: boolean;
@@ -36,19 +37,6 @@ type GroupRow = {
   onClick?: () => void;
 };
 
-// Poke has no working write route for per-member or per-group spend limits
-// yet, so Save is wired to nothing but a notice rather than an actual
-// mutation
-function useUnavailableSpendLimitSave() {
-  const sendNotification = useSendNotification();
-  return () =>
-    sendNotification({
-      title: "Not available from Poke yet",
-      description: "Editing spend limits from Poke isn't supported yet.",
-      type: "info",
-    });
-}
-
 export function PokeMemberSpendLimitModal({
   isOpen,
   onClose,
@@ -58,14 +46,25 @@ export function PokeMemberSpendLimitModal({
   // Keep the last non-null member so the dialog can render its content
   // through the exit animation after the parent has cleared `member`.
   const lastMemberRef = useRef<MemberUsageType | null>(null);
-  if (member) {
-    lastMemberRef.current = member;
-  }
+  useEffect(() => {
+    if (member) {
+      lastMemberRef.current = member;
+    }
+  }, [member]);
   const displayedMember = member ?? lastMemberRef.current;
 
-  const notifySaveUnavailable = useUnavailableSpendLimitSave();
+  const sendNotification = useSendNotification();
+  // Poke has no working write route for per-member or per-group spend
+  // limits yet, so Save is wired to nothing but a notice rather than an
+  // actual mutation.
+  const notifySaveUnavailable = () =>
+    sendNotification({
+      title: "Not available from Poke yet",
+      description: "Editing spend limits from Poke isn't supported yet.",
+      type: "info",
+    });
 
-  const [personalLimitInput, setPersonalLimitInput] = useState("");
+  const [personalLimitInput, setPersonalLimitInput] = useState<string>("");
   // Typed group overrides aren't read anywhere yet (Save is a no-op notice,
   // not a real mutation), so they're kept in a ref rather than state
   const groupLimitInputsRef = useRef<Record<string, string>>({});
@@ -82,13 +81,15 @@ export function PokeMemberSpendLimitModal({
     ? String(extraAwuCredits)
     : "0";
 
-  const memberGroups: GroupType[] = (displayedMember?.groups ?? [])
-    .map((groupName) => groups.find((g) => g.name === groupName))
-    .filter((g): g is GroupType => g !== undefined);
+  const memberGroups: GroupType[] = removeNulls(
+    (displayedMember?.groups ?? []).map((groupName) =>
+      groups.find((g) => g.name === groupName)
+    )
+  );
 
   // When there's no personal override, the highest group cap the member is
   // part of is the one currently granting their extra credits.
-  const highestGroupSId = memberGroups.reduce<string | null>(
+  const highestGroupId = memberGroups.reduce<string | null>(
     (highestSId, g) => {
       if (g.poolCapAwuCredits === null) {
         return highestSId;
@@ -107,7 +108,7 @@ export function PokeMemberSpendLimitModal({
     name: g.name,
     poolCapAwuCredits: g.poolCapAwuCredits,
     memberCount: g.memberCount,
-    isHighest: !hasPersonalOverride && g.sId === highestGroupSId,
+    isHighest: !hasPersonalOverride && g.sId === highestGroupId,
   }));
 
   const groupColumns: ColumnDef<GroupRow, string>[] = useMemo(
@@ -121,7 +122,7 @@ export function PokeMemberSpendLimitModal({
             <span
               className={
                 row.original.isHighest
-                  ? "font-semibold text-emerald-600"
+                  ? "font-semibold text-highlight-500"
                   : undefined
               }
             >
@@ -145,7 +146,6 @@ export function PokeMemberSpendLimitModal({
             defaultValue={groupLimitInputsRef.current[row.original.sId] ?? ""}
             onChange={(e) => {
               const cleaned = e.target.value.replace(/[^\d]/g, "");
-              e.target.value = cleaned;
               groupLimitInputsRef.current[row.original.sId] = cleaned;
             }}
             suffix="credits/m."
