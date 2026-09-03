@@ -753,7 +753,7 @@ const offPaceColumn: ColumnDef<RowData, string> = {
           tooltipTriggerAsChild
           label={
             isCritical
-              ? "Consuming credits well ahead of the billing cycle's pace"
+              ? "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
               : "Consuming credits ahead of the billing cycle's pace"
           }
           trigger={
