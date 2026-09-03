@@ -715,7 +715,7 @@ async function fetchPerUserUsageCreditsForMembersTable({
   }
 }
 
-async function fetchConsumedAwuCreditsFromMetronomeByUserId({
+export async function fetchConsumedAwuCreditsFromMetronomeByUserId({
   workspaceId,
   metronomeCustomerId,
   metronomeContractId,
