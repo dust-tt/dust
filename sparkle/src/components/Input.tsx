@@ -159,6 +159,13 @@ export interface InputProps
   prefix?: React.ReactNode;
   /** Content of a full-height muted box after the field (e.g. a unit or currency). */
   suffix?: React.ReactNode;
+  /**
+   * Shorthand for a `suffix` that is just a unit/currency label (e.g.
+   * "credits/month", "days"): renders it in the muted box with faint text,
+   * so callers don't each re-style that text themselves. Ignored if `suffix`
+   * is also provided.
+   */
+  unit?: React.ReactNode;
 }
 
 /**
@@ -187,11 +194,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       iconRight,
       prefix,
       suffix,
+      unit,
       ...props
     },
     ref
   ) => {
     const size: InputSizeType = typeof rawSize === "number" ? "sm" : rawSize;
+    const resolvedSuffix =
+      suffix ??
+      (unit != null ? <span className="text-faint">{unit}</span> : undefined);
     const state =
       isError || (message && messageStatus === "error")
         ? "error"
@@ -235,7 +246,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               )}
             />
           )}
-          {suffix && <div className={slotBoxVariants({ size })}>{suffix}</div>}
+          {resolvedSuffix && (
+            <div className={slotBoxVariants({ size })}>{resolvedSuffix}</div>
+          )}
         </div>
         {message && (
           <div

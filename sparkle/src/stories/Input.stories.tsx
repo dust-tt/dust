@@ -124,13 +124,26 @@ export const WithLeadingIcon: Story = {
 
 /**
  * A `prefix` renders static content inside the field before the value —
- * here a currency symbol. Use `suffix` for a unit shown after the value.
+ * here a currency symbol. Use `unit` for a label shown after the value.
  * @summary Input with a static prefix.
  */
 export const WithPrefix: Story = {
   args: {
     placeholder: "0.00",
     prefix: <span className="text-faint">$</span>,
+  },
+};
+
+/**
+ * `unit` is shorthand for a `suffix` that's just a unit/currency label — it
+ * renders in the muted box with faint text automatically, so callers don't
+ * need to style that text themselves.
+ * @summary Input with a unit suffix.
+ */
+export const WithUnit: Story = {
+  args: {
+    placeholder: "1,000",
+    unit: "credits/month",
   },
 };
 
