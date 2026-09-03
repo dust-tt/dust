@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
+use cloud_storage::{ErrorList, GoogleErrorResponse};
 use csv::Writer;
 use tracing::info;
 
@@ -12,6 +12,7 @@ use crate::{
         table::{Row, Table},
         table_schema::TableSchema,
     },
+    gcs_client::gcs_client,
     utils::{self},
 };
 
@@ -51,7 +52,11 @@ pub async fn write_rows_to_bucket(
 
     let csv = wtr.into_inner()?;
 
-    Object::create(bucket, csv, bucket_csv_path, "text/csv").await?;
+    gcs_client()
+        .await?
+        .object()
+        .create(bucket, csv, bucket_csv_path, "text/csv")
+        .await?;
 
     Ok(())
 }
@@ -88,9 +93,9 @@ impl GoogleCloudStorageDatabasesStore {
                 // Treat a non-existing file as an empty table.
                 // Checking for this is trickier than it should be, due to how the cloud_storage crate handles errors,
                 // and depends on which underlying GCS call hits the missing object first:
-                //  - Object::download (the actual file download) returns an 'Other' error containing "No such object".
-                //  - Object::read (the metadata probe parse() does for its file-size check) returns the more
-                //    meaningful Google(GoogleErrorResponse) with a 404, same as Object::delete on a missing object.
+                //  - object().download (the actual file download) returns an 'Other' error containing "No such object".
+                //  - object().read (the metadata probe parse() does for its file-size check) returns the more
+                //    meaningful Google(GoogleErrorResponse) with a 404, same as object().delete on a missing object.
                 // We treat both as an empty table.
                 Some(cloud_storage::Error::Other(s)) if s.contains("No such object") => {
                     info!(
@@ -236,11 +241,14 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
     }
 
     async fn delete_table_data(&self, table: &Table) -> Result<()> {
-        match Object::delete(
-            &Self::get_bucket()?,
-            &Self::get_csv_storage_file_path(table),
-        )
-        .await
+        match gcs_client()
+            .await?
+            .object()
+            .delete(
+                &Self::get_bucket()?,
+                &Self::get_csv_storage_file_path(table),
+            )
+            .await
         {
             Ok(_) => {}
             Err(e) => match e {
