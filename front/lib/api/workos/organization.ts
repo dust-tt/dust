@@ -22,7 +22,6 @@ import {
 } from "@workos-inc/node";
 import assert from "assert";
 import uniqueId from "lodash/uniqueId";
-import type { Transaction } from "sequelize";
 
 /**
  * Ensure active Dust memberships exist as WorkOS organization memberships.
@@ -57,7 +56,7 @@ async function syncActiveMembershipsToWorkOSOrganization(
 
 export async function getOrCreateWorkOSOrganization(
   workspace: LightWorkspaceType,
-  { domain, transaction }: { domain?: string; transaction?: Transaction } = {}
+  { domain }: { domain?: string } = {}
 ): Promise<Result<Organization, Error>> {
   try {
     const organizationRes = await getWorkOSOrganization(workspace);
@@ -93,8 +92,7 @@ export async function getOrCreateWorkOSOrganization(
     if (workspace.workOSOrganizationId !== organization.id) {
       await WorkspaceResource.updateWorkOSOrganizationId(
         workspace.id,
-        organization.id,
-        transaction
+        organization.id
       );
     }
 

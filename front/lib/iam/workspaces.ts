@@ -14,6 +14,8 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
+import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
 export async function createWorkspace(
   session: SessionWithUser,
@@ -74,10 +76,8 @@ export async function createWorkspaceInternal({
     };
   }
 
-  // Core workspace rows + WorkOS org id are created atomically. If WorkOS
-  // provisioning fails we roll back so we never leave a workspace without an
-  // organization. Post-commit seeding (MCP, plan, governance) can fail without
-  // undoing the WorkOS link.
+  // Keep the DB transaction to core Dust rows only. WorkOS is an external call
+  // (bounded by the WorkOS client timeout) and must not hold a DB transaction.
   const workspace = await withTransaction(async (transaction) => {
     const created = await WorkspaceResource.makeNew(
       {
@@ -108,27 +108,60 @@ export async function createWorkspaceInternal({
       transaction
     );
 
-    const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace, {
-      transaction,
-    });
-    if (orgRes.isErr()) {
-      throw orgRes.error;
-    }
+    return created;
+  });
 
-    const refreshedWorkspace = await WorkspaceResource.fetchByModelId(
-      created.id,
-      transaction
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
+  if (orgRes.isErr()) {
+    logger.error(
+      {
+        error: orgRes.error,
+        workspaceId: workspace.sId,
+      },
+      "Failed to create WorkOS organization during workspace creation; launching scrub"
     );
-    if (!refreshedWorkspace?.workOSOrganizationId) {
-      throw new Error(
-        "WorkOS organization was created but workspace was not updated."
+
+    const scrubRes = await launchImmediateWorkspaceScrubWorkflow({
+      workspaceId: workspace.sId,
+    });
+    if (scrubRes.isErr()) {
+      logger.error(
+        {
+          error: scrubRes.error,
+          workspaceId: workspace.sId,
+        },
+        "Failed to launch workspace scrub after WorkOS organization creation failure"
       );
     }
 
-    return refreshedWorkspace;
-  });
+    throw orgRes.error;
+  }
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const refreshedWorkspace = await WorkspaceResource.fetchByModelId(
+    workspace.id
+  );
+  if (!refreshedWorkspace?.workOSOrganizationId) {
+    const scrubRes = await launchImmediateWorkspaceScrubWorkflow({
+      workspaceId: workspace.sId,
+    });
+    if (scrubRes.isErr()) {
+      logger.error(
+        {
+          error: scrubRes.error,
+          workspaceId: workspace.sId,
+        },
+        "Failed to launch workspace scrub after missing WorkOS organization id"
+      );
+    }
+    throw new Error(
+      "WorkOS organization was created but workspace was not updated."
+    );
+  }
+
+  const auth = await Authenticator.internalAdminForWorkspace(
+    refreshedWorkspace.sId
+  );
 
   // Seed default governance capability state (no-op until Phase 2 capabilities register seeders).
   await seedWorkspaceCapabilities(auth);
@@ -141,14 +174,14 @@ export async function createWorkspaceInternal({
       await activateCreditPricedFreePlanForWorkspace(auth);
     } else {
       await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
-        workspaceId: workspace.sId,
+        workspaceId: refreshedWorkspace.sId,
         planCode,
         endDate,
       });
     }
   }
 
-  return workspace;
+  return refreshedWorkspace;
 }
 
 export async function findWorkspaceWithVerifiedDomain(user: {

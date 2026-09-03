@@ -1,18 +1,24 @@
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getNamespace } from "@app/tests/utils/test_cls";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Organization } from "@workos-inc/node";
-import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetOrCreateWorkOSOrganization } = vi.hoisted(() => ({
+const {
+  mockGetOrCreateWorkOSOrganization,
+  mockLaunchImmediateWorkspaceScrubWorkflow,
+} = vi.hoisted(() => ({
   mockGetOrCreateWorkOSOrganization: vi.fn(),
+  mockLaunchImmediateWorkspaceScrubWorkflow: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/workos/organization", () => ({
   getOrCreateWorkOSOrganization: mockGetOrCreateWorkOSOrganization,
+}));
+
+vi.mock("@app/temporal/scrub_workspace/client", () => ({
+  launchImmediateWorkspaceScrubWorkflow:
+    mockLaunchImmediateWorkspaceScrubWorkflow,
 }));
 
 vi.mock("@app/lib/api/permissions/governance_seeding", () => ({
@@ -53,16 +59,15 @@ function mockOrganization(
 describe("createWorkspaceInternal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLaunchImmediateWorkspaceScrubWorkflow.mockResolvedValue(
+      new Ok("scrub-workflow-id")
+    );
     mockGetOrCreateWorkOSOrganization.mockImplementation(
-      async (
-        workspace: { id: number; sId: string; name: string },
-        { transaction }: { transaction?: Transaction } = {}
-      ) => {
+      async (workspace: { id: number; sId: string; name: string }) => {
         const organizationId = `org_${workspace.sId}`;
         await WorkspaceResource.updateWorkOSOrganizationId(
           workspace.id,
-          organizationId,
-          transaction
+          organizationId
         );
         return new Ok(
           mockOrganization({
@@ -88,37 +93,32 @@ describe("createWorkspaceInternal", () => {
       expect.objectContaining({
         sId: workspace.sId,
         name: "WorkOS Org Workspace",
-      }),
-      expect.objectContaining({ transaction: expect.anything() })
+      })
     );
     expect(workspace.workOSOrganizationId).toBe(`org_${workspace.sId}`);
+    expect(mockLaunchImmediateWorkspaceScrubWorkflow).not.toHaveBeenCalled();
   });
 
-  it("rolls back the workspace when WorkOS organization creation fails", async () => {
+  it("scrubs and throws when WorkOS organization creation fails", async () => {
     mockGetOrCreateWorkOSOrganization.mockResolvedValueOnce(
       new Err(new Error("WorkOS unavailable"))
     );
 
-    // Nested SAVEPOINT under the CLS test transaction (same pattern as
-    // publication_storage.test.ts) so a throw rolls back only this unit of work.
-    const parentTransaction =
-      getNamespace("test-namespace")?.get("transaction");
-    expect(parentTransaction).toBeDefined();
-
     await expect(
-      frontSequelize.transaction({ transaction: parentTransaction }, async () =>
-        createWorkspaceInternal({
-          name: "Workspace Without Org",
-          isBusiness: false,
-          planCode: null,
-          endDate: null,
-        })
-      )
+      createWorkspaceInternal({
+        name: "Workspace Without Org",
+        isBusiness: false,
+        planCode: null,
+        endDate: null,
+      })
     ).rejects.toThrow("WorkOS unavailable");
 
     const leftover = await WorkspaceResource.fetchByName(
       "Workspace Without Org"
     );
-    expect(leftover).toBeNull();
+    expect(leftover).not.toBeNull();
+    expect(mockLaunchImmediateWorkspaceScrubWorkflow).toHaveBeenCalledWith({
+      workspaceId: leftover?.sId,
+    });
   });
 });
