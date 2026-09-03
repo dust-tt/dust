@@ -186,7 +186,7 @@ export function PokeMemberSpendLimitModal({
               <p className="text-sm text-muted-foreground">
                 This user can currently consume{" "}
                 {formatCredits(seatAllowanceAwuCredits)} credits from their
-                seat, plus {formatCredits(extraAwuCredits)} on the pool.
+                seat, plus {formatCredits(extraAwuCredits)} on the&nbsp;pool.
               </p>
             </div>
           </div>
