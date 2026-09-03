@@ -211,14 +211,15 @@ export interface ModelPickerSelectionModel {
   onRevert?: () => void;
 }
 
-export type EffortLockReason = "unsupported" | "premium" | "model_tier";
+export type ModelLockReason = "premium" | "model_tier";
+export type EffortUnavailabilityReason = "unsupported" | ModelLockReason;
 
-// One stop of the reasoning-effort slider. A stop is `locked` when the level is
-// not selectable; a null `lockedReason` explicitly means it is available.
+// One stop of the reasoning-effort slider. A null reason means it is available.
+// Unsupported efforts are unavailable; premium and model-tier efforts are
+// locked behind access controls.
 export interface EffortStop {
   effort: ReasoningEffort;
-  locked: boolean;
-  lockedReason: EffortLockReason | null;
+  unavailabilityReason: EffortUnavailabilityReason | null;
 }
 
 // The reasoning-effort slider always presents these three canonical levels so
@@ -349,8 +350,7 @@ export function getEffortStops(
     if (!allowed.has(effort)) {
       return {
         effort,
-        locked: true,
-        lockedReason: modelSupportsEffortStatically(
+        unavailabilityReason: modelSupportsEffortStatically(
           enabledModel.modelId,
           effort
         )
@@ -362,14 +362,14 @@ export function getEffortStops(
       lockPremiumEfforts &&
       getTierForModel(enabledModel.modelId, effort) === "premium"
     ) {
-      return { effort, locked: true, lockedReason: "premium" };
+      return { effort, unavailabilityReason: "premium" };
     }
-    return { effort, locked: false, lockedReason: null };
+    return { effort, unavailabilityReason: null };
   });
 }
 
 // The reasoning effort to use when a model is freshly selected: its default when
-// that is allowed, otherwise the first unlocked stop.
+// that is allowed, otherwise the first available stop.
 export function getInitialEffort(
   enabledModel: ModelConfigurationType,
   options: LockPremiumOptions = {}
@@ -377,12 +377,15 @@ export function getInitialEffort(
   const stops = getEffortStops(enabledModel, options);
   const preferred = stops.find(
     (stop) =>
-      stop.effort === enabledModel.defaultReasoningEffort && !stop.locked
+      stop.effort === enabledModel.defaultReasoningEffort &&
+      stop.unavailabilityReason === null
   );
   if (preferred) {
     return preferred.effort;
   }
-  return stops.find((stop) => !stop.locked)?.effort ?? "none";
+  return (
+    stops.find((stop) => stop.unavailabilityReason === null)?.effort ?? "none"
+  );
 }
 
 function isReasoningModel(modelId: ModelIdType): boolean {
@@ -399,7 +402,9 @@ export function isPremiumModel(
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): boolean {
   const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
-  const hasUsableSliderEffort = stops.some((stop) => !stop.locked);
+  const hasUsableSliderEffort = stops.some(
+    (stop) => stop.unavailabilityReason === null
+  );
 
   if (isReasoningModel(enabledModel.modelId) && !hasUsableSliderEffort) {
     return true;
@@ -409,15 +414,15 @@ export function isPremiumModel(
     return false;
   }
   const supportedSlider = stops.filter(
-    (stop) => stop.lockedReason !== "unsupported"
+    (stop) => stop.unavailabilityReason !== "unsupported"
   );
   if (supportedSlider.length > 0) {
-    return supportedSlider.every((stop) => stop.lockedReason === "premium");
+    return supportedSlider.every(
+      (stop) => stop.unavailabilityReason === "premium"
+    );
   }
   return getTierForModel(enabledModel.modelId, "none") === "premium";
 }
-
-export type ModelLockReason = "premium" | "model_tier";
 
 export function getModelLockReason(
   enabledModel: ModelConfigurationType,
@@ -442,11 +447,7 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
 }
 
 export function getEffortStopTooltip(stop: EffortStop): string | null {
-  if (!stop.locked) {
-    return null;
-  }
-
-  switch (stop.lockedReason) {
+  switch (stop.unavailabilityReason) {
     case "premium":
       return PREMIUM_MODEL_LOCKED_TOOLTIP;
     case "model_tier":
@@ -456,7 +457,7 @@ export function getEffortStopTooltip(stop: EffortStop): string | null {
     case null:
       return null;
     default:
-      assertNeverAndIgnore(stop.lockedReason);
+      assertNeverAndIgnore(stop.unavailabilityReason);
       return null;
   }
 }

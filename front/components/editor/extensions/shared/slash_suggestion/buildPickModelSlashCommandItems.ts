@@ -36,12 +36,12 @@ export function getSelectableEffortsForSlashMenu(
     return [];
   }
 
-  const unlocked = getEffortStops(model, { lockPremiumEfforts })
-    .filter((stop) => !stop.locked)
+  const selectableEfforts = getEffortStops(model, { lockPremiumEfforts })
+    .filter((stop) => stop.unavailabilityReason === null)
     .map((stop) => stop.effort);
 
-  if (unlocked.length > 0) {
-    return unlocked;
+  if (selectableEfforts.length > 0) {
+    return selectableEfforts;
   }
 
   return ["none"];

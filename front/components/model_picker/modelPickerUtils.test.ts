@@ -30,10 +30,12 @@ import { describe, expect, it } from "vitest";
 const GATED = { lockPremiumEfforts: true };
 const UNGATED = { lockPremiumEfforts: false };
 
-const lockedReasonByEffort = (
+const unavailabilityReasonByEffort = (
   stops: ReturnType<typeof getEffortStops>
 ): Record<string, string | null> =>
-  Object.fromEntries(stops.map((stop) => [stop.effort, stop.lockedReason]));
+  Object.fromEntries(
+    stops.map((stop) => [stop.effort, stop.unavailabilityReason])
+  );
 
 describe("modelPickerUtils premium gating", () => {
   describe("getTierForModel", () => {
@@ -60,7 +62,7 @@ describe("modelPickerUtils premium gating", () => {
     it("locks premium efforts with reason 'premium' when gated (mixed model)", () => {
       // Sonnet 5: light=cost_efficient, medium=balanced, high=premium.
       const stops = getEffortStops(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, GATED);
-      expect(lockedReasonByEffort(stops)).toEqual({
+      expect(unavailabilityReasonByEffort(stops)).toEqual({
         light: null,
         medium: null,
         high: "premium",
@@ -70,7 +72,7 @@ describe("modelPickerUtils premium gating", () => {
     it("locks every premium effort of a mid-tier reasoning model", () => {
       // Gemini 2.5 Pro: light=balanced, medium=premium, high=premium.
       const stops = getEffortStops(GEMINI_2_5_PRO_MODEL_CONFIG, GATED);
-      expect(lockedReasonByEffort(stops)).toEqual({
+      expect(unavailabilityReasonByEffort(stops)).toEqual({
         light: null,
         medium: "premium",
         high: "premium",
@@ -82,38 +84,36 @@ describe("modelPickerUtils premium gating", () => {
         CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
         UNGATED
       );
-      expect(stops.every((stop) => !stop.locked)).toBe(true);
+      expect(stops.every((stop) => stop.unavailabilityReason === null)).toBe(
+        true
+      );
     });
   });
 
   describe("getEffortStopTooltip", () => {
-    it("only explains locked efforts", () => {
+    it("explains why an effort is unselectable", () => {
       expect(
         getEffortStopTooltip({
           effort: "light",
-          locked: false,
-          lockedReason: null,
+          unavailabilityReason: null,
         })
       ).toBeNull();
       expect(
         getEffortStopTooltip({
           effort: "high",
-          locked: true,
-          lockedReason: "unsupported",
+          unavailabilityReason: "unsupported",
         })
       ).toBe("This model doesn't support High reasoning.");
       expect(
         getEffortStopTooltip({
           effort: "high",
-          locked: true,
-          lockedReason: "premium",
+          unavailabilityReason: "premium",
         })
       ).toBe(PREMIUM_MODEL_LOCKED_TOOLTIP);
       expect(
         getEffortStopTooltip({
           effort: "medium",
-          locked: true,
-          lockedReason: "model_tier",
+          unavailabilityReason: "model_tier",
         })
       ).toBe(
         "Your current model access doesn't include this option. " +
