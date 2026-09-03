@@ -42,7 +42,11 @@ import {
   DropdownMenuPanelRoot,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Icon,
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
@@ -170,7 +174,7 @@ interface CapabilitiesPickerProps {
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
-  type?: "dropdown" | "panel";
+  type?: "dropdown" | "subdropdown" | "panel";
   onBack?: () => void;
   onClose?: () => void;
   onShowSkillDetails?: (skillId: string) => void;
@@ -198,6 +202,7 @@ export function CapabilitiesPicker({
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const isPanel = type === "panel";
+  const isSubdropdown = type === "subdropdown";
 
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
@@ -417,8 +422,16 @@ export function CapabilitiesPicker({
   const shouldShowCapabilityDropdownList =
     capabilityPickerItems.length > 0 || hasNoVisibleItems;
 
-  const Wrapper = isPanel ? DropdownMenuPanelRoot : DropdownMenu;
-  const ContentWrapper = isPanel ? DropdownMenuPanel : DropdownMenuContent;
+  const Wrapper = isPanel
+    ? DropdownMenuPanelRoot
+    : isSubdropdown
+      ? DropdownMenuSub
+      : DropdownMenu;
+  const ContentWrapper = isPanel
+    ? DropdownMenuPanel
+    : isSubdropdown
+      ? DropdownMenuSubContent
+      : DropdownMenuContent;
 
   return (
     <>
@@ -437,7 +450,24 @@ export function CapabilitiesPicker({
           }
         }}
       >
-        {!isPanel && (
+        {isPanel ? null : isSubdropdown ? (
+          <DropdownMenuSubTrigger
+            label="Capabilities"
+            icon={
+              <Icon
+                size="xs"
+                visual={ShapesPlus}
+                className="text-muted-foreground"
+              />
+            }
+            disabled={disabled || isLoading}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setIsOpen(true);
+            }}
+          />
+        ) : (
           <DropdownMenuTrigger asChild>
             <Button
               icon={ShapesPlus}
@@ -454,11 +484,13 @@ export function CapabilitiesPicker({
           }
           {...(isPanel
             ? { title: "Capabilities", onBack: () => onBack?.() }
-            : {
-                collisionPadding: 8,
-                align: "start" as const,
-                onInteractOutside: () => setIsOpen(false),
-              })}
+            : isSubdropdown
+              ? { collisionPadding: 8 }
+              : {
+                  collisionPadding: 8,
+                  align: "start" as const,
+                  onInteractOutside: () => setIsOpen(false),
+                })}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar

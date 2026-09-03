@@ -47,6 +47,9 @@ import {
   DropdownMenuPanelRoot,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Icon,
   Input,
@@ -91,7 +94,7 @@ interface InputBarAttachmentsPickerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
-  type: "dropdown" | "panel";
+  type: "dropdown" | "subdropdown" | "panel";
   isLoading?: boolean;
   buttonLabel?: string;
   buttonVariant?: ButtonVariantType;
@@ -107,6 +110,7 @@ interface InputBarAttachmentsPickerProps {
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
+  onOpenChange?: (open: boolean) => void;
   onBack?: () => void;
   onClose?: () => void;
 }
@@ -278,6 +282,7 @@ export const InputBarAttachmentsPicker = ({
   externalOpen,
   onExternalOpenChange,
   anchorRef,
+  onOpenChange,
   onBack,
   onClose,
 }: InputBarAttachmentsPickerProps) => {
@@ -287,6 +292,7 @@ export const InputBarAttachmentsPicker = ({
   const [internalOpen, setInternalOpen] = useState(false);
 
   const isPanel = type === "panel";
+  const isSubdropdown = type === "subdropdown";
   const isExternallyControlled = externalOpen !== undefined;
   const isOpen =
     isPanel || (isExternallyControlled ? externalOpen : internalOpen);
@@ -558,20 +564,46 @@ export const InputBarAttachmentsPicker = ({
 
   const allUnselected = selectedFilterKeys.length === 0;
 
-  const Wrapper = isPanel ? DropdownMenuPanelRoot : DropdownMenu;
-  const ContentWrapper = isPanel ? DropdownMenuPanel : DropdownMenuContent;
+  const Wrapper = isPanel
+    ? DropdownMenuPanelRoot
+    : isSubdropdown
+      ? DropdownMenuSub
+      : DropdownMenu;
+  const ContentWrapper = isPanel
+    ? DropdownMenuPanel
+    : isSubdropdown
+      ? DropdownMenuSubContent
+      : DropdownMenuContent;
 
   return (
     <Wrapper
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
+        onOpenChange?.(open);
         if (open) {
           setSearch("");
         }
       }}
     >
-      {isPanel ? null : isExternallyControlled ? (
+      {isPanel ? null : isSubdropdown ? (
+        <DropdownMenuSubTrigger
+          label="Attach knowledge"
+          icon={
+            <Icon
+              size="xs"
+              visual={Attachment01}
+              className="text-muted-foreground"
+            />
+          }
+          disabled={disabled || isLoading || isAnyToolFileUploading}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setIsOpen(true);
+          }}
+        />
+      ) : isExternallyControlled ? (
         <DropdownAnchorTrigger anchorRef={anchorRef} />
       ) : (
         <DropdownMenuTrigger asChild>
@@ -595,14 +627,20 @@ export const InputBarAttachmentsPicker = ({
         )}
         {...(isPanel
           ? { title: "Attach knowledge", onBack: () => onBack?.() }
-          : {
-              collisionPadding: 15,
-              onEscapeKeyDown: () => setIsOpen(false),
-              align: isExternallyControlled
-                ? ("end" as const)
-                : ("start" as const),
-              onInteractOutside: () => setIsOpen(false),
-            })}
+          : isSubdropdown
+            ? {
+                collisionPadding: 15,
+                onEscapeKeyDown: () => setIsOpen(false),
+                onClick: (e: React.MouseEvent) => e.stopPropagation(),
+              }
+            : {
+                collisionPadding: 15,
+                onEscapeKeyDown: () => setIsOpen(false),
+                align: isExternallyControlled
+                  ? ("end" as const)
+                  : ("start" as const),
+                onInteractOutside: () => setIsOpen(false),
+              })}
         dropdownHeaders={
           <>
             <Input
