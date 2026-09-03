@@ -31,7 +31,6 @@ import restore from "./restore";
 import skills from "./skills";
 import suggestions from "./suggestions";
 import tags from "./tags";
-import triggers from "./triggers";
 import usage from "./usage";
 
 const ParamsSchema = z.object({
@@ -221,7 +220,6 @@ app.route("/restore", restore);
 app.route("/skills", skills);
 app.route("/suggestions", suggestions);
 app.route("/tags", tags);
-app.route("/triggers", triggers);
 app.route("/usage", usage);
 
 export default app;
