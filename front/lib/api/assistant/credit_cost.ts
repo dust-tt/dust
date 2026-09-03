@@ -235,7 +235,6 @@ export async function computeAndStoreAgentMessageCredits(
           burn_duration_hours: usage.value.oldestTimestampMs
             ? (Date.now() - usage.value.oldestTimestampMs) / (60 * 60 * 1000)
             : 0,
-          plan_code: plan?.code ?? "unknown",
           origin: messageOrigin,
         },
       });

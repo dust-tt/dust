@@ -3098,7 +3098,6 @@ async function isMessagesLimitReached(
           limit_credits: maxAwuCredits,
           timeframe: maxAwuCreditsTimeframe,
           used_credits: microCreditsToCredits(result.value),
-          plan_code: plan.code,
           origin: context.origin,
         },
       });
