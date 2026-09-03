@@ -279,17 +279,27 @@ export function WorkspaceCreditPoolSection({
 
 interface CreditPoolCardsFromCycleDataProps {
   awuPoolCurrentCycle: AwuPoolCurrentCycleResponseBody | null;
-  cardsStatus: CreditPoolFetchStatus;
+  isAwuPoolCurrentCycleLoading: boolean;
+  isAwuPoolCurrentCycleError: boolean;
   poolCycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
-  tableStatus: CreditPoolFetchStatus;
+  isAwuPoolCycleHistoryLoading: boolean;
+  isAwuPoolCycleHistoryError: boolean;
 }
+
+// Turns a fetched current-cycle/cycle-history pair into the credit
+// consumption cards. Shared by Poke's read-only pool view
+// (front/components/poke/pages/PoolUsagePage.tsx) and the customer-facing
+// compact usage page so the "showPoolCard vs. excess" logic below can't
+// drift between the two — only the SWR hooks feeding it differ.
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
-  cardsStatus,
+  isAwuPoolCurrentCycleLoading,
+  isAwuPoolCurrentCycleError,
   poolCycleBreakdown,
   excessCycleBreakdown,
-  tableStatus,
+  isAwuPoolCycleHistoryLoading,
+  isAwuPoolCycleHistoryError,
 }: CreditPoolCardsFromCycleDataProps) {
   const {
     totalRemainingCredits,
@@ -317,8 +327,14 @@ export function CreditPoolCardsFromCycleData({
 
   return (
     <WorkspaceCreditPoolSection
-      cardsStatus={cardsStatus}
-      tableStatus={tableStatus}
+      cardsStatus={toCreditPoolFetchStatus(
+        isAwuPoolCurrentCycleLoading,
+        isAwuPoolCurrentCycleError
+      )}
+      tableStatus={toCreditPoolFetchStatus(
+        isAwuPoolCycleHistoryLoading,
+        isAwuPoolCycleHistoryError
+      )}
       showPoolCard={hasPool}
       isVisible={hasPool || hasExcessData}
       totalRemainingCredits={totalRemainingCredits}
@@ -354,16 +370,12 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
   return (
     <CreditPoolCardsFromCycleData
       awuPoolCurrentCycle={awuPoolCurrentCycle}
-      cardsStatus={toCreditPoolFetchStatus(
-        isAwuPoolCurrentCycleLoading,
-        !!isAwuPoolCurrentCycleError
-      )}
+      isAwuPoolCurrentCycleLoading={isAwuPoolCurrentCycleLoading}
+      isAwuPoolCurrentCycleError={!!isAwuPoolCurrentCycleError}
       poolCycleBreakdown={poolCycleBreakdown}
       excessCycleBreakdown={excessCycleBreakdown}
-      tableStatus={toCreditPoolFetchStatus(
-        isAwuPoolCycleHistoryLoading,
-        !!isAwuPoolCycleHistoryError
-      )}
+      isAwuPoolCycleHistoryLoading={isAwuPoolCycleHistoryLoading}
+      isAwuPoolCycleHistoryError={!!isAwuPoolCycleHistoryError}
     />
   );
 }
