@@ -372,6 +372,13 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       rollupOptions: {
         input: appDefinition.inputs,
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules/posthog-js")) {
+              return "posthog";
+            }
+          },
+        },
       },
     },
   };
