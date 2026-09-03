@@ -214,9 +214,6 @@ export function PoolUsagePage() {
   const { seatPlans, isSeatPlanLoading, isSeatPlanError } = usePokeSeatPlan({
     owner,
   });
-  // Mirrors the customer-facing `isSeatBased` check (UsagePage.tsx): more
-  // than one seat type on offer means the workspace actually sells seat
-  // upgrades, not just a single non-selectable plan.
   const isSeatBased = Object.keys(seatPlans).length > 1;
   const canUpgradeSeat = useCallback(
     (member: MemberUsageType) =>

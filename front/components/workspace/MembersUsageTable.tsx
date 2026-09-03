@@ -762,9 +762,6 @@ const offPaceColumn: ColumnDef<RowData, string> = {
     } = info.row.original;
 
     if (creditState === "capped") {
-      // A member with no seat upgrade path (already on the top seat tier, or
-      // the workspace isn't seat-based at all) has only one unblock action —
-      // skip the dropdown and go straight to the spend-limit modal.
       if (!canUpgradeSeat) {
         return (
           <DataTable.CellContent className="justify-center">
@@ -1011,11 +1008,6 @@ interface MembersUsageTableProps {
   // ("legacy") variant, which never renders that column.
   onOpenChangeSeatRecap?: (member: MemberUsageType) => void;
   onOpenSpendLimitRecap?: (member: MemberUsageType) => void;
-  // Poke-only: whether the off-pace column's "Unblock" panel offers a seat
-  // upgrade for this member. When false, "Unblock" skips the dropdown and
-  // opens the spend-limit modal directly. Defaults to true (always offer
-  // both actions) since the customer-facing ("legacy") variant never renders
-  // that column.
   canUpgradeSeat?: (member: MemberUsageType) => boolean;
   onSetUserModelTier?: (
     member: MemberUsageType,
