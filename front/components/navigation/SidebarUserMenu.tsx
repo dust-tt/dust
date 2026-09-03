@@ -26,7 +26,7 @@ export function SidebarUserMenu({
   const { maxAwuCredits, maxAwuCreditsTimeframe } =
     subscription.plan.limits.assistant;
   const hasFairUseCreditUsage = !isCreditBased && maxAwuCredits > 0;
-  const { creditUsageStatus } = useMyUsage({
+  const { myUsage, creditUsageStatus } = useMyUsage({
     workspaceId: owner.sId,
     disabled: !isCreditBased,
   });
@@ -36,7 +36,7 @@ export function SidebarUserMenu({
   });
 
   const billingPeriodCreditUsageState: CreditUsageState | null =
-    creditUsageStatus
+    creditUsageStatus && myUsage?.seatType !== "free"
       ? {
           kind: "billing_period",
           usedPercentage: creditUsageStatus.usedPercentage,
@@ -48,6 +48,24 @@ export function SidebarUserMenu({
             )
           ),
           target: creditUsageStatus.target,
+        }
+      : null;
+  const freeSeatLifetimeLimitCredits =
+    myUsage?.seatType === "free" ? (myUsage.memberUsageLimit ?? 0) : 0;
+  const freeSeatLifetimeUsedCredits =
+    myUsage?.seatType === "free" && myUsage.seatBalanceAwu !== null
+      ? Math.max(0, freeSeatLifetimeLimitCredits - myUsage.seatBalanceAwu)
+      : null;
+  const freeSeatLifetimeCreditUsageState: CreditUsageState | null =
+    freeSeatLifetimeUsedCredits !== null && freeSeatLifetimeLimitCredits > 0
+      ? {
+          kind: "rolling_window",
+          usedCredits: freeSeatLifetimeUsedCredits,
+          limitCredits: freeSeatLifetimeLimitCredits,
+          timeframe: "lifetime",
+          usedPercentage: Math.round(
+            (freeSeatLifetimeUsedCredits / freeSeatLifetimeLimitCredits) * 100
+          ),
         }
       : null;
   const rollingCreditUsageState: CreditUsageState | null =
@@ -63,7 +81,9 @@ export function SidebarUserMenu({
         }
       : null;
   const creditUsageState =
-    billingPeriodCreditUsageState ?? rollingCreditUsageState;
+    billingPeriodCreditUsageState ??
+    freeSeatLifetimeCreditUsageState ??
+    rollingCreditUsageState;
   const showCreditUsageInProfileMenu =
     creditUsageState?.kind === "rolling_window" ||
     (creditUsageState?.kind === "billing_period" &&
