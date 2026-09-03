@@ -1,6 +1,6 @@
 import {
   areInspectorPanelsOverlapping,
-  getMessagePanelMaxHeightPx,
+  getMessagePanelTopOffsetPx,
   useConversationInspectorPanels,
 } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { act, renderHook } from "@testing-library/react";
@@ -147,19 +147,17 @@ describe("useConversationInspectorPanels", () => {
     act(() => result.current.setMessageOpen("message_1", true));
     act(flushAnimationFrame);
     expect(result.current.isStickyRailOccluded).toBe(false);
-    expect(messagePanel.style.maxHeight).toBe(
-      `${getMessagePanelMaxHeightPx(500, window.innerHeight)}px`
+    expect(messagePanel.style.top).toBe(
+      `${getMessagePanelTopOffsetPx(800, window.innerHeight)}px`
     );
 
-    messagePanelRect = rect(170, 470);
+    messagePanelRect = rect(122, 422);
     act(() => window.dispatchEvent(new Event("scroll")));
     act(flushAnimationFrame);
 
     expect(result.current.isConversationOpen).toBe(false);
     expect(result.current.isStickyRailOccluded).toBe(true);
-    expect(messagePanel.style.maxHeight).toBe(
-      `${getMessagePanelMaxHeightPx(170, window.innerHeight)}px`
-    );
+    expect(messagePanel.style.top).toBe("0px");
 
     messagePanelRect = rect(-400, -100);
     act(() => window.dispatchEvent(new Event("scroll")));
@@ -196,7 +194,7 @@ describe("useConversationInspectorPanels", () => {
     act(flushAnimationFrame);
 
     expect(result.current.isStickyRailOccluded).toBe(false);
-    expect(messagePanel.style.maxHeight).toBe("");
+    expect(messagePanel.style.top).toBe("");
   });
 });
 
@@ -211,12 +209,12 @@ describe("areInspectorPanelsOverlapping", () => {
   });
 });
 
-describe("getMessagePanelMaxHeightPx", () => {
-  it("keeps the panel inside the viewport with a bottom gutter", () => {
-    expect(getMessagePanelMaxHeightPx(300, 800)).toBe(484);
+describe("getMessagePanelTopOffsetPx", () => {
+  it("shifts the panel up when its bottom would leave the viewport", () => {
+    expect(getMessagePanelTopOffsetPx(900, 800)).toBe(-116);
   });
 
-  it("never returns a negative height", () => {
-    expect(getMessagePanelMaxHeightPx(800, 800)).toBe(0);
+  it("keeps the panel aligned with its trigger when it already fits", () => {
+    expect(getMessagePanelTopOffsetPx(700, 800)).toBe(0);
   });
 });

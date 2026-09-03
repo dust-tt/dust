@@ -87,13 +87,13 @@ export function areInspectorPanelsOverlapping(
   );
 }
 
-export function getMessagePanelMaxHeightPx(
-  panelTopPx: number,
+export function getMessagePanelTopOffsetPx(
+  panelBottomPx: number,
   viewportHeightPx: number
 ): number {
-  return Math.max(
+  return Math.min(
     0,
-    viewportHeightPx - panelTopPx - MESSAGE_PANEL_VIEWPORT_GUTTER_PX
+    viewportHeightPx - panelBottomPx - MESSAGE_PANEL_VIEWPORT_GUTTER_PX
   );
 }
 
@@ -138,20 +138,22 @@ export function useConversationInspectorPanels({
       const isDesktop = desktopInspectorMedia?.matches ?? true;
       let measuredMessagePanelRect = messagePanelRect;
       if (isDesktop) {
-        const maxHeightPx = getMessagePanelMaxHeightPx(
-          messagePanelRect.top,
+        const currentTopOffsetPx =
+          Number.parseFloat(messagePanel.style.top) || 0;
+        const topOffsetPx = getMessagePanelTopOffsetPx(
+          messagePanelRect.bottom - currentTopOffsetPx,
           window.innerHeight
         );
-        messagePanel.style.maxHeight = `${maxHeightPx}px`;
+        const topOffsetDeltaPx = topOffsetPx - currentTopOffsetPx;
+        messagePanel.style.top = `${topOffsetPx}px`;
         measuredMessagePanelRect = {
           ...messagePanelRect,
-          bottom:
-            messagePanelRect.top +
-            Math.min(messagePanelRect.height, maxHeightPx),
-          height: Math.min(messagePanelRect.height, maxHeightPx),
+          bottom: messagePanelRect.bottom + topOffsetDeltaPx,
+          top: messagePanelRect.top + topOffsetDeltaPx,
+          y: messagePanelRect.y + topOffsetDeltaPx,
         };
       } else {
-        messagePanel.style.removeProperty("max-height");
+        messagePanel.style.removeProperty("top");
       }
 
       const isOccluded =
