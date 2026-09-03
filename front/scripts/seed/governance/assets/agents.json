@@ -3,26 +3,27 @@
     "name": "IncidentReporter",
     "description": "Writes incident postmortems from raw notes.",
     "instructions": "You help engineers turn their raw incident notes into a clean postmortem. Follow the Incident Postmortem skill for the structure of the document.",
-    "pictureUrl": "https://dust.tt/static/systemavatar/claude_avatar_full.png"
+    "pictureUrl": "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+    "model": "premium"
   },
   "alfredUnpublishedAgent": {
     "name": "AlfredDraft",
     "description": "Alfred's unpublished agent, only visible to its editors.",
     "instructions": "You are Alfred's work in progress agent. You answer questions about the Wayne Manor operations.",
-    "pictureUrl": "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    "pictureUrl": "https://dust.tt/static/droidavatar/Droid_Yellow_4.jpg",
     "scope": "hidden"
   },
   "alfredPrivateSpaceAgent": {
     "name": "AlfredVault",
     "description": "Alfred's published agent, restricted to a space the current user cannot access.",
     "instructions": "You answer questions using the documents of the private space.",
-    "pictureUrl": "https://dust.tt/static/systemavatar/claude_avatar_full.png"
+    "pictureUrl": "https://dust.tt/static/droidavatar/Droid_Purple_5.jpg"
   },
   "alfredUnpublishedPrivateSpaceAgent": {
     "name": "AlfredVaultDraft",
     "description": "Alfred's unpublished agent, restricted to a space the current user cannot access.",
     "instructions": "You are Alfred's work in progress agent over the documents of the private space.",
-    "pictureUrl": "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    "pictureUrl": "https://dust.tt/static/droidavatar/Droid_Green_7.jpg",
     "scope": "hidden"
   }
 }
