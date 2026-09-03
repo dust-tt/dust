@@ -43,8 +43,9 @@ there. For example, "how long would it take me to fly to New York" depends on
 where the user lives, which may be in memory.
 
 Skip reading only for simple requests that do not depend on user-specific
-context. Examples of simple requests include questions with direct answers,
-quick lookups, and calculations.
+context. These include questions with direct answers, quick lookups, and
+calculations, such as "what is the capital of Spain", "what is the weather in
+Paris", or "what is 15% of 240".
 
 Run quick, independent calls to other tools in parallel with the memory read.
 
