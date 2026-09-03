@@ -29,10 +29,13 @@ import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
+import {
+  downloadFile,
+  getFilePathViewUrl,
+  useDeleteFileByPath,
+} from "@app/lib/swr/files";
 import {
   useAddPodContextContentNodes,
-  useDeletePodFile,
   useMovePodFile,
   usePodContextAttachments,
   usePodFiles,
@@ -411,10 +414,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [contentNodeAttachments, connectorProviderByDsvId]
   );
 
-  const deletePodFile = useDeletePodFile({
-    owner,
-    podId: pod.sId,
-  });
+  const deletePodFile = useDeleteFileByPath({ owner });
 
   const removePodContextContentNodes = useRemovePodContextContentNodes({
     owner,
@@ -531,6 +531,24 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         if (confirmed) {
           // TODO: once FileSystemTreeNode carries the canonical scoped path, use entry.path directly.
           const result = await deletePodFile(`pod-${pod.sId}/${entry.path}`);
+          if (result.isOk()) {
+            await refreshPodFiles();
+          }
+        }
+      } else if (entry.kind === "frame_package") {
+        const confirmed = await confirm({
+          title: "Delete Frame?",
+          message:
+            `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
+            "functions, databases and share links will be permanently removed. " +
+            "This action cannot be undone.",
+          validateLabel: "Delete",
+          validateVariant: "warning",
+        });
+        if (confirmed) {
+          // The package entry carries the manifest path; deleting the manifest runs the
+          // package-aware Frame deletion server-side.
+          const result = await deletePodFile(entry.path);
           if (result.isOk()) {
             await refreshPodFiles();
           }
