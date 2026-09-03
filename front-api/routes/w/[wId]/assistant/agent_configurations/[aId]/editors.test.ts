@@ -8,6 +8,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { UserType } from "@app/types/user";
@@ -73,6 +74,38 @@ function patchEditors(workspace: { sId: string }, aId: string, body: unknown) {
 }
 
 describe("GET /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
+  it("should return the editors of an agent built on a space the admin cannot read", async () => {
+    const { workspace, user: admin } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(internalAdminAuth);
+
+    const agentOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
+    const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      agentOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(internalAdminAuth, {
+      userIds: [agentOwner.sId],
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+    );
+    expect(admin.sId).not.toBe(agentOwner.sId);
+
+    const response = await getEditors(workspace, agent.sId);
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.editors).toHaveLength(1);
+    expect(data.editors[0].sId).toBe(agentOwner.sId);
+  });
+
   it("should return 200 and the editor list for admin", async () => {
     const { workspace, agent, agentOwner } = await setupTest({
       requestUserRole: "admin",

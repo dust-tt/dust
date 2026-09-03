@@ -189,3 +189,22 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
 
   return agentConfigurationTypes;
 }
+
+/**
+ * Admins can list every agent of the workspace but the prompt, skills and knowledge of the agents
+ * they cannot read (unpublished, or built on spaces they are not a member of) stay private. Tools
+ * live in `actions` alongside knowledge, so all actions are dropped for now. `canRead` is set to
+ * false so clients can tell the details were redacted.
+ */
+export function redactPrivateAgentConfigurationFields(
+  agent: AgentConfigurationType
+): AgentConfigurationType {
+  return {
+    ...agent,
+    instructions: null,
+    instructionsHtml: null,
+    actions: [],
+    skills: [],
+    canRead: false,
+  };
+}
