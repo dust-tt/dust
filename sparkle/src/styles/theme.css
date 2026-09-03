@@ -468,8 +468,6 @@
   --color-info-800: var(--color-info-800);
   --color-info-900: var(--color-info-900);
   --color-info-950: var(--color-info-950);
-
-  --shadow-overlay: var(--shadow-overlay);
 }
 
 /* Shared keyframes (was preset.theme.extend.keyframes). */

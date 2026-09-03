@@ -104,7 +104,7 @@ export function NotificationContent({
     <div
       className={cn(
         "pointer-events-auto relative flex w-[264px] flex-col gap-2 overflow-clip",
-        "rounded-xl border p-3 shadow-overlay",
+        "rounded-xl border p-3",
         resolveSurface(type),
         "[&>*]:transition-opacity [&>*]:duration-400 [&>*]:ease-enter",
         "[[data-expanded=false][data-front=false]_&>*]:opacity-0"
