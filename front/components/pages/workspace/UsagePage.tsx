@@ -24,10 +24,7 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
-import {
-  toCreditPoolFetchStatus,
-  WorkspaceCreditPoolSection,
-} from "@app/components/workspace/WorkspaceCreditPoolCards";
+import { CompactCreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -57,8 +54,6 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
 import {
-  useAwuPoolCurrentCycle,
-  useAwuPoolCycleHistory,
   useAwuPoolSummary,
   useAwuPurchaseInfo,
   useMyUsage,
@@ -212,79 +207,6 @@ function CreditPoolProgressBar({
         },
       ]}
       radius="xs"
-    />
-  );
-}
-
-interface CompactCreditPoolCardsProps {
-  owner: ReturnType<typeof useWorkspace>;
-  disabled: boolean;
-}
-
-// Credit consumption cards for the compact usage page, mirroring Poke's
-// read-only pool view (front/components/poke/pages/PoolUsagePage.tsx) but
-// backed by the customer-facing awu-pool-current-cycle/cycle-history routes.
-function CompactCreditPoolCards({
-  owner,
-  disabled,
-}: CompactCreditPoolCardsProps) {
-  const {
-    awuPoolCurrentCycle,
-    isAwuPoolCurrentCycleLoading,
-    isAwuPoolCurrentCycleError,
-  } = useAwuPoolCurrentCycle({ workspaceId: owner.sId, disabled });
-  const {
-    cycleBreakdown: poolCycleBreakdown,
-    excessCycleBreakdown,
-    isAwuPoolCycleHistoryLoading,
-    isAwuPoolCycleHistoryError,
-  } = useAwuPoolCycleHistory({ workspaceId: owner.sId, disabled });
-
-  const {
-    totalRemainingCredits,
-    totalActiveCredits,
-    currentCycleConsumedCredits,
-    currentCycleStartMs,
-    currentCycleEndMs,
-    excessConsumedCredits,
-    programmaticConsumedCredits,
-    otherConsumedCredits,
-  } = awuPoolCurrentCycle ?? {
-    totalRemainingCredits: 0,
-    totalActiveCredits: 0,
-    currentCycleConsumedCredits: null,
-    currentCycleStartMs: null,
-    currentCycleEndMs: null,
-    excessConsumedCredits: null,
-    programmaticConsumedCredits: null,
-    otherConsumedCredits: null,
-  };
-
-  const hasPool = totalActiveCredits > 0;
-  const hasExcessData =
-    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
-
-  return (
-    <WorkspaceCreditPoolSection
-      cardsStatus={toCreditPoolFetchStatus(
-        isAwuPoolCurrentCycleLoading,
-        !!isAwuPoolCurrentCycleError
-      )}
-      tableStatus={toCreditPoolFetchStatus(
-        isAwuPoolCycleHistoryLoading,
-        !!isAwuPoolCycleHistoryError
-      )}
-      showPoolCard={hasPool}
-      isVisible={hasPool || hasExcessData}
-      totalRemainingCredits={totalRemainingCredits}
-      consumedCredits={
-        hasPool ? currentCycleConsumedCredits : excessConsumedCredits
-      }
-      currentCycleStartMs={currentCycleStartMs}
-      currentCycleEndMs={currentCycleEndMs}
-      cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
-      programmaticConsumedCredits={programmaticConsumedCredits}
-      otherConsumedCredits={otherConsumedCredits}
     />
   );
 }
