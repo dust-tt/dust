@@ -44,7 +44,6 @@ import {
   DustLogoSquare,
   FilterFunnel01,
   Icon,
-  MOTION_DURATIONS,
   MOTION_EASINGS,
   Pagination,
   SearchInput,
@@ -60,7 +59,6 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import type { Transition, Variants } from "framer-motion";
 import {
   AnimatePresence,
   domMax,
@@ -69,7 +67,7 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import type { ComponentType, Dispatch, ReactNode, SetStateAction } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
   AttributionRowData,
   ConsumptionAttributionRowsTableProps,
@@ -80,7 +78,6 @@ import type {
   ConsumptionDimension,
 } from "./consumptionDimensions";
 import {
-  CONSUMPTION_ATTRIBUTION_DIMENSIONS,
   CONSUMPTION_DIMENSION_CONFIG,
   consumptionAttributionDimensionLabel,
   DEFAULT_CONSUMPTION_DIMENSION,
@@ -99,51 +96,6 @@ const ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS = new Set([
   "credits",
   "costShare",
 ]);
-
-type AttributionTransitionDirection = -1 | 0 | 1;
-
-interface AttributionTransition {
-  target: ConsumptionAttributionDimension | null;
-  direction: AttributionTransitionDirection;
-}
-
-const ATTRIBUTION_BODY_TRANSITION = {
-  duration: MOTION_DURATIONS.exit,
-  ease: MOTION_EASINGS.enter,
-} satisfies Transition;
-
-const ATTRIBUTION_BODY_VARIANTS: Variants = {
-  initial: (direction: number) => ({
-    opacity: direction === 0 ? 1 : 0,
-    x: direction * 4,
-  }),
-  animate: {
-    opacity: 1,
-    x: 0,
-    transition: ATTRIBUTION_BODY_TRANSITION,
-  },
-  exit: (direction: number) => ({
-    opacity: direction === 0 ? 1 : 0,
-    pointerEvents: "none",
-    transition: direction === 0 ? { duration: 0 } : ATTRIBUTION_BODY_TRANSITION,
-    x: direction * -4,
-  }),
-};
-
-function getAttributionTransitionDirection(
-  currentDimension: ConsumptionAttributionDimension,
-  nextDimension: ConsumptionAttributionDimension
-): AttributionTransitionDirection {
-  const currentIndex =
-    CONSUMPTION_ATTRIBUTION_DIMENSIONS.indexOf(currentDimension);
-  const nextIndex = CONSUMPTION_ATTRIBUTION_DIMENSIONS.indexOf(nextDimension);
-
-  if (currentIndex === nextIndex) {
-    return 0;
-  }
-
-  return nextIndex > currentIndex ? 1 : -1;
-}
 
 function AttributionTooltipCard({
   row,
@@ -837,17 +789,6 @@ export function ConsumptionAttributionTableView({
       : dimension;
   const attributionDimension: ConsumptionAttributionDimension =
     isPersonal && isConversationSelected ? "conversation" : activeDimension;
-  const pendingPointerDimension =
-    useRef<ConsumptionAttributionDimension | null>(null);
-  const [transition, setTransition] = useState<AttributionTransition>({
-    target: null,
-    direction: 0,
-  });
-  const shouldReduceMotion = useReducedMotion();
-  const effectiveTransitionDirection =
-    shouldReduceMotion || transition.target !== attributionDimension
-      ? 0
-      : transition.direction;
   const visibleDimensions = getConsumptionAttributionDimensions(analyticsScope);
 
   const exportBody: ConsumptionExportBody = {
@@ -874,17 +815,6 @@ export function ConsumptionAttributionTableView({
             value={attributionDimension}
             onValueChange={(value) => {
               if (isConsumptionAttributionDimension(value)) {
-                setTransition({
-                  target: value,
-                  direction:
-                    pendingPointerDimension.current === value
-                      ? getAttributionTransitionDirection(
-                          attributionDimension,
-                          value
-                        )
-                      : 0,
-                });
-                pendingPointerDimension.current = null;
                 if (value === "conversation") {
                   setIsConversationSelected(true);
                 } else {
@@ -903,15 +833,6 @@ export function ConsumptionAttributionTableView({
                   className={
                     tabDimension === "conversation" ? "ml-auto" : undefined
                   }
-                  onPointerDown={() => {
-                    pendingPointerDimension.current = tabDimension;
-                  }}
-                  onPointerCancel={() => {
-                    pendingPointerDimension.current = null;
-                  }}
-                  onKeyDown={() => {
-                    pendingPointerDimension.current = null;
-                  }}
                 />
               ))}
             </TabsList>
@@ -926,52 +847,37 @@ export function ConsumptionAttributionTableView({
             />
           )}
           <LazyMotion features={domMax}>
-            <div className="relative overflow-hidden">
-              <AnimatePresence
-                initial={false}
-                mode="popLayout"
-                custom={effectiveTransitionDirection}
-              >
-                <m.div
-                  key={attributionDimension}
-                  custom={effectiveTransitionDirection}
-                  variants={ATTRIBUTION_BODY_VARIANTS}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                >
-                  {/* Reset table state whenever its dataset or local search changes. */}
-                  {attributionDimension === "conversation" ? (
-                    <ConsumptionConversationAttribution
-                      workspaceId={workspaceId}
-                      period={period}
-                      filter={filter}
-                      disabled={disabled}
-                      onNavigate={onConversationNavigate}
-                    />
-                  ) : (
-                    <AttributionRowsComponent
-                      key={JSON.stringify({
-                        period,
-                        filter,
-                        search: debouncedValue,
-                      })}
-                      workspaceId={workspaceId}
-                      dimension={attributionDimension}
-                      period={period}
-                      filter={filter}
-                      analyticsScope={analyticsScope}
-                      disabled={disabled}
-                      onAddFilter={handleAddFilter}
-                      onAgentClick={onAgentClick}
-                      onRemoveFilter={onRemoveFilter}
-                      onSkillClick={onSkillClick}
-                      search={debouncedValue}
-                      onViewAll={onViewAll}
-                    />
-                  )}
-                </m.div>
-              </AnimatePresence>
+            <div key={attributionDimension}>
+              {/* Reset table state whenever its dataset or local search changes. */}
+              {attributionDimension === "conversation" ? (
+                <ConsumptionConversationAttribution
+                  workspaceId={workspaceId}
+                  period={period}
+                  filter={filter}
+                  disabled={disabled}
+                  onNavigate={onConversationNavigate}
+                />
+              ) : (
+                <AttributionRowsComponent
+                  key={JSON.stringify({
+                    period,
+                    filter,
+                    search: debouncedValue,
+                  })}
+                  workspaceId={workspaceId}
+                  dimension={attributionDimension}
+                  period={period}
+                  filter={filter}
+                  analyticsScope={analyticsScope}
+                  disabled={disabled}
+                  onAddFilter={handleAddFilter}
+                  onAgentClick={onAgentClick}
+                  onRemoveFilter={onRemoveFilter}
+                  onSkillClick={onSkillClick}
+                  search={debouncedValue}
+                  onViewAll={onViewAll}
+                />
+              )}
             </div>
           </LazyMotion>
         </div>
