@@ -35,24 +35,3 @@ export function useIsMobile({
 export function useIsWidthConstrained() {
   return useIsMobile({ excludeExtension: false });
 }
-
-// Whether the pointer can hover — the capability hover-only affordances
-// (submenus that open on pointer enter) need. False on touch devices, which a
-// width breakpoint alone misses: a tablet is wide but still can't hover.
-const HOVER_QUERY = "(hover: hover) and (pointer: fine)";
-
-export function useCanHover() {
-  const [canHover, setCanHover] = useState<boolean>(
-    () => !!window && window.matchMedia(HOVER_QUERY).matches
-  );
-
-  useEffect(() => {
-    const mql = window.matchMedia(HOVER_QUERY);
-    const onChange = () => setCanHover(mql.matches);
-    mql.addEventListener("change", onChange);
-    setCanHover(mql.matches);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-
-  return canHover;
-}
