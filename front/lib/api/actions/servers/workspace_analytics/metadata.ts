@@ -30,11 +30,11 @@ const getAgentDetailsSchema = {
 const consumptionPeriodSchemaShape = {
   period: ConsumptionPeriodSchema.shape.period.describe(
     "Time window: 'cycle' (default) covers the workspace's current billing " +
-      "cycle, 'days' covers the last N days.",
+      "cycle, 'days' covers the last N days."
   ),
   days: ConsumptionPeriodSchema.shape.days.describe(
     "Number of days the window spans when period is 'days' (default 30). " +
-      "Ignored for 'cycle'.",
+      "Ignored for 'cycle'."
   ),
 };
 
@@ -47,7 +47,7 @@ const getCreditTimeseriesSchema = {
   ...consumptionPeriodSchemaShape,
   ...consumptionFilterSchema,
   timezone: timezoneSchema.describe(
-    "IANA timezone used to align the buckets. Defaults to UTC.",
+    "IANA timezone used to align the buckets. Defaults to UTC."
   ),
   granularity: z
     .enum(["day", "week", "month"])
@@ -59,7 +59,7 @@ const getCreditTimeseriesSchema = {
     .optional()
     .describe(
       "Split each bucket by this dimension — its top groups plus an 'others' " +
-        "series for the rest. Omit for a single total-credits trend.",
+        "series for the rest. Omit for a single total-credits trend."
     ),
   breakdownLimit: z
     .number()
@@ -70,7 +70,7 @@ const getCreditTimeseriesSchema = {
     .describe(
       `Number of top groups to break out when breakdownBy is set ` +
         `(default ${DEFAULT_CREDIT_GROUPS}, max ${MAX_CREDIT_GROUPS}); the ` +
-        `remainder is folded into 'others'.`,
+        `remainder is folded into 'others'.`
     ),
 };
 
@@ -90,7 +90,7 @@ const rankingLimitSchema = z
   .optional()
   .describe(
     `Maximum number of rows to return ` +
-      `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`,
+      `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
   );
 
 const GROUP_BY_DESCRIPTION = "What to group results by.";
