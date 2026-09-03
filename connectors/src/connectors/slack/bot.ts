@@ -943,7 +943,20 @@ async function answerMessage(
     if (!botName) {
       throw new Error("Failed to get bot name. Should never happen.");
     }
-    requestedGroups = await slackConfig.getBotGroupIds(botName);
+    const groupIdsRes = await slackConfig.getBotWhitelistedGroupIds(botName, {
+      workspaceId: connector.workspaceId,
+      workspaceAPIKey: connector.workspaceAPIKey,
+    });
+    if (groupIdsRes.isErr()) {
+      return groupIdsRes;
+    }
+    // No group means an empty X-Dust-Group-Ids header, which a system key reads as the whole
+    // workspace. Fail instead.
+    if (groupIdsRes.value.length === 0) {
+      return new Err(new Error(`Workflow "${botName}" reaches no group.`));
+    }
+
+    requestedGroups = groupIdsRes.value;
   }
 
   const userEmailHeader =

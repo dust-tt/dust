@@ -70,6 +70,7 @@ import {
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetAppsResponseSchema,
+  GetAutoGroupIdsForSpacesResponseSchema,
   GetConversationResponseSchema,
   GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
@@ -1906,6 +1907,24 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.apps);
+  }
+
+  async getAutoGroupIdsForSpaces({ spaceIds }: { spaceIds: string[] }) {
+    const res = await this.request({
+      method: "GET",
+      path: "spaces/groups",
+      query: new URLSearchParams({ spaceIds: spaceIds.join(",") }),
+    });
+
+    const r = await this._resultFromResponse(
+      GetAutoGroupIdsForSpacesResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.groupIds);
   }
 
   async getSpaces(options?: { kinds?: SpaceType["kind"][] }) {

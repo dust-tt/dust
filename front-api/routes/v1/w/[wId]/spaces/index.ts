@@ -6,6 +6,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import spaceId from "./[spaceId]";
+import groups from "./groups";
 
 export type GetPublicSpacesResponseBody = {
   spaces: EnrichedSpaceType[];
@@ -30,6 +31,7 @@ const GetSpacesQuerySchema = z.object({
 // v1 workspace sub-app, so ctx.get("auth") is always available here.
 const app = publicApiApp();
 
+app.route("/groups", groups);
 app.route("/:spaceId", spaceId);
 
 /**

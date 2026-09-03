@@ -23,8 +23,16 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
-import type { GrantType, GrantVerb } from "@app/types/group_permissions";
-import { SPACE_EDITOR_GRANT_TYPE } from "@app/types/group_permissions";
+import type {
+  GrantSpec,
+  GrantType,
+  GrantVerb,
+} from "@app/types/group_permissions";
+import {
+  grantKey,
+  SPACE_EDITOR_GRANT_TYPE,
+  SPACE_MEMBER_GRANT_TYPE,
+} from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -133,6 +141,14 @@ const EMPTY_SPACE_GRANT_ENRICHMENT: SpaceGrantEnrichment = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+function memberGrant(space: SpaceResource): GrantSpec {
+  return {
+    grantType: SPACE_MEMBER_GRANT_TYPE,
+    resourceType: "space",
+    resourceId: space.id,
+  };
+}
+
 export class SpaceResource extends BaseResource<SpaceModel> {
   static model: ModelStaticSoftDeletable<SpaceModel> = SpaceModel;
 
@@ -1764,6 +1780,40 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       [...editorGroupsByGrant.values()].map((group) => group.sId)
     );
     return autoGroups.filter((group) => !editorGroupIds.has(group.sId));
+  }
+
+  static async listAutoGroupIdsBySpaceId(
+    auth: Authenticator,
+    spaceIds: string[]
+  ): Promise<Map<string, string>> {
+    const spaces = await SpaceResource.fetchByIds(auth, spaceIds);
+    // System and conversations spaces have no auto group of their own.
+    const membershipSpaces = spaces.filter(
+      (space) => !space.isSystem() && !space.isConversations()
+    );
+
+    const [autoGroupByGrantKey, globalGroupRes] = await Promise.all([
+      GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+        grants: membershipSpaces
+          .filter((space) => !space.isGlobal())
+          .map(memberGrant),
+      }),
+      GroupResource.fetchWorkspaceGlobalGroup(auth),
+    ]);
+    assert(globalGroupRes.isOk(), "Workspace has no global group.");
+
+    return new Map(
+      membershipSpaces.map((space) => {
+        if (space.isGlobal()) {
+          return [space.sId, globalGroupRes.value.sId];
+        }
+
+        const autoGroup = autoGroupByGrantKey.get(grantKey(memberGrant(space)));
+        assert(autoGroup, `Space ${space.sId} has no auto group.`);
+
+        return [space.sId, autoGroup.sId];
+      })
+    );
   }
 
   // The groups that make up this space's membership: its member group and, for projects, its editor

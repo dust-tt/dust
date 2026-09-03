@@ -3,7 +3,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import {
   allowSlackWorkflow,
-  listSlackWorkflowWhitelistableGroups,
+  listSlackWorkflowSpaces,
 } from "@app/lib/api/slack/summoning_whitelist";
 import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types/connectors/admin/cli";
@@ -96,11 +96,11 @@ export const slackWhitelistBotPlugin = createPlugin({
         label: "Bot/Workflow Name",
         description: "Name of the Slack bot or workflow to whitelist",
       },
-      groupIds: {
+      spaceIds: {
         type: "enum",
-        label: "Groups",
+        label: "Spaces",
         description:
-          "Groups the bot can access when summoning agents — only agents belonging to these groups will be available to the bot",
+          "Spaces the bot can reach when summoning agents — only agents shared in these spaces, plus the Company Space, will be available to the bot",
         async: true,
         values: [],
         multiple: true,
@@ -119,17 +119,17 @@ export const slackWhitelistBotPlugin = createPlugin({
       return new Err(new Error("Data source not found."));
     }
 
-    const groups = await listSlackWorkflowWhitelistableGroups(auth);
+    const spaces = await listSlackWorkflowSpaces(auth);
 
     return new Ok({
-      groupIds: groups.map((group) => ({
-        value: group.sId,
-        label: group.name,
+      spaceIds: spaces.map((space) => ({
+        value: space.sId,
+        label: space.name,
       })),
     });
   },
   execute: async (auth, resource, args) => {
-    const { botName, groupIds } = args;
+    const { botName, spaceIds } = args;
 
     if (!resource) {
       return new Err(new Error("Data source not found."));
@@ -139,13 +139,9 @@ export const slackWhitelistBotPlugin = createPlugin({
       return new Err(new Error("Bot name is required"));
     }
 
-    if (!groupIds || groupIds.length === 0) {
-      return new Err(new Error("Groups selection is required"));
-    }
-
     const allowRes = await allowSlackWorkflow(auth, {
       botName: botName.trim(),
-      groupIds,
+      spaceIds: spaceIds ?? [],
     });
     if (allowRes.isErr()) {
       return new Err(
@@ -155,7 +151,7 @@ export const slackWhitelistBotPlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Successfully whitelisted Slack bot "${botName}" for agent summoning in the selected groups and the Workspace group.`,
+      value: `Successfully whitelisted Slack bot "${botName}" for agent summoning in the selected spaces and the Company Space.`,
     });
   },
 });

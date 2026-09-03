@@ -334,7 +334,11 @@ export const slack = async ({
         groupIds = groupId.split(",").map((id) => id.trim());
       }
 
-      await slackConfig.whitelistBot(botName, groupIds, whitelistType);
+      await slackConfig.whitelistBot(
+        botName,
+        { groupIds, spaceIds: null },
+        whitelistType
+      );
 
       return { success: true };
     }
