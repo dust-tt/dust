@@ -113,7 +113,9 @@ export function isMessagePanelAttachedToTrigger(
   trigger: Pick<DOMRect, "bottom" | "top">
 ): boolean {
   return (
-    messagePanel.top <= trigger.top && messagePanel.bottom >= trigger.bottom
+    trigger.top >= 0 &&
+    messagePanel.top <= trigger.top &&
+    messagePanel.bottom >= trigger.bottom
   );
 }
 

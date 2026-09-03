@@ -265,6 +265,52 @@ describe("useConversationInspectorPanels", () => {
     expect(result.current.activeMessageId).toBeNull();
     expect(result.current.isStickyRailOccluded).toBe(false);
   });
+
+  it("closes a message panel when its trigger scrolls past the viewport top", () => {
+    let messagePanelRect = rect(-100, 600);
+    const messagePanel = document.createElement("div");
+    messagePanel.dataset.messageConsumptionPanelId = "message_1";
+    messagePanel.setAttribute("aria-labelledby", "message_1_trigger");
+    vi.spyOn(messagePanel, "getBoundingClientRect").mockImplementation(
+      () => messagePanelRect
+    );
+
+    let messageTriggerRect = rect(20, 64);
+    const messageTrigger = document.createElement("button");
+    messageTrigger.id = "message_1_trigger";
+    vi.spyOn(messageTrigger, "getBoundingClientRect").mockImplementation(
+      () => messageTriggerRect
+    );
+    document.body.append(messageTrigger, messagePanel);
+
+    const stickyInspectors = document.createElement("aside");
+    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
+      rect(16, 180)
+    );
+    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
+      current: messagePanel,
+    };
+    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
+      current: stickyInspectors,
+    };
+    const { result } = renderHook(() =>
+      useConversationInspectorPanels({
+        activeMessagePanelRef,
+        stickyInspectorsRef,
+      })
+    );
+
+    act(() => result.current.setMessageOpen("message_1", true));
+    act(flushAnimationFrame);
+    expect(result.current.activeMessageId).toBe("message_1");
+
+    messagePanelRect = rect(-121, 579);
+    messageTriggerRect = rect(-1, 43);
+    act(() => window.dispatchEvent(new Event("scroll")));
+    act(flushAnimationFrame);
+
+    expect(result.current.activeMessageId).toBeNull();
+  });
 });
 
 describe("areInspectorPanelsOverlapping", () => {
@@ -322,5 +368,11 @@ describe("isMessagePanelAttachedToTrigger", () => {
     expect(
       isMessagePanelAttachedToTrigger(rect(100, 243), rect(200, 244))
     ).toBe(false);
+  });
+
+  it("rejects a panel after its trigger crosses the viewport top", () => {
+    expect(isMessagePanelAttachedToTrigger(rect(-400, 400), rect(-1, 43))).toBe(
+      false
+    );
   });
 });
