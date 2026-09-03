@@ -146,6 +146,7 @@ interface ConsumptionMessageBucket {
   agent_id: TermsAgg;
   agent_tag_ids: TermsAgg;
   conversation_id: TermsAgg;
+  parent_message_id: TermsAgg;
   user_id: TermsAgg;
   context_origin: TermsAgg;
   total_credit_micro: estypes.AggregationsSumAggregate;
@@ -192,7 +193,13 @@ function buildConsumptionAggregations(
             size: 100, // keep at most 100 unique tag IDs per message.
           },
         },
-
+        parent_message_id: {
+          // parent_message_id is denormalized on every tool/llm calls: keep a single value per message.
+          terms: {
+            field: "parent_message_id",
+            size: 1,
+          },
+        },
         conversation_id: {
           // conversation_id is denormalized on every tool/llm calls: keep a single value per message.
           terms: {
@@ -308,7 +315,9 @@ function consumptionBucketToDocument(
       (b) => b.key
     ),
     conversation_id: firstBucketKey(bucket.conversation_id),
-    ancestor_message_ids: [],
+    ancestor_message_ids: firstBucketKey(bucket.parent_message_id)
+      ? [firstBucketKey(bucket.parent_message_id)]
+      : [],
     user_id: firstBucketKey(bucket.user_id),
     context_origin: firstBucketKey(bucket.context_origin),
     status: "", // not used by csv export and not fetched by the es aggregation

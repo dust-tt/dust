@@ -140,6 +140,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     triggerModelId: ModelId | null;
   };
   triggeringUserMessage: {
+    agenticOriginMessageId: string | null;
     apiKeyModelId: ModelId | null;
     origin: UserMessageOrigin;
     userId: string | null;
@@ -894,6 +895,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         triggerModelId: conversation.triggerId,
       },
       triggeringUserMessage: {
+        agenticOriginMessageId:
+          triggeringUserMessage.agenticOriginMessageId ?? null,
         apiKeyModelId: triggeringUserMessage.userContextApiKeyId,
         origin: triggeringUserMessage.userContextOrigin,
         userId: triggeringUserMessage.user?.sId ?? null,
