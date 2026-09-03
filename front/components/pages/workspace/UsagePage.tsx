@@ -24,6 +24,10 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
+import {
+  toCreditPoolFetchStatus,
+  WorkspaceCreditPoolSection,
+} from "@app/components/workspace/WorkspaceCreditPoolCards";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -32,7 +36,11 @@ import {
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
@@ -49,6 +57,8 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
 import {
+  useAwuPoolCurrentCycle,
+  useAwuPoolCycleHistory,
   useAwuPoolSummary,
   useAwuPurchaseInfo,
   useMyUsage,
@@ -206,11 +216,86 @@ function CreditPoolProgressBar({
   );
 }
 
+interface CompactCreditPoolCardsProps {
+  owner: ReturnType<typeof useWorkspace>;
+  disabled: boolean;
+}
+
+// Credit consumption cards for the compact usage page, mirroring Poke's
+// read-only pool view (front/components/poke/pages/PoolUsagePage.tsx) but
+// backed by the customer-facing awu-pool-current-cycle/cycle-history routes.
+function CompactCreditPoolCards({
+  owner,
+  disabled,
+}: CompactCreditPoolCardsProps) {
+  const {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+  } = useAwuPoolCurrentCycle({ workspaceId: owner.sId, disabled });
+  const {
+    cycleBreakdown: poolCycleBreakdown,
+    excessCycleBreakdown,
+    isAwuPoolCycleHistoryLoading,
+    isAwuPoolCycleHistoryError,
+  } = useAwuPoolCycleHistory({ workspaceId: owner.sId, disabled });
+
+  const {
+    totalRemainingCredits,
+    totalActiveCredits,
+    currentCycleConsumedCredits,
+    currentCycleStartMs,
+    currentCycleEndMs,
+    excessConsumedCredits,
+    programmaticConsumedCredits,
+    otherConsumedCredits,
+  } = awuPoolCurrentCycle ?? {
+    totalRemainingCredits: 0,
+    totalActiveCredits: 0,
+    currentCycleConsumedCredits: null,
+    currentCycleStartMs: null,
+    currentCycleEndMs: null,
+    excessConsumedCredits: null,
+    programmaticConsumedCredits: null,
+    otherConsumedCredits: null,
+  };
+
+  const hasPool = totalActiveCredits > 0;
+  const hasExcessData =
+    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
+
+  return (
+    <WorkspaceCreditPoolSection
+      cardsStatus={toCreditPoolFetchStatus(
+        isAwuPoolCurrentCycleLoading,
+        !!isAwuPoolCurrentCycleError
+      )}
+      tableStatus={toCreditPoolFetchStatus(
+        isAwuPoolCycleHistoryLoading,
+        !!isAwuPoolCycleHistoryError
+      )}
+      showPoolCard={hasPool}
+      isVisible={hasPool || hasExcessData}
+      totalRemainingCredits={totalRemainingCredits}
+      consumedCredits={
+        hasPool ? currentCycleConsumedCredits : excessConsumedCredits
+      }
+      currentCycleStartMs={currentCycleStartMs}
+      currentCycleEndMs={currentCycleEndMs}
+      cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
+      programmaticConsumedCredits={programmaticConsumedCredits}
+      otherConsumedCredits={otherConsumedCredits}
+    />
+  );
+}
+
 const DEFAULT_PAGE_SIZE = 25;
 
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const isCompactUsagePage = hasFeature("compact_usage_page");
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Workspaces off a credit plan see this page without the credit pool, seat
   // and credits columns, spend limits and upgrade requests. Credit actions (top
@@ -1023,6 +1108,7 @@ export function UsagePage() {
       enableSelection={isCreditPriced}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
+      variant={isCompactUsagePage ? "compact" : undefined}
     />
   );
 
@@ -1084,7 +1170,8 @@ export function UsagePage() {
         ) : (
           <div className="flex items-center justify-between">
             <Page.Header title="Usage" />
-            {isCreditPriced &&
+            {!isCompactUsagePage &&
+              isCreditPriced &&
               usageSettings.topUpEnabled &&
               isWorkspaceAdmin && (
                 <Button
@@ -1220,7 +1307,15 @@ export function UsagePage() {
           </Page.Vertical>
         ) : null}
 
-        {isCreditPriced &&
+        {isCompactUsagePage && isCreditPriced ? (
+          <div className="flex flex-col items-stretch gap-4">
+            <CompactCreditPoolCards owner={owner} disabled={!isCreditPriced} />
+            <div className="flex justify-end">{topUpButton}</div>
+          </div>
+        ) : null}
+
+        {!isCompactUsagePage &&
+        isCreditPriced &&
         !showConsumptionAnalytics &&
         !isAwuPoolSummaryLoading &&
         (isAwuPoolSummaryError || hasPool) ? (
