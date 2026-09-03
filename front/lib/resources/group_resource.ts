@@ -1313,6 +1313,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Users with no matching membership are absent from the map. Restricting the
    * query to the caller's group ids keeps this to a single row-bounded query
    * regardless of how many groups the workspace has.
+   *
+   * Dangerous: deliberately skips the `canRead` check on the groups — a space's
+   * grants mix regular_auto and non-regular_auto groups and the caller needs
+   * membership for both, so it authorizes the owning space instead.
    */
   static async dangerouslyListGroupModelIdsByUserModelIdInWorkspace({
     workspace,
@@ -1978,6 +1982,9 @@ export class GroupResource extends BaseResource<GroupModel> {
    *
    * Only regular_auto group members can be suspended: it is how a space keeps its
    * manual members on record while it runs in group management mode.
+   *
+   * Dangerous: no permission check — the owning space authorizes the
+   * management-mode switch.
    */
   async dangerouslySuspendMembers(
     auth: Authenticator,
@@ -2043,6 +2050,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * user already has an active membership.
    *
    * Returns the number of group memberships restored.
+   *
+   * Dangerous: deliberately skips the `canRead` check on the groups — it
+   * restores regular_auto memberships together with provisioned and manual
+   * ones, so no per-group check applies.
    */
   static async dangerouslyRestoreGroupMembershipsRevokedWith({
     user,
@@ -2146,7 +2157,9 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Restores all suspended members of this group.
    * Returns array of affected user ModelIds.
    *
-   * Counterpart of `dangerouslySuspendMembers`, so regular_auto only.
+   * Counterpart of `dangerouslySuspendMembers`, so regular_auto only, and
+   * dangerous for the same reason: no permission check, the owning space
+   * authorizes the switch.
    */
   async dangerouslyRestoreMembers(
     auth: Authenticator,

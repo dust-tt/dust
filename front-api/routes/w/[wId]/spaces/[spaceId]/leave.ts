@@ -19,7 +19,7 @@ app.post(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    const result = await space.leave(auth);
+    const result = await space.leavePod(auth);
     if (result.isErr()) {
       switch (result.error.code) {
         case "invalid_request_error":

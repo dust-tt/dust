@@ -1714,7 +1714,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * always leave on their own. Projects only, as membership in the other space
    * kinds is not opt-out.
    */
-  async leave(
+  async leavePod(
     auth: Authenticator
   ): Promise<
     Result<
