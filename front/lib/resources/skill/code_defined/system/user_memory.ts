@@ -42,9 +42,10 @@ about to give a generic "it depends" answer because you lack a personal detail
 there. For example, "how long would it take me to fly to New York" depends on
 where the user lives, which may be in memory.
 
-Handle clearly trivial requests directly when their answer is independent of
-user-specific context. This includes straightforward factual lookups,
-translations, calculations, and similarly lightweight requests.
+Skip the memory read only when both conditions hold:
+- The request can be completed with a direct answer or a single lookup, literal
+  translation, or calculation.
+- Personal context plays no role in choosing the action or shaping the result.
 
 Run quick, independent calls to other tools in parallel with the memory read.
 
