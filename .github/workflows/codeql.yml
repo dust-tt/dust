@@ -12,24 +12,26 @@ permissions:
   contents: read
 
 jobs:
-  detect-core-changes:
-    name: Detect core/ changes
+  detect-rust-changes:
+    name: Detect Rust changes
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     outputs:
-      core: ${{ steps.filter.outputs.core }}
+      rust: ${{ steps.filter.outputs.rust }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Check for core/ changes
+      - name: Check for Rust changes
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: filter
         with:
           base: ${{ github.event.repository.default_branch }}
           filters: |
-            core:
+            rust:
               - 'core/**'
+              - 'cli/dust-sandbox/**'
+              - 'egress-proxy/**'
               - '.github/workflows/codeql.yml'
 
   analyze:
@@ -68,12 +70,12 @@ jobs:
 
   analyze-rust:
     name: Analyze (rust)
-    needs: detect-core-changes
+    needs: detect-rust-changes
     # Runs on the weekly schedule regardless (nothing to diff against), and on
-    # push/PR only when core/ actually changed - see dust-tt/decisions#1003.
+    # push/PR only when a Rust project changed - see dust-tt/decisions#1003.
     if: |
       always() &&
-      (github.event_name == 'schedule' || needs.detect-core-changes.outputs.core == 'true')
+      (github.event_name == 'schedule' || needs.detect-rust-changes.outputs.rust == 'true')
     runs-on: ubuntu-latest
     permissions:
       security-events: write
