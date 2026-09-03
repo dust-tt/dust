@@ -1510,7 +1510,7 @@ export async function getMemberUsage({
   const [groupNamesByUserModelId, maxPoolCapGroupByUserModelId] =
     await Promise.all([
       GroupResource.listGroupNamesByUserModelIdInWorkspace({
-        workspace,
+        auth,
         userModelIds: [userResource.id],
         groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
       }),
@@ -2211,7 +2211,7 @@ export async function getMembersUsage({
         })
       : Promise.resolve(null),
     GroupResource.listGroupNamesByUserModelIdInWorkspace({
-      workspace,
+      auth,
       userModelIds: users.map((u) => u.id),
       groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     }),

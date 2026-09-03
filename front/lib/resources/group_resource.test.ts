@@ -82,6 +82,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 
 function getCacheKeyForUser(userId: number, workspaceId: number): string {
@@ -202,7 +203,7 @@ describe("GroupResource", () => {
   });
 
   describe("listGroupNamesByUserModelIdInWorkspace", () => {
-    it("returns regular + provisioned group names per user, sorted, excluding global", async () => {
+    it("returns regular manual + provisioned group names per user, sorted, excluding global", async () => {
       const user2 = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user2, { role: "user" });
       const user3 = await UserFactory.basic();
@@ -211,7 +212,7 @@ describe("GroupResource", () => {
       const sales = await GroupResource.makeNew({
         name: "Sales",
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
       await sales.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -229,8 +230,9 @@ describe("GroupResource", () => {
 
       const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
         {
-          workspace,
+          auth: authenticator,
           userModelIds: [user.id, user2.id, user3.id],
+          groupKinds: [...MANAGEABLE_GROUP_KINDS],
         }
       );
 
@@ -243,8 +245,9 @@ describe("GroupResource", () => {
     it("returns an empty map when no user ids are given", async () => {
       const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
         {
-          workspace,
+          auth: authenticator,
           userModelIds: [],
+          groupKinds: [...MANAGEABLE_GROUP_KINDS],
         }
       );
 
