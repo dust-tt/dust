@@ -263,7 +263,8 @@ export function usePokeMembersUsage({
     | "consumedFromPoolAwuCredits"
     | "seatType"
     | "creditState"
-    | "seatUsage";
+    | "seatUsage"
+    | "premiumMessageUsage";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType;
   creditState?: UserCreditState;

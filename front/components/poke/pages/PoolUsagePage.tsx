@@ -53,7 +53,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -187,7 +187,8 @@ export function PoolUsagePage() {
   const orderColumn =
     sort?.id === "email" ||
     sort?.id === "consumedFromPoolAwuCredits" ||
-    sort?.id === "seatUsage"
+    sort?.id === "seatUsage" ||
+    sort?.id === "premiumMessageUsage"
       ? sort.id
       : "name";
   const orderDirection = sort?.desc ? "desc" : "asc";
@@ -206,6 +207,20 @@ export function PoolUsagePage() {
   const isLegacyWithoutPoolOrMetronome =
     isLegacyPremiumMessagePlan && !hasPool && !hasMetronomeContract;
   const showPoolSection = !isLegacyWithoutPoolOrMetronome;
+
+  // Apply the "premium message usage" default sort once, the first time we
+  // learn this workspace is legacy-without-pool — without clobbering a sort
+  // the user picks afterwards.
+  const hasAppliedDefaultSortRef = useRef(false);
+  useEffect(() => {
+    if (hasAppliedDefaultSortRef.current || !activeSubscription) {
+      return;
+    }
+    hasAppliedDefaultSortRef.current = true;
+    if (isLegacyWithoutPoolOrMetronome) {
+      setSorting([{ id: "premiumMessageUsage", desc: true }]);
+    }
+  }, [activeSubscription, isLegacyWithoutPoolOrMetronome]);
 
   const {
     members,
@@ -417,6 +432,7 @@ export function PoolUsagePage() {
                   isSeatBased
                   showSpendLimit
                   hasPool={hasPool}
+                  showPremiumMessageUsage={isLegacyWithoutPoolOrMetronome}
                   readOnly
                   onChangeSeat={noopOnMember}
                   onOpenChangeSeatRecap={setChangeSeatRecapMember}

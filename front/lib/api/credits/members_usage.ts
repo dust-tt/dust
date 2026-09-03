@@ -184,6 +184,11 @@ export type MemberUsageType = {
   // (free/trial) where a fair-use limit is set. Null when the plan carries no
   // fair-use limit (limit === -1) or when not requested. Poke-only.
   fairUse?: MemberFairUseUsage | null;
+  // Per-user weekly premium-model message usage. Applies to legacy (non
+  // credit-priced) plans, which enforce a rate limit on premium-tier-model
+  // messages instead of an AWU credit pool. Null when the plan is
+  // credit-priced or when not requested. Poke-only.
+  premiumMessageUsage?: PremiumModelMessageUsage | null;
 };
 
 export type MemberFairUseUsage = {
@@ -247,6 +252,10 @@ export const MembersUsagePaginationSchema = z.object({
       "seatType",
       "creditState",
       "seatUsage",
+      // Legacy (non credit-priced) plans only: sorts by weekly premium-model
+      // message usage, the replacement for the credit-pool column on those
+      // workspaces.
+      "premiumMessageUsage",
     ])
     .catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
@@ -2037,6 +2046,21 @@ async function resolveMembersUsagePageUsers({
       }
       break;
     }
+    case "premiumMessageUsage": {
+      const entries = await concurrentExecutor(
+        allUsers,
+        async (u) =>
+          [
+            u.sId,
+            await getPremiumModelMessageUsage({ workspace, user: u.toJSON() }),
+          ] as const,
+        { concurrency: 8 }
+      );
+      for (const [sId, usage] of entries) {
+        sortKeyByUserId.set(sId, usage.usedMessages);
+      }
+      break;
+    }
     default:
       assertNever(orderColumn);
   }
@@ -2357,6 +2381,31 @@ export async function getMembersUsage({
     }
   }
 
+  // Bulk-fetch each user's weekly premium-model message usage (poke-only).
+  // Only legacy (non credit-priced) plans enforce this rate limit, so it's
+  // skipped entirely for credit-priced workspaces.
+  const premiumMessageUsageByUserId = new Map<
+    string,
+    PremiumModelMessageUsage | null
+  >();
+  if (includeAlertLinks) {
+    const plan = auth.plan();
+    if (plan && !isCreditPricedPlan(plan)) {
+      const entries = await concurrentExecutor(
+        users,
+        async (u) =>
+          [
+            u.sId,
+            await getPremiumModelMessageUsage({ workspace, user: u.toJSON() }),
+          ] as const,
+        { concurrency: 8 }
+      );
+      for (const [sId, usage] of entries) {
+        premiumMessageUsageByUserId.set(sId, usage);
+      }
+    }
+  }
+
   const membersUsage: MemberUsageType[] = users.flatMap((u) => {
     const membership = membershipByUserId.get(u.id);
     if (!membership) {
@@ -2570,6 +2619,7 @@ export async function getMembersUsage({
         creditState: membership.creditState,
         nearLimit,
         fairUse: fairUseByUserId.get(userId) ?? null,
+        premiumMessageUsage: premiumMessageUsageByUserId.get(userId) ?? null,
         seatUsageTarget,
         overallUsageTarget,
       },

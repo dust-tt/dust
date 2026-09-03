@@ -13,6 +13,7 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
+import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
@@ -113,6 +114,7 @@ type RowData = {
   canUpgradeSeat: boolean;
   onOpenChangeSeatRecap: () => void;
   onOpenSpendLimitRecap: () => void;
+  premiumMessageUsage: PremiumModelMessageUsage | null;
   modelTiersSummary: string;
   hasUserLevelModelTiersOverride: boolean;
   menuItems: MenuItem[];
@@ -747,6 +749,48 @@ function buildPoolCreditUsageColumn(
   };
 }
 
+// Legacy (non credit-priced) plans have no AWU credit pool — they enforce a
+// weekly rate limit on premium-tier-model messages instead. This replaces
+// `buildPoolCreditUsageColumn` for those workspaces.
+const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
+  id: "premiumMessageUsage" as const,
+  header: () => (
+    <span className="flex items-center gap-1">
+      <Icon visual={CoinsStacked03} size="xs" />
+      Premium messages
+    </span>
+  ),
+  accessorFn: (row) => (row.premiumMessageUsage?.usedMessages ?? 0).toString(),
+  cell: (info: Info) => {
+    const usage = info.row.original.premiumMessageUsage;
+    if (!usage) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <span className="text-sm text-muted-foreground">--</span>
+        </DataTable.CellContent>
+      );
+    }
+    return (
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={`${usage.usedMessages} / ${usage.limitMessages} premium messages used this week`}
+          trigger={
+            <span className="text-xs font-medium text-muted-foreground">
+              {usage.usedMessages} / {usage.limitMessages}
+            </span>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  enableSorting: true,
+  meta: {
+    className: "w-32",
+    headerAlign: "center",
+  },
+};
+
 const offPaceColumn: ColumnDef<RowData, string> = {
   id: "overallUsageTarget" as const,
   header: "",
@@ -911,10 +955,12 @@ function buildCreditPlanColumns({
   creditsResetAt,
   variant,
   hasPool,
+  showPremiumMessageUsage,
 }: {
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
   hasPool: boolean;
+  showPremiumMessageUsage: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(() => {
@@ -929,10 +975,16 @@ function buildCreditPlanColumns({
       }
     })(),
     {
-      ...buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool),
+      ...(showPremiumMessageUsage
+        ? premiumMessageUsageColumn
+        : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool)),
       meta: { className: "w-56" },
     },
-    ...(variant === "compact" ? [offPaceColumn] : []),
+    // The pace-warning/unblock column reads the credit-pool pacing, which
+    // doesn't exist for premium-message-only legacy workspaces.
+    ...(variant === "compact" && !showPremiumMessageUsage
+      ? [offPaceColumn]
+      : []),
   ];
 }
 
@@ -944,6 +996,7 @@ function buildColumns({
   creditsResetAt,
   variant,
   hasPool,
+  showPremiumMessageUsage,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
@@ -952,6 +1005,7 @@ function buildColumns({
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
   hasPool: boolean;
+  showPremiumMessageUsage: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -959,7 +1013,12 @@ function buildColumns({
     ...(showGroupsColumn ? [groupsColumn] : []),
     ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
     ...(showSeatAndCredits
-      ? buildCreditPlanColumns({ creditsResetAt, variant, hasPool })
+      ? buildCreditPlanColumns({
+          creditsResetAt,
+          variant,
+          hasPool,
+          showPremiumMessageUsage,
+        })
       : []),
     // Every row action belongs to one of these two groups.
     ...(showSeatAndCredits || showModelTiersColumn ? [actionsColumn] : []),
@@ -1018,6 +1077,10 @@ interface MembersUsageTableProps {
   // Whether the workspace has an active credit pool. Only affects the
   // "compact" (poke) variant's credit column header.
   hasPool?: boolean;
+  // Legacy (non credit-priced) workspaces with no pool or Metronome
+  // contract: swaps the credit-pool column for a premium-message-usage
+  // column, and hides the credit-pace warning column.
+  showPremiumMessageUsage?: boolean;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
   userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
   groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
@@ -1057,6 +1120,7 @@ export function MembersUsageTable({
   showModelTiersColumn = false,
   variant = "legacy",
   hasPool = true,
+  showPremiumMessageUsage = false,
   userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
   userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
   groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
@@ -1115,6 +1179,7 @@ export function MembersUsageTable({
           canUpgradeSeat: canUpgradeSeat(m),
           onOpenChangeSeatRecap: () => onOpenChangeSeatRecap(m),
           onOpenSpendLimitRecap: () => onOpenSpendLimitRecap(m),
+          premiumMessageUsage: m.premiumMessageUsage ?? null,
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
             switch (variant) {
@@ -1238,6 +1303,7 @@ export function MembersUsageTable({
         creditsResetAt,
         variant,
         hasPool,
+        showPremiumMessageUsage,
       }),
     [
       enableSelection,
@@ -1247,6 +1313,7 @@ export function MembersUsageTable({
       creditsResetAt,
       variant,
       hasPool,
+      showPremiumMessageUsage,
     ]
   );
 
