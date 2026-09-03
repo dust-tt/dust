@@ -755,10 +755,15 @@ function buildPoolCreditUsageColumn(
 const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
   id: "premiumMessageUsage" as const,
   header: () => (
-    <span className="flex items-center gap-1">
-      <Icon visual={CoinsStacked03} size="xs" />
-      Premium messages
-    </span>
+    <div className="flex flex-col">
+      <span className="flex items-center gap-1">
+        <Icon visual={CoinsStacked03} size="xs" />
+        Premium messages
+      </span>
+      <span className="text-xs font-normal text-muted-foreground">
+        Resets weekly
+      </span>
+    </div>
   ),
   accessorFn: (row) => (row.premiumMessageUsage?.usedMessages ?? 0).toString(),
   cell: (info: Info) => {
@@ -770,25 +775,44 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
         </DataTable.CellContent>
       );
     }
+    const { usedMessages, limitMessages } = usage;
+    const percentage =
+      limitMessages > 0
+        ? Math.min(100, (usedMessages / limitMessages) * 100)
+        : usedMessages > 0
+          ? 100
+          : 0;
+    const isOverLimit = usedMessages > limitMessages;
+    const isAtLimit = limitMessages > 0 && usedMessages === limitMessages;
     return (
-      <DataTable.CellContent className="justify-center">
-        <Tooltip
-          tooltipTriggerAsChild
-          label={`${usage.usedMessages} / ${usage.limitMessages} premium messages used this week`}
-          trigger={
-            <span className="text-xs font-medium text-muted-foreground">
-              {usage.usedMessages} / {usage.limitMessages}
-            </span>
-          }
-        />
-      </DataTable.CellContent>
+      <div className="flex w-full flex-col gap-1 pr-3">
+        <div className="flex justify-between text-xs tabular-nums text-foreground">
+          <span>{usedMessages}</span>
+          <span>{limitMessages}</span>
+        </div>
+        <div className="flex h-3 w-full items-center">
+          <ProgressBar
+            aria-label="Premium message usage"
+            aria-valuenow={percentage}
+            aria-valuetext={`${usedMessages} of ${limitMessages} premium messages used this week`}
+            className="h-1 w-full gap-px bg-transparent"
+            values={[
+              {
+                value: percentage,
+                className: isOverLimit
+                  ? OVER_POOL_LIMIT_BAR_CLASSES.fill
+                  : isAtLimit
+                    ? AT_POOL_LIMIT_BAR_CLASSES.fill
+                    : MUTED_BAR_CLASSES.fill,
+              },
+              { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
+            ]}
+          />
+        </div>
+      </div>
     );
   },
   enableSorting: true,
-  meta: {
-    className: "w-32",
-    headerAlign: "center",
-  },
 };
 
 const offPaceColumn: ColumnDef<RowData, string> = {
