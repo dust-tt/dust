@@ -10,26 +10,29 @@
  * ("over-allocated seats").
  *
  * The fix mirrors what empty-origin would have done: post a corrective negative
- * delta to the STRAY recurring credit so the seat's TOTAL granted AWU drops back
- * to its home allocation. We debit exactly `overGrantedAwu = startingBalance -
- * homeAllocation`, which brings the seat's aggregate balance to
- * `homeAllocation - consumed` regardless of which pool consumption came out of
- * (aggregate arithmetic; see the block comment on `planSeatCorrection`).
+ * delta to the STRAY recurring credit so the seat's aggregate AWU drops back to
+ * `max(0, allocation - consumed)`. Detection is usage-based — a seat is stacked
+ * when `currentBalance - max(0, allocation - consumed) > threshold` — because
+ * Metronome DROPS a fully-consumed stray grant from `starting_balance`, so a
+ * starting_balance check misses seats that already spent through the phantom
+ * grant (see audit_metronome_seat_state.ts). The debit is `min(strayAllocation,
+ * currentBalance)`: the whole stray grant still on the balance, capped so the
+ * aggregate never falls below `max(0, allocation - consumed)`.
  *
  * IMPORTANT — read before running with --execute:
  *
  *  - There is NO Metronome read that returns a seat's balance on a SPECIFIC
  *    recurring credit; every read collapses pro/max into one aggregate AWU
  *    number. So we cannot observe the stray pool's balance directly; we debit
- *    the computed `overGrantedAwu`. If the stray pool had some consumption, that
- *    debit can leave the stray pool slightly negative (bounded by the seat's
- *    consumption this cycle). That is harmless for a seat no longer assigned to
- *    the stray tier (nothing draws from it; it expires next recurrence), and the
- *    seat's AGGREGATE lands exactly on `homeAllocation - consumed`.
- *  - Only seats whose `overGrantedAwu` exactly matches another tier's allocation
- *    are auto-classified (e.g. a `max` seat over by 8000 -> stray `pro`). Seats
- *    that don't match a tier (e.g. a `free` seat over by 7500) are reported as
- *    UNCLASSIFIED and never touched — they need separate investigation.
+ *    the stray tier's full allocation (capped at the balance). If the stray pool
+ *    had some consumption, that debit can leave the stray pool slightly negative
+ *    — harmless for a seat no longer assigned to the stray tier (nothing draws
+ *    from it; it expires next recurrence), and the AGGREGATE still lands on
+ *    `max(0, allocation - consumed)`.
+ *  - The stray tier is the UNIQUE credit-bearing tier other than home (home max
+ *    -> stray pro, home pro -> stray max). A non-credit-bearing home like `free`
+ *    has two candidate stray tiers, so it is reported UNCLASSIFIED and never
+ *    touched — those need separate investigation.
  *  - `adjustSeatCreditBalances` does NOT dedup; a second --execute run posts the
  *    delta AGAIN (double-correcting). Run --execute exactly once, and re-run the
  *    audit afterwards to confirm rather than re-running this.
@@ -44,6 +47,7 @@
  *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --workspaceId <wId> --homeSeatType max --execute
  */
 import config from "@app/lib/api/config";
+import { fetchConsumedAwuCreditsByUserId } from "@app/lib/api/credits/members_usage";
 import {
   adjustSeatCreditBalances,
   findSeatCreditSegmentForPeriod,
@@ -74,8 +78,10 @@ import type { MembershipSeatType } from "@app/types/memberships";
 
 import { makeScript } from "./helpers";
 
-// Below this, a seat's over-grant is treated as rounding noise, not stacking.
-const AWU_OVER_ALLOCATION_TOLERANCE = 1;
+// Flag a seat as stacked only above this over-grant. Generous because real
+// stacks are >= 7500 AWU (pro-on-free 7500, pro-on-max 8000, max-on-pro 40000),
+// so small analytics-vs-Metronome consumption skew never trips a false positive.
+const STACKING_DETECTION_THRESHOLD_AWU = 1000;
 
 // Metronome publishes an 11 RPS API limit. Stay well under it so a correction
 // run never adds rate-limit pressure to production traffic on the same key.
@@ -107,7 +113,14 @@ interface SeatCorrection {
   homeAllocation: number;
   startingBalance: number;
   currentBalance: number;
+  consumedAwu: number;
+  // Usage-based over-grant (currentBalance - max(0, allocation - consumed)) —
+  // what flagged the seat as stacked.
   overGrantedAwu: number;
+  // Amount actually debited from the stray credit: the stray grant still on the
+  // balance, min(strayAllocation, currentBalance). Skew-free and never exceeds
+  // the balance.
+  clawBackAwu: number;
   strayType: MembershipSeatType;
   strayRecurringCreditId: string;
   // Resolved lazily during planning; null means the ledger entry cannot be
@@ -250,9 +263,24 @@ async function fixWorkspace(
     }
   }
 
-  // Classify each over-allocated seat. The stray tier is the recurring tier
-  // (other than the seat's home tier) whose allocation exactly equals the
-  // over-grant — that is the credit whose orphaned grant is stacked on top.
+  // Per-user consumed AWU for the current cycle (analytics index) — the same
+  // figure poke shows and the audit uses. Needed because Metronome drops a
+  // fully-consumed stray grant from starting_balance, so detection must key off
+  // consumption, not starting_balance (see audit_metronome_seat_state.ts).
+  const consumedByUserId = await fetchConsumedAwuCreditsByUserId({
+    workspace: lightWorkspace,
+    userIds: [...seatTypeBySeatId.keys()],
+    freeSeatUserIds: [...seatTypeBySeatId]
+      .filter(([, t]) => t === "free")
+      .map(([id]) => id),
+  });
+
+  // Classify each stacked seat. A seat should hold max(0, allocation -
+  // consumed); anything above that is a stray grant. The stray tier is the
+  // UNIQUE credit-bearing tier other than home (unambiguous with two tiers:
+  // home max -> stray pro, home pro -> stray max). A non-credit-bearing home
+  // like `free` has two candidate stray tiers, so which pool holds the grant
+  // can't be inferred — reported unclassified and never touched.
   const corrections: SeatCorrection[] = [];
   const unclassified: Array<{
     seatId: string;
@@ -271,26 +299,32 @@ async function fixWorkspace(
     if (homeAllocation === undefined || homeAllocation <= 0 || !awu) {
       continue;
     }
-    const overGrantedAwu = awu.startingBalance - homeAllocation;
-    if (overGrantedAwu <= AWU_OVER_ALLOCATION_TOLERANCE) {
+    const consumedAwu = consumedByUserId.get(seatId) ?? 0;
+    const targetBalance = Math.max(0, homeAllocation - consumedAwu);
+    const overGrantedAwu = awu.balance - targetBalance;
+    if (overGrantedAwu <= STACKING_DETECTION_THRESHOLD_AWU) {
       continue;
     }
-    const strayTier = [...tierBySeatType.values()].find(
-      (t) =>
-        t.seatType !== homeSeatType &&
-        Math.abs(t.allocation - overGrantedAwu) <= AWU_OVER_ALLOCATION_TOLERANCE
+    const strayCandidates = [...tierBySeatType.values()].filter(
+      (t) => t.seatType !== homeSeatType
     );
-    if (!strayTier) {
+    if (strayCandidates.length !== 1) {
       unclassified.push({ seatId, homeSeatType, overGrantedAwu });
       continue;
     }
+    const strayTier = strayCandidates[0];
     corrections.push({
       seatId,
       homeSeatType,
       homeAllocation,
       startingBalance: awu.startingBalance,
       currentBalance: awu.balance,
+      consumedAwu,
       overGrantedAwu,
+      // Remove the whole stray grant still on the balance. For a credit-bearing
+      // home this equals the usage-based over-grant (skew-free), capped so it
+      // never drives the aggregate below max(0, allocation - consumed).
+      clawBackAwu: Math.min(strayTier.allocation, awu.balance),
       strayType: strayTier.seatType,
       strayRecurringCreditId: strayTier.recurringCreditId,
       creditId: null,
@@ -363,10 +397,10 @@ async function fixWorkspace(
 
   const byTransition = new Map<string, { count: number; totalAwu: number }>();
   for (const c of resolved) {
-    const key = `${c.homeSeatType}<-${c.strayType} (-${c.overGrantedAwu})`;
+    const key = `${c.homeSeatType}<-${c.strayType} (-${c.clawBackAwu})`;
     const agg = byTransition.get(key) ?? { count: 0, totalAwu: 0 };
     agg.count += 1;
-    agg.totalAwu += c.overGrantedAwu;
+    agg.totalAwu += c.clawBackAwu;
     byTransition.set(key, agg);
   }
 
@@ -378,7 +412,7 @@ async function fixWorkspace(
       onlySeatId,
       onlyHomeSeatType,
       resolvedCount: resolved.length,
-      resolvedTotalAwu: resolved.reduce((s, c) => s + c.overGrantedAwu, 0),
+      resolvedTotalAwu: resolved.reduce((s, c) => s + c.clawBackAwu, 0),
       byTransition: Object.fromEntries(byTransition),
       unresolvedCount: unresolved.length,
       unresolvedSeatIds: unresolved.map((c) => c.seatId),
@@ -404,7 +438,7 @@ async function fixWorkspace(
         metronomeContractId: contractId,
         creditId: c.creditId as string,
         segmentId: c.segmentId as string,
-        perSeatAmounts: { [c.seatId]: -c.overGrantedAwu },
+        perSeatAmounts: { [c.seatId]: -c.clawBackAwu },
         reason: `Stacked-credit correction: empty orphaned ${c.strayType} grant stacked on ${c.homeSeatType}`,
         timestamp: c.adjustmentTimestamp as Date,
         alignToHour: false,
@@ -429,7 +463,9 @@ async function fixWorkspace(
         seatId: c.seatId,
         homeSeatType: c.homeSeatType,
         strayType: c.strayType,
-        amount: -c.overGrantedAwu,
+        consumedAwu: c.consumedAwu,
+        overGrantedAwu: c.overGrantedAwu,
+        amount: -c.clawBackAwu,
         adjustmentTimestamp: c.adjustmentTimestamp?.toISOString(),
       },
       "[StackedFix] corrected stacked seat"
