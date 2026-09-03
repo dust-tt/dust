@@ -151,6 +151,17 @@ export function FileExplorer({
             setActiveFilter("all");
           },
         });
+        if (onDelete) {
+          items.push({
+            label: "Delete",
+            icon: Trash01,
+            variant: "warning",
+            onClick: (e) => {
+              e.stopPropagation();
+              void onDelete(entry);
+            },
+          });
+        }
         return items;
       }
       if (onRename && (entry.kind === "file" || entry.kind === "folder")) {

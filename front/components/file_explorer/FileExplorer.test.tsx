@@ -205,7 +205,7 @@ describe("FileExplorer navigation", () => {
 });
 
 describe("FileExplorer Frame packages", () => {
-  it("opens the Frame and exposes its source without generic file actions", async () => {
+  it("opens the Frame and exposes only View source and Delete", async () => {
     const user = userEvent.setup();
     mockClientFetch.mockResolvedValue(new Response("preview content"));
     const manifest = makeFile({
@@ -222,6 +222,7 @@ describe("FileExplorer Frame packages", () => {
       path: "status/index.tsx",
     });
     const onOpenInteractive = vi.fn();
+    const onDelete = vi.fn().mockResolvedValue(undefined);
 
     render(
       <ControlledFileExplorer
@@ -230,7 +231,7 @@ describe("FileExplorer Frame packages", () => {
         files={[manifest, source]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onDelete={vi.fn().mockResolvedValue(undefined)}
+        onDelete={onDelete}
         onFileDownload={vi.fn().mockResolvedValue(undefined)}
         onMoveFile={vi.fn().mockResolvedValue(new Ok(undefined))}
         onOpenInteractive={onOpenInteractive}
@@ -258,8 +259,15 @@ describe("FileExplorer Frame packages", () => {
     expect(screen.getByText("View source")).toBeInTheDocument();
     expect(screen.queryByText("Rename")).not.toBeInTheDocument();
     expect(screen.queryByText("Move to…")).not.toBeInTheDocument();
-    expect(screen.queryByText("Delete")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Delete"));
+    expect(onDelete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "frame_package",
+        path: "conversation-c1/status/manifest.json",
+      })
+    );
 
+    await user.click(within(packageRow).getByRole("button"));
     fireEvent.click(screen.getByText("View source"));
     const manifestTitle = await screen.findByText("manifest.json");
     expect(screen.getByText("index.tsx")).toBeInTheDocument();

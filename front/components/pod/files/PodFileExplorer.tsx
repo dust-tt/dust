@@ -535,6 +535,24 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
             await refreshPodFiles();
           }
         }
+      } else if (entry.kind === "frame_package") {
+        const confirmed = await confirm({
+          title: "Delete Frame?",
+          message:
+            `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
+            "functions, databases and share links will be permanently removed. " +
+            "This action cannot be undone.",
+          validateLabel: "Delete",
+          validateVariant: "warning",
+        });
+        if (confirmed) {
+          // The package entry carries the manifest path; deleting the manifest runs the
+          // package-aware Frame deletion server-side.
+          const result = await deletePodFile(entry.path);
+          if (result.isOk()) {
+            await refreshPodFiles();
+          }
+        }
       } else {
         const confirmed = await confirm({
           title: "Delete file?",
