@@ -9,10 +9,10 @@ import type {
 } from "@app/types/assistant/agent_message_consumption";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
   Chip,
   CoinsStacked01,
+  cn,
   DustLogoSquare,
   Icon,
   LoadingBlock,
@@ -28,8 +28,7 @@ import { useRef } from "react";
 const MESSAGE_PANEL_VARIANTS: Variants = {
   closed: {
     opacity: 0,
-    scale: 0.985,
-    x: -12,
+    x: 12,
     transition: {
       duration: MOTION_DURATIONS.modalExit,
       ease: MOTION_EASINGS.emphasized,
@@ -37,7 +36,6 @@ const MESSAGE_PANEL_VARIANTS: Variants = {
   },
   open: {
     opacity: 1,
-    scale: 1,
     x: 0,
     transition: {
       duration: MOTION_DURATIONS.modalEnter,
@@ -249,9 +247,12 @@ export function PokeMessageConsumptionInspector({
           </div>
         </div>
         <Icon
-          visual={isOpen ? ChevronUp : ChevronDown}
+          visual={ChevronRight}
           size="xs"
-          className="shrink-0 text-muted-foreground"
+          className={cn(
+            "shrink-0 text-muted-foreground transition-transform duration-150 ease-in-out motion-reduce:transition-none",
+            isOpen && "rotate-180"
+          )}
         />
       </button>
 
@@ -262,7 +263,6 @@ export function PokeMessageConsumptionInspector({
             role="region"
             aria-labelledby={triggerId}
             className="z-10 mt-3 rounded-xl border border-border bg-background shadow-xl xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:mt-0 xl:w-[var(--poke-inspector-width)]"
-            style={{ transformOrigin: "left top" }}
             variants={MESSAGE_PANEL_VARIANTS}
             initial={shouldReduceMotion ? false : "closed"}
             animate="open"

@@ -83,8 +83,12 @@ describe("PokeMessageConsumptionInspector", () => {
       "focus-visible:ring-offset-background"
     );
     expect(trigger).not.toHaveClass("focus-visible:ring-inset");
+    const chevron = trigger.querySelectorAll("svg").item(1);
+    expect(chevron).not.toHaveClass("rotate-180");
 
     fireEvent.click(trigger);
+
+    expect(chevron).toHaveClass("rotate-180");
 
     expect(mockUsePokeMessageConsumption).toHaveBeenLastCalledWith(
       expect.objectContaining({ disabled: false })
