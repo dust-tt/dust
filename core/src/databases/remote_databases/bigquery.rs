@@ -27,6 +27,8 @@ use crate::{
 
 use super::remote_database::{RemoteDatabase, QUERY_TIMEOUT};
 
+const SERVICE_ACCOUNT_REQUIRED_FIELDS: [&str; 3] = ["private_key", "client_email", "token_uri"];
+
 #[derive(Debug)]
 pub struct BigQueryQueryPlan {
     is_select_query: bool,
@@ -696,20 +698,61 @@ pub async fn get_bigquery_remote_database(
         _ => Err(anyhow!("Invalid credentials: project_id not found"))?,
     };
 
-    let sa_key: ServiceAccountKey = serde_json::from_value(serde_json::Value::Object(credentials))
-        .map_err(|e| {
-            QueryDatabaseError::GenericError(anyhow!("Error deserializing credentials: {}", e))
-        })?;
-
-    let client = Client::from_service_account_key(sa_key, false)
-        .await
-        .map_err(|e| {
-            QueryDatabaseError::GenericError(anyhow!("Error creating BigQuery client: {}", e))
-        })?;
+    let client = create_bigquery_client(&credentials).await?;
 
     Ok(Box::new(BigQueryRemoteDatabase {
         project_id,
         location,
         client,
     }))
+}
+
+async fn create_bigquery_client(
+    credentials: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Client, QueryDatabaseError> {
+    let has_service_account_field = SERVICE_ACCOUNT_REQUIRED_FIELDS
+        .iter()
+        .any(|field| credentials.contains_key(*field));
+    let missing_service_account_fields: Vec<&str> = SERVICE_ACCOUNT_REQUIRED_FIELDS
+        .iter()
+        .copied()
+        .filter(|field| !credentials.contains_key(*field))
+        .collect();
+
+    if has_service_account_field {
+        if !missing_service_account_fields.is_empty() {
+            return Err(QueryDatabaseError::GenericError(anyhow!(
+                "Invalid BigQuery credentials: missing service account fields: {}",
+                missing_service_account_fields.join(", ")
+            )));
+        }
+
+        let sa_key: ServiceAccountKey = serde_json::from_value(serde_json::Value::Object(
+            credentials.clone(),
+        ))
+        .map_err(|e| {
+            QueryDatabaseError::GenericError(anyhow!(
+                "Error deserializing BigQuery service account credentials: {}",
+                e
+            ))
+        })?;
+
+        return Client::from_service_account_key(sa_key, false)
+            .await
+            .map_err(|e| {
+                QueryDatabaseError::GenericError(anyhow!(
+                    "Error creating BigQuery client from service account credentials: {}",
+                    e
+                ))
+            });
+    }
+
+    Client::from_application_default_credentials()
+        .await
+        .map_err(|e| {
+            QueryDatabaseError::GenericError(anyhow!(
+                "Error creating BigQuery client from application default credentials: {}",
+                e
+            ))
+        })
 }
