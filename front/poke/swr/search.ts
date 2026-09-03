@@ -6,20 +6,18 @@ import type {
   GetPokeWorkspacesResponseBody,
   PokeWorkspaceType,
 } from "@app/types/api/poke/workspaces";
+import type { CellInfo } from "@app/types/cell";
 import type { PokeItemBase } from "@app/types/poke";
 import type { RegionType } from "@app/types/region";
-import { SUPPORTED_REGIONS } from "@app/types/region";
 import { useEffect, useState } from "react";
 
-// Deduplicate regions by URL. In dev, all regions point to the same localhost
-// server, so without this we would fire one identical request per region and
-// list every workspace once per region.
-function getUniqueRegions(
-  regionUrls: Record<RegionType, string>
-): RegionType[] {
+// Deduplicate cells by URL. In dev, all cells can point to the same localhost
+// server, so without this we would fire one identical request per cell and
+// list every workspace once per cell.
+function getUniqueCells(cells: CellInfo[]): CellInfo[] {
   const seen = new Set<string>();
-  return SUPPORTED_REGIONS.filter((region) => {
-    const url = regionUrls[region];
+  return cells.filter((cell) => {
+    const url = cell.url;
     if (seen.has(url)) {
       return false;
     }
@@ -29,24 +27,24 @@ function getUniqueRegions(
 }
 
 /**
- * Search across all regions in parallel.
- * Returns results tagged with their source region.
+ * Search across all cells in parallel.
+ * Returns results tagged with their source cell and region.
  */
 export function usePokeSearchAllRegions({
   disabled,
   search,
-  regionUrls,
+  cells,
 }: {
   disabled?: boolean;
   search?: string;
-  regionUrls: Record<RegionType, string> | null;
+  cells: CellInfo[] | null;
 }) {
   const [results, setResults] = useState<PokeItemBase[]>(emptyArray());
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
 
   useEffect(() => {
-    if (disabled || !search || !regionUrls) {
+    if (disabled || !search || !cells) {
       setResults(emptyArray());
       setIsLoading(false);
       setIsError(false);
@@ -61,22 +59,24 @@ export function usePokeSearchAllRegions({
 
     const run = async () => {
       try {
-        const regionPromises = getUniqueRegions(regionUrls).map(
-          async (region) => {
-            const baseUrl = regionUrls[region];
-            const url = `${baseUrl}/api/poke/search?${queryParams.toString()}`;
+        const cellPromises = getUniqueCells(cells).map(async (cell) => {
+          const baseUrl = cell.url;
+          const url = `${baseUrl}/api/poke/search?${queryParams.toString()}`;
 
-            const response = await clientFetch(url, { credentials: "include" });
-            if (!response.ok) {
-              throw new Error(`Failed to fetch from ${region}`);
-            }
-
-            const data: GetPokeSearchItemsResponseBody = await response.json();
-            return data.results.map((item) => ({ ...item, region }));
+          const response = await clientFetch(url, { credentials: "include" });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch from ${cell.name}`);
           }
-        );
 
-        const settledResults = await Promise.allSettled(regionPromises);
+          const data: GetPokeSearchItemsResponseBody = await response.json();
+          return data.results.map((item) => ({
+            ...item,
+            cell: cell.name,
+            region: cell.region,
+          }));
+        });
+
+        const settledResults = await Promise.allSettled(cellPromises);
         const allResults: PokeItemBase[] = [];
         let hasErrors = false;
 
@@ -106,7 +106,7 @@ export function usePokeSearchAllRegions({
     return () => {
       cancelled = true;
     };
-  }, [disabled, search, regionUrls]);
+  }, [disabled, search, cells]);
 
   return {
     results,
@@ -115,13 +115,10 @@ export function usePokeSearchAllRegions({
   };
 }
 
-export type PokeWorkspaceWithRegion = PokeWorkspaceType & {
-  region?: RegionType;
-};
+export type PokeWorkspaceWithPlacement = PokeWorkspaceType;
 
 /**
- * Search workspaces across all regions in parallel.
- * Returns workspaces tagged with their source region.
+ * Search workspaces across all cells in parallel.
  */
 export function usePokeWorkspacesAllRegions({
   disabled,
@@ -131,7 +128,7 @@ export function usePokeWorkspacesAllRegions({
   region,
   limit,
   offset,
-  regionUrls,
+  cells,
 }: {
   disabled?: boolean;
   search?: string;
@@ -141,9 +138,9 @@ export function usePokeWorkspacesAllRegions({
   region?: RegionType;
   limit?: number;
   offset?: number;
-  regionUrls: Record<RegionType, string> | null;
+  cells: CellInfo[] | null;
 }) {
-  const [workspaces, setWorkspaces] = useState<PokeWorkspaceWithRegion[]>(
+  const [workspaces, setWorkspaces] = useState<PokeWorkspaceWithPlacement[]>(
     emptyArray()
   );
   const [isLoading, setIsLoading] = useState(false);
@@ -151,7 +148,7 @@ export function usePokeWorkspacesAllRegions({
   const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
-    if (disabled || !regionUrls) {
+    if (disabled || !cells) {
       setWorkspaces(emptyArray());
       setIsLoading(false);
       setIsError(false);
@@ -181,12 +178,14 @@ export function usePokeWorkspacesAllRegions({
       queryParams.set("offset", String(offset));
     }
 
-    const regionsToFetch = region ? [region] : getUniqueRegions(regionUrls);
+    const cellsToFetch = getUniqueCells(cells).filter(
+      (cell) => !region || cell.region === region
+    );
 
     const run = async () => {
       try {
-        const regionPromises = regionsToFetch.map(async (fetchedRegion) => {
-          const baseUrl = regionUrls[fetchedRegion];
+        const cellPromises = cellsToFetch.map(async (cell) => {
+          const baseUrl = cell.url;
           const url = `${baseUrl}/api/poke/workspaces?${queryParams.toString()}`;
 
           const response = await clientFetch(url, {
@@ -194,21 +193,18 @@ export function usePokeWorkspacesAllRegions({
             signal: abortController.signal,
           });
           if (!response.ok) {
-            throw new Error(`Failed to fetch from ${fetchedRegion}`);
+            throw new Error(`Failed to fetch from ${cell.name}`);
           }
 
           const data: GetPokeWorkspacesResponseBody = await response.json();
           return {
-            workspaces: data.workspaces.map((ws) => ({
-              ...ws,
-              region: fetchedRegion,
-            })),
+            workspaces: data.workspaces,
             hasMore: data.hasMore,
           };
         });
 
-        const settledResults = await Promise.allSettled(regionPromises);
-        const allWorkspaces: PokeWorkspaceWithRegion[] = [];
+        const settledResults = await Promise.allSettled(cellPromises);
+        const allWorkspaces: PokeWorkspaceWithPlacement[] = [];
         let hasErrors = false;
         let anyHasMore = false;
 
@@ -240,7 +236,7 @@ export function usePokeWorkspacesAllRegions({
     return () => {
       abortController.abort();
     };
-  }, [disabled, search, upgraded, planType, region, limit, offset, regionUrls]);
+  }, [disabled, search, upgraded, planType, region, limit, offset, cells]);
 
   return {
     workspaces,

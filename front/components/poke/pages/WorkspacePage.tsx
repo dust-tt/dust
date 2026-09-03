@@ -187,7 +187,8 @@ export function WorkspacePage() {
             <span className="text-2xl font-bold">{owner.name}</span>
             {regionData && (
               <Chip size="xs" color={getRegionChipColor(regionData.region)}>
-                {getRegionDisplay(regionData.region)}
+                {regionData.currentCell.name} ·{" "}
+                {getRegionDisplay(regionData.currentCell.region)}
               </Chip>
             )}
           </div>

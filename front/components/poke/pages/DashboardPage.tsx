@@ -20,7 +20,7 @@ import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
-import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
+import type { PokeWorkspaceWithPlacement } from "@app/poke/swr/search";
 import { usePokeWorkspacesAllRegions } from "@app/poke/swr/search";
 import type { RegionType } from "@app/types/region";
 import { SUPPORTED_REGIONS } from "@app/types/region";
@@ -54,16 +54,16 @@ const PLAN_TYPE_FILTER_LABELS: Record<PokePlanTypeFilter, string> = {
 };
 
 interface WorkspaceListProps {
-  workspaces: PokeWorkspaceWithRegion[];
+  workspaces: PokeWorkspaceWithPlacement[];
   isWorkspacesLoading?: boolean;
-  showRegion?: boolean;
-  onWorkspaceClick?: (ws: PokeWorkspaceWithRegion) => void;
+  showCell?: boolean;
+  onWorkspaceClick?: (ws: PokeWorkspaceWithPlacement) => void;
 }
 
 function WorkspaceList({
   workspaces,
   isWorkspacesLoading = false,
-  showRegion = false,
+  showCell = false,
   onWorkspaceClick,
 }: WorkspaceListProps) {
   return isWorkspacesLoading ? (
@@ -75,17 +75,14 @@ function WorkspaceList({
   ) : (
     <ul className="flex flex-wrap gap-4">
       {workspaces.map((ws) => (
-        <div
-          key={`${ws.region ?? "default"}-${ws.id}`}
-          onClick={() => onWorkspaceClick?.(ws)}
-        >
+        <div key={`${ws.cell}-${ws.id}`} onClick={() => onWorkspaceClick?.(ws)}>
           <LinkWrapper href={`/poke/${ws.sId}`}>
             <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-primary-100">
               <div className="flex items-center justify-between pb-2">
                 <h2 className="text-md flex-grow font-bold">{ws.name}</h2>
-                {showRegion && ws.region && (
+                {showCell && (
                   <Chip size="xs" color={getRegionChipColor(ws.region)}>
-                    {getRegionDisplay(ws.region)}
+                    {ws.cell} · {getRegionDisplay(ws.region)}
                   </Chip>
                 )}
               </div>
@@ -153,7 +150,7 @@ export function DashboardPage() {
 }
 
 /**
- * SPA mode: Search workspaces across all regions.
+ * SPA mode: Search workspaces across all cells.
  */
 function DashboardPageSPA() {
   usePokePageMetadata({ name: "Home" });
@@ -161,6 +158,7 @@ function DashboardPageSPA() {
   const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();
   const regionUrls = regionData?.regionUrls ?? null;
+  const cells = regionData?.cells ?? null;
 
   const [planTypeFilter, setPlanTypeFilter] = useState<
     PokePlanTypeFilter | undefined
@@ -194,7 +192,7 @@ function DashboardPageSPA() {
     region: upgradedRegionFilter,
     limit: WORKSPACE_LIMIT,
     offset: upgradedPage * WORKSPACE_LIMIT,
-    regionUrls,
+    cells,
   });
 
   const {
@@ -219,7 +217,7 @@ function DashboardPageSPA() {
     disabled: !searchQuery,
     planType: planTypeFilter,
     limit: WORKSPACE_LIMIT,
-    regionUrls,
+    cells,
   });
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -227,8 +225,8 @@ function DashboardPageSPA() {
   };
 
   const handleWorkspaceClick = useCallback(
-    (ws: PokeWorkspaceWithRegion) => {
-      if (ws.region && ws.region !== regionInfo.name && regionUrls) {
+    (ws: PokeWorkspaceWithPlacement) => {
+      if (ws.region !== regionInfo.name && regionUrls) {
         setRegionInfo({ name: ws.region, url: regionUrls[ws.region] });
       }
     },
@@ -279,7 +277,7 @@ function DashboardPageSPA() {
         <WorkspaceList
           workspaces={searchResults}
           isWorkspacesLoading={isSearchResultsLoading || isDebouncing}
-          showRegion
+          showCell
           onWorkspaceClick={handleWorkspaceClick}
         />
       )}
@@ -331,7 +329,7 @@ function DashboardPageSPA() {
         <WorkspaceList
           workspaces={upgradedWorkspaces}
           isWorkspacesLoading={isUpgradedWorkspacesLoading}
-          showRegion
+          showCell
           onWorkspaceClick={handleWorkspaceClick}
         />
       )}

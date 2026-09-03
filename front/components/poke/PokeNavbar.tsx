@@ -117,11 +117,12 @@ function PokeSearchCommand() {
   const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();
   const regionUrls = regionData?.regionUrls ?? null;
+  const cells = regionData?.cells ?? null;
 
   const { isError, isLoading, results } = usePokeSearchAllRegions({
     disabled: searchTerm.length < MIN_SEARCH_CHARACTERS,
     search: searchTerm,
-    regionUrls,
+    cells,
   });
 
   const handleItemClick = useCallback(
@@ -276,9 +277,9 @@ function PokeSearchCommandUI({
                     <span className="font-mono text-xs text-muted-foreground">
                       (id: {item.id})
                     </span>
-                    {showRegion && item.region && (
+                    {showRegion && item.region && item.cell && (
                       <Chip size="xs" color={getRegionChipColor(item.region)}>
-                        {getRegionDisplay(item.region)}
+                        {item.cell} · {getRegionDisplay(item.region)}
                       </Chip>
                     )}
                   </div>
@@ -287,7 +288,7 @@ function PokeSearchCommandUI({
               </PokeCommandItem>
             );
 
-            const key = `${item.region ?? "default"}-${item.id}`;
+            const key = `${item.cell ?? item.region ?? "default"}-${item.id}`;
 
             return item.link ? (
               <div key={key} onClick={() => onItemClick(item)}>
