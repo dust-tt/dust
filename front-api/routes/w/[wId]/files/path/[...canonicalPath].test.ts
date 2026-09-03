@@ -1,3 +1,6 @@
+// @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib).
+// This directive makes them available in the test environment.
+
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -10,6 +13,7 @@ import {
   frameV2ContentType,
 } from "@app/types/files";
 import { honoApp } from "@front-api/app";
+import AdmZip from "adm-zip";
 import { PassThrough } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,11 +63,12 @@ async function setup() {
 function request(
   workspace: { sId: string },
   canonicalPath: string,
-  init?: RequestInit
+  init?: RequestInit,
+  query = ""
 ) {
   const segments = canonicalPath.split("/").map(encodeURIComponent).join("/");
   return honoApp.request(
-    `/api/w/${workspace.sId}/files/path/${segments}`,
+    `/api/w/${workspace.sId}/files/path/${segments}${query}`,
     init
   );
 }
@@ -171,6 +176,69 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
       /attachment; filename=/
     );
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+});
+
+describe("GET /api/w/:wId/files/path/:canonicalPath?archive=1", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("zips every file under the folder with paths relative to it", async () => {
+    const { workspace, conversation } = await setup();
+
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix.endsWith("/files/my-frame/")
+        ? [
+            {
+              name: `${prefix}manifest.json`,
+              metadata: { contentType: "application/json", size: "2" },
+            },
+            {
+              name: `${prefix}src/index.tsx`,
+              metadata: { contentType: "text/typescript", size: "2" },
+            },
+          ]
+        : null
+    );
+    fileStorageMock.setFileExists((filePath) =>
+      filePath.includes("/files/my-frame/")
+    );
+    fileStorageMock.setFileContent(() => "{}");
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/my-frame`,
+      undefined,
+      "?archive=1"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/zip");
+    expect(response.headers.get("Content-Disposition")).toContain(
+      'filename="my-frame.zip"'
+    );
+
+    const zip = new AdmZip(Buffer.from(await response.arrayBuffer()));
+    expect(
+      zip
+        .getEntries()
+        .map((entry) => entry.entryName)
+        .sort()
+    ).toEqual(["manifest.json", "src/index.tsx"]);
+  });
+
+  it("returns 404 for an empty or missing folder", async () => {
+    const { workspace, conversation } = await setup();
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/nope`,
+      undefined,
+      "?archive=1"
+    );
+
+    expect(response.status).toBe(404);
   });
 });
 

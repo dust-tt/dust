@@ -31,6 +31,7 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import {
   downloadFile,
+  downloadFolderArchive,
   getFilePathViewUrl,
   useDeleteFileByPath,
 } from "@app/lib/swr/files";
@@ -641,7 +642,15 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [owner]
   );
 
-  const onFileDownload = useFileDownload({ getFileResponse });
+  const getFolderArchiveResponse = useCallback(
+    (folderPath: string) => downloadFolderArchive(owner, folderPath),
+    [owner]
+  );
+
+  const onFileDownload = useFileDownload({
+    getFileResponse,
+    getFolderArchiveResponse,
+  });
 
   const handleCloseOverlay = useCallback(() => {
     setActiveOverlay(null);

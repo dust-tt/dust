@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
+  archiveCanonicalFolder,
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
   fetchLinkedFileResource,
@@ -41,6 +42,7 @@ const ParamsSchema = z.object({
  *   GET    /api/w/:wId/files/path/conversation-{cId}/report.pdf         stream inline
  *   GET    /api/w/:wId/files/path/pod-{pId}/data.csv?download=1         stream + Content-Disposition
  *   GET    /api/w/:wId/files/path/conversation-{cId}/photo.png?thumbnail=1  stream thumbnail
+ *   GET    /api/w/:wId/files/path/pod-{pId}/my-frame?archive=1            zip of the folder
  *   HEAD   /api/w/:wId/files/path/{...canonicalPath}                    metadata only
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
@@ -188,7 +190,46 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
 
   const thumbnail = ctx.req.query("thumbnail");
   const download = ctx.req.query("download");
+  const archive = ctx.req.query("archive");
   const previewPdf = ctx.req.query("preview") === "pdf";
+
+  // ?archive=1 downloads the folder at canonicalPath as a zip.
+  if (archive && archive !== "0") {
+    const archiveResult = await archiveCanonicalFolder(dustFs, canonicalPath);
+    if (archiveResult.isErr()) {
+      const e = archiveResult.error;
+      switch (e.code) {
+        case "not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: { type: "file_not_found", message: e.message },
+          });
+        case "too_large":
+          return apiError(ctx, {
+            status_code: 413,
+            api_error: { type: "invalid_request_error", message: e.message },
+          });
+        case "internal":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: { type: "internal_server_error", message: e.message },
+          });
+        default:
+          assertNever(e.code);
+      }
+    }
+
+    const { fileName, content } = archiveResult.value;
+    return new Response(new Uint8Array(content), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": contentDispositionAttachment(fileName),
+        "Content-Length": String(content.length),
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  }
 
   // ?preview=pdf converts Office files to PDF via Gotenberg's LibreOffice route.
   if (previewPdf) {

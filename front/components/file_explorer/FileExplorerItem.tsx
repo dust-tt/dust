@@ -452,6 +452,7 @@ interface FileExplorerFramePackageCardProps {
   searchFolderPath?: string;
   viewMode: ViewMode;
   onOpen: (entry: FramePackageEntry) => void;
+  onDownload: (entry: FramePackageEntry) => Promise<void>;
   extraMenuItems?: FileExplorerMenuAction[];
 }
 
@@ -460,6 +461,7 @@ export function FileExplorerFramePackageCard({
   searchFolderPath,
   viewMode,
   onOpen,
+  onDownload,
   extraMenuItems,
 }: FileExplorerFramePackageCardProps) {
   const title =
@@ -475,6 +477,7 @@ export function FileExplorerFramePackageCard({
       title={title}
       subtitle="Frame"
       onOpen={() => onOpen(entry)}
+      onDownload={() => onDownload(entry)}
       extraMenuItems={extraMenuItems}
     />
   );

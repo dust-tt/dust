@@ -20,6 +20,7 @@ import type {
   FolderEntry,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
+import type { DownloadableEntry } from "@app/components/file_explorer/useFileDownload";
 import {
   buildFolderTree,
   countFoldersInTree,
@@ -52,7 +53,7 @@ interface FileExplorerProps {
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   /** Restricts which entries get a Delete item when `onDelete` is set; all of them by default. */
   canDelete?: (entry: FileExplorerEntry) => boolean;
-  onFileDownload: (entry: FileEntry) => Promise<void>;
+  onFileDownload: (entry: DownloadableEntry) => Promise<void>;
   onMoveFile?: (
     entry: FileEntry,
     parentRelativePath: string
