@@ -345,8 +345,8 @@ export function APIKeysPage() {
             <div className="flex max-w-2xl flex-col gap-1">
               <Page.H variant="h3">Dust API Keys</Page.H>
               <Page.P variant="secondary">
-                Create and manage keys for external services to access the Dust
-                API, track usage, and control monthly spend.
+                Create and manage keys to access the Dust API, track their usage,
+                and control their monthly spend.
               </Page.P>
             </div>
             <ConsumptionPeriodSelector
