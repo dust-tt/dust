@@ -1,8 +1,8 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import type { PokePodDatabase } from "@app/lib/api/poke/projects";
+import type { PokeProjectDatabase } from "@app/lib/api/poke/projects";
 import type { ColumnDef } from "@tanstack/react-table";
 
-export function makeColumnsForProjectPodDatabase(): ColumnDef<PokePodDatabase>[] {
+export function makeColumnsForProjectDatabase(): ColumnDef<PokeProjectDatabase>[] {
   return [
     {
       accessorKey: "name",

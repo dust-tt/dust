@@ -1,32 +1,32 @@
 import type {
-  PokeListProjectPodDatabases,
-  PokePodDatabase,
+  PokeListProjectDatabases,
+  PokeProjectDatabase,
 } from "@app/lib/api/poke/projects";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
-interface UsePokeProjectPodDatabasesProps {
+interface UsePokeProjectDatabasesProps {
   disabled?: boolean;
   owner: LightWorkspaceType;
   projectId: string;
 }
 
-export function usePokeProjectPodDatabases({
+export function usePokeProjectDatabases({
   disabled,
   owner,
   projectId,
-}: UsePokeProjectPodDatabasesProps) {
+}: UsePokeProjectDatabasesProps) {
   const { fetcher } = useFetcher();
-  const podDatabasesFetcher: Fetcher<PokeListProjectPodDatabases> = fetcher;
+  const projectDatabasesFetcher: Fetcher<PokeListProjectDatabases> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/projects/${projectId}/pod-databases`,
-    podDatabasesFetcher,
+    `/api/poke/workspaces/${owner.sId}/projects/${projectId}/databases`,
+    projectDatabasesFetcher,
     { disabled }
   );
 
   return {
-    data: data?.items ?? emptyArray<PokePodDatabase>(),
+    data: data?.items ?? emptyArray<PokeProjectDatabase>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
