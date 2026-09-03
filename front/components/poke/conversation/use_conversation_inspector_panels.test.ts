@@ -120,7 +120,7 @@ describe("useConversationInspectorPanels", () => {
     expect(result.current.isWakeUpsOpen).toBe(true);
   });
 
-  it("hides the sticky rail while the message panel crosses it", () => {
+  it("flushes the sticky rail after the message panel crosses it", () => {
     let messagePanelRect = rect(500, 800);
     const messagePanel = document.createElement("div");
     messagePanel.dataset.messageConsumptionPanelId = "message_1";
@@ -153,7 +153,7 @@ describe("useConversationInspectorPanels", () => {
       `${getMessagePanelTopOffsetPx(800, window.innerHeight)}px`
     );
 
-    messagePanelRect = rect(122, 422);
+    messagePanelRect = rect(119, 419);
     act(() => window.dispatchEvent(new Event("scroll")));
     act(flushAnimationFrame);
 
@@ -240,12 +240,12 @@ describe("useConversationInspectorPanels", () => {
 });
 
 describe("areInspectorPanelsOverlapping", () => {
-  it("uses a small margin so sticky inspectors close before contact", () => {
-    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(191, 400))).toBe(
-      true
-    );
-    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(193, 400))).toBe(
+  it("allows a small overlap before flushing the sticky inspectors", () => {
+    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(168, 400))).toBe(
       false
+    );
+    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(167, 400))).toBe(
+      true
     );
   });
 });

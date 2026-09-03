@@ -1286,25 +1286,36 @@ export function ConversationPage() {
           <div className="grid w-full grid-cols-1 gap-6 py-4 [--poke-inspector-width:28rem] xl:grid-cols-[minmax(0,1fr)_var(--poke-inspector-width)]">
             <aside
               ref={stickyInspectorsRef}
-              aria-hidden={isStickyRailOccluded || undefined}
-              className={cn(
-                "z-20 flex flex-col gap-4 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start",
-                isStickyRailOccluded ? "invisible pointer-events-none" : null
-              )}
+              className="z-20 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start"
               data-sticky-inspectors-occluded={isStickyRailOccluded}
             >
-              <PokeConversationConsumptionInspector
-                conversationId={conversationId}
-                isOpen={isConversationOpen}
-                onOpenChange={setConversationOpen}
-                workspaceId={owner.sId}
-              />
-              <PokeConversationWakeUpsInspector
-                conversationId={conversationId}
-                isOpen={isWakeUpsOpen}
-                onOpenChange={setWakeUpsOpen}
-                owner={owner}
-              />
+              <div
+                aria-hidden={isStickyRailOccluded || undefined}
+                className={cn(
+                  "flex flex-col gap-4 transition-transform ease-move will-change-transform motion-reduce:transition-none",
+                  isStickyRailOccluded
+                    ? "pointer-events-none duration-modal-exit"
+                    : "duration-modal-enter"
+                )}
+                style={{
+                  transform: isStickyRailOccluded
+                    ? "translate3d(0, calc(-100% - 1rem), 0)"
+                    : "translate3d(0, 0, 0)",
+                }}
+              >
+                <PokeConversationConsumptionInspector
+                  conversationId={conversationId}
+                  isOpen={isConversationOpen}
+                  onOpenChange={setConversationOpen}
+                  workspaceId={owner.sId}
+                />
+                <PokeConversationWakeUpsInspector
+                  conversationId={conversationId}
+                  isOpen={isWakeUpsOpen}
+                  onOpenChange={setWakeUpsOpen}
+                  owner={owner}
+                />
+              </div>
             </aside>
             <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
               {conversation.content.map((messages, i) => {

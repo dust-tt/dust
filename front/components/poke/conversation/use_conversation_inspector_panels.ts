@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import { useCallback, useLayoutEffect, useReducer } from "react";
 
-const COLLISION_MARGIN_PX = 12;
+const ALLOWED_INSPECTOR_OVERLAP_PX = 12;
 const DESKTOP_INSPECTOR_MEDIA_QUERY = "(min-width: 1280px)";
 const MESSAGE_PANEL_VIEWPORT_GUTTER_PX = 16;
 
@@ -82,8 +82,8 @@ export function areInspectorPanelsOverlapping(
   messagePanel: Pick<DOMRect, "bottom" | "top">
 ): boolean {
   return (
-    messagePanel.top < stickyPanel.bottom + COLLISION_MARGIN_PX &&
-    messagePanel.bottom > stickyPanel.top - COLLISION_MARGIN_PX
+    messagePanel.top < stickyPanel.bottom - ALLOWED_INSPECTOR_OVERLAP_PX &&
+    messagePanel.bottom > stickyPanel.top + ALLOWED_INSPECTOR_OVERLAP_PX
   );
 }
 
