@@ -194,6 +194,46 @@ describe("FileResource", () => {
       expect(result?.content).toBe(expectedContent);
     });
 
+    it("serves the legacy artifact during a pending v2 conversion", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const frame = await FileFactory.create(auth, null, {
+        contentType: frameV2ContentType,
+        fileName: "manifest.json",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: "conv-conversion",
+          pendingFrameV2Conversion: {
+            legacyContentType: frameContentType,
+            legacyFileName: "Legacy.tsx",
+            legacyFileSize: 1000,
+            legacyMountFilePath: "legacy/Legacy.tsx",
+            legacyRenderableVersion: "processed",
+            legacyUseCase: "conversation",
+            legacyUseCaseMetadata: { conversationId: "conv-conversion" },
+            manifestMountFilePath: "converted/manifest.json",
+            manifestPath:
+              "conversation-conv-conversion/Converted/manifest.json",
+            sourcePath: "conversation-conv-conversion/Legacy.tsx",
+          },
+        },
+      });
+      const read = vi
+        .spyOn(frame, "getSharedReadStream")
+        .mockReturnValue(Readable.from([Buffer.from(expectedContent)]));
+
+      await expect(
+        frame.getRenderableContent(auth.getNonNullableWorkspace())
+      ).resolves.toBe(expectedContent);
+      expect(read).toHaveBeenCalledWith(
+        auth.getNonNullableWorkspace(),
+        "processed"
+      );
+    });
+
     it("should return null for soft-deleted conversation", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",

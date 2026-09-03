@@ -37,7 +37,7 @@ export type FileUseCase =
   // Workspace branding: logo/favicon uploaded by workspace admins.
   | "workspace_branding";
 
-export type FileUseCaseMetadata = {
+type StableFileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
   spaceId?: string;
@@ -68,6 +68,23 @@ export type FileUseCaseMetadata = {
   // activation, so they describe what is served, not what the source folder currently says.
   frameName?: string;
   frameDescription?: string;
+};
+
+export type FileUseCaseMetadata = StableFileUseCaseMetadata & {
+  // Durable v1-to-v2 transition state. Until activation, rendering keeps serving the legacy
+  // artifact. A retry can either finish the conversion or restore the original source binding.
+  pendingFrameV2Conversion?: {
+    legacyContentType: InteractiveContentFileContentType;
+    legacyFileName: string;
+    legacyFileSize: number;
+    legacyMountFilePath: string;
+    legacyRenderableVersion: "original" | "processed";
+    legacyUseCase: FileUseCase;
+    legacyUseCaseMetadata: StableFileUseCaseMetadata;
+    manifestMountFilePath: string;
+    manifestPath: string;
+    sourcePath: string;
+  };
 };
 
 export function isConversationFileUseCase(
