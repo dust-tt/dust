@@ -23,6 +23,7 @@ import {
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeGroups } from "@app/poke/swr/groups";
 import { usePokeAllowedModelTiers } from "@app/poke/swr/model_tiers";
+import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { isCapEligibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -31,6 +32,7 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   AlertCircle,
   Button,
@@ -189,6 +191,18 @@ export function PoolUsagePage() {
 
   const { awuPoolCurrentCycle } = usePokeAwuPoolCurrentCycle({ owner });
   const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
+
+  const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
+  const activeSubscription = workspaceInfo?.activeSubscription;
+  const hasMetronomeContract = activeSubscription?.metronomeContractId != null;
+  const isLegacyPremiumMessagePlan =
+    !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
+  // Users with no pool and no Metronome contract on a legacy plan only have
+  // a premium-message rate limit — no pool/Metronome usage to show. The pool
+  // cards and previous-cycles table would just render empty for them.
+  const isLegacyWithoutPoolOrMetronome =
+    isLegacyPremiumMessagePlan && !hasPool && !hasMetronomeContract;
+  const showPoolSection = !isLegacyWithoutPoolOrMetronome;
 
   const {
     members,
@@ -349,7 +363,7 @@ export function PoolUsagePage() {
       />
 
       <div className="flex flex-col items-stretch gap-10 py-6 pb-20">
-        <PoolCreditCard owner={owner} />
+        {showPoolSection && <PoolCreditCard owner={owner} />}
 
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
