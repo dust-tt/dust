@@ -47,15 +47,6 @@ export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
     capability: { grantType: "publish", resourceType: "frame" },
     resolveTarget: async (_auth) => "everyone",
   },
-  // Dust apps are a legacy feature gated by the `legacy_dust_apps` flag. Only workspaces that
-  // still have it should keep builder-level administration of apps; everywhere else it defaults to
-  // admins-only. The "builders" target degrades to "admins_only" when the workspace has no
-  // Builders group (i.e. no builder-role members), so this naturally lands on builders only for
-  // legacy workspaces that actually have builders.
-  {
-    capability: { grantType: "admin", resourceType: "dust_app" },
-    resolveTarget: async (_auth) => "admins_only",
-  },
   {
     capability: { grantType: "publish", resourceType: "agent" },
     resolveTarget: async (_auth) => "everyone",
