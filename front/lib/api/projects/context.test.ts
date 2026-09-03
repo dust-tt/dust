@@ -1,6 +1,7 @@
 import {
   removeContentNodesFromProject,
   removeFileFromProject,
+  renameProjectFile,
 } from "@app/lib/api/projects/context";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -10,12 +11,62 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
+import { getPodFilesBasePath } from "@app/types/mount_path";
 import { Err } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+describe("renameProjectFile", () => {
+  afterEach(() => {
+    fileStorageMock.reset();
+  });
+
+  it("rejects renaming a folder that contains a Frame", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "user",
+    });
+    const project = await SpaceFactory.project(workspace, user.id);
+    const mountBasePath = getPodFilesBasePath({
+      workspaceId: workspace.sId,
+      podId: project.sId,
+    });
+    const framePath = `${mountBasePath}folder/Legacy.tsx`;
+    await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "Legacy.tsx",
+      fileSize: 123,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: project.sId },
+      mountFilePath: framePath,
+    });
+    fileStorageMock.setFileExists((path) => path === `${mountBasePath}folder/`);
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === `${mountBasePath}folder/`
+        ? [{ name: framePath, metadata: {} }]
+        : []
+    );
+    fileStorageMock.setObject(framePath, "legacy source");
+
+    const result = await renameProjectFile(auth, {
+      space: project,
+      relativeFilePath: "folder",
+      newFileName: "renamed",
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(result.isErr() && result.error.message).toContain(
+      "Folders containing Frames cannot be renamed"
+    );
+    expect(fileStorageMock.getObject(framePath)).toBe("legacy source");
+  });
+});
 
 describe("removeFileFromProject", () => {
   beforeEach(() => {

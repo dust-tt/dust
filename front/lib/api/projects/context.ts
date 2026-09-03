@@ -5,11 +5,11 @@ import {
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { DustFileSystem } from "@app/lib/api/file_system";
+import { renameCanonicalFile } from "@app/lib/api/files/file_system_ops";
 import {
   deleteGCSMountFile,
   moveFile,
   renameGCSMountDirectory,
-  renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
 import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
@@ -694,6 +694,14 @@ export async function renameProjectFile(
       auth,
       mountPaths
     );
+    if (fileResources.some((file) => file.isShareableFrame)) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          "Folders containing Frames cannot be renamed; move each Frame source explicitly."
+        )
+      );
+    }
 
     const renameResult = await renameGCSMountDirectory(
       auth,
@@ -723,33 +731,18 @@ export async function renameProjectFile(
     return new Ok(undefined);
   }
 
-  const podsPrefix = getPodFilesBasePath({
-    workspaceId: owner.sId,
-    podId: space.sId,
-  });
-  const podsGcsPath = `${podsPrefix}${normalized}`;
-
-  const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    podsGcsPath,
-  ]);
-
-  const renameResult = await renameGCSMountFile(
+  const fsResult = await DustFileSystem.forPod(auth, space);
+  if (fsResult.isErr()) {
+    return new Err(fsResult.error);
+  }
+  const renameResult = await renameCanonicalFile(
     auth,
-    { useCase: "pod", podId: space.sId },
-    { relativeFilePath: normalized, newFileName }
+    fsResult.value,
+    podScopedPath(space.sId, normalized),
+    newFileName
   );
-  if (renameResult.isErr()) {
-    return renameResult;
-  }
 
-  if (fileResources.length > 0) {
-    await fileResources[0].renameMountFile(
-      newFileName,
-      renameResult.value.newGcsPath
-    );
-  }
-
-  return new Ok(undefined);
+  return renameResult.isErr() ? new Err(renameResult.error) : new Ok(undefined);
 }
 
 /**

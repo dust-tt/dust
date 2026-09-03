@@ -1,3 +1,4 @@
+import { renameClientExecutableFile } from "@app/lib/api/files/client_executable";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { FileType } from "@app/types/files";
@@ -65,6 +66,23 @@ app.patch(
     }
 
     const { fileName } = ctx.req.valid("json");
+    if (file.isShareableFrame) {
+      const result = await renameClientExecutableFile(auth, {
+        fileId,
+        newFileName: fileName,
+      });
+      if (result.isErr()) {
+        return apiError(ctx, {
+          status_code: 409,
+          api_error: {
+            type: "invalid_request_error",
+            message: result.error.message,
+          },
+        });
+      }
+      return ctx.json({ file: result.value.toJSON(auth) });
+    }
+
     await file.rename(fileName);
 
     return ctx.json({ file: file.toJSON(auth) });
