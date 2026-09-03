@@ -32,7 +32,10 @@ import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective"
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
-import type { MembershipSeatType } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  UserCreditState,
+} from "@app/types/memberships";
 import {
   isPaidSeatType,
   SEAT_TYPE_ORDER,
@@ -42,6 +45,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   AlertCircle,
+  Button,
   Chip,
   Clock,
   CoinsStacked03,
@@ -99,6 +103,7 @@ type RowData = {
   isTotalAllowedUsagePending: boolean;
   isSeatChangePending: boolean;
   overallUsageTarget: CreditUsageTarget | null;
+  creditState: UserCreditState;
   modelTiersSummary: string;
   hasUserLevelModelTiersOverride: boolean;
   menuItems: MenuItem[];
@@ -739,7 +744,21 @@ const offPaceColumn: ColumnDef<RowData, string> = {
   enableSorting: false,
   accessorFn: (row) => row.overallUsageTarget ?? "",
   cell: (info: Info) => {
-    const { overallUsageTarget } = info.row.original;
+    const { overallUsageTarget, creditState } = info.row.original;
+
+    if (creditState === "capped") {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <Button variant="highlight" size="xs" label="Unblock" isSelect />
+          </div>
+        </DataTable.CellContent>
+      );
+    }
+
     if (
       overallUsageTarget !== "elevated" &&
       overallUsageTarget !== "critical"
@@ -770,7 +789,7 @@ const offPaceColumn: ColumnDef<RowData, string> = {
     );
   },
   meta: {
-    className: "w-10",
+    className: "w-28",
     headerAlign: "center",
   },
 };
@@ -1032,6 +1051,7 @@ export function MembersUsageTable({
           ),
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           overallUsageTarget: m.overallUsageTarget,
+          creditState: m.creditState,
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
             switch (variant) {
