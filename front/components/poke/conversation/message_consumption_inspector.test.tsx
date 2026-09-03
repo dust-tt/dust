@@ -1,5 +1,5 @@
 import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -60,7 +60,7 @@ describe("PokeMessageConsumptionInspector", () => {
     });
   });
 
-  it("shows the authoritative total immediately and loads details on expansion", () => {
+  it("shows the authoritative total immediately and loads details on expansion", async () => {
     render(<TestInspector {...defaultProps} />);
 
     expect(screen.getByText("30 credits")).toBeInTheDocument();
@@ -89,9 +89,11 @@ describe("PokeMessageConsumptionInspector", () => {
     fireEvent.click(trigger);
 
     expect(chevron).toHaveClass("rotate-180");
-    expect(
-      document.getElementById("message-message_test-consumption-details")
-    ).toHaveStyle({ transform: "translateX(-12px)" });
+    const panel = document.getElementById(
+      "message-message_test-consumption-details"
+    );
+    expect(panel).toHaveStyle({ transform: "translateX(-24px)" });
+    await waitFor(() => expect(panel).toHaveStyle({ transform: "none" }));
 
     expect(mockUsePokeMessageConsumption).toHaveBeenLastCalledWith(
       expect.objectContaining({ disabled: false })
@@ -108,6 +110,10 @@ describe("PokeMessageConsumptionInspector", () => {
     });
     closeButton.focus();
     fireEvent.click(closeButton);
+
+    await waitFor(() => {
+      expect(panel?.style.transform).toMatch(/^translateX\(-/);
+    });
 
     expect(trigger).toHaveFocus();
     expect(trigger).toHaveAttribute("aria-expanded", "false");

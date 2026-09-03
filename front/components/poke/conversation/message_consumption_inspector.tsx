@@ -28,7 +28,7 @@ import { useCallback, useRef } from "react";
 const MESSAGE_PANEL_VARIANTS: Variants = {
   closed: {
     opacity: 0,
-    x: -12,
+    x: -24,
     transition: {
       duration: MOTION_DURATIONS.modalExit,
       ease: MOTION_EASINGS.emphasized,
