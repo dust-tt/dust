@@ -89,6 +89,9 @@ describe("PokeMessageConsumptionInspector", () => {
     fireEvent.click(trigger);
 
     expect(chevron).toHaveClass("rotate-180");
+    expect(
+      document.getElementById("message-message_test-consumption-details")
+    ).toHaveStyle({ transform: "translateX(-12px)" });
 
     expect(mockUsePokeMessageConsumption).toHaveBeenLastCalledWith(
       expect.objectContaining({ disabled: false })
