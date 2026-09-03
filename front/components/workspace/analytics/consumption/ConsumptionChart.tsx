@@ -221,7 +221,7 @@ function ConsumptionDailyTooltip({
     <ChartTooltipCard
       title={formatConsumptionDate(datum.timestamp)}
       rows={[
-        ...(showActiveUsers && activeUsers
+        ...(showActiveUsers
           ? [
               {
                 key: "activeUsers",

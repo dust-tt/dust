@@ -54,8 +54,8 @@ function timeseries(
     points: [
       {
         timestamp: START_MS,
-        activeUsers: 2,
-        values: { total: 500_000 },
+        activeUsers: 0,
+        values: { total: 0 },
       },
       {
         timestamp: START_MS + DAY_MS,
@@ -214,6 +214,11 @@ describe("consumption active users overlay", () => {
       clientX: Number(activeUsersDot?.getAttribute("cx")),
       clientY: Number(activeUsersDot?.getAttribute("cy")),
     });
+
+    const activeUsersRow = Array.from(
+      container.querySelectorAll('[role="tooltip"] li')
+    ).find((row) => row.textContent?.includes("Active users"));
+    expect(activeUsersRow).toHaveTextContent("0");
 
     const activeDot = container.querySelector(".recharts-active-dot circle");
     expect(activeDot).toHaveClass("text-golden-500");
