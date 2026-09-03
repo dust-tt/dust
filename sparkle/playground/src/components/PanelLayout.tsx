@@ -1,11 +1,11 @@
 import {
   ArrowLeft,
   Button,
-  LayoutLeft,
-  LayoutRight,
+  HideMenu,
   Maximize01,
   Menu01,
   Minimize01,
+  ShowMenu,
   XClose,
 } from "@dust-tt/sparkle";
 import { customColors } from "@dust-tt/sparkle/lib/colors";
@@ -42,8 +42,10 @@ import { allocateFocusPanels, applySplitDrag } from "./panelAllocate";
 // COLUMNS  Stage-width thresholds (constants below) cap how many panels are
 // visible; beyond the cap the upper-most non-focus panel is evicted. The
 // sidebar joins only when it fits on top of the panels and never outlives an
-// evicted panel; when hidden it stays reachable via a toggle button in the
-// leftmost panel and a left-edge hover peek.
+// evicted panel; when hidden it stays reachable as a left-edge hover peek —
+// a shadowed card, inset top and bottom, that leaves when the cursor does. The
+// toggle button in the leftmost panel only restores the inline sidebar when
+// there is room for it; it never pins the overlay open.
 //
 // RESIZING  Dragging a splitter pins the non-focus side at that width (a
 // pinned shared panel stops splitting); the focus panel keeps flexing with
@@ -81,6 +83,14 @@ const FOUR_PANELS_FROM = 2100;
 const NAV_WITH_FOUR_PANELS_FROM = 2400;
 const NAV_CARD_GAP = 6;
 const SPLIT_HANDLE = 1;
+/** How far the hover sidebar slides in from the left edge, in px. Deliberately
+ *  short: over the same 220ms as the fade, a full-width travel spends most of
+ *  its distance while the card is still transparent, so only the opacity
+ *  registers. A small offset stays visible for the whole transition. */
+const NAV_PEEK_SLIDE = 28;
+/** Duration of that slide/fade. Shared by the CSS transition and the timer
+ *  that unmounts the overlay's content once the exit has played. */
+const NAV_PEEK_DURATION_MS = 220;
 
 /** Layout numbers, exported so the Panels demo story documents live values. */
 export const PANEL_LAYOUT_SPEC = {
@@ -487,8 +497,10 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   focusRef.current = effectiveFocus;
 
   const [navIntent, setNavIntent] = useState(true);
-  const [navOverlay, setNavOverlay] = useState(false);
   const [navPeek, setNavPeek] = useState(false);
+  /** Opened from the toggle button when the panels leave no room for the
+   *  inline nav. Cleared as soon as the cursor leaves the overlay. */
+  const [navPinned, setNavPinned] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageW, setStageW] = useState(0);
@@ -600,18 +612,46 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     prevVisibleKey.current = visibleKey;
   }
 
+  // The overlay's content must outlive `showNavOverlay`: unmounting it the
+  // moment the peek ends would empty the card on the first frame of a 220ms
+  // exit, so the content would read as detached from the container sliding
+  // away. Keep it mounted until the transition finishes (or until the inline
+  // nav takes over, which owns the only other copy).
+  const [navExiting, setNavExiting] = useState(false);
+
   const prevNavHidden = useRef(navHidden);
   if (prevNavHidden.current !== navHidden) {
+    // The inline nav takes the content back, so drop any lingering exit copy
+    // too: its transitionend may never fire once the overlay stops animating.
     if (!navHidden)
       Promise.resolve().then(() => {
-        setNavOverlay(false);
         setNavPeek(false);
+        setNavPinned(false);
+        setNavExiting(false);
       });
     prevNavHidden.current = navHidden;
   }
 
-  const showNavOverlay = navHidden && (navOverlay || navPeek);
-  const isPeek = !navOverlay && navPeek && navHidden;
+  const showNavOverlay = navHidden && (navPeek || navPinned);
+
+  const mountNavOverlayContent = navExiting && navHidden;
+
+  // `navExiting` tracks "the overlay still needs its content": true as soon as
+  // it opens, and held for the exit so the card does not empty on the first
+  // frame of the slide-out. A timer rather than transitionend, which never
+  // fires when the overlay is not being composited (a background tab) and
+  // would strand the content mounted.
+  useEffect(() => {
+    if (showNavOverlay) {
+      setNavExiting(true);
+      return;
+    }
+    const timeout = setTimeout(
+      () => setNavExiting(false),
+      NAV_PEEK_DURATION_MS
+    );
+    return () => clearTimeout(timeout);
+  }, [showNavOverlay]);
 
   // Inner card width derived from the model (not measured): during nav
   // show/hide the card animates, and measuring it would retarget the panel
@@ -767,6 +807,10 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   );
 
   // ── Nav toggle ──────────────────────────────────────────────────────────
+  // With room for the inline nav the button restores it. When the panels have
+  // taken that room, the overlay is the only way to show the nav, so the
+  // button opens it — the one case where it is shown without the cursor being
+  // at the left edge. It then behaves like a peek: leaving it closes it.
   const toggleNav = () => {
     if (showNavInline) {
       setNavIntent(false);
@@ -776,7 +820,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       setNavIntent(true);
       return;
     }
-    setNavOverlay((v) => !v);
+    setNavPinned((v) => !v);
   };
 
   // ── Nav show/hide button ────────────────────────────────────────────────
@@ -784,7 +828,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     <Button
       variant="ghost"
       size="sm"
-      icon={isMobile ? Menu01 : showNavOverlay ? LayoutLeft : LayoutRight}
+      icon={isMobile ? Menu01 : showNavOverlay ? HideMenu : ShowMenu}
       onClick={isMobile ? () => setNavIntent(true) : toggleNav}
       tooltip={showNavOverlay ? "Hide navigation" : "Show navigation"}
     />
@@ -835,7 +879,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          icon={LayoutLeft}
+                          icon={HideMenu}
                           onClick={() => setNavIntent(false)}
                           tooltip="Hide navigation"
                         />
@@ -965,65 +1009,59 @@ export function PanelLayout({ children }: PanelLayoutProps) {
             })}
           </div>
 
-          {/* ── Scrim ── */}
-          <div
-            className={[
-              "absolute inset-0 z-40 bg-black/20 transition-opacity duration-200",
-              showNavOverlay && !isPeek
-                ? "pointer-events-auto opacity-100"
-                : "pointer-events-none opacity-0",
-            ].join(" ")}
-            onClick={() => setNavOverlay(false)}
-          />
-
           {/* ── Nav overlay (desktop only) ── */}
+          {/* Hover-only: it opens from the left-edge trigger below and leaves
+              as soon as the cursor exits, so it carries no scrim and no
+              dismiss button — the content behind stays live. It reads as a
+              card floating over that content: inset from the top and bottom,
+              rounded and bordered on its three free edges, and lifted with
+              the same shadow as the content card. It stays flush left so the
+              slide-in still comes from the window edge. */}
           {!isMobile && (
             <div
               className={[
-                "absolute bottom-0 left-0 top-0 z-50 flex flex-col",
-                "bg-app-background",
-                "border-r border-separator",
-                "transition-[transform,opacity] duration-[220ms] ease-[cubic-bezier(.4,0,.2,1)]",
+                "absolute bottom-0 left-0 top-0 z-50 flex flex-col py-3",
+                "transition-[transform,opacity] ease-[cubic-bezier(.4,0,.2,1)]",
                 showNavOverlay
-                  ? "translate-x-0 opacity-100 pointer-events-auto"
-                  : "-translate-x-full opacity-0 pointer-events-none",
-                isPeek
-                  ? "shadow-[4px_0_16px_rgba(0,0,0,0.08)]"
-                  : "shadow-[8px_0_24px_rgba(0,0,0,0.10)]",
+                  ? "opacity-100 pointer-events-auto"
+                  : "opacity-0 pointer-events-none",
               ].join(" ")}
-              style={{ width: navW }}
+              // Inline rather than utilities: the offset is a tuned value and
+              // the duration is shared with the unmount timer, so both live in
+              // constants instead of being restated in class names.
+              style={{
+                width: navW,
+                transitionDuration: `${NAV_PEEK_DURATION_MS}ms`,
+                transform: showNavOverlay
+                  ? "translateX(0)"
+                  : `translateX(-${NAV_PEEK_SLIDE}px)`,
+              }}
               aria-hidden={!showNavOverlay}
               onMouseEnter={() => {
                 if (navHidden) setNavPeek(true);
               }}
-              onMouseLeave={() => setNavPeek(false)}
+              onMouseLeave={() => {
+                setNavPeek(false);
+                setNavPinned(false);
+              }}
             >
-              <PanelTopBar
-                left={navChild?.props.topBarLeft}
-                right={
-                  <>
-                    {navChild?.props.topBarRight}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={XClose}
-                      onClick={() => {
-                        setNavOverlay(false);
-                        setNavPeek(false);
-                      }}
-                      tooltip="Dismiss"
-                    />
-                  </>
-                }
-              />
-              <div className="flex-1 bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
-                {showNavOverlay ? resolvedNavChildren : null}
+              {/* Inner card: the padding above lives on the wrapper so the
+                  shadow and rounding belong to the card, not the full-height
+                  slide container. */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-r-xl border border-l-0 bg-app-background shadow-md">
+                <PanelTopBar
+                  left={navChild?.props.topBarLeft}
+                  right={navChild?.props.topBarRight}
+                />
+                <div className="flex-1 bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
+                  {mountNavOverlayContent ? resolvedNavChildren : null}
+                </div>
               </div>
             </div>
           )}
 
           {/* ── Edge peek trigger (desktop only) ── */}
-          {!isMobile && navHidden && !navOverlay && (
+          {!isMobile && navHidden && (
             <div
               className="absolute bottom-0 left-0 top-0 z-[35] w-2 cursor-pointer"
               onMouseEnter={() => setNavPeek(true)}
