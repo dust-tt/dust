@@ -728,6 +728,26 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async createNotionWebhookRegistration(connectorId: string): Promise<
+    ConnectorsAPIResponse<{
+      expiresAt: string;
+      notionWorkspaceId: string;
+      registrationToken: string;
+    }>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/${encodeURIComponent(
+        connectorId
+      )}/notion/webhook_registration`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async getWebhookRouterEntry({
     provider,
     providerWorkspaceId,

@@ -46,34 +46,48 @@ app.get(
       });
     }
 
+    if (!dataSource.canAdministrate(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only workspace administrators can configure Notion webhooks.",
+        },
+      });
+    }
+
+    ctx.header("Cache-Control", "no-store");
+
     const connectorAPIConfig = config.getConnectorsAPIConfig();
     const connectorsAPI = new ConnectorsAPI(connectorAPIConfig, logger);
 
-    // Get the Notion workspace ID.
-    const workspaceIdRes = await connectorsAPI.getNotionWorkspaceId(
+    const registrationRes = await connectorsAPI.createNotionWebhookRegistration(
       dataSource.connectorId
     );
 
-    if (workspaceIdRes.isErr()) {
+    if (registrationRes.isErr()) {
       logger.error(
         {
           connectorId: dataSource.connectorId,
-          error: workspaceIdRes.error,
+          error: registrationRes.error,
         },
-        "Failed to get Notion workspace ID"
+        "Failed to create Notion webhook registration"
       );
       return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "Failed to get Notion workspace ID",
-          connectors_error: workspaceIdRes.error,
+          message: "Failed to create Notion webhook registration",
+          connectors_error: registrationRes.error,
         },
       });
     }
 
-    const notionWorkspaceId = workspaceIdRes.value.notionWorkspaceId;
-    const webhookUrl = `https://webhook-router.dust.tt/notion/${notionWorkspaceId}`;
+    const { notionWorkspaceId, registrationToken } = registrationRes.value;
+    const webhookUrl = `https://webhook-router.dust.tt/notion/${encodeURIComponent(
+      notionWorkspaceId
+    )}/${encodeURIComponent(registrationToken)}`;
 
     // Try to get the verification token from the webhooks router.
     const webhookRouterRes = await connectorsAPI.getWebhookRouterEntry({

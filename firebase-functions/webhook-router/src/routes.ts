@@ -70,7 +70,22 @@ export function createRoutes(
     webhookRouterConfigManager,
     true
   );
-  router.use("/notion/:providerWorkspaceId", notionInternalIntegrationRoutes);
+  router.use(
+    "/notion/:providerWorkspaceId/:registrationToken",
+    notionInternalIntegrationRoutes
+  );
+
+  // Keep existing private-integration webhook URLs working for signed events,
+  // but never allow the unauthenticated legacy route to set a signing secret.
+  const notionLegacyInternalIntegrationRoutes = createNotionRoutes(
+    secretManager,
+    webhookRouterConfigManager,
+    true
+  );
+  router.use(
+    "/notion/:providerWorkspaceId",
+    notionLegacyInternalIntegrationRoutes
+  );
 
   const shopifyRoutes = createShopifyRoutes(secretManager);
   router.use("/:webhookSecret/shopify", webhookSecretValidation, shopifyRoutes);
