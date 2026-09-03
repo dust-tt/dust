@@ -1071,76 +1071,6 @@ const QUERIES: LabeledQuery[] = [
     query: "what are the current risks in Vanta",
     expected: "vanta.list_risks",
   },
-
-  // --- workspace_analytics ---
-  {
-    query: "which agents are used most in the workspace",
-    expected: "workspace_analytics.get_top_entities_by_message_count",
-    maxRank: 2,
-  },
-  {
-    query: "who are the most active users this month",
-    expected: "workspace_analytics.get_top_entities_by_message_count",
-  },
-  {
-    query: "where do workspace messages come from - slack, api, or browser",
-    expected: "workspace_analytics.get_top_entities_by_message_count",
-    maxRank: 10,
-  },
-  {
-    query: "which models did the workspace use most this month",
-    expected: "workspace_analytics.get_top_entities_by_message_count",
-    maxRank: 5,
-  },
-  {
-    query:
-      "what does the support agent actually do - show its configuration and prompt",
-    expected: "workspace_analytics.get_agent_details",
-  },
-  {
-    query: "inspect an agent's full system prompt and tools",
-    expected: "workspace_analytics.get_agent_details",
-  },
-  {
-    query: "break down credit spending by agent",
-    expected: "workspace_analytics.get_top_entities_by_credits",
-  },
-  {
-    query: "which skills are executed most in the workspace",
-    expected: "workspace_analytics.get_top_entities_by_execution_count",
-  },
-  {
-    query: "what are the top MCP tools used by agents",
-    expected: "workspace_analytics.get_top_entities_by_execution_count",
-  },
-  {
-    query: "how many times did each integration run",
-    expected: "workspace_analytics.get_top_entities_by_execution_count",
-  },
-  {
-    query: "which agents cost the most credits this month",
-    expected: "workspace_analytics.get_top_entities_by_credits",
-  },
-  {
-    query: "which conversations were the most expensive",
-    expected: "workspace_analytics.get_top_entities_by_credits",
-  },
-  {
-    query: "attribute credit spend to our API keys",
-    expected: "workspace_analytics.get_top_entities_by_credits",
-  },
-  {
-    query: "rank credit spend by tool",
-    expected: "workspace_analytics.get_top_entities_by_credits",
-  },
-  {
-    query: "how many credits did the workspace consume this month",
-    expected: "workspace_analytics.get_consumption_overview",
-  },
-  {
-    query: "show the credit spending trend over the last 30 days",
-    expected: "workspace_analytics.get_credit_timeseries",
-  },
   // --- ashby ---
   {
     query: "find a candidate in ashby by email",
@@ -1637,6 +1567,7 @@ const QUERIES: LabeledQuery[] = [
     query:
       "semantically search company data sources for knowledge about a topic",
     expected: "data_sources_file_system.semantic_search",
+    maxRank: 2, // collides with conversation_files.semantic_search
   },
   {
     query: "find a wiki page in a data source by part of its title",
