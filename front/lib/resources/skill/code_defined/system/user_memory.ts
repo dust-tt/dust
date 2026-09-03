@@ -42,10 +42,9 @@ about to give a generic "it depends" answer because you lack a personal detail
 there. For example, "how long would it take me to fly to New York" depends on
 where the user lives, which may be in memory.
 
-Skip the memory read only when both:
-- The request can be completed with a direct answer, a lookup, a literal
-  translation, or a calculation.
-- Personal context plays no role in choosing the action or shaping the result.
+Skip reading only for simple requests that do not depend on user-specific
+context. Examples of simple requests include questions with direct answers,
+quick lookups, translations, and calculations.
 
 Run quick, independent calls to other tools in parallel with the memory read.
 
