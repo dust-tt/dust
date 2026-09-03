@@ -1715,7 +1715,7 @@ export async function updateAgentPermissions(
 
     // Editors get access to the agent's private data (prompt, skills, knowledge), so editor changes
     // are audited. `actor_added_self` flags an admin granting themselves that access.
-    const actorUserSId = auth.user()?.sId;
+    const actorUserId = auth.user()?.sId;
     void emitAuditLogEvent({
       auth,
       action: "agent.editors_updated",
@@ -1730,8 +1730,8 @@ export async function updateAgentPermissions(
         added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
         removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
         actor_added_self: String(
-          actorUserSId !== undefined &&
-            usersToAdd.some((u) => u.sId === actorUserSId)
+          actorUserId !== undefined &&
+            usersToAdd.some((u) => u.sId === actorUserId)
         ),
       },
     });
