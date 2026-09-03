@@ -40,6 +40,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -200,6 +201,53 @@ export async function trackProgrammaticUsageActivity(
   return { tracked: false, origin: userMessageOrigin };
 }
 
+// Bounds how many parent-conversation hops we'll walk to find the human who
+// ultimately triggered a message with no direct user attribution
+const MAX_ORIGINATING_USER_TRACE_HOPS = 5;
+
+async function resolveOriginatingUserId(
+  workspace: { id: ModelId },
+  startUserMessage: UserMessageModel | undefined
+): Promise<string | null> {
+  let current = startUserMessage;
+  for (let hop = 0; hop < MAX_ORIGINATING_USER_TRACE_HOPS; hop++) {
+    if (!current?.agenticOriginMessageId) {
+      return null;
+    }
+
+    let messageRow = await MessageModel.findOne({
+      where: {
+        sId: current.agenticOriginMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    for (
+      let parentHop = 0;
+      parentHop < MAX_ORIGINATING_USER_TRACE_HOPS &&
+      messageRow &&
+      !messageRow.userMessageId;
+      parentHop++
+    ) {
+      messageRow = messageRow.parentId
+        ? await MessageModel.findByPk(messageRow.parentId)
+        : null;
+    }
+    if (!messageRow?.userMessageId) {
+      return null;
+    }
+
+    current =
+      (await UserMessageModel.findOne({
+        where: { id: messageRow.userMessageId, workspaceId: workspace.id },
+        include: [{ model: UserModel, required: false }],
+      })) ?? undefined;
+    if (current?.user) {
+      return current.user.sId;
+    }
+  }
+  return null;
+}
+
 /**
  * Emit the aggregated Metronome usage event (LLM + tool cost) for an agent
  * message. Called for ALL messages (not just programmatic) — always-on,
@@ -269,7 +317,9 @@ export async function emitMetronomeUsageEventsActivity(
   // pod_manager sub-conversations where the DB row has no user but the auth
   // still carries the original session user).
   const userId =
-    userMessageRow?.userMessage?.user?.sId ?? auth.user()?.sId ?? null;
+    userMessageRow?.userMessage?.user?.sId ??
+    auth.user()?.sId ??
+    (await resolveOriginatingUserId(workspace, userMessageRow?.userMessage));
 
   // Determine if the user holds a free seat. Free-seat events use a prefixed
   // user_id ("free-<sId>") so Metronome's free-credit specifier only drains
