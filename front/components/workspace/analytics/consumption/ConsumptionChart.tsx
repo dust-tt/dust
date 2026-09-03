@@ -41,23 +41,23 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ConsumptionBurnUpChart } from "./ConsumptionBurnUpChart";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
-const TODAY_PARTIAL_LABEL = "Today (partial)";
+const CURRENT_BUCKET_LABELS: Record<ConsumptionGranularity, string> = {
+  day: "Today",
+  week: "This week",
+  month: "This month",
+};
 
 // Renders the reference line's label as a pill with the same fill as the
 // line itself, since the default text-only label has no background.
-interface TodayPartialLabelProps {
-  viewBox?: RechartsLabelProps["viewBox"];
-}
-
-function TodayPartialLabel({ viewBox }: TodayPartialLabelProps) {
+function PartialLabel({ viewBox, value }: RechartsLabelProps) {
   const textRef = useRef<SVGTextElement>(null);
   const [textWidth, setTextWidth] = useState(0);
 
   useLayoutEffect(() => {
-    if (textRef.current) {
+    if (value !== undefined && textRef.current) {
       setTextWidth(textRef.current.getComputedTextLength());
     }
-  }, []);
+  }, [value]);
 
   if (!viewBox || !("x" in viewBox)) {
     return null;
@@ -91,13 +91,13 @@ function TodayPartialLabel({ viewBox }: TodayPartialLabelProps) {
         dominantBaseline="central"
         className="fill-background text-xs"
       >
-        {TODAY_PARTIAL_LABEL}
+        {value}
       </text>
     </g>
   );
 }
 
-// The bucket in progress (if mapped to today) is drawn faded across every series.
+// The bucket in progress is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
 
 const CONSUMPTION_CHART_COLORS = [
@@ -138,6 +138,7 @@ interface ConsumptionDailyTooltipProps
   groups: ConsumptionTimeseriesGroup[];
   colorByGroupKey: Map<string, string>;
   partialTimestamp: number | undefined;
+  currentBucketLabel: string;
 }
 
 function ConsumptionDailyTooltip({
@@ -146,14 +147,15 @@ function ConsumptionDailyTooltip({
   groups,
   colorByGroupKey,
   partialTimestamp,
+  currentBucketLabel,
 }: ConsumptionDailyTooltipProps) {
   const datum = payload?.[0]?.payload;
   if (!active || !isConsumptionTimeseriesPoint(datum)) {
     return null;
   }
 
-  // The partialTimestamp points to the bucket in progress (if mapped to today).
-  // So every buckets after that are in the future, and are expected to be empty,
+  // The partialTimestamp points to the bucket in progress. Every bucket after
+  // that is in the future and expected to be empty,
   // hence nothing to show.
   if (partialTimestamp !== undefined && datum.timestamp > partialTimestamp) {
     return null;
@@ -185,7 +187,7 @@ function ConsumptionDailyTooltip({
       }))}
       footer={
         isPartial
-          ? `${formatCredits(totalCredits)} so far today`
+          ? `${formatCredits(totalCredits)} so far ${currentBucketLabel.toLowerCase()}`
           : `${formatCredits(totalCredits)} total`
       }
     />
@@ -243,6 +245,10 @@ export function ConsumptionDailyChart({
     () => findPartialTimestamp(chartData),
     [chartData]
   );
+  const currentBucketLabel =
+    CURRENT_BUCKET_LABELS[
+      timeseries?.granularity ?? DEFAULT_CONSUMPTION_GRANULARITY
+    ];
 
   const renderTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
@@ -251,9 +257,10 @@ export function ConsumptionDailyChart({
         groups={orderedGroups}
         colorByGroupKey={colorByGroupKey}
         partialTimestamp={partialTimestamp}
+        currentBucketLabel={currentBucketLabel}
       />
     ),
-    [orderedGroups, colorByGroupKey, partialTimestamp]
+    [orderedGroups, colorByGroupKey, partialTimestamp, currentBucketLabel]
   );
 
   const legendItems: LegendItem[] = orderedGroups.map((group) => ({
@@ -343,7 +350,11 @@ export function ConsumptionDailyChart({
             x={partialTimestamp}
             stroke="var(--color-primary)"
             strokeDasharray="5 5"
-            label={{ position: "top", content: TodayPartialLabel }}
+            label={{
+              position: "top",
+              value: `${currentBucketLabel} (partial)`,
+              content: PartialLabel,
+            }}
             ifOverflow="extendDomain"
           />
         )}
