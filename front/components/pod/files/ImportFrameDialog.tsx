@@ -1,6 +1,7 @@
 import { useImportFolderArchive } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -9,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Upload01,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -87,12 +89,16 @@ export function ImportFrameDialog({
             extracted into a new folder here.
           </DialogDescription>
         </DialogHeader>
-        <DialogContainer>
-          <div className="flex flex-col gap-3">
+        <DialogContainer className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="label-xs uppercase text-muted-foreground dark:text-muted-foreground-night">
+              Frame archive (.zip)
+            </span>
             <input
               ref={fileInputRef}
               type="file"
               accept=".zip,application/zip"
+              className="hidden"
               onChange={(e) => {
                 const selected = e.target.files?.[0] ?? null;
                 setArchive(selected);
@@ -101,6 +107,18 @@ export function ImportFrameDialog({
                 }
               }}
             />
+            <Button
+              label={archive ? archive.name : "Choose archive"}
+              icon={Upload01}
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="label-xs uppercase text-muted-foreground dark:text-muted-foreground-night">
+              Folder name
+            </span>
             <Input
               placeholder="Folder name"
               value={folderName}
