@@ -300,6 +300,49 @@ export async function writeFileContentByPath({
   }
 }
 
+/** Delete the file or folder at `canonicalPath`; Frame manifests run the package-aware deletion. */
+export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+
+  return async (canonicalPath: string): Promise<Result<void, Error>> => {
+    try {
+      const encoded = canonicalPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/path/${encoded}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to delete file",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: "File deleted",
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to delete file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
 export function useWriteFileContentByPath({
   owner,
 }: {

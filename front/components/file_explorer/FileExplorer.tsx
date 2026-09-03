@@ -50,6 +50,8 @@ interface FileExplorerProps {
   isLoading: boolean;
   onCurrentFolderChange: (relativePath: string) => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
+  /** Restricts which entries get a Delete item when `onDelete` is set; all of them by default. */
+  canDelete?: (entry: FileExplorerEntry) => boolean;
   onFileDownload: (entry: FileEntry) => Promise<void>;
   onMoveFile?: (
     entry: FileEntry,
@@ -80,6 +82,7 @@ export function FileExplorer({
   isLoading,
   onCurrentFolderChange,
   onDelete,
+  canDelete,
   onFileDownload,
   onMoveFile,
   onOpenInteractive,
@@ -151,7 +154,7 @@ export function FileExplorer({
             setActiveFilter("all");
           },
         });
-        if (onDelete) {
+        if (onDelete && (canDelete?.(entry) ?? true)) {
           items.push({
             label: "Delete",
             icon: Trash01,
@@ -190,7 +193,7 @@ export function FileExplorer({
           },
         });
       }
-      if (onDelete) {
+      if (onDelete && (canDelete?.(entry) ?? true)) {
         items.push({
           label: entry.kind === "node" ? "Remove" : "Delete",
           icon: Trash01,
@@ -204,6 +207,7 @@ export function FileExplorer({
       return items;
     },
     [
+      canDelete,
       getExtraFileMenuItems,
       onCurrentFolderChange,
       onDelete,

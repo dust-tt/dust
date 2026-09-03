@@ -29,10 +29,13 @@ import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
+import {
+  downloadFile,
+  getFilePathViewUrl,
+  useDeleteFileByPath,
+} from "@app/lib/swr/files";
 import {
   useAddPodContextContentNodes,
-  useDeletePodFile,
   useMovePodFile,
   usePodContextAttachments,
   usePodFiles,
@@ -411,10 +414,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [contentNodeAttachments, connectorProviderByDsvId]
   );
 
-  const deletePodFile = useDeletePodFile({
-    owner,
-    podId: pod.sId,
-  });
+  const deletePodFile = useDeleteFileByPath({ owner });
 
   const removePodContextContentNodes = useRemovePodContextContentNodes({
     owner,
