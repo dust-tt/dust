@@ -1840,6 +1840,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
+    // Check if all requested users are active members of the group.
     const groupMembershipCount = await GroupMembershipModel.count({
       where: {
         groupId: this.id,

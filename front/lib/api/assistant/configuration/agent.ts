@@ -628,6 +628,7 @@ export async function createAgentConfiguration(
 
   let userFavorite = false;
 
+  // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.
   let removedEditors: UserType[] = [];
   // The scope the agent has before this write. A new agent starts hidden, so saving it
   // visible counts as publishing.
@@ -1411,7 +1412,7 @@ async function deleteAgentIdentityIfUnused(
     return;
   }
 
-  await agent.deletePermissions(auth, { transaction });
+  await agent.destroyPermissionsAndGroups(auth, { transaction });
   await AgentModel.destroy({
     where: { sId: agent.sId, workspaceId },
     transaction,

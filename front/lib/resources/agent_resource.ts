@@ -155,7 +155,11 @@ export class AgentResource implements WithAccessControl {
     }
   }
 
-  async deletePermissions(
+  /**
+   * Deletes the agent's permission rows and their regular_auto groups.
+   * Only call after deleting the last configuration of the logical agent.
+   */
+  async destroyPermissionsAndGroups(
     auth: Authenticator,
     { transaction }: { transaction: Transaction }
   ): Promise<void> {
