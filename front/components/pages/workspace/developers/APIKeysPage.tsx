@@ -343,10 +343,10 @@ export function APIKeysPage() {
         title={
           <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div className="flex max-w-2xl flex-col gap-1">
-              <Page.H variant="h3">API Keys</Page.H>
+              <Page.H variant="h3">Dust API Keys</Page.H>
               <Page.P variant="secondary">
-                Create and manage API keys, track what they consume, and control
-                their monthly spend.
+                Create and manage keys for accessing the Dust API, track usage,
+                and control monthly spend.
               </Page.P>
             </div>
             <ConsumptionPeriodSelector
