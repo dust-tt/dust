@@ -41,7 +41,7 @@ const MODEL_TIER_LOCKED_TOOLTIP =
   "Contact your administrator to get access.";
 
 export function getDegradedModelTooltip(displayName: string): string {
-  return `${displayName} is sometimes failing right now. You may want to select another one.`;
+  return `${displayName} is unreliable right now. You may want to select another model.`;
 }
 
 // The three primary picks of the model picker. Each tier is backed by a

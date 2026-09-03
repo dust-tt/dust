@@ -17,9 +17,6 @@ export function DegradedModelIcon({ icon }: DegradedModelIconProps) {
   );
 }
 
-// Standalone version of the badge above: the same filled `info` disc with the
-// glyph knocked out in white (InfoCircle draws its ring just inside the icon
-// box, so the disc is inset by a hair — mirrors DoubleIcon's filled badge).
 export function DegradedInfoIcon() {
   return (
     <span className="relative flex h-5 w-5">

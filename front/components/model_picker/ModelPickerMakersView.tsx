@@ -55,8 +55,6 @@ export function ModelPickerMakersView({
     <>
       {makerGroups.map((maker) => {
         const makerLogo = getModelMakerLogo(maker.makerId, isDark);
-        // Surface the degradation on the collapsed maker row so the member
-        // doesn't have to open every submenu to spot an affected model.
         const hasDegradedModel = maker.models.some((model) =>
           degradedModelIds.has(model.modelId)
         );
