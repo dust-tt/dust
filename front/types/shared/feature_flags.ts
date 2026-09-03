@@ -177,11 +177,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "flvndvd",
   },
-  xai_feature: {
-    description: "Access to xAI models in the agent builder",
-    stage: "self_serve",
-    owner: "fontanierh",
-  },
   noop_model_feature: {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
