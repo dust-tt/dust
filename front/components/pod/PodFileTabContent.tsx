@@ -5,10 +5,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileMetadataFromPath } from "@app/lib/swr/files";
 import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
 import type { RichSpaceType } from "@app/types/api/spaces";
-import {
-  isInteractiveContentType,
-  stripMimeParameters,
-} from "@app/types/files";
+import { isFrameContentType, stripMimeParameters } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
@@ -33,7 +30,7 @@ export function PodFileTabContent({
 
   const isFrame =
     !!metadata?.contentType &&
-    isInteractiveContentType(stripMimeParameters(metadata.contentType));
+    isFrameContentType(stripMimeParameters(metadata.contentType));
 
   // Frames still load via the processed renderable bundle; other previewable
   // files reuse the shared file preview stack (including markdown edit).
