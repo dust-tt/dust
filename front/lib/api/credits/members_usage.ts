@@ -184,10 +184,6 @@ export type MemberUsageType = {
   // (free/trial) where a fair-use limit is set. Null when the plan carries no
   // fair-use limit (limit === -1) or when not requested. Poke-only.
   fairUse?: MemberFairUseUsage | null;
-  // Per-user weekly premium-model message usage. Applies to legacy (non
-  // credit-priced) plans, which enforce a rate limit on premium-tier-model
-  // messages instead of an AWU credit pool. Null when the plan is
-  // credit-priced or when not requested. Poke-only.
   premiumMessageUsage?: PremiumModelMessageUsage | null;
 };
 
@@ -2381,9 +2377,6 @@ export async function getMembersUsage({
     }
   }
 
-  // Bulk-fetch each user's weekly premium-model message usage (poke-only).
-  // Only legacy (non credit-priced) plans enforce this rate limit, so it's
-  // skipped entirely for credit-priced workspaces.
   const premiumMessageUsageByUserId = new Map<
     string,
     PremiumModelMessageUsage | null

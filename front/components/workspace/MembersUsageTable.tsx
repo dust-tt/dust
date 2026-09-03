@@ -749,9 +749,6 @@ function buildPoolCreditUsageColumn(
   };
 }
 
-// Legacy (non credit-priced) plans have no AWU credit pool — they enforce a
-// weekly rate limit on premium-tier-model messages instead. This replaces
-// `buildPoolCreditUsageColumn` for those workspaces.
 const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
   id: "premiumMessageUsage" as const,
   header: () => (
@@ -1101,9 +1098,6 @@ interface MembersUsageTableProps {
   // Whether the workspace has an active credit pool. Only affects the
   // "compact" (poke) variant's credit column header.
   hasPool?: boolean;
-  // Legacy (non credit-priced) workspaces with no pool or Metronome
-  // contract: swaps the credit-pool column for a premium-message-usage
-  // column, and hides the credit-pace warning column.
   showPremiumMessageUsage?: boolean;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
   userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
