@@ -54,8 +54,6 @@ export class AgentResource implements WithAccessControl {
       "agentId" | "authorId" | "sId" | "scope" | "workspaceId"
     >
   ): AgentResource {
-    assert(configuration.scope !== "global");
-
     return new AgentResource(
       configuration.agentId,
       configuration.sId,
