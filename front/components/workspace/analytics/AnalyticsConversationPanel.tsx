@@ -11,38 +11,60 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
 import { useAnalyticsConversation } from "@app/hooks/useAnalyticsConversation";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { timeAgoFrom } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type {
+  ConversationListItemType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
+  ArrowLeft,
   Button,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  Icon,
+  ConversationPicker,
   Robot,
   Spinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   XClose,
 } from "@dust-tt/sparkle";
+
 import { useMemo } from "react";
 
 interface AnalyticsConversationPanelHeaderProps {
   onClose: () => void;
+  onBack?: () => void;
 }
 
 function AnalyticsConversationPanelHeader({
   onClose,
+  onBack,
 }: AnalyticsConversationPanelHeaderProps) {
   return (
     <div className="flex h-14 w-full items-center justify-between px-2">
-      <div className="flex min-w-0 items-center gap-1.5 px-2">
-        <Icon visual={Robot} size="sm" className="shrink-0" />
-        <span className="line-clamp-1 text-sm font-medium">Analyst</span>
-      </div>
+      {onBack && (
+        <Button
+          icon={ArrowLeft}
+          size="sm"
+          variant="ghost-secondary"
+          tooltip="Back to conversations"
+          onClick={onBack}
+        />
+      )}
+      <Tabs value="analyst">
+        <TabsList>
+          <TabsTrigger value="analyst" label="Analyst" icon={Robot} />
+        </TabsList>
+      </Tabs>
       <Button
         icon={XClose}
         size="sm"
@@ -85,10 +107,13 @@ function AnalyticsConversationGreeting({
 interface AnalyticsConversationPanelBodyProps {
   owner: WorkspaceType;
   user: UserType;
-  conversation: ConversationType | null;
+  conversation: ConversationWithoutContentType | null;
+  isConversationLoading: boolean;
+  pastConversations: ConversationListItemType[];
   createConversation: ReturnType<
     typeof useAnalyticsConversation
   >["createConversation"];
+  pickConversation: (conversationId: string) => void;
   resetConversation: () => void;
   disabled: boolean;
 }
@@ -97,7 +122,10 @@ function AnalyticsConversationPanelBody({
   owner,
   user,
   conversation,
+  isConversationLoading,
+  pastConversations,
   createConversation,
+  pickConversation,
   resetConversation,
   disabled,
 }: AnalyticsConversationPanelBodyProps) {
@@ -157,16 +185,29 @@ function AnalyticsConversationPanelBody({
               agentBuilderContext={analystAgentContext}
               key={conversation.sId}
             />
+          ) : isConversationLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Spinner size="md" />
+            </div>
           ) : (
             <div className="mx-auto w-full max-w-conversation px-5 pt-6 md:pt-10">
               <AnalyticsConversationGreeting
                 agentConfiguration={analystAgentConfiguration}
               />
+              <ConversationPicker
+                className="mt-4"
+                items={pastConversations.map((pastConversation) => ({
+                  id: pastConversation.sId,
+                  title: getConversationDisplayTitle(pastConversation),
+                  timeLabel: timeAgoFrom(pastConversation.updated),
+                }))}
+                onPick={pickConversation}
+              />
             </div>
           )}
         </div>
 
-        {!conversation && (
+        {!conversation && !isConversationLoading && (
           <div className="relative z-20 mx-auto flex w-full flex-shrink-0 flex-col px-5 pt-4 pb-6 md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1">
             <InputBar
               owner={owner}
@@ -214,13 +255,22 @@ export function AnalyticsConversationPanel({
   onClose,
   disabled = false,
 }: AnalyticsConversationPanelProps) {
-  const { conversation, createConversation, resetConversation } =
-    useAnalyticsConversation({ owner, user });
+  const {
+    conversation,
+    isConversationLoading,
+    pastConversations,
+    createConversation,
+    pickConversation,
+    resetConversation,
+  } = useAnalyticsConversation({ owner, user, disabled });
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       <div className="sticky top-0 z-10 flex items-center border-b border-border bg-panel-background/80 backdrop-blur-sm">
-        <AnalyticsConversationPanelHeader onClose={onClose} />
+        <AnalyticsConversationPanelHeader
+          onClose={onClose}
+          onBack={conversation ? resetConversation : undefined}
+        />
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         <FilePreviewProvider owner={owner}>
@@ -234,7 +284,10 @@ export function AnalyticsConversationPanel({
                   owner={owner}
                   user={user}
                   conversation={conversation}
+                  isConversationLoading={isConversationLoading}
+                  pastConversations={pastConversations}
                   createConversation={createConversation}
+                  pickConversation={pickConversation}
                   resetConversation={resetConversation}
                   disabled={disabled}
                 />
