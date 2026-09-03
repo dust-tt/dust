@@ -2374,12 +2374,12 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
   typeof GetWorkspaceFeatureFlagsResponseSchema
 >;
 
-export const GetSpaceGroupIdsResponseSchema = z.object({
+export const GetAutoGroupIdsForSpacesResponseSchema = z.object({
   groupIds: z.string().array(),
 });
 
-export type GetSpaceGroupIdsResponseType = z.infer<
-  typeof GetSpaceGroupIdsResponseSchema
+export type GetAutoGroupIdsForSpacesResponseType = z.infer<
+  typeof GetAutoGroupIdsForSpacesResponseSchema
 >;
 
 export const PublicPostMessagesRequestBodySchema = z.intersection(

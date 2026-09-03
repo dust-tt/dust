@@ -904,16 +904,3 @@ export async function createSpaceAndGroup(
   }
   return result;
 }
-
-export async function listSpaceMemberGroupIds(
-  auth: Authenticator,
-  { spaceIds }: { spaceIds: string[] }
-): Promise<string[]> {
-  const spaces = await SpaceResource.fetchByIds(auth, spaceIds);
-  const spaceMemberGroups = await SpaceResource.listMemberGroupsForSpaces(
-    auth,
-    spaces
-  );
-
-  return spaceMemberGroups.map(({ memberGroup }) => memberGroup.sId);
-}

@@ -7,7 +7,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-function getSpaceGroupIds(
+function getAutoGroupIdsForSpaces(
   workspace: { sId: string },
   key: { secret: string },
   spaceIds?: string[]
@@ -39,7 +39,9 @@ describe("GET /api/v1/w/:wId/spaces/groups", () => {
   it("returns 403 if not a system key", async () => {
     const { workspace, key, space } = await setupTest({ systemKey: false });
 
-    const response = await getSpaceGroupIds(workspace, key, [space.sId]);
+    const response = await getAutoGroupIdsForSpaces(workspace, key, [
+      space.sId,
+    ]);
 
     expect(response.status).toBe(403);
   });
@@ -48,7 +50,7 @@ describe("GET /api/v1/w/:wId/spaces/groups", () => {
     const { workspace, key, globalGroup, globalSpace, space, memberGroup } =
       await setupTest();
 
-    const response = await getSpaceGroupIds(workspace, key, [
+    const response = await getAutoGroupIdsForSpaces(workspace, key, [
       globalSpace.sId,
       space.sId,
     ]);
@@ -65,7 +67,7 @@ describe("GET /api/v1/w/:wId/spaces/groups", () => {
     await GroupFactory.defaults(otherWorkspace);
     const otherSpace = await SpaceFactory.regular(otherWorkspace);
 
-    const response = await getSpaceGroupIds(workspace, key, [
+    const response = await getAutoGroupIdsForSpaces(workspace, key, [
       space.sId,
       otherSpace.sId,
     ]);
@@ -77,7 +79,7 @@ describe("GET /api/v1/w/:wId/spaces/groups", () => {
   it("returns 400 without space ids", async () => {
     const { workspace, key } = await setupTest();
 
-    const response = await getSpaceGroupIds(workspace, key);
+    const response = await getAutoGroupIdsForSpaces(workspace, key);
 
     expect(response.status).toBe(400);
   });

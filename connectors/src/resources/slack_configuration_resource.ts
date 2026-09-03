@@ -5,7 +5,7 @@ import {
   SlackConfigurationModel,
   SlackMessagesModel,
 } from "@connectors/lib/models/slack";
-import { invalidateSpaceGroupIds } from "@connectors/lib/slack/space_groups";
+import { invalidateAutoGroupIdsForSpaces } from "@connectors/lib/slack/space_auto_groups";
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -207,7 +207,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         spaceIds,
         whitelistType,
       });
-      await invalidateSpaceGroupIds(existingBot.id);
+      await invalidateAutoGroupIdsForSpaces(existingBot.id);
     } else {
       await SlackBotWhitelistModel.create({
         connectorId: this.connectorId,

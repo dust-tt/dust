@@ -65,12 +65,12 @@ async function listSpaceIdsByGroupId(
     (space) => space.isRegular() || space.isProject()
   );
 
-  const spaceMemberGroups = await SpaceResource.listMemberGroupsForSpaces(
-    auth,
-    [globalSpace, ...candidateSpaces]
-  );
+  const spaceAutoGroups = await SpaceResource.listAutoGroupsForSpaces(auth, [
+    globalSpace,
+    ...candidateSpaces,
+  ]);
   const representedSpaceById = new Map(
-    spaceMemberGroups.map(({ space }) => [space.id, space])
+    spaceAutoGroups.map(({ space }) => [space.id, space])
   );
 
   const spaceIdsByGroupModelId = new Map<ModelId, Set<string>>();

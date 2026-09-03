@@ -48,7 +48,7 @@ import {
   SlackChatBotMessageModel,
 } from "@connectors/lib/models/slack";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
-import { getSpaceGroupIds } from "@connectors/lib/slack/space_groups";
+import { getAutoGroupIdsForSpaces } from "@connectors/lib/slack/space_auto_groups";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -813,7 +813,7 @@ async function resolveWorkflowGroupIds(
 
   try {
     return new Ok(
-      await getSpaceGroupIds(whitelistModelId, {
+      await getAutoGroupIdsForSpaces(whitelistModelId, {
         workspaceId: connector.workspaceId,
         workspaceAPIKey: connector.workspaceAPIKey,
         spaceIds,

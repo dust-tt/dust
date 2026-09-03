@@ -70,6 +70,7 @@ import {
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetAppsResponseSchema,
+  GetAutoGroupIdsForSpacesResponseSchema,
   GetConversationResponseSchema,
   GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
@@ -79,7 +80,6 @@ import {
   GetProjectFilesResponseSchema,
   GetSpaceConversationIdsResponseSchema,
   GetSpaceConversationsForDataSourceResponseSchema,
-  GetSpaceGroupIdsResponseSchema,
   GetSpaceMetadataResponseSchema,
   GetSpacesResponseSchema,
   GetWorkspaceExistsResponseSchema,
@@ -1909,7 +1909,7 @@ export class DustAPI {
     return new Ok(r.value.apps);
   }
 
-  async getSpaceGroupIds({ spaceIds }: { spaceIds: string[] }) {
+  async getAutoGroupIdsForSpaces({ spaceIds }: { spaceIds: string[] }) {
     const res = await this.request({
       method: "GET",
       path: "spaces/groups",
@@ -1917,7 +1917,7 @@ export class DustAPI {
     });
 
     const r = await this._resultFromResponse(
-      GetSpaceGroupIdsResponseSchema,
+      GetAutoGroupIdsForSpacesResponseSchema,
       res
     );
     if (r.isErr()) {

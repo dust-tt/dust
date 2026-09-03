@@ -141,9 +141,9 @@ const EMPTY_SPACE_GRANT_ENRICHMENT: SpaceGrantEnrichment = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export type SpaceMemberGroup = {
+export type SpaceAutoGroup = {
   space: SpaceResource;
-  memberGroup: GroupResource;
+  autoGroup: GroupResource;
 };
 
 function memberGrant(space: SpaceResource): GrantSpec {
@@ -1791,11 +1791,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   // the space and cannot be attached to another one. The Company Space has no such group — everyone
   // in the workspace belongs to it — so the workspace global group stands for it. A provisioned
   // group would drift the moment an admin attaches it elsewhere.
-  static async listMemberGroupsForSpaces(
+  static async listAutoGroupsForSpaces(
     auth: Authenticator,
     spaces: SpaceResource[]
-  ): Promise<SpaceMemberGroup[]> {
-    const [memberGroupByGrantKey, globalGroupRes] = await Promise.all([
+  ): Promise<SpaceAutoGroup[]> {
+    const [autoGroupByGrantKey, globalGroupRes] = await Promise.all([
       GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
         grants: spaces.filter((space) => !space.isGlobal()).map(memberGrant),
       }),
@@ -1805,11 +1805,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     return removeNulls(
       spaces.map((space) => {
-        const memberGroup = space.isGlobal()
+        const autoGroup = space.isGlobal()
           ? globalGroup
-          : memberGroupByGrantKey.get(grantKey(memberGrant(space)));
+          : autoGroupByGrantKey.get(grantKey(memberGrant(space)));
 
-        return memberGroup ? { space, memberGroup } : null;
+        return autoGroup ? { space, autoGroup } : null;
       })
     );
   }

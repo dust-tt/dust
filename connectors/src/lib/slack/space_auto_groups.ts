@@ -5,17 +5,17 @@ import { buildCacheWithRedisKey, cacheWithRedis } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import { DustAPI } from "@dust-tt/client";
 
-const SPACE_GROUP_IDS_CACHE_TTL_MS = 5 * 60 * 1000;
+const AUTO_GROUP_IDS_CACHE_TTL_MS = 5 * 60 * 1000;
 
-type SpaceGroupsRequest = {
+type SpaceAutoGroupsRequest = {
   workspaceId: string;
   workspaceAPIKey: string;
   spaceIds: string[];
 };
 
-async function fetchSpaceGroupIds(
+async function fetchAutoGroupIdsForSpaces(
   whitelistModelId: ModelId,
-  { workspaceId, workspaceAPIKey, spaceIds }: SpaceGroupsRequest
+  { workspaceId, workspaceAPIKey, spaceIds }: SpaceAutoGroupsRequest
 ): Promise<string[]> {
   const dustAPI = new DustAPI(
     { url: apiConfig.getDustFrontAPIUrl() },
@@ -23,7 +23,7 @@ async function fetchSpaceGroupIds(
     logger
   );
 
-  const groupIdsRes = await dustAPI.getSpaceGroupIds({ spaceIds });
+  const groupIdsRes = await dustAPI.getAutoGroupIdsForSpaces({ spaceIds });
   if (groupIdsRes.isErr()) {
     // Thrown so the cache keeps no failure, turned back into an Err by the caller.
     throw new Error(groupIdsRes.error.message);
@@ -32,24 +32,24 @@ async function fetchSpaceGroupIds(
   return groupIdsRes.value;
 }
 
-const spaceGroupIdsCacheKey = (whitelistModelId: ModelId) =>
+const autoGroupIdsCacheKey = (whitelistModelId: ModelId) =>
   `${whitelistModelId}`;
 
-export const getSpaceGroupIds = cacheWithRedis(
-  fetchSpaceGroupIds,
-  spaceGroupIdsCacheKey,
-  { ttlMs: SPACE_GROUP_IDS_CACHE_TTL_MS }
+export const getAutoGroupIdsForSpaces = cacheWithRedis(
+  fetchAutoGroupIdsForSpaces,
+  autoGroupIdsCacheKey,
+  { ttlMs: AUTO_GROUP_IDS_CACHE_TTL_MS }
 );
 
-export async function invalidateSpaceGroupIds(
+export async function invalidateAutoGroupIdsForSpaces(
   whitelistModelId: ModelId
 ): Promise<void> {
   const redis = await redisClient({ origin: "cache_with_redis" });
 
   await redis.del(
     buildCacheWithRedisKey(
-      fetchSpaceGroupIds.name,
-      spaceGroupIdsCacheKey(whitelistModelId)
+      fetchAutoGroupIdsForSpaces.name,
+      autoGroupIdsCacheKey(whitelistModelId)
     )
   );
 }
