@@ -127,10 +127,6 @@ runs:
         elif [[ ${COMPONENT} == *"-edge" ]]; then
           ENV="edge"
           BASE_COMPONENT=${COMPONENT%-edge}
-        elif [[ ${COMPONENT} == *"-canary" ]]; then
-          ENV="prod"
-          BASE_COMPONENT=${COMPONENT%-canary}
-          COMPONENT=${COMPONENT}-${{ github.actor }}
         else
           ENV="prod"
           BASE_COMPONENT=${COMPONENT}
@@ -190,7 +186,7 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt")
         fi
 
-        # Tag with 'latest' for main branch prod non-canary builds
+        # Tag with latest for main branch prod builds
         LATEST_TAGS=()
         PUSH_LATEST=false
         if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
@@ -290,9 +286,6 @@ runs:
       shell: bash
       run: |
         COMPONENT="${{ inputs.component }}"
-        if [[ ${COMPONENT} == *"-canary" ]]; then
-          COMPONENT=${COMPONENT}-${{ github.actor }}
-        fi
         echo "🔍 Getting current deployed version for ${COMPONENT} in ${{ inputs.region }}..."
 
         # Get all tags, exclude the current one we're building, get the most recent
