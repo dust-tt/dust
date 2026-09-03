@@ -26,7 +26,7 @@ import {
 import { useSeatPlan } from "@app/lib/swr/credits";
 import { isEmailValid } from "@app/lib/utils";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { isMembershipSeatType } from "@app/types/memberships";
+import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
@@ -89,7 +89,7 @@ function seatBadge(
   info: SeatTypeInfo
 ): ReactNode {
   const openCount = includedSeatsOpen(info);
-  if (openCount > 0) {
+  if (toBaseSeatType(seatType) !== "workspace" && openCount > 0) {
     return <Chip size="xs" color="primary" label={`${openCount} Available`} />;
   }
 
@@ -98,7 +98,7 @@ function seatBadge(
   }
 
   return (
-    <span className="text-xs text-foreground tabular-nums">
+    <span className="text-xs text-foreground">
       {formatPriceCents(info.priceCents, info.currency, info.billingFrequency)}
     </span>
   );
