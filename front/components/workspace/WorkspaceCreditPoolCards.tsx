@@ -6,7 +6,10 @@ import {
   useAwuPoolCurrentCycle,
   useAwuPoolCycleHistory,
 } from "@app/lib/swr/credits";
-import type { AwuPoolCycleBreakdown } from "@app/types/api/credits/awu_pool_summary";
+import type {
+  AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleBreakdown,
+} from "@app/types/api/credits/awu_pool_summary";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -274,30 +277,30 @@ export function WorkspaceCreditPoolSection({
   );
 }
 
-interface CompactCreditPoolCardsProps {
-  owner: LightWorkspaceType;
-  disabled: boolean;
+interface CreditPoolCardsFromCycleDataProps {
+  awuPoolCurrentCycle: AwuPoolCurrentCycleResponseBody | null;
+  isAwuPoolCurrentCycleLoading: boolean;
+  isAwuPoolCurrentCycleError: boolean;
+  poolCycleBreakdown: AwuPoolCycleBreakdown[];
+  excessCycleBreakdown: AwuPoolCycleBreakdown[];
+  isAwuPoolCycleHistoryLoading: boolean;
+  isAwuPoolCycleHistoryError: boolean;
 }
 
-// Credit consumption cards for the compact usage page, mirroring Poke's
-// read-only pool view (front/components/poke/pages/PoolUsagePage.tsx) but
-// backed by the customer-facing awu-pool-current-cycle/cycle-history routes.
-export function CompactCreditPoolCards({
-  owner,
-  disabled,
-}: CompactCreditPoolCardsProps) {
-  const {
-    awuPoolCurrentCycle,
-    isAwuPoolCurrentCycleLoading,
-    isAwuPoolCurrentCycleError,
-  } = useAwuPoolCurrentCycle({ workspaceId: owner.sId, disabled });
-  const {
-    cycleBreakdown: poolCycleBreakdown,
-    excessCycleBreakdown,
-    isAwuPoolCycleHistoryLoading,
-    isAwuPoolCycleHistoryError,
-  } = useAwuPoolCycleHistory({ workspaceId: owner.sId, disabled });
-
+// Turns a fetched current-cycle/cycle-history pair into the credit
+// consumption cards. Shared by Poke's read-only pool view
+// (front/components/poke/pages/PoolUsagePage.tsx) and the customer-facing
+// compact usage page so the "showPoolCard vs. excess" logic below can't
+// drift between the two — only the SWR hooks feeding it differ.
+export function CreditPoolCardsFromCycleData({
+  awuPoolCurrentCycle,
+  isAwuPoolCurrentCycleLoading,
+  isAwuPoolCurrentCycleError,
+  poolCycleBreakdown,
+  excessCycleBreakdown,
+  isAwuPoolCycleHistoryLoading,
+  isAwuPoolCycleHistoryError,
+}: CreditPoolCardsFromCycleDataProps) {
   const {
     totalRemainingCredits,
     totalActiveCredits,
@@ -326,11 +329,11 @@ export function CompactCreditPoolCards({
     <WorkspaceCreditPoolSection
       cardsStatus={toCreditPoolFetchStatus(
         isAwuPoolCurrentCycleLoading,
-        !!isAwuPoolCurrentCycleError
+        isAwuPoolCurrentCycleError
       )}
       tableStatus={toCreditPoolFetchStatus(
         isAwuPoolCycleHistoryLoading,
-        !!isAwuPoolCycleHistoryError
+        isAwuPoolCycleHistoryError
       )}
       showPoolCard={hasPool}
       isVisible={hasPool || hasExcessData}
@@ -343,6 +346,42 @@ export function CompactCreditPoolCards({
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
       otherConsumedCredits={otherConsumedCredits}
+    />
+  );
+}
+
+interface CompactCreditPoolCardsProps {
+  owner: LightWorkspaceType;
+  disabled: boolean;
+}
+
+// Credit consumption cards for the compact usage page, backed by the
+// customer-facing awu-pool-current-cycle/cycle-history routes.
+export function CompactCreditPoolCards({
+  owner,
+  disabled,
+}: CompactCreditPoolCardsProps) {
+  const {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+  } = useAwuPoolCurrentCycle({ workspaceId: owner.sId, disabled });
+  const {
+    cycleBreakdown: poolCycleBreakdown,
+    excessCycleBreakdown,
+    isAwuPoolCycleHistoryLoading,
+    isAwuPoolCycleHistoryError,
+  } = useAwuPoolCycleHistory({ workspaceId: owner.sId, disabled });
+
+  return (
+    <CreditPoolCardsFromCycleData
+      awuPoolCurrentCycle={awuPoolCurrentCycle}
+      isAwuPoolCurrentCycleLoading={isAwuPoolCurrentCycleLoading}
+      isAwuPoolCurrentCycleError={!!isAwuPoolCurrentCycleError}
+      poolCycleBreakdown={poolCycleBreakdown}
+      excessCycleBreakdown={excessCycleBreakdown}
+      isAwuPoolCycleHistoryLoading={isAwuPoolCycleHistoryLoading}
+      isAwuPoolCycleHistoryError={!!isAwuPoolCycleHistoryError}
     />
   );
 }
