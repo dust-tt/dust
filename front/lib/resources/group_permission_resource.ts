@@ -5,6 +5,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
@@ -569,17 +570,39 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         return new Ok(undefined);
       }
 
-      const activeMembers = await group.getActiveMembers(auth, {
+      const now = new Date();
+      const memberships = await GroupMembershipModel.findAll({
+        attributes: ["userId"],
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          groupId: group.id,
+          userId: uniqueUsers.map((user) => user.id),
+          status: "active",
+          startAt: { [Op.lte]: now },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        },
         transaction: t,
       });
-      const userIds = new Set(uniqueUsers.map((user) => user.id));
-      const usersToRemove = activeMembers
-        .filter((member) => userIds.has(member.id))
-        .map((member) => member.toJSON());
+      const memberIds = new Set(
+        memberships.map((membership) => membership.userId)
+      );
+      const usersToRemove = uniqueUsers.filter((user) =>
+        memberIds.has(user.id)
+      );
       if (usersToRemove.length === 0) {
         return new Ok(undefined);
       }
 
+      const memberCount = await GroupMembershipModel.count({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          groupId: group.id,
+          status: "active",
+          startAt: { [Op.lte]: now },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        },
+        transaction: t,
+      });
       const removeResult = await group.dangerouslyRemoveMembers(auth, {
         users: usersToRemove,
         transaction: t,
@@ -588,7 +611,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         return removeResult;
       }
 
-      if (usersToRemove.length === activeMembers.length) {
+      if (usersToRemove.length === memberCount) {
         await this.revoke(auth, {
           group,
           grantType,

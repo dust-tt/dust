@@ -1840,17 +1840,22 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Check if the users are already a member of the group.
-    const activeMembers = await this.getActiveMembers(auth, { transaction });
-    const activeMembersIds = activeMembers.map((m) => m.sId);
-    const notActiveUserIds = userIds.filter(
-      (userId) => !activeMembersIds.includes(userId)
-    );
-    if (notActiveUserIds.length > 0) {
+    const groupMembershipCount = await GroupMembershipModel.count({
+      where: {
+        groupId: this.id,
+        userId: userResources.map((user) => user.id),
+        workspaceId: owner.id,
+        status: "active",
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+      transaction,
+    });
+    if (groupMembershipCount !== userIds.length) {
       return new Err(
         new DustError(
           "user_not_member",
-          notActiveUserIds.length === 1
+          userIds.length === 1
             ? "Cannot remove: user is not a member of the group"
             : "Cannot remove: users are not members of the group"
         )
