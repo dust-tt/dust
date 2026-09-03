@@ -1,10 +1,11 @@
 import type {
+  UserScrollActivity,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 type ConversationAutoScrollMethods = Pick<
   VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>,
@@ -26,15 +27,42 @@ export function useConversationAutoScroll({
   messageListRef,
 }: UseConversationAutoScrollProps) {
   const isAutoScrollEnabledRef = useRef(true);
-  const lastUserScrollAtRef = useRef<number | null>(null);
+  const isUserScrollingRef = useRef(false);
+  const userScrollEndListenersRef = useRef(new Set<() => void>());
   // A gesture can produce several scroll events. Keep its direction until the
-  // user changes direction or auto-scroll is explicitly re-enabled.
+  // gesture ends so concurrent stream movement cannot reverse its meaning.
   const userScrollDirectionRef = useRef<UserScrollDirection | null>(null);
+
+  const finishUserScroll = useCallback(() => {
+    if (!isUserScrollingRef.current) {
+      return;
+    }
+
+    isUserScrollingRef.current = false;
+    userScrollDirectionRef.current = null;
+    for (const listener of userScrollEndListenersRef.current) {
+      listener();
+    }
+  }, []);
+
+  const userScrollActivity = useMemo<UserScrollActivity>(
+    () => ({
+      isActive: () => isUserScrollingRef.current,
+      subscribeToEnd: (listener) => {
+        userScrollEndListenersRef.current.add(listener);
+        return () => {
+          userScrollEndListenersRef.current.delete(listener);
+        };
+      },
+    }),
+    []
+  );
+
   const enableAutoScroll = useCallback(() => {
     isAutoScrollEnabledRef.current = true;
-    lastUserScrollAtRef.current = null;
     userScrollDirectionRef.current = null;
-  }, []);
+    finishUserScroll();
+  }, [finishUserScroll]);
 
   // Track gestures separately from their resulting scroll movement so
   // Virtuoso's concurrent movement cannot hide the user's direction.
@@ -48,9 +76,77 @@ export function useConversationAutoScroll({
     }
 
     const scrollTarget = isMobile ? window : scrollElement;
+    const scrollEndTarget = isMobile ? document : scrollElement;
+    const supportsNativeScrollEnd =
+      "onscrollend" in scrollEndTarget &&
+      scrollEndTarget.onscrollend !== undefined;
     let previousScrollHeight = scrollElement.scrollHeight;
     let previousScrollTop = scrollElement.scrollTop;
     let lastTouchY: number | null = null;
+    let isTouchActive = false;
+    let scrollEventVersion = 0;
+    let touchStartScrollEventVersion = 0;
+    let fallbackAnimationFrame: number | null = null;
+
+    const startUserScroll = () => {
+      isUserScrollingRef.current = true;
+    };
+
+    const cancelScrollEndFallback = () => {
+      if (fallbackAnimationFrame !== null) {
+        window.cancelAnimationFrame(fallbackAnimationFrame);
+        fallbackAnimationFrame = null;
+      }
+    };
+
+    // Older Safari does not expose scrollend, and browsers do not emit it when
+    // a gesture causes no movement. Cover both cases without a time delay by
+    // waiting for pointer release and a stable scroll position.
+    const observeScrollEndFallback = () => {
+      if (isTouchActive || fallbackAnimationFrame !== null) {
+        return;
+      }
+
+      const initialScrollEventVersion = scrollEventVersion;
+      let previousObservedScrollTop = scrollElement.scrollTop;
+      let stableFrameCount = 0;
+      const observeScrollPosition = () => {
+        if (!isUserScrollingRef.current) {
+          fallbackAnimationFrame = null;
+          return;
+        }
+
+        if (
+          supportsNativeScrollEnd &&
+          scrollEventVersion !== initialScrollEventVersion
+        ) {
+          fallbackAnimationFrame = null;
+          return;
+        }
+
+        const scrollTop = scrollElement.scrollTop;
+        if (scrollTop === previousObservedScrollTop) {
+          stableFrameCount += 1;
+        } else {
+          stableFrameCount = 0;
+        }
+        previousObservedScrollTop = scrollTop;
+
+        if (stableFrameCount >= 2) {
+          fallbackAnimationFrame = null;
+          finishUserScroll();
+          return;
+        }
+
+        fallbackAnimationFrame = window.requestAnimationFrame(
+          observeScrollPosition
+        );
+      };
+
+      fallbackAnimationFrame = window.requestAnimationFrame(
+        observeScrollPosition
+      );
+    };
 
     const captureScrollPosition = () => {
       previousScrollHeight = scrollElement.scrollHeight;
@@ -66,6 +162,7 @@ export function useConversationAutoScroll({
     };
 
     const onScroll = () => {
+      scrollEventVersion += 1;
       const scrollHeight = scrollElement.scrollHeight;
       const scrollTop = scrollElement.scrollTop;
       const scrollHeightDelta = scrollHeight - previousScrollHeight;
@@ -76,7 +173,10 @@ export function useConversationAutoScroll({
       const location = methods.getScrollLocation();
 
       if (userScrollDirectionRef.current !== null) {
-        lastUserScrollAtRef.current = Date.now();
+        startUserScroll();
+        if (!supportsNativeScrollEnd) {
+          observeScrollEndFallback();
+        }
       }
 
       if (
@@ -86,7 +186,10 @@ export function useConversationAutoScroll({
         !location.isAtBottom
       ) {
         userScrollDirectionRef.current = "up";
-        lastUserScrollAtRef.current = Date.now();
+        startUserScroll();
+        if (!supportsNativeScrollEnd) {
+          observeScrollEndFallback();
+        }
         detachFromAutoScroll();
       }
 
@@ -135,13 +238,16 @@ export function useConversationAutoScroll({
       }
 
       userScrollDirectionRef.current = event.deltaY < 0 ? "up" : "down";
-      lastUserScrollAtRef.current = Date.now();
+      startUserScroll();
+      observeScrollEndFallback();
       if (userScrollDirectionRef.current === "up") {
         detachFromAutoScroll();
       }
     };
 
     const onTouchStart = (event: TouchEvent) => {
+      isTouchActive = true;
+      touchStartScrollEventVersion = scrollEventVersion;
       lastTouchY = event.touches[0]?.clientY ?? null;
     };
 
@@ -153,7 +259,7 @@ export function useConversationAutoScroll({
 
       if (lastTouchY !== null && touchY !== lastTouchY) {
         userScrollDirectionRef.current = touchY > lastTouchY ? "up" : "down";
-        lastUserScrollAtRef.current = Date.now();
+        startUserScroll();
         if (userScrollDirectionRef.current === "up") {
           detachFromAutoScroll();
         }
@@ -161,22 +267,49 @@ export function useConversationAutoScroll({
       lastTouchY = touchY;
     };
 
+    const onTouchEnd = () => {
+      isTouchActive = false;
+      lastTouchY = null;
+      if (!isUserScrollingRef.current) {
+        return;
+      }
+      if (
+        supportsNativeScrollEnd &&
+        scrollEventVersion !== touchStartScrollEventVersion
+      ) {
+        return;
+      }
+      observeScrollEndFallback();
+    };
+
+    const onScrollEnd = () => {
+      cancelScrollEndFallback();
+      finishUserScroll();
+    };
+
     const passiveOptions = { passive: true };
     scrollTarget.addEventListener("scroll", onScroll, passiveOptions);
+    scrollEndTarget.addEventListener("scrollend", onScrollEnd, passiveOptions);
     scrollElement.addEventListener("wheel", onWheel, passiveOptions);
     scrollElement.addEventListener("touchstart", onTouchStart, passiveOptions);
     scrollElement.addEventListener("touchmove", onTouchMove, passiveOptions);
+    scrollElement.addEventListener("touchend", onTouchEnd, passiveOptions);
+    scrollElement.addEventListener("touchcancel", onTouchEnd, passiveOptions);
     return () => {
+      cancelScrollEndFallback();
       scrollTarget.removeEventListener("scroll", onScroll);
+      scrollEndTarget.removeEventListener("scrollend", onScrollEnd);
       scrollElement.removeEventListener("wheel", onWheel);
       scrollElement.removeEventListener("touchstart", onTouchStart);
       scrollElement.removeEventListener("touchmove", onTouchMove);
+      scrollElement.removeEventListener("touchend", onTouchEnd);
+      scrollElement.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [enableAutoScroll, isMobile, messageListRef]);
+  }, [enableAutoScroll, finishUserScroll, isMobile, messageListRef]);
 
   return {
     enableAutoScroll,
     isAutoScrollEnabledRef,
-    lastUserScrollAtRef,
+    userScrollActivity,
   };
 }

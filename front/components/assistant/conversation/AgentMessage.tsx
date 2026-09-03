@@ -18,6 +18,7 @@ import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
   UiView,
+  UserScrollActivity,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -248,7 +249,7 @@ interface AgentMessageProps {
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
-  lastUserScrollAtRef: MutableRefObject<number | null>;
+  userScrollActivity: UserScrollActivity;
   isProjectArchived?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
@@ -270,7 +271,7 @@ export function AgentMessage({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   isAutoScrollEnabledRef,
-  lastUserScrollAtRef,
+  userScrollActivity,
   isProjectArchived = false,
   setLimitReachedCode,
 }: AgentMessageProps) {
@@ -327,7 +328,7 @@ export function AgentMessage({
     agentMessage: agentMessage,
     conversationId,
     isAutoScrollEnabledRef,
-    lastUserScrollAtRef,
+    userScrollActivity,
     owner,
     onEventCallback: useCallback(
       (eventPayload: {

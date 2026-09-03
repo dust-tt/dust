@@ -1,4 +1,7 @@
-import type { PendingToolCall } from "@app/components/assistant/conversation/types";
+import type {
+  PendingToolCall,
+  UserScrollActivity,
+} from "@app/components/assistant/conversation/types";
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
 import {
   appendThinkingStep,
@@ -19,7 +22,22 @@ const mockUseEventSource = vi.fn();
 const mockMutateContextUsage = vi.fn();
 const mockUseVirtuosoMethods = vi.fn();
 const mockIsAutoScrollEnabledRef = { current: true };
-const mockLastUserScrollAtRef = { current: null as number | null };
+let isUserScrollActive = false;
+const userScrollEndListeners = new Set<() => void>();
+const mockUserScrollActivity: UserScrollActivity = {
+  isActive: () => isUserScrollActive,
+  subscribeToEnd: (listener) => {
+    userScrollEndListeners.add(listener);
+    return () => userScrollEndListeners.delete(listener);
+  },
+};
+
+function finishUserScroll() {
+  isUserScrollActive = false;
+  for (const listener of userScrollEndListeners) {
+    listener();
+  }
+}
 
 function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
   return {
@@ -147,7 +165,8 @@ beforeEach(() => {
   mockMutateContextUsage.mockReset();
   mockUseVirtuosoMethods.mockReset();
   mockIsAutoScrollEnabledRef.current = true;
-  mockLastUserScrollAtRef.current = null;
+  isUserScrollActive = false;
+  userScrollEndListeners.clear();
 });
 
 afterEach(() => {
@@ -159,6 +178,7 @@ function setupStreamingContentUpdateTest() {
     makeLightAgentMessage({ content: null, chainOfThought: null })
   );
   let onEventCallback: ((event: string) => void) | null = null;
+  let nextEventId = 1;
 
   mockUseVirtuosoMethods.mockReturnValue(
     makeVirtuosoMethodsMock(
@@ -183,7 +203,7 @@ function setupStreamingContentUpdateTest() {
       agentMessage: currentMessage,
       conversationId: "conv_123",
       isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-      lastUserScrollAtRef: mockLastUserScrollAtRef,
+      userScrollActivity: mockUserScrollActivity,
       owner: mockOwner,
       streamId: "stream_123",
     })
@@ -195,7 +215,7 @@ function setupStreamingContentUpdateTest() {
       act(() => {
         onEventCallback!(
           JSON.stringify({
-            eventId: "1-0",
+            eventId: `${nextEventId++}-0`,
             data: {
               type: "generation_tokens",
               created: Date.now(),
@@ -393,7 +413,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        lastUserScrollAtRef: mockLastUserScrollAtRef,
+        userScrollActivity: mockUserScrollActivity,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -419,40 +439,43 @@ describe("useAgentMessageStream", () => {
     expect(batch).not.toHaveBeenCalled();
   });
 
-  it("waits for user scrolling to settle before growing streamed content", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(1000);
+  it("waits for user scrolling to end before growing streamed content", () => {
     mockIsAutoScrollEnabledRef.current = false;
-    mockLastUserScrollAtRef.current = Date.now();
+    isUserScrollActive = true;
     const harness = setupStreamingContentUpdateTest();
 
     harness.sendToken("Hello");
 
     expect(harness.getContent()).toBeNull();
 
-    act(() => {
-      vi.advanceTimersByTime(100);
-      mockLastUserScrollAtRef.current = Date.now();
-      vi.advanceTimersByTime(149);
-    });
-    expect(harness.getContent()).toBeNull();
-
-    act(() => vi.advanceTimersByTime(1));
+    act(() => finishUserScroll());
     expect(harness.getContent()).toBe("Hello");
   });
 
-  it("cancels a deferred stream update when the message unmounts", () => {
+  it("renders the latest buffered content as soon as scrolling ends", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(1000);
     mockIsAutoScrollEnabledRef.current = false;
-    mockLastUserScrollAtRef.current = Date.now();
+    isUserScrollActive = true;
+    const harness = setupStreamingContentUpdateTest();
+
+    harness.sendToken("Hello");
+    harness.sendToken(" world");
+    expect(harness.getContent()).toBeNull();
+
+    act(() => finishUserScroll());
+    expect(harness.getContent()).toBe("Hello world");
+  });
+
+  it("cancels a deferred stream update when the message unmounts", () => {
+    mockIsAutoScrollEnabledRef.current = false;
+    isUserScrollActive = true;
     const harness = setupStreamingContentUpdateTest();
 
     harness.sendToken("Hello");
 
     act(() => {
       harness.unmount();
-      vi.runAllTimers();
+      finishUserScroll();
     });
 
     expect(harness.getContent()).toBeNull();
@@ -498,7 +521,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        lastUserScrollAtRef: mockLastUserScrollAtRef,
+        userScrollActivity: mockUserScrollActivity,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -566,7 +589,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        lastUserScrollAtRef: mockLastUserScrollAtRef,
+        userScrollActivity: mockUserScrollActivity,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -688,7 +711,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        lastUserScrollAtRef: mockLastUserScrollAtRef,
+        userScrollActivity: mockUserScrollActivity,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -793,7 +816,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        lastUserScrollAtRef: mockLastUserScrollAtRef,
+        userScrollActivity: mockUserScrollActivity,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -894,7 +917,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        lastUserScrollAtRef: mockLastUserScrollAtRef,
+        userScrollActivity: mockUserScrollActivity,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -1044,7 +1067,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        lastUserScrollAtRef: mockLastUserScrollAtRef,
+        userScrollActivity: mockUserScrollActivity,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -1216,7 +1239,7 @@ describe("useAgentMessageStream", () => {
           agentMessage: currentMessage,
           conversationId: "conv_123",
           isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-          lastUserScrollAtRef: mockLastUserScrollAtRef,
+          userScrollActivity: mockUserScrollActivity,
           owner: mockOwner,
           streamId: "stream_123",
         })
@@ -1305,7 +1328,7 @@ describe("useAgentMessageStream", () => {
           agentMessage: currentMessage,
           conversationId: "conv_123",
           isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-          lastUserScrollAtRef: mockLastUserScrollAtRef,
+          userScrollActivity: mockUserScrollActivity,
           owner: mockOwner,
           streamId: "stream_123",
         })
@@ -1400,7 +1423,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        lastUserScrollAtRef: mockLastUserScrollAtRef,
+        userScrollActivity: mockUserScrollActivity,
         owner: mockOwner,
         streamId: "stream_123",
       })

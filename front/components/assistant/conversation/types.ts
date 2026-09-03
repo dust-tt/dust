@@ -112,6 +112,11 @@ export type VirtuosoMessage =
   | CompactionMessageType
   | ConversationForkNotice;
 
+export interface UserScrollActivity {
+  isActive: () => boolean;
+  subscribeToEnd: (listener: () => void) => () => void;
+}
+
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
   user: UserType;
@@ -149,7 +154,7 @@ export type VirtuosoMessageListContext = {
   projectSpaceName?: string;
   enableAutoScroll: () => void;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
-  lastUserScrollAtRef: MutableRefObject<number | null>;
+  userScrollActivity: UserScrollActivity;
   isNoSeat?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 };

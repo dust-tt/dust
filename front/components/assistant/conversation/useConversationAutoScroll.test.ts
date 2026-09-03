@@ -21,6 +21,10 @@ const originalInnerHeightDescriptor = Object.getOwnPropertyDescriptor(
   window,
   "innerHeight"
 );
+const originalDocumentScrollEndDescriptor = Object.getOwnPropertyDescriptor(
+  document,
+  "onscrollend"
+);
 
 function makeScrollLocation(
   overrides: Partial<ListScrollLocation> = {}
@@ -37,7 +41,10 @@ function makeScrollLocation(
   };
 }
 
-function setupAutoScroll({ isMobile = false } = {}) {
+function setupAutoScroll({
+  isMobile = false,
+  supportsNativeScrollEnd = true,
+} = {}) {
   const scrollElement = document.createElement("div");
   let scrollHeight = 1000;
   let location = makeScrollLocation();
@@ -58,6 +65,12 @@ function setupAutoScroll({ isMobile = false } = {}) {
       value: 500,
     });
   }
+
+  const scrollEndTarget = isMobile ? document : scrollElement;
+  Object.defineProperty(scrollEndTarget, "onscrollend", {
+    configurable: true,
+    value: supportsNativeScrollEnd ? null : undefined,
+  });
 
   const methods: ScrollMethods = {
     cancelSmoothScroll: vi.fn(),
@@ -97,6 +110,12 @@ function setupAutoScroll({ isMobile = false } = {}) {
     });
   };
 
+  const dispatchScrollEnd = (target: EventTarget = scrollEndTarget) => {
+    act(() => {
+      target.dispatchEvent(new Event("scrollend"));
+    });
+  };
+
   const makeTouch = (clientY: number): Touch => ({
     clientX: 0,
     clientY,
@@ -112,21 +131,39 @@ function setupAutoScroll({ isMobile = false } = {}) {
     target: scrollElement,
   });
 
-  const dispatchTouch = (startY: number, endY: number) => {
+  const dispatchTouchStart = (clientY: number) => {
     act(() => {
       scrollElement.dispatchEvent(
-        new TouchEvent("touchstart", { touches: [makeTouch(startY)] })
-      );
-      scrollElement.dispatchEvent(
-        new TouchEvent("touchmove", { touches: [makeTouch(endY)] })
+        new TouchEvent("touchstart", { touches: [makeTouch(clientY)] })
       );
     });
+  };
+
+  const dispatchTouchMove = (clientY: number) => {
+    act(() => {
+      scrollElement.dispatchEvent(
+        new TouchEvent("touchmove", { touches: [makeTouch(clientY)] })
+      );
+    });
+  };
+
+  const dispatchTouchEnd = () => {
+    act(() => {
+      scrollElement.dispatchEvent(new TouchEvent("touchend", { touches: [] }));
+    });
+  };
+
+  const dispatchTouch = (startY: number, endY: number) => {
+    dispatchTouchStart(startY);
+    dispatchTouchMove(endY);
   };
 
   return {
     ...hook,
     dispatchScroll,
+    dispatchScrollEnd,
     dispatchTouch,
+    dispatchTouchEnd,
     dispatchWheel,
     methods,
     scrollElement,
@@ -139,6 +176,32 @@ function detach(harness: ReturnType<typeof setupAutoScroll>, scrollTop = 400) {
     location: { bottomOffset: 500, isAtBottom: false },
   });
   expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
+}
+
+function mockAnimationFrames() {
+  let nextId = 1;
+  const callbacks = new Map<number, FrameRequestCallback>();
+
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+    const id = nextId++;
+    callbacks.set(id, callback);
+    return id;
+  });
+  vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+    callbacks.delete(id);
+  });
+
+  return {
+    runFrame: () => {
+      act(() => {
+        const frameCallbacks = Array.from(callbacks.values());
+        callbacks.clear();
+        for (const callback of frameCallbacks) {
+          callback(0);
+        }
+      });
+    },
+  };
 }
 
 afterEach(() => {
@@ -158,6 +221,16 @@ afterEach(() => {
     Object.defineProperty(window, "innerHeight", originalInnerHeightDescriptor);
   } else {
     Reflect.deleteProperty(window, "innerHeight");
+  }
+
+  if (originalDocumentScrollEndDescriptor) {
+    Object.defineProperty(
+      document,
+      "onscrollend",
+      originalDocumentScrollEndDescriptor
+    );
+  } else {
+    Reflect.deleteProperty(document, "onscrollend");
   }
 });
 
@@ -346,45 +419,74 @@ describe("useConversationAutoScroll", () => {
       expect(harness.methods.scrollToItem).not.toHaveBeenCalled();
     });
 
+    it("does not reuse a completed downward gesture for later content growth", () => {
+      const harness = setupAutoScroll();
+      detach(harness);
+
+      harness.dispatchWheel(100);
+      harness.dispatchScroll({
+        scrollTop: 410,
+        location: { bottomOffset: 200, isAtBottom: false },
+      });
+      harness.dispatchScrollEnd();
+
+      harness.dispatchScroll({
+        scrollTop: 510,
+        scrollHeight: 1100,
+        location: { bottomOffset: 0, isAtBottom: true },
+      });
+
+      expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
+      expect(harness.methods.scrollToItem).not.toHaveBeenCalled();
+    });
+
     it("can be explicitly re-enabled for a new message", () => {
       const harness = setupAutoScroll();
       detach(harness);
 
-      expect(harness.result.current.lastUserScrollAtRef.current).not.toBeNull();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
 
       act(() => harness.result.current.enableAutoScroll());
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
-      expect(harness.result.current.lastUserScrollAtRef.current).toBeNull();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
       expect(harness.methods.scrollToItem).not.toHaveBeenCalled();
     });
   });
 
   describe("tracking user scroll activity", () => {
-    it("records wheel gestures and their resulting scroll events", () => {
+    it("ends a wheel gesture on native scrollend", () => {
       const harness = setupAutoScroll();
-      const now = vi.spyOn(Date, "now");
 
-      now.mockReturnValue(1000);
       harness.dispatchWheel(-100);
-      expect(harness.result.current.lastUserScrollAtRef.current).toBe(1000);
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
 
-      now.mockReturnValue(1100);
       harness.dispatchScroll({
         scrollTop: 400,
         location: { bottomOffset: 500, isAtBottom: false },
       });
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
 
-      expect(harness.result.current.lastUserScrollAtRef.current).toBe(1100);
+      harness.dispatchScrollEnd();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
     });
 
-    it("records touch gestures", () => {
-      const harness = setupAutoScroll();
-      vi.spyOn(Date, "now").mockReturnValue(1000);
+    it("uses document scrollend for a mobile touch gesture", () => {
+      const animationFrames = mockAnimationFrames();
+      const harness = setupAutoScroll({ isMobile: true });
 
       harness.dispatchTouch(100, 120);
+      harness.dispatchScroll({
+        scrollTop: 400,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+      harness.dispatchTouchEnd();
+      animationFrames.runFrame();
+      animationFrames.runFrame();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
 
-      expect(harness.result.current.lastUserScrollAtRef.current).toBe(1000);
+      harness.dispatchScrollEnd();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
     });
 
     it("does not treat list height compensation as user activity", () => {
@@ -396,7 +498,80 @@ describe("useConversationAutoScroll", () => {
         location: { bottomOffset: 100, isAtBottom: false },
       });
 
-      expect(harness.result.current.lastUserScrollAtRef.current).toBeNull();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
+    });
+
+    it("notifies subscribers when scrolling ends", () => {
+      const harness = setupAutoScroll();
+      const onScrollEnd = vi.fn();
+      const unsubscribe =
+        harness.result.current.userScrollActivity.subscribeToEnd(onScrollEnd);
+
+      harness.dispatchWheel(-100);
+      harness.dispatchScrollEnd();
+
+      expect(onScrollEnd).toHaveBeenCalledOnce();
+
+      unsubscribe();
+      harness.dispatchWheel(-100);
+      harness.dispatchScrollEnd();
+      expect(onScrollEnd).toHaveBeenCalledOnce();
+    });
+
+    it("waits for touch release and stable frames without scrollend support", () => {
+      const animationFrames = mockAnimationFrames();
+      const harness = setupAutoScroll({ supportsNativeScrollEnd: false });
+
+      harness.dispatchTouch(100, 120);
+      animationFrames.runFrame();
+      animationFrames.runFrame();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
+
+      harness.dispatchTouchEnd();
+      harness.dispatchScroll({
+        scrollTop: 450,
+        location: { bottomOffset: 550, isAtBottom: false },
+      });
+      animationFrames.runFrame();
+      animationFrames.runFrame();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
+
+      animationFrames.runFrame();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
+    });
+
+    it("waits for wheel movement to become stable without scrollend support", () => {
+      const animationFrames = mockAnimationFrames();
+      const harness = setupAutoScroll({ supportsNativeScrollEnd: false });
+
+      harness.dispatchWheel(-100);
+      harness.dispatchScroll({
+        scrollTop: 450,
+        location: { bottomOffset: 550, isAtBottom: false },
+      });
+      animationFrames.runFrame();
+      harness.dispatchScroll({
+        scrollTop: 400,
+        location: { bottomOffset: 600, isAtBottom: false },
+      });
+      animationFrames.runFrame();
+      animationFrames.runFrame();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
+
+      animationFrames.runFrame();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
+    });
+
+    it("ends a native gesture that produces no scroll event", () => {
+      const animationFrames = mockAnimationFrames();
+      const harness = setupAutoScroll();
+
+      harness.dispatchWheel(-100);
+      animationFrames.runFrame();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
+
+      animationFrames.runFrame();
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
     });
   });
 

@@ -362,7 +362,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               }
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
               isAutoScrollEnabledRef={context.isAutoScrollEnabledRef}
-              lastUserScrollAtRef={context.lastUserScrollAtRef}
+              userScrollActivity={context.userScrollActivity}
               isProjectArchived={context.isProjectArchived}
               setLimitReachedCode={context.setLimitReachedCode}
             />
