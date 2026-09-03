@@ -30,9 +30,23 @@ function inspectorPanelReducer(
 ): InspectorPanelState {
   switch (action.type) {
     case "set_conversation_open":
-      return { ...state, isConversationOpen: action.open };
+      return action.open
+        ? {
+            ...state,
+            activeMessageId: null,
+            isConversationOpen: true,
+            isStickyRailOccluded: false,
+          }
+        : { ...state, isConversationOpen: false };
     case "set_wake_ups_open":
-      return { ...state, isWakeUpsOpen: action.open };
+      return action.open
+        ? {
+            ...state,
+            activeMessageId: null,
+            isStickyRailOccluded: false,
+            isWakeUpsOpen: true,
+          }
+        : { ...state, isWakeUpsOpen: false };
     case "set_message_open":
       if (action.open) {
         return {
@@ -51,22 +65,14 @@ function inspectorPanelReducer(
           }
         : state;
     case "set_sticky_rail_occluded":
-      if (action.occluded) {
-        return state.isStickyRailOccluded &&
-          !state.isConversationOpen &&
-          !state.isWakeUpsOpen
-          ? state
-          : {
-              ...state,
-              isConversationOpen: false,
-              isStickyRailOccluded: true,
-              isWakeUpsOpen: false,
-            };
+      if (
+        !state.activeMessageId ||
+        state.isStickyRailOccluded === action.occluded
+      ) {
+        return state;
       }
 
-      return state.isStickyRailOccluded
-        ? { ...state, isStickyRailOccluded: false }
-        : state;
+      return { ...state, isStickyRailOccluded: action.occluded };
   }
 }
 

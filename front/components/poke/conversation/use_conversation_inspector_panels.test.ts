@@ -72,6 +72,51 @@ describe("useConversationInspectorPanels", () => {
     expect(result.current.isWakeUpsOpen).toBe(false);
   });
 
+  it("gives a sticky inspector ownership over a colliding message panel", () => {
+    let messagePanelRect = rect(500, 800);
+    const messagePanel = document.createElement("div");
+    messagePanel.dataset.messageConsumptionPanelId = "message_1";
+    vi.spyOn(messagePanel, "getBoundingClientRect").mockImplementation(
+      () => messagePanelRect
+    );
+    const stickyInspectors = document.createElement("aside");
+    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
+      rect(16, 180)
+    );
+    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
+      current: messagePanel,
+    };
+    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
+      current: stickyInspectors,
+    };
+    const { result } = renderHook(() =>
+      useConversationInspectorPanels({
+        activeMessagePanelRef,
+        stickyInspectorsRef,
+      })
+    );
+
+    act(() => result.current.setMessageOpen("message_1", true));
+    act(flushAnimationFrame);
+
+    messagePanelRect = rect(170, 470);
+    act(() => window.dispatchEvent(new Event("scroll")));
+    act(() => result.current.setConversationOpen(true));
+    act(flushAnimationFrame);
+
+    expect(result.current.activeMessageId).toBeNull();
+    expect(result.current.isConversationOpen).toBe(true);
+    expect(result.current.isStickyRailOccluded).toBe(false);
+
+    act(() => result.current.setMessageOpen("message_1", true));
+    act(() => result.current.setWakeUpsOpen(true));
+    act(flushAnimationFrame);
+
+    expect(result.current.activeMessageId).toBeNull();
+    expect(result.current.isStickyRailOccluded).toBe(false);
+    expect(result.current.isWakeUpsOpen).toBe(true);
+  });
+
   it("hides the sticky rail while the message panel crosses it", () => {
     let messagePanelRect = rect(500, 800);
     const messagePanel = document.createElement("div");
@@ -99,9 +144,7 @@ describe("useConversationInspectorPanels", () => {
     );
 
     act(() => result.current.setMessageOpen("message_1", true));
-    act(() => result.current.setConversationOpen(true));
     act(flushAnimationFrame);
-    expect(result.current.isConversationOpen).toBe(true);
     expect(result.current.isStickyRailOccluded).toBe(false);
 
     messagePanelRect = rect(170, 470);
