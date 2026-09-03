@@ -4,6 +4,7 @@ import { useCallback, useLayoutEffect, useReducer } from "react";
 const ALLOWED_INSPECTOR_OVERLAP_PX = 12;
 const DESKTOP_INSPECTOR_MEDIA_QUERY = "(min-width: 1280px)";
 const MESSAGE_PANEL_VIEWPORT_GUTTER_PX = 16;
+const STICKY_INSPECTORS_OFFSET_PROPERTY = "--poke-sticky-inspectors-offset";
 
 interface InspectorPanelState {
   activeMessageId: string | null;
@@ -84,6 +85,20 @@ export function areInspectorPanelsOverlapping(
   return (
     messagePanel.top < stickyPanel.bottom - ALLOWED_INSPECTOR_OVERLAP_PX &&
     messagePanel.bottom > stickyPanel.top + ALLOWED_INSPECTOR_OVERLAP_PX
+  );
+}
+
+export function getStickyInspectorsTopOffsetPx(
+  stickyPanel: Pick<DOMRect, "bottom" | "top">,
+  messagePanel: Pick<DOMRect, "bottom" | "top">
+): number {
+  if (!areInspectorPanelsOverlapping(stickyPanel, messagePanel)) {
+    return 0;
+  }
+
+  return Math.max(
+    -stickyPanel.bottom,
+    messagePanel.top + ALLOWED_INSPECTOR_OVERLAP_PX - stickyPanel.bottom
   );
 }
 
@@ -185,14 +200,21 @@ export function useConversationInspectorPanels({
         return;
       }
 
-      const isOccluded =
-        isDesktop &&
-        areInspectorPanelsOverlapping(
-          stickyInspectors.getBoundingClientRect(),
-          measuredMessagePanelRect
-        );
+      const stickyInspectorsOffsetPx = isDesktop
+        ? getStickyInspectorsTopOffsetPx(
+            stickyInspectors.getBoundingClientRect(),
+            measuredMessagePanelRect
+          )
+        : 0;
+      stickyInspectors.style.setProperty(
+        STICKY_INSPECTORS_OFFSET_PROPERTY,
+        `${stickyInspectorsOffsetPx}px`
+      );
 
-      dispatch({ type: "set_sticky_rail_occluded", occluded: isOccluded });
+      dispatch({
+        type: "set_sticky_rail_occluded",
+        occluded: stickyInspectorsOffsetPx < 0,
+      });
     };
 
     const scheduleMeasurement = () => {
@@ -213,6 +235,7 @@ export function useConversationInspectorPanels({
     resizeObserver?.observe(stickyInspectors);
 
     return () => {
+      stickyInspectors.style.removeProperty(STICKY_INSPECTORS_OFFSET_PROPERTY);
       if (animationFrameId !== null) {
         window.cancelAnimationFrame(animationFrameId);
       }

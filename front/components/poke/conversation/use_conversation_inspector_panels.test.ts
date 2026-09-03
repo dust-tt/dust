@@ -1,6 +1,7 @@
 import {
   areInspectorPanelsOverlapping,
   getMessagePanelTopOffsetPx,
+  getStickyInspectorsTopOffsetPx,
   isMessagePanelAttachedToTrigger,
   useConversationInspectorPanels,
 } from "@app/components/poke/conversation/use_conversation_inspector_panels";
@@ -152,6 +153,9 @@ describe("useConversationInspectorPanels", () => {
     expect(messagePanel.style.top).toBe(
       `${getMessagePanelTopOffsetPx(800, window.innerHeight)}px`
     );
+    expect(
+      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
+    ).toBe("0px");
 
     messagePanelRect = rect(119, 419);
     act(() => window.dispatchEvent(new Event("scroll")));
@@ -160,12 +164,18 @@ describe("useConversationInspectorPanels", () => {
     expect(result.current.isConversationOpen).toBe(false);
     expect(result.current.isStickyRailOccluded).toBe(true);
     expect(messagePanel.style.top).toBe("0px");
+    expect(
+      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
+    ).toBe("-1px");
 
     messagePanelRect = rect(-400, -100);
     act(() => window.dispatchEvent(new Event("scroll")));
     act(flushAnimationFrame);
 
     expect(result.current.isStickyRailOccluded).toBe(false);
+    expect(
+      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
+    ).toBe("0px");
   });
 
   it("does not hide the inspectors in the single-column layout", () => {
@@ -257,6 +267,26 @@ describe("getMessagePanelTopOffsetPx", () => {
 
   it("keeps the panel aligned with its trigger when it already fits", () => {
     expect(getMessagePanelTopOffsetPx(700, 800)).toBe(0);
+  });
+});
+
+describe("getStickyInspectorsTopOffsetPx", () => {
+  it("preserves the allowed overlap while the message panel pushes upward", () => {
+    expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(100, 400))).toBe(
+      -68
+    );
+  });
+
+  it("stops once the sticky inspectors are flush with the viewport top", () => {
+    expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(-100, 400))).toBe(
+      -180
+    );
+  });
+
+  it("stays put before the panels overlap", () => {
+    expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(168, 400))).toBe(
+      0
+    );
   });
 });
 
