@@ -141,11 +141,6 @@ const EMPTY_SPACE_GRANT_ENRICHMENT: SpaceGrantEnrichment = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export type SpaceAutoGroup = {
-  space: SpaceResource;
-  autoGroup: GroupResource;
-};
-
 function memberGrant(space: SpaceResource): GrantSpec {
   return {
     grantType: SPACE_MEMBER_GRANT_TYPE,
@@ -1787,29 +1782,36 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return autoGroups.filter((group) => !editorGroupIds.has(group.sId));
   }
 
-  // The group that stands for a space: its own regular_auto member group, which lives and dies with
-  // the space and cannot be attached to another one. The Company Space has no such group — everyone
-  // in the workspace belongs to it — so the workspace global group stands for it. A provisioned
-  // group would drift the moment an admin attaches it elsewhere.
-  static async listAutoGroupsForSpaces(
+  static async listAutoGroupIdsBySpaceId(
     auth: Authenticator,
-    spaces: SpaceResource[]
-  ): Promise<SpaceAutoGroup[]> {
+    spaceIds: string[]
+  ): Promise<Map<string, string>> {
+    const spaces = await SpaceResource.fetchByIds(auth, spaceIds);
+    // System and conversations spaces have no auto group of their own.
+    const membershipSpaces = spaces.filter(
+      (space) => space.isGlobal() || space.isRegular() || space.isProject()
+    );
+
     const [autoGroupByGrantKey, globalGroupRes] = await Promise.all([
       GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
-        grants: spaces.filter((space) => !space.isGlobal()).map(memberGrant),
+        grants: membershipSpaces
+          .filter((space) => !space.isGlobal())
+          .map(memberGrant),
       }),
       GroupResource.fetchWorkspaceGlobalGroup(auth),
     ]);
-    const globalGroup = globalGroupRes.isOk() ? globalGroupRes.value : null;
+    assert(globalGroupRes.isOk(), "Workspace has no global group.");
 
-    return removeNulls(
-      spaces.map((space) => {
-        const autoGroup = space.isGlobal()
-          ? globalGroup
-          : autoGroupByGrantKey.get(grantKey(memberGrant(space)));
+    return new Map(
+      membershipSpaces.map((space) => {
+        if (space.isGlobal()) {
+          return [space.sId, globalGroupRes.value.sId];
+        }
 
-        return autoGroup ? { space, autoGroup } : null;
+        const autoGroup = autoGroupByGrantKey.get(grantKey(memberGrant(space)));
+        assert(autoGroup, `Space ${space.sId} has no auto group.`);
+
+        return [space.sId, autoGroup.sId];
       })
     );
   }

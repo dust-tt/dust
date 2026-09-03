@@ -1,3 +1,6 @@
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+
 import { redisClient } from "./redis_client";
 
 // JSON-serializable primitive types.
@@ -46,8 +49,10 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   resolver: KeyResolver<Args>,
   {
     ttlMs,
+    cacheId,
   }: {
     ttlMs: number;
+    cacheId?: string;
   }
 ): (...args: Args) => Promise<JsonSerializable<T>> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
@@ -57,7 +62,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   return async (...args: Args): Promise<JsonSerializable<T>> => {
     const redis = await redisClient({ origin: "cache_with_redis" });
 
-    const key = buildCacheWithRedisKey(fn.name, resolver(...args));
+    const key = buildCacheWithRedisKey(cacheId ?? fn.name, resolver(...args));
 
     let cacheVal = await redis.get(key);
     if (cacheVal) {
@@ -81,6 +86,45 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       return result;
     } finally {
       unlock(key);
+    }
+  };
+}
+
+// Wraps a cacheWithRedisResult loader's error so it can round-trip through cacheWithRedis's
+// throw-to-skip-caching contract without ever escaping to a caller.
+class CacheResultError<E> extends Error {
+  constructor(public readonly original: E) {
+    super("cacheWithRedisResult: wrapped domain error");
+  }
+}
+
+// Same semantics as cacheWithRedis, for loaders that report failure through Result<> instead of
+// throwing. The loader's Err is never cached and is returned to the caller as a Result.
+export function cacheWithRedisResult<T, E, Args extends unknown[]>(
+  fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>,
+  resolver: KeyResolver<Args>,
+  { ttlMs }: { ttlMs: number }
+): (...args: Args) => Promise<Result<JsonSerializable<T>, E>> {
+  const cachedFn = cacheWithRedis<T, Args>(
+    async (...args: Args) => {
+      const result = await fn(...args);
+      if (result.isErr()) {
+        throw new CacheResultError(result.error);
+      }
+      return result.value;
+    },
+    resolver,
+    { ttlMs, cacheId: fn.name }
+  );
+
+  return async (...args: Args): Promise<Result<JsonSerializable<T>, E>> => {
+    try {
+      return new Ok(await cachedFn(...args));
+    } catch (err) {
+      if (err instanceof CacheResultError) {
+        return new Err(err.original as E);
+      }
+      throw err;
     }
   };
 }

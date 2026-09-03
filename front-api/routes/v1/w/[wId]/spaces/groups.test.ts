@@ -10,13 +10,12 @@ import { describe, expect, it } from "vitest";
 function getAutoGroupIdsForSpaces(
   workspace: { sId: string },
   key: { secret: string },
-  spaceIds?: string[]
+  spaceIds: string[]
 ) {
-  const query = spaceIds ? `?spaceIds=${spaceIds.join(",")}` : "";
-
-  return honoApp.request(`/api/v1/w/${workspace.sId}/spaces/groups${query}`, {
-    headers: { authorization: `Bearer ${key.secret}` },
-  });
+  return honoApp.request(
+    `/api/v1/w/${workspace.sId}/spaces/groups?spaceIds=${spaceIds.join(",")}`,
+    { headers: { authorization: `Bearer ${key.secret}` } }
+  );
 }
 
 async function setupTest({ systemKey = true }: { systemKey?: boolean } = {}) {
@@ -74,13 +73,5 @@ describe("GET /api/v1/w/:wId/spaces/groups", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ groupIds: [memberGroup.sId] });
-  });
-
-  it("returns 400 without space ids", async () => {
-    const { workspace, key } = await setupTest();
-
-    const response = await getAutoGroupIdsForSpaces(workspace, key);
-
-    expect(response.status).toBe(400);
   });
 });

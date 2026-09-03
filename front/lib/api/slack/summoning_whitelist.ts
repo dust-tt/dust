@@ -7,7 +7,6 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { SpaceAutoGroup } from "@app/lib/resources/space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -60,28 +59,22 @@ async function fetchSlackBotDataSource(
   return new Ok({ dataSource, connectorId: dataSource.connectorId });
 }
 
-async function listSelectableSpaceAutoGroups(
+async function listSelectableSpaces(
   auth: Authenticator
-): Promise<SpaceAutoGroup[]> {
+): Promise<SpaceResource[]> {
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeProjectSpaces: true,
   });
 
-  return SpaceResource.listAutoGroupsForSpaces(
-    auth,
-    spaces.filter((space) => space.isRegular() || space.isProject())
-  );
+  return spaces.filter((space) => space.isRegular() || space.isProject());
 }
 
 export async function listSlackWorkflowSpaces(
   auth: Authenticator
 ): Promise<{ sId: string; name: string }[]> {
-  const spaceAutoGroups = await listSelectableSpaceAutoGroups(auth);
+  const spaces = await listSelectableSpaces(auth);
 
-  return spaceAutoGroups.map(({ space }) => ({
-    sId: space.sId,
-    name: space.name,
-  }));
+  return spaces.map((space) => ({ sId: space.sId, name: space.name }));
 }
 
 export async function listSlackWorkflows(
@@ -100,11 +93,15 @@ export async function listSlackWorkflows(
     logger
   );
 
-  const [whitelistRes, spaceAutoGroups] = await Promise.all([
+  const spaces = await listSelectableSpaces(auth);
+  const [whitelistRes, autoGroupIdBySpaceId] = await Promise.all([
     connectorsAPI.getSlackBotSummoningWhitelist({
       connectorId: dataSourceRes.value.connectorId,
     }),
-    listSelectableSpaceAutoGroups(auth),
+    SpaceResource.listAutoGroupIdsBySpaceId(
+      auth,
+      spaces.map((space) => space.sId)
+    ),
   ]);
 
   if (whitelistRes.isErr()) {
@@ -113,18 +110,19 @@ export async function listSlackWorkflows(
     );
   }
 
-  const spaceBySId = new Map(
-    spaceAutoGroups.map(({ space }) => [space.sId, space])
-  );
+  const spaceById = new Map(spaces.map((space) => [space.sId, space]));
   const spaceByAutoGroupId = new Map(
-    spaceAutoGroups.map(({ space, autoGroup }) => [autoGroup.sId, space])
+    [...autoGroupIdBySpaceId].map(([spaceId, autoGroupId]) => [
+      autoGroupId,
+      spaceById.get(spaceId),
+    ])
   );
 
   const workflows: SlackWorkflowType[] = whitelistRes.value.bots.map((bot) => ({
     botName: bot.botName,
     spaces: removeNulls(
       bot.spaceIds
-        ? bot.spaceIds.map((spaceId) => spaceBySId.get(spaceId))
+        ? bot.spaceIds.map((spaceId) => spaceById.get(spaceId))
         : bot.groupIds.map((groupId) => spaceByAutoGroupId.get(groupId))
     ).map((space) => ({ sId: space.sId, name: space.name })),
     createdAt: bot.createdAt,
@@ -143,11 +141,17 @@ export async function allowSlackWorkflow(
   }
   const { dataSource, connectorId } = dataSourceRes.value;
 
-  const [spaceAutoGroups, globalGroupRes, globalSpace] = await Promise.all([
-    listSelectableSpaceAutoGroups(auth),
-    GroupResource.fetchWorkspaceGlobalGroup(auth),
-    SpaceResource.fetchWorkspaceGlobalSpace(auth),
-  ]);
+  const spaces = await listSelectableSpaces(auth);
+  const [autoGroupIdBySpaceId, globalGroupRes, globalSpace] = await Promise.all(
+    [
+      SpaceResource.listAutoGroupIdsBySpaceId(
+        auth,
+        spaces.map((space) => space.sId)
+      ),
+      GroupResource.fetchWorkspaceGlobalGroup(auth),
+      SpaceResource.fetchWorkspaceGlobalSpace(auth),
+    ]
+  );
   if (globalGroupRes.isErr()) {
     return new Err(
       new SlackWorkflowError(
@@ -156,10 +160,6 @@ export async function allowSlackWorkflow(
       )
     );
   }
-
-  const autoGroupIdBySpaceId = new Map(
-    spaceAutoGroups.map(({ space, autoGroup }) => [space.sId, autoGroup.sId])
-  );
 
   const unknownSpaceIds = spaceIds.filter(
     (spaceId) => !autoGroupIdBySpaceId.has(spaceId)
@@ -200,7 +200,7 @@ export async function allowSlackWorkflow(
   }
 
   const spaceNameBySpaceId = new Map(
-    spaceAutoGroups.map(({ space }) => [space.sId, space.name])
+    spaces.map((space) => [space.sId, space.name])
   );
 
   void emitAuditLogEvent({

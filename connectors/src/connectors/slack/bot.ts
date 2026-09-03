@@ -48,11 +48,9 @@ import {
   SlackChatBotMessageModel,
 } from "@connectors/lib/models/slack";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
-import { getAutoGroupIdsForSpaces } from "@connectors/lib/slack/space_auto_groups";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { SlackBotWhitelistEntry } from "@connectors/resources/slack_configuration_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import {
@@ -77,7 +75,6 @@ import {
   isSupportedAudioContentType,
   isSupportedFileContentType,
   isSupportedImageContentType,
-  normalizeError,
   Ok,
   removeNulls,
 } from "@dust-tt/client";
@@ -776,54 +773,6 @@ async function processErrorResult(
   }
 }
 
-// A whitelisted workflow reaches the spaces it was allowed on. Front owns which group stands for a
-// space, so ask it at run time instead of keeping group ids here.
-async function getWorkflowGroupIds(
-  connector: ConnectorResource,
-  slackConfig: SlackConfigurationResource,
-  { botName }: { botName: string }
-): Promise<Result<string[], Error>> {
-  const entry = await slackConfig.getBotWhitelistEntry(botName);
-  if (!entry) {
-    return new Err(new Error(`Workflow "${botName}" is not whitelisted.`));
-  }
-
-  const groupIdsRes = await resolveWorkflowGroupIds(connector, entry);
-  if (groupIdsRes.isErr()) {
-    return groupIdsRes;
-  }
-
-  // No group means an empty X-Dust-Group-Ids header, which a system key reads as the whole
-  // workspace. Fail instead.
-  if (groupIdsRes.value.length === 0) {
-    return new Err(new Error(`Workflow "${botName}" reaches no group.`));
-  }
-
-  return groupIdsRes;
-}
-
-async function resolveWorkflowGroupIds(
-  connector: ConnectorResource,
-  entry: SlackBotWhitelistEntry
-): Promise<Result<string[], Error>> {
-  const { whitelistModelId, groupIds, spaceIds } = entry;
-  if (!spaceIds) {
-    return new Ok(groupIds);
-  }
-
-  try {
-    return new Ok(
-      await getAutoGroupIdsForSpaces(whitelistModelId, {
-        workspaceId: connector.workspaceId,
-        workspaceAPIKey: connector.workspaceAPIKey,
-        spaceIds,
-      })
-    );
-  } catch (err) {
-    return new Err(normalizeError(err));
-  }
-}
-
 async function answerMessage(
   message: string,
   mentionOverride: string | undefined,
@@ -994,12 +943,19 @@ async function answerMessage(
     if (!botName) {
       throw new Error("Failed to get bot name. Should never happen.");
     }
-    const groupIdsRes = await getWorkflowGroupIds(connector, slackConfig, {
-      botName,
+    const groupIdsRes = await slackConfig.getBotWhitelistedGroupIds(botName, {
+      workspaceId: connector.workspaceId,
+      workspaceAPIKey: connector.workspaceAPIKey,
     });
     if (groupIdsRes.isErr()) {
-      return new Err(groupIdsRes.error);
+      return groupIdsRes;
     }
+    // No group means an empty X-Dust-Group-Ids header, which a system key reads as the whole
+    // workspace. Fail instead.
+    if (groupIdsRes.value.length === 0) {
+      return new Err(new Error(`Workflow "${botName}" reaches no group.`));
+    }
+
     requestedGroups = groupIdsRes.value;
   }
 

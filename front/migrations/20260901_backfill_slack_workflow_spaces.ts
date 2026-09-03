@@ -36,8 +36,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 // whitelist stores.
 async function listSpaceIdsByGroupId(
   auth: Authenticator,
-  workspace: LightWorkspaceType,
-  logger: Logger
+  workspace: LightWorkspaceType
 ): Promise<Map<string, string[]>> {
   const [workspaceGroups, spaces, globalSpace] = await Promise.all([
     GroupResource.listAllWorkspaceGroups(auth),
@@ -65,12 +64,8 @@ async function listSpaceIdsByGroupId(
     (space) => space.isRegular() || space.isProject()
   );
 
-  const spaceAutoGroups = await SpaceResource.listAutoGroupsForSpaces(auth, [
-    globalSpace,
-    ...candidateSpaces,
-  ]);
   const representedSpaceById = new Map(
-    spaceAutoGroups.map(({ space }) => [space.id, space])
+    candidateSpaces.map((space) => [space.id, space])
   );
 
   const spaceIdsByGroupModelId = new Map<ModelId, Set<string>>();
@@ -83,16 +78,6 @@ async function listSpaceIdsByGroupId(
     const spaceIds = spaceIdsByGroupModelId.get(grant.groupId) ?? new Set();
     spaceIds.add(space.sId);
     spaceIdsByGroupModelId.set(grant.groupId, spaceIds);
-  }
-
-  const unrepresentedSpaceIds = candidateSpaces
-    .filter((space) => !representedSpaceById.has(space.id))
-    .map((space) => space.sId);
-  if (unrepresentedSpaceIds.length > 0) {
-    logger.warn(
-      { workspaceId: workspace.sId, unrepresentedSpaceIds },
-      "Spaces with no member group, dropped from the whitelist"
-    );
   }
 
   return new Map(
@@ -169,11 +154,7 @@ async function backfillWorkflows(
     return;
   }
 
-  const spaceIdsByGroupId = await listSpaceIdsByGroupId(
-    auth,
-    workspace,
-    logger
-  );
+  const spaceIdsByGroupId = await listSpaceIdsByGroupId(auth, workspace);
 
   for (const bot of pendingBots) {
     const spaceIds = [

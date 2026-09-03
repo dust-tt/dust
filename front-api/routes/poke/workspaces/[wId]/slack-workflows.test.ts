@@ -55,7 +55,9 @@ async function createSpaceWithMemberGroup(workspace: LightWorkspaceType) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const space = await SpaceFactory.regular(workspace);
 
-  return { space, memberGroup: await space.fetchManualMemberGroup(auth) };
+  const memberGroup = await space.fetchManualMemberGroup(auth);
+
+  return { space, memberGroup };
 }
 
 function pokeSlackWorkflowsRequest(
