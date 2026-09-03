@@ -185,7 +185,7 @@ export function SliderSteps({
           return StepMarker ? (
             <span
               key={index}
-              className="pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-white"
               style={{ left: stepCenter(index, lastIndex) }}
             >
               <StepMarker aria-hidden className="h-3 w-3" />
