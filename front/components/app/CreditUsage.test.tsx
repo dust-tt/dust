@@ -1,7 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { CreditUsageState } from "./CreditUsage";
-import { CREDIT_USAGE_LEARN_MORE_LABEL, CreditUsage } from "./CreditUsage";
+import {
+  CREDIT_USAGE_LEARN_MORE_LABEL,
+  CreditUsage,
+  CreditUsageLearnMoreButton,
+} from "./CreditUsage";
 
 const ON_TARGET_STATE = {
   kind: "billing_period",
@@ -37,6 +41,19 @@ describe("CreditUsage", () => {
     fireEvent.click(
       screen.getByRole("button", { name: CREDIT_USAGE_LEARN_MORE_LABEL })
     );
+
+    expect(onLearnMore).toHaveBeenCalledOnce();
+  });
+
+  it("renders the standalone learn more action", () => {
+    const onLearnMore = vi.fn();
+
+    render(<CreditUsageLearnMoreButton onClick={onLearnMore} />);
+
+    const button = screen.getByRole("button", {
+      name: CREDIT_USAGE_LEARN_MORE_LABEL,
+    });
+    fireEvent.click(button);
 
     expect(onLearnMore).toHaveBeenCalledOnce();
   });

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 
 interface UserMenuMockProps {
   creditUsageState?: CreditUsageState | null;
+  showCreditUsageLearnMoreOnly: boolean;
 }
 
 vi.mock("@app/components/app/FairUseCreditsUsage", () => ({
@@ -22,12 +23,19 @@ vi.mock("@app/components/app/FairUseCreditsUsage", () => ({
 }));
 
 vi.mock("@app/components/UserMenu", async () => {
-  const { CreditUsage } = await import("@app/components/app/CreditUsage");
+  const { CreditUsage, CreditUsageLearnMoreButton } = await import(
+    "@app/components/app/CreditUsage"
+  );
 
   return {
-    UserMenu: ({ creditUsageState }: UserMenuMockProps) =>
+    UserMenu: ({
+      creditUsageState,
+      showCreditUsageLearnMoreOnly,
+    }: UserMenuMockProps) =>
       creditUsageState ? (
         <CreditUsage state={creditUsageState} variant="profile_menu" />
+      ) : showCreditUsageLearnMoreOnly ? (
+        <CreditUsageLearnMoreButton onClick={() => {}} />
       ) : null,
   };
 });
@@ -61,9 +69,27 @@ const subscription = LightSubscriptionFactory.build({
   metronomeContractId: "contract_1",
   plan: LightPlanFactory.build({ code: CREDIT_PRICED_BUSINESS_PLAN_CODE }),
 });
+const legacyPlan = LightPlanFactory.build();
+const legacySubscription = LightSubscriptionFactory.build({
+  plan: {
+    ...legacyPlan,
+    limits: {
+      ...legacyPlan.limits,
+      assistant: {
+        ...legacyPlan.limits.assistant,
+        maxAwuCredits: 20_000,
+        maxAwuCreditsTimeframe: "week",
+      },
+    },
+  },
+});
 
 describe("SidebarUserMenu", () => {
   beforeEach(() => {
+    mocks.useMyUsage.mockReturnValue({
+      myUsage: null,
+      creditUsageStatus: null,
+    });
     mocks.useFairUseCredits.mockReturnValue({
       fairUseAwuCreditsState: null,
     });
@@ -84,7 +110,12 @@ describe("SidebarUserMenu", () => {
     });
 
     render(
-      <SidebarUserMenu user={user} owner={owner} subscription={subscription} />
+      <SidebarUserMenu
+        user={user}
+        owner={owner}
+        subscription={subscription}
+        isFairUseAwuLimitDisabled={false}
+      />
     );
 
     expect(
@@ -108,10 +139,36 @@ describe("SidebarUserMenu", () => {
     });
 
     render(
-      <SidebarUserMenu user={user} owner={owner} subscription={subscription} />
+      <SidebarUserMenu
+        user={user}
+        owner={owner}
+        subscription={subscription}
+        isFairUseAwuLimitDisabled={false}
+      />
     );
 
     expect(screen.queryByText(/reset/i)).toBeNull();
     expect(screen.queryByText("Credits")).toBeNull();
+  });
+
+  it("shows only the usage action when the fair-use limit is disabled", () => {
+    render(
+      <SidebarUserMenu
+        user={user}
+        owner={owner}
+        subscription={legacySubscription}
+        isFairUseAwuLimitDisabled
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: "See your usage" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Credits")).toBeNull();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(mocks.useFairUseCredits).toHaveBeenCalledWith({
+      workspaceId: owner.sId,
+      disabled: true,
+    });
   });
 });

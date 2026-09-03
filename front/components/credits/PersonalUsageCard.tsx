@@ -30,7 +30,9 @@ export function PersonalUsageCard({
   const { hasFeature } = useFeatureFlags();
   const isCreditBased = isCreditPricedPlan(subscription.plan);
   const showFairUseCredits =
-    !isCreditBased && subscription.plan.limits.assistant.maxAwuCredits > 0;
+    !isCreditBased &&
+    !hasFeature("disable_fair_use_awu_limit") &&
+    subscription.plan.limits.assistant.maxAwuCredits > 0;
   const showPremiumModelUsage =
     !isCreditBased && hasFeature("enforce_premium_model_message_limit");
   const { myUsage, premiumModelUsage, nextCreditResetAt, isMyUsageLoading } =
