@@ -13,17 +13,15 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import type {
   AgentMessageAnalyticsCost,
   AgentMessageAnalyticsModel,
 } from "@app/types/assistant/analytics";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-  ModelResolutionMethodType,
-  ReasoningEffort,
-} from "@app/types/assistant/models/types";
+import { isModelId } from "@app/types/assistant/models/models";
+import { isModelProviderId } from "@app/types/assistant/models/providers";
+import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
+import { isModelResolutionMethod } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -220,6 +218,35 @@ function firstBucketKey(agg: TermsAgg | undefined): string {
   return buckets[0]?.key ?? "";
 }
 
+function parseAnalyticsModel(
+  bucket: estypes.AggregationsStringTermsBucketKeys | undefined
+): AgentMessageAnalyticsModel | null {
+  if (!bucket) {
+    return null;
+  }
+  const modelId = String(bucket.key[0]);
+  const providerId = String(bucket.key[1]);
+  const resolutionMethod = String(bucket.key[2]);
+  const reasoningEffort = String(bucket.key[3]);
+
+  if (
+    !isModelId(modelId) ||
+    !isModelProviderId(providerId) ||
+    !isReasoningEffort(reasoningEffort)
+  ) {
+    return null;
+  }
+
+  return {
+    model_id: modelId,
+    provider_id: providerId,
+    resolution_method: isModelResolutionMethod(resolutionMethod)
+      ? resolutionMethod
+      : null,
+    reasoning_effort: reasoningEffort,
+  };
+}
+
 function consumptionBucketToDocument(
   messageId: string,
   bucket: ConsumptionMessageBucket
@@ -261,18 +288,9 @@ function consumptionBucketToDocument(
       full_awu: 0,
       llm_awu: 0,
       tool_awu: 0,
-      billable_awu: Math.round(creditMicro / MICRO_CREDITS_PER_CREDIT),
+      billable_awu: Math.round(microCreditsToCredits(creditMicro)),
     },
-    model: primaryModel
-      ? {
-          model_id: String(primaryModel.key[0]) as ModelIdType,
-          provider_id: String(primaryModel.key[1]) as ModelProviderIdType,
-          resolution_method: String(
-            primaryModel.key[2]
-          ) as ModelResolutionMethodType,
-          reasoning_effort: String(primaryModel.key[3]) as ReasoningEffort,
-        }
-      : null,
+    model: parseAnalyticsModel(primaryModel),
   };
 }
 

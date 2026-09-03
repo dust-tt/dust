@@ -52,6 +52,11 @@ export const MODEL_RESOLUTION_METHODS = [
 export type ModelResolutionMethodType =
   (typeof MODEL_RESOLUTION_METHODS)[number];
 
+export const isModelResolutionMethod = (
+  value: string
+): value is ModelResolutionMethodType =>
+  MODEL_RESOLUTION_METHODS.includes(value as ModelResolutionMethodType);
+
 // z.object (not z.record) so every reasoning effort key is required.
 const ReasoningEffortSupportSchema = z.object({
   none: z.boolean(),
