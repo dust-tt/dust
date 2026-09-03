@@ -162,6 +162,50 @@ describe("useConversationInspectorPanels", () => {
     expect(result.current.activeMessageId).toBeNull();
   });
 
+  it("keeps the panel bottom-aligned while its exit animation runs", () => {
+    let messagePanelRect = rect(500, 900);
+    const messagePanel = document.createElement("div");
+    messagePanel.dataset.messageConsumptionPanelId = "message_1";
+    vi.spyOn(messagePanel, "getBoundingClientRect").mockImplementation(
+      () => messagePanelRect
+    );
+
+    const stickyInspectors = document.createElement("aside");
+    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
+      rect(16, 180)
+    );
+
+    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
+      current: messagePanel,
+    };
+    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
+      current: stickyInspectors,
+    };
+    const { result } = renderHook(() =>
+      useConversationInspectorPanels({
+        activeMessagePanelRef,
+        stickyInspectorsRef,
+      })
+    );
+
+    act(() => result.current.setMessageOpen("message_1", true));
+    act(flushAnimationFrame);
+
+    expect(messagePanel.style.translate).toBe(
+      `0 ${getMessagePanelTopOffsetPx(900, window.innerHeight)}px`
+    );
+    expect(result.current.activeMessageId).toBe("message_1");
+
+    messagePanelRect = rect(352, 1052);
+    act(() => window.dispatchEvent(new Event("scroll")));
+    act(flushAnimationFrame);
+
+    expect(result.current.activeMessageId).toBeNull();
+    expect(messagePanel.style.translate).toBe(
+      `0 ${getMessagePanelTopOffsetPx(1200, window.innerHeight)}px`
+    );
+  });
+
   it("does not enforce inspector spacing in the single-column layout", () => {
     vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
     const messagePanel = document.createElement("div");

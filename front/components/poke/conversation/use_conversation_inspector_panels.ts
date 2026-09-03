@@ -199,7 +199,6 @@ export function useConversationInspectorPanels({
     resizeObserver?.observe(stickyInspectors);
 
     return () => {
-      messagePanel.style.removeProperty("translate");
       if (animationFrameId !== null) {
         window.cancelAnimationFrame(animationFrameId);
       }
