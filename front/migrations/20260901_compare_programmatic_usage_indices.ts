@@ -37,6 +37,10 @@ type StatusCreditsBucket = {
 type ProgrammaticCreditsAggregations = {
   credits?: estypes.AggregationsSumAggregate;
   by_status?: estypes.AggregationsTermsAggregateBase<StatusCreditsBucket>;
+  without_message_id?: {
+    doc_count: number;
+    credits?: estypes.AggregationsSumAggregate;
+  };
 };
 
 type ComparisonWindow = {
@@ -50,6 +54,7 @@ type MessageCompositeKey = {
 
 type MessageStatusBucket = {
   key: string;
+  credits?: estypes.AggregationsSumAggregate;
 };
 
 type MessageCreditsBucket = {
@@ -57,7 +62,10 @@ type MessageCreditsBucket = {
   credits?: estypes.AggregationsSumAggregate;
   first_at?: estypes.AggregationsMinAggregate;
   last_at?: estypes.AggregationsMaxAggregate;
+  by_auth_method?: estypes.AggregationsTermsAggregateBase<MessageStatusBucket>;
+  by_context_origin?: estypes.AggregationsTermsAggregateBase<MessageStatusBucket>;
   by_status?: estypes.AggregationsTermsAggregateBase<MessageStatusBucket>;
+  by_usage_type?: estypes.AggregationsTermsAggregateBase<MessageStatusBucket>;
 };
 
 type MessageCreditsAggregations = {
@@ -69,10 +77,16 @@ type MessageCreditsAggregations = {
 
 type MessageCredits = {
   messageId: string;
+  // Credits contributing to the programmatic comparison. For an unfiltered
+  // consumption lookup, non-programmatic credits remain in the breakdown below.
   creditMicro: number;
+  creditMicroByUsageType: Record<string, number>;
+  authMethods: string[];
+  contextOrigins: string[];
   firstAt: string | null;
   lastAt: string | null;
   statuses: string[];
+  usageTypes: string[];
 };
 
 type MessageCreditsResult = {
@@ -96,10 +110,27 @@ function dateAggregateToIso(
     : new Date(aggregate.value).toISOString();
 }
 
-function statusesFromBucket(bucket: MessageCreditsBucket): string[] {
-  return bucketsToArray<MessageStatusBucket>(bucket.by_status?.buckets)
+function valuesFromAggregation(
+  aggregation:
+    | estypes.AggregationsTermsAggregateBase<MessageStatusBucket>
+    | undefined
+): string[] {
+  return bucketsToArray<MessageStatusBucket>(aggregation?.buckets)
     .map(({ key }) => String(key))
     .sort();
+}
+
+function creditsByValueFromAggregation(
+  aggregation:
+    | estypes.AggregationsTermsAggregateBase<MessageStatusBucket>
+    | undefined
+): Record<string, number> {
+  return Object.fromEntries(
+    bucketsToArray<MessageStatusBucket>(aggregation?.buckets).map((bucket) => [
+      String(bucket.key),
+      Math.round(bucket.credits?.value ?? 0),
+    ])
+  );
 }
 
 async function fetchLegacyMessageCredits({
@@ -156,6 +187,12 @@ async function fetchLegacyMessageCredits({
               credits: { sum: { field: "cost.billable_awu" } },
               first_at: { min: { field: "timestamp" } },
               last_at: { max: { field: "timestamp" } },
+              by_auth_method: {
+                terms: { field: "auth_method", size: STATUS_BUCKET_SIZE },
+              },
+              by_context_origin: {
+                terms: { field: "context_origin", size: STATUS_BUCKET_SIZE },
+              },
               by_status: {
                 terms: { field: "status", size: STATUS_BUCKET_SIZE },
               },
@@ -177,9 +214,13 @@ async function fetchLegacyMessageCredits({
       messages.set(bucket.key.message_id, {
         messageId: bucket.key.message_id,
         creditMicro: roundCreditsToMicroCredits(bucket.credits?.value ?? 0),
+        creditMicroByUsageType: {},
+        authMethods: valuesFromAggregation(bucket.by_auth_method),
+        contextOrigins: valuesFromAggregation(bucket.by_context_origin),
         firstAt: dateAggregateToIso(bucket.first_at),
         lastAt: dateAggregateToIso(bucket.last_at),
-        statuses: statusesFromBucket(bucket),
+        statuses: valuesFromAggregation(bucket.by_status),
+        usageTypes: [],
       });
     }
 
@@ -196,11 +237,13 @@ async function fetchLegacyMessageCredits({
 async function fetchConsumptionMessageCredits({
   limit,
   messageIds,
+  programmaticOnly = true,
   window,
   workspaceId,
 }: {
   limit: number;
   messageIds?: string[];
+  programmaticOnly?: boolean;
   window?: ComparisonWindow;
   workspaceId: string;
 }): Promise<MessageCreditsResult> {
@@ -217,8 +260,10 @@ async function fetchConsumptionMessageCredits({
 
     const filter: estypes.QueryDslQueryContainer[] = [
       { term: { workspace_id: workspaceId } },
-      { term: { usage_type: USAGE_TYPE_PROGRAMMATIC } },
     ];
+    if (programmaticOnly) {
+      filter.push({ term: { usage_type: USAGE_TYPE_PROGRAMMATIC } });
+    }
     if (messageIds) {
       filter.push({ terms: { agent_message_id: messageIds } });
     }
@@ -256,8 +301,15 @@ async function fetchConsumptionMessageCredits({
               credits: { sum: { field: "credit_micro" } },
               first_at: { min: { field: "completed_at" } },
               last_at: { max: { field: "completed_at" } },
+              by_context_origin: {
+                terms: { field: "context_origin", size: STATUS_BUCKET_SIZE },
+              },
               by_status: {
                 terms: { field: "status", size: STATUS_BUCKET_SIZE },
+              },
+              by_usage_type: {
+                terms: { field: "usage_type", size: STATUS_BUCKET_SIZE },
+                aggs: { credits: { sum: { field: "credit_micro" } } },
               },
             },
           },
@@ -274,12 +326,21 @@ async function fetchConsumptionMessageCredits({
     const aggregation = result.value.aggregations?.by_message;
     const buckets = aggregation?.buckets ?? [];
     for (const bucket of buckets) {
+      const creditMicroByUsageType = creditsByValueFromAggregation(
+        bucket.by_usage_type
+      );
       messages.set(bucket.key.message_id, {
         messageId: bucket.key.message_id,
-        creditMicro: Math.round(bucket.credits?.value ?? 0),
+        creditMicro:
+          creditMicroByUsageType[USAGE_TYPE_PROGRAMMATIC] ??
+          (programmaticOnly ? Math.round(bucket.credits?.value ?? 0) : 0),
+        creditMicroByUsageType,
+        authMethods: [],
+        contextOrigins: valuesFromAggregation(bucket.by_context_origin),
         firstAt: dateAggregateToIso(bucket.first_at),
         lastAt: dateAggregateToIso(bucket.last_at),
-        statuses: statusesFromBucket(bucket),
+        statuses: valuesFromAggregation(bucket.by_status),
+        usageTypes: valuesFromAggregation(bucket.by_usage_type),
       });
     }
 
@@ -325,7 +386,8 @@ async function fetchLegacyMessageCreditsByIds(
 
 async function fetchConsumptionMessageCreditsByIds(
   workspaceId: string,
-  messageIds: string[]
+  messageIds: string[],
+  { programmaticOnly = true }: { programmaticOnly?: boolean } = {}
 ): Promise<MessageCreditsResult> {
   const messages = new Map<string, MessageCredits>();
   let truncated = false;
@@ -342,6 +404,7 @@ async function fetchConsumptionMessageCreditsByIds(
     const result = await fetchConsumptionMessageCredits({
       limit: batch.length + 1,
       messageIds: batch,
+      programmaticOnly,
       workspaceId,
     });
     for (const [messageId, credits] of result.messages) {
@@ -398,6 +461,8 @@ function messageComparisonSample(
     legacy: pair.legacy
       ? {
           awuCredits: microCreditsToCredits(pair.legacy.creditMicro),
+          authMethods: pair.legacy.authMethods,
+          contextOrigins: pair.legacy.contextOrigins,
           firstTimestamp: pair.legacy.firstAt,
           lastTimestamp: pair.legacy.lastAt,
           messageStatuses: pair.legacy.statuses,
@@ -407,6 +472,15 @@ function messageComparisonSample(
     consumption: pair.consumption
       ? {
           awuCredits: microCreditsToCredits(pair.consumption.creditMicro),
+          awuCreditsByUsageType: Object.fromEntries(
+            Object.entries(pair.consumption.creditMicroByUsageType).map(
+              ([usageType, creditMicro]) => [
+                usageType,
+                microCreditsToCredits(creditMicro),
+              ]
+            )
+          ),
+          contextOrigins: pair.consumption.contextOrigins,
           firstCompletedAt: pair.consumption.firstAt,
           lastCompletedAt: pair.consumption.lastAt,
           documentStatuses: pair.consumption.statuses,
@@ -417,6 +491,66 @@ function messageComparisonSample(
       windowDifferenceMicroCredits(pair, window)
     ),
   };
+}
+
+function summarizeLegacyFacet(
+  pairs: MessageComparisonPair[],
+  window: ComparisonWindow,
+  getValues: (legacy: MessageCredits) => string[]
+) {
+  const summaries = new Map<
+    string,
+    { count: number; legacyCreditMicro: number }
+  >();
+
+  for (const pair of pairs) {
+    if (!pair.legacy || !isInWindow(pair.legacy, window)) {
+      continue;
+    }
+    const values = getValues(pair.legacy);
+    const key = values.length > 0 ? values.join(",") : "(missing)";
+    const current = summaries.get(key) ?? {
+      count: 0,
+      legacyCreditMicro: 0,
+    };
+    current.count += 1;
+    current.legacyCreditMicro += pair.legacy.creditMicro;
+    summaries.set(key, current);
+  }
+
+  return [...summaries.entries()]
+    .map(([value, summary]) => ({
+      value,
+      count: summary.count,
+      legacyAwuCredits: microCreditsToCredits(summary.legacyCreditMicro),
+    }))
+    .sort((left, right) => right.legacyAwuCredits - left.legacyAwuCredits);
+}
+
+function summarizeConsumptionUsageTypes(pairs: MessageComparisonPair[]) {
+  const summaries = new Map<string, { count: number; creditMicro: number }>();
+
+  for (const pair of pairs) {
+    if (!pair.consumption) {
+      continue;
+    }
+    for (const [usageType, creditMicro] of Object.entries(
+      pair.consumption.creditMicroByUsageType
+    )) {
+      const current = summaries.get(usageType) ?? { count: 0, creditMicro: 0 };
+      current.count += 1;
+      current.creditMicro += creditMicro;
+      summaries.set(usageType, current);
+    }
+  }
+
+  return [...summaries.entries()]
+    .map(([usageType, summary]) => ({
+      usageType,
+      count: summary.count,
+      awuCredits: microCreditsToCredits(summary.creditMicro),
+    }))
+    .sort((left, right) => right.awuCredits - left.awuCredits);
 }
 
 function summarizeMessagePairs(
@@ -508,7 +642,8 @@ async function compareProgrammaticMessages({
     await Promise.all([
       fetchConsumptionMessageCreditsByIds(
         workspaceId,
-        legacyOnlyInWindow.map(({ messageId }) => messageId)
+        legacyOnlyInWindow.map(({ messageId }) => messageId),
+        { programmaticOnly: false }
       ),
       fetchLegacyMessageCreditsByIds(
         workspaceId,
@@ -518,6 +653,7 @@ async function compareProgrammaticMessages({
 
   const boundaryShifted: MessageComparisonPair[] = [];
   const legacyOnly: MessageComparisonPair[] = [];
+  const consumptionUsageTypeMismatch: MessageComparisonPair[] = [];
   const consumptionOnly: MessageComparisonPair[] = [];
   const counterpartInWindowButMissing: MessageComparisonPair[] = [];
 
@@ -526,6 +662,8 @@ async function compareProgrammaticMessages({
     const pair = { legacy, consumption };
     if (!consumption) {
       legacyOnly.push(pair);
+    } else if (!consumption.usageTypes.includes(USAGE_TYPE_PROGRAMMATIC)) {
+      consumptionUsageTypeMismatch.push(pair);
     } else if (isInWindow(consumption, window)) {
       counterpartInWindowButMissing.push(pair);
     } else {
@@ -544,13 +682,18 @@ async function compareProgrammaticMessages({
     }
   }
 
-  const legacyCreatedOnly = legacyOnly.filter(({ legacy }) =>
+  const legacyProgrammaticOnly = [
+    ...legacyOnly,
+    ...consumptionUsageTypeMismatch,
+  ];
+  const legacyCreatedOnly = legacyProgrammaticOnly.filter(({ legacy }) =>
     legacy?.statuses.includes("created")
   );
   const mismatchPairs = [
     ...sameMessageAmountDifferences,
     ...boundaryShifted,
     ...legacyOnly,
+    ...consumptionUsageTypeMismatch,
     ...consumptionOnly,
     ...counterpartInWindowButMissing,
   ];
@@ -565,7 +708,7 @@ async function compareProgrammaticMessages({
     truncated: {
       legacyWindow: legacyWindowResult.truncated,
       consumptionWindow: consumptionWindowResult.truncated,
-      consumptionLookupForLegacyOnly: consumptionForLegacyOnly.truncated,
+      allConsumptionLookupForLegacyOnly: consumptionForLegacyOnly.truncated,
       legacyLookupForConsumptionOnly: legacyForConsumptionOnly.truncated,
     },
     legacyMessageCount: legacyWindowResult.messages.size,
@@ -582,6 +725,30 @@ async function compareProgrammaticMessages({
       window
     ),
     boundaryShifted: summarizeMessagePairs(boundaryShifted, window),
+    legacyProgrammaticOnly: {
+      ...summarizeMessagePairs(legacyProgrammaticOnly, window),
+      byMessageStatus: summarizeLegacyFacet(
+        legacyProgrammaticOnly,
+        window,
+        ({ statuses }) => statuses
+      ),
+      byContextOrigin: summarizeLegacyFacet(
+        legacyProgrammaticOnly,
+        window,
+        ({ contextOrigins }) => contextOrigins
+      ),
+      byAuthMethod: summarizeLegacyFacet(
+        legacyProgrammaticOnly,
+        window,
+        ({ authMethods }) => authMethods
+      ),
+    },
+    consumptionUsageTypeMismatch: {
+      ...summarizeMessagePairs(consumptionUsageTypeMismatch, window),
+      consumptionByUsageType: summarizeConsumptionUsageTypes(
+        consumptionUsageTypeMismatch
+      ),
+    },
     legacyOnly: summarizeMessagePairs(legacyOnly, window),
     legacyCreatedOnly: summarizeMessagePairs(legacyCreatedOnly, window),
     consumptionOnly: summarizeMessagePairs(consumptionOnly, window),
@@ -647,6 +814,14 @@ makeScript(
                 credits: { sum: { field: "cost.billable_awu" } },
               },
             },
+            without_message_id: {
+              filter: {
+                bool: { must_not: { exists: { field: "message_id" } } },
+              },
+              aggs: {
+                credits: { sum: { field: "cost.billable_awu" } },
+              },
+            },
           },
           size: 0,
         }
@@ -673,6 +848,14 @@ makeScript(
             credits: { sum: { field: "credit_micro" } },
             by_status: {
               terms: { field: "status", size: STATUS_BUCKET_SIZE },
+              aggs: { credits: { sum: { field: "credit_micro" } } },
+            },
+            without_message_id: {
+              filter: {
+                bool: {
+                  must_not: { exists: { field: "agent_message_id" } },
+                },
+              },
               aggs: { credits: { sum: { field: "credit_micro" } } },
             },
           },
@@ -711,6 +894,15 @@ makeScript(
       consumptionRoundedAwuCredits - legacyRoundedAwuCredits;
     const aggregateDifferenceMicroCredits =
       consumptionMicroCredits - roundCreditsToMicroCredits(legacyAwuCredits);
+    const legacyWithoutMessageIdMicroCredits = roundCreditsToMicroCredits(
+      legacyAggregations?.without_message_id?.credits?.value ?? 0
+    );
+    const consumptionWithoutMessageIdMicroCredits = Math.round(
+      consumptionAggregations?.without_message_id?.credits?.value ?? 0
+    );
+    const withoutMessageIdDifferenceMicroCredits =
+      consumptionWithoutMessageIdMicroCredits -
+      legacyWithoutMessageIdMicroCredits;
     const messageComparison = await compareProgrammaticMessages({
       window: { start: cycleStart, end: cycleEnd },
       workspaceId: workspace.sId,
@@ -723,17 +915,21 @@ makeScript(
       legacy: {
         awuCredits: legacyAwuCredits,
         roundedAwuCredits: legacyRoundedAwuCredits,
-        awuCreditsByStatus: Object.fromEntries(
+        awuCreditsByMessageStatus: Object.fromEntries(
           bucketsToArray<StatusCreditsBucket>(
             legacyAggregations?.by_status?.buckets
           ).map((bucket) => [String(bucket.key), bucket.credits?.value ?? 0])
         ),
+        withoutMessageId: {
+          documentCount: legacyAggregations?.without_message_id?.doc_count ?? 0,
+          awuCredits: microCreditsToCredits(legacyWithoutMessageIdMicroCredits),
+        },
       },
       consumption: {
         microCredits: consumptionMicroCredits,
         awuCredits: consumptionAwuCredits,
         roundedAwuCredits: consumptionRoundedAwuCredits,
-        awuCreditsByStatus: Object.fromEntries(
+        awuCreditsByDocumentStatus: Object.fromEntries(
           bucketsToArray<StatusCreditsBucket>(
             consumptionAggregations?.by_status?.buckets
           ).map((bucket) => [
@@ -741,6 +937,13 @@ makeScript(
             microCreditsToCredits(Math.round(bucket.credits?.value ?? 0)),
           ])
         ),
+        withoutMessageId: {
+          documentCount:
+            consumptionAggregations?.without_message_id?.doc_count ?? 0,
+          awuCredits: microCreditsToCredits(
+            consumptionWithoutMessageIdMicroCredits
+          ),
+        },
       },
       awuCreditsDifference: consumptionAwuCredits - legacyAwuCredits,
       roundedAwuCreditsDifference,
@@ -748,8 +951,25 @@ makeScript(
       messageComparison: {
         ...messageComparison,
         aggregateDifferenceMicroCredits,
+        withoutMessageIdDifferenceMicroCredits,
+        withoutMessageIdAwuCreditsDifference: microCreditsToCredits(
+          withoutMessageIdDifferenceMicroCredits
+        ),
+        reconciledDifferenceMicroCredits:
+          messageComparison.classifiedDifferenceMicroCredits +
+          withoutMessageIdDifferenceMicroCredits,
+        reconciledAwuCreditsDifference: microCreditsToCredits(
+          messageComparison.classifiedDifferenceMicroCredits +
+            withoutMessageIdDifferenceMicroCredits
+        ),
+        remainingAwuCreditsDifference: microCreditsToCredits(
+          aggregateDifferenceMicroCredits -
+            messageComparison.classifiedDifferenceMicroCredits -
+            withoutMessageIdDifferenceMicroCredits
+        ),
         matchesAggregateDifference:
-          messageComparison.classifiedDifferenceMicroCredits ===
+          messageComparison.classifiedDifferenceMicroCredits +
+            withoutMessageIdDifferenceMicroCredits ===
           aggregateDifferenceMicroCredits,
       },
     };
