@@ -24,9 +24,6 @@ interface PokeMemberSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   member: MemberUsageType | null;
-  // Cap-eligible groups for the workspace, already fetched by the caller
-  // (e.g. PoolUsagePage's usePokeGroups) — filtered here to the member's own
-  // groups.
   groups: GroupType[];
 }
 
@@ -41,7 +38,7 @@ type GroupRow = {
 
 // Poke has no working write route for per-member or per-group spend limits
 // yet, so Save is wired to nothing but a notice rather than an actual
-// mutation — see the "Unblock" panel this modal is opened from.
+// mutation
 function useUnavailableSpendLimitSave() {
   const sendNotification = useSendNotification();
   return () =>
@@ -70,10 +67,7 @@ export function PokeMemberSpendLimitModal({
 
   const [personalLimitInput, setPersonalLimitInput] = useState("");
   // Typed group overrides aren't read anywhere yet (Save is a no-op notice,
-  // not a real mutation), so they're kept in a ref rather than state — a
-  // state update on every keystroke would recreate `groupColumns` below and
-  // remount the DataTable's input cells, kicking focus out after each
-  // character.
+  // not a real mutation), so they're kept in a ref rather than state
   const groupLimitInputsRef = useRef<Record<string, string>>({});
 
   const seatAllowanceAwuCredits = displayedMember?.memberUsageLimit ?? 0;
@@ -154,7 +148,8 @@ export function PokeMemberSpendLimitModal({
               e.target.value = cleaned;
               groupLimitInputsRef.current[row.original.sId] = cleaned;
             }}
-            unit="credits/m."
+            suffix="credits/m."
+            isUnit
           />
         ),
       },
@@ -218,7 +213,8 @@ export function PokeMemberSpendLimitModal({
                   const cleaned = e.target.value.replace(/[^\d]/g, "");
                   setPersonalLimitInput(cleaned);
                 }}
-                unit="credits/months"
+                suffix="credits/months"
+                isUnit
               />
             </Page.Vertical>
 

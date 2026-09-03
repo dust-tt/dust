@@ -987,9 +987,6 @@ interface MembersUsageTableProps {
   // off-pace column's "Unblock" panel. No-op default for the customer-facing
   // ("legacy") variant, which never renders that column.
   onOpenChangeSeatRecap?: (member: MemberUsageType) => void;
-  // Poke-only: opens the read-only spend-limit recap modal from the
-  // off-pace column's "Unblock" panel. No-op default for the customer-facing
-  // ("legacy") variant, which never renders that column.
   onOpenSpendLimitRecap?: (member: MemberUsageType) => void;
   onSetUserModelTier?: (
     member: MemberUsageType,
