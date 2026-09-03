@@ -78,7 +78,7 @@ function getBadge(
   if (toBaseSeatType(seatType) === "workspace") {
     return (
       <span className="text-xs text-foreground">
-        {price} · User can spend credits from the workspace pool.
+        {price} · User can spend credits from the workspace&nbsp;pool.
       </span>
     );
   }
@@ -88,7 +88,7 @@ function getBadge(
       {price} ·{" "}
       {openCount > 0
         ? `${openCount} included seat${pluralize(openCount)} open`
-        : "No included seats left — this will add a new billed seat"}
+        : "No included seats left, this will add a new billed seat"}
     </span>
   );
 }

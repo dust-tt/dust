@@ -17,7 +17,7 @@ function seatPlanErrorToApi(ctx: Context, err: SeatPlanError) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "internal_server_error",
+          type: "invalid_request_error",
           message: "Workspace is not configured for Metronome billing.",
         },
       });
