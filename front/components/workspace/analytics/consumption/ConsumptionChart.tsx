@@ -533,7 +533,9 @@ function WorkspaceConsumptionDailyChart({
       isTimeseriesLoading={isTimeseriesLoading}
       isTimeseriesError={Boolean(isTimeseriesError)}
       emptyMessage="No consumption over this period."
-      showActiveUsers={filter?.users?.length !== 1}
+      showActiveUsers={
+        analyticsScope?.kind !== "personal" && filter?.users?.length !== 1
+      }
     />
   );
 }

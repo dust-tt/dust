@@ -3,6 +3,7 @@ import {
   ConsumptionChart,
   ConsumptionDailyChart,
 } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
+import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
 import { fireEvent, render } from "@testing-library/react";
 import type { ReactElement } from "react";
@@ -240,6 +241,34 @@ describe("consumption active users overlay", () => {
         period={{ kind: "days", days: 30 }}
         dimension="agent"
         filter={{ users: ["user-id"] }}
+      />
+    );
+
+    expect(container.querySelectorAll(".recharts-yAxis")).toHaveLength(1);
+    expect(
+      container.querySelector(".recharts-line.text-golden-500")
+    ).toBeNull();
+    expect(
+      Array.from(
+        container.querySelectorAll("span.text-sm.text-muted-foreground")
+      ).some((label) => label.textContent === "Active users")
+    ).toBe(false);
+  });
+
+  it("hides the active-user overlay for personal analytics", () => {
+    mockUseConsumptionTimeseries.mockReturnValue({
+      timeseries: timeseries("period"),
+      isTimeseriesLoading: false,
+      isTimeseriesError: undefined,
+      isTimeseriesValidating: false,
+    });
+
+    const { container } = render(
+      <ConsumptionChart
+        workspaceId="workspace-id"
+        period={{ kind: "days", days: 30 }}
+        dimension="agent"
+        analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
       />
     );
 
