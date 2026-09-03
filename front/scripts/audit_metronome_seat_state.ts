@@ -17,8 +17,8 @@
  *   npx tsx scripts/audit_metronome_seat_state.ts --workspaceId <wId>
  */
 import config from "@app/lib/api/config";
-import { fetchConsumedAwuCreditsByUserId } from "@app/lib/api/credits/members_usage";
 import {
+  findSeatCreditSegmentForPeriod,
   getMetronomeClient,
   getMetronomeSubscriptionSeatState,
   listMetronomeSeatBalances,
@@ -30,6 +30,7 @@ import {
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
+import { getSeatCreditNameForSeatType } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -458,90 +459,120 @@ async function auditWorkspace(
     "[SeatAudit] seat balances summary"
   );
 
-  // Over-allocation (credit-stacking) detection, usage-based.
+  // Over-allocation (credit-stacking) detection — grant-history based.
   //
-  // A seat should hold `max(0, allocation - consumed)` AWU (the same target
-  // `carryConsumptionToNewSeatCredits` reconciles to). Anything above that is a
-  // stray grant a prior seat-type change / seat-sync crash never emptied. We use
-  // the seat's CONSUMED AWU (from the analytics index, the same figure the poke
-  // members table shows) rather than Metronome's `starting_balance`: when the
-  // stray grant is fully consumed Metronome DROPS it from `starting_balance`
-  // (it reads back at the allocation), so a starting_balance-only check misses
-  // seats that already spent through the phantom grant. `currentBalance -
-  // max(0, allocation - consumed)` catches them and self-caps: for
-  // consumed > allocation the over-grant is bounded by the remaining balance
-  // (the rest was overspent and is unrecoverable).
+  // A per-seat recurring credit grants exactly its allocation (8000 pro, 40000
+  // max, and the same for the _yearly variants) to whoever is assigned to its
+  // subscription at the credit segment start — that cycle's recurrence. If a
+  // seat later moves to another tier without empty-origin zeroing the old grant,
+  // it keeps that stray grant. So a seat is stacked iff it holds a grant from a
+  // tier it is NOT currently on, which we read straight from Metronome: each
+  // credit-bearing tier's subscription assignment AT its credit segment start,
+  // cross-referenced against the seat's current tier.
   //
-  // Threshold is generous (real stacks are >= 7500 AWU: pro-on-free 7500,
-  // pro-on-max 8000, max-on-pro 40000) so small analytics-vs-Metronome
-  // consumption skew on healthy seats never trips a false positive.
-  const STACKING_DETECTION_THRESHOLD_AWU = 1000;
-  const consumedByUserId = await fetchConsumedAwuCreditsByUserId({
-    workspace: lightWorkspace,
-    userIds: [...seatTypeBySeatId.keys()],
-    freeSeatUserIds: [...seatTypeBySeatId]
-      .filter(([, t]) => t === "free")
-      .map(([id]) => id),
-  });
-  const overAllocatedSeats: Array<{
+  // This is authoritative and needs neither `starting_balance` (Metronome drops
+  // a stray grant from it once fully consumed) nor analytics consumption (which
+  // can lag Metronome). Each tier is checked independently, so same-family
+  // stacks — e.g. pro + pro_yearly, two 8000 grants on one seat — are caught,
+  // and one seat can surface several stray grants.
+  const currentAwuBalanceForSeat = (seatId: string): number =>
+    (balanceBySeatId.get(seatId) ?? [])
+      .filter((b) => b.credit_type_id === awuCreditTypeId)
+      .reduce((sum, b) => sum + b.balance, 0);
+
+  const strayGrants: Array<{
     seatId: string;
-    seatType: MembershipSeatType;
-    allocation: number;
-    startingBalance: number;
-    currentBalance: number;
-    consumedAwu: number;
-    targetBalance: number;
-    overGrantedAwu: number;
+    homeSeatType: MembershipSeatType | "unassigned";
+    strayType: MembershipSeatType;
+    strayAllocationAwu: number;
+    currentBalanceAwu: number;
   }> = [];
-  for (const [seatId, seatType] of seatTypeBySeatId) {
-    const allocation = allocationBySeatType.get(seatType);
-    if (allocation === undefined || allocation <= 0) {
+  for (const { seatType, subId } of seatSubscriptions) {
+    // Only recurring per-seat credit tiers (pro/max families); free/workspace/
+    // none carry no such credit and cannot be a stray grant source.
+    if (!getSeatCreditNameForSeatType(seatType)) {
       continue;
     }
-    const awuEntries = (balanceBySeatId.get(seatId) ?? []).filter(
-      (b) => b.credit_type_id === awuCreditTypeId
+    const recurringCredit = (contract.recurring_credits ?? []).find(
+      (c) => c.subscription_config?.subscription_id === subId
     );
-    if (awuEntries.length === 0) {
+    if (!recurringCredit?.id) {
       continue;
     }
-    const startingBalance = awuEntries.reduce(
-      (sum, b) => sum + b.starting_balance,
-      0
+    const allocation = allocationBySeatType.get(seatType) ?? 0;
+    const segRes = await paceMetronome(() =>
+      findSeatCreditSegmentForPeriod({
+        metronomeCustomerId,
+        metronomeContractId: contractId,
+        recurringCreditId: recurringCredit.id,
+      })
     );
-    const currentBalance = awuEntries.reduce((sum, b) => sum + b.balance, 0);
-    const consumedAwu = consumedByUserId.get(seatId) ?? 0;
-    const targetBalance = Math.max(0, allocation - consumedAwu);
-    const overGrantedAwu = currentBalance - targetBalance;
-    if (overGrantedAwu > STACKING_DETECTION_THRESHOLD_AWU) {
-      overAllocatedSeats.push({
+    const segment = segRes.isOk() ? segRes.value : null;
+    if (!segment) {
+      logger.warn(
+        {
+          workspaceId,
+          seatType,
+          err: segRes.isErr() ? segRes.error.message : "no active segment",
+        },
+        "[SeatAudit] no credit segment for tier — skipping stray-grant check"
+      );
+      continue;
+    }
+    // Who this credit granted to = who was assigned to its subscription at the
+    // segment start.
+    const grantStateRes = await paceMetronome(() =>
+      getMetronomeSubscriptionSeatState({
+        metronomeCustomerId,
+        contractId,
+        subscriptionId: subId,
+        coveringDate: new Date(segment.segmentStartingAt),
+      })
+    );
+    if (grantStateRes.isErr()) {
+      logger.error(
+        { workspaceId, seatType, err: grantStateRes.error.message },
+        "[SeatAudit] failed to read grant-time seat assignment — skipping tier"
+      );
+      continue;
+    }
+    for (const seatId of grantStateRes.value.assignedSeatIds) {
+      const home = seatTypeBySeatId.get(seatId);
+      if (home === seatType) {
+        // Grant is legitimate — the seat is still on this tier.
+        continue;
+      }
+      strayGrants.push({
         seatId,
-        seatType,
-        allocation,
-        startingBalance,
-        currentBalance,
-        consumedAwu,
-        targetBalance,
-        overGrantedAwu,
+        homeSeatType: home ?? "unassigned",
+        strayType: seatType,
+        strayAllocationAwu: allocation,
+        currentBalanceAwu: currentAwuBalanceForSeat(seatId),
       });
     }
   }
-  overAllocatedSeats.sort((a, b) => b.overGrantedAwu - a.overGrantedAwu);
-  const totalOverGrantedAwu = overAllocatedSeats.reduce(
-    (sum, s) => sum + s.overGrantedAwu,
+  strayGrants.sort((a, b) => b.strayAllocationAwu - a.strayAllocationAwu);
+  const affectedSeatIds = new Set(strayGrants.map((g) => g.seatId));
+  const totalOverGrantedAwu = strayGrants.reduce(
+    (sum, g) => sum + g.strayAllocationAwu,
     0
   );
+  const byTransition = new Map<string, number>();
+  for (const g of strayGrants) {
+    const key = `${g.homeSeatType}<-${g.strayType}`;
+    byTransition.set(key, (byTransition.get(key) ?? 0) + 1);
+  }
   logger.info(
     {
       workspaceId,
       contractId,
       allocationBySeatType: Object.fromEntries(allocationBySeatType),
-      // Sanity check: how many seats got analytics consumption. A low number vs
-      // seatIdsChecked means the analytics read degraded and the count below is
-      // an undercount (falls back toward starting_balance behaviour).
-      seatsWithConsumption: consumedByUserId.size,
-      overAllocatedSeatCount: overAllocatedSeats.length,
+      // One entry per stray grant; a seat with two stray grants counts twice.
+      strayGrantCount: strayGrants.length,
+      affectedSeatCount: affectedSeatIds.size,
       totalOverGrantedAwu,
-      overAllocatedSeats,
+      byTransition: Object.fromEntries(byTransition),
+      strayGrants,
     },
     "[SeatAudit] over-allocated seats (credit stacking)"
   );
