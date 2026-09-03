@@ -148,7 +148,6 @@ interface ConsumptionMessageBucket {
   conversation_id: TermsAgg;
   user_id: TermsAgg;
   context_origin: TermsAgg;
-  latest_status: estypes.AggregationsTopHitsAggregate;
   total_credit_micro: estypes.AggregationsSumAggregate;
   tools: estypes.AggregationsFilterAggregate & {
     unique_tools: estypes.AggregationsMultiTermsAggregate;
@@ -175,22 +174,49 @@ function buildConsumptionAggregations(
         ],
         ...(afterKey ? { after: afterKey } : {}),
       },
+      // Group all LLM calls and tool calls by agent_message_id:
+      // reconstruct the message-level document from the aggregated fields.
       aggs: {
         min_completed_at: { min: { field: "completed_at" } },
-        agent_id: { terms: { field: "agent.id", size: 1 } },
-        agent_tag_ids: { terms: { field: "agent.tag_ids", size: 100 } },
-        conversation_id: { terms: { field: "conversation_id", size: 1 } },
-        user_id: { terms: { field: "user.id", size: 1 } },
-        context_origin: { terms: { field: "context_origin", size: 1 } },
-        latest_status: {
-          top_hits: {
+        agent_id: {
+          // agent_id is denormalized on every tool/llm calls: keep a single value per message.
+          terms: {
+            field: "agent.id",
             size: 1,
-            sort: [{ completed_at: "desc" }],
-            _source: { includes: ["status"] },
+          },
+        },
+        agent_tag_ids: {
+          // agent_tag_ids is denormalized on every tool/llm calls: we expect a single set of values per message.
+          terms: {
+            field: "agent.tag_ids",
+            size: 100, // keep at most 100 unique tag IDs per message.
+          },
+        },
+
+        conversation_id: {
+          // conversation_id is denormalized on every tool/llm calls: keep a single value per message.
+          terms: {
+            field: "conversation_id",
+            size: 1,
+          },
+        },
+        user_id: {
+          // user_id is denormalized on every tool/llm calls: keep a single value per message.
+          terms: {
+            field: "user.id",
+            size: 1,
+          },
+        },
+        context_origin: {
+          // context_origin is denormalized on every tool/llm calls: keep a single value per message.
+          terms: {
+            field: "context_origin",
+            size: 1,
           },
         },
         total_credit_micro: { sum: { field: "credit_micro" } },
         tools: {
+          // Distinct pairs found across all tool calls, capped at 100 values.
           filter: { exists: { field: "tool.name" } },
           aggs: {
             unique_tools: {
@@ -201,8 +227,16 @@ function buildConsumptionAggregations(
             },
           },
         },
-        skills: { terms: { field: "tool.attributed_skill_ids", size: 100 } },
+        skills: {
+          // Distinct skill ids from this message, capped at 100 values.
+          terms: {
+            field: "tool.attributed_skill_ids",
+            size: 100,
+          },
+        },
         models: {
+          // Distinct tuples found across all LLM and tool calls, capped at 10 values.
+          // In practice models don't change between runs today.
           multi_terms: {
             terms: [
               { field: "model.model_id" },
@@ -256,10 +290,6 @@ function consumptionBucketToDocument(
   messageId: string,
   bucket: ConsumptionMessageBucket
 ): AgentMessageDocument {
-  const statusHit = bucket.latest_status.hits?.hits?.[0]?._source as
-    | { status?: string }
-    | undefined;
-
   const toolBuckets = bucketsToArray(bucket.tools?.unique_tools?.buckets);
 
   const skillBuckets = bucketsToArray(bucket.skills?.buckets);
@@ -270,7 +300,7 @@ function consumptionBucketToDocument(
   const creditMicro = bucket.total_credit_micro.value ?? 0;
 
   return {
-    workspace_id: "",
+    workspace_id: "", // not used by csv export and not fetched by the es aggregation
     message_id: messageId,
     timestamp: bucket.min_completed_at.value_as_string ?? "",
     agent_id: firstBucketKey(bucket.agent_id),
@@ -281,7 +311,7 @@ function consumptionBucketToDocument(
     ancestor_message_ids: [],
     user_id: firstBucketKey(bucket.user_id),
     context_origin: firstBucketKey(bucket.context_origin),
-    status: statusHit?.status ?? "",
+    status: "", // not used by csv export and not fetched by the es aggregation
     tools_used: toolBuckets.map((b) => ({
       server_name: String(b.key[0]),
       tool_name: String(b.key[1]),
