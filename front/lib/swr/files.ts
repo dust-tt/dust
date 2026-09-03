@@ -444,7 +444,11 @@ export async function downloadFolderArchive(
 
 export type ImportFolderArchiveResult = {
   fileCount: number;
-  frameId: string | null;
+  frame: {
+    frameId: string;
+    publicationId: string | null;
+    publishError: string | null;
+  } | null;
 };
 
 /** Create the folder at `folderCanonicalPath` from a zip of its files, registering a Frame if any. */
@@ -485,13 +489,21 @@ export function useImportFolderArchive({
       }
 
       const result: ImportFolderArchiveResult = await res.json();
-      sendNotification({
-        type: "success",
-        title: result.frameId ? "Frame imported" : "Folder imported",
-        description: result.frameId
-          ? "Its source is in place; publish it to make it available."
-          : `${result.fileCount} file(s) imported.`,
-      });
+      if (!result.frame) {
+        sendNotification({
+          type: "success",
+          title: "Folder imported",
+          description: `${result.fileCount} file(s) imported.`,
+        });
+      } else if (result.frame.publishError) {
+        sendNotification({
+          type: "info",
+          title: "Frame imported but not published",
+          description: result.frame.publishError,
+        });
+      } else {
+        sendNotification({ type: "success", title: "Frame imported" });
+      }
       return new Ok(result);
     } catch (e) {
       const errorMessage = normalizeError(e).message;

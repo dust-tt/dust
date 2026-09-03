@@ -6,12 +6,19 @@
 
 import type { DustFileSystem } from "@app/lib/api/file_system";
 import { decodeBuffer } from "@app/lib/api/files/utils";
+import { withFrameBuildConversation } from "@app/lib/api/frames/build_conversation";
+import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
 import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
-import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import {
+  FRAME_MANIFEST_FILE,
+  parseFrameManifest,
+} from "@app/types/api/frame_manifest";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
@@ -779,10 +786,95 @@ function parseFolderArchive(
   return new Ok(files);
 }
 
+export type ImportedFrame = {
+  frameId: string;
+  publicationId: string | null;
+  // Set when the Frame was registered but its first publication failed, e.g. a build error.
+  publishError: string | null;
+};
+
+export type ImportCanonicalFolderArchiveResult = {
+  fileCount: number;
+  frame: ImportedFrame | null;
+};
+
+/**
+ * Publish a freshly registered Frame. Publishing builds in a conversation sandbox: a Frame in a
+ * conversation mount builds in that conversation, one in a Pod mount in a short-lived build
+ * conversation of the Pod.
+ */
+async function publishImportedFrame(
+  auth: Authenticator,
+  {
+    dustFs,
+    frame,
+    manifestPath,
+    needsBuildSandbox,
+  }: {
+    dustFs: DustFileSystem;
+    frame: FileResource;
+    manifestPath: string;
+    // Only Frames declaring functions need a sandbox to build; UI-only Frames build in-process.
+    needsBuildSandbox: boolean;
+  }
+): Promise<Result<{ publicationId: string }, Error>> {
+  const mount = dustFs
+    .getMounts()
+    .find(
+      (candidate) =>
+        manifestPath.startsWith(`${candidate.scopedPrefix}/`) &&
+        candidate.permissions.canWrite
+    );
+  if (!mount) {
+    return new Err(new Error("Frame source mount not found."));
+  }
+
+  switch (mount.kind) {
+    case "conversation": {
+      const conversation = await ConversationResource.fetchById(auth, mount.id);
+      if (!conversation) {
+        return new Err(new Error("Frame source conversation not found."));
+      }
+      return publishFrameV2FromSource(auth, {
+        conversation: conversation.toJSON(),
+        frame,
+        manifestPath,
+      });
+    }
+    case "pod": {
+      if (!needsBuildSandbox) {
+        return publishFrameV2FromSource(auth, {
+          conversation: null,
+          frame,
+          manifestPath,
+        });
+      }
+      const pod = await SpaceResource.fetchById(auth, mount.id);
+      if (!pod?.isProject()) {
+        return new Err(new Error("Frame source Pod not found."));
+      }
+      return withFrameBuildConversation(
+        auth,
+        {
+          pod,
+          title: `Frame import: ${frame.useCaseMetadata?.frameName ?? frame.sId}`,
+        },
+        (conversation) =>
+          publishFrameV2FromSource(auth, { conversation, frame, manifestPath })
+      );
+    }
+    default:
+      return new Err(
+        new Error(`Frames cannot be published from a ${mount.kind} mount.`)
+      );
+  }
+}
+
 /**
  * Create the folder at `folderPath` from a zip of its files (the inverse of
  * `archiveCanonicalFolder`). The folder must not exist yet. When the archive root holds a Frame
- * manifest, the Frame is registered so it shows up as a package; publishing is a separate step.
+ * manifest, the Frame is registered and published; a failed publication is reported on the
+ * result rather than failing the import, since the files and the Frame identity are in place.
  */
 export async function importCanonicalFolderArchive(
   auth: Authenticator,
@@ -791,7 +883,7 @@ export async function importCanonicalFolderArchive(
   zipBuffer: Buffer
 ): Promise<
   Result<
-    { fileCount: number; frameId: string | null },
+    ImportCanonicalFolderArchiveResult,
     FolderArchiveImportError | DustFileSystemError
   >
 > {
@@ -830,12 +922,13 @@ export async function importCanonicalFolderArchive(
   }
 
   if (!parsed.value.has(FRAME_MANIFEST_FILE)) {
-    return new Ok({ fileCount: parsed.value.size, frameId: null });
+    return new Ok({ fileCount: parsed.value.size, frame: null });
   }
 
+  const manifestPath = `${folderPath}/${FRAME_MANIFEST_FILE}`;
   const registration = await registerFrameV2FromSourceUsingFileSystem(auth, {
     dustFs,
-    manifestPath: `${folderPath}/${FRAME_MANIFEST_FILE}`,
+    manifestPath,
   });
   if (registration.isErr()) {
     return new Err(
@@ -845,10 +938,38 @@ export async function importCanonicalFolderArchive(
       )
     );
   }
+  const { frame } = registration.value;
+
+  // Registration already validated the manifest, so it parses here.
+  const manifest = parseFrameManifest(
+    parsed.value.get(FRAME_MANIFEST_FILE) ?? Buffer.alloc(0)
+  );
+  const publication = await publishImportedFrame(auth, {
+    dustFs,
+    frame,
+    manifestPath,
+    needsBuildSandbox: manifest.isOk() && manifest.value.functions.length > 0,
+  });
+  if (publication.isErr()) {
+    logger.warn(
+      {
+        error: publication.error.message,
+        frameId: frame.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Imported Frame could not be published"
+    );
+  }
 
   return new Ok({
     fileCount: parsed.value.size,
-    frameId: registration.value.frame.sId,
+    frame: {
+      frameId: frame.sId,
+      publicationId: publication.isOk()
+        ? publication.value.publicationId
+        : null,
+      publishError: publication.isErr() ? publication.error.message : null,
+    },
   });
 }
 

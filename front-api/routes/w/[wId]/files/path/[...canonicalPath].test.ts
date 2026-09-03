@@ -17,9 +17,15 @@ import AdmZip from "adm-zip";
 import { PassThrough } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/lock", () => ({
-  executeWithLock: vi.fn(async (_lockName: string, fn: () => unknown) => fn()),
-}));
+vi.mock("@app/lib/lock", async (importActual) => {
+  const actual = await importActual<typeof import("@app/lib/lock")>();
+  return {
+    ...actual,
+    executeWithLock: vi.fn(async (_lockName: string, fn: () => unknown) =>
+      fn()
+    ),
+  };
+});
 
 function makeReadStream() {
   return new PassThrough();
@@ -280,24 +286,42 @@ describe("POST /api/w/:wId/files/path/:canonicalPath?archive=1", () => {
     name: "My Frame",
     description: "Imported.",
   });
+  const uiSource = "export default function MyFrame() { return <p>Ready</p>; }";
 
-  it("extracts the files into the folder and registers the Frame", async () => {
+  it("extracts the files, registers the Frame and publishes it", async () => {
     const { workspace, auth, conversation } = await setup();
-    // Written objects must read back for the registration to find the manifest.
+    // Written objects must read back and list for the registration and the publication to find
+    // the source. The mock's prefix listing does not see writes, so serve the recorded ones; the
+    // folder still lists as empty before the import writes anything.
     fileStorageMock.setFileExists((filePath) =>
       filePath.includes("/files/my-frame/")
+    );
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix.endsWith("/files/my-frame/")
+        ? fileStorageMock.saveFileCalls
+            .filter((call) => call.filePath.startsWith(prefix))
+            .map((call) => ({
+              name: call.filePath,
+              metadata: {
+                contentType: call.contentType ?? "application/octet-stream",
+                size: String(Buffer.byteLength(call.content)),
+              },
+            }))
+        : null
     );
 
     const response = await importRequest(
       workspace,
       `conversation-${conversation.sId}/my-frame`,
-      makeArchive({ "manifest.json": manifest, "src/index.tsx": "export {};" })
+      makeArchive({ "manifest.json": manifest, "index.tsx": uiSource })
     );
 
     expect(response.status).toBe(201);
     const body = await response.json();
     expect(body.fileCount).toBe(2);
-    expect(typeof body.frameId).toBe("string");
+    expect(typeof body.frame.frameId).toBe("string");
+    expect(typeof body.frame.publicationId).toBe("string");
+    expect(body.frame.publishError).toBeNull();
 
     const basePath = `w/${workspace.sId}/conversations/${conversation.sId}/files/my-frame`;
     expect(fileStorageMock.saveFileCalls).toContainEqual(
@@ -307,12 +331,15 @@ describe("POST /api/w/:wId/files/path/:canonicalPath?archive=1", () => {
       })
     );
     expect(fileStorageMock.saveFileCalls).toContainEqual(
-      expect.objectContaining({ filePath: `${basePath}/src/index.tsx` })
+      expect.objectContaining({ filePath: `${basePath}/index.tsx` })
     );
 
-    const frame = await FileResource.fetchById(auth, body.frameId);
+    const frame = await FileResource.fetchById(auth, body.frame.frameId);
     expect(frame?.isFrameV2).toBe(true);
     expect(frame?.mountFilePath).toBe(`${basePath}/manifest.json`);
+    expect(frame?.useCaseMetadata?.activePublicationId).toBe(
+      body.frame.publicationId
+    );
   });
 
   it("imports a plain folder without registering anything", async () => {
@@ -325,7 +352,7 @@ describe("POST /api/w/:wId/files/path/:canonicalPath?archive=1", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ fileCount: 1, frameId: null });
+    expect(await response.json()).toEqual({ fileCount: 1, frame: null });
   });
 
   it("returns 409 when the folder already has files", async () => {
