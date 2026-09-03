@@ -294,6 +294,11 @@
   --color-ring: var(--color-blue-500);
   --color-ring-warning: var(--color-rose-500);
 
+  /* Elevation: surfaces that float above the page (toasts, popovers). Composes
+     under the surface's own 1px border rather than restating it as a ring. */
+  --shadow-overlay: 0 1px 2px -1px rgb(0 0 0 / 0.08),
+    0 8px 24px -8px rgb(0 0 0 / 0.16);
+
   /* Sidebar */
   --color-sidebar-foreground: oklch(94.86% 0.0027 106.45);
   --color-sidebar-primary: oklch(26.85% 0.0063 34.3);
@@ -452,6 +457,11 @@
   /* Focus rings: must keep 3:1 against the page background (WCAG 1.4.11). */
   --color-ring: var(--color-stone-500);
   --color-ring-warning: var(--color-rose-500);
+
+  /* Elevation: layered shadows do not read against dark backgrounds, so the
+     stack collapses to a faint white ring plus a deeper ambient cast. */
+  --shadow-overlay: 0 0 0 1px rgb(255 255 255 / 0.06),
+    0 8px 24px -8px rgb(0 0 0 / 0.6);
 
   /* Sidebar */
   --color-sidebar-foreground: var(--color-stone-800);
