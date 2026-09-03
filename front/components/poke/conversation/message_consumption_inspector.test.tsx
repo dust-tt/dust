@@ -1,6 +1,7 @@
 import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockUsePokeMessageConsumption } = vi.hoisted(() => ({
@@ -23,13 +24,31 @@ vi.mock("@app/poke/swr/message_consumption", () => ({
   usePokeMessageConsumption: mockUsePokeMessageConsumption,
 }));
 
-const defaultProps: ComponentProps<typeof PokeMessageConsumptionInspector> = {
+type InspectorProps = Omit<
+  ComponentProps<typeof PokeMessageConsumptionInspector>,
+  "isOpen" | "onOpenChange" | "onPanelRefChange"
+>;
+
+const defaultProps: InspectorProps = {
   billedCredits: 10,
   conversationId: "conversation_test",
   messageId: "message_test",
   subAgentBilledCredits: 20,
   workspaceId: "workspace_test",
 };
+
+function TestInspector(props: InspectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <PokeMessageConsumptionInspector
+      {...props}
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+      onPanelRefChange={() => {}}
+    />
+  );
+}
 
 describe("PokeMessageConsumptionInspector", () => {
   beforeEach(() => {
@@ -42,7 +61,7 @@ describe("PokeMessageConsumptionInspector", () => {
   });
 
   it("shows the authoritative total immediately and loads details on expansion", () => {
-    render(<PokeMessageConsumptionInspector {...defaultProps} />);
+    render(<TestInspector {...defaultProps} />);
 
     expect(screen.getByText("30 credits")).toBeInTheDocument();
     expect(screen.queryByText("Authoritative bill")).not.toBeInTheDocument();
@@ -56,11 +75,16 @@ describe("PokeMessageConsumptionInspector", () => {
       workspaceId: "workspace_test",
     });
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Expand consumption details for message message_test",
-      })
+    const trigger = screen.getByRole("button", {
+      name: "Expand consumption details for message message_test",
+    });
+    expect(trigger).toHaveClass(
+      "focus-visible:ring-offset-2",
+      "focus-visible:ring-offset-background"
     );
+    expect(trigger).not.toHaveClass("focus-visible:ring-inset");
+
+    fireEvent.click(trigger);
 
     expect(mockUsePokeMessageConsumption).toHaveBeenLastCalledWith(
       expect.objectContaining({ disabled: false })
@@ -71,6 +95,15 @@ describe("PokeMessageConsumptionInspector", () => {
         "Stored charge for this message and its recursive sub-agent tree."
       )
     ).not.toBeInTheDocument();
+
+    const closeButton = screen.getByRole("button", {
+      name: "Close consumption details for message message_test",
+    });
+    closeButton.focus();
+    fireEvent.click(closeButton);
+
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
   it("shows the full model and tool attribution", () => {
@@ -115,7 +148,7 @@ describe("PokeMessageConsumptionInspector", () => {
       isConsumptionLoading: false,
     });
 
-    render(<PokeMessageConsumptionInspector {...defaultProps} />);
+    render(<TestInspector {...defaultProps} />);
     fireEvent.click(
       screen.getByRole("button", {
         name: "Expand consumption details for message message_test",
@@ -170,6 +203,9 @@ describe("PokeMessageConsumptionInspector", () => {
     expect(screen.getAllByText("Direct tool charge")).toHaveLength(2);
     expect(screen.getAllByText("Tokens")).toHaveLength(2);
     expect(screen.queryByText("Attributed")).not.toBeInTheDocument();
+    expect(
+      document.getElementById("message-message_test-consumption-details")
+    ).toHaveClass("xl:absolute", "xl:w-[var(--poke-inspector-width)]");
   });
 
   it("keeps the exact bill visible when detailed attribution is unavailable", () => {
@@ -184,7 +220,7 @@ describe("PokeMessageConsumptionInspector", () => {
     });
 
     render(
-      <PokeMessageConsumptionInspector
+      <TestInspector
         {...defaultProps}
         billedCredits={12}
         subAgentBilledCredits={0}

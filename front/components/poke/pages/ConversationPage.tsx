@@ -1,5 +1,6 @@
 import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
 import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
+import { useConversationInspectorPanels } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -43,14 +44,18 @@ import {
   Input,
   LinkWrapper,
   Markdown,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
   Page,
   Spinner,
   useCopyToClipboard,
   XClose,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
+import type { Variants } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import type { ComponentProps, ReactNode } from "react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
@@ -82,6 +87,27 @@ const COMPACTION_STATUS: Record<
   created: { label: "generating", color: "warning" },
   succeeded: { label: "succeeded", color: "success" },
   failed: { label: "failed", color: "warning" },
+};
+
+const STICKY_INSPECTORS_VARIANTS: Variants = {
+  occluded: (shouldReduceMotion: boolean) => ({
+    opacity: 0,
+    x: shouldReduceMotion ? 0 : 12,
+    transition: {
+      duration: shouldReduceMotion ? 0 : MOTION_DURATIONS.modalExit,
+      ease: MOTION_EASINGS.emphasized,
+    },
+    transitionEnd: { visibility: "hidden" },
+  }),
+  visible: (shouldReduceMotion: boolean) => ({
+    opacity: 1,
+    visibility: "visible",
+    x: 0,
+    transition: {
+      duration: shouldReduceMotion ? 0 : MOTION_DURATIONS.modalEnter,
+      ease: MOTION_EASINGS.emphasized,
+    },
+  }),
 };
 
 function getLangfuseTraceUrl(langfuseUiBaseUrl: string, runId: string) {
@@ -579,7 +605,10 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 
 interface AgentMessageViewProps {
   conversationId: string;
+  isConsumptionOpen: boolean;
   message: PokeAgentMessageType;
+  onConsumptionOpenChange: (open: boolean) => void;
+  onConsumptionPanelRefChange: (element: HTMLDivElement | null) => void;
   useMarkdown: boolean;
   owner: LightWorkspaceType;
   langfuseUiBaseUrl: string | null;
@@ -587,7 +616,10 @@ interface AgentMessageViewProps {
 
 const AgentMessageView = ({
   conversationId,
+  isConsumptionOpen,
   message,
+  onConsumptionOpenChange,
+  onConsumptionPanelRefChange,
   useMarkdown,
   owner,
   langfuseUiBaseUrl,
@@ -702,7 +734,10 @@ const AgentMessageView = ({
         <PokeMessageConsumptionInspector
           billedCredits={message.costCredits}
           conversationId={conversationId}
+          isOpen={isConsumptionOpen}
           messageId={message.sId}
+          onOpenChange={onConsumptionOpenChange}
+          onPanelRefChange={onConsumptionPanelRefChange}
           subAgentBilledCredits={message.subAgentCostCredits}
           workspaceId={owner.sId}
         />
@@ -869,6 +904,41 @@ export function ConversationPage() {
   const [showRenderControls, setShowRenderControls] = useState(false);
   const [isCopiedJSON, copyJSON] = useCopyToClipboard();
   const [isCopiedSandboxCommand, copySandboxCommand] = useCopyToClipboard();
+  const shouldReduceMotion = Boolean(useReducedMotion());
+  const activeMessagePanelRef = useRef<HTMLDivElement | null>(null);
+  const stickyInspectorsRef = useRef<HTMLElement | null>(null);
+  const {
+    activeMessageId,
+    isConversationOpen,
+    isStickyRailOccluded,
+    isWakeUpsOpen,
+    setConversationOpen,
+    setMessageOpen,
+    setWakeUpsOpen,
+  } = useConversationInspectorPanels({
+    activeMessagePanelRef,
+    stickyInspectorsRef,
+  });
+  const activeMessageIdRef = useRef(activeMessageId);
+  activeMessageIdRef.current = activeMessageId;
+
+  const handleMessagePanelRefChange = useCallback(
+    (messageId: string, element: HTMLDivElement | null) => {
+      if (element && messageId === activeMessageIdRef.current) {
+        activeMessagePanelRef.current = element;
+        return;
+      }
+
+      if (
+        !element &&
+        activeMessagePanelRef.current?.dataset.messageConsumptionPanelId ===
+          messageId
+      ) {
+        activeMessagePanelRef.current = null;
+      }
+    },
+    []
+  );
 
   const { copyTestCase, isLoading: isTestCaseLoading } =
     useCopyReinforcementTestCase({ owner, conversationId });
@@ -1239,17 +1309,33 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          <div className="grid w-full grid-cols-1 gap-6 py-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start">
+          <div className="grid w-full grid-cols-1 gap-6 py-4 [--poke-inspector-width:28rem] xl:grid-cols-[minmax(0,1fr)_var(--poke-inspector-width)]">
+            <motion.aside
+              ref={stickyInspectorsRef}
+              aria-hidden={isStickyRailOccluded || undefined}
+              animate={isStickyRailOccluded ? "occluded" : "visible"}
+              className={cn(
+                "z-20 flex flex-col gap-4 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start",
+                isStickyRailOccluded ? "pointer-events-none" : null
+              )}
+              custom={shouldReduceMotion}
+              data-sticky-inspectors-occluded={isStickyRailOccluded}
+              initial={false}
+              variants={STICKY_INSPECTORS_VARIANTS}
+            >
               <PokeConversationConsumptionInspector
                 conversationId={conversationId}
+                isOpen={isConversationOpen}
+                onOpenChange={setConversationOpen}
                 workspaceId={owner.sId}
               />
               <PokeConversationWakeUpsInspector
                 conversationId={conversationId}
+                isOpen={isWakeUpsOpen}
+                onOpenChange={setWakeUpsOpen}
                 owner={owner}
               />
-            </aside>
+            </motion.aside>
             <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
               {conversation.content.map((messages, i) => {
                 return (
@@ -1261,7 +1347,14 @@ export function ConversationPage() {
                             <AgentMessageView
                               key={`message-${i}-${j}`}
                               conversationId={conversationId}
+                              isConsumptionOpen={activeMessageId === m.sId}
                               message={m}
+                              onConsumptionOpenChange={(open) =>
+                                setMessageOpen(m.sId, open)
+                              }
+                              onConsumptionPanelRefChange={(element) =>
+                                handleMessagePanelRefChange(m.sId, element)
+                              }
                               useMarkdown={useMarkdown}
                               owner={owner}
                               langfuseUiBaseUrl={langfuseUiBaseUrl}
