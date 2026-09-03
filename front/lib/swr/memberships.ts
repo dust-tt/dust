@@ -14,8 +14,7 @@ import type {
   PutUserSpendLimitResponseBody,
 } from "@app/types/api/users/spend_limit";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
-import type { GroupKind } from "@app/types/groups";
-import { isGroupKind } from "@app/types/groups";
+import type { UserVisibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { MEMBERSHIP_SEAT_TYPES, PAID_SEAT_TYPES } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -136,7 +135,7 @@ export function useSearchMembers<
   searchTerm: string;
   pageIndex: number;
   pageSize: number;
-  groupKind?: Exclude<GroupKind, "system">;
+  groupKind?: UserVisibleGroupKind;
   role?: ActiveRoleType;
   disabled?: boolean;
 }) {
@@ -162,7 +161,7 @@ export function useSearchMembers<
     limit: pageSize.toString(),
   });
 
-  if (groupKind && isGroupKind(groupKind)) {
+  if (groupKind) {
     searchParams.set("groupKind", groupKind);
   }
 

@@ -41,7 +41,6 @@ import {
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 
 export type BilledRunUsage = RunUsageWithRunKeyType & {
@@ -136,13 +135,13 @@ async function loadAgentTagIds(
 }
 
 async function loadAnalyticsUser({
+  auth,
   completedAt,
   userId,
-  workspace,
 }: {
+  auth: Authenticator;
   completedAt: Date;
   userId: string | null;
-  workspace: LightWorkspaceType;
 }): Promise<AgentMessageConsumptionAnalyticsUser | null> {
   if (userId === null) {
     return null;
@@ -155,8 +154,8 @@ async function loadAnalyticsUser({
   );
 
   const groups = await GroupResource.listUserGroupsInWorkspace({
+    auth,
     user,
-    workspace,
     groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     at: completedAt,
   });
@@ -271,9 +270,9 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   });
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
   const user = await loadAnalyticsUser({
+    auth,
     completedAt: agentMessage.completedAt,
     userId: triggeringUserMessage.userId,
-    workspace,
   });
 
   const resolvedModel = resolvedModelFromAgentMessageRow({

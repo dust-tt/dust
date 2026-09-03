@@ -1125,14 +1125,14 @@ export class GroupResource extends BaseResource<GroupModel> {
   private static async listUserGroupModelIdsInWorkspace({
     user,
     workspace,
-    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    groupKinds,
     transaction,
     dangerouslySkipMembershipCheck = false,
     at = new Date(),
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
-    groupKinds?: Exclude<GroupKind, "system">[];
+    groupKinds: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
     dangerouslySkipMembershipCheck?: boolean;
     at?: Date;
@@ -1203,38 +1203,51 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Warning, this function can be very memory hungry if there are a lot of groups (such as a workspace with a lot of agents and editors groups).
   // If you can, just use the listUserGroupModelIdsInWorkspace instead that returns only the ids of the groups.
-  static async listUserGroupsInWorkspace({
+  static async listUserGroupsInWorkspace(params: {
+    auth: Authenticator;
+    user: UserResource;
+    groupKinds: UserVisibleGroupKind[];
+    transaction?: Transaction;
+    at?: Date;
+  }): Promise<GroupResource[]> {
+    const groups = await this.dangerouslyListAllUserGroupsInWorkspace(params);
+
+    return groups.filter((group) => group.canRead(params.auth));
+  }
+
+  /**
+   * Same as `listUserGroupsInWorkspace`, but also accepts the internal kinds that are never
+   * surfaced to users. Reserved for system flows that must act on a user's whole membership
+   * set, such as directory-sync deprovisioning.
+   */
+  static async dangerouslyListAllUserGroupsInWorkspace({
+    auth,
     user,
-    workspace,
-    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    groupKinds,
     transaction,
     at,
   }: {
+    auth: Authenticator;
     user: UserResource;
-    workspace: LightWorkspaceType;
-    groupKinds?: Exclude<GroupKind, "system">[];
+    groupKinds: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
     at?: Date;
   }): Promise<GroupResource[]> {
     const { groupModelIds } = await this.listUserGroupModelIdsInWorkspace({
       user,
-      workspace,
+      workspace: auth.getNonNullableWorkspace(),
       groupKinds,
       transaction,
       at,
     });
 
-    const groups = await GroupModel.findAll({
-      where: {
-        id: {
-          [Op.in]: groupModelIds,
-        },
-        workspaceId: workspace.id,
-      },
+    if (groupModelIds.length === 0) {
+      return [];
+    }
+
+    return this.dangerouslyFetchByModelIds(auth, groupModelIds, {
       transaction,
     });
-
-    return groups.map((group) => new this(GroupModel, group.get()));
   }
 
   static async listGroupNamesByUserModelIdInWorkspace({

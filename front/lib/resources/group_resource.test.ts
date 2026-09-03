@@ -298,8 +298,8 @@ describe("GroupResource", () => {
       });
 
       const inFebruary = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
         at: FEBRUARY,
       });
@@ -307,8 +307,8 @@ describe("GroupResource", () => {
 
       // Omitting `at` defaults to now, after the membership ended.
       const today = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
       });
       expect(today).toEqual([]);
@@ -345,8 +345,8 @@ describe("GroupResource", () => {
       // left in March is still resolvable in February. This is what analytics
       // reindexing of their past messages depends on.
       const inFebruary = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
         at: FEBRUARY,
       });
@@ -354,8 +354,8 @@ describe("GroupResource", () => {
 
       // Today they are no longer a workspace member.
       const today = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
       });
       expect(today).toEqual([]);
@@ -382,8 +382,8 @@ describe("GroupResource", () => {
       });
 
       const inJanuary = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
         at: JANUARY,
       });

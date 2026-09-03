@@ -319,17 +319,14 @@ describe("determineUserRoleFromGroups", () => {
     );
   });
 
-  // determineUserRoleFromGroups matches groups by name, not by kind, so a
-  // regular_auto group named after the reserved group exercises the same logic
-  // while allowing members to be added through the standard factory API.
   async function addUserToRoleGroup(name: string) {
-    const group = await GroupFactory.regularAuto(workspace, name);
+    const group = await GroupFactory.provisioned(workspace, name);
     await GroupFactory.withMembers(adminAuthenticator, group, [user]);
     return group;
   }
 
   it("returns 'user' when the user is in no role-granting group", async () => {
-    const role = await determineUserRoleFromGroups(workspace, user);
+    const role = await determineUserRoleFromGroups(adminAuthenticator, user);
 
     expect(role).toBe("user");
   });
@@ -337,7 +334,7 @@ describe("determineUserRoleFromGroups", () => {
   it("returns 'admin' when the user is in the dust-admins group", async () => {
     await addUserToRoleGroup(ADMIN_GROUP_NAME);
 
-    const role = await determineUserRoleFromGroups(workspace, user);
+    const role = await determineUserRoleFromGroups(adminAuthenticator, user);
 
     expect(role).toBe("admin");
   });
@@ -345,7 +342,7 @@ describe("determineUserRoleFromGroups", () => {
   it("grants 'manager' from the dust-managers group", async () => {
     await addUserToRoleGroup(MANAGER_GROUP_NAME);
 
-    const role = await determineUserRoleFromGroups(workspace, user);
+    const role = await determineUserRoleFromGroups(adminAuthenticator, user);
 
     expect(role).toBe("manager");
   });
@@ -354,7 +351,7 @@ describe("determineUserRoleFromGroups", () => {
     await addUserToRoleGroup(ADMIN_GROUP_NAME);
     await addUserToRoleGroup(MANAGER_GROUP_NAME);
 
-    const role = await determineUserRoleFromGroups(workspace, user);
+    const role = await determineUserRoleFromGroups(adminAuthenticator, user);
 
     expect(role).toBe("admin");
   });

@@ -4,7 +4,7 @@ import type {
 } from "@app/lib/api/workspace";
 import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
-import { GROUP_KINDS } from "@app/types/groups";
+import { USER_VISIBLE_GROUP_KINDS } from "@app/types/groups";
 import { ActiveRoleSchema, toLightUserWithWorkspace } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -19,7 +19,7 @@ const SearchMembersQuerySchema = z.object({
   limit: z.coerce.number().int().min(0).max(150).catch(DEFAULT_PAGE_LIMIT),
   searchTerm: z.string().optional(),
   searchEmails: z.string().optional(),
-  groupKind: z.enum(GROUP_KINDS).exclude(["system"]).optional(),
+  groupKind: z.enum(USER_VISIBLE_GROUP_KINDS).optional(),
   // Restricts the results to the members holding that role.
   role: ActiveRoleSchema.optional(),
   // Deprecated: the builder-role filter was removed; accepted but ignored to
