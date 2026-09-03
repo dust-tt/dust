@@ -156,6 +156,7 @@ function memberFromUpgradeRequest(
     creditState: "capped",
     nearLimit: false,
     seatUsageTarget: null,
+    overallUsageTarget: null,
   };
 }
 

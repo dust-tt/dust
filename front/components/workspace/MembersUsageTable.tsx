@@ -29,6 +29,7 @@ import {
 import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
+import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -40,6 +41,7 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  AlertCircle,
   Chip,
   Clock,
   CoinsStacked03,
@@ -96,6 +98,7 @@ type RowData = {
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
   isSeatChangePending: boolean;
+  overallUsageTarget: CreditUsageTarget | null;
   modelTiersSummary: string;
   hasUserLevelModelTiersOverride: boolean;
   menuItems: MenuItem[];
@@ -730,6 +733,48 @@ function buildPoolCreditUsageColumn(
   };
 }
 
+const offPaceColumn: ColumnDef<RowData, string> = {
+  id: "overallUsageTarget" as const,
+  header: "",
+  enableSorting: false,
+  accessorFn: (row) => row.overallUsageTarget ?? "",
+  cell: (info: Info) => {
+    const { overallUsageTarget } = info.row.original;
+    if (
+      overallUsageTarget !== "elevated" &&
+      overallUsageTarget !== "critical"
+    ) {
+      return <DataTable.CellContent className="justify-center" />;
+    }
+    const isCritical = overallUsageTarget === "critical";
+    return (
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={
+            isCritical
+              ? "Consuming credits well ahead of the billing cycle's pace"
+              : "Consuming credits ahead of the billing cycle's pace"
+          }
+          trigger={
+            <span className="flex cursor-default items-center justify-center">
+              <Icon
+                visual={AlertCircle}
+                size="sm"
+                className={isCritical ? "text-red-500" : "text-warning-500"}
+              />
+            </span>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-10",
+    headerAlign: "center",
+  },
+};
+
 function buildModelTiersColumn(
   variant: MembersUsageTableVariant
 ): ColumnDef<RowData, string> {
@@ -817,6 +862,7 @@ function buildCreditPlanColumns({
       ...buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool),
       meta: { className: "w-56" },
     },
+    ...(variant === "compact" ? [offPaceColumn] : []),
   ];
 }
 
@@ -985,6 +1031,7 @@ export function MembersUsageTable({
             m.sId
           ),
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
+          overallUsageTarget: m.overallUsageTarget,
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
             switch (variant) {

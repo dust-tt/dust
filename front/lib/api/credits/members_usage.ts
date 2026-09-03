@@ -176,6 +176,9 @@ export type MemberUsageType = {
   // their seat allowance faster than a linear pace would predict. Poke-only
   // (null otherwise, or when the billing cycle can't be resolved).
   seatUsageTarget: CreditUsageTarget | null;
+  // Same pace classification as `seatUsageTarget`, but against the member's
+  // total effective spend limit (seat allowance + pool/overage).
+  overallUsageTarget: CreditUsageTarget | null;
   // Per-user fair-use AWU credit usage (credits, with decimals) backed by the
   // microCredit rate-limit counter. Applies to non-credit-based plans
   // (free/trial) where a fair-use limit is set. Null when the plan carries no
@@ -1640,6 +1643,7 @@ export async function getMemberUsage({
     creditState: membership.creditState,
     nearLimit: false,
     seatUsageTarget: null,
+    overallUsageTarget: null,
   };
 
   return {
@@ -2511,6 +2515,15 @@ export async function getMembersUsage({
             nowMs: Date.now(),
           })?.target ?? null)
         : null;
+    const overallUsageTarget =
+      billingCycle && effectiveSpendLimitAwuCredits !== null
+        ? (computeCreditUsageStatus({
+            consumedAwuCredits: totalConsumedCredits,
+            limitAwuCredits: effectiveSpendLimitAwuCredits,
+            billingCycle,
+            nowMs: Date.now(),
+          })?.target ?? null)
+        : null;
 
     return [
       {
@@ -2557,6 +2570,7 @@ export async function getMembersUsage({
         nearLimit,
         fairUse: fairUseByUserId.get(userId) ?? null,
         seatUsageTarget,
+        overallUsageTarget,
       },
     ];
   });
