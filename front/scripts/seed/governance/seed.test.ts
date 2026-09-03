@@ -111,6 +111,11 @@ describe("governance seed script integration test", () => {
       assets.agents.alfredPrivateSpaceAgent,
       { owner: alfred, spaces: privateSpace ? [privateSpace] : [] }
     );
+    const alfredUnpublishedPrivateSpaceAgent = await seedAgent(
+      ctx,
+      assets.agents.alfredUnpublishedPrivateSpaceAgent,
+      { owner: alfred, spaces: privateSpace ? [privateSpace] : [] }
+    );
 
     // The groups hold the expected members, with the expected kinds.
     for (const [name, kind, expectedMembers] of [
@@ -184,10 +189,12 @@ describe("governance seed script integration test", () => {
       new Set([alfred!.sId])
     );
 
-    // Alfred's two agents are authored by Alfred, unpublished for the first one and requiring the
-    // private space for the second one. Neither shows up in the current user's list view.
+    // Alfred's three agents are authored by Alfred: unpublished for the first one, requiring the
+    // private space for the second one, and both for the third one. None shows up in the current
+    // user's list view.
     expect(alfredUnpublishedAgent).toBeDefined();
     expect(alfredPrivateSpaceAgent).toBeDefined();
+    expect(alfredUnpublishedPrivateSpaceAgent).toBeDefined();
 
     const alfredAuth = await Authenticator.fromUserIdAndWorkspaceId(
       alfred!.sId,
@@ -207,6 +214,21 @@ describe("governance seed script integration test", () => {
     expect(privateSpaceConfiguration!.scope).toBe("visible");
     expect(privateSpaceConfiguration!.versionAuthorId).toBe(alfred!.id);
     expect(privateSpaceConfiguration!.requestedSpaceIds).toEqual([
+      privateSpace!.sId,
+    ]);
+
+    const unpublishedPrivateSpaceConfiguration = await getAgentConfiguration(
+      alfredAuth,
+      {
+        agentId: alfredUnpublishedPrivateSpaceAgent!.sId,
+        variant: "light",
+      }
+    );
+    expect(unpublishedPrivateSpaceConfiguration!.scope).toBe("hidden");
+    expect(unpublishedPrivateSpaceConfiguration!.versionAuthorId).toBe(
+      alfred!.id
+    );
+    expect(unpublishedPrivateSpaceConfiguration!.requestedSpaceIds).toEqual([
       privateSpace!.sId,
     ]);
   });

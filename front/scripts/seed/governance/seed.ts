@@ -22,6 +22,7 @@ export interface Assets {
     incidentReporter: AgentAsset;
     alfredUnpublishedAgent: AgentAsset;
     alfredPrivateSpaceAgent: AgentAsset;
+    alfredUnpublishedPrivateSpaceAgent: AgentAsset;
   };
   users: UserAsset[];
   skills: {
@@ -118,9 +119,10 @@ makeScript({}, async ({ execute }, logger) => {
     spaces: restrictedSpace ? [restrictedSpace] : [],
   });
 
-  // 6. Create an agent edited by the current user that uses Alfred's unpublished skill, plus two
+  // 6. Create an agent edited by the current user that uses Alfred's unpublished skill, plus three
   // agents owned by Alfred that the current user does not see: an unpublished one they do not
-  // edit, and a published one requiring the private space they are not a member of.
+  // edit, a published one requiring the private space they are not a member of, and an unpublished
+  // one requiring that same space (both restrictions at once).
   logger.info("Seeding agents...");
   await seedAgent(ctx, agents.incidentReporter, {
     skills: alfredSkill ? [alfredSkill] : [],
@@ -129,6 +131,11 @@ makeScript({}, async ({ execute }, logger) => {
   await seedAgent(ctx, agents.alfredUnpublishedAgent, { owner: alfred });
   logger.info("Seeding Alfred's private space agent...");
   await seedAgent(ctx, agents.alfredPrivateSpaceAgent, {
+    owner: alfred,
+    spaces: privateSpace ? [privateSpace] : [],
+  });
+  logger.info("Seeding Alfred's unpublished private space agent...");
+  await seedAgent(ctx, agents.alfredUnpublishedPrivateSpaceAgent, {
     owner: alfred,
     spaces: privateSpace ? [privateSpace] : [],
   });
