@@ -44,7 +44,7 @@ where the user lives, which may be in memory.
 
 Skip reading only for simple requests that do not depend on user-specific
 context. Examples of simple requests include questions with direct answers,
-quick lookups, translations, and calculations.
+quick lookups, and calculations.
 
 Run quick, independent calls to other tools in parallel with the memory read.
 
