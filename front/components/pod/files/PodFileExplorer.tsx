@@ -19,6 +19,7 @@ import {
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
 import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
+import { ImportFrameDialog } from "@app/components/pod/files/ImportFrameDialog";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
@@ -100,6 +101,8 @@ interface AttachKnowledgeDropdownProps {
   buttonLabel: string;
   isDisabled: boolean;
   onCreateFolderClick: () => void;
+  /** Absent when Frames v2 are not enabled for the workspace. */
+  onImportFrameClick?: () => void;
   onUploadFileClick: () => void;
   onShowCompanyDataClick: () => void;
 }
@@ -108,6 +111,7 @@ function AttachKnowledgeDropdown({
   buttonLabel,
   isDisabled,
   onCreateFolderClick,
+  onImportFrameClick,
   onUploadFileClick,
   onShowCompanyDataClick,
 }: AttachKnowledgeDropdownProps) {
@@ -137,6 +141,13 @@ function AttachKnowledgeDropdown({
           label="Upload file"
           onClick={onUploadFileClick}
         />
+        {onImportFrameClick && (
+          <DropdownMenuItem
+            icon={UploadCloud02}
+            label="Import Frame"
+            onClick={onImportFrameClick}
+          />
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -151,6 +162,7 @@ function AttachKnowledgeButton({
   canManuallyManagePodFiles,
   isDisabled,
   onCreateFolderClick,
+  onImportFrameClick,
   onShowCompanyDataClick,
   onUploadFileClick,
 }: AttachKnowledgeButtonProps) {
@@ -160,6 +172,7 @@ function AttachKnowledgeButton({
         buttonLabel={buttonLabel}
         isDisabled={isDisabled}
         onCreateFolderClick={onCreateFolderClick}
+        onImportFrameClick={onImportFrameClick}
         onShowCompanyDataClick={onShowCompanyDataClick}
         onUploadFileClick={onUploadFileClick}
       />
@@ -174,6 +187,7 @@ function AttachKnowledgeButton({
             buttonLabel={buttonLabel}
             isDisabled={isDisabled}
             onCreateFolderClick={onCreateFolderClick}
+            onImportFrameClick={onImportFrameClick}
             onShowCompanyDataClick={onShowCompanyDataClick}
             onUploadFileClick={onUploadFileClick}
           />
@@ -262,6 +276,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   const [currentFolderPath, setCurrentFolderPath] = useFolderPathUrlState();
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
+  const [showImportFrameDialog, setShowImportFrameDialog] = useState(false);
   const [itemToRename, setItemToRename] = useState<
     | { kind: "file"; path: string; name: string }
     | { kind: "folder"; path: string; name: string }
@@ -671,6 +686,10 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     setShowCreateFolderDialog(true);
   }, []);
 
+  const handleImportFrameClick = useCallback(() => {
+    setShowImportFrameDialog(true);
+  }, []);
+
   const handleShowCompanyDataClick = useCallback(() => {
     setActiveOverlay(
       globalSpaceDSVs.length === 0 ? "noCompanyData" : "companyData"
@@ -774,6 +793,9 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       canManuallyManagePodFiles={canManuallyManagePodKnowledge}
       isDisabled={isAddKnowledgeDisabled}
       onCreateFolderClick={handleCreateFolderClick}
+      onImportFrameClick={
+        hasFeature("frames_v2") ? handleImportFrameClick : undefined
+      }
       onShowCompanyDataClick={handleShowCompanyDataClick}
       onUploadFileClick={handleUploadFileClick}
     />
@@ -839,6 +861,18 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         owner={owner}
         parentRelativePath={currentFolderPath}
         podId={pod.sId}
+      />
+
+      <ImportFrameDialog
+        isOpen={showImportFrameDialog}
+        onClose={() => setShowImportFrameDialog(false)}
+        onImported={() => void refreshPodFiles()}
+        owner={owner}
+        parentCanonicalPath={
+          currentFolderPath
+            ? `pod-${pod.sId}/${currentFolderPath}`
+            : `pod-${pod.sId}`
+        }
       />
 
       {globalSpace && (

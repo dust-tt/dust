@@ -6,10 +6,19 @@
 
 import type { DustFileSystem } from "@app/lib/api/file_system";
 import { decodeBuffer } from "@app/lib/api/files/utils";
+import { withFrameBuildConversation } from "@app/lib/api/frames/build_conversation";
+import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
+import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
+import {
+  FRAME_MANIFEST_FILE,
+  parseFrameManifest,
+} from "@app/types/api/frame_manifest";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
@@ -26,6 +35,7 @@ import {
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import AdmZip from "adm-zip";
 import path from "path";
 import type { Readable } from "stream";
@@ -658,6 +668,308 @@ export async function archiveCanonicalFolder(
   return new Ok({
     fileName: `${path.posix.basename(prefix.slice(0, -1))}.zip`,
     content: zip.toBuffer(),
+  });
+}
+
+export const FOLDER_ARCHIVE_MAX_ZIP_BYTES = 20 * 1024 * 1024; // 20 MB
+const FOLDER_ARCHIVE_MAX_ENTRY_COUNT = 1000;
+// Archive entries carry no content type; unknown extensions are stored as opaque bytes.
+const FOLDER_ARCHIVE_DEFAULT_CONTENT_TYPE = "application/octet-stream";
+// `contentTypeFromFileName` returns the first format claiming an extension, and an internal Dust
+// format claims `.json` ahead of plain JSON. A Frame manifest must be stored as plain JSON.
+const FOLDER_ARCHIVE_EXTENSION_CONTENT_TYPES: Record<string, string> = {
+  ".json": "application/json",
+};
+
+function folderArchiveEntryContentType(relPath: string): string {
+  const fileName = path.posix.basename(relPath);
+  const extension = path.posix.extname(fileName).toLowerCase();
+  return (
+    FOLDER_ARCHIVE_EXTENSION_CONTENT_TYPES[extension] ??
+    contentTypeFromFileName(fileName) ??
+    FOLDER_ARCHIVE_DEFAULT_CONTENT_TYPE
+  );
+}
+
+type FolderArchiveImportErrorCode =
+  | "invalid_archive"
+  | "already_exists"
+  | "invalid_frame"
+  | "internal";
+
+export class FolderArchiveImportError extends Error {
+  constructor(
+    readonly code: FolderArchiveImportErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "FolderArchiveImportError";
+  }
+}
+
+/**
+ * Validate a folder archive (as produced by `archiveCanonicalFolder`) and return its files by
+ * relative path. Rejects zip-slip entries (`..`, absolute paths, backslashes) and oversized archives
+ * before anything is written.
+ */
+function parseFolderArchive(
+  zipBuffer: Buffer
+): Result<Map<string, Buffer>, FolderArchiveImportError> {
+  if (zipBuffer.length > FOLDER_ARCHIVE_MAX_ZIP_BYTES) {
+    return new Err(
+      new FolderArchiveImportError(
+        "invalid_archive",
+        `Archive exceeds ${FOLDER_ARCHIVE_MAX_ZIP_BYTES} bytes.`
+      )
+    );
+  }
+
+  let zip: AdmZip;
+  try {
+    zip = new AdmZip(zipBuffer);
+  } catch (err) {
+    return new Err(
+      new FolderArchiveImportError(
+        "invalid_archive",
+        `Not a readable zip: ${normalizeError(err).message}`
+      )
+    );
+  }
+
+  const entries = zip.getEntries().filter((entry) => !entry.isDirectory);
+  if (entries.length === 0) {
+    return new Err(
+      new FolderArchiveImportError("invalid_archive", "Archive is empty.")
+    );
+  }
+  if (entries.length > FOLDER_ARCHIVE_MAX_ENTRY_COUNT) {
+    return new Err(
+      new FolderArchiveImportError(
+        "invalid_archive",
+        `Archive holds more than ${FOLDER_ARCHIVE_MAX_ENTRY_COUNT} files.`
+      )
+    );
+  }
+
+  const totalUncompressedBytes = entries.reduce(
+    (total, entry) => total + entry.header.size,
+    0
+  );
+  if (totalUncompressedBytes > FOLDER_ARCHIVE_MAX_UNCOMPRESSED_BYTES) {
+    return new Err(
+      new FolderArchiveImportError(
+        "invalid_archive",
+        `Archive expands past ${FOLDER_ARCHIVE_MAX_UNCOMPRESSED_BYTES} bytes.`
+      )
+    );
+  }
+
+  const files = new Map<string, Buffer>();
+  for (const entry of entries) {
+    const name = entry.entryName;
+    const segments = name.split("/");
+    if (
+      name.startsWith("/") ||
+      name.includes("\\") ||
+      segments.some((segment) => segment === ".." || segment === "")
+    ) {
+      return new Err(
+        new FolderArchiveImportError(
+          "invalid_archive",
+          `Unsafe entry path '${name}'.`
+        )
+      );
+    }
+    files.set(name, entry.getData());
+  }
+
+  return new Ok(files);
+}
+
+export type ImportedFrame = {
+  frameId: string;
+  publicationId: string | null;
+  // Set when the Frame was registered but its first publication failed, e.g. a build error.
+  publishError: string | null;
+};
+
+export type ImportCanonicalFolderArchiveResult = {
+  fileCount: number;
+  frame: ImportedFrame | null;
+};
+
+/**
+ * Publish a freshly registered Frame. Publishing builds in a conversation sandbox: a Frame in a
+ * conversation mount builds in that conversation, one in a Pod mount in a short-lived build
+ * conversation of the Pod.
+ */
+async function publishImportedFrame(
+  auth: Authenticator,
+  {
+    dustFs,
+    frame,
+    manifestPath,
+    needsBuildSandbox,
+  }: {
+    dustFs: DustFileSystem;
+    frame: FileResource;
+    manifestPath: string;
+    // Only Frames declaring functions need a sandbox to build; UI-only Frames build in-process.
+    needsBuildSandbox: boolean;
+  }
+): Promise<Result<{ publicationId: string }, Error>> {
+  const mount = dustFs
+    .getMounts()
+    .find(
+      (candidate) =>
+        manifestPath.startsWith(`${candidate.scopedPrefix}/`) &&
+        candidate.permissions.canWrite
+    );
+  if (!mount) {
+    return new Err(new Error("Frame source mount not found."));
+  }
+
+  switch (mount.kind) {
+    case "conversation": {
+      const conversation = await ConversationResource.fetchById(auth, mount.id);
+      if (!conversation) {
+        return new Err(new Error("Frame source conversation not found."));
+      }
+      return publishFrameV2FromSource(auth, {
+        conversation: conversation.toJSON(),
+        frame,
+        manifestPath,
+      });
+    }
+    case "pod": {
+      if (!needsBuildSandbox) {
+        return publishFrameV2FromSource(auth, {
+          conversation: null,
+          frame,
+          manifestPath,
+        });
+      }
+      const pod = await SpaceResource.fetchById(auth, mount.id);
+      if (!pod?.isProject()) {
+        return new Err(new Error("Frame source Pod not found."));
+      }
+      return withFrameBuildConversation(
+        auth,
+        {
+          pod,
+          title: `Frame import: ${frame.useCaseMetadata?.frameName ?? frame.sId}`,
+        },
+        (conversation) =>
+          publishFrameV2FromSource(auth, { conversation, frame, manifestPath })
+      );
+    }
+    default:
+      return new Err(
+        new Error(`Frames cannot be published from a ${mount.kind} mount.`)
+      );
+  }
+}
+
+/**
+ * Create the folder at `folderPath` from a zip of its files (the inverse of
+ * `archiveCanonicalFolder`). The folder must not exist yet. When the archive root holds a Frame
+ * manifest, the Frame is registered and published; a failed publication is reported on the
+ * result rather than failing the import, since the files and the Frame identity are in place.
+ */
+export async function importCanonicalFolderArchive(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  folderPath: string,
+  zipBuffer: Buffer
+): Promise<
+  Result<
+    ImportCanonicalFolderArchiveResult,
+    FolderArchiveImportError | DustFileSystemError
+  >
+> {
+  const writeAccess = dustFs.checkWriteAccess(folderPath);
+  if (writeAccess.isErr()) {
+    return writeAccess;
+  }
+
+  const existingResult = await dustFs.list(folderPath, { maxFiles: 1 });
+  if (existingResult.isErr()) {
+    return existingResult;
+  }
+  if (existingResult.value.length > 0) {
+    return new Err(
+      new FolderArchiveImportError(
+        "already_exists",
+        `A folder already exists at '${path.posix.basename(folderPath)}'.`
+      )
+    );
+  }
+
+  const parsed = parseFolderArchive(zipBuffer);
+  if (parsed.isErr()) {
+    return parsed;
+  }
+
+  for (const [relPath, content] of parsed.value) {
+    const writeResult = await dustFs.write(
+      `${folderPath}/${relPath}`,
+      content,
+      folderArchiveEntryContentType(relPath)
+    );
+    if (writeResult.isErr()) {
+      return writeResult;
+    }
+  }
+
+  if (!parsed.value.has(FRAME_MANIFEST_FILE)) {
+    return new Ok({ fileCount: parsed.value.size, frame: null });
+  }
+
+  const manifestPath = `${folderPath}/${FRAME_MANIFEST_FILE}`;
+  const registration = await registerFrameV2FromSourceUsingFileSystem(auth, {
+    dustFs,
+    manifestPath,
+  });
+  if (registration.isErr()) {
+    return new Err(
+      new FolderArchiveImportError(
+        "invalid_frame",
+        `Files were imported but the Frame could not be registered: ${registration.error.message}`
+      )
+    );
+  }
+  const { frame } = registration.value;
+
+  // Registration already validated the manifest, so it parses here.
+  const manifest = parseFrameManifest(
+    parsed.value.get(FRAME_MANIFEST_FILE) ?? Buffer.alloc(0)
+  );
+  const publication = await publishImportedFrame(auth, {
+    dustFs,
+    frame,
+    manifestPath,
+    needsBuildSandbox: manifest.isOk() && manifest.value.functions.length > 0,
+  });
+  if (publication.isErr()) {
+    logger.warn(
+      {
+        error: publication.error.message,
+        frameId: frame.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Imported Frame could not be published"
+    );
+  }
+
+  return new Ok({
+    fileCount: parsed.value.size,
+    frame: {
+      frameId: frame.sId,
+      publicationId: publication.isOk()
+        ? publication.value.publicationId
+        : null,
+      publishError: publication.isErr() ? publication.error.message : null,
+    },
   });
 }
 

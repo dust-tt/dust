@@ -69,7 +69,9 @@ async function buildFramePublication(
     manifest,
     sourceFiles,
   }: {
-    conversation: ConversationWithoutContentType;
+    // Function bundles build in this conversation's sandbox; null when the caller has none, which
+    // only UI-only Frames can publish.
+    conversation: ConversationWithoutContentType | null;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
   }
@@ -102,6 +104,15 @@ async function buildFramePublication(
       functionArtifacts: [],
       uiBundleCode: uiBundle.value,
     });
+  }
+
+  if (!conversation) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        "Building Frame functions requires a conversation sandbox."
+      )
+    );
   }
 
   const ensureResult = await ensureConversationSandboxReadyWithScope(
@@ -187,7 +198,9 @@ export async function validateFramePublication(
     manifest,
     sourceFiles,
   }: {
-    conversation: ConversationWithoutContentType;
+    // Function bundles build in this conversation's sandbox; null when the caller has none, which
+    // only UI-only Frames can publish.
+    conversation: ConversationWithoutContentType | null;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
   }
@@ -231,7 +244,9 @@ export async function buildAndPublishFramePublication(
     manifest,
     sourceFiles,
   }: {
-    conversation: ConversationWithoutContentType;
+    // Function bundles build in this conversation's sandbox; null when the caller has none, which
+    // only UI-only Frames can publish.
+    conversation: ConversationWithoutContentType | null;
     frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];

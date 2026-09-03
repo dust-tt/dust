@@ -403,7 +403,7 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     frame,
     manifestPath,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | null;
     frame: FileResource;
     manifestPath: string;
   }
@@ -435,7 +435,8 @@ export async function publishFrameV2FromSource(
     frame,
     manifestPath,
   }: {
-    conversation: ConversationWithoutContentType;
+    // Null publishes without a build sandbox, which only UI-only Frames support.
+    conversation: ConversationWithoutContentType | null;
     frame: FileResource;
     manifestPath: string;
   }

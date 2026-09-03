@@ -4,7 +4,10 @@ import {
   archiveCanonicalFolder,
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
+  FOLDER_ARCHIVE_MAX_ZIP_BYTES,
+  FolderArchiveImportError,
   fetchLinkedFileResource,
+  importCanonicalFolderArchive,
   moveCanonicalFile,
   renameCanonicalFile,
   streamThumbnail,
@@ -21,6 +24,7 @@ import {
   normalizeMimeType,
 } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -43,6 +47,7 @@ const ParamsSchema = z.object({
  *   GET    /api/w/:wId/files/path/pod-{pId}/data.csv?download=1         stream + Content-Disposition
  *   GET    /api/w/:wId/files/path/conversation-{cId}/photo.png?thumbnail=1  stream thumbnail
  *   GET    /api/w/:wId/files/path/pod-{pId}/my-frame?archive=1            zip of the folder
+ *   POST   /api/w/:wId/files/path/pod-{pId}/my-frame?archive=1            create folder from zip
  *   HEAD   /api/w/:wId/files/path/{...canonicalPath}                    metadata only
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
@@ -100,6 +105,20 @@ function contentDispositionAttachment(fileName: string): string {
 const putBodyLimit = honoBodyLimit({
   maxSize: WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
   onError: putContentTooLargeError,
+});
+
+// Multipart framing (boundary markers, per-part headers) adds a small overhead on top of the zip.
+const MULTIPART_FRAMING_OVERHEAD_BYTES = 64 * 1024;
+const archiveBodyLimit = honoBodyLimit({
+  maxSize: FOLDER_ARCHIVE_MAX_ZIP_BYTES + MULTIPART_FRAMING_OVERHEAD_BYTES,
+  onError: (ctx) =>
+    apiError(ctx, {
+      status_code: 413,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Archive exceeds ${FOLDER_ARCHIVE_MAX_ZIP_BYTES} bytes.`,
+      },
+    }),
 });
 
 /** Resolve and validate the canonical path from the URL, returning an error response if invalid. */
@@ -542,6 +561,102 @@ app.put(
     return new Response(null, {
       status: writeResult.value.created ? 201 : 200,
     });
+  }
+);
+
+/**
+ * Create the folder at canonicalPath from a zip of its files (multipart `file` field), the inverse
+ * of `GET ?archive=1`. A Frame manifest at the archive root registers the Frame.
+ */
+app.post(
+  "/:canonicalPath{.+}",
+  archiveBodyLimit,
+  validate("param", ParamsSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { canonicalPath } = ctx.req.valid("param");
+    const archive = ctx.req.query("archive");
+    if (!archive || archive === "0") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "POST on a canonical path requires ?archive=1.",
+        },
+      });
+    }
+
+    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
+    if (err) {
+      return err;
+    }
+
+    let body: Awaited<ReturnType<typeof ctx.req.parseBody>>;
+    try {
+      body = await ctx.req.parseBody();
+    } catch (parseErr) {
+      // Without a Content-Length header the body limit surfaces as a thrown error mid-read; let it
+      // propagate so the middleware turns it into its 413 response.
+      if (parseErr instanceof Error && parseErr.name === "BodyLimitError") {
+        throw parseErr;
+      }
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `File upload failed: ${normalizeError(parseErr).message}`,
+        },
+      });
+    }
+
+    const uploaded = body.file;
+    if (!(uploaded instanceof File)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "A 'file' field holding the archive is required.",
+        },
+      });
+    }
+
+    const importResult = await importCanonicalFolderArchive(
+      auth,
+      dustFs,
+      canonicalPath,
+      Buffer.from(await uploaded.arrayBuffer())
+    );
+    if (importResult.isErr()) {
+      const e = importResult.error;
+      if (!(e instanceof FolderArchiveImportError)) {
+        return apiError(ctx, mapDustFsError(e));
+      }
+      const code = e.code;
+      switch (code) {
+        case "invalid_archive":
+        case "invalid_frame":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "invalid_request_error", message: e.message },
+          });
+        case "already_exists":
+          return apiError(ctx, {
+            status_code: 409,
+            api_error: { type: "invalid_request_error", message: e.message },
+          });
+        case "internal":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: { type: "internal_server_error", message: e.message },
+          });
+        default:
+          assertNever(code);
+      }
+    }
+
+    requestDustProjectIncrementalSyncForScopedPath(auth, canonicalPath);
+
+    return ctx.json(importResult.value, 201);
   }
 );
 
