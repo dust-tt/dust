@@ -35,11 +35,12 @@ const meta = {
 
 **When to use**
 - To show a piece of content alongside its origin (e.g. a document with its connector logo).
-- To flag an icon with a status: pass **secondaryColor** to fill the badge and knock the glyph out in white.
+- To flag an icon with a status: pass **secondaryColor** to fill the badge, and **surface** to knock its glyph out in the color of the surface behind the icon.
 
 **Guidelines**
 - Keep the **mainIcon** as the subject and the **secondaryIcon** as a small qualifier such as a provider logo or a status glyph.
 - Use **secondaryColor** only with the semantic intent it names (\`info\`, \`warning\`, \`success\`, \`highlight\`); leave it unset for provider logos, which carry their own colors.
+- Always name the **surface** alongside **secondaryColor** (e.g. \`overlay-background\` inside a menu, or \`current\` plus a \`text-*\` class for a surface that paints its own color): a knockout that misses the surface behind the icon leaves a mismatched halo around the badge.
 - \`xs\` badges a 16px glyph — the scale of an icon inside a button; reach for a larger size wherever there is room.
 - For a single glyph use **Icon**; for an entity image use **Avatar**.`,
       },
@@ -63,8 +64,26 @@ const meta = {
     },
     secondaryColor: {
       description:
-        "Fills the badge with a semantic color and knocks the glyph out in white",
+        "Fills the badge with a semantic color and knocks the glyph out",
       options: [undefined, "info", "warning", "success", "highlight"],
+      control: { type: "select" },
+    },
+    surface: {
+      description: "Surface a filled badge is knocked out against",
+      options: [
+        "background",
+        "app-background",
+        "panel-background",
+        "overlay-background",
+        "modal-background",
+        "muted-background",
+        "current",
+      ],
+      control: { type: "select" },
+    },
+    secondarySize: {
+      description: "Badge size, overriding the one `size` implies",
+      options: [undefined, "2xs", "badge", "xs", "sm"],
       control: { type: "select" },
     },
     mainIcon: {
@@ -130,10 +149,11 @@ export const Sizes: Story = {
 };
 
 /**
- * A status badge: `secondaryColor` fills the corner disc and knocks the glyph
- * out in white, so the flag reads at a glance over a busy main icon. Used for
- * flagging a model as degraded in the model picker, where the whole control is
- * a 16px button icon (`size="xs"`, badged top-right).
+ * A status badge: `secondaryColor` fills the corner disc and `surface` knocks
+ * the glyph out in the color behind the icon, leaving a halo that separates the
+ * badge from a busy main icon. Used for flagging a model as degraded in the
+ * model picker, where the whole control is a 16px button icon (`size="xs"`,
+ * badged top-right with a 14px `secondarySize="badge"` disc).
  * @summary Glyph flagged with a filled status badge.
  */
 export const StatusBadge: Story = {
@@ -149,6 +169,8 @@ export const StatusBadge: Story = {
 /**
  * Visual reference: each semantic `secondaryColor` in both corners, at the
  * `xs` scale used inside buttons and at `lg` for a closer look at the disc.
+ * The last row is the model picker's degraded badge — an oversized badge
+ * (`secondarySize="badge"`) knocked out against the composer surface.
  * Kept for design review.
  * @summary Status badge colors and corners.
  */
@@ -188,6 +210,26 @@ export const StatusBadges: Story = {
           />
         </div>
       ))}
+      <div className="flex items-center gap-8 rounded-2xl bg-muted-background p-4">
+        <DoubleIcon
+          size="xs"
+          mainIcon={Folder}
+          secondaryIcon={InfoCircle}
+          secondarySize="badge"
+          position="top-right"
+          secondaryColor="info"
+          surface="muted-background"
+        />
+        <DoubleIcon
+          size="lg"
+          mainIcon={Folder}
+          secondaryIcon={InfoCircle}
+          secondarySize="sm"
+          position="top-right"
+          secondaryColor="info"
+          surface="muted-background"
+        />
+      </div>
     </div>
   ),
 };

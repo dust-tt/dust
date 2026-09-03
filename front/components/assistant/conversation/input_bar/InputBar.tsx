@@ -718,8 +718,8 @@ export const InputBar = React.memo(function InputBar({
             : classNames(
                 "rounded-squircle-40 w-full overflow-hidden",
                 "border",
-                "has-[.tiptap:focus]:bg-stone-25 bg-[oklch(0.988_0_89.876)]",
-                "dark:has-[.tiptap:focus]:bg-[oklch(0.310_0.007_75)] dark:bg-[oklch(0.294_0.008_84.593)]",
+                "bg-input-bar-background",
+                "has-[.tiptap:focus]:bg-stone-25 dark:has-[.tiptap:focus]:bg-[oklch(0.310_0.007_75)]",
                 isFloating
                   ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark max-md:dark:has-[.tiptap:focus]:border-stone-750"
                   : "border-border has-[.tiptap:focus]:border-border-dark dark:has-[.tiptap:focus]:border-stone-750",

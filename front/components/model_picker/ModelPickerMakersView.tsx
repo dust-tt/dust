@@ -64,7 +64,7 @@ export function ModelPickerMakersView({
               label={getModelMakerDisplayName(maker.makerId)}
               icon={
                 hasDegradedModel ? (
-                  <DegradedModelIcon icon={makerLogo} />
+                  <DegradedModelIcon icon={makerLogo} surface="menu" />
                 ) : (
                   makerLogo
                 )
