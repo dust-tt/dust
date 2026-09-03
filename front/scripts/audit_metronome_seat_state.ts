@@ -17,6 +17,7 @@
  *   npx tsx scripts/audit_metronome_seat_state.ts --workspaceId <wId>
  */
 import config from "@app/lib/api/config";
+import { fetchConsumedAwuCreditsByUserId } from "@app/lib/api/credits/members_usage";
 import {
   getMetronomeClient,
   getMetronomeSubscriptionSeatState,
@@ -457,32 +458,40 @@ async function auditWorkspace(
     "[SeatAudit] seat balances summary"
   );
 
-  // Over-allocation (credit-stacking) detection. `starting_balance` is the
-  // total AWU granted to the seat this cycle, independent of how much has been
-  // consumed — so a seat granted MORE than its seat-type allocation is holding
-  // a leftover grant that a prior seat-type change never emptied (the pro→max
-  // stacking: 40000 max allocation + an orphaned 8000 pro grant =
-  // starting_balance 48000). This is the exact population `syncSeatCount` can
-  // no longer self-heal (empty-origin sees the user already converged on the
-  // new seat), so it needs a targeted credit correction.
+  // Over-allocation (credit-stacking) detection, usage-based.
   //
-  // A seat's AWU may be split across MULTIPLE balance entries (one per recurring
-  // credit — e.g. a stacked seat with a separate pro and max entry), so SUM all
-  // AWU-type entries rather than taking the first. `awuEntryCount` is emitted as
-  // a diagnostic: if some stacked seats show 2 entries, the split shape is real;
-  // if a fully-consumed stray grant is dropped by Metronome (single entry with
-  // starting_balance back at the allocation), starting_balance-based detection
-  // undercounts and we need a usage-based pass instead.
-  const AWU_OVER_ALLOCATION_TOLERANCE = 1;
-  const awuEntryCountHistogram = new Map<number, number>();
+  // A seat should hold `max(0, allocation - consumed)` AWU (the same target
+  // `carryConsumptionToNewSeatCredits` reconciles to). Anything above that is a
+  // stray grant a prior seat-type change / seat-sync crash never emptied. We use
+  // the seat's CONSUMED AWU (from the analytics index, the same figure the poke
+  // members table shows) rather than Metronome's `starting_balance`: when the
+  // stray grant is fully consumed Metronome DROPS it from `starting_balance`
+  // (it reads back at the allocation), so a starting_balance-only check misses
+  // seats that already spent through the phantom grant. `currentBalance -
+  // max(0, allocation - consumed)` catches them and self-caps: for
+  // consumed > allocation the over-grant is bounded by the remaining balance
+  // (the rest was overspent and is unrecoverable).
+  //
+  // Threshold is generous (real stacks are >= 7500 AWU: pro-on-free 7500,
+  // pro-on-max 8000, max-on-pro 40000) so small analytics-vs-Metronome
+  // consumption skew on healthy seats never trips a false positive.
+  const STACKING_DETECTION_THRESHOLD_AWU = 1000;
+  const consumedByUserId = await fetchConsumedAwuCreditsByUserId({
+    workspace: lightWorkspace,
+    userIds: [...seatTypeBySeatId.keys()],
+    freeSeatUserIds: [...seatTypeBySeatId]
+      .filter(([, t]) => t === "free")
+      .map(([id]) => id),
+  });
   const overAllocatedSeats: Array<{
     seatId: string;
     seatType: MembershipSeatType;
     allocation: number;
     startingBalance: number;
     currentBalance: number;
+    consumedAwu: number;
+    targetBalance: number;
     overGrantedAwu: number;
-    awuEntryCount: number;
   }> = [];
   for (const [seatId, seatType] of seatTypeBySeatId) {
     const allocation = allocationBySeatType.get(seatType);
@@ -492,10 +501,6 @@ async function auditWorkspace(
     const awuEntries = (balanceBySeatId.get(seatId) ?? []).filter(
       (b) => b.credit_type_id === awuCreditTypeId
     );
-    awuEntryCountHistogram.set(
-      awuEntries.length,
-      (awuEntryCountHistogram.get(awuEntries.length) ?? 0) + 1
-    );
     if (awuEntries.length === 0) {
       continue;
     }
@@ -504,16 +509,19 @@ async function auditWorkspace(
       0
     );
     const currentBalance = awuEntries.reduce((sum, b) => sum + b.balance, 0);
-    const overGrantedAwu = startingBalance - allocation;
-    if (overGrantedAwu > AWU_OVER_ALLOCATION_TOLERANCE) {
+    const consumedAwu = consumedByUserId.get(seatId) ?? 0;
+    const targetBalance = Math.max(0, allocation - consumedAwu);
+    const overGrantedAwu = currentBalance - targetBalance;
+    if (overGrantedAwu > STACKING_DETECTION_THRESHOLD_AWU) {
       overAllocatedSeats.push({
         seatId,
         seatType,
         allocation,
         startingBalance,
         currentBalance,
+        consumedAwu,
+        targetBalance,
         overGrantedAwu,
-        awuEntryCount: awuEntries.length,
       });
     }
   }
@@ -527,10 +535,10 @@ async function auditWorkspace(
       workspaceId,
       contractId,
       allocationBySeatType: Object.fromEntries(allocationBySeatType),
-      // How many AWU balance entries seats carry: >1 means the split (stacked)
-      // shape exists and summing catches it; all 1s means fully-consumed stray
-      // grants are dropped and starting_balance detection undercounts.
-      awuEntryCountHistogram: Object.fromEntries(awuEntryCountHistogram),
+      // Sanity check: how many seats got analytics consumption. A low number vs
+      // seatIdsChecked means the analytics read degraded and the count below is
+      // an undercount (falls back toward starting_balance behaviour).
+      seatsWithConsumption: consumedByUserId.size,
       overAllocatedSeatCount: overAllocatedSeats.length,
       totalOverGrantedAwu,
       overAllocatedSeats,
