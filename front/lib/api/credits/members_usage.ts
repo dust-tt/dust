@@ -2390,6 +2390,15 @@ export async function getMembersUsage({
   >();
   if (includeAlertLinks) {
     const plan = auth.plan();
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        planCode: plan?.code ?? null,
+        isCreditPriced: plan ? isCreditPricedPlan(plan) : null,
+        userCount: users.length,
+      },
+      "[PoolUsage] Resolving bulk premium message usage"
+    );
     if (plan && !isCreditPricedPlan(plan)) {
       const entries = await concurrentExecutor(
         users,
@@ -2403,6 +2412,14 @@ export async function getMembersUsage({
       for (const [sId, usage] of entries) {
         premiumMessageUsageByUserId.set(sId, usage);
       }
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          populatedCount: premiumMessageUsageByUserId.size,
+          sampleUsage: entries[0]?.[1] ?? null,
+        },
+        "[PoolUsage] Bulk premium message usage populated"
+      );
     }
   }
 
