@@ -1713,6 +1713,29 @@ export async function updateAgentPermissions(
       }
     }
 
+    // Editors get access to the agent's private data (prompt, skills, knowledge), so editor changes
+    // are audited. `actor_added_self` flags an admin granting themselves that access.
+    const actorUserSId = auth.user()?.sId;
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.editors_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", agent),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agent_name: agent.name,
+        scope: agent.scope,
+        added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
+        removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
+        actor_added_self: String(
+          actorUserSId !== undefined &&
+            usersToAdd.some((u) => u.sId === actorUserSId)
+        ),
+      },
+    });
+
     return new Ok(undefined);
   } catch (error) {
     // Catch errors thrown from within the transaction

@@ -152,6 +152,10 @@ export function RedactedAgentMessage({
         )}
         {showBecomeEditor && (
           <>
+            <span>
+              Note that by becoming an editor you will have access to private
+              data and it will trigger an audit log.
+            </span>
             <div>
               <BecomeEditorButton
                 isLoading={isAddingSelfAsEditor}
