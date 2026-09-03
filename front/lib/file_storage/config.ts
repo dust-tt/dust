@@ -1,8 +1,9 @@
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 const config = {
-  getServiceAccount: (): string => {
-    return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
+  // Key file path. Unset means Application Default Credentials, Workload Identity on GKE.
+  getServiceAccount: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("SERVICE_ACCOUNT");
   },
   getGcsPublicUploadBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_UPLOAD_BUCKET");

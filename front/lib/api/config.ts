@@ -229,8 +229,8 @@ const config = {
   getPersonaApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("PERSONA_API_KEY");
   },
-  getServiceAccount: (): string => {
-    return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
+  getServiceAccount: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("SERVICE_ACCOUNT");
   },
   getPostHogApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("NEXT_PUBLIC_POSTHOG_KEY");
