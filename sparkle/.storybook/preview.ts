@@ -1,6 +1,5 @@
 import "../src/styles/fonts.css";
 import "../src/styles/tailwind.css";
-import "./preview.css";
 
 import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react";
@@ -63,7 +62,7 @@ const preview: Preview = {
       default: "light",
       list: [
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "dark", color: "#1c1917" },
+        { name: "dark", class: "dark", color: "#000000" },
       ],
     },
     backgrounds: {
@@ -90,6 +89,18 @@ const preview: Preview = {
   },
 
   decorators: [
+    (Story, context) => {
+      const isDark = context.globals.theme === "dark";
+      const background = isDark ? "#000000" : "#ffffff";
+
+      // Update both document and storybook-docs background
+      document.documentElement.style.backgroundColor = background;
+      document
+        .querySelector(".docs-story")
+        ?.setAttribute("style", `background-color: ${background}`);
+
+      return Story();
+    },
     withThemeByClassName({
       themes: {
         light: "",
