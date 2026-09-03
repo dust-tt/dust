@@ -299,12 +299,12 @@ export function WorkspacePage() {
               <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
               <TabsTrigger value="frames" label="Frames" />
+              <TabsTrigger value="governance" label="Governance" />
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP" />
               <TabsTrigger value="pods" label="Pods" />
               <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
-
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
