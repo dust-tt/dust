@@ -4,7 +4,7 @@ import { error } from "firebase-functions/logger";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
-import { ALL_REGIONS } from "../webhook-router-config.js";
+import { ALL_CELLS } from "../webhook-router-config.js";
 
 export function createTeamsRoutes(
   secretManager: SecretManager,
@@ -30,13 +30,13 @@ async function handleTeamsWebhook(
     // Get secrets for forwarding (already validated by middleware)
     const secrets = await secretManager.getSecrets();
 
-    // Forward to regions asynchronously
-    const responses = await new WebhookForwarder(secrets).forwardToRegions({
+    // Forward to cells asynchronously
+    const responses = await new WebhookForwarder(secrets).forwardToCells({
       body: req.body,
       endpoint,
       method: req.method,
       headers: req.headers,
-      regions: ALL_REGIONS,
+      cells: ALL_CELLS,
     });
 
     // Find one successful response that is a 200 status code
