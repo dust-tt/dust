@@ -248,6 +248,7 @@ interface AgentMessageProps {
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
+  lastUserScrollAtRef: MutableRefObject<number | null>;
   isProjectArchived?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
@@ -269,6 +270,7 @@ export function AgentMessage({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   isAutoScrollEnabledRef,
+  lastUserScrollAtRef,
   isProjectArchived = false,
   setLimitReachedCode,
 }: AgentMessageProps) {
@@ -325,6 +327,7 @@ export function AgentMessage({
     agentMessage: agentMessage,
     conversationId,
     isAutoScrollEnabledRef,
+    lastUserScrollAtRef,
     owner,
     onEventCallback: useCallback(
       (eventPayload: {

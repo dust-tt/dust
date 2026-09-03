@@ -19,6 +19,7 @@ const mockUseEventSource = vi.fn();
 const mockMutateContextUsage = vi.fn();
 const mockUseVirtuosoMethods = vi.fn();
 const mockIsAutoScrollEnabledRef = { current: true };
+const mockLastUserScrollAtRef = { current: null as number | null };
 
 function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
   return {
@@ -146,11 +147,70 @@ beforeEach(() => {
   mockMutateContextUsage.mockReset();
   mockUseVirtuosoMethods.mockReset();
   mockIsAutoScrollEnabledRef.current = true;
+  mockLastUserScrollAtRef.current = null;
 });
 
 afterEach(() => {
   vi.useRealTimers();
 });
+
+function setupStreamingContentUpdateTest() {
+  let currentMessage = makeInitialMessageStreamState(
+    makeLightAgentMessage({ content: null, chainOfThought: null })
+  );
+  let onEventCallback: ((event: string) => void) | null = null;
+
+  mockUseVirtuosoMethods.mockReturnValue(
+    makeVirtuosoMethodsMock(
+      (updater: (message: typeof currentMessage) => typeof currentMessage) => {
+        currentMessage = updater(currentMessage);
+        return [currentMessage];
+      }
+    )
+  );
+  mockUseEventSource.mockImplementation(
+    (
+      _buildURL: unknown,
+      callback: (event: string) => void
+    ): { isError: null } => {
+      onEventCallback = callback;
+      return { isError: null };
+    }
+  );
+
+  const hook = renderHook(() =>
+    useAgentMessageStream({
+      agentMessage: currentMessage,
+      conversationId: "conv_123",
+      isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+      lastUserScrollAtRef: mockLastUserScrollAtRef,
+      owner: mockOwner,
+      streamId: "stream_123",
+    })
+  );
+
+  return {
+    getContent: () => currentMessage.content,
+    sendToken: (text: string) => {
+      act(() => {
+        onEventCallback!(
+          JSON.stringify({
+            eventId: "1-0",
+            data: {
+              type: "generation_tokens",
+              created: Date.now(),
+              configurationId: "agent_123",
+              messageId: currentMessage.sId,
+              text,
+              classification: "tokens",
+            },
+          })
+        );
+      });
+    },
+    unmount: hook.unmount,
+  };
+}
 
 describe("upsertPendingToolCall", () => {
   it("merges a later update for the same call id", () => {
@@ -333,6 +393,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        lastUserScrollAtRef: mockLastUserScrollAtRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -356,6 +417,45 @@ describe("useAgentMessageStream", () => {
 
     expect(mapWithAnchor).toHaveBeenCalledWith(expect.any(Function), 7);
     expect(batch).not.toHaveBeenCalled();
+  });
+
+  it("waits for user scrolling to settle before growing streamed content", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    mockIsAutoScrollEnabledRef.current = false;
+    mockLastUserScrollAtRef.current = Date.now();
+    const harness = setupStreamingContentUpdateTest();
+
+    harness.sendToken("Hello");
+
+    expect(harness.getContent()).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+      mockLastUserScrollAtRef.current = Date.now();
+      vi.advanceTimersByTime(149);
+    });
+    expect(harness.getContent()).toBeNull();
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.getContent()).toBe("Hello");
+  });
+
+  it("cancels a deferred stream update when the message unmounts", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    mockIsAutoScrollEnabledRef.current = false;
+    mockLastUserScrollAtRef.current = Date.now();
+    const harness = setupStreamingContentUpdateTest();
+
+    harness.sendToken("Hello");
+
+    act(() => {
+      harness.unmount();
+      vi.runAllTimers();
+    });
+
+    expect(harness.getContent()).toBeNull();
   });
 
   it("clears stale database content before replaying fresh-mount tokens", () => {
@@ -398,6 +498,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        lastUserScrollAtRef: mockLastUserScrollAtRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -465,6 +566,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        lastUserScrollAtRef: mockLastUserScrollAtRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -586,6 +688,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        lastUserScrollAtRef: mockLastUserScrollAtRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -690,6 +793,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        lastUserScrollAtRef: mockLastUserScrollAtRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -790,6 +894,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        lastUserScrollAtRef: mockLastUserScrollAtRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -939,6 +1044,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        lastUserScrollAtRef: mockLastUserScrollAtRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -1110,6 +1216,7 @@ describe("useAgentMessageStream", () => {
           agentMessage: currentMessage,
           conversationId: "conv_123",
           isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+          lastUserScrollAtRef: mockLastUserScrollAtRef,
           owner: mockOwner,
           streamId: "stream_123",
         })
@@ -1198,6 +1305,7 @@ describe("useAgentMessageStream", () => {
           agentMessage: currentMessage,
           conversationId: "conv_123",
           isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+          lastUserScrollAtRef: mockLastUserScrollAtRef,
           owner: mockOwner,
           streamId: "stream_123",
         })
@@ -1292,6 +1400,7 @@ describe("useAgentMessageStream", () => {
         agentMessage: currentMessage,
         conversationId: "conv_123",
         isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        lastUserScrollAtRef: mockLastUserScrollAtRef,
         owner: mockOwner,
         streamId: "stream_123",
       })

@@ -264,7 +264,7 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const isMobile = useIsMobile();
-  const { enableAutoScroll, isAutoScrollEnabledRef } =
+  const { enableAutoScroll, isAutoScrollEnabledRef, lastUserScrollAtRef } =
     useConversationAutoScroll({
       isMobile,
       messageListRef: virtuosoMessageListRef,
@@ -1447,6 +1447,7 @@ export const ConversationViewer = ({
       projectSpaceName: spaceInfo?.name,
       enableAutoScroll,
       isAutoScrollEnabledRef,
+      lastUserScrollAtRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
     };
@@ -1470,6 +1471,7 @@ export const ConversationViewer = ({
     setLimitReachedCode,
     enableAutoScroll,
     isAutoScrollEnabledRef,
+    lastUserScrollAtRef,
   ]);
 
   return (

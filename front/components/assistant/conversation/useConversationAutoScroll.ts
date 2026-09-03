@@ -26,11 +26,13 @@ export function useConversationAutoScroll({
   messageListRef,
 }: UseConversationAutoScrollProps) {
   const isAutoScrollEnabledRef = useRef(true);
+  const lastUserScrollAtRef = useRef<number | null>(null);
   // A gesture can produce several scroll events. Keep its direction until the
   // user changes direction or auto-scroll is explicitly re-enabled.
   const userScrollDirectionRef = useRef<UserScrollDirection | null>(null);
   const enableAutoScroll = useCallback(() => {
     isAutoScrollEnabledRef.current = true;
+    lastUserScrollAtRef.current = null;
     userScrollDirectionRef.current = null;
   }, []);
 
@@ -64,7 +66,6 @@ export function useConversationAutoScroll({
     };
 
     const onScroll = () => {
-      const wasAutoScrollEnabled = isAutoScrollEnabledRef.current;
       const scrollHeight = scrollElement.scrollHeight;
       const scrollTop = scrollElement.scrollTop;
       const scrollHeightDelta = scrollHeight - previousScrollHeight;
@@ -74,6 +75,10 @@ export function useConversationAutoScroll({
         Math.abs(scrollTopDelta - scrollHeightDelta) <= 1;
       const location = methods.getScrollLocation();
 
+      if (userScrollDirectionRef.current !== null) {
+        lastUserScrollAtRef.current = Date.now();
+      }
+
       if (
         isAutoScrollEnabledRef.current &&
         scrollTopDelta < 0 &&
@@ -81,6 +86,7 @@ export function useConversationAutoScroll({
         !location.isAtBottom
       ) {
         userScrollDirectionRef.current = "up";
+        lastUserScrollAtRef.current = Date.now();
         detachFromAutoScroll();
       }
 
@@ -119,16 +125,6 @@ export function useConversationAutoScroll({
         });
       }
 
-      // Virtuoso preserves the bottom offset when a row grows during an active
-      // upward scroll. Remove that growth so it does not cancel user movement.
-      if (
-        !wasAutoScrollEnabled &&
-        userScrollDirectionRef.current === "up" &&
-        scrollHeightDelta > 0
-      ) {
-        scrollElement.scrollTop -= scrollHeightDelta;
-      }
-
       previousScrollHeight = scrollHeight;
       previousScrollTop = scrollElement.scrollTop;
     };
@@ -139,6 +135,7 @@ export function useConversationAutoScroll({
       }
 
       userScrollDirectionRef.current = event.deltaY < 0 ? "up" : "down";
+      lastUserScrollAtRef.current = Date.now();
       if (userScrollDirectionRef.current === "up") {
         detachFromAutoScroll();
       }
@@ -156,6 +153,7 @@ export function useConversationAutoScroll({
 
       if (lastTouchY !== null && touchY !== lastTouchY) {
         userScrollDirectionRef.current = touchY > lastTouchY ? "up" : "down";
+        lastUserScrollAtRef.current = Date.now();
         if (userScrollDirectionRef.current === "up") {
           detachFromAutoScroll();
         }
@@ -176,5 +174,9 @@ export function useConversationAutoScroll({
     };
   }, [enableAutoScroll, isMobile, messageListRef]);
 
-  return { enableAutoScroll, isAutoScrollEnabledRef };
+  return {
+    enableAutoScroll,
+    isAutoScrollEnabledRef,
+    lastUserScrollAtRef,
+  };
 }

@@ -149,6 +149,7 @@ export type VirtuosoMessageListContext = {
   projectSpaceName?: string;
   enableAutoScroll: () => void;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
+  lastUserScrollAtRef: MutableRefObject<number | null>;
   isNoSeat?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 };

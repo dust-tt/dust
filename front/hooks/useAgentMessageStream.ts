@@ -25,6 +25,9 @@ import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 const TOKEN_BUFFER_THRESHOLD_MS = 500;
+// Virtuoso keeps its upward-scroll compensation active for 100ms after the
+// last scroll event. Wait slightly longer before growing a streamed row.
+const USER_SCROLL_SETTLE_DELAY_MS = 150;
 
 type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessage,
@@ -79,31 +82,63 @@ function batchMapMessagesWithAutoScroll(
 
 function createUpdateMessageThrottled(
   isAutoScrollEnabledRef: MutableRefObject<boolean>,
+  lastUserScrollAtRef: MutableRefObject<number | null>,
   methods: VirtuosoMethods
 ) {
-  return throttle(
-    ({
-      chainOfThought,
-      content,
-      sId,
-    }: {
-      chainOfThought: string;
-      content: string;
-      sId: string;
-    }) => {
-      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, (m) => {
-        if (isAgentMessageWithStreaming(m) && m.sId === sId) {
-          return {
-            ...m,
-            content,
-            chainOfThought,
-          };
-        }
-        return m;
-      });
-    },
+  type MessageUpdate = {
+    chainOfThought: string;
+    content: string;
+    sId: string;
+  };
+
+  let scrollSettleTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  const applyUpdate = (update: MessageUpdate) => {
+    const lastUserScrollAt = lastUserScrollAtRef.current;
+    const remainingDelay =
+      lastUserScrollAt === null
+        ? 0
+        : lastUserScrollAt + USER_SCROLL_SETTLE_DELAY_MS - Date.now();
+    if (remainingDelay > 0) {
+      if (scrollSettleTimeout !== null) {
+        clearTimeout(scrollSettleTimeout);
+      }
+      scrollSettleTimeout = setTimeout(
+        () => applyUpdate(update),
+        remainingDelay
+      );
+      return;
+    }
+
+    scrollSettleTimeout = null;
+    const { chainOfThought, content, sId } = update;
+    batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, (m) => {
+      if (isAgentMessageWithStreaming(m) && m.sId === sId) {
+        return {
+          ...m,
+          content,
+          chainOfThought,
+        };
+      }
+      return m;
+    });
+  };
+
+  const updateMessageThrottled = throttle(
+    applyUpdate,
     TOKEN_BUFFER_THRESHOLD_MS
   );
+
+  const cancelThrottle = updateMessageThrottled.cancel;
+  updateMessageThrottled.cancel = () => {
+    cancelThrottle();
+    if (scrollSettleTimeout !== null) {
+      clearTimeout(scrollSettleTimeout);
+      scrollSettleTimeout = null;
+    }
+  };
+
+  return updateMessageThrottled;
 }
 
 export function upsertPendingToolCall(
@@ -308,6 +343,7 @@ interface UseAgentMessageStreamParams {
   agentMessage: AgentMessageWithStreaming;
   conversationId: string | null;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
+  lastUserScrollAtRef: MutableRefObject<number | null>;
   owner: LightWorkspaceType;
   onEventCallback?: (event: {
     eventId: string;
@@ -320,6 +356,7 @@ export function useAgentMessageStream({
   agentMessage,
   conversationId,
   isAutoScrollEnabledRef,
+  lastUserScrollAtRef,
   owner,
   onEventCallback: customOnEventCallback,
   streamId,
@@ -337,8 +374,13 @@ export function useAgentMessageStream({
   >();
 
   const updateMessageThrottled = useMemo(
-    () => createUpdateMessageThrottled(isAutoScrollEnabledRef, methods),
-    [isAutoScrollEnabledRef, methods]
+    () =>
+      createUpdateMessageThrottled(
+        isAutoScrollEnabledRef,
+        lastUserScrollAtRef,
+        methods
+      ),
+    [isAutoScrollEnabledRef, lastUserScrollAtRef, methods]
   );
 
   const mapMessagesWithAutoScroll = useCallback(
