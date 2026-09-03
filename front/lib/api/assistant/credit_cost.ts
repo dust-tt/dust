@@ -4,6 +4,7 @@ import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_l
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,6 +13,10 @@ import {
   buildAgentMessageBillingPlan,
   computeRunKey,
 } from "@app/lib/credits/agent_message_billing";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -21,6 +26,7 @@ import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
 import {
   addRateLimiterCount,
   getTimeframeSecondsFromLiteral,
+  getWeightedRateLimiterUsage,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -186,18 +192,54 @@ export async function computeAndStoreAgentMessageCredits(
     // The limit guard lives in isMessagesLimitReached (pre-message), which reads
     // the count via getRateLimiterCount and blocks the next message once the
     // total reaches maxAwuCredits.
+    const fairUseKey = makeFairUseAwuCreditsRateLimitKeyForUser(
+      auth.getNonNullableWorkspace(),
+      user.toJSON(),
+      assistantLimits.maxAwuCreditsTimeframe
+    );
+    const fairUseTimeframeSeconds = getTimeframeSecondsFromLiteral(
+      assistantLimits.maxAwuCreditsTimeframe
+    );
+
     await addRateLimiterCount({
-      key: makeFairUseAwuCreditsRateLimitKeyForUser(
-        auth.getNonNullableWorkspace(),
-        user.toJSON(),
-        assistantLimits.maxAwuCreditsTimeframe
-      ),
-      timeframeSeconds: getTimeframeSecondsFromLiteral(
-        assistantLimits.maxAwuCreditsTimeframe
-      ),
+      key: fairUseKey,
+      timeframeSeconds: fairUseTimeframeSeconds,
       incrementBy: recordedCostDelta,
       logger,
     });
+
+    // Only the message that crosses the cap emits: from here on the user is
+    // blocked upstream, and each retry emits `fair_use_limit_blocked` instead.
+    const usage = await getWeightedRateLimiterUsage({
+      key: fairUseKey,
+      timeframeSeconds: fairUseTimeframeSeconds,
+    });
+    const limitMicroCredits = roundCreditsToMicroCredits(
+      assistantLimits.maxAwuCredits
+    );
+    if (
+      usage.isOk() &&
+      usage.value.count >= limitMicroCredits &&
+      usage.value.count - roundCreditsToMicroCredits(recordedCostDelta) <
+        limitMicroCredits
+    ) {
+      PostHogServerSideTracking.trackEvent({
+        distinctId: user.sId,
+        event: "fair_use_limit_reached",
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        extra: {
+          limit_credits: assistantLimits.maxAwuCredits,
+          timeframe: assistantLimits.maxAwuCreditsTimeframe,
+          used_credits: microCreditsToCredits(usage.value.count),
+          // How fast the window was burnt: low -> spike, not steady use.
+          burn_duration_hours: usage.value.oldestTimestampMs
+            ? (Date.now() - usage.value.oldestTimestampMs) / (60 * 60 * 1000)
+            : 0,
+          plan_code: plan?.code ?? "unknown",
+          origin: messageOrigin,
+        },
+      });
+    }
   }
 
   // Record against the spend-cap backups (Redis fixed-window counters over the
