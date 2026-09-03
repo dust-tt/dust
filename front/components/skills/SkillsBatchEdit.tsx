@@ -35,7 +35,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
       const subject = count === 1 ? "The skill remains" : "The skills remain";
-      return `Only editors can find ${pronoun} via the input bar and agent builder. ${subject} available through agents and skills that use ${pronoun}.`;
+      return `Only editors can find ${pronoun} via the composer and agent builder. ${subject} available through agents and skills that use ${pronoun}.`;
     },
   },
   {
@@ -45,7 +45,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
       `Make ${count} skill${pluralize(count)} available to all members`,
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
-      return `All members can find ${pronoun} via the input bar and agent builder.`;
+      return `All members can find ${pronoun} via the composer and agent builder.`;
     },
   },
   {
@@ -55,7 +55,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     getDialogTitle: () => `This affects your entire workspace`,
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
-      return `All members can find ${pronoun} via the input bar and agent builder. Agents with Discover Skills, including Dust, can use ${pronoun} automatically.`;
+      return `All members can find ${pronoun} via the composer and agent builder. Agents with Discover Skills, including Dust, can use ${pronoun} automatically.`;
     },
   },
 ];
