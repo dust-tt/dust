@@ -1,4 +1,3 @@
-import { CommandPalette } from "@app/components/command_palette/CommandPalette";
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
@@ -28,6 +27,12 @@ const DevFeatureFlagPanel = DEV_MODE_ACTIVE
       }))
     )
   : null;
+
+const CommandPalette = lazy(() =>
+  import("@app/components/command_palette/CommandPalette").then((m) => ({
+    default: m.CommandPalette,
+  }))
+);
 
 interface AppContentLayoutProps {
   children: React.ReactNode;
@@ -215,7 +220,9 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             )}
           </AppContentInnerWrapper>
         </div>
-        <CommandPalette owner={owner} user={user} />
+        <Suspense fallback={null}>
+          <CommandPalette owner={owner} user={user} />
+        </Suspense>
       </div>
       {DevFeatureFlagPanel && (
         <Suspense fallback={null}>

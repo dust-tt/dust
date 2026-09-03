@@ -2,9 +2,7 @@ import type { CreditUsageState } from "@app/components/app/CreditUsage";
 import { CreditUsage } from "@app/components/app/CreditUsage";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { UserAutomationsDialog } from "@app/components/me/UserAutomationsDialog";
 import { UserToolsDialog } from "@app/components/me/UserToolsDialog";
-import { UserAnalyticsPopover } from "@app/components/UserAnalyticsPopover";
 import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -86,7 +84,26 @@ import {
   Terminal,
   User01,
 } from "@dust-tt/sparkle";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+const UserAnalyticsPopover = lazy(() =>
+  import("@app/components/UserAnalyticsPopover").then((m) => ({
+    default: m.UserAnalyticsPopover,
+  }))
+);
+const UserAutomationsDialog = lazy(() =>
+  import("@app/components/me/UserAutomationsDialog").then((m) => ({
+    default: m.UserAutomationsDialog,
+  }))
+);
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -316,19 +333,23 @@ export function UserMenu({
         onOpenChange={setToolsOpen}
         owner={owner}
       />
-      <UserAutomationsDialog
-        open={automationsOpen}
-        onOpenChange={setAutomationsOpen}
-        owner={owner}
-      />
+      <Suspense fallback={null}>
+        <UserAutomationsDialog
+          open={automationsOpen}
+          onOpenChange={setAutomationsOpen}
+          owner={owner}
+        />
+      </Suspense>
       <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
         <DialogContent size="2xl" height="xl" grow>
-          <UserAnalyticsPopover
-            key={owner.sId}
-            open={analyticsOpen}
-            owner={owner}
-            onClose={() => setAnalyticsOpen(false)}
-          />
+          <Suspense fallback={null}>
+            <UserAnalyticsPopover
+              key={owner.sId}
+              open={analyticsOpen}
+              owner={owner}
+              onClose={() => setAnalyticsOpen(false)}
+            />
+          </Suspense>
         </DialogContent>
       </Dialog>
       <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>

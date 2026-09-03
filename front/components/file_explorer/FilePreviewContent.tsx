@@ -1,6 +1,5 @@
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
-import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { FilePreviewCategory } from "@app/components/file_explorer/utils";
 import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
@@ -19,6 +18,15 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { lazy, Suspense } from "react";
+
+// react-pdf (and pdfjs) is only needed when an actual PDF is being previewed;
+// keep it out of the chunk shared by every other file-preview category.
+const PDFViewer = lazy(() =>
+  import("@app/components/file_explorer/PDFViewer").then((m) => ({
+    default: m.PDFViewer,
+  }))
+);
 
 export const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -304,7 +312,11 @@ export function FilePreviewContent({
       const pdfUrl = entry.lastModifiedMs
         ? `${fileUrl}${sep}v=${entry.lastModifiedMs}`
         : fileUrl;
-      return <PDFViewer key={fileUrl} url={pdfUrl} isFullWidth={isFullWidth} />;
+      return (
+        <Suspense fallback={<Spinner />}>
+          <PDFViewer key={fileUrl} url={pdfUrl} isFullWidth={isFullWidth} />
+        </Suspense>
+      );
     }
 
     case "viewer": {
@@ -313,7 +325,9 @@ export function FilePreviewContent({
         ? `${fileUrl}${sep}preview=pdf&v=${entry.lastModifiedMs}`
         : `${fileUrl}${sep}preview=pdf`;
       return (
-        <PDFViewer key={fileUrl} url={viewerUrl} isFullWidth={isFullWidth} />
+        <Suspense fallback={<Spinner />}>
+          <PDFViewer key={fileUrl} url={viewerUrl} isFullWidth={isFullWidth} />
+        </Suspense>
       );
     }
 
