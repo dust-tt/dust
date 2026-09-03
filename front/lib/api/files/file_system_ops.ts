@@ -6,12 +6,17 @@
 
 import type { DustFileSystem } from "@app/lib/api/file_system";
 import { decodeBuffer } from "@app/lib/api/files/utils";
+import {
+  withFrameSourceLock,
+  withLegacyFrameMutationResultLock,
+} from "@app/lib/api/frames/operation_lock";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
   DustFileSystemError,
+  isDustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/types/file_system";
@@ -276,6 +281,53 @@ function inferDestMountInfo(
   return null;
 }
 
+async function withLockedFrameMountMutation<T>(
+  auth: Authenticator,
+  file: FileResource,
+  expectedMountFilePath: string,
+  mutation: (fresh: FileResource) => Promise<Result<T, DustFileSystemError>>
+): Promise<Result<T, DustFileSystemError>> {
+  const mutateFreshFrame = async () => {
+    const fresh = await FileResource.fetchById(auth, file.sId);
+    if (
+      !fresh?.isShareableFrame ||
+      fresh.contentType !== file.contentType ||
+      fresh.mountFilePath !== expectedMountFilePath
+    ) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          "The Frame changed while it was being moved; retry from its current state."
+        )
+      );
+    }
+    if (fresh.useCaseMetadata?.pendingFrameV2Conversion) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          "The Frame has an interrupted conversion; recover it before moving."
+        )
+      );
+    }
+    return mutation(fresh);
+  };
+
+  const result = file.isFrameV2
+    ? await withFrameSourceLock(file.sId, mutateFreshFrame)
+    : await withLegacyFrameMutationResultLock(file.sId, mutateFreshFrame);
+  if (result.isErr()) {
+    return new Err(
+      isDustFileSystemError(result.error)
+        ? result.error
+        : new DustFileSystemError(
+            "invalid_path",
+            "Another Frame operation is in progress; retry the move."
+          )
+    );
+  }
+  return result;
+}
+
 /**
  * Rename a file at `scopedPath` to `newFileName` (same directory) and sync the
  * linked FileResource record if one exists.
@@ -296,27 +348,46 @@ export async function renameCanonicalFile(
     scopedPath
   );
 
-  const renameResult = await dustFs.rename(scopedPath, newFileName);
-  if (renameResult.isErr()) {
-    return renameResult;
-  }
-
-  if (linkedFileResource) {
-    const { dest } = renameResult.value;
-    const destGcsPath = dustFs.toMountFilePath(dest);
-    const destInfo = inferDestMountInfo(dest);
-
-    if (destGcsPath && destInfo) {
-      await linkedFileResource.updateMount({
-        destFileName: newFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
+  const renameCurrentFile = async (currentFile?: FileResource) => {
+    const renameResult = await dustFs.rename(scopedPath, newFileName);
+    if (renameResult.isErr()) {
+      return renameResult;
     }
+
+    if (currentFile) {
+      const { dest } = renameResult.value;
+      const destGcsPath = dustFs.toMountFilePath(dest);
+      const destInfo = inferDestMountInfo(dest);
+
+      if (destGcsPath && destInfo) {
+        await currentFile.updateMount({
+          destFileName: newFileName,
+          destMountFilePath: destGcsPath,
+          destUseCase: destInfo.useCase,
+          destUseCaseMetadata: destInfo.useCaseMetadata,
+        });
+      }
+    }
+
+    return renameResult;
+  };
+
+  if (linkedFileResource?.isShareableFrame) {
+    const expectedMountFilePath = linkedFileResource.mountFilePath;
+    if (!expectedMountFilePath) {
+      return new Err(
+        new DustFileSystemError("internal", "Frame source path not found.")
+      );
+    }
+    return withLockedFrameMountMutation(
+      auth,
+      linkedFileResource,
+      expectedMountFilePath,
+      renameCurrentFile
+    );
   }
 
-  return renameResult;
+  return renameCurrentFile(linkedFileResource);
 }
 
 /**
@@ -334,28 +405,47 @@ export async function moveCanonicalFile(
   // Look up the linked FileResource before the bytes move.
   const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
 
-  const moveResult = await dustFs.move({ src, dest });
-  if (moveResult.isErr()) {
-    return moveResult;
-  }
-
-  // Update the FileResource to point to the new location.
-  if (linkedFileResource) {
-    const destGcsPath = dustFs.toMountFilePath(dest);
-    const destInfo = inferDestMountInfo(dest);
-
-    if (destGcsPath && destInfo) {
-      const destFileName = dest.split("/").pop() ?? dest;
-      await linkedFileResource.updateMount({
-        destFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
+  const moveCurrentFile = async (currentFile?: FileResource) => {
+    const moveResult = await dustFs.move({ src, dest });
+    if (moveResult.isErr()) {
+      return moveResult;
     }
+
+    // Update the FileResource to point to the new location.
+    if (currentFile) {
+      const destGcsPath = dustFs.toMountFilePath(dest);
+      const destInfo = inferDestMountInfo(dest);
+
+      if (destGcsPath && destInfo) {
+        const destFileName = dest.split("/").pop() ?? dest;
+        await currentFile.updateMount({
+          destFileName,
+          destMountFilePath: destGcsPath,
+          destUseCase: destInfo.useCase,
+          destUseCaseMetadata: destInfo.useCaseMetadata,
+        });
+      }
+    }
+
+    return moveResult;
+  };
+
+  if (linkedFileResource?.isShareableFrame) {
+    const expectedMountFilePath = linkedFileResource.mountFilePath;
+    if (!expectedMountFilePath) {
+      return new Err(
+        new DustFileSystemError("internal", "Frame source path not found.")
+      );
+    }
+    return withLockedFrameMountMutation(
+      auth,
+      linkedFileResource,
+      expectedMountFilePath,
+      moveCurrentFile
+    );
   }
 
-  return moveResult;
+  return moveCurrentFile(linkedFileResource);
 }
 
 // ---------------------------------------------------------------------------

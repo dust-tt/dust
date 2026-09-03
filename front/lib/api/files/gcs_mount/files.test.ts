@@ -5,16 +5,22 @@ import {
   getConversationFileMountSignedUrl,
   getGCSPathFromScopedPath,
   getScopedPathFromGCSPath,
+  moveFile,
   renameGCSMountDirectory,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
+import { LegacyFrameMutationConflictError } from "@app/lib/api/frames/operation_lock";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS } from "@app/lib/file_storage/signed_url_cache";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -461,6 +467,140 @@ describe("copyMountFile", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("GCS copy unavailable");
     }
+  });
+});
+
+describe("moveFile", () => {
+  it("keeps the supplied legacy Frame resource in sync after a move", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const sourceGcsPath = `w/${workspace.sId}/conversations/conv/files/Legacy.tsx`;
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Legacy.tsx",
+      fileSize: 1,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: "conv" },
+      mountFilePath: sourceGcsPath,
+    });
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const result = await moveFile(auth, {
+      file: frame,
+      sourceGcsPath,
+      destScope: { useCase: "pod", podId: "pod" },
+      destRelativeFilePath: "Legacy.tsx",
+      destFileName: "Legacy.tsx",
+      destUseCase: "project_context",
+      destUseCaseMetadata: { spaceId: "pod" },
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(frame.useCase).toBe("project_context");
+    expect(frame.useCaseMetadata).toEqual({ spaceId: "pod" });
+  });
+
+  it("aborts a stale legacy Frame move after conversion without touching GCS", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const sourceGcsPath = `w/${workspace.sId}/conversations/conv/files/Legacy.tsx`;
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Legacy.tsx",
+      fileSize: 1,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: "conv" },
+      mountFilePath: sourceGcsPath,
+    });
+    const staleFrame = await FileResource.fetchById(auth, frame.sId);
+    assert(staleFrame);
+    await frame.updateFrameSourceBinding({
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 1,
+      mountFilePath: `w/${workspace.sId}/pods/pod/files/Frame/${FRAME_MANIFEST_FILE}`,
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: "pod" },
+    });
+
+    const copyFileMock = vi.fn().mockResolvedValue(undefined);
+    const deleteMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: copyFileMock,
+      delete: deleteMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const result = await moveFile(auth, {
+      file: staleFrame,
+      sourceGcsPath,
+      destScope: { useCase: "pod", podId: "pod" },
+      destRelativeFilePath: "Legacy.tsx",
+      destFileName: "Legacy.tsx",
+      destUseCase: "project_context",
+      destUseCaseMetadata: { spaceId: "pod" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(LegacyFrameMutationConflictError);
+    }
+    expect(copyFileMock).not.toHaveBeenCalled();
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a Frames v2 move while conversion recovery is pending", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const sourceGcsPath = `w/${workspace.sId}/conversations/conv/files/Frame/${FRAME_MANIFEST_FILE}`;
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 1,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: "conv",
+        pendingFrameV2Conversion: {
+          legacyContentType: frameContentType,
+          legacyFileName: "Legacy.tsx",
+          legacyFileSize: 1,
+          legacyMountFilePath: `w/${workspace.sId}/conversations/conv/files/Legacy.tsx`,
+          legacyRenderableVersion: "original",
+          legacyUseCase: "conversation",
+          legacyUseCaseMetadata: { conversationId: "conv" },
+          manifestMountFilePath: sourceGcsPath,
+          manifestPath: `conversation-conv/Frame/${FRAME_MANIFEST_FILE}`,
+          sourcePath: "conversation-conv/Legacy.tsx",
+        },
+      },
+      mountFilePath: sourceGcsPath,
+    });
+
+    const copyFileMock = vi.fn().mockResolvedValue(undefined);
+    const deleteMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: copyFileMock,
+      delete: deleteMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const result = await moveFile(auth, {
+      file: frame,
+      sourceGcsPath,
+      destScope: { useCase: "pod", podId: "pod" },
+      destRelativeFilePath: `Frame/${FRAME_MANIFEST_FILE}`,
+      destFileName: FRAME_MANIFEST_FILE,
+      destUseCase: "project_context",
+      destUseCaseMetadata: { spaceId: "pod" },
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      name: "LegacyFrameMutationConflictError",
+      message: expect.stringContaining("recover it before moving"),
+    });
+    expect(copyFileMock).not.toHaveBeenCalled();
+    expect(deleteMock).not.toHaveBeenCalled();
   });
 });
 

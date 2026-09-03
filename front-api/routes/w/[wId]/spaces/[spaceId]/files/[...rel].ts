@@ -1,4 +1,5 @@
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
+import { isFrameMutationConflictError } from "@app/lib/api/frames/operation_lock";
 import {
   deleteProjectFile,
   moveProjectFile,
@@ -9,6 +10,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { APIErrorResponse } from "@app/types/error";
+import { isDustFileSystemError } from "@app/types/file_system";
 import {
   getPodFilesBasePath,
   isResolveMountFilePathError,
@@ -188,6 +190,15 @@ app.patch(
       newFileName: fileName.trim(),
     });
     if (renameResult.isErr()) {
+      if (isDustFileSystemError(renameResult.error, "invalid_path")) {
+        return apiError(ctx, {
+          status_code: 409,
+          api_error: {
+            type: "invalid_request_error",
+            message: renameResult.error.message,
+          },
+        });
+      }
       return apiError(ctx, {
         status_code: 500,
         api_error: {
@@ -289,6 +300,15 @@ app.post(
                 ? "workspace_auth_error"
                 : "invalid_request_error",
             message,
+          },
+        });
+      }
+      if (isFrameMutationConflictError(moveResult.error)) {
+        return apiError(c, {
+          status_code: 409,
+          api_error: {
+            type: "invalid_request_error",
+            message: moveResult.error.message,
           },
         });
       }

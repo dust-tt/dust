@@ -1,8 +1,10 @@
+import { LegacyFrameMutationConflictError } from "@app/lib/api/frames/operation_lock";
 import * as projectsContext from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { DustFileSystemError } from "@app/types/file_system";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { PassThrough } from "stream";
@@ -203,6 +205,27 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       );
       expect(response.status).toBe(500);
     });
+
+    it("returns 409 when a Frame source blocks the rename", async () => {
+      vi.spyOn(projectsContext, "renameProjectFile").mockResolvedValue(
+        new Err(
+          new DustFileSystemError(
+            "invalid_path",
+            "Folders containing Frames cannot be renamed."
+          )
+        )
+      );
+      const { workspace, project } = await setupProject();
+      const response = await fileRequest(
+        workspace,
+        project.sId,
+        ["pod", "Frame"],
+        { method: "PATCH", body: { fileName: "Renamed" } }
+      );
+
+      expect(response.status).toBe(409);
+      expect((await response.json()).error.type).toBe("invalid_request_error");
+    });
   });
 
   describe("DELETE", () => {
@@ -347,6 +370,29 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
         body: { destRelativeFilePath: "file.txt" },
       });
       expect(response.status).toBe(500);
+    });
+
+    it("returns 409 when the Frame changed during the move", async () => {
+      vi.mocked(projectsContext.moveProjectFile).mockResolvedValue(
+        new Err(
+          new LegacyFrameMutationConflictError(
+            "The Frame changed while it was being moved."
+          )
+        )
+      );
+      const { workspace, project } = await setupProject();
+      const response = await fileRequest(
+        workspace,
+        project.sId,
+        ["Legacy.tsx"],
+        {
+          method: "POST",
+          body: { destRelativeFilePath: "archive/Legacy.tsx" },
+        }
+      );
+
+      expect(response.status).toBe(409);
+      expect((await response.json()).error.type).toBe("invalid_request_error");
     });
   });
 });

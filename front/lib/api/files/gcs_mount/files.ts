@@ -4,6 +4,11 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
+import {
+  LegacyFrameMutationConflictError,
+  withFrameSourceLock,
+  withLegacyFrameMutationResultLock,
+} from "@app/lib/api/frames/operation_lock";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
@@ -11,7 +16,7 @@ import {
   MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
 } from "@app/lib/file_storage/signed_url_cache";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -514,35 +519,70 @@ export async function moveFile(
 ): Promise<Result<void, Error>> {
   const destGcsPath = `${resolvePrefix(auth.getNonNullableWorkspace(), destScope)}${destRelativeFilePath}`;
 
-  const moveRes = await moveGCSMountFile({
-    sourceGcsPath,
-    destGcsPath,
-  });
-  if (moveRes.isErr()) {
-    return moveRes;
-  }
-
-  if (file) {
-    await file.updateMount({
-      destFileName,
-      destMountFilePath: destGcsPath,
-      destUseCase,
-      destUseCaseMetadata,
+  const moveCurrentFile = async (
+    currentFile: FileResource | undefined
+  ): Promise<Result<void, Error>> => {
+    const moveRes = await moveGCSMountFile({
+      sourceGcsPath,
+      destGcsPath,
     });
+    if (moveRes.isErr()) {
+      return moveRes;
+    }
+
+    if (currentFile) {
+      await currentFile.updateMount({
+        destFileName,
+        destMountFilePath: destGcsPath,
+        destUseCase,
+        destUseCaseMetadata,
+      });
+    }
+
+    const prefix = resolvePrefix(auth.getNonNullableWorkspace(), destScope);
+    const relativeFilePath = sourceGcsPath.startsWith(prefix)
+      ? sourceGcsPath.slice(prefix.length)
+      : destRelativeFilePath;
+    const lastSlash = destRelativeFilePath.lastIndexOf("/");
+    const parentRelativePath =
+      lastSlash >= 0 ? destRelativeFilePath.slice(0, lastSlash) : "";
+
+    void emitGCSMountFileMovedAuditLog(auth, destScope, {
+      relativeFilePath,
+      parentRelativePath,
+    });
+
+    return new Ok(undefined);
+  };
+
+  if (file?.isShareableFrame) {
+    const moveFreshFrame = async (): Promise<Result<void, Error>> => {
+      const fresh = await FileResource.fetchById(auth, file.sId);
+      if (
+        !fresh?.isShareableFrame ||
+        fresh.contentType !== file.contentType ||
+        fresh.mountFilePath !== sourceGcsPath
+      ) {
+        return new Err(
+          new LegacyFrameMutationConflictError(
+            "The Frame changed while it was being moved; retry from its current state."
+          )
+        );
+      }
+      if (fresh.useCaseMetadata?.pendingFrameV2Conversion) {
+        return new Err(
+          new LegacyFrameMutationConflictError(
+            "The Frame has an interrupted conversion; recover it before moving."
+          )
+        );
+      }
+      return moveCurrentFile(file);
+    };
+
+    return file.isFrameV2
+      ? withFrameSourceLock(file.sId, moveFreshFrame)
+      : withLegacyFrameMutationResultLock(file.sId, moveFreshFrame);
   }
 
-  const prefix = resolvePrefix(auth.getNonNullableWorkspace(), destScope);
-  const relativeFilePath = sourceGcsPath.startsWith(prefix)
-    ? sourceGcsPath.slice(prefix.length)
-    : destRelativeFilePath;
-  const lastSlash = destRelativeFilePath.lastIndexOf("/");
-  const parentRelativePath =
-    lastSlash >= 0 ? destRelativeFilePath.slice(0, lastSlash) : "";
-
-  void emitGCSMountFileMovedAuditLog(auth, destScope, {
-    relativeFilePath,
-    parentRelativePath,
-  });
-
-  return new Ok(undefined);
+  return moveCurrentFile(file);
 }
