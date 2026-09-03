@@ -28,6 +28,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
@@ -138,6 +139,10 @@ export async function createPendingAgentConfiguration(
     await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
       transaction: t,
       authorId: user.id,
+    });
+    await AgentResource.fromAgentConfigurationModel(agent).grantEditors(auth, {
+      editors: [user.toJSON()],
+      transaction: t,
     });
     await auth.refresh({ transaction: t });
   });
@@ -883,10 +888,13 @@ export async function createAgentConfiguration(
           );
           await auth.refresh({ transaction: t });
           // No need to check on permission here since it was done a few lines above.
-          await group.dangerouslySetMembers(auth, {
+          const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
           });
+          if (setMembersRes.isErr()) {
+            throw setMembersRes.error;
+          }
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -934,6 +942,10 @@ export async function createAgentConfiguration(
             throw setMembersRes.error;
           }
         }
+
+        await AgentResource.fromAgentConfigurationModel(
+          agentConfigurationInstance
+        ).grantEditors(auth, { editors, transaction: t });
       }
 
       return agentConfigurationInstance;
@@ -1590,6 +1602,16 @@ export async function updateAgentPermissions(
         if (addRes.isErr()) {
           return addRes;
         }
+
+        const agentResource = await AgentResource.fetchByAgentConfiguration(
+          auth,
+          agent,
+          { transaction: t }
+        );
+        await agentResource.grantEditors(auth, {
+          editors: usersToAdd,
+          transaction: t,
+        });
       }
 
       if (usersToRemove.length > 0) {

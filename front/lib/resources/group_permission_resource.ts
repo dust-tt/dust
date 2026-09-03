@@ -151,6 +151,14 @@ interface UserGrantSpec {
   transaction?: Transaction;
 }
 
+interface UsersGrantSpec {
+  users: UserType[];
+  grantType: GrantType;
+  resourceType: GroupPermissionResourceType;
+  resourceId: number;
+  transaction?: Transaction;
+}
+
 interface EverybodyGrantSpec {
   grantType: GrantType;
   resourceType: GroupPermissionResourceType;
@@ -445,6 +453,29 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
   ): Promise<Result<undefined, Error>> {
+    return this.grantToUsers(auth, {
+      users: [user],
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+  }
+
+  // Batched counterpart of grantToUser: one tuple lookup and one bulk membership write, while
+  // keeping repeat grants idempotent.
+  static async grantToUsers(
+    auth: Authenticator,
+    { users, grantType, resourceType, resourceId, transaction }: UsersGrantSpec
+  ): Promise<Result<undefined, Error>> {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const uniqueUsers = [
+      ...new Map(users.map((user) => [user.id, user])).values(),
+    ];
+
     return withTransaction(async (t) => {
       await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
 
@@ -473,12 +504,22 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         });
       }
 
-      const addResult = await group.dangerouslyAddMember(auth, {
-        user,
+      const activeMembers = await group.getActiveMembers(auth, {
         transaction: t,
       });
-      // Repeat grant for the same user: the desired end state already holds, stay idempotent.
-      if (addResult.isErr() && addResult.error.code !== "user_already_member") {
+      const activeMemberIds = new Set(activeMembers.map((member) => member.id));
+      const usersToAdd = uniqueUsers.filter(
+        (user) => !activeMemberIds.has(user.id)
+      );
+      if (usersToAdd.length === 0) {
+        return new Ok(undefined);
+      }
+
+      const addResult = await group.dangerouslyAddMembers(auth, {
+        users: usersToAdd,
+        transaction: t,
+      });
+      if (addResult.isErr()) {
         return addResult;
       }
 

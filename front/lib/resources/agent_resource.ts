@@ -1,6 +1,12 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentModel } from "@app/lib/models/agent/agent";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import type {
+  AgentConfigurationScope,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { GrantVerb } from "@app/types/group_permissions";
@@ -11,7 +17,9 @@ import type {
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { UserType } from "@app/types/user";
 import assert from "assert";
+import type { Transaction } from "sequelize";
 
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
@@ -40,15 +48,12 @@ export class AgentResource implements WithAccessControl {
     private readonly scope: AgentConfigurationScope
   ) {}
 
-  static fromAgentConfiguration(configuration: {
-    agentId: ModelId;
-    authorId: ModelId;
-    sId: string;
-    scope: AgentConfigurationScope;
-    workspaceId: ModelId;
-  }): AgentResource {
-    assert(configuration.scope !== "global");
-
+  static fromAgentConfigurationModel(
+    configuration: Pick<
+      AgentConfigurationModel,
+      "agentId" | "authorId" | "sId" | "scope" | "workspaceId"
+    >
+  ): AgentResource {
     return new AgentResource(
       configuration.agentId,
       configuration.sId,
@@ -74,6 +79,60 @@ export class AgentResource implements WithAccessControl {
       null,
       "global"
     );
+  }
+
+  static async fetchByAgentConfiguration(
+    auth: Authenticator,
+    configuration: Pick<
+      LightAgentConfigurationType,
+      "sId" | "scope" | "versionAuthorId"
+    >,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<AgentResource> {
+    assert(configuration.scope !== "global");
+    assert(
+      configuration.versionAuthorId !== null,
+      "Unexpected: custom agent author is missing"
+    );
+
+    // agents.sId is unique, so this resolves one stable ID regardless of version count.
+    const agent = await AgentModel.findOne({
+      where: {
+        sId: configuration.sId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id", "workspaceId"],
+      transaction,
+    });
+    assert(agent, "Unexpected: agent identity is missing");
+
+    return this.fromAgentConfigurationModel({
+      agentId: agent.id,
+      authorId: configuration.versionAuthorId,
+      sId: configuration.sId,
+      scope: configuration.scope,
+      workspaceId: agent.workspaceId,
+    });
+  }
+
+  async grantEditors(
+    auth: Authenticator,
+    { editors, transaction }: { editors: UserType[]; transaction: Transaction }
+  ): Promise<void> {
+    assert(this.kind === "custom");
+    assert(this.id !== null);
+    assert(auth.getNonNullableWorkspace().id === this.workspaceId);
+
+    const grantResult = await GroupPermissionResource.grantToUsers(auth, {
+      users: editors,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: this.id,
+      transaction,
+    });
+    if (grantResult.isErr()) {
+      throw grantResult.error;
+    }
   }
 
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
