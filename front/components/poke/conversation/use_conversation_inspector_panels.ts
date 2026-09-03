@@ -2,26 +2,23 @@ import type { RefObject } from "react";
 import { useCallback, useLayoutEffect, useReducer } from "react";
 
 const DESKTOP_INSPECTOR_MEDIA_QUERY = "(min-width: 1280px)";
+const INSPECTOR_PANEL_GAP_PX = 16;
 const MESSAGE_PANEL_VIEWPORT_GUTTER_PX = 16;
-const STICKY_INSPECTORS_OFFSET_PROPERTY = "--poke-sticky-inspectors-offset";
 
 interface InspectorPanelState {
   activeMessageId: string | null;
   isConversationOpen: boolean;
-  isStickyRailOccluded: boolean;
   isWakeUpsOpen: boolean;
 }
 
 type InspectorPanelAction =
   | { type: "set_conversation_open"; open: boolean }
   | { type: "set_message_open"; messageId: string; open: boolean }
-  | { type: "set_sticky_rail_occluded"; occluded: boolean }
   | { type: "set_wake_ups_open"; open: boolean };
 
 const INITIAL_STATE: InspectorPanelState = {
   activeMessageId: null,
   isConversationOpen: false,
-  isStickyRailOccluded: false,
   isWakeUpsOpen: false,
 };
 
@@ -36,7 +33,6 @@ function inspectorPanelReducer(
             ...state,
             activeMessageId: null,
             isConversationOpen: true,
-            isStickyRailOccluded: false,
           }
         : { ...state, isConversationOpen: false };
     case "set_wake_ups_open":
@@ -44,7 +40,6 @@ function inspectorPanelReducer(
         ? {
             ...state,
             activeMessageId: null,
-            isStickyRailOccluded: false,
             isWakeUpsOpen: true,
           }
         : { ...state, isWakeUpsOpen: false };
@@ -53,7 +48,6 @@ function inspectorPanelReducer(
         return {
           activeMessageId: action.messageId,
           isConversationOpen: false,
-          isStickyRailOccluded: false,
           isWakeUpsOpen: false,
         };
       }
@@ -62,40 +56,16 @@ function inspectorPanelReducer(
         ? {
             ...state,
             activeMessageId: null,
-            isStickyRailOccluded: false,
           }
         : state;
-    case "set_sticky_rail_occluded":
-      if (
-        !state.activeMessageId ||
-        state.isStickyRailOccluded === action.occluded
-      ) {
-        return state;
-      }
-
-      return { ...state, isStickyRailOccluded: action.occluded };
   }
 }
 
-export function areInspectorPanelsOverlapping(
-  stickyPanel: Pick<DOMRect, "bottom" | "top">,
-  messagePanel: Pick<DOMRect, "bottom" | "top">
+export function hasRoomForStickyInspectors(
+  stickyInspectors: Pick<DOMRect, "bottom">,
+  messagePanel: Pick<DOMRect, "top">
 ): boolean {
-  return (
-    messagePanel.top < stickyPanel.bottom &&
-    messagePanel.bottom > stickyPanel.top
-  );
-}
-
-export function getStickyInspectorsTopOffsetPx(
-  stickyPanel: Pick<DOMRect, "bottom" | "top">,
-  messagePanel: Pick<DOMRect, "bottom" | "top">
-): number {
-  if (!areInspectorPanelsOverlapping(stickyPanel, messagePanel)) {
-    return 0;
-  }
-
-  return Math.max(-stickyPanel.bottom, messagePanel.top - stickyPanel.bottom);
+  return messagePanel.top >= stickyInspectors.bottom + INSPECTOR_PANEL_GAP_PX;
 }
 
 export function getMessagePanelTopOffsetPx(
@@ -147,7 +117,6 @@ export function useConversationInspectorPanels({
         : null;
     let animationFrameId: number | null = null;
     let currentMessagePanelOffsetPx = 0;
-    let isStickyRailOccluded = false;
 
     const measurePanels = () => {
       animationFrameId = null;
@@ -193,11 +162,15 @@ export function useConversationInspectorPanels({
         : null;
       if (
         isDesktop &&
-        messageTrigger &&
-        !isMessagePanelAttachedToTrigger(
-          measuredMessagePanelRect,
-          messageTrigger.getBoundingClientRect()
-        )
+        ((messageTrigger &&
+          !isMessagePanelAttachedToTrigger(
+            measuredMessagePanelRect,
+            messageTrigger.getBoundingClientRect()
+          )) ||
+          !hasRoomForStickyInspectors(
+            stickyInspectors.getBoundingClientRect(),
+            measuredMessagePanelRect
+          ))
       ) {
         dispatch({
           type: "set_message_open",
@@ -205,26 +178,6 @@ export function useConversationInspectorPanels({
           open: false,
         });
         return;
-      }
-
-      const stickyInspectorsOffsetPx = isDesktop
-        ? getStickyInspectorsTopOffsetPx(
-            stickyInspectors.getBoundingClientRect(),
-            measuredMessagePanelRect
-          )
-        : 0;
-      stickyInspectors.style.setProperty(
-        STICKY_INSPECTORS_OFFSET_PROPERTY,
-        `${stickyInspectorsOffsetPx}px`
-      );
-
-      const nextIsStickyRailOccluded = stickyInspectorsOffsetPx < 0;
-      if (nextIsStickyRailOccluded !== isStickyRailOccluded) {
-        isStickyRailOccluded = nextIsStickyRailOccluded;
-        dispatch({
-          type: "set_sticky_rail_occluded",
-          occluded: nextIsStickyRailOccluded,
-        });
       }
     };
 
@@ -247,7 +200,6 @@ export function useConversationInspectorPanels({
 
     return () => {
       messagePanel.style.removeProperty("translate");
-      stickyInspectors.style.removeProperty(STICKY_INSPECTORS_OFFSET_PROPERTY);
       if (animationFrameId !== null) {
         window.cancelAnimationFrame(animationFrameId);
       }

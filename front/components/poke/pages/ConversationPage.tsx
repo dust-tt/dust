@@ -884,7 +884,6 @@ export function ConversationPage() {
   const {
     activeMessageId,
     isConversationOpen,
-    isStickyRailOccluded,
     isWakeUpsOpen,
     setConversationOpen,
     setMessageOpen,
@@ -1286,18 +1285,9 @@ export function ConversationPage() {
           <div className="grid w-full grid-cols-1 gap-6 py-4 [--poke-inspector-width:28rem] xl:grid-cols-[minmax(0,1fr)_var(--poke-inspector-width)]">
             <aside
               ref={stickyInspectorsRef}
-              className="z-20 [--poke-sticky-inspectors-offset:0px] xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start"
-              data-sticky-inspectors-occluded={isStickyRailOccluded}
+              className="z-20 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start"
             >
-              <div
-                aria-hidden={isStickyRailOccluded || undefined}
-                className={cn(
-                  "flex translate-y-[var(--poke-sticky-inspectors-offset)] flex-col gap-4 will-change-transform motion-reduce:translate-y-0",
-                  isStickyRailOccluded
-                    ? "pointer-events-none motion-reduce:invisible"
-                    : null
-                )}
-              >
+              <div className="flex flex-col gap-4">
                 <PokeConversationConsumptionInspector
                   conversationId={conversationId}
                   isOpen={isConversationOpen}

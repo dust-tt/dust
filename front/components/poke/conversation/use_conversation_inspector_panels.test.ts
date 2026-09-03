@@ -1,7 +1,6 @@
 import {
-  areInspectorPanelsOverlapping,
   getMessagePanelTopOffsetPx,
-  getStickyInspectorsTopOffsetPx,
+  hasRoomForStickyInspectors,
   isMessagePanelAttachedToTrigger,
   useConversationInspectorPanels,
 } from "@app/components/poke/conversation/use_conversation_inspector_panels";
@@ -72,7 +71,6 @@ describe("useConversationInspectorPanels", () => {
 
     expect(result.current.activeMessageId).toBe("message_1");
     expect(result.current.isConversationOpen).toBe(false);
-    expect(result.current.isStickyRailOccluded).toBe(false);
     expect(result.current.isWakeUpsOpen).toBe(false);
   });
 
@@ -110,19 +108,17 @@ describe("useConversationInspectorPanels", () => {
 
     expect(result.current.activeMessageId).toBeNull();
     expect(result.current.isConversationOpen).toBe(true);
-    expect(result.current.isStickyRailOccluded).toBe(false);
 
     act(() => result.current.setMessageOpen("message_1", true));
     act(() => result.current.setWakeUpsOpen(true));
     act(flushAnimationFrame);
 
     expect(result.current.activeMessageId).toBeNull();
-    expect(result.current.isStickyRailOccluded).toBe(false);
     expect(result.current.isWakeUpsOpen).toBe(true);
   });
 
-  it("flushes the sticky rail after the message panel crosses it", () => {
-    let messagePanelRect = rect(500, 800);
+  it("closes the message panel before it crowds the sticky inspectors", () => {
+    let messagePanelRect = rect(500, 700);
     const messagePanel = document.createElement("div");
     messagePanel.dataset.messageConsumptionPanelId = "message_1";
     vi.spyOn(messagePanel, "getBoundingClientRect").mockImplementation(
@@ -149,54 +145,24 @@ describe("useConversationInspectorPanels", () => {
 
     act(() => result.current.setMessageOpen("message_1", true));
     act(flushAnimationFrame);
-    expect(result.current.isStickyRailOccluded).toBe(false);
-    expect(messagePanel.style.translate).toBe(
-      `0 ${getMessagePanelTopOffsetPx(800, window.innerHeight)}px`
-    );
-    expect(messagePanel.style.top).toBe("");
-    expect(
-      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
-    ).toBe("0px");
-
-    messagePanelRect = rect(119, 419);
-    act(() => window.dispatchEvent(new Event("scroll")));
-    act(flushAnimationFrame);
-
-    expect(result.current.isConversationOpen).toBe(false);
-    expect(result.current.isStickyRailOccluded).toBe(true);
+    expect(result.current.activeMessageId).toBe("message_1");
     expect(messagePanel.style.translate).toBe("0 0px");
-    expect(
-      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
-    ).toBe("-13px");
+    expect(messagePanel.style.top).toBe("");
 
-    messagePanelRect = rect(170, 470);
+    messagePanelRect = rect(196, 496);
     act(() => window.dispatchEvent(new Event("scroll")));
     act(flushAnimationFrame);
 
-    expect(
-      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
-    ).toBe("-10px");
+    expect(result.current.activeMessageId).toBe("message_1");
 
-    messagePanelRect = rect(180, 480);
+    messagePanelRect = rect(195, 495);
     act(() => window.dispatchEvent(new Event("scroll")));
     act(flushAnimationFrame);
 
-    expect(result.current.isStickyRailOccluded).toBe(false);
-    expect(
-      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
-    ).toBe("0px");
-
-    messagePanelRect = rect(-400, -100);
-    act(() => window.dispatchEvent(new Event("scroll")));
-    act(flushAnimationFrame);
-
-    expect(result.current.isStickyRailOccluded).toBe(false);
-    expect(
-      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
-    ).toBe("0px");
+    expect(result.current.activeMessageId).toBeNull();
   });
 
-  it("does not hide the inspectors in the single-column layout", () => {
+  it("does not enforce inspector spacing in the single-column layout", () => {
     vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
     const messagePanel = document.createElement("div");
     messagePanel.dataset.messageConsumptionPanelId = "message_1";
@@ -223,7 +189,7 @@ describe("useConversationInspectorPanels", () => {
     act(() => result.current.setMessageOpen("message_1", true));
     act(flushAnimationFrame);
 
-    expect(result.current.isStickyRailOccluded).toBe(false);
+    expect(result.current.activeMessageId).toBe("message_1");
     expect(messagePanel.style.translate).toBe("");
   });
 
@@ -263,7 +229,6 @@ describe("useConversationInspectorPanels", () => {
     act(flushAnimationFrame);
 
     expect(result.current.activeMessageId).toBeNull();
-    expect(result.current.isStickyRailOccluded).toBe(false);
   });
 
   it("closes a message panel when its trigger scrolls past the viewport top", () => {
@@ -285,7 +250,7 @@ describe("useConversationInspectorPanels", () => {
 
     const stickyInspectors = document.createElement("aside");
     vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
-      rect(16, 180)
+      rect(-500, -400)
     );
     const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
       current: messagePanel,
@@ -313,13 +278,13 @@ describe("useConversationInspectorPanels", () => {
   });
 });
 
-describe("areInspectorPanelsOverlapping", () => {
-  it("treats any shared space as an overlap", () => {
-    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(180, 400))).toBe(
-      false
-    );
-    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(179, 400))).toBe(
+describe("hasRoomForStickyInspectors", () => {
+  it("reserves one spacing unit between the sticky and message inspectors", () => {
+    expect(hasRoomForStickyInspectors(rect(16, 180), rect(196, 400))).toBe(
       true
+    );
+    expect(hasRoomForStickyInspectors(rect(16, 180), rect(195, 400))).toBe(
+      false
     );
   });
 });
@@ -331,26 +296,6 @@ describe("getMessagePanelTopOffsetPx", () => {
 
   it("keeps the panel aligned with its trigger when it already fits", () => {
     expect(getMessagePanelTopOffsetPx(700, 800)).toBe(0);
-  });
-});
-
-describe("getStickyInspectorsTopOffsetPx", () => {
-  it("keeps the inspectors flush while the message panel pushes upward", () => {
-    expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(100, 400))).toBe(
-      -80
-    );
-  });
-
-  it("stops once the sticky inspectors are flush with the viewport top", () => {
-    expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(-100, 400))).toBe(
-      -180
-    );
-  });
-
-  it("stays put before the panels overlap", () => {
-    expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(180, 400))).toBe(
-      0
-    );
   });
 });
 
