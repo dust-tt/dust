@@ -1,21 +1,40 @@
-import type { FileEntry } from "@app/components/file_explorer/types";
+import type {
+  FileEntry,
+  FramePackageEntry,
+} from "@app/components/file_explorer/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import path from "path";
 import { useCallback, useRef } from "react";
 
+export type DownloadableEntry = FileEntry | FramePackageEntry;
+
+/**
+ * Files download as-is. A Frame package downloads its whole source folder as a zip, fetched
+ * through `getFolderArchiveResponse` with the folder's canonical path.
+ */
 export function useFileDownload({
   getFileResponse,
+  getFolderArchiveResponse,
 }: {
   getFileResponse: (path: string) => Promise<Response>;
-}): (entry: FileEntry) => Promise<void> {
+  getFolderArchiveResponse: (folderPath: string) => Promise<Response>;
+}): (entry: DownloadableEntry) => Promise<void> {
   const sendNotification = useSendNotification();
   const blobUrlRef = useRef<string | null>(null);
 
   return useCallback(
-    async (entry: FileEntry) => {
+    async (entry: DownloadableEntry) => {
       try {
-        const res = await getFileResponse(entry.path);
+        const isPackage = entry.kind === "frame_package";
+        // The package entry's path is its manifest; the archive covers the manifest's folder.
+        const res = isPackage
+          ? await getFolderArchiveResponse(path.posix.dirname(entry.path))
+          : await getFileResponse(entry.path);
+        const downloadName = isPackage
+          ? `${entry.fileName}.zip`
+          : entry.fileName;
 
         const blob = await res.blob();
 
@@ -28,7 +47,7 @@ export function useFileDownload({
 
         const a = document.createElement("a");
         a.href = url;
-        a.download = entry.fileName;
+        a.download = downloadName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -42,6 +61,6 @@ export function useFileDownload({
         });
       }
     },
-    [getFileResponse, sendNotification]
+    [getFileResponse, getFolderArchiveResponse, sendNotification]
   );
 }

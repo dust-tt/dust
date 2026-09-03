@@ -422,6 +422,26 @@ export async function downloadFile(
   return res;
 }
 
+/** Fetch a zip of every file under `folderCanonicalPath`. */
+export async function downloadFolderArchive(
+  owner: LightWorkspaceType,
+  folderCanonicalPath: string
+): Promise<Response> {
+  const encoded = folderCanonicalPath
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?archive=1`;
+
+  const res = await clientFetch(url);
+  if (!res.ok) {
+    const errorData = await getErrorFromResponse(res);
+    throw new Error(errorData.message);
+  }
+
+  return res;
+}
+
 export function useFileProcessedContent({
   owner,
   fileId,

@@ -26,6 +26,7 @@ import {
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import AdmZip from "adm-zip";
 import path from "path";
 import type { Readable } from "stream";
 
@@ -585,6 +586,78 @@ export async function convertCanonicalFileToPdf(
   return new Ok({
     pdfBuffer: conversionResult.value,
     pdfFileName: fileName.replace(/\.[^.]+$/, ".pdf"),
+  });
+}
+
+const FOLDER_ARCHIVE_MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024; // 100 MB
+
+type FolderArchiveErrorCode = "not_found" | "too_large" | "internal";
+
+export class FolderArchiveError extends Error {
+  constructor(
+    readonly code: FolderArchiveErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "FolderArchiveError";
+  }
+}
+
+/**
+ * Zip every file under the folder at `folderPath` (recursively), with paths relative to the folder.
+ * Used to download a whole folder, e.g. a Frame's source package, in one go.
+ */
+export async function archiveCanonicalFolder(
+  dustFs: DustFileSystem,
+  folderPath: string
+): Promise<Result<{ fileName: string; content: Buffer }, FolderArchiveError>> {
+  const listResult = await dustFs.list(folderPath);
+  if (listResult.isErr()) {
+    return new Err(
+      new FolderArchiveError("internal", listResult.error.message)
+    );
+  }
+
+  const prefix = `${folderPath.replace(/\/+$/, "")}/`;
+  const fileEntries = listResult.value.flatMap((entry) =>
+    !entry.isDirectory && entry.path.startsWith(prefix) ? [entry] : []
+  );
+  if (fileEntries.length === 0) {
+    return new Err(
+      new FolderArchiveError("not_found", "Folder not found or empty.")
+    );
+  }
+
+  // Fail before reading any bytes rather than after buffering them all into memory.
+  const totalSizeBytes = fileEntries.reduce(
+    (total, entry) => total + entry.sizeBytes,
+    0
+  );
+  if (totalSizeBytes > FOLDER_ARCHIVE_MAX_UNCOMPRESSED_BYTES) {
+    return new Err(
+      new FolderArchiveError(
+        "too_large",
+        `Folder is too large to download: its files total ${totalSizeBytes} bytes, ` +
+          `over the ${FOLDER_ARCHIVE_MAX_UNCOMPRESSED_BYTES}-byte limit.`
+      )
+    );
+  }
+
+  const zip = new AdmZip();
+  for (const entry of fileEntries) {
+    const relPath = entry.path.slice(prefix.length);
+    const contentResult = await dustFs.readBuffer(entry.path);
+    if (contentResult.isErr() || contentResult.value === null) {
+      return new Err(
+        new FolderArchiveError("internal", `Could not read '${relPath}'.`)
+      );
+    }
+    zip.addFile(relPath, contentResult.value);
+  }
+
+  return new Ok({
+    fileName: `${path.posix.basename(prefix.slice(0, -1))}.zip`,
+    content: zip.toBuffer(),
   });
 }
 

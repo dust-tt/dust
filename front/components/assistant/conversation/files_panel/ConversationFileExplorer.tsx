@@ -14,6 +14,7 @@ import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   downloadFile,
+  downloadFolderArchive,
   getFilePathViewUrl,
   useDeleteFileByPath,
 } from "@app/lib/swr/files";
@@ -86,7 +87,15 @@ export function ConversationFileExplorer({
     [owner]
   );
 
-  const onFileDownload = useFileDownload({ getFileResponse });
+  const getFolderArchiveResponse = useCallback(
+    (folderPath: string) => downloadFolderArchive(owner, folderPath),
+    [owner]
+  );
+
+  const onFileDownload = useFileDownload({
+    getFileResponse,
+    getFolderArchiveResponse,
+  });
 
   const onOpenInteractive = useCallback(
     (entry: { fileId: string }) =>
