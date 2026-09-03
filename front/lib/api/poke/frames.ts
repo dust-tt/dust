@@ -26,7 +26,11 @@ import type {
   SandboxFunctionStake,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import type { FileStatus } from "@app/types/files";
+import type {
+  FileShareScope,
+  FileStatus,
+  SharingGrantType,
+} from "@app/types/files";
 import type { PokeSandboxType } from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -160,9 +164,23 @@ export type PokeFramePublication = {
   databases: PokeFramePublicationDatabase[];
 };
 
+/**
+ * Who can open the Frame. Four of the six `frame.*` audit actions concern this, and it is the
+ * first thing to look at for "why can this person not open it" — hence surfacing scope, the share
+ * URL and every grant including revoked ones.
+ */
+export type PokeFrameSharing = {
+  scope: FileShareScope;
+  sharedAt: number;
+  shareUrl: string;
+} | null;
+
 export type PokeFrameDetails = {
   frame: PokeFrameListItem;
   sandbox: PokeSandboxType | null;
+  sharing: PokeFrameSharing;
+  // Every grant, revoked included: a revoked grant is the answer to "they used to have access".
+  sharingGrants: SharingGrantType[];
   storage: PokeFrameStorageLocation[];
   publication: PokeFramePublication | null;
   // Set when the active publication exists but its descriptor could not be read from GCS.
@@ -217,13 +235,16 @@ export async function getFrameDetails(
   const owner = auth.getNonNullableWorkspace();
   const publicationId = frame.useCaseMetadata?.activePublicationId ?? null;
 
-  const [functionCounts, authors, sandbox] = await Promise.all([
-    SandboxFunctionResource.countByFrameModelIds(auth, [
-      { frameModelId: frame.id, activePublicationId: publicationId },
-    ]),
-    UserResource.fetchByModelIds(removeNulls([frame.userId])),
-    FrameSandboxAdapter.fetchSandbox(auth, frame),
-  ]);
+  const [functionCounts, authors, sandbox, sharing, sharingGrants] =
+    await Promise.all([
+      SandboxFunctionResource.countByFrameModelIds(auth, [
+        { frameModelId: frame.id, activePublicationId: publicationId },
+      ]),
+      UserResource.fetchByModelIds(removeNulls([frame.userId])),
+      FrameSandboxAdapter.fetchSandbox(auth, frame),
+      frame.getShareInfo(),
+      frame.listAllSharingGrants(),
+    ]);
 
   const [author] = authors;
 
@@ -236,6 +257,8 @@ export async function getFrameDetails(
   const base = {
     frame: listItem,
     sandbox: sandbox ? sandbox.toPokeJSON() : null,
+    sharing,
+    sharingGrants,
     storage: makeStorageLocations(owner.sId, frame),
   };
 
