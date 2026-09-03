@@ -1785,7 +1785,6 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         isSSO: false,
         workspaceId: workspace.sId,
         organizationId: workspace.workOSOrganizationId ?? undefined,
-        region: "us-central1",
       },
       workspace.sId
     );
@@ -1857,7 +1856,6 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         isSSO: false,
         workspaceId: workspace.sId,
         organizationId: workspace.workOSOrganizationId ?? undefined,
-        region: "us-central1",
       },
       workspace.sId
     );
@@ -2083,7 +2081,6 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         isSSO: false,
         workspaceId: workspace.sId,
         organizationId: workspace.workOSOrganizationId ?? undefined,
-        region: "us-central1",
       },
       workspace.sId
     );

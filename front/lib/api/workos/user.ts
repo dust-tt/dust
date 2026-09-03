@@ -259,13 +259,11 @@ async function getDegradedModeSession({
   organizationId,
   authenticationMethod,
   workspaceId,
-  region,
 }: {
   sessionData: string;
   organizationId: string | undefined;
   authenticationMethod: string | undefined;
   workspaceId: string;
-  region: RegionType;
 }): Promise<SessionWithUser | null> {
   let inner: { accessToken?: string; user?: WorkOSUser };
   try {
@@ -306,7 +304,6 @@ async function getDegradedModeSession({
   return {
     type: "workos" as const,
     sessionId,
-    region,
     user: {
       email: user.email,
       email_verified: user.emailVerified,
@@ -419,7 +416,6 @@ export async function getWorkOSSessionFromCookie(
       session: {
         type: "workos" as const,
         sessionId: r.sessionId,
-        region,
         user: {
           email: r.user.email,
           email_verified: r.user.emailVerified,
@@ -441,7 +437,6 @@ export async function getWorkOSSessionFromCookie(
       organizationId,
       authenticationMethod,
       workspaceId,
-      region,
     });
 
     logger.error(

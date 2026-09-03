@@ -182,7 +182,6 @@ export async function performLogin(
             sessionWorkspaceId: session.workspaceId,
             sessionOrganizationId: session.organizationId,
             sessionAuthenticationMethod: session.authenticationMethod,
-            sessionRegion: session.region,
           },
           "Enterprise connection: redirecting to other region"
         );
