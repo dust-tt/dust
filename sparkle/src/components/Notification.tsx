@@ -49,18 +49,35 @@ function resolveIcon(type: NotificationType["type"]): React.FC {
   }
 }
 
-function resolveIconColor(type: NotificationType["type"]): string {
+function resolveSurface(type: NotificationType["type"]): string {
   switch (type) {
     case "success":
-      return "text-success-500";
+      return "bg-success-50 border-success-200 dark:bg-green-950 dark:border-green-900";
     case "error":
-      return "text-warning-500";
+      return "bg-red-50 border-rose-100 dark:bg-red-950 dark:border-red-900";
     case "info":
-      return "text-primary-400";
+      return "bg-highlight-50 border-highlight-100 dark:bg-blue-950 dark:border-blue-900";
     case "warning":
-      return "text-info-500";
+      return "bg-orange-50 border-orange-100 dark:bg-golden-950 dark:border-golden-900";
     case "hello":
-      return "text-primary-500";
+      return "bg-stone-50 border-stone-150 dark:bg-stone-950 dark:border-stone-800";
+    default:
+      return assertNever(type);
+  }
+}
+
+function resolveForeground(type: NotificationType["type"]): string {
+  switch (type) {
+    case "success":
+      return "text-success-800 dark:text-green-100";
+    case "error":
+      return "text-red-800 dark:text-red-100";
+    case "info":
+      return "text-highlight-800 dark:text-blue-100";
+    case "warning":
+      return "text-orange-800 dark:text-golden-100";
+    case "hello":
+      return "text-stone-800 dark:text-stone-50";
     default:
       return assertNever(type);
   }
@@ -81,15 +98,14 @@ export function NotificationContent({
   onDismiss,
 }: NotificationType & { onDismiss?: () => void }) {
   const icon = resolveIcon(type);
-  const iconColor = resolveIconColor(type);
+  const foreground = resolveForeground(type);
 
   return (
     <div
       className={cn(
         "pointer-events-auto relative flex w-[264px] flex-col gap-2 overflow-clip",
-        "rounded-xl bg-primary p-3",
-        "shadow-[inset_0px_1px_4px_0px_rgba(255,255,255,0.10)]",
-        "dark:shadow-none",
+        "rounded-xl border p-3 shadow-overlay",
+        resolveSurface(type),
         "[&>*]:transition-opacity [&>*]:duration-400 [&>*]:ease-enter",
         "[[data-expanded=false][data-front=false]_&>*]:opacity-0"
       )}
@@ -100,14 +116,18 @@ export function NotificationContent({
             <Icon
               visual={icon}
               size="xs"
-              className={iconColor}
+              className={foreground}
               aria-hidden="true"
             />
           </div>
           <div className="flex min-w-0 flex-col gap-0.5">
-            {title && <span className="label-sm text-primary-50">{title}</span>}
+            {title && (
+              <span className={cn("label-sm", foreground)}>{title}</span>
+            )}
             {description && (
-              <span className="copy-xs text-primary-400">{description}</span>
+              <span className={cn("copy-xs opacity-80", foreground)}>
+                {description}
+              </span>
             )}
           </div>
         </div>
@@ -115,7 +135,10 @@ export function NotificationContent({
           <button
             type="button"
             onClick={onDismiss}
-            className="mt-[2px] shrink-0 cursor-pointer text-primary-200 transition-colors hover:text-primary-50"
+            className={cn(
+              "mt-[2px] shrink-0 cursor-pointer opacity-60 transition-opacity hover:opacity-100",
+              foreground
+            )}
             aria-label="Dismiss notification"
           >
             <Icon visual={XClose} size="xs" />
