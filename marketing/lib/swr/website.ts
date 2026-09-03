@@ -1,5 +1,7 @@
 import {
   AUTH_CONTEXT_URL,
+  getRegionalAuthContextUrl,
+  parseAuthContextResponse,
   type MarketingAuthContext,
 } from "@marketing/lib/api/authContext";
 import { useSWRWithDefaults } from "@marketing/lib/swr/swr";
@@ -15,11 +17,27 @@ async function landingFetcher(
   url: string
 ): Promise<GetNoWorkspaceAuthContextResponseType> {
   // eslint-disable-next-line no-restricted-globals
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}: ${res.status}`);
+  const response = await fetch(url, { credentials: "include" });
+  const parsed = await parseAuthContextResponse(response);
+
+  if (parsed?.type === "region_redirect") {
+    const regionalUrl = getRegionalAuthContextUrl(parsed.redirect);
+    if (regionalUrl && regionalUrl !== url) {
+      const regionalResponse = await fetch(regionalUrl, {
+        credentials: "include",
+      });
+      const regionalParsed = await parseAuthContextResponse(regionalResponse);
+      if (regionalParsed?.type === "success") {
+        return regionalParsed.authContext;
+      }
+    }
   }
-  return res.json();
+
+  if (parsed?.type === "success") {
+    return parsed.authContext;
+  }
+
+  throw new Error(`Failed to fetch ${url}: ${response.status}`);
 }
 
 export function useLandingAuthContext({

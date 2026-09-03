@@ -35,6 +35,88 @@ const AuthContextResponseSchema = z.object({
   defaultWorkspaceId: z.string().nullable().optional(),
 });
 
+const RegionRedirectResponseSchema = z.object({
+  error: z.object({
+    type: z.literal("workspace_in_different_region"),
+    message: z.string(),
+    redirect: z.object({
+      region: z.string(),
+      url: z.string().url(),
+    }),
+  }),
+});
+
+export type MarketingRegionRedirect = z.infer<
+  typeof RegionRedirectResponseSchema
+>["error"]["redirect"];
+
+type AuthContextResponse =
+  | { type: "success"; authContext: MarketingAuthContext }
+  | { type: "region_redirect"; redirect: MarketingRegionRedirect }
+  | null;
+
+/**
+ * Parse the auth-context response while preserving the cross-region routing
+ * signal. This is shared by the server-side and browser-side marketing flows.
+ */
+export async function parseAuthContextResponse(
+  response: Response
+): Promise<AuthContextResponse> {
+  const body: unknown = await response.json().catch(() => null);
+
+  if (response.ok) {
+    const parsed = AuthContextResponseSchema.safeParse(body);
+    if (!parsed.success) {
+      return null;
+    }
+    return {
+      type: "success",
+      authContext: {
+        user: parsed.data.user,
+        defaultWorkspaceId: parsed.data.defaultWorkspaceId ?? null,
+      },
+    };
+  }
+
+  const regionRedirect = RegionRedirectResponseSchema.safeParse(body);
+  if (regionRedirect.success) {
+    return {
+      type: "region_redirect",
+      redirect: regionRedirect.data.error.redirect,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Build the regional auth-context URL returned by front-api, while refusing
+ * unexpected hosts before forwarding the session cookie or browser credentials.
+ */
+export function getRegionalAuthContextUrl(
+  redirect: MarketingRegionRedirect
+): string | null {
+  try {
+    const url = new URL("/api/auth-context", redirect.url);
+    const isDustHost =
+      url.hostname === "dust.tt" || url.hostname.endsWith(".dust.tt");
+    const isLocalHost =
+      url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    if (
+      url.protocol !== "https:" &&
+      !(url.protocol === "http:" && isLocalHost)
+    ) {
+      return null;
+    }
+    if (!isDustHost && !isLocalHost) {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function hasWorkosSessionCookie(cookieHeader: string): boolean {
   return cookieHeader.includes("workos_session=");
 }
@@ -53,21 +135,37 @@ export async function fetchAuthContext(
   }: { failureLogMessage?: string } = {}
 ): Promise<MarketingAuthContext | null> {
   try {
-    const res = await fetch(AUTH_CONTEXT_URL, {
-      headers: { cookie: cookieHeader },
-      signal: AbortSignal.timeout(AUTH_CONTEXT_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      return null;
-    }
-    const parsed = AuthContextResponseSchema.safeParse(await res.json());
-    if (!parsed.success) {
-      return null;
-    }
-    return {
-      user: parsed.data.user,
-      defaultWorkspaceId: parsed.data.defaultWorkspaceId ?? null,
+    const deadline = Date.now() + AUTH_CONTEXT_TIMEOUT_MS;
+    const fetchAt = async (url: string): Promise<AuthContextResponse> => {
+      const remainingMs = Math.max(deadline - Date.now(), 1);
+      const response = await fetch(url, {
+        headers: { cookie: cookieHeader },
+        signal: AbortSignal.timeout(remainingMs),
+      });
+      return parseAuthContextResponse(response);
     };
+
+    const initialResponse = await fetchAt(AUTH_CONTEXT_URL);
+    if (initialResponse?.type === "region_redirect") {
+      const regionalUrl = getRegionalAuthContextUrl(initialResponse.redirect);
+      if (!regionalUrl || regionalUrl === AUTH_CONTEXT_URL) {
+        return null;
+      }
+
+      const regionalResponse = await fetchAt(regionalUrl);
+      if (regionalResponse?.type !== "success") {
+        logger.warn(
+          { region: initialResponse.redirect.region },
+          `${failureLogMessage}: regional retry failed`
+        );
+        return null;
+      }
+      return regionalResponse.authContext;
+    }
+
+    return initialResponse?.type === "success"
+      ? initialResponse.authContext
+      : null;
   } catch (err) {
     logger.warn({ err: normalizeError(err) }, failureLogMessage);
     return null;
