@@ -1,5 +1,6 @@
 import config from "@marketing/lib/api/config";
 import logger from "@marketing/logger/logger";
+import { assertNever } from "@marketing/types/shared/utils/assert_never";
 import { normalizeError } from "@marketing/types/shared/utils/error_utils";
 import type { UserType } from "@marketing/types/user";
 import { z } from "zod";
@@ -146,26 +147,32 @@ export async function fetchAuthContext(
     };
 
     const initialResponse = await fetchAt(AUTH_CONTEXT_URL);
-    if (initialResponse?.type === "region_redirect") {
-      const regionalUrl = getRegionalAuthContextUrl(initialResponse.redirect);
-      if (!regionalUrl || regionalUrl === AUTH_CONTEXT_URL) {
-        return null;
-      }
-
-      const regionalResponse = await fetchAt(regionalUrl);
-      if (regionalResponse?.type !== "success") {
-        logger.warn(
-          { region: initialResponse.redirect.region },
-          `${failureLogMessage}: regional retry failed`
-        );
-        return null;
-      }
-      return regionalResponse.authContext;
+    if (!initialResponse) {
+      return null;
     }
 
-    return initialResponse?.type === "success"
-      ? initialResponse.authContext
-      : null;
+    switch (initialResponse.type) {
+      case "region_redirect": {
+        const regionalUrl = getRegionalAuthContextUrl(initialResponse.redirect);
+        if (!regionalUrl || regionalUrl === AUTH_CONTEXT_URL) {
+          return null;
+        }
+
+        const regionalResponse = await fetchAt(regionalUrl);
+        if (regionalResponse?.type !== "success") {
+          logger.warn(
+            { region: initialResponse.redirect.region },
+            `${failureLogMessage}: regional retry failed`
+          );
+          return null;
+        }
+        return regionalResponse.authContext;
+      }
+      case "success":
+        return initialResponse.authContext;
+      default:
+        assertNever(initialResponse);
+    }
   } catch (err) {
     logger.warn({ err: normalizeError(err) }, failureLogMessage);
     return null;

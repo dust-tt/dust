@@ -5,6 +5,7 @@ import {
   type MarketingAuthContext,
 } from "@marketing/lib/api/authContext";
 import { useSWRWithDefaults } from "@marketing/lib/swr/swr";
+import { assertNever } from "@marketing/types/shared/utils/assert_never";
 
 type GetNoWorkspaceAuthContextResponseType = MarketingAuthContext;
 
@@ -20,24 +21,29 @@ async function landingFetcher(
   const response = await fetch(url, { credentials: "include" });
   const parsed = await parseAuthContextResponse(response);
 
-  if (parsed?.type === "region_redirect") {
-    const regionalUrl = getRegionalAuthContextUrl(parsed.redirect);
-    if (regionalUrl && regionalUrl !== url) {
-      const regionalResponse = await fetch(regionalUrl, {
-        credentials: "include",
-      });
-      const regionalParsed = await parseAuthContextResponse(regionalResponse);
-      if (regionalParsed?.type === "success") {
-        return regionalParsed.authContext;
+  if (!parsed) {
+    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  }
+
+  switch (parsed.type) {
+    case "region_redirect": {
+      const regionalUrl = getRegionalAuthContextUrl(parsed.redirect);
+      if (regionalUrl && regionalUrl !== url) {
+        const regionalResponse = await fetch(regionalUrl, {
+          credentials: "include",
+        });
+        const regionalParsed = await parseAuthContextResponse(regionalResponse);
+        if (regionalParsed?.type === "success") {
+          return regionalParsed.authContext;
+        }
       }
+      throw new Error(`Failed to fetch ${url}: ${response.status}`);
     }
+    case "success":
+      return parsed.authContext;
+    default:
+      assertNever(parsed);
   }
-
-  if (parsed?.type === "success") {
-    return parsed.authContext;
-  }
-
-  throw new Error(`Failed to fetch ${url}: ${response.status}`);
 }
 
 export function useLandingAuthContext({
