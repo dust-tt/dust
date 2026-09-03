@@ -219,6 +219,16 @@ export function buildUsageEvents({
     return [];
   }
 
+  // A "user" event with no real user is a bug in the caller's attribution
+  // would otherwise silently ship as user_id "unknown" and never surface.
+  // Programmatic and free-origin usage are allowed to have no userId.
+  if (usageType === USAGE_TYPE_USER && !userId) {
+    throw new Error(
+      `Refusing to emit a user-attributed Metronome event with no userId ` +
+        `(workspaceId=${workspaceId}, agentMessageId=${agentMessageId}, origin=${origin}, authMethod=${authMethod}).`
+    );
+  }
+
   const costAwu = billingPlan.totals.llmBilledCredits + toolBilledCredits;
 
   // Aggregate token counts across models for observability only — the billable

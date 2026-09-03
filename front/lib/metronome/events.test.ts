@@ -79,11 +79,26 @@ describe("Metronome aggregated usage event", () => {
     });
   });
 
-  it("always emits the required billable shape with valid values", () => {
-    // Even with no user / api key / agent, the required properties fall back to
-    // valid, non-empty values so the billable metric's `exists` filters match.
+  it("refuses to emit a user-attributed event with no userId", () => {
+    // A "user" usage_type with no userId means the caller's attribution logic
+    // has a bug (see isProgrammaticUsageFromContext) — it must fail loudly
+    // instead of silently shipping as user_id "unknown".
+    expect(() =>
+      buildUsageEvents({
+        ...commonEventInput,
+        userId: null,
+        runUsages: [usage({ costMicroUsd: 1 })],
+      })
+    ).toThrow(/Refusing to emit a user-attributed Metronome event/);
+  });
+
+  it("falls back to valid, non-empty values for optional identity fields", () => {
+    // Programmatic/free usage legitimately has no userId (system key, no
+    // human). The remaining identity properties still fall back to
+    // non-empty values so the billable metric's `exists` filters match.
     const events = buildUsageEvents({
       ...commonEventInput,
+      usageType: "programmatic",
       userId: null,
       apiKeyName: null,
       agentId: null,
@@ -106,7 +121,7 @@ describe("Metronome aggregated usage event", () => {
     expect(props["user_id"]).toBe("unknown");
     expect(props["api_key_name"]).toBe("unknown");
     expect(props["agent_id"]).toBe("unknown");
-    expect(props["usage_type"]).toBe("user");
+    expect(props["usage_type"]).toBe("programmatic");
   });
 
   it("rounds LLM per model then adds tool weights flat, excluding free/capped", () => {
