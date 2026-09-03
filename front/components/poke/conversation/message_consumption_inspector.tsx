@@ -262,7 +262,7 @@ export function PokeMessageConsumptionInspector({
             id={contentId}
             role="region"
             aria-labelledby={triggerId}
-            className="z-10 mt-3 rounded-xl border border-border bg-background shadow-xl xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:mt-0 xl:w-[var(--poke-inspector-width)]"
+            className="z-10 mt-3 rounded-xl border border-border bg-background xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:mt-0 xl:w-[var(--poke-inspector-width)]"
             variants={MESSAGE_PANEL_VARIANTS}
             initial={shouldReduceMotion ? false : "closed"}
             animate="open"
