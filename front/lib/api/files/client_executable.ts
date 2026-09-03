@@ -7,6 +7,7 @@ import {
   getFileContent,
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
+import { withLegacyFrameMutationLock } from "@app/lib/api/frames/operation_lock";
 import {
   diffAuthorizedFileRefs,
   fetchShareableFileAllowlistState,
@@ -14,7 +15,6 @@ import {
 } from "@app/lib/api/viz/authorized_file_access";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
-import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -190,7 +190,7 @@ export async function editClientExecutableFile(
   // Acquire edit lock to prevent concurrent modifications.
   // TODO(YJS): Replace with YJS-based concurrent editing for proper multi-agent support.
   try {
-    return await executeWithLock(`file:edit:${fileId}`, async () => {
+    return await withLegacyFrameMutationLock(fileId, async () => {
       // Fetch the existing file.
       const fileContentResult = await getClientExecutableFileContent(
         auth,
