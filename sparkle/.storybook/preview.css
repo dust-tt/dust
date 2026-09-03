@@ -1,0 +1,10 @@
+/* Storybook chrome only — never shipped in the package. */
+
+html {
+  background-color: var(--color-app-background);
+}
+
+.sbdocs.sbdocs-preview,
+.docs-story {
+  background-color: var(--color-panel-background);
+}
