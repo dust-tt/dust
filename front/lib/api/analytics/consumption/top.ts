@@ -25,6 +25,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import { removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { Result } from "@app/types/shared/result";
@@ -156,7 +157,7 @@ async function resolveConsumptionTopSearchFilter(
     return null;
   }
 
-  const normalizedSearch = search?.trim().toLowerCase();
+  const normalizedSearch = removeDiacritics(search?.trim() ?? "").toLowerCase();
   if (!normalizedSearch) {
     return null;
   }
@@ -174,7 +175,9 @@ async function resolveConsumptionTopSearchFilter(
   // analytics documents so Elasticsearch can perform this search directly.
   const catalog = await listConsumptionFacetCatalogDimension(auth, dimension);
   const matchingValues = catalog
-    .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
+    .filter((entry) =>
+      removeDiacritics(entry.label).toLowerCase().includes(normalizedSearch)
+    )
     .map((entry) => entry.value);
 
   return buildConsumptionTopSearchTermsQuery(

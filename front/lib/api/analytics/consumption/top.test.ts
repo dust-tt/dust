@@ -260,12 +260,26 @@ describe("consumption top rankings", () => {
   });
 
   it.each([
-    ["AGENT 080", { terms: { "agent.attributed_id": ["agent80"] } }],
-    ["missing", { match_none: {} }],
-  ])("filters the ranking for search %s", async (search, expectedFilter) => {
+    [
+      "AGENT 080",
+      "Pagination Agent 080",
+      { terms: { "agent.attributed_id": ["agent80"] } },
+    ],
+    [
+      "developpeur",
+      "Développeur",
+      { terms: { "agent.attributed_id": ["agent80"] } },
+    ],
+    [
+      "développeur",
+      "Developpeur",
+      { terms: { "agent.attributed_id": ["agent80"] } },
+    ],
+    ["missing", "Pagination Agent 080", { match_none: {} }],
+  ])("filters the ranking for search %s", async (search, label, expectedFilter) => {
     const { auth } = await setup();
     vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
-      { value: "agent80", label: "Pagination Agent 080", pictureUrl: null },
+      { value: "agent80", label, pictureUrl: null },
     ]);
     mockLabels({});
     mockAggs({
