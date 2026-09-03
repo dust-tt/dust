@@ -98,7 +98,7 @@ function seatBadge(
   }
 
   return (
-    <span className="text-xs text-foreground tabular-nums">
+    <span className="text-xs text-foreground">
       {formatPriceCents(info.priceCents, info.currency, info.billingFrequency)}
     </span>
   );
