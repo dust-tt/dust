@@ -2,10 +2,10 @@ import type {
   FileEntry,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
+import { getParentFolderRelativePath } from "@app/components/file_explorer/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import path from "path";
 import { useCallback, useRef } from "react";
 
 export type DownloadableEntry = FileEntry | FramePackageEntry;
@@ -30,7 +30,9 @@ export function useFileDownload({
         const isPackage = entry.kind === "frame_package";
         // The package entry's path is its manifest; the archive covers the manifest's folder.
         const res = isPackage
-          ? await getFolderArchiveResponse(path.posix.dirname(entry.path))
+          ? await getFolderArchiveResponse(
+              getParentFolderRelativePath(entry.path)
+            )
           : await getFileResponse(entry.path);
         const downloadName = isPackage
           ? `${entry.fileName}.zip`
