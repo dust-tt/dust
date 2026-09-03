@@ -928,7 +928,7 @@ describe("createAgentMessages", () => {
       const globalGroupRes =
         await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
       expect(globalGroupRes.isOk()).toBe(true);
-      if (!globalGroupRes.isOk()) {
+      if (globalGroupRes.isErr()) {
         throw new Error("Failed to fetch global group");
       }
       const globalGroup = globalGroupRes.value;

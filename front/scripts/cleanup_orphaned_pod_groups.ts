@@ -67,7 +67,7 @@ export async function cleanupOrphanedPodGroups(
     const groups: GroupResource[] = [];
 
     for (const groupName of expectedGroupNames) {
-      const group = await GroupResource.fetchByName(auth, groupName);
+      const group = await GroupResource.dangerouslyFetchByName(auth, groupName);
       if (!group) {
         continue;
       }

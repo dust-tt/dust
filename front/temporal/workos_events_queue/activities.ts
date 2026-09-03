@@ -692,7 +692,10 @@ async function handleGroupUpsert(
   const { data: eventData } = event;
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const groupByName = await GroupResource.fetchByName(auth, eventData.name);
+  const groupByName = await GroupResource.dangerouslyFetchByName(
+    auth,
+    eventData.name
+  );
   if (groupByName && groupByName.workOSGroupId !== eventData.id) {
     // Conflict - another group with the same name already exists.
 

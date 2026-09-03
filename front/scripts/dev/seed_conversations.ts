@@ -90,7 +90,10 @@ async function createProject(
   }
 
   const memberGroupName = `${PROJECT_GROUP_PREFIX} ${projectName}`;
-  let memberGroup = await GroupResource.fetchByName(auth, memberGroupName);
+  let memberGroup = await GroupResource.dangerouslyFetchByName(
+    auth,
+    memberGroupName
+  );
   if (!memberGroup) {
     memberGroup = await GroupResource.makeNew({
       name: memberGroupName,
@@ -100,7 +103,10 @@ async function createProject(
   }
 
   const editorGroupName = `${PROJECT_EDITOR_GROUP_PREFIX} ${projectName}`;
-  let editorGroup = await GroupResource.fetchByName(auth, editorGroupName);
+  let editorGroup = await GroupResource.dangerouslyFetchByName(
+    auth,
+    editorGroupName
+  );
   if (!editorGroup) {
     editorGroup = await GroupResource.makeNew(
       {

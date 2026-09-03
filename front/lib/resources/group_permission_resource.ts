@@ -554,10 +554,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { grantType, resourceType, resourceId, transaction }: EverybodyGrantSpec
   ): Promise<void> {
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      auth.getNonNullableWorkspace().id
-    );
-    assert(globalGroup, "Workspace is missing its global group.");
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroupRes.isOk(), "Workspace is missing its global group.");
+    const globalGroup = globalGroupRes.value;
 
     await this.grant(auth, {
       group: globalGroup,
@@ -573,10 +572,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { grantType, resourceType, resourceId, transaction }: EverybodyGrantSpec
   ): Promise<void> {
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      auth.getNonNullableWorkspace().id
-    );
-    assert(globalGroup, "Workspace is missing its global group.");
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroupRes.isOk(), "Workspace is missing its global group.");
+    const globalGroup = globalGroupRes.value;
 
     await this.revoke(auth, {
       group: globalGroup,
@@ -1091,9 +1089,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const globalGroup =
-      await GroupResource.internalFetchWorkspaceGlobalGroup(workspaceId);
-    assert(globalGroup, "Workspace is missing its global group.");
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroupRes.isOk(), "Workspace is missing its global group.");
+    const globalGroup = globalGroupRes.value;
 
     // One query: every type-wide (-1) row for the requested capabilities.
     const rows = await GroupPermissionModel.findAll({
@@ -1220,10 +1218,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     capability: CapabilitySpec,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      auth.getNonNullableWorkspace().id
-    );
-    assert(globalGroup, "Workspace is missing its global group.");
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroupRes.isOk(), "Workspace is missing its global group.");
+    const globalGroup = globalGroupRes.value;
 
     await withTransaction(async (t) => {
       await this.getGrantLock(

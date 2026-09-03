@@ -68,12 +68,12 @@ describe("Authenticator.hasWorkspacePermission", () => {
   });
 
   it("returns true for everybody when the global group holds the grant", async () => {
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      workspace.id
-    );
-    if (!globalGroup) {
+    const globalGroupRes =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    if (globalGroupRes.isErr()) {
       throw new Error("global group should exist");
     }
+    const globalGroup = globalGroupRes.value;
     await GroupPermissionResource.grantTypeWide(adminAuth, {
       group: globalGroup,
       ...CAPABILITY,
