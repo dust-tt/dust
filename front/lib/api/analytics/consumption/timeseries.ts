@@ -8,6 +8,7 @@ import type {
 } from "@app/lib/api/analytics/consumption/scope";
 import {
   buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
   DEFAULT_CONSUMPTION_METRIC,
@@ -44,6 +45,7 @@ export type ConsumptionTimeseriesGroup = {
 
 export type ConsumptionTimeseriesPoint = {
   timestamp: number;
+  activeUsers: number;
   values: Record<string, number>;
 };
 
@@ -73,6 +75,7 @@ type ConsumptionTimeseriesScope = {
 
 type DateBucket = {
   key: number;
+  active_users?: estypes.AggregationsCardinalityAggregate;
   metric?: estypes.AggregationsSumAggregate;
   by_group?: estypes.AggregationsMultiBucketAggregateBase<ConsumptionGroupBucket>;
 };
@@ -83,6 +86,7 @@ type TimeseriesAggs = {
 
 type ConsumptionMetricBucket = {
   timestamp: number;
+  activeUsers: number;
   total: number;
   // Empty unless the search was given a breakdown, in which case the keys are a
   // subset of the ones it was restricted to.
@@ -152,6 +156,7 @@ async function fetchTimeseries(
 
   const points = bucketsResult.value.map((bucket) => ({
     timestamp: bucket.timestamp,
+    activeUsers: bucket.activeUsers,
     values: { [TOTAL_GROUP_KEY]: bucket.total },
   }));
 
@@ -266,6 +271,12 @@ async function fetchMetricTimeseries(
             },
           },
           aggs: {
+            active_users: {
+              cardinality: {
+                field: CONSUMPTION_DIMENSION_FIELDS.user,
+                precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+              },
+            },
             ...metricSubAgg(metric),
             ...(breakdown
               ? {
@@ -297,6 +308,7 @@ async function fetchMetricTimeseries(
   return new Ok(
     buckets.map((bucket) => ({
       timestamp: bucket.key,
+      activeUsers: Math.round(bucket.active_users?.value ?? 0),
       total: metricValue(metric, bucket.metric),
       valueByGroupKey: new Map(
         bucketsToArray<ConsumptionGroupBucket>(bucket.by_group?.buckets).map(
@@ -334,7 +346,11 @@ function buildBreakdownPoints(
     if (hasOthers) {
       values[OTHERS_GROUP_KEY] = otherValues[index];
     }
-    return { timestamp: bucket.timestamp, values };
+    return {
+      timestamp: bucket.timestamp,
+      activeUsers: bucket.activeUsers,
+      values,
+    };
   });
 
   return { points, hasOthers };
@@ -370,6 +386,7 @@ function finalizePoints(
     if (point.timestamp > nowMs) {
       return {
         ...point,
+        activeUsers: 0,
         values: Object.fromEntries(groupKeys.map((key) => [key, 0])),
       };
     }
