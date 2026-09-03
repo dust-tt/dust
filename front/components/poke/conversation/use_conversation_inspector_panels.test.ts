@@ -150,9 +150,10 @@ describe("useConversationInspectorPanels", () => {
     act(() => result.current.setMessageOpen("message_1", true));
     act(flushAnimationFrame);
     expect(result.current.isStickyRailOccluded).toBe(false);
-    expect(messagePanel.style.top).toBe(
-      `${getMessagePanelTopOffsetPx(800, window.innerHeight)}px`
+    expect(messagePanel.style.translate).toBe(
+      `0 ${getMessagePanelTopOffsetPx(800, window.innerHeight)}px`
     );
+    expect(messagePanel.style.top).toBe("");
     expect(
       stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
     ).toBe("0px");
@@ -163,7 +164,7 @@ describe("useConversationInspectorPanels", () => {
 
     expect(result.current.isConversationOpen).toBe(false);
     expect(result.current.isStickyRailOccluded).toBe(true);
-    expect(messagePanel.style.top).toBe("0px");
+    expect(messagePanel.style.translate).toBe("0 0px");
     expect(
       stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
     ).toBe("-1px");
@@ -206,7 +207,7 @@ describe("useConversationInspectorPanels", () => {
     act(flushAnimationFrame);
 
     expect(result.current.isStickyRailOccluded).toBe(false);
-    expect(messagePanel.style.top).toBe("");
+    expect(messagePanel.style.translate).toBe("");
   });
 
   it("closes a message panel before it detaches from its trigger", () => {

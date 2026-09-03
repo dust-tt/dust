@@ -209,7 +209,12 @@ describe("PokeMessageConsumptionInspector", () => {
     expect(screen.queryByText("Attributed")).not.toBeInTheDocument();
     expect(
       document.getElementById("message-message_test-consumption-details")
-    ).toHaveClass("xl:absolute", "xl:w-[var(--poke-inspector-width)]");
+    ).toHaveClass(
+      "overflow-clip",
+      "will-change-transform",
+      "xl:absolute",
+      "xl:w-[var(--poke-inspector-width)]"
+    );
     expect(
       document.getElementById("message-message_test-consumption-details")
     ).not.toHaveClass("overflow-y-auto");

@@ -148,6 +148,8 @@ export function useConversationInspectorPanels({
         ? window.matchMedia(DESKTOP_INSPECTOR_MEDIA_QUERY)
         : null;
     let animationFrameId: number | null = null;
+    let currentMessagePanelOffsetPx = 0;
+    let isStickyRailOccluded = false;
 
     const measurePanels = () => {
       animationFrameId = null;
@@ -162,14 +164,13 @@ export function useConversationInspectorPanels({
       const isDesktop = desktopInspectorMedia?.matches ?? true;
       let measuredMessagePanelRect = messagePanelRect;
       if (isDesktop) {
-        const currentTopOffsetPx =
-          Number.parseFloat(messagePanel.style.top) || 0;
         const topOffsetPx = getMessagePanelTopOffsetPx(
-          messagePanelRect.bottom - currentTopOffsetPx,
+          messagePanelRect.bottom - currentMessagePanelOffsetPx,
           window.innerHeight
         );
-        const topOffsetDeltaPx = topOffsetPx - currentTopOffsetPx;
-        messagePanel.style.top = `${topOffsetPx}px`;
+        const topOffsetDeltaPx = topOffsetPx - currentMessagePanelOffsetPx;
+        currentMessagePanelOffsetPx = topOffsetPx;
+        messagePanel.style.translate = `0 ${topOffsetPx}px`;
         measuredMessagePanelRect = {
           ...messagePanelRect,
           bottom: messagePanelRect.bottom + topOffsetDeltaPx,
@@ -177,7 +178,15 @@ export function useConversationInspectorPanels({
           y: messagePanelRect.y + topOffsetDeltaPx,
         };
       } else {
-        messagePanel.style.removeProperty("top");
+        const topOffsetDeltaPx = -currentMessagePanelOffsetPx;
+        currentMessagePanelOffsetPx = 0;
+        messagePanel.style.removeProperty("translate");
+        measuredMessagePanelRect = {
+          ...messagePanelRect,
+          bottom: messagePanelRect.bottom + topOffsetDeltaPx,
+          top: messagePanelRect.top + topOffsetDeltaPx,
+          y: messagePanelRect.y + topOffsetDeltaPx,
+        };
       }
 
       const triggerId = messagePanel.getAttribute("aria-labelledby");
@@ -211,10 +220,14 @@ export function useConversationInspectorPanels({
         `${stickyInspectorsOffsetPx}px`
       );
 
-      dispatch({
-        type: "set_sticky_rail_occluded",
-        occluded: stickyInspectorsOffsetPx < 0,
-      });
+      const nextIsStickyRailOccluded = stickyInspectorsOffsetPx < 0;
+      if (nextIsStickyRailOccluded !== isStickyRailOccluded) {
+        isStickyRailOccluded = nextIsStickyRailOccluded;
+        dispatch({
+          type: "set_sticky_rail_occluded",
+          occluded: nextIsStickyRailOccluded,
+        });
+      }
     };
 
     const scheduleMeasurement = () => {
@@ -235,6 +248,7 @@ export function useConversationInspectorPanels({
     resizeObserver?.observe(stickyInspectors);
 
     return () => {
+      messagePanel.style.removeProperty("translate");
       stickyInspectors.style.removeProperty(STICKY_INSPECTORS_OFFSET_PROPERTY);
       if (animationFrameId !== null) {
         window.cancelAnimationFrame(animationFrameId);
