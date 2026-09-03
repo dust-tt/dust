@@ -496,7 +496,8 @@ describe("GroupResource", () => {
       });
       expect(membership?.status).toBe("active");
 
-      const affectedUserIds = await regularGroup.suspendMembers(authenticator);
+      const affectedUserIds =
+        await regularGroup.dangerouslySuspendMembers(authenticator);
 
       expect(affectedUserIds).toContain(user.id);
 
@@ -524,7 +525,7 @@ describe("GroupResource", () => {
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-      await regularGroup.suspendMembers(authenticator);
+      await regularGroup.dangerouslySuspendMembers(authenticator);
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
     });
@@ -541,7 +542,7 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      await regularGroup.suspendMembers(authenticator);
+      await regularGroup.dangerouslySuspendMembers(authenticator);
       const suspendedMembership = await GroupMembershipModel.findOne({
         where: {
           groupId: regularGroup.id,
@@ -551,7 +552,8 @@ describe("GroupResource", () => {
       });
       expect(suspendedMembership?.status).toBe("suspended");
 
-      const affectedUserIds = await regularGroup.restoreMembers(authenticator);
+      const affectedUserIds =
+        await regularGroup.dangerouslyRestoreMembers(authenticator);
 
       expect(affectedUserIds).toContain(user.id);
 
@@ -575,13 +577,13 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      await regularGroup.suspendMembers(authenticator);
+      await regularGroup.dangerouslySuspendMembers(authenticator);
 
       await GroupResource.dangerouslyListUserGroupsForAuth({ user, workspace });
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-      await regularGroup.restoreMembers(authenticator);
+      await regularGroup.dangerouslyRestoreMembers(authenticator);
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
     });
