@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -16,8 +17,23 @@ describe("AgentResource", () => {
     testContext = await createResourceTest({ role: "user" });
   });
 
+  it("builds a custom agent resource from a rendered configuration", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    const resource = await AgentResource.fetchByAgentConfiguration(
+      testContext.authenticator,
+      agent
+    );
+
+    expect(resource.id).not.toBeNull();
+    expect(resource.sId).toBe(agent.sId);
+    expect(resource.workspaceId).toBe(testContext.workspace.id);
+  });
+
   it("applies author, admin, and editor permissions to custom agents", async () => {
-    const resource = AgentResource.fromAgentConfiguration({
+    const resource = AgentResource.fromAgentConfigurationModel({
       agentId: AGENT_MODEL_ID,
       authorId: testContext.user.id,
       sId: "custom-agent",
@@ -80,7 +96,7 @@ describe("AgentResource", () => {
   });
 
   it("lets workspace members read visible agents without editing them", async () => {
-    const resource = AgentResource.fromAgentConfiguration({
+    const resource = AgentResource.fromAgentConfigurationModel({
       agentId: AGENT_MODEL_ID,
       authorId: testContext.user.id,
       sId: "custom-agent",

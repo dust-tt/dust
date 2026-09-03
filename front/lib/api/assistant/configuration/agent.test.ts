@@ -146,13 +146,16 @@ describe("createAgentConfiguration with pending agent", () => {
     }
     const { sId: pendingId } = pendingAgentRes.value;
 
-    const pendingAgentModelId = await AgentResource.fetchModelId(
-      authenticator,
-      pendingId
-    );
-    expect(pendingAgentModelId).not.toBeNull();
-    if (!pendingAgentModelId) {
+    const pendingAgent = await AgentConfigurationModel.findOne({
+      where: { sId: pendingId, workspaceId: workspace.id },
+    });
+    if (!pendingAgent) {
       throw new Error("Pending agent was not created");
+    }
+    const pendingAgentResource =
+      AgentResource.fromAgentConfigurationModel(pendingAgent);
+    if (!pendingAgentResource.id) {
+      throw new Error("Pending agent identity was not created");
     }
     const pendingGrantGroup =
       await GroupPermissionResource.findRegularAutoGroupForGrant(
@@ -160,7 +163,7 @@ describe("createAgentConfiguration with pending agent", () => {
         {
           grantType: "editor",
           resourceType: "agent",
-          resourceId: pendingAgentModelId,
+          resourceId: pendingAgentResource.id,
         }
       );
     expect(pendingGrantGroup).not.toBeNull();

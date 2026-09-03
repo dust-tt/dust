@@ -140,7 +140,7 @@ export async function createPendingAgentConfiguration(
       transaction: t,
       authorId: user.id,
     });
-    await AgentResource.fromAgentConfiguration(agent).grantEditors(auth, {
+    await AgentResource.fromAgentConfigurationModel(agent).grantEditors(auth, {
       editors: [user.toJSON()],
       transaction: t,
     });
@@ -943,7 +943,7 @@ export async function createAgentConfiguration(
           }
         }
 
-        await AgentResource.fromAgentConfiguration(
+        await AgentResource.fromAgentConfigurationModel(
           agentConfigurationInstance
         ).grantEditors(auth, { editors, transaction: t });
       }
@@ -1603,21 +1603,11 @@ export async function updateAgentPermissions(
           return addRes;
         }
 
-        const agentModelId = await AgentResource.fetchModelId(auth, agent.sId, {
-          transaction: t,
-        });
-        assert(agentModelId, "Unexpected: agent identity is missing");
-        assert(
-          agent.versionAuthorId !== null,
-          "Unexpected: custom agent author is missing"
+        const agentResource = await AgentResource.fetchByAgentConfiguration(
+          auth,
+          agent,
+          { transaction: t }
         );
-        const agentResource = AgentResource.fromAgentConfiguration({
-          agentId: agentModelId,
-          authorId: agent.versionAuthorId,
-          sId: agent.sId,
-          scope: agent.scope,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        });
         await agentResource.grantEditors(auth, {
           editors: usersToAdd,
           transaction: t,

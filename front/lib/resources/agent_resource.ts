@@ -1,8 +1,12 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentModel } from "@app/lib/models/agent/agent";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationScope,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { GrantVerb } from "@app/types/group_permissions";
@@ -44,13 +48,12 @@ export class AgentResource implements WithAccessControl {
     private readonly scope: AgentConfigurationScope
   ) {}
 
-  static fromAgentConfiguration(configuration: {
-    agentId: ModelId;
-    authorId: ModelId;
-    sId: string;
-    scope: AgentConfigurationScope;
-    workspaceId: ModelId;
-  }): AgentResource {
+  static fromAgentConfigurationModel(
+    configuration: Pick<
+      AgentConfigurationModel,
+      "agentId" | "authorId" | "sId" | "scope" | "workspaceId"
+    >
+  ): AgentResource {
     assert(configuration.scope !== "global");
 
     return new AgentResource(
@@ -80,22 +83,38 @@ export class AgentResource implements WithAccessControl {
     );
   }
 
-  static async fetchModelId(
+  static async fetchByAgentConfiguration(
     auth: Authenticator,
-    agentId: string,
+    configuration: Pick<
+      LightAgentConfigurationType,
+      "sId" | "scope" | "versionAuthorId"
+    >,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<ModelId | null> {
+  ): Promise<AgentResource> {
+    assert(configuration.scope !== "global");
+    assert(
+      configuration.versionAuthorId !== null,
+      "Unexpected: custom agent author is missing"
+    );
+
     // agents.sId is unique, so this resolves one stable ID regardless of version count.
     const agent = await AgentModel.findOne({
       where: {
-        sId: agentId,
+        sId: configuration.sId,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      attributes: ["id"],
+      attributes: ["id", "workspaceId"],
       transaction,
     });
+    assert(agent, "Unexpected: agent identity is missing");
 
-    return agent?.id ?? null;
+    return this.fromAgentConfigurationModel({
+      agentId: agent.id,
+      authorId: configuration.versionAuthorId,
+      sId: configuration.sId,
+      scope: configuration.scope,
+      workspaceId: agent.workspaceId,
+    });
   }
 
   async grantEditors(
