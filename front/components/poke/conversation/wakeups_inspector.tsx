@@ -141,8 +141,8 @@ export function PokeConversationWakeUpsInspector({
       onOpenChange={onOpenChange}
       className="overflow-hidden rounded-xl border border-border bg-background"
     >
-      <CollapsibleTrigger className="min-h-11 w-full justify-between gap-3 p-4 text-left">
-        <div className="min-w-0">
+      <CollapsibleTrigger className="min-h-11 w-full gap-2 p-4 text-left">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center">
             <span className="text-sm font-semibold text-foreground">
               Wake-ups

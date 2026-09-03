@@ -44,16 +44,12 @@ import {
   Input,
   LinkWrapper,
   Markdown,
-  MOTION_DURATIONS,
-  MOTION_EASINGS,
   Page,
   Spinner,
   useCopyToClipboard,
   XClose,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
-import type { Variants } from "framer-motion";
-import { motion, useReducedMotion } from "framer-motion";
 import type { ComponentProps, ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 
@@ -87,27 +83,6 @@ const COMPACTION_STATUS: Record<
   created: { label: "generating", color: "warning" },
   succeeded: { label: "succeeded", color: "success" },
   failed: { label: "failed", color: "warning" },
-};
-
-const STICKY_INSPECTORS_VARIANTS: Variants = {
-  occluded: (shouldReduceMotion: boolean) => ({
-    opacity: 0,
-    x: shouldReduceMotion ? 0 : 12,
-    transition: {
-      duration: shouldReduceMotion ? 0 : MOTION_DURATIONS.modalExit,
-      ease: MOTION_EASINGS.emphasized,
-    },
-    transitionEnd: { visibility: "hidden" },
-  }),
-  visible: (shouldReduceMotion: boolean) => ({
-    opacity: 1,
-    visibility: "visible",
-    x: 0,
-    transition: {
-      duration: shouldReduceMotion ? 0 : MOTION_DURATIONS.modalEnter,
-      ease: MOTION_EASINGS.emphasized,
-    },
-  }),
 };
 
 function getLangfuseTraceUrl(langfuseUiBaseUrl: string, runId: string) {
@@ -904,7 +879,6 @@ export function ConversationPage() {
   const [showRenderControls, setShowRenderControls] = useState(false);
   const [isCopiedJSON, copyJSON] = useCopyToClipboard();
   const [isCopiedSandboxCommand, copySandboxCommand] = useCopyToClipboard();
-  const shouldReduceMotion = Boolean(useReducedMotion());
   const activeMessagePanelRef = useRef<HTMLDivElement | null>(null);
   const stickyInspectorsRef = useRef<HTMLElement | null>(null);
   const {
@@ -1310,18 +1284,14 @@ export function ConversationPage() {
             </div>
           )}
           <div className="grid w-full grid-cols-1 gap-6 py-4 [--poke-inspector-width:28rem] xl:grid-cols-[minmax(0,1fr)_var(--poke-inspector-width)]">
-            <motion.aside
+            <aside
               ref={stickyInspectorsRef}
               aria-hidden={isStickyRailOccluded || undefined}
-              animate={isStickyRailOccluded ? "occluded" : "visible"}
               className={cn(
                 "z-20 flex flex-col gap-4 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start",
-                isStickyRailOccluded ? "pointer-events-none" : null
+                isStickyRailOccluded ? "invisible pointer-events-none" : null
               )}
-              custom={shouldReduceMotion}
               data-sticky-inspectors-occluded={isStickyRailOccluded}
-              initial={false}
-              variants={STICKY_INSPECTORS_VARIANTS}
             >
               <PokeConversationConsumptionInspector
                 conversationId={conversationId}
@@ -1335,7 +1305,7 @@ export function ConversationPage() {
                 onOpenChange={setWakeUpsOpen}
                 owner={owner}
               />
-            </motion.aside>
+            </aside>
             <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
               {conversation.content.map((messages, i) => {
                 return (
