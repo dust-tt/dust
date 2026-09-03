@@ -1,17 +1,14 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useUpdateEditors } from "@app/lib/swr/agent_editors";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import {
+  useAddSpaceMembers,
   useSpaces,
   useSpacesAsAdmin,
-  useUpdateSpace,
 } from "@app/lib/swr/spaces";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, ContentMessage, Lock01, UsersPlus } from "@dust-tt/sparkle";
@@ -63,8 +60,7 @@ export function RedactedAgentMessage({
   );
 
   const confirm = useContext(ConfirmContext);
-  const sendNotification = useSendNotification();
-  const updateSpace = useUpdateSpace({ owner });
+  const addSpaceMembers = useAddSpaceMembers({ owner });
   const { mutateAgentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
@@ -100,48 +96,10 @@ export function RedactedAgentMessage({
           if (!space) {
             return;
           }
-          const res = await clientFetch(
-            `/api/w/${owner.sId}/spaces/${space.sId}`
-          );
-          if (!res.ok) {
-            sendNotification({
-              type: "error",
-              title: `Failed to join ${space.name}`,
-              description: "The space could not be loaded.",
-            });
-            return;
-          }
-          const { space: spaceInfo }: GetSpaceResponseBody = await res.json();
-          if (spaceInfo.managementMode !== "manual") {
-            sendNotification({
-              type: "error",
-              title: `Cannot join ${space.name}`,
-              description:
-                "Its members are managed by groups. Add yourself to one of its groups instead.",
-            });
-            return;
-          }
-          await updateSpace(
-            space,
-            {
-              name: spaceInfo.name,
-              isRestricted: spaceInfo.isRestricted,
-              managementMode: "manual",
-              memberIds: [
-                ...spaceInfo.members
-                  .filter((m) => !m.isEditor)
-                  .map((m) => m.sId),
-                user.sId,
-              ],
-              editorIds: spaceInfo.members
-                .filter((m) => m.isEditor)
-                .map((m) => m.sId),
-            },
-            {
-              title: `Joined ${space.name}`,
-              description: `You are now a member of ${space.name}.`,
-            }
-          );
+          await addSpaceMembers(space, [user.sId], {
+            title: `Joined ${space.name}`,
+            description: `You are now a member of ${space.name}.`,
+          });
         },
         { concurrency: 4 }
       );
