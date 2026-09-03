@@ -99,14 +99,32 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Set project ID
-        id: project
+      - name: Set image registry
+        id: registry
         run: |
-          if [ "${{ matrix.region }}" = "us-central1" ]; then
-            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
-          fi
+          # Build-once components live in the global registry, the rest in the regional ones.
+          case "${{ inputs.component }}" in
+            connectors|core|front|front-edge|oauth|prodbox|viz)
+              PROJECT_ID="dust-infra"
+              IMAGE_REPO="us-central1-docker.pkg.dev/dust-infra/dust-images"
+              ;;
+            *)
+              if [ "${{ matrix.region }}" = "us-central1" ]; then
+                PROJECT_ID="${{ secrets.GCLOUD_US_PROJECT_ID }}"
+              else
+                PROJECT_ID="${{ secrets.GCLOUD_EU_PROJECT_ID }}"
+              fi
+              IMAGE_REPO="${{ matrix.region }}-docker.pkg.dev/${PROJECT_ID}/dust-images"
+              ;;
+          esac
+          # The front releases run the front-api images.
+          case "${{ inputs.component }}" in
+            front) IMAGE="front-api" ;;
+            front-edge) IMAGE="front-api-edge" ;;
+            *) IMAGE="${{ inputs.component }}" ;;
+          esac
+          echo "PROJECT_ID=${PROJECT_ID}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_REPO=${IMAGE_REPO}/${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - id: "auth"
         name: "Authenticate to Google Cloud"
@@ -114,7 +132,7 @@ jobs:
         with:
           create_credentials_file: true
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-          service_account: "github-build-invoker@${{ steps.project.outputs.PROJECT_ID }}.iam.gserviceaccount.com"
+          service_account: "github-build-invoker@${{ steps.registry.outputs.PROJECT_ID }}.iam.gserviceaccount.com"
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db" # v3.0.1
@@ -123,7 +141,7 @@ jobs:
         run: |
           echo "Validating image tag ${{ inputs.image_tag }} exists for ${{ inputs.component }} in ${{ matrix.region }}"
 
-          IMAGE_REPO="${{ matrix.region }}-docker.pkg.dev/${{ steps.project.outputs.PROJECT_ID }}/dust-images/${{ inputs.component }}"
+          IMAGE_REPO="${{ steps.registry.outputs.IMAGE_REPO }}"
 
           if ! gcloud container images describe "${IMAGE_REPO}:${{ inputs.image_tag }}" --quiet >/dev/null 2>&1; then
             echo "❌ Image tag '${{ inputs.image_tag }}' not found in registry ${IMAGE_REPO}"
@@ -135,7 +153,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Image tag '${{ inputs.image_tag }}' exists in ${{ matrix.region }} registry" >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Image tag '${{ inputs.image_tag }}' exists in ${IMAGE_REPO}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Notify Failure
         if: failure()
