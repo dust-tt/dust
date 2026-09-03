@@ -312,8 +312,7 @@ export async function determineUserRoleFromGroups(
     }
   }
   // If we're here, the user is not in the admin group. Role precedence is
-  // admin > manager > user. The `dust-builders` group no longer grants a role: it is mirrored
-  // into the manual "Builders" group instead (see handleRoleAssignmentForGroup).
+  // admin > manager > user.
   if (atLeastManager) {
     return "manager";
   }

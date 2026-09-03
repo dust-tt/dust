@@ -488,7 +488,7 @@ makeScript(
       logger.info(`  • Add user ${userEmail} to group "${groupName}"`);
       logger.info("  • Grant space access if group has associated space");
       logger.info(
-        "  • Update user role if special group (dust-admins/dust-managers/dust-builders)"
+        "  • Update user role if special group (dust-admins/dust-managers)"
       );
     } else if (eventType === "group.user_removed") {
       logger.info(`  • Remove user ${userEmail} from group "${groupName}"`);
