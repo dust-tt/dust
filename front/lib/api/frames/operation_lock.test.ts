@@ -2,8 +2,10 @@ import {
   getFramePublishLockName,
   getFrameSourceLockName,
   getLegacyFrameMutationLockName,
+  withFrameSourceAndPublishLocks,
   withFrameSourceLock,
   withLegacyFrameMutationLock,
+  withLegacyFrameMutationResultLock,
 } from "@app/lib/api/frames/operation_lock";
 import type { RedisClientType } from "@app/lib/api/redis";
 import { Ok } from "@app/types/shared/result";
@@ -108,5 +110,47 @@ describe("Frame operation locks", () => {
     await expect(first).resolves.toBe("first");
     await vi.advanceTimersByTimeAsync(100);
     await expect(second).resolves.toBe("second");
+  });
+
+  it("takes source before publish for destructive Frame operations", async () => {
+    const redis = makeRedisClient();
+    getRedisStreamClientMock.mockResolvedValue(redis);
+
+    const result = await withFrameSourceAndPublishLocks(
+      "frame-123",
+      async () => new Ok("deleted")
+    );
+
+    expect(result.isOk() && result.value).toBe("deleted");
+    expect(redis.set).toHaveBeenNthCalledWith(
+      1,
+      "lock:frame:source:frame-123",
+      expect.any(String),
+      expect.objectContaining({ PX: 10 * 60_000 })
+    );
+    expect(redis.set).toHaveBeenNthCalledWith(
+      2,
+      "lock:frame:publish:frame-123",
+      expect.any(String),
+      expect.objectContaining({ PX: 10 * 60_000 })
+    );
+  });
+
+  it("returns a typed timeout when a legacy Frame mutation cannot acquire the lock", async () => {
+    const redis = makeRedisClient();
+    vi.mocked(redis.set).mockResolvedValue(null);
+    getRedisStreamClientMock.mockResolvedValue(redis);
+
+    const resultPromise = withLegacyFrameMutationResultLock(
+      "frame-123",
+      async () => new Ok("deleted")
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    const result = await resultPromise;
+    expect(result.isErr() && result.error).toMatchObject({
+      lockName: "file:edit:frame-123",
+      name: "LockAcquisitionTimeoutError",
+    });
   });
 });

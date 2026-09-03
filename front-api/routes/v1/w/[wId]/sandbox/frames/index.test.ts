@@ -506,6 +506,63 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     );
   });
 
+  it("refetches a stale legacy delete after conversion commits", async () => {
+    const context = await setupLegacyFrameConversion();
+    const staleLegacyFrame = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    assert(staleLegacyFrame);
+
+    const response = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+    expect(response.status, await response.text()).toBe(200);
+    const convertedFrame = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    assert(convertedFrame);
+    await convertedFrame.markAsReady(context.auth);
+
+    const deleteResult = await staleLegacyFrame.delete(context.auth);
+
+    expect(
+      deleteResult.isOk(),
+      deleteResult.isErr() ? deleteResult.error.message : undefined
+    ).toBe(true);
+    expect(
+      await FileResource.fetchById(context.auth, context.frame.sId)
+    ).toBeNull();
+  });
+
+  it("rejects deletion while conversion recovery is pending", async () => {
+    const context = await setupLegacyFrameConversion();
+    await markLegacyFrameConversionPending(context);
+    const pendingFrame = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    assert(pendingFrame);
+
+    const deleteResult = await pendingFrame.delete(context.auth);
+
+    expect(deleteResult.isErr() && deleteResult.error).toMatchObject({
+      name: "LegacyFrameMutationConflictError",
+      message: expect.stringContaining("recover it before deleting"),
+    });
+    const preservedFrame = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(
+      preservedFrame?.useCaseMetadata?.pendingFrameV2Conversion
+    ).toBeDefined();
+  });
+
   it("registers one stable Frame identity", async () => {
     const context = await setup({ registered: false });
 
