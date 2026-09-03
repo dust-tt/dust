@@ -171,9 +171,7 @@ export async function moveFrameV2Source(
       );
     }
 
-    const deleted = await deleteFrameSourceStorage(
-      snapshot.value.sourceMountPrefix
-    );
+    const deleted = await deleteFrameSourceStorage(snapshot.value);
     if (deleted.isErr()) {
       logger.warn(
         {
