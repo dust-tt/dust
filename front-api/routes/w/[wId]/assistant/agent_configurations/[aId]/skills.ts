@@ -26,7 +26,7 @@ app.get(
       agentId: aId,
       variant: "full",
     });
-    if (!agent || !agent.canRead) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
