@@ -1,13 +1,20 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
+import type { RenameMountItem } from "@app/components/file_explorer/RenameFileDialog";
+import { RenameFileDialog } from "@app/components/file_explorer/RenameFileDialog";
 import type {
   FileEntry,
   FileExplorerEntry,
   FileExplorerPathEntry,
+  FolderEntry,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
-import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
+import {
+  getParentFolderRelativePath,
+  withVirtualExplorerPath,
+} from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
@@ -23,7 +30,7 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import { opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, XClose } from "@dust-tt/sparkle";
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 const POD_CONVERSATION_SCOPE_ROOTS = ["conversation", "pod"] as const;
 
@@ -46,6 +53,9 @@ export function ConversationFileExplorer({
   const isPod = isPodConversation(conversation);
 
   const [currentFolderPath, setCurrentFolderPath] = useFolderPathUrlState();
+  const [frameToRename, setFrameToRename] = useState<RenameMountItem | null>(
+    null
+  );
 
   const { sandboxFiles, isSandboxFilesLoading, mutateSandboxFiles } =
     useConversationSandboxFiles({
@@ -133,6 +143,27 @@ export function ConversationFileExplorer({
     [confirm, deleteFileByPath, mutatePodFiles, mutateSandboxFiles]
   );
 
+  // Only Frame packages get a Rename item here (see `canRename`), matching Delete.
+  const onRename = useCallback(
+    (entry: FileEntry | FolderEntry | FramePackageEntry) => {
+      if (entry.kind !== "frame_package") {
+        return;
+      }
+      // The package entry carries the manifest path; the Frame is renamed through its source
+      // folder, which the server moves as a whole.
+      setFrameToRename({
+        kind: "frame",
+        path: getParentFolderRelativePath(entry.path),
+        name: entry.fileName,
+      });
+    },
+    []
+  );
+
+  const onFrameRenamed = useCallback(() => {
+    void Promise.all([mutateSandboxFiles(), mutatePodFiles()]);
+  }, [mutatePodFiles, mutateSandboxFiles]);
+
   return (
     <div className="flex h-panel min-h-0 flex-col">
       <AppLayoutTitle>
@@ -165,6 +196,8 @@ export function ConversationFileExplorer({
           onCurrentFolderChange={setCurrentFolderPath}
           onDelete={hasFeature("frames_v2") ? onDelete : undefined}
           canDelete={isFramePackageEntry}
+          onRename={hasFeature("frames_v2") ? onRename : undefined}
+          canRename={isFramePackageEntry}
           onFileDownload={onFileDownload}
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
@@ -172,6 +205,14 @@ export function ConversationFileExplorer({
           virtualScopeRoots={isPod ? POD_CONVERSATION_SCOPE_ROOTS : undefined}
         />
       </div>
+
+      <RenameFileDialog
+        isOpen={frameToRename !== null}
+        onClose={() => setFrameToRename(null)}
+        onRenamed={onFrameRenamed}
+        owner={owner}
+        item={frameToRename}
+      />
     </div>
   );
 }

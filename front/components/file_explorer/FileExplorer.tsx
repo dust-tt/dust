@@ -59,7 +59,9 @@ interface FileExplorerProps {
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId | FramePackageEntry) => void;
   onOpenInPanel?: (entry: FileEntry) => boolean;
-  onRename?: (entry: FileEntry | FolderEntry) => void;
+  onRename?: (entry: FileEntry | FolderEntry | FramePackageEntry) => void;
+  /** Restricts which entries get a Rename item when `onRename` is set; all of them by default. */
+  canRename?: (entry: FileExplorerEntry) => boolean;
   owner?: LightWorkspaceType;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
@@ -88,6 +90,7 @@ export function FileExplorer({
   onOpenInteractive,
   onOpenInPanel,
   onRename,
+  canRename,
   owner,
   getExtraFileMenuItems,
   virtualScopeRoots,
@@ -154,6 +157,16 @@ export function FileExplorer({
             setActiveFilter("all");
           },
         });
+        if (onRename && (canRename?.(entry) ?? true)) {
+          items.push({
+            label: "Rename",
+            icon: Edit04,
+            onClick: (e) => {
+              e.stopPropagation();
+              onRename(entry);
+            },
+          });
+        }
         if (onDelete && (canDelete?.(entry) ?? true)) {
           items.push({
             label: "Delete",
@@ -167,7 +180,11 @@ export function FileExplorer({
         }
         return items;
       }
-      if (onRename && (entry.kind === "file" || entry.kind === "folder")) {
+      if (
+        onRename &&
+        (entry.kind === "file" || entry.kind === "folder") &&
+        (canRename?.(entry) ?? true)
+      ) {
         items.push({
           label: "Rename",
           icon: Edit04,
@@ -208,6 +225,7 @@ export function FileExplorer({
     },
     [
       canDelete,
+      canRename,
       getExtraFileMenuItems,
       onCurrentFolderChange,
       onDelete,

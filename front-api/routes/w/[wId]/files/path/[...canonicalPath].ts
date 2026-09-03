@@ -11,6 +11,8 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
+import type { FrameSourceMoveError } from "@app/lib/api/frames/move_source_paths";
+import { isFrameSourceMoveError } from "@app/lib/api/frames/move_source_paths";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
@@ -389,7 +391,12 @@ app.patch(
           data.fileName
         );
         if (renameResult.isErr()) {
-          return apiError(ctx, mapDustFsError(renameResult.error));
+          return apiError(
+            ctx,
+            isFrameSourceMoveError(renameResult.error)
+              ? mapFrameSourceMoveError(renameResult.error)
+              : mapDustFsError(renameResult.error)
+          );
         }
         break;
       }
@@ -525,6 +532,32 @@ app.delete(
     return new Response(null, { status: 204 });
   }
 );
+
+function mapFrameSourceMoveError(err: FrameSourceMoveError) {
+  switch (err.code) {
+    case "invalid_source":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: err.message },
+      } as const;
+
+    case "conflict":
+      return {
+        status_code: 409,
+        api_error: { type: "invalid_request_error", message: err.message },
+      } as const;
+
+    case "copy_failed":
+    case "commit_failed":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: err.message },
+      } as const;
+
+    default:
+      assertNever(err.code);
+  }
+}
 
 function mapDustFsError(err: DustFileSystemError) {
   switch (err.code) {

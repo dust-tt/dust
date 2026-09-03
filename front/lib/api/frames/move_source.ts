@@ -16,6 +16,8 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -37,20 +39,42 @@ type FrameSourceMove = {
 };
 
 /**
- * Move a registered Frames v2 source folder within one GCS mount.
+ * Pod tabs and the pinned Frame reference a Frame by its manifest scoped path. Repoint them so the
+ * Pod navigation keeps working after the source folder moves.
+ */
+async function renamePodFramePath(
+  auth: Authenticator,
+  frame: FileResource,
+  { fromPath, toPath }: { fromPath: string; toPath: string }
+): Promise<void> {
+  if (frame.useCase !== "project_context") {
+    return;
+  }
+  const spaceId = frame.useCaseMetadata?.spaceId;
+  const space = spaceId ? await SpaceResource.fetchById(auth, spaceId) : null;
+  if (!space) {
+    return;
+  }
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+  await metadata?.renameFramePath(fromPath, toPath);
+}
+
+/**
+ * Move a registered Frames v2 source folder within one GCS mount, through an already authorized
+ * filesystem covering both the source and destination paths.
  *
  * This intentionally uses a non-transactional copy, DB update, then source delete sequence.
  * Until the DB update succeeds, the source FileResource path remains authoritative.
  */
-export async function moveFrameV2Source(
+export async function moveFrameV2SourceUsingFileSystem(
   auth: Authenticator,
   {
-    conversation,
     destinationDirectoryPath,
+    dustFs,
     sourceDirectoryPath,
   }: {
-    conversation: ConversationWithoutContentType;
     destinationDirectoryPath: string;
+    dustFs: DustFileSystem;
     sourceDirectoryPath: string;
   }
 ): Promise<Result<FrameSourceMove, MoveFrameV2SourceError>> {
@@ -63,14 +87,6 @@ export async function moveFrameV2Source(
   }
   const paths = pathsResult.value;
 
-  const fsResult = await DustFileSystem.forAgentLoop(auth, {
-    conversation,
-    scopedPaths: [paths.sourceDirectoryPath, paths.destinationDirectoryPath],
-  });
-  if (fsResult.isErr()) {
-    return fsResult;
-  }
-  const dustFs = fsResult.value;
   if (!dustFs.isGCSBacked()) {
     return moveError(
       "invalid_source",
@@ -171,6 +187,11 @@ export async function moveFrameV2Source(
       );
     }
 
+    await renamePodFramePath(auth, freshFrame, {
+      fromPath: paths.sourceManifestPath,
+      toPath: paths.destinationManifestPath,
+    });
+
     const deleted = await deleteFrameSourceStorage(
       snapshot.value.sourceMountPrefix
     );
@@ -213,4 +234,41 @@ export async function moveFrameV2Source(
       : new Err(locked.error);
   }
   return locked;
+}
+
+/** Move a registered Frames v2 source folder from within the invoking conversation's mounts. */
+export async function moveFrameV2Source(
+  auth: Authenticator,
+  {
+    conversation,
+    destinationDirectoryPath,
+    sourceDirectoryPath,
+  }: {
+    conversation: ConversationWithoutContentType;
+    destinationDirectoryPath: string;
+    sourceDirectoryPath: string;
+  }
+): Promise<Result<FrameSourceMove, MoveFrameV2SourceError>> {
+  const pathsResult = resolveFrameSourceMovePaths({
+    destinationDirectoryPath,
+    sourceDirectoryPath,
+  });
+  if (pathsResult.isErr()) {
+    return pathsResult;
+  }
+  const paths = pathsResult.value;
+
+  const fsResult = await DustFileSystem.forAgentLoop(auth, {
+    conversation,
+    scopedPaths: [paths.sourceDirectoryPath, paths.destinationDirectoryPath],
+  });
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  return moveFrameV2SourceUsingFileSystem(auth, {
+    destinationDirectoryPath,
+    dustFs: fsResult.value,
+    sourceDirectoryPath,
+  });
 }

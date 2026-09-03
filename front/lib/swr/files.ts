@@ -343,6 +343,55 @@ export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
   };
 }
 
+export function useRenameFileByPath({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+
+  return async (
+    canonicalPath: string,
+    newFileName: string
+  ): Promise<Result<void, Error>> => {
+    try {
+      const encoded = canonicalPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/path/${encoded}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "rename", fileName: newFileName }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to rename file",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: `File renamed to "${newFileName}"`,
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to rename file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
 export function useWriteFileContentByPath({
   owner,
 }: {

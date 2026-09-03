@@ -221,6 +221,30 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     );
   }
 
+  /** Point the pinned Frame and file tabs referencing `fromPath` at `toPath` after a move. */
+  async renameFramePath(
+    fromPath: string,
+    toPath: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    const frameTabs = (this.frameTabs ?? []).map((tab) =>
+      tab.path === fromPath ? { ...tab, path: toPath } : tab
+    );
+    const tabsOrder = (this.tabsOrder ?? []).map((entry) =>
+      entry === fromPath ? toPath : entry
+    );
+
+    await this.update(
+      {
+        pinnedFramePath:
+          this.pinnedFramePath === fromPath ? toPath : this.pinnedFramePath,
+        frameTabs,
+        tabsOrder,
+      },
+      transaction
+    );
+  }
+
   async updateDefaultAgentId(
     defaultAgentId: string | null,
     transaction?: Transaction
