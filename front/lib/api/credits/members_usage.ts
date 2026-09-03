@@ -12,7 +12,6 @@ import {
   searchAnalytics,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
-import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
@@ -36,6 +35,7 @@ import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   getCreditTypeAwuId,
   toFreeMetronomeUserId,
+  USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import { getPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
@@ -570,10 +570,9 @@ export async function getEsConsumedAwuCreditsForApiKey(
 
 /**
  * The workspace's Elasticsearch-derived *programmatic* AWU consumption for the
- * current billing cycle. `usage_type` is not a stored analytics field, so
- * programmatic usage is identified with `getProgrammaticUsageFilterClause`
- * (auth_method=api_key / no or programmatic context_origin) — the same split the
- * analytics dashboards use. Used to lazily seed / resync the programmatic
+ * current billing cycle. The consumption index stores the billing
+ * classification directly in `usage_type`; its `credit_micro` values sum to the
+ * authoritative billed credits. Used to lazily seed / resync the programmatic
  * spend-cap counter. Returns the consumption, or `null` when it can't be
  * determined (no billing cycle, or the analytics read failed) — callers must
  * treat `null` as "unknown", never as 0, so a transient ES outage doesn't erase
@@ -591,7 +590,7 @@ export async function getEsConsumedProgrammaticAwuCredits(
   }
   const { cycleStart, cycleEnd } = resolvedCycle;
 
-  const result = await searchAnalytics<
+  const result = await searchConsumptionAnalytics<
     never,
     { credits?: estypes.AggregationsSumAggregate }
   >(
@@ -599,10 +598,10 @@ export async function getEsConsumedProgrammaticAwuCredits(
       bool: {
         filter: [
           { term: { workspace_id: workspace.sId } },
-          getProgrammaticUsageFilterClause(),
+          { term: { usage_type: USAGE_TYPE_PROGRAMMATIC } },
           {
             range: {
-              timestamp: {
+              completed_at: {
                 gte: cycleStart.toISOString(),
                 lte: cycleEnd.toISOString(),
               },
@@ -612,21 +611,23 @@ export async function getEsConsumedProgrammaticAwuCredits(
       },
     },
     {
-      aggregations: { credits: { sum: { field: "cost.billable_awu" } } },
+      aggregations: { credits: { sum: { field: "credit_micro" } } },
       size: 0,
     }
   );
   if (result.isErr()) {
     logger.warn(
       { err: result.error, workspaceId: workspace.sId },
-      "[MembersUsage] Failed to read programmatic consumed credits from analytics index"
+      "[MembersUsage] Failed to read programmatic consumed credits from consumption analytics index"
     );
     return null;
   }
 
   return Math.max(
     0,
-    Math.round(result.value.aggregations?.credits?.value ?? 0)
+    Math.round(
+      microCreditsToCredits(result.value.aggregations?.credits?.value ?? 0)
+    )
   );
 }
 

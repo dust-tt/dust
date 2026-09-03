@@ -1,8 +1,11 @@
 import {
   fetchConsumedAwuCreditsByApiKeyName,
   fetchSeatDataForMembersTable,
+  getEsConsumedProgrammaticAwuCredits,
 } from "@app/lib/api/credits/members_usage";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import { Authenticator } from "@app/lib/auth";
+import { USAGE_TYPE_PROGRAMMATIC } from "@app/lib/metronome/constants";
 import {
   buildSeatDataByUserId,
   getCachedSeatDataByUserId,
@@ -91,6 +94,50 @@ describe("fetchConsumedAwuCreditsByApiKeyName", () => {
             aggs: { credits: { sum: { field: "credit_micro" } } },
           },
         },
+        size: 0,
+      }
+    );
+  });
+});
+
+describe("getEsConsumedProgrammaticAwuCredits", () => {
+  afterEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("sums consumption-index microcredits for programmatic usage in the billing cycle", async () => {
+    const workspace = await WorkspaceFactory.creditPriced();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const cycle = {
+      cycleStart: new Date("2026-08-01T00:00:00.000Z"),
+      cycleEnd: new Date("2026-09-01T00:00:00.000Z"),
+    };
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ credits: { value: 2_600_000 } })
+    );
+
+    const result = await getEsConsumedProgrammaticAwuCredits(auth, { cycle });
+
+    expect(result).toBe(3);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledWith(
+      {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspace.sId } },
+            { term: { usage_type: USAGE_TYPE_PROGRAMMATIC } },
+            {
+              range: {
+                completed_at: {
+                  gte: cycle.cycleStart.toISOString(),
+                  lte: cycle.cycleEnd.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        aggregations: { credits: { sum: { field: "credit_micro" } } },
         size: 0,
       }
     );
