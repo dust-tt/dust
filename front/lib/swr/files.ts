@@ -442,6 +442,69 @@ export async function downloadFolderArchive(
   return res;
 }
 
+export type ImportFolderArchiveResult = {
+  fileCount: number;
+  frameId: string | null;
+};
+
+/** Create the folder at `folderCanonicalPath` from a zip of its files, registering a Frame if any. */
+export function useImportFolderArchive({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async ({
+    folderCanonicalPath,
+    file,
+  }: {
+    folderCanonicalPath: string;
+    file: File;
+  }): Promise<Result<ImportFolderArchiveResult, Error>> => {
+    try {
+      const encoded = folderCanonicalPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const body = new FormData();
+      body.append("file", file);
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/path/${encoded}?archive=1`,
+        { method: "POST", body }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to import Frame",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const result: ImportFolderArchiveResult = await res.json();
+      sendNotification({
+        type: "success",
+        title: result.frameId ? "Frame imported" : "Folder imported",
+        description: result.frameId
+          ? "Its source is in place; publish it to make it available."
+          : `${result.fileCount} file(s) imported.`,
+      });
+      return new Ok(result);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to import Frame",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
 export function useFileProcessedContent({
   owner,
   fileId,

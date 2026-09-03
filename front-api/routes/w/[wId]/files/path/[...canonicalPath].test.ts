@@ -242,6 +242,146 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?archive=1", () => {
   });
 });
 
+describe("POST /api/w/:wId/files/path/:canonicalPath?archive=1", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function makeArchive(files: Record<string, string>): Buffer {
+    const zip = new AdmZip();
+    for (const [relPath, content] of Object.entries(files)) {
+      zip.addFile(relPath, Buffer.from(content, "utf-8"));
+    }
+    return zip.toBuffer();
+  }
+
+  function importRequest(
+    workspace: { sId: string },
+    canonicalPath: string,
+    archive: Buffer
+  ) {
+    const body = new FormData();
+    body.append(
+      "file",
+      new File([new Uint8Array(archive)], "my-frame.zip", {
+        type: "application/zip",
+      })
+    );
+    return request(
+      workspace,
+      canonicalPath,
+      { method: "POST", body },
+      "?archive=1"
+    );
+  }
+
+  const manifest = JSON.stringify({
+    version: 1,
+    name: "My Frame",
+    description: "Imported.",
+  });
+
+  it("extracts the files into the folder and registers the Frame", async () => {
+    const { workspace, auth, conversation } = await setup();
+    // Written objects must read back for the registration to find the manifest.
+    fileStorageMock.setFileExists((filePath) =>
+      filePath.includes("/files/my-frame/")
+    );
+
+    const response = await importRequest(
+      workspace,
+      `conversation-${conversation.sId}/my-frame`,
+      makeArchive({ "manifest.json": manifest, "src/index.tsx": "export {};" })
+    );
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.fileCount).toBe(2);
+    expect(typeof body.frameId).toBe("string");
+
+    const basePath = `w/${workspace.sId}/conversations/${conversation.sId}/files/my-frame`;
+    expect(fileStorageMock.saveFileCalls).toContainEqual(
+      expect.objectContaining({
+        filePath: `${basePath}/manifest.json`,
+        contentType: "application/json",
+      })
+    );
+    expect(fileStorageMock.saveFileCalls).toContainEqual(
+      expect.objectContaining({ filePath: `${basePath}/src/index.tsx` })
+    );
+
+    const frame = await FileResource.fetchById(auth, body.frameId);
+    expect(frame?.isFrameV2).toBe(true);
+    expect(frame?.mountFilePath).toBe(`${basePath}/manifest.json`);
+  });
+
+  it("imports a plain folder without registering anything", async () => {
+    const { workspace, conversation } = await setup();
+
+    const response = await importRequest(
+      workspace,
+      `conversation-${conversation.sId}/docs`,
+      makeArchive({ "readme.md": "# Hi" })
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ fileCount: 1, frameId: null });
+  });
+
+  it("returns 409 when the folder already has files", async () => {
+    const { workspace, conversation } = await setup();
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix.endsWith("/files/my-frame/")
+        ? [
+            {
+              name: `${prefix}manifest.json`,
+              metadata: { contentType: "application/json", size: "2" },
+            },
+          ]
+        : null
+    );
+
+    const response = await importRequest(
+      workspace,
+      `conversation-${conversation.sId}/my-frame`,
+      makeArchive({ "manifest.json": manifest })
+    );
+
+    expect(response.status).toBe(409);
+    expect(fileStorageMock.saveFileCalls).toEqual([]);
+  });
+
+  it("rejects archives with unsafe entry paths", async () => {
+    const { workspace, conversation } = await setup();
+
+    // adm-zip normalises names passed to addFile, so rename the entry after the fact.
+    const zip = new AdmZip();
+    zip.addFile("escape.txt", Buffer.from("nope", "utf-8"));
+    zip.getEntries()[0].entryName = "../escape.txt";
+
+    const response = await importRequest(
+      workspace,
+      `conversation-${conversation.sId}/my-frame`,
+      zip.toBuffer()
+    );
+
+    expect(response.status).toBe(400);
+    expect(fileStorageMock.saveFileCalls).toEqual([]);
+  });
+
+  it("requires ?archive=1", async () => {
+    const { workspace, conversation } = await setup();
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/my-frame`,
+      { method: "POST", body: new FormData() }
+    );
+
+    expect(response.status).toBe(400);
+  });
+});
+
 describe("GET /api/w/:wId/files/path/:canonicalPath?thumbnail=1", () => {
   beforeEach(() => {
     vi.clearAllMocks();
