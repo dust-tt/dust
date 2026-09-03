@@ -1,8 +1,4 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import {
-  DropdownPanelContent,
-  DropdownPanelRoot,
-} from "@app/components/assistant/conversation/input_bar/DropdownPanel";
 import type { CapabilitySearchIndexItem } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { searchCapabilityIndex } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
@@ -42,6 +38,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPanel,
+  DropdownMenuPanelRoot,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -419,8 +417,8 @@ export function CapabilitiesPicker({
   const shouldShowCapabilityDropdownList =
     capabilityPickerItems.length > 0 || hasNoVisibleItems;
 
-  const Wrapper = isPanel ? DropdownPanelRoot : DropdownMenu;
-  const ContentWrapper = isPanel ? DropdownPanelContent : DropdownMenuContent;
+  const Wrapper = isPanel ? DropdownMenuPanelRoot : DropdownMenu;
+  const ContentWrapper = isPanel ? DropdownMenuPanel : DropdownMenuContent;
 
   return (
     <>

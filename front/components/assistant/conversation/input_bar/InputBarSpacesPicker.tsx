@@ -1,4 +1,3 @@
-import { DropdownPanelContent } from "@app/components/assistant/conversation/input_bar/DropdownPanel";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
@@ -6,6 +5,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPanel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   Spinner,
@@ -74,7 +74,7 @@ export function InputBarSpacesPicker({
   };
 
   return (
-    <DropdownPanelContent
+    <DropdownMenuPanel
       className="h-80 w-full xs:h-96"
       title={label}
       onBack={onBack}
@@ -128,6 +128,6 @@ export function InputBarSpacesPicker({
           })}
         </div>
       )}
-    </DropdownPanelContent>
+    </DropdownMenuPanel>
   );
 }

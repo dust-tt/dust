@@ -29,6 +29,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
   Planet,
   Plus,
   ShapesPlus,
@@ -54,14 +56,13 @@ const DRILL_IN_CHEVRON = (
 );
 
 const PANEL_SWAP_OFFSET_PX = 8;
-const PANEL_EASE_ENTER = [0.215, 0.61, 0.355, 1] as const;
 const PANEL_ENTER_TRANSITION: Transition = {
-  duration: 0.14,
-  ease: PANEL_EASE_ENTER,
+  duration: MOTION_DURATIONS.quickEnter,
+  ease: MOTION_EASINGS.enter,
 };
 const PANEL_EXIT_TRANSITION: Transition = {
-  duration: 0.1,
-  ease: PANEL_EASE_ENTER,
+  duration: MOTION_DURATIONS.quickExit,
+  ease: MOTION_EASINGS.enter,
 };
 
 const PAGE_VARIANTS: Variants = {
@@ -226,8 +227,10 @@ export function InputBarPlusMenu({
           }
           disabled={disabled}
           endComponent={DRILL_IN_CHEVRON}
-          onSelect={(event) => event.preventDefault()}
-          onClick={() => openPage("capabilities")}
+          onSelect={(event) => {
+            event.preventDefault();
+            openPage("capabilities");
+          }}
         />
       )}
       {!hideAttachments && (
@@ -242,8 +245,10 @@ export function InputBarPlusMenu({
           }
           disabled={disabled}
           endComponent={DRILL_IN_CHEVRON}
-          onSelect={(event) => event.preventDefault()}
-          onClick={() => openPage("attachments")}
+          onSelect={(event) => {
+            event.preventDefault();
+            openPage("attachments");
+          }}
         />
       )}
       {spaces != null && (
@@ -254,8 +259,10 @@ export function InputBarPlusMenu({
           }
           disabled={disabled}
           endComponent={DRILL_IN_CHEVRON}
-          onSelect={(event) => event.preventDefault()}
-          onClick={() => openPage("spaces")}
+          onSelect={(event) => {
+            event.preventDefault();
+            openPage("spaces");
+          }}
         />
       )}
     </div>
@@ -343,7 +350,7 @@ export function InputBarPlusMenu({
           className="w-80 max-w-[calc(100vw-1rem)] overflow-hidden p-0"
         >
           <div
-            className="relative w-full overflow-hidden transition-[height] duration-150 ease-enter motion-reduce:transition-none"
+            className="relative w-full overflow-hidden transition-[height] duration-quick-enter ease-enter motion-reduce:transition-none"
             style={
               panelHeights[page] === undefined
                 ? undefined

@@ -1,8 +1,4 @@
 import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
-import {
-  DropdownPanelContent,
-  DropdownPanelRoot,
-} from "@app/components/assistant/conversation/input_bar/DropdownPanel";
 import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
@@ -47,6 +43,8 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuFilters,
+  DropdownMenuPanel,
+  DropdownMenuPanelRoot,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -560,8 +558,8 @@ export const InputBarAttachmentsPicker = ({
 
   const allUnselected = selectedFilterKeys.length === 0;
 
-  const Wrapper = isPanel ? DropdownPanelRoot : DropdownMenu;
-  const ContentWrapper = isPanel ? DropdownPanelContent : DropdownMenuContent;
+  const Wrapper = isPanel ? DropdownMenuPanelRoot : DropdownMenu;
+  const ContentWrapper = isPanel ? DropdownMenuPanel : DropdownMenuContent;
 
   return (
     <Wrapper
