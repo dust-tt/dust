@@ -234,7 +234,7 @@ async function handleRoleAssignmentForGroup(
   }
 
   if (action === "add") {
-    const newRole = await determineUserRoleFromGroups(workspace, user);
+    const newRole = await determineUserRoleFromGroups(auth, user);
 
     if (newRole !== currentMembership.role) {
       const updateResult = await MembershipResource.updateMembershipRole({
@@ -282,7 +282,7 @@ async function handleRoleAssignmentForGroup(
       });
     }
   } else if (action === "remove") {
-    const newRole = await determineUserRoleFromGroups(workspace, user);
+    const newRole = await determineUserRoleFromGroups(auth, user);
 
     if (newRole !== currentMembership.role) {
       const updateResult = await MembershipResource.updateMembershipRole({
@@ -1322,9 +1322,9 @@ async function revokeWorkOSUserMembership(
   triggersDeleted: boolean
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const groups = await GroupResource.listUserGroupsInWorkspace({
+  const groups = await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+    auth,
     user,
-    workspace,
     groupKinds: GROUP_KINDS.filter((k) => k !== "system" && k !== "global"),
   });
 

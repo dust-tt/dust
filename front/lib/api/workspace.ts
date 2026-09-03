@@ -23,7 +23,7 @@ import type { EmailProviderType } from "@app/lib/utils/email_provider_detection"
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
-import type { GroupKind } from "@app/types/groups";
+import type { UserVisibleGroupKind } from "@app/types/groups";
 import type {
   MembershipOriginType,
   MembershipRoleType,
@@ -321,7 +321,7 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
-    groupKind?: Exclude<GroupKind, "system">;
+    groupKind?: UserVisibleGroupKind;
     role?: ActiveRoleType;
   },
   paginationParams: SearchMembersPaginationParams
@@ -402,8 +402,8 @@ export async function searchMembers(
 
       if (options.groupKind) {
         const groupsResult = await GroupResource.listUserGroupsInWorkspace({
+          auth,
           user: u,
-          workspace: owner,
           groupKinds: [options.groupKind],
         });
 

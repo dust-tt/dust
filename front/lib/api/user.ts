@@ -13,7 +13,6 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
-  LightWorkspaceType,
   UserType,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
@@ -292,13 +291,14 @@ export async function getUserWithWorkspaces<T extends boolean>(
 }
 
 export async function determineUserRoleFromGroups(
-  workspace: LightWorkspaceType,
+  auth: Authenticator,
   user: UserResource
 ): Promise<MembershipRoleType> {
-  // Get all groups the user is a member of.
+  // Only directory-provisioned groups grant a role
   const userGroups = await GroupResource.listUserGroupsInWorkspace({
+    auth,
     user,
-    workspace,
+    groupKinds: ["provisioned"],
   });
 
   let atLeastManager = false;
