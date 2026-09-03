@@ -109,3 +109,29 @@
      timer that does the unmounting. */
   pointer-events: none;
 }
+
+/* Draws the check inside its badge as a task completes.
+
+   The check is a filled path rather than a stroke, so it cannot be drawn with
+   `stroke-dashoffset`; wiping it along the direction the glyph is written
+   reveals the short stroke then the long one, so it reads as being written.
+
+   The strike that follows is not done here — it has to travel in reading order
+   across wrapped lines, which a clip cannot express, so it advances per
+   character from `useStrikeCursor`.
+
+   Duration is set inline, from TASK_CHECK_MS. */
+@keyframes task-wipe-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.animate-task-wipe {
+  animation-name: task-wipe-in;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: forwards;
+}

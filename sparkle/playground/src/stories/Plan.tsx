@@ -103,7 +103,7 @@ const PLAN_TASK_LINES = [
 const INITIAL_PLAN = `${PLAN_HEAD}${PLAN_TASK_LINES.join("\n")}\n`;
 
 /** Gap between task lines as the plan is written out. */
-const PLAN_STREAM_STEP_MS = 750;
+const PLAN_STREAM_STEP_MS = 850;
 
 // Each `edit_plan` call: one exact string replacement, as in production.
 interface PlanEdit {

@@ -160,19 +160,29 @@ export function planTaskStates(
  * lands inside the word budget, so the bold run ends on a phrase rather than
  * mid-sentence; otherwise it hard-caps at `MAX_LEAD_WORDS`.
  *
- * `lead + rest` always reproduces the input exactly (`rest` keeps its leading
- * separator and whitespace).
+ * The separator comes back on its own because Figma 15076:36759 colours it with
+ * the lead rather than with the description.
+ *
+ * `lead + separator + rest` always reproduces the input exactly.
  */
 const MAX_LEAD_WORDS = 6;
 
-export function splitTaskLead(raw: string): { lead: string; rest: string } {
+export function splitTaskLead(raw: string): {
+  lead: string;
+  separator: string;
+  rest: string;
+} {
   const text = raw.trimStart();
 
   const separator = text.match(/\s[—–]\s|:\s/);
   if (separator?.index !== undefined) {
     const head = text.slice(0, separator.index);
     if (head.trim().split(/\s+/).length <= MAX_LEAD_WORDS) {
-      return { lead: head, rest: text.slice(separator.index) };
+      return {
+        lead: head,
+        separator: separator[0],
+        rest: text.slice(separator.index + separator[0].length),
+      };
     }
   }
 
@@ -181,10 +191,18 @@ export function splitTaskLead(raw: string): { lead: string; rest: string } {
   for (let i = 0; i < MAX_LEAD_WORDS; i++) {
     const match = words.exec(text);
     if (!match) {
-      return { lead: text, rest: "" };
+      return { lead: text, separator: "", rest: "" };
     }
     end = match.index + match[0].trimEnd().length;
   }
 
-  return { lead: text.slice(0, end), rest: text.slice(end) };
+  return { lead: text.slice(0, end), separator: "", rest: text.slice(end) };
 }
+
+/**
+ * Completing a task is two beats: the check is drawn inside its badge, and only
+ * then is the text struck through.
+ */
+export const TASK_CHECK_MS = 260;
+export const TASK_STRIKE_MS = 570;
+export const TASK_COMPLETE_MS = TASK_CHECK_MS + TASK_STRIKE_MS;

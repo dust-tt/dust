@@ -3,12 +3,13 @@ import {
   cn,
   Download01,
   Markdown,
+  markdownStyles,
   PencilLine,
   Spinner,
-  Trash04,
+  Archive,
   XClose,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 
 import { ConversationFilesTab } from "./ConversationFilesTab";
@@ -16,9 +17,15 @@ import { type CreditsUsage, CreditUsageGauge } from "./CreditUsageGauge";
 import {
   contentHash,
   normalizePlanMarkdown,
+  type PlanTaskState,
   planTaskStates,
+  TASK_COMPLETE_MS,
 } from "./planUtils";
-import { PlanMarkdownList, PlanMarkdownListItem } from "./PlanTaskList";
+import {
+  PlanMarkdownList,
+  PlanMarkdownListItem,
+  type TaskRevealMode,
+} from "./PlanTaskList";
 
 /**
  * The conversation side panel — Figma 14797:120638 (three tabs) on top of
@@ -61,7 +68,12 @@ interface ConversationSidePanelProps {
    * panel so the resize handle still reflows.
    */
   lockedWidthPx?: number | null;
-  /** Progressive reveal while `create_plan` streams the plan in. */
+  /**
+   * Whether `create_plan` is still appending chunks. Drives the row reveal and
+   * holds the Markdown key steady; the text itself is not written out character
+   * by character — a row that mounts with one character has nothing to fade in,
+   * so the reveal lives on the row instead.
+   */
   planStreamingState?: "streaming" | "none";
 }
 
@@ -116,7 +128,7 @@ export function ConversationSidePanel({
             <Button
               variant="ghost"
               size="xs"
-              icon={Trash04}
+              icon={Archive}
               tooltip="Close plan"
               onClick={onClosePlan}
             />
@@ -185,6 +197,52 @@ function PlanBody({
     () => planTaskStates(content, { isRunning }),
     [content, isRunning]
   );
+  /**
+   * Which task has just flipped to done, so only that row draws its strike. The
+   * Markdown tree remounts on every `edit_plan` (it is keyed on the content
+   * hash), so without this every already-done row would re-strike each time
+   * another task completed.
+   */
+  const previousStatesRef = useRef<PlanTaskState[]>([]);
+  const [justCompletedIndex, setJustCompletedIndex] = useState<number | null>(
+    null
+  );
+  useEffect(() => {
+    const previous = previousStatesRef.current;
+    const completed = taskStates.findIndex(
+      (state, index) => state === "done" && previous[index] !== "done"
+    );
+    previousStatesRef.current = taskStates;
+
+    if (completed === -1) {
+      return;
+    }
+    setJustCompletedIndex(completed);
+    const timer = window.setTimeout(
+      () => setJustCompletedIndex(null),
+      TASK_COMPLETE_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, [taskStates]);
+
+  /**
+   * While the plan streams in, only the row that has just arrived rises into
+   * place — the newest one, which is the last in the list. Opening the panel on
+   * a finished plan staggers the whole list instead.
+   *
+   * Deciding this per row matters: `additionalMarkdownComponents` is rebuilt
+   * whenever `taskStates` changes, which hands every `li` a new component
+   * identity and remounts the list on each appended chunk. Anything keyed off
+   * "did I just mount" would therefore fire on every row, every chunk.
+   */
+  const arrivalIndex = taskStates.length - 1;
+  const rowRevealMode = (index: number): TaskRevealMode => {
+    if (streamingState === "streaming") {
+      return index === arrivalIndex ? "arrival" : "none";
+    }
+    return isRevealing ? "stagger" : "none";
+  };
+
   const normalizedContent = useMemo(
     () => (content ? normalizePlanMarkdown(content) : null),
     [content]
@@ -200,6 +258,20 @@ function PlanBody({
           Plan: {children}
         </h1>
       ),
+      // Prose is muted; only the headings stay at foreground. sparkle's own
+      // paragraph variants are reused so spacing tracks the design system,
+      // and it renders a div like `ParagraphBlock` does — a `p` cannot hold
+      // block children.
+      p: ({ children }) => (
+        <div
+          className={cn(
+            markdownStyles.paragraph({ compactSpacing: false }),
+            "text-base leading-relaxed text-muted-foreground"
+          )}
+        >
+          {children}
+        </div>
+      ),
       // The badge carries the state now, so drop the checkbox entirely.
       input: () => null,
       ul: ({ children, className }) => (
@@ -210,13 +282,14 @@ function PlanBody({
           className={className}
           index={index}
           states={taskStates}
-          isRevealing={isRevealing && streamingState !== "streaming"}
+          revealMode={rowRevealMode(index)}
+          justCompletedIndex={justCompletedIndex}
         >
           {children}
         </PlanMarkdownListItem>
       ),
     }),
-    [taskStates, isRevealing]
+    [taskStates, arrivalIndex, streamingState, isRevealing, justCompletedIndex]
   );
 
   if (isLoading && !content) {
@@ -239,13 +312,11 @@ function PlanBody({
     // Remount on each edit: Sparkle's `Markdown` memoizes AST nodes for streaming
     // reveal and can keep stale children when the content prop is replaced.
     <Markdown
-      // While streaming, the key must stay put or each appended chunk would
-      // remount the tree and restart the reveal from nothing.
+      // The key must stay put while chunks are still arriving, or each one would
+      // remount the tree and every row would replay its entrance.
       key={streamingState === "streaming" ? "streaming" : markdownKey}
       content={normalizedContent ?? ""}
       additionalMarkdownComponents={markdownComponents}
-      streamingState={streamingState}
-      enableAnimation={streamingState === "streaming"}
     />
   );
 }
