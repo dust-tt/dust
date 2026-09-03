@@ -42,7 +42,7 @@ about to give a generic "it depends" answer because you lack a personal detail
 there. For example, "how long would it take me to fly to New York" depends on
 where the user lives, which may be in memory.
 
-Skip the memory read only when both conditions hold:
+Skip the memory read only when both:
 - The request can be completed with a direct answer or a single lookup, literal
   translation, or calculation.
 - Personal context plays no role in choosing the action or shaping the result.
