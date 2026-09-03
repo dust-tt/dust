@@ -348,16 +348,14 @@ export function EditSpaceManagedDataSourcesViews({
   }
 
   const hasExistingData = filteredDataSourceViews.length > 0;
+  const actionVerb = hasExistingData ? "Edit" : "Add";
+  const label = dataSourceView
+    ? `${actionVerb} data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
+    : `${actionVerb} data from connections`;
 
   const addToSpaceButton = (
     <Button
-      label={
-        dataSourceView
-          ? `Add data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
-          : hasExistingData
-            ? "Edit data from connections"
-            : "Add data from connections"
-      }
+      label={label}
       variant="primary"
       icon={hasExistingData ? Edit04 : Plus}
       size="sm"
