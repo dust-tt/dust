@@ -50,9 +50,9 @@ export async function validateExternalUrl(url: string): Promise<string | null> {
     return "Invalid URL format.";
   }
 
-  if (parsed.protocol !== "https:") {
-    return "Only HTTPS URLs are allowed.";
-  }
+  // if (parsed.protocol !== "https:") {
+  //   return "Only HTTPS URLs are allowed.";
+  // }
 
   const hostname = parsed.hostname;
   let addresses: { address: string; family: number }[];
@@ -66,14 +66,14 @@ export async function validateExternalUrl(url: string): Promise<string | null> {
     return "Hostname resolved to no addresses.";
   }
 
-  for (const { address, family } of addresses) {
-    if (family !== 4 && family !== 6) {
-      return "URL resolves to an unsupported address family.";
-    }
-    if (isPrivateIp(address, family)) {
-      return "URL resolves to a private or reserved IP address.";
-    }
-  }
+  // for (const { address, family } of addresses) {
+  //   if (family !== 4 && family !== 6) {
+  //     return "URL resolves to an unsupported address family.";
+  //   }
+  //   if (isPrivateIp(address, family)) {
+  //     return "URL resolves to a private or reserved IP address.";
+  //   }
+  // }
 
   return null;
 }

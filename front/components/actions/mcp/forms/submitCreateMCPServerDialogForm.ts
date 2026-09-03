@@ -5,6 +5,7 @@ import type {
   CreateMCPServerResponseBody,
   MCPServerType,
   MCPServerViewNameConflict,
+  MCPServerViewNameConflictDetails,
 } from "@app/lib/api/mcp";
 import { isMCPServerViewNameConflict } from "@app/lib/api/mcp";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
@@ -33,6 +34,7 @@ type CreateMCPServerDialogSubmitResult =
   | {
       type: "name_conflict";
       name: string;
+      conflictDetails?: MCPServerViewNameConflictDetails;
       oauthConnectionId: string | null;
       remoteMCPServerOAuthDiscoveryDone: boolean;
     };
@@ -334,6 +336,7 @@ export async function submitCreateMCPServerDialogForm({
         return new Ok({
           type: "name_conflict",
           name: err.nameConflict,
+          conflictDetails: err.conflictDetails,
           oauthConnectionId: oauthConnection?.connectionId ?? null,
           remoteMCPServerOAuthDiscoveryDone:
             nextRemoteMCPServerOAuthDiscoveryDone,

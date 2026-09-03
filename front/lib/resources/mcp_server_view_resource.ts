@@ -32,6 +32,7 @@ import type {
   MCPServerLightType,
   MCPServerType,
   MCPServerViewLightType,
+  MCPServerViewNameConflictDetails,
   MCPServerViewType,
   MCPToolType,
 } from "@app/lib/api/mcp";
@@ -248,7 +249,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     systemView: MCPServerViewResource,
     space: SpaceResource
-  ): Promise<{ hasConflict: boolean; name: string }> {
+  ): Promise<{
+    hasConflict: boolean;
+    name: string;
+    conflictDetails: MCPServerViewNameConflictDetails | null;
+  }> {
     const name = systemView.name ?? systemView.getServerDisplayMetadata().name;
 
     return this.hasNameConflictInSpaceByName(auth, name, space);
@@ -257,7 +262,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   /**
    * Check whether the given name conflicts with an existing view in the target
    * space. When the candidate tools are known before creation, also compare the
-   * model-facing names generated after the server-name prefix is truncated.
+   * model-facing names generated after the server-name prefix is truncated. On
+   * conflict, `conflictDetails` names the existing view (and the shared
+   * model-facing tool name for cropped-tool collisions) so callers can surface
+   * what the new server collides with.
    */
   static async hasNameConflictInSpaceByName(
     auth: Authenticator,
@@ -265,7 +273,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     space: SpaceResource,
     tools: readonly MCPToolType[] = [],
     { excludedMCPServerViewId }: { excludedMCPServerViewId?: string } = {}
-  ): Promise<{ hasConflict: boolean; name: string }> {
+  ): Promise<{
+    hasConflict: boolean;
+    name: string;
+    conflictDetails: MCPServerViewNameConflictDetails | null;
+  }> {
     const candidateToolNames = removeNulls(
       tools.map((tool) => {
         const toolName = tryGetPrefixedToolName(name, tool.name);
@@ -275,30 +287,44 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       })
     );
     const existingViews = await this.listBySpace(auth, space);
-    const hasConflict = existingViews.some((view) => {
+    for (const view of existingViews) {
       if (view.sId === excludedMCPServerViewId) {
-        return false;
+        continue;
       }
 
       const existingName = view.name ?? view.getServerDisplayMetadata().name;
       if (existingName === name) {
-        return true;
+        return {
+          hasConflict: true,
+          name,
+          conflictDetails: { conflictingServerName: existingName },
+        };
       }
 
       // Use the candidate tool names for both prefixes: this check is about the
       // server-name crop and does not require loading existing tool payloads.
-      return candidateToolNames.some(({ originalName, prefixedName }) => {
+      for (const { originalName, prefixedName } of candidateToolNames) {
         const existingToolName = tryGetPrefixedToolName(
           existingName,
           originalName
         );
-        return (
-          existingToolName.isOk() && existingToolName.value === prefixedName
-        );
-      });
-    });
+        if (
+          existingToolName.isOk() &&
+          existingToolName.value === prefixedName
+        ) {
+          return {
+            hasConflict: true,
+            name,
+            conflictDetails: {
+              conflictingServerName: existingName,
+              conflictingToolName: prefixedName,
+            },
+          };
+        }
+      }
+    }
 
-    return { hasConflict, name };
+    return { hasConflict: false, name, conflictDetails: null };
   }
 
   public static async create(
