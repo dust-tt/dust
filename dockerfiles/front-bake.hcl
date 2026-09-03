@@ -6,20 +6,11 @@ variable "WORKERS_LATEST_IMAGE_TAG" {
   default = ""
 }
 
-# Comma-separated, same image pushed to additional registries.
-variable "WORKERS_EXTRA_TAGS" {
-  default = ""
-}
-
 variable "FRONT_API_IMAGE_TAG" {
   default = ""
 }
 
 variable "FRONT_API_LATEST_IMAGE_TAG" {
-  default = ""
-}
-
-variable "FRONT_API_EXTRA_TAGS" {
   default = ""
 }
 
@@ -36,11 +27,11 @@ target "_front-base" {
 target "workers" {
   inherits = ["_front-base"]
   target   = "workers"
-  tags     = compact(concat([WORKERS_IMAGE_TAG, WORKERS_LATEST_IMAGE_TAG], split(",", WORKERS_EXTRA_TAGS)))
+  tags     = compact([WORKERS_IMAGE_TAG, WORKERS_LATEST_IMAGE_TAG])
 }
 
 target "front-api" {
   inherits = ["_front-base"]
   target   = "front-api"
-  tags     = compact(concat([FRONT_API_IMAGE_TAG, FRONT_API_LATEST_IMAGE_TAG], split(",", FRONT_API_EXTRA_TAGS)))
+  tags     = compact([FRONT_API_IMAGE_TAG, FRONT_API_LATEST_IMAGE_TAG])
 }
