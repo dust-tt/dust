@@ -29,7 +29,10 @@ import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type {
+  MCPServerType,
+  MCPServerViewNameConflictDetails,
+} from "@app/lib/api/mcp";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   useCreateInternalMCPServer,
@@ -184,6 +187,7 @@ export function CreateMCPServerDialog({
 
   const [nameConflict, setNameConflict] = useState<{
     name: string;
+    conflictDetails?: MCPServerViewNameConflictDetails;
     oauthConnectionId: string | null;
   } | null>(null);
 
@@ -192,6 +196,7 @@ export function CreateMCPServerDialog({
     viewName,
     needsCustomName,
     nameConflict: nameConflict?.name ?? null,
+    conflictDetails: nameConflict?.conflictDetails ?? null,
     existingViewNames,
   });
 
@@ -349,6 +354,7 @@ export function CreateMCPServerDialog({
     if (submitRes.value.type === "name_conflict") {
       setNameConflict({
         name: submitRes.value.name,
+        conflictDetails: submitRes.value.conflictDetails,
         oauthConnectionId: submitRes.value.oauthConnectionId,
       });
       setExternalIsLoading(false);

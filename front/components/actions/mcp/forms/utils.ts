@@ -8,6 +8,7 @@ import {
   mcpServerOAuthFormSchema,
 } from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import type { MCPServerViewNameConflictDetails } from "@app/lib/api/mcp";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
 
@@ -35,11 +36,13 @@ export function getMCPServerViewNameError({
   viewName,
   needsCustomName,
   nameConflict,
+  conflictDetails,
   existingViewNames,
 }: {
   viewName: string | undefined;
   needsCustomName: boolean;
   nameConflict: string | null;
+  conflictDetails?: MCPServerViewNameConflictDetails | null;
   existingViewNames: string[];
 }): string | null {
   const trimmed = (viewName ?? "").trim();
@@ -47,6 +50,15 @@ export function getMCPServerViewNameError({
     return "Name is required.";
   }
   if (nameConflict) {
+    // A cropped tool-name collision: name the existing connection and the
+    // shared model-facing tool name so the cause is diagnosable.
+    if (conflictDetails?.conflictingToolName) {
+      return (
+        `This name produces the tool "${conflictDetails.conflictingToolName}", ` +
+        `which already exists on the connection ` +
+        `"${conflictDetails.conflictingServerName}". Enter a different name.`
+      );
+    }
     if (!trimmed) {
       return `The default name "${nameConflict}" conflicts with an existing Tool. Enter a different name.`;
     }
