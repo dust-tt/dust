@@ -105,8 +105,8 @@ export function ConversationFileExplorer({
     [openPanel]
   );
 
-  // Only Frame packages are deletable from the conversation explorer; the Pod explorer handles
-  // the rest of a Pod's files.
+  // Only Frame packages get a Delete item here (see `canDelete`); other conversation files stay
+  // non-deletable as before.
   const onDelete = useCallback(
     async (entry: FileExplorerEntry) => {
       if (entry.kind !== "frame_package") {
