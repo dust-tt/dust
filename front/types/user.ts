@@ -44,6 +44,11 @@ export function isRoleType(role: string): role is RoleType {
   return ROLES.includes(role as RoleType);
 }
 
+// `ROLES` is ordered from most to least privileged.
+export function lowestRole(a: RoleType, b: RoleType): RoleType {
+  return ROLES.indexOf(a) >= ROLES.indexOf(b) ? a : b;
+}
+
 export const ActiveRoleSchema = z.enum(ACTIVE_ROLES);
 
 export type ActiveRoleType = z.infer<typeof ActiveRoleSchema>;

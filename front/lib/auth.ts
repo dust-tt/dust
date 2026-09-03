@@ -83,7 +83,13 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import { isAdmin, isBuilder, isManager, isUser } from "@app/types/user";
+import {
+  isAdmin,
+  isBuilder,
+  isManager,
+  isUser,
+  lowestRole,
+} from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
@@ -1173,13 +1179,22 @@ export class Authenticator {
    *
    * /!\ This function should only be used with Authenticators that are associated with a system key.
    *
+   * The exchanged authenticator is scoped down to a plain `user` role by default. An internal
+   * system-key caller that needs the impersonated user to keep their own role (e.g. the
+   * `run_agent` tool, so a sub-agent gated on `managers`/`admins` stays reachable) asks for it
+   * with the `X-Dust-Role` header; we then cap the requested role by the user's verified active
+   * membership, so the exchange can never grant more than the user actually has.
+   *
    * @param auth
    * @param param1
    * @returns
    */
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
-    { userEmail }: { userEmail: string }
+    {
+      userEmail,
+      requestedRole,
+    }: { userEmail: string; requestedRole?: RoleType }
   ): Promise<Authenticator | null> {
     if (!auth.isSystemKey()) {
       logger.error(
@@ -1239,8 +1254,9 @@ export class Authenticator {
     return new Authenticator({
       authMethod: auth.authMethod(),
       key: auth._key,
-      // We limit scope to a user role.
-      role: "user",
+      role: requestedRole
+        ? lowestRole(requestedRole, activeMembership.role)
+        : "user",
       groupModelIds,
       globalGroupModelId,
       user,
