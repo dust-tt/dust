@@ -101,7 +101,7 @@ const SELECT_EDITOR_MEMBERSHIPS_SQL = `
     ON membership."userId" = group_membership."userId"
   WHERE group_agent."workspaceId" = :workspaceId
     AND configuration."workspaceId" = :workspaceId
-    AND configuration."agentId" IN (:agentModelIds)
+    AND group_agent."agentConfigurationId" IN (:configurationModelIds)
 
   UNION ALL
 
@@ -160,6 +160,7 @@ async function loadWorkspaceEditorState(
         workspaceId: workspace.id,
         now: new Date(),
         agentModelIds: configurations.map(({ agentId }) => agentId),
+        configurationModelIds: configurations.map(({ id }) => id),
       },
       type: QueryTypes.SELECT,
     }
