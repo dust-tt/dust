@@ -4,11 +4,10 @@ import {
   CoinsStacked02,
   DotsHorizontal,
   Folder,
-  Icon,
   ListSelect,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { AppLayoutTitle } from "./AppLayoutTitle";
 import type { SidePanelTab } from "./ConversationSidePanel";
@@ -22,60 +21,72 @@ import { PlanRunningIcon } from "./PlanRunningIcon";
  * conversation rather than of the window. Title then the `...` menu on the left,
  * the three panel entry points on the right.
  *
- * The open panel's button carries `transparency-selected` — a flat 6% foreground
- * overlay, the same token `OptionCard` uses for its selected row. Not a weight
- * change: `ghost` is already `text-foreground`, so weight alone had nothing to
- * work against.
+ * The three entry points are filter chips: `size="xs"` `ghost` buttons, the
+ * geometry `FilterChips` renders.
  *
- * The Plan button only exists while a plan does. Closing a plan — from the panel
+ * One deliberate departure from it: `FilterChips` marks the selected chip with
+ * `variant="primary"`, which is a solid stone gradient and reads as a black
+ * button in a light top bar. The open panel's chip keeps `ghost` and takes
+ * `transparency-selected` instead — the flat 6% foreground wash from Figma
+ * 14969:31878, the same token `OptionCard` uses for its selected row.
+ *
+ * `FilterChips` itself cannot be used here at all. It takes plain strings, so
+ * there is nowhere to put an icon or the `3/5`; it owns its selection in local
+ * state, which would fight the panel state that is the real source of truth; and
+ * it early-returns when the selected chip is re-clicked, so toggling a panel shut
+ * would not work.
+ *
+ * The Plan chip only exists while a plan does. Closing a plan — from the panel
  * toolbar's bin, or by restarting — plays its exit (a slight dip, then away to
  * the top right) before it unmounts. Keyframes live in `index.css`; the duration
  * is here so it and the unmount timer cannot drift apart.
- *
- * The buttons are hand-rolled rather than sparkle `Button`s because the frame
- * puts two text runs inside one button — the label plus the `3/5` progress in
- * smaller muted type — which the `label`-string API cannot express. Geometry
- * mirrors sparkle's `size="xs"` ghost button exactly (h-6, rounded-[9px], px-2,
- * gap-1.5, 14px/500).
  */
 
 const PLAN_CTA_EXIT_MS = 840;
 
-interface PanelButtonProps {
+/**
+ * The transform-and-fade above does not touch layout, so on its own the chip
+ * holds its box for the whole exit and the space then vanishes in a single
+ * frame — the remaining chips snap to the right. These collapse the space it
+ * occupies instead, so they glide across. Delayed so the squeeze starts once
+ * the chip is already well on its way out, and timed to land together
+ * (240 + 600 = 840).
+ *
+ * The gap is closed too: with `gap-2` between chips, a zero-width box still
+ * leaves 8px behind.
+ */
+const PLAN_CTA_COLLAPSE_MS = 600;
+const PLAN_CTA_COLLAPSE_DELAY_MS = 240;
+const PANEL_CHIP_GAP_PX = 8;
+
+interface PanelChipProps {
   label: string;
   icon: ComponentType;
   isSelected: boolean;
-  /** Rendered after the label in smaller muted type, e.g. `3/5`. */
+  /** Appended to the label, e.g. the plan's `3/5`. */
   progress?: string;
   onClick: () => void;
 }
 
-function PanelButton({
+function PanelChip({
   label,
   icon,
   isSelected,
   progress,
   onClick,
-}: PanelButtonProps) {
+}: PanelChipProps) {
   return (
-    <button
-      type="button"
+    <Button
+      size="xs"
+      variant="ghost"
+      icon={icon}
+      label={progress ? `${label} ${progress}` : label}
       onClick={onClick}
       aria-pressed={isSelected}
-      className={cn(
-        "inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[9px] px-2",
-        "text-sm font-medium leading-4 tracking-[-0.28px] text-foreground",
-        "transition-colors hover:bg-foreground/[0.04]",
-        // Figma: --transparency-selected, rgba(0,0,0,0.06).
-        isSelected && "bg-foreground/[0.06]"
-      )}
-    >
-      <Icon visual={icon} size="xs" />
-      <span className="truncate">{label}</span>
-      {progress && (
-        <span className="copy-xs text-muted-foreground">{progress}</span>
-      )}
-    </button>
+      // Figma: --transparency-selected, rgba(0, 0, 0, 0.06). `ghost` sets no
+      // resting background, so this lands without fighting the variant.
+      className={cn(isSelected && "bg-foreground/[0.06]")}
+    />
   );
 }
 
@@ -127,6 +138,25 @@ export function ConversationTopBar({
   }, [hasPlan, isPlanMounted]);
   const isPlanExiting = isPlanMounted && !hasPlan;
 
+  // Freeze the width the chip is collapsing from, then release it on the next
+  // frame so the transition has two values to interpolate between. `width: auto`
+  // is not animatable, so the measurement is unavoidable.
+  const planChipRef = useRef<HTMLDivElement>(null);
+  const [collapseWidthPx, setCollapseWidthPx] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!isPlanExiting) {
+      setCollapseWidthPx(null);
+      return;
+    }
+    const element = planChipRef.current;
+    if (!element) {
+      return;
+    }
+    setCollapseWidthPx(element.offsetWidth);
+    const frame = requestAnimationFrame(() => setCollapseWidthPx(0));
+    return () => cancelAnimationFrame(frame);
+  }, [isPlanExiting]);
+
   return (
     <AppLayoutTitle>
       <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3">
@@ -146,13 +176,13 @@ export function ConversationTopBar({
           />
         </div>
         <div className="flex items-center gap-2">
-          <PanelButton
+          <PanelChip
             label="Credits"
             icon={CoinsStacked02}
             isSelected={activeTab === "credits"}
             onClick={() => onSelectTab("credits")}
           />
-          <PanelButton
+          <PanelChip
             label="Files"
             icon={Folder}
             isSelected={activeTab === "files"}
@@ -160,14 +190,28 @@ export function ConversationTopBar({
           />
           {isPlanMounted && (
             <div
+              ref={planChipRef}
               className={cn(isPlanExiting && "animate-plan-cta-exit")}
               style={
                 isPlanExiting
-                  ? { animationDuration: `${PLAN_CTA_EXIT_MS}ms` }
+                  ? {
+                      animationDuration: `${PLAN_CTA_EXIT_MS}ms`,
+                      // Not `transition-*` utilities: tw-animate-css remaps
+                      // `delay-*` onto animation-delay, so a transition delay
+                      // has to be written out here.
+                      transition: `width ${PLAN_CTA_COLLAPSE_MS}ms cubic-bezier(0.4, 0, 0.2, 1) ${PLAN_CTA_COLLAPSE_DELAY_MS}ms, margin-left ${PLAN_CTA_COLLAPSE_MS}ms cubic-bezier(0.4, 0, 0.2, 1) ${PLAN_CTA_COLLAPSE_DELAY_MS}ms`,
+                      ...(collapseWidthPx === null
+                        ? {}
+                        : {
+                            width: collapseWidthPx,
+                            marginLeft:
+                              collapseWidthPx === 0 ? -PANEL_CHIP_GAP_PX : 0,
+                          }),
+                    }
                   : undefined
               }
             >
-              <PanelButton
+              <PanelChip
                 label="Plan"
                 icon={isPlanRunning ? PlanRunningIcon : ListSelect}
                 isSelected={activeTab === "plan"}

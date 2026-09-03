@@ -52,6 +52,17 @@ interface ConversationSidePanelProps {
   isPlanRunning?: boolean;
   /** production's `close_plan` — retires the plan. */
   onClosePlan?: () => void;
+  /**
+   * Pins the content to the width the panel is opening (or closing) to, for the
+   * duration of that animation. The panel's own width animates; left-anchored
+   * fixed-width content inside its `overflow-hidden` box therefore glides in
+   * from the side — the sparkle `Sheet` gesture — instead of re-wrapping its
+   * text on every frame. Null once settled, which hands sizing back to the
+   * panel so the resize handle still reflows.
+   */
+  lockedWidthPx?: number | null;
+  /** Progressive reveal while `create_plan` streams the plan in. */
+  planStreamingState?: "streaming" | "none";
 }
 
 export function ConversationSidePanel({
@@ -63,14 +74,23 @@ export function ConversationSidePanel({
   isPlanLoading = false,
   isPlanRunning = false,
   onClosePlan,
+  lockedWidthPx = null,
+  planStreamingState = "none",
 }: ConversationSidePanelProps) {
   return (
     <div
       className={cn(
         "relative flex h-full flex-col bg-background",
         // Figma: 0 1px 1px -0.5px rgb(0 0 0 / 0.06), 0 0 0 1px rgb(0 0 0 / 0.06)
-        "shadow-[0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_0px_0px_1px_rgba(0,0,0,0.06)]"
+        "shadow-[0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_0px_0px_1px_rgba(0,0,0,0.06)]",
+        // Sheet's own easing, so the panel opens like every other side surface.
+        lockedWidthPx !== null && "animate-in fade-in duration-500 ease-in-out"
       )}
+      style={
+        lockedWidthPx === null
+          ? undefined
+          : { width: lockedWidthPx, flexShrink: 0 }
+      }
     >
       {/* Both floating controls sit outside the scroll container so they stay
           put while the panel scrolls. */}
@@ -117,6 +137,7 @@ export function ConversationSidePanel({
             content={planContent}
             isLoading={isPlanLoading}
             isRunning={isPlanRunning}
+            streamingState={planStreamingState}
           />
         )}
       </div>
@@ -135,10 +156,12 @@ function PlanBody({
   content,
   isLoading,
   isRunning,
+  streamingState,
 }: {
   content: string | null;
   isLoading: boolean;
   isRunning: boolean;
+  streamingState: "streaming" | "none";
 }) {
   // Mount-scoped: showing the plan again (opening the panel on this tab) remounts
   // PlanBody and replays the reveal, which is the intent.
@@ -187,7 +210,7 @@ function PlanBody({
           className={className}
           index={index}
           states={taskStates}
-          isRevealing={isRevealing}
+          isRevealing={isRevealing && streamingState !== "streaming"}
         >
           {children}
         </PlanMarkdownListItem>
@@ -216,9 +239,13 @@ function PlanBody({
     // Remount on each edit: Sparkle's `Markdown` memoizes AST nodes for streaming
     // reveal and can keep stale children when the content prop is replaced.
     <Markdown
-      key={markdownKey}
+      // While streaming, the key must stay put or each appended chunk would
+      // remount the tree and restart the reveal from nothing.
+      key={streamingState === "streaming" ? "streaming" : markdownKey}
       content={normalizedContent ?? ""}
       additionalMarkdownComponents={markdownComponents}
+      streamingState={streamingState}
+      enableAnimation={streamingState === "streaming"}
     />
   );
 }

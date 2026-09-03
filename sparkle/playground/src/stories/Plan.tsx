@@ -81,18 +81,29 @@ const CONVERSATION_TITLE = "Q3 enterprise churn risk";
 const PLAN_INTRO = `38 accounts and four sources — this is worth planning before I touch anything. I've written it up in \`plan.md\`.`;
 
 // What `create_plan` writes. Structure follows PLAN_MODE_SKELETON in front.
-const INITIAL_PLAN = `# Q3 enterprise churn-risk brief
+// `create_plan` streams: the title and context land first, then the tasks are
+// written one after another. Split so the story can append them in order, and
+// recombined below so `PLAN_EDITS` still matches the finished file exactly.
+const PLAN_HEAD = `# Q3 enterprise churn-risk brief
 
 ## Context
 Emma asked for a churn-risk brief on every enterprise deal closed in Q3 — 38 accounts, $6.2M ARR. The signals live in four places: Salesforce (deal data), Notion (account notes), Zendesk (support history) and the shared deal-room channels in Slack. Deliverable is one page per account: risk score, the signals behind it, and a recommended next step.
 
 ## Tasks
-- [ ] Pull the Q3 deals — closed-won enterprise opportunities above $50k ARR, from Salesforce
-- [ ] Read the account notes — the Notion page for each deal, keeping renewal dates and open commitments
-- [ ] Review the support history — Zendesk tickets per account since the close date, flagging escalations
-- [ ] Check the deal rooms — shared Slack channels that have gone quiet since close
-- [ ] Write the briefs — one page per account: risk score, the signals behind it, a recommended next step
 `;
+
+const PLAN_TASK_LINES = [
+  "- [ ] Pull the Q3 deals — closed-won enterprise opportunities above $50k ARR, from Salesforce",
+  "- [ ] Read the account notes — the Notion page for each deal, keeping renewal dates and open commitments",
+  "- [ ] Review the support history — Zendesk tickets per account since the close date, flagging escalations",
+  "- [ ] Check the deal rooms — shared Slack channels that have gone quiet since close",
+  "- [ ] Write the briefs — one page per account: risk score, the signals behind it, a recommended next step",
+];
+
+const INITIAL_PLAN = `${PLAN_HEAD}${PLAN_TASK_LINES.join("\n")}\n`;
+
+/** Gap between task lines as the plan is written out. */
+const PLAN_STREAM_STEP_MS = 750;
 
 // Each `edit_plan` call: one exact string replacement, as in production.
 interface PlanEdit {
@@ -236,6 +247,8 @@ const CREATE_PLAN_MS = 2200;
  * slides away rather than reflowing.
  */
 const SIDE_PANEL_WIDTH_PX = 390;
+/** sparkle `Sheet`'s open duration, so the panel matches every other side surface. */
+const PANEL_TRANSITION_MS = 500;
 const NAV_COLLAPSE_PANEL_PX = 400;
 const NAV_WIDTH_PX = 320;
 
@@ -246,6 +259,9 @@ export default function PlanStory() {
   const [planContent, setPlanContent] = useState<string | null>(null);
   const [appliedEdits, setAppliedEdits] = useState(0);
   const [runningLabel, setRunningLabel] = useState<string | null>(null);
+  const [planStreamingState, setPlanStreamingState] = useState<
+    "streaming" | "none"
+  >("none");
   const [panel, setPanel] = useState<SidePanelTab | null>(null);
   const [answerLog, setAnswerLog] = useState<string[]>([]);
 
@@ -274,6 +290,22 @@ export default function PlanStory() {
   const panelWidthPx = (panelSizePct / 100) * groupWidthPx;
   const isNavCollapsed = panelWidthPx > NAV_COLLAPSE_PANEL_PX;
 
+  /**
+   * The panel's width animates open and shut; its content is pinned to the width
+   * it is heading for while that runs, so the text lays out once and glides in
+   * from the side instead of re-wrapping on every frame. Released afterwards, so
+   * dragging the handle still reflows.
+   */
+  const [isPanelAnimating, setIsPanelAnimating] = useState(false);
+  useEffect(() => {
+    setIsPanelAnimating(true);
+    const timer = window.setTimeout(
+      () => setIsPanelAnimating(false),
+      PANEL_TRANSITION_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, [panel]);
+
   const clearTimers = useCallback(() => {
     timers.current.forEach((id) => window.clearTimeout(id));
     timers.current = [];
@@ -281,14 +313,16 @@ export default function PlanStory() {
 
   /**
    * front keeps the panel type set through the close so the content survives the
-   * width animation, clearing it from `onTransitionEnd`. With no animation there
-   * is nothing to survive, so the state clears straight away; `onCollapse` keeps
-   * things in sync when the panel is collapsed by dragging the handle instead.
+   * width animation, clearing it from `onTransitionEnd`. Same idea here, but on a
+   * timer: an event that only fires when the animation actually runs is a bad
+   * thing to hang a teardown on.
    */
   const onPanelClosed = useCallback(() => setPanel(null), []);
   const closePanel = useCallback(() => {
     panelRef.current?.collapse();
-    onPanelClosed();
+    // Cleared on a timer rather than `onTransitionEnd`, so the content cannot be
+    // stranded on screen if that event never arrives.
+    window.setTimeout(onPanelClosed, PANEL_TRANSITION_MS);
   }, [onPanelClosed]);
 
   const openPlanTab = useCallback(() => setPanel("plan"), []);
@@ -311,6 +345,7 @@ export default function PlanStory() {
     setPhase("idle");
     setUserMessage(null);
     setPlanContent(null);
+    setPlanStreamingState("none");
     setAppliedEdits(0);
     setRunningLabel(null);
     setPanel(null);
@@ -451,13 +486,39 @@ export default function PlanStory() {
       setAppliedEdits(0);
       setRunningLabel(null);
       setAnswerLog([]);
+      setPlanStreamingState("none");
       setPhase("creating_plan");
 
+      // The title and context land first — that is when the panel opens — then
+      // each task line is appended in turn, and sparkle's Markdown reveals each
+      // new chunk as it arrives. Approval waits until the file is finished.
       timers.current.push(
         window.setTimeout(() => {
-          setPlanContent(INITIAL_PLAN);
-          setPhase("awaiting_approval");
+          setPlanStreamingState("streaming");
+          setPlanContent(PLAN_HEAD);
         }, CREATE_PLAN_MS)
+      );
+
+      PLAN_TASK_LINES.forEach((_, index) => {
+        timers.current.push(
+          window.setTimeout(
+            () => {
+              const written = PLAN_TASK_LINES.slice(0, index + 1);
+              setPlanContent(`${PLAN_HEAD}${written.join("\n")}\n`);
+            },
+            CREATE_PLAN_MS + (index + 1) * PLAN_STREAM_STEP_MS
+          )
+        );
+      });
+
+      timers.current.push(
+        window.setTimeout(
+          () => {
+            setPlanStreamingState("none");
+            setPhase("awaiting_approval");
+          },
+          CREATE_PLAN_MS + (PLAN_TASK_LINES.length + 1) * PLAN_STREAM_STEP_MS
+        )
       );
     },
     [clearTimers]
@@ -768,11 +829,11 @@ export default function PlanStory() {
               collapsible
               collapsedSize={0}
               onResize={setPanelSizePct}
-              onCollapse={onPanelClosed}
-              // Deliberately no width transition: the panel snaps to its 400px
-              // so its text lays out once. The nav is what animates.
+              // Animates open like sparkle's `Sheet`. Safe to animate now that
+              // the content is pinned to its final width while it runs (see
+              // `isPanelAnimating`) — that is what stopped the text re-wrapping.
               className={cn(
-                "flex-0 overflow-hidden",
+                "flex-0 overflow-hidden transition-[flex-grow] duration-500 ease-in-out",
                 !panel && "hidden w-0 md:block",
                 "md:relative",
                 panel &&
@@ -792,6 +853,8 @@ export default function PlanStory() {
                   planContent={planContent}
                   isPlanRunning={phase === "running"}
                   onClosePlan={closePlan}
+                  lockedWidthPx={isPanelAnimating ? SIDE_PANEL_WIDTH_PX : null}
+                  planStreamingState={planStreamingState}
                 />
               )}
             </ResizablePanel>
