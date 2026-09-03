@@ -393,6 +393,41 @@ describe("publishFrameV2FromSource", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
+  it("rejects normal publication while conversion recovery is pending", async () => {
+    const { auth, conversation, frame, gcsSourceDirectoryPath, manifestPath } =
+      await setup();
+    await frame.setUseCaseMetadata(auth, {
+      ...frame.useCaseMetadata,
+      pendingFrameV2Conversion: {
+        legacyContentType: frameContentType,
+        legacyFileName: "Legacy.tsx",
+        legacyFileSize: 1,
+        legacyMountFilePath: `${gcsSourceDirectoryPath}/Legacy.tsx`,
+        legacyRenderableVersion: "original",
+        legacyUseCase: "conversation",
+        legacyUseCaseMetadata: {
+          conversationId: conversation.sId,
+        },
+        manifestMountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+        manifestPath,
+        sourcePath: `conversation-${conversation.sId}/Legacy.tsx`,
+      },
+    });
+
+    const result = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_frame",
+      message: expect.stringContaining("rerun the conversion command"),
+    });
+    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
   it("bounds source listing before reading the folder", async () => {
     const { auth, conversation, frame, gcsSourceDirectoryPath, manifestPath } =
       await setup();

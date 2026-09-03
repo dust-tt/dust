@@ -238,7 +238,61 @@ async function setupLegacyFrameConversion({
       : null
   );
 
-  return { ...context, manifestPath };
+  return {
+    ...context,
+    manifestMountFilePath: `${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    manifestPath,
+  };
+}
+
+async function markLegacyFrameConversionPending(
+  context: Awaited<ReturnType<typeof setupLegacyFrameConversion>>,
+  { publicationId }: { publicationId?: string } = {}
+) {
+  const legacyBinding = {
+    contentType: context.frame.contentType,
+    fileName: context.frame.fileName,
+    fileSize: context.frame.fileSize,
+    mountFilePath: context.frame.mountFilePath!,
+    useCase: context.frame.useCase,
+    useCaseMetadata: context.frame.useCaseMetadata ?? {},
+  };
+  await context.frame.updateFrameSourceBinding({
+    contentType: frameV2ContentType,
+    fileName: FRAME_MANIFEST_FILE,
+    fileSize: Buffer.byteLength(manifest),
+    mountFilePath: context.manifestMountFilePath,
+    useCase: "conversation",
+    useCaseMetadata: {
+      ...(publicationId ? { activePublicationId: publicationId } : {}),
+      conversationId: context.conversation.sId,
+      pendingFrameV2Conversion: {
+        legacyContentType: frameContentType,
+        legacyFileName: legacyBinding.fileName,
+        legacyFileSize: legacyBinding.fileSize,
+        legacyMountFilePath: legacyBinding.mountFilePath,
+        legacyRenderableVersion: "original",
+        legacyUseCase: legacyBinding.useCase,
+        legacyUseCaseMetadata: legacyBinding.useCaseMetadata,
+        manifestMountFilePath: context.manifestMountFilePath,
+        manifestPath: context.manifestPath,
+        sourcePath: context.sourcePath,
+      },
+    },
+  });
+}
+
+function seedLegacyCanonicalArtifacts(
+  context: Awaited<ReturnType<typeof setupLegacyFrameConversion>>
+) {
+  const canonicalPaths = (["original", "processed", "public"] as const).map(
+    (version) => context.frame.getCloudStoragePath(context.auth, version)
+  );
+  for (const canonicalPath of canonicalPaths) {
+    fileStorageMock.setObject(canonicalPath, "legacy artifact");
+  }
+  fileStorageMock.setObject(context.frame.mountFilePath!, uiSource);
+  return canonicalPaths;
 }
 
 beforeEach(() => {
@@ -250,6 +304,8 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
   it("converts a legacy Frame while preserving identity and use rights", async () => {
     const context = await setupLegacyFrameConversion();
     const shareInfo = await context.frame.getShareInfo();
+    const canonicalPaths = seedLegacyCanonicalArtifacts(context);
+    const legacyMountPath = context.frame.mountFilePath!;
 
     const response = await requestFrameConvert(
       context.workspace.sId,
@@ -271,7 +327,12 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       converted.publicationId
     );
+    expect(frame?.useCaseMetadata?.pendingFrameV2Conversion).toBeUndefined();
     expect(await frame?.getShareInfo()).toEqual(shareInfo);
+    for (const canonicalPath of canonicalPaths) {
+      expect(fileStorageMock.getObject(canonicalPath)).toBeUndefined();
+    }
+    expect(fileStorageMock.getObject(legacyMountPath)).toBe(uiSource);
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "frame.converted",
@@ -337,6 +398,112 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.isFrameV2).toBe(false);
     expect(frame?.toScopedPath(context.auth)).toBe(context.sourcePath);
     expect(await frame?.getShareInfo()).toEqual(shareInfo);
+  });
+
+  it("finalizes an activated conversion left with its transition marker", async () => {
+    const context = await setupLegacyFrameConversion();
+    const canonicalPaths = seedLegacyCanonicalArtifacts(context);
+    const legacyMountPath = context.frame.mountFilePath!;
+    const publicationId = "already-active";
+    await markLegacyFrameConversionPending(context, { publicationId });
+
+    const response = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ publicationId });
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.useCaseMetadata?.pendingFrameV2Conversion).toBeUndefined();
+    for (const canonicalPath of canonicalPaths) {
+      expect(fileStorageMock.getObject(canonicalPath)).toBeUndefined();
+    }
+    expect(fileStorageMock.getObject(legacyMountPath)).toBe(uiSource);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.converted",
+        metadata: {
+          manifest_path: context.manifestPath,
+          publication_id: publicationId,
+          source_path: context.sourcePath,
+        },
+      })
+    );
+  });
+
+  it("retries legacy artifact cleanup before clearing the transition marker", async () => {
+    const context = await setupLegacyFrameConversion();
+    const canonicalPaths = seedLegacyCanonicalArtifacts(context);
+    const publicationId = "already-active";
+    await markLegacyFrameConversionPending(context, { publicationId });
+    fileStorageMock.setFileDeleteFails(
+      (path) =>
+        path === context.frame.getCloudStoragePath(context.auth, "processed")
+    );
+
+    const failedResponse = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+
+    expect(failedResponse.status).toBe(500);
+    const pendingFrame = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(
+      pendingFrame?.useCaseMetadata?.pendingFrameV2Conversion
+    ).toBeDefined();
+
+    fileStorageMock.setFileDeleteFails(() => false);
+    const recoveredResponse = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+
+    expect(recoveredResponse.status).toBe(200);
+    const recoveredFrame = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(
+      recoveredFrame?.useCaseMetadata?.pendingFrameV2Conversion
+    ).toBeUndefined();
+    for (const canonicalPath of canonicalPaths) {
+      expect(fileStorageMock.getObject(canonicalPath)).toBeUndefined();
+    }
+  });
+
+  it("restores a pending conversion when its manifest is no longer valid", async () => {
+    const context = await setupLegacyFrameConversion();
+    const shareInfo = await context.frame.getShareInfo();
+    await markLegacyFrameConversionPending(context);
+    fileStorageMock.setFileContent(() => "not-json");
+
+    const response = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+
+    expect(response.status).not.toBe(200);
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.isInteractiveContent).toBe(true);
+    expect(frame?.isFrameV2).toBe(false);
+    expect(frame?.toScopedPath(context.auth)).toBe(context.sourcePath);
+    expect(frame?.useCaseMetadata?.pendingFrameV2Conversion).toBeUndefined();
+    expect(await frame?.getShareInfo()).toEqual(shareInfo);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "frame.converted" })
+    );
   });
 
   it("registers one stable Frame identity", async () => {

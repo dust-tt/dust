@@ -28,6 +28,7 @@ import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
+import type { FileUseCaseMetadata } from "@app/types/files";
 import { frameV2ContentType, isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -97,6 +98,27 @@ function emitFrameConvertedAuditEvent(
   });
 }
 
+type PendingConversion = NonNullable<
+  FileUseCaseMetadata["pendingFrameV2Conversion"]
+>;
+
+function matchesPendingConversion(
+  pending: PendingConversion | undefined,
+  paths: {
+    manifest: string;
+    manifestMountPath: string;
+    source: string;
+    sourceMountPath: string;
+  }
+): pending is PendingConversion {
+  return (
+    pending?.manifestPath === paths.manifest &&
+    pending.manifestMountFilePath === paths.manifestMountPath &&
+    pending.sourcePath === paths.source &&
+    pending.legacyMountFilePath === paths.sourceMountPath
+  );
+}
+
 /** Convert a legacy Frame in place, preserving its stable identity and use-rights rows. */
 export async function convertLegacyFrameToV2(
   auth: Authenticator,
@@ -164,10 +186,23 @@ export async function convertLegacyFrameToV2(
     sourceMountPath,
     manifestMountPath,
   ]);
-  const legacyFrame = candidates.find(
-    (candidate) => candidate.mountFilePath === sourceMountPath
-  );
-  if (!legacyFrame?.isInteractiveContent || legacyFrame.isFrameV2) {
+  const frameCandidate =
+    candidates.find(
+      (file) =>
+        file.mountFilePath === sourceMountPath &&
+        file.isInteractiveContent &&
+        !file.isFrameV2
+    ) ??
+    candidates.find(
+      (file) =>
+        file.mountFilePath === manifestMountPath &&
+        file.isFrameV2 &&
+        matchesPendingConversion(
+          file.useCaseMetadata?.pendingFrameV2Conversion,
+          { manifest, manifestMountPath, source, sourceMountPath }
+        )
+    );
+  if (!frameCandidate) {
     return conversionError(
       "invalid_source",
       `No legacy Frame found at ${source}.`
@@ -175,7 +210,9 @@ export async function convertLegacyFrameToV2(
   }
   if (
     candidates.some(
-      (candidate) => candidate.mountFilePath === manifestMountPath
+      (file) =>
+        file.id !== frameCandidate.id &&
+        file.mountFilePath === manifestMountPath
     )
   ) {
     return conversionError(
@@ -185,15 +222,62 @@ export async function convertLegacyFrameToV2(
   }
 
   const convertWithSourceLock = async () => {
-    const frame = await FileResource.fetchById(auth, legacyFrame.sId);
-    if (!frame || frame.mountFilePath !== sourceMountPath) {
+    const frame = await FileResource.fetchById(auth, frameCandidate.sId);
+    if (!frame) {
       return conversionError(
         "conflict",
-        "The legacy Frame changed while it was being converted; retry from its current path."
+        "The legacy Frame was deleted while it was being converted."
       );
     }
+    let pending = frame.useCaseMetadata?.pendingFrameV2Conversion;
+    if (
+      pending &&
+      !matchesPendingConversion(pending, {
+        manifest,
+        manifestMountPath,
+        source,
+        sourceMountPath,
+      })
+    ) {
+      return conversionError(
+        "conflict",
+        "The legacy Frame is already being converted from another source path."
+      );
+    }
+    const activePublicationId = frame.useCaseMetadata?.activePublicationId;
+    if (frame.isFrameV2 && pending && activePublicationId) {
+      try {
+        await frame.finishFrameV2Conversion(auth);
+      } catch (error) {
+        logger.error(
+          {
+            error: normalizeError(error),
+            frameId: frame.sId,
+            manifestPath: manifest,
+            sourcePath: source,
+          },
+          "Failed to finish an activated Frame conversion"
+        );
+        return conversionError(
+          "internal",
+          "Frame conversion was activated but not finalized; retry the conversion command."
+        );
+      }
+      const result = {
+        frameId: frame.sId,
+        manifestPath: manifest,
+        publicationId: activePublicationId,
+      };
+      emitFrameConvertedAuditEvent(auth, { ...result, sourcePath: source });
+      return new Ok(result);
+    }
     const originalContentType = frame.contentType;
-    if (!isInteractiveContentType(originalContentType)) {
+    if (
+      !pending &&
+      (!isInteractiveContentType(originalContentType) ||
+        frame.isFrameV2 ||
+        frame.mountFilePath !== sourceMountPath)
+    ) {
       return conversionError(
         "conflict",
         "The legacy Frame changed while it was being converted; retry from its current path."
@@ -203,35 +287,23 @@ export async function convertLegacyFrameToV2(
       auth,
       [manifestMountPath]
     );
-    if (registeredManifest) {
+    if (registeredManifest && registeredManifest.id !== frame.id) {
       return conversionError(
         "conflict",
         "A registered file already uses the v2 manifest path."
       );
     }
 
-    const sourceSnapshot = await captureFrameV2SourceSnapshot(dustFs, manifest);
-    if (sourceSnapshot.isErr()) {
-      return sourceSnapshot;
-    }
-    if (sourceSnapshot.value.manifest.databases.length > 0) {
-      return conversionError(
-        "invalid_source",
-        "Convert the legacy Frame before adding Frame-owned databases, then publish again."
-      );
-    }
-
-    const original = {
-      contentType: originalContentType,
-      fileName: frame.fileName,
-      fileSize: frame.fileSize,
-      mountFilePath: sourceMountPath,
-      useCase: frame.useCase,
-      useCaseMetadata: frame.useCaseMetadata ?? {},
-    } satisfies Parameters<FileResource["updateFrameSourceBinding"]>[0];
-    const restore = async (): Promise<boolean> => {
+    const restore = async (transition: PendingConversion): Promise<boolean> => {
       try {
-        await frame.updateFrameSourceBinding(original);
+        await frame.updateFrameSourceBinding({
+          contentType: transition.legacyContentType,
+          fileName: transition.legacyFileName,
+          fileSize: transition.legacyFileSize,
+          mountFilePath: transition.legacyMountFilePath,
+          useCase: transition.legacyUseCase,
+          useCaseMetadata: transition.legacyUseCaseMetadata,
+        });
         return true;
       } catch (error) {
         logger.error(
@@ -247,29 +319,80 @@ export async function convertLegacyFrameToV2(
       }
     };
 
-    try {
-      await frame.updateFrameSourceBinding({
-        contentType: frameV2ContentType,
-        fileName: FRAME_MANIFEST_FILE,
-        fileSize: sourceSnapshot.value.manifestSizeBytes,
-        mountFilePath: manifestMountPath,
-        useCase: targetOwner.useCase,
-        useCaseMetadata: getConvertedFrameMetadata(
-          frame.useCaseMetadata ?? undefined,
-          targetOwner
-        ),
-      });
-    } catch (error) {
-      if (error instanceof UniqueConstraintError) {
+    const sourceSnapshot = await captureFrameV2SourceSnapshot(dustFs, manifest);
+    if (sourceSnapshot.isErr()) {
+      if (pending && !(await restore(pending))) {
         return conversionError(
-          "conflict",
-          "A registered file already uses the v2 manifest path."
+          "internal",
+          "Frame conversion recovery failed and its legacy source binding could not be restored."
         );
       }
-      return conversionError(
-        "internal",
-        `Frame conversion failed: ${normalizeError(error).message}`
+      return sourceSnapshot;
+    }
+    if (sourceSnapshot.value.manifest.databases.length > 0) {
+      const error = conversionError(
+        "invalid_source",
+        "Convert the legacy Frame before adding Frame-owned databases, then publish again."
       );
+      if (pending && !(await restore(pending))) {
+        return conversionError(
+          "internal",
+          "Frame conversion recovery failed and its legacy source binding could not be restored."
+        );
+      }
+      return error;
+    }
+
+    if (!pending) {
+      if (!isInteractiveContentType(originalContentType)) {
+        return conversionError("conflict", "The legacy Frame changed.");
+      }
+      pending = {
+        legacyContentType: originalContentType,
+        legacyFileName: frame.fileName,
+        legacyFileSize: frame.fileSize,
+        legacyMountFilePath: sourceMountPath,
+        legacyRenderableVersion: frame.useCaseMetadata?.frameBundleRootPath
+          ? "processed"
+          : "original",
+        legacyUseCase: frame.useCase,
+        legacyUseCaseMetadata: frame.useCaseMetadata ?? {},
+        manifestMountFilePath: manifestMountPath,
+        manifestPath: manifest,
+        sourcePath: source,
+      };
+      try {
+        await frame.updateFrameSourceBinding({
+          contentType: frameV2ContentType,
+          fileName: FRAME_MANIFEST_FILE,
+          fileSize: sourceSnapshot.value.manifestSizeBytes,
+          mountFilePath: manifestMountPath,
+          useCase: targetOwner.useCase,
+          useCaseMetadata: {
+            ...getConvertedFrameMetadata(
+              frame.useCaseMetadata ?? undefined,
+              targetOwner
+            ),
+            pendingFrameV2Conversion: pending,
+          },
+        });
+      } catch (error) {
+        if (error instanceof UniqueConstraintError) {
+          return conversionError(
+            "conflict",
+            "A registered file already uses the v2 manifest path."
+          );
+        }
+        return conversionError(
+          "internal",
+          `Frame conversion failed: ${normalizeError(error).message}`
+        );
+      }
+    }
+
+    const transition = pending;
+    if (!transition) {
+      return conversionError("internal", "Frame conversion marker is missing.");
     }
 
     try {
@@ -280,13 +403,15 @@ export async function convertLegacyFrameToV2(
         sourceSnapshot: sourceSnapshot.value,
       });
       if (publication.isErr()) {
-        return (await restore())
+        return (await restore(transition))
           ? new Err(publication.error)
           : conversionError(
               "internal",
               "Frame conversion failed and its legacy source binding could not be restored."
             );
       }
+
+      await frame.finishFrameV2Conversion(auth);
 
       logger.info(
         {
@@ -307,7 +432,14 @@ export async function convertLegacyFrameToV2(
       emitFrameConvertedAuditEvent(auth, { ...result, sourcePath: source });
       return new Ok(result);
     } catch (error) {
-      const restored = await restore();
+      const currentFrame = await FileResource.fetchById(auth, frame.sId);
+      if (currentFrame?.useCaseMetadata?.activePublicationId) {
+        return conversionError(
+          "internal",
+          "Frame conversion was activated but not finalized; retry the conversion command."
+        );
+      }
+      const restored = await restore(transition);
       return conversionError(
         "internal",
         restored
@@ -321,11 +453,11 @@ export async function convertLegacyFrameToV2(
     ConvertLegacyFrameToV2Error | LockAcquisitionTimeoutError
   >;
   try {
-    conversion = await withLegacyFrameMutationLock(legacyFrame.sId, () =>
+    conversion = await withLegacyFrameMutationLock(frameCandidate.sId, () =>
       withFrameSourceLock<
         ConvertLegacyFrameToV2Result,
         ConvertLegacyFrameToV2Error
-      >(legacyFrame.sId, convertWithSourceLock)
+      >(frameCandidate.sId, convertWithSourceLock)
     );
   } catch (error) {
     if (isLockAcquisitionTimeoutError(error)) {
