@@ -73,7 +73,7 @@ async function buildMemberRows(
   // Skipped entirely unless asked for: it is a query, and group names are verbose.
   const groupNamesByUserId = includeGroups
     ? await GroupResource.listGroupNamesByUserModelIdInWorkspace({
-        workspace: auth.getNonNullableWorkspace(),
+        auth,
         userModelIds: users.map((u) => u.id),
         groupKinds: [...MANAGEABLE_GROUP_KINDS],
       })

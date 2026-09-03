@@ -1251,13 +1251,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async listGroupNamesByUserModelIdInWorkspace({
-    workspace,
+    auth,
     userModelIds,
-    groupKinds = ["regular_auto", "provisioned"],
+    groupKinds,
   }: {
-    workspace: LightWorkspaceType;
+    auth: Authenticator;
     userModelIds: ModelId[];
-    groupKinds?: Exclude<GroupKind, "system">[];
+    groupKinds: UserVisibleGroupKind[];
   }): Promise<Map<ModelId, string[]>> {
     const result = new Map<ModelId, string[]>();
     if (userModelIds.length === 0) {
@@ -1267,7 +1267,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const now = new Date();
     const memberships = await GroupMembershipModel.findAll({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
         userId: userModelIds,
         status: "active",
         startAt: { [Op.lte]: now },
@@ -1279,14 +1279,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const groupModelIds = [...new Set(memberships.map((m) => m.groupId))];
-    const groups = await GroupModel.findAll({
+    const groups = await this.baseFetch(auth, {
       where: {
         id: groupModelIds,
-        workspaceId: workspace.id,
         kind: groupKinds,
       },
     });
-    const nameByGroupId = new Map(groups.map((g) => [g.id, g.name]));
+    const readableGroups = groups.filter((group) => group.canRead(auth));
+    const nameByGroupId = new Map(readableGroups.map((g) => [g.id, g.name]));
 
     for (const m of memberships) {
       const name = nameByGroupId.get(m.groupId);
