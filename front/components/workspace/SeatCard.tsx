@@ -392,26 +392,27 @@ export function SeatCard({
       onClick={onClick}
       className="w-full flex-col items-stretch gap-2 ring-0"
     >
-      <div className="flex w-full items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <div
-            className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-              iconBackgroundClass
-            )}
-          >
-            <Icon
-              visual={seatIcon}
-              size="sm"
-              className={getSeatIconColorClass(seatType)}
-            />
-          </div>
-          <span className="truncate text-base font-semibold text-foreground">
-            {stripYearlySuffix(info.name)}
-          </span>
+      <div className="flex w-full items-center gap-2">
+        <div
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+            iconBackgroundClass
+          )}
+        >
+          <Icon
+            visual={seatIcon}
+            size="sm"
+            className={getSeatIconColorClass(seatType)}
+          />
         </div>
-        <div className="shrink-0">{badge}</div>
+        <span className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
+          {stripYearlySuffix(info.name)}
+        </span>
       </div>
+      {/* On its own row rather than beside the name: the price/included-seats
+          badge is often too long to share a row with the name at this card
+          width without wrapping onto (and overlapping) the icon. */}
+      <div>{badge}</div>
       {info.awuCredits > 0 && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Icon
