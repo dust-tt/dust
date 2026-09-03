@@ -33,7 +33,10 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import { isCreditPricedPlan } from "@app/types/plan";
+import {
+  isCreditPricedPlan,
+  isSubscriptionMetronomeBilled,
+} from "@app/types/plan";
 import {
   AlertCircle,
   Button,
@@ -193,20 +196,34 @@ export function PoolUsagePage() {
       : "name";
   const orderDirection = sort?.desc ? "desc" : "asc";
 
-  const { awuPoolCurrentCycle } = usePokeAwuPoolCurrentCycle({ owner });
-  const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
-
   const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
   const activeSubscription = workspaceInfo?.activeSubscription;
-  const hasMetronomeContract = activeSubscription?.metronomeContractId != null;
+  // Many legacy (non credit-priced) workspaces still carry a Metronome
+  // contract used only for usage diagnostics (Stripe stays the billing
+  // source of truth), so a raw `metronomeContractId !== null` check matches
+  // almost every legacy workspace. `isSubscriptionMetronomeBilled` excludes
+  // those Stripe-billed shadow contracts and only reports a real,
+  // billing-active Metronome contract.
+  const hasMetronomeContract =
+    !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
   const isLegacyPremiumMessagePlan =
     !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
   // Users with no pool and no Metronome contract on a legacy plan only have
   // a premium-message rate limit — no pool/Metronome usage to show. The pool
   // cards and previous-cycles table would just render empty for them.
   const isLegacyWithoutPoolOrMetronome =
-    isLegacyPremiumMessagePlan && !hasPool && !hasMetronomeContract;
-  const showPoolSection = !isLegacyWithoutPoolOrMetronome;
+    isLegacyPremiumMessagePlan && !hasMetronomeContract;
+  // Default to hidden until the subscription loads, so the pool-cycle
+  // endpoints (which 400 for workspaces with no real Metronome contract)
+  // aren't fetched before we know whether this workspace has one.
+  const showPoolSection =
+    !!activeSubscription && !isLegacyWithoutPoolOrMetronome;
+
+  const { awuPoolCurrentCycle } = usePokeAwuPoolCurrentCycle({
+    owner,
+    disabled: !showPoolSection,
+  });
+  const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
 
   // Apply the "premium message usage" default sort once, the first time we
   // learn this workspace is legacy-without-pool — without clobbering a sort
