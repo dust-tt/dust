@@ -13,12 +13,12 @@ export const SKILL_AVAILABILITY_DISPLAY: Record<
   editors: {
     label: "Editors only",
     color: "primary",
-    tooltip: "Only editors can find it via the input bar and agent builder",
+    tooltip: "Only editors can find it via the composer and agent builder",
   },
   workspace_users: {
     label: "Members",
     color: "success",
-    tooltip: "All members can find it via the input bar and agent builder",
+    tooltip: "All members can find it via the composer and agent builder",
   },
   users_and_agents: {
     label: "Members and agents",
