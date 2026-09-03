@@ -1,5 +1,6 @@
 mod call;
 mod create;
+mod move_frame;
 mod publish;
 mod register;
 mod share_link;
@@ -12,6 +13,7 @@ use clap::Subcommand;
 
 pub use call::run as cmd_frame_call;
 pub use create::run as cmd_frame_create;
+pub use move_frame::run as cmd_frame_move;
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
 pub use share_link::run as cmd_frame_share_link;
@@ -48,6 +50,13 @@ pub enum FrameCommand {
         /// Absolute /files/.../manifest.json path
         manifest: PathBuf,
     },
+    /// Move a registered Frame folder while preserving its identity and state
+    Move {
+        /// Existing Frame folder under /files
+        source: PathBuf,
+        /// New Frame folder path under /files
+        destination: PathBuf,
+    },
     /// Retrieve the existing share link for a registered Frame
     ShareLink {
         /// Existing Frame folder under /files
@@ -69,6 +78,10 @@ fn scoped_path(path: &Path) -> anyhow::Result<String> {
     scoped_path_under(path, Path::new(FILES_ROOT))
 }
 
+fn scoped_new_path(path: &Path) -> anyhow::Result<String> {
+    scoped_new_path_under(path, Path::new(FILES_ROOT))
+}
+
 fn validate_scoped_path(path: &Path) -> anyhow::Result<()> {
     let relative = path
         .strip_prefix(FILES_ROOT)
@@ -88,6 +101,30 @@ fn scoped_path_under(path: &Path, files_root: &Path) -> anyhow::Result<String> {
         .with_context(|| format!("path must be under /files: {}", path.display()))?;
 
     validate_relative_scoped_path(relative)
+}
+
+fn scoped_new_path_under(path: &Path, files_root: &Path) -> anyhow::Result<String> {
+    if path.symlink_metadata().is_ok() {
+        bail!("destination must not exist: {}", path.display());
+    }
+
+    let canonical_root = files_root
+        .canonicalize()
+        .with_context(|| format!("failed to resolve {}", files_root.display()))?;
+    let parent = path
+        .parent()
+        .context("destination must have an existing parent under /files")?;
+    let canonical_parent = parent
+        .canonicalize()
+        .with_context(|| format!("destination parent must exist: {}", parent.display()))?;
+    let relative_parent = canonical_parent
+        .strip_prefix(&canonical_root)
+        .with_context(|| format!("path must be under /files: {}", path.display()))?;
+    let name = path
+        .file_name()
+        .context("destination must identify a folder under /files")?;
+
+    validate_relative_scoped_path(&relative_parent.join(name))
 }
 
 fn validate_relative_scoped_path(relative: &Path) -> anyhow::Result<String> {
@@ -166,6 +203,32 @@ mod tests {
             )
             .expect("valid alias path"),
             "conversation-conv_123/Status/manifest.json"
+        );
+        assert_eq!(
+            scoped_new_path_under(&files_root.join("conversation/NewFrame"), &files_root)
+                .expect("valid new path through alias"),
+            "conversation-conv_123/NewFrame"
+        );
+    }
+
+    #[test]
+    fn accepts_only_missing_destinations_with_existing_scoped_parents() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let files_root = temp.path().join("files");
+        let parent = files_root.join("conversation-conv_123");
+        let destination = parent.join("NewFrame");
+        fs::create_dir_all(&parent).expect("create parent");
+
+        assert_eq!(
+            scoped_new_path_under(&destination, &files_root).expect("valid new path"),
+            "conversation-conv_123/NewFrame"
+        );
+
+        fs::create_dir(&destination).expect("create destination");
+        assert!(scoped_new_path_under(&destination, &files_root).is_err());
+        assert!(
+            scoped_new_path_under(&files_root.join("missing-parent/NewFrame"), &files_root)
+                .is_err()
         );
     }
 

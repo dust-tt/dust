@@ -144,6 +144,10 @@ async fn run() -> anyhow::Result<()> {
             commands::frame::FrameCommand::Register { manifest } => {
                 commands::cmd_frame_register(&manifest).await?
             }
+            commands::frame::FrameCommand::Move {
+                source,
+                destination,
+            } => commands::cmd_frame_move(&source, &destination).await?,
             commands::frame::FrameCommand::ShareLink { directory } => {
                 commands::cmd_frame_share_link(&directory).await?
             }
@@ -559,6 +563,38 @@ mod tests {
                 );
             }
             Commands::Frame { .. } => panic!("expected validate"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_move_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "move",
+            "/files/conversation-conv_123/Status",
+            "/files/pod-vlt_123/Status",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command:
+                    commands::frame::FrameCommand::Move {
+                        source,
+                        destination,
+                    },
+            } => {
+                assert_eq!(
+                    source,
+                    std::path::PathBuf::from("/files/conversation-conv_123/Status")
+                );
+                assert_eq!(
+                    destination,
+                    std::path::PathBuf::from("/files/pod-vlt_123/Status")
+                );
+            }
+            Commands::Frame { .. } => panic!("expected move"),
             _ => panic!("expected frame"),
         }
     }

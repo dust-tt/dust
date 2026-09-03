@@ -63,6 +63,8 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("dsbx frame publish");
     expect(instructions).toContain("dsbx frame create");
     expect(instructions).toContain("dsbx frame register");
+    expect(instructions).toContain("dsbx frame move");
+    expect(instructions).toContain("registered Frame folder with raw");
     expect(instructions).toContain("dsbx frame share-link");
     expect(instructions).toContain("dsbx frame call");
     expect(instructions).toContain("stable Frame ID");
