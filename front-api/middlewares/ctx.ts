@@ -43,12 +43,6 @@ export type PokeFrameFunctionCtx = PokeFrameCtx & {
   };
 };
 
-export type PokePodFunctionCtx = PokeProjectCtx & {
-  Variables: {
-    podFunction: SandboxFunctionResource;
-  };
-};
-
 export type PokeFrameCtx = PokeCtx & {
   Variables: {
     frame: FileResource;
@@ -100,7 +94,6 @@ export const workspaceApp = () => createHono<WorkspaceAwareCtx>();
 export const pokeApp = () => createHono<PokeCtx>();
 export const pokeProjectApp = () => createHono<PokeProjectCtx>();
 export const pokeFrameFunctionApp = () => createHono<PokeFrameFunctionCtx>();
-export const pokePodFunctionApp = () => createHono<PokePodFunctionCtx>();
 export const pokeFrameApp = () => createHono<PokeFrameCtx>();
 export const publicApiApp = () => createHono<PublicApiCtx>();
 export const sandboxApp = () => createHono<SandboxCtx>();
