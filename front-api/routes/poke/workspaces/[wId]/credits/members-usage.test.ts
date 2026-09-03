@@ -1,5 +1,6 @@
 import * as membersUsage from "@app/lib/api/credits/members_usage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { makeMemberUsage } from "@app/tests/utils/MemberUsageFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,36 +15,7 @@ function membersUsageUrl(wId: string) {
   return `/api/poke/workspaces/${wId}/credits/members-usage`;
 }
 
-const MEMBER_USAGE = {
-  billingFrequency: "ANNUAL" as const,
-  consumedAwuCredits: 100,
-  consumedFromAllowanceAwuCredits: 50,
-  consumedFromPoolAwuCredits: 50,
-  creditState: "normal" as const,
-  email: "member1@example.com",
-  freeCreditEmptyAlert: null,
-  freeCreditLowAlert: null,
-  groups: [],
-  image: null,
-  memberUsageLimit: null,
-  name: "Member One",
-  nearLimit: false,
-  nextCreditResetAt: null,
-  sId: "member1",
-  scheduledSeatChangeAt: null,
-  scheduledSeatType: null,
-  seatType: "max" as const,
-  seatBalanceAwu: 100,
-  seatUsageTarget: null,
-  overallUsageTarget: "critical" as const,
-  spendLimitAlertId: null,
-  spendLimitAwuCredits: null,
-  rateLimiterSpendAwuCredits: null,
-  metronomeConsumedAwuCredits: null,
-  spendLimitSource: "default" as const,
-  spendLimitGroupName: null,
-  spendLimitWarningAlertId: null,
-};
+const MEMBER_USAGE = makeMemberUsage({ overallUsageTarget: "critical" });
 
 const CREDITS_RESET_AT = "2026-08-01T00:00:00.000Z";
 
