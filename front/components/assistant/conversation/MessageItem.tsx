@@ -335,6 +335,9 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               message={data}
               owner={context.owner}
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
+              disableReactions={
+                context.agentBuilderContext?.disableReactions === true
+              }
               isProjectArchived={context.isProjectArchived}
               setLimitReachedCode={context.setLimitReachedCode}
             />
