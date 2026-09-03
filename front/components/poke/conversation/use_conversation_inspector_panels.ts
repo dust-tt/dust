@@ -1,7 +1,6 @@
 import type { RefObject } from "react";
 import { useCallback, useLayoutEffect, useReducer } from "react";
 
-const ALLOWED_INSPECTOR_OVERLAP_PX = 12;
 const DESKTOP_INSPECTOR_MEDIA_QUERY = "(min-width: 1280px)";
 const MESSAGE_PANEL_VIEWPORT_GUTTER_PX = 16;
 const STICKY_INSPECTORS_OFFSET_PROPERTY = "--poke-sticky-inspectors-offset";
@@ -83,8 +82,8 @@ export function areInspectorPanelsOverlapping(
   messagePanel: Pick<DOMRect, "bottom" | "top">
 ): boolean {
   return (
-    messagePanel.top < stickyPanel.bottom - ALLOWED_INSPECTOR_OVERLAP_PX &&
-    messagePanel.bottom > stickyPanel.top + ALLOWED_INSPECTOR_OVERLAP_PX
+    messagePanel.top < stickyPanel.bottom &&
+    messagePanel.bottom > stickyPanel.top
   );
 }
 
@@ -96,10 +95,7 @@ export function getStickyInspectorsTopOffsetPx(
     return 0;
   }
 
-  return Math.max(
-    -stickyPanel.bottom,
-    messagePanel.top + ALLOWED_INSPECTOR_OVERLAP_PX - stickyPanel.bottom
-  );
+  return Math.max(-stickyPanel.bottom, messagePanel.top - stickyPanel.bottom);
 }
 
 export function getMessagePanelTopOffsetPx(

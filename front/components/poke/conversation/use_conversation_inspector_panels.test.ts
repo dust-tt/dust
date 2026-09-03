@@ -167,7 +167,24 @@ describe("useConversationInspectorPanels", () => {
     expect(messagePanel.style.translate).toBe("0 0px");
     expect(
       stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
-    ).toBe("-1px");
+    ).toBe("-13px");
+
+    messagePanelRect = rect(170, 470);
+    act(() => window.dispatchEvent(new Event("scroll")));
+    act(flushAnimationFrame);
+
+    expect(
+      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
+    ).toBe("-10px");
+
+    messagePanelRect = rect(180, 480);
+    act(() => window.dispatchEvent(new Event("scroll")));
+    act(flushAnimationFrame);
+
+    expect(result.current.isStickyRailOccluded).toBe(false);
+    expect(
+      stickyInspectors.style.getPropertyValue("--poke-sticky-inspectors-offset")
+    ).toBe("0px");
 
     messagePanelRect = rect(-400, -100);
     act(() => window.dispatchEvent(new Event("scroll")));
@@ -251,11 +268,11 @@ describe("useConversationInspectorPanels", () => {
 });
 
 describe("areInspectorPanelsOverlapping", () => {
-  it("allows a small overlap before flushing the sticky inspectors", () => {
-    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(168, 400))).toBe(
+  it("treats any shared space as an overlap", () => {
+    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(180, 400))).toBe(
       false
     );
-    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(167, 400))).toBe(
+    expect(areInspectorPanelsOverlapping(rect(16, 180), rect(179, 400))).toBe(
       true
     );
   });
@@ -272,9 +289,9 @@ describe("getMessagePanelTopOffsetPx", () => {
 });
 
 describe("getStickyInspectorsTopOffsetPx", () => {
-  it("preserves the allowed overlap while the message panel pushes upward", () => {
+  it("keeps the inspectors flush while the message panel pushes upward", () => {
     expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(100, 400))).toBe(
-      -68
+      -80
     );
   });
 
@@ -285,7 +302,7 @@ describe("getStickyInspectorsTopOffsetPx", () => {
   });
 
   it("stays put before the panels overlap", () => {
-    expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(168, 400))).toBe(
+    expect(getStickyInspectorsTopOffsetPx(rect(16, 180), rect(180, 400))).toBe(
       0
     );
   });
