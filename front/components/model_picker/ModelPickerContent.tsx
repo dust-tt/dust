@@ -46,8 +46,6 @@ interface ModelPickerContentProps {
   streams: ModelStreamResolutionsType | null;
   isMakersExpanded: boolean;
   onToggleMakers: () => void;
-  // Inline maker expansion, used on width-constrained clients where makers
-  // can't open as submenus.
   expandedMakerId: ModelMakerIdType | null;
   onToggleMaker: (makerId: ModelMakerIdType) => void;
   onSelectTier: (tierId: ModelTierId) => void;
