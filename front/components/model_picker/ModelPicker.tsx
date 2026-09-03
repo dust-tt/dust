@@ -320,7 +320,7 @@ export function ModelPicker({
           size={buttonSize}
           icon={
             degradedModelTooltip !== null ? (
-              <DegradedModelIcon icon={buttonIcon} />
+              <DegradedModelIcon icon={buttonIcon} surface="composer" />
             ) : (
               buttonIcon
             )
