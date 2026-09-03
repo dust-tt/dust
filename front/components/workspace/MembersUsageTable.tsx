@@ -51,6 +51,10 @@ import {
   CoinsStacked03,
   createSelectionColumn,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   LoadingBlock,
   ProgressBar,
@@ -753,7 +757,28 @@ const offPaceColumn: ColumnDef<RowData, string> = {
             onClick={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <Button variant="highlight" size="xs" label="Unblock" isSelect />
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="highlight"
+                  size="xs"
+                  label="Unblock"
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  label="Upgrade seat"
+                  disabled
+                  description="Not available from Poke yet"
+                />
+                <DropdownMenuItem
+                  label="Edit spend limit"
+                  disabled
+                  description="Not available from Poke yet"
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </DataTable.CellContent>
       );
