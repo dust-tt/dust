@@ -179,7 +179,7 @@ external workspace is archived.
 | `stop [NAME] [SERVICE]` | Full stop + remove docker containers, or stop one service |
 | `destroy [NAME] [--force]` | Remove environment completely (multi-select if NAME omitted) |
 | `unregister [NAME] [--force]` | Remove Hive resources while keeping the worktree and branch |
-| `restart [NAME] SERVICE` | Restart a single service |
+| `restart [NAME] SERVICE` | Restart a single service (`front` restarts all front-* services) |
 | `open [NAME]` | Open zellij terminal session |
 | `reload [NAME]` | Kill and reopen zellij session |
 | `list` | Show all environments |
