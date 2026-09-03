@@ -50,6 +50,7 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import {
+  frameV2ContentType,
   getSupportedFileExtensions,
   isInteractiveContentType,
 } from "@app/types/files";
@@ -291,13 +292,20 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
   const getExtraFileMenuItems = useCallback(
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
-      if (!isEditor || isArchived || entry.kind !== "file") {
+      if (
+        !isEditor ||
+        isArchived ||
+        (entry.kind !== "file" && entry.kind !== "frame_package")
+      ) {
         return [];
       }
 
       const items: FileExplorerMenuAction[] = [];
 
-      if (isInteractiveContentType(entry.contentType)) {
+      if (
+        entry.kind === "file" &&
+        isInteractiveContentType(entry.contentType)
+      ) {
         const pinned = isPinned(entry.path);
         items.push({
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
@@ -309,7 +317,13 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         });
       }
 
-      if (hasFileTabs && isFilePreviewableContentType(entry.contentType)) {
+      // A Frame is added as a tab from its package entry, whose path is the manifest; the
+      // manifest listed inside the source folder does not get the item again.
+      const canBeTab =
+        entry.kind === "frame_package" ||
+        (entry.contentType !== frameV2ContentType &&
+          isFilePreviewableContentType(entry.contentType));
+      if (hasFileTabs && canBeTab) {
         const asTab = isFileTab(entry.path);
         items.push({
           label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
