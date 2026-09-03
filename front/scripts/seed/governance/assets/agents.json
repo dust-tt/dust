@@ -17,5 +17,12 @@
     "description": "Alfred's published agent, restricted to a space the current user cannot access.",
     "instructions": "You answer questions using the documents of the private space.",
     "pictureUrl": "https://dust.tt/static/systemavatar/claude_avatar_full.png"
+  },
+  "alfredUnpublishedPrivateSpaceAgent": {
+    "name": "AlfredVaultDraft",
+    "description": "Alfred's unpublished agent, restricted to a space the current user cannot access.",
+    "instructions": "You are Alfred's work in progress agent over the documents of the private space.",
+    "pictureUrl": "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    "scope": "hidden"
   }
 }
