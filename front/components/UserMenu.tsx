@@ -1,5 +1,8 @@
 import type { CreditUsageState } from "@app/components/app/CreditUsage";
-import { CreditUsage } from "@app/components/app/CreditUsage";
+import {
+  CreditUsage,
+  CreditUsageLearnMoreButton,
+} from "@app/components/app/CreditUsage";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { UserAutomationsDialog } from "@app/components/me/UserAutomationsDialog";
@@ -94,6 +97,7 @@ interface UserMenuProps {
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
   creditUsageState?: CreditUsageState | null;
+  showCreditUsageLearnMoreOnly?: boolean;
 }
 
 function trackUserMenuEvent(
@@ -113,6 +117,7 @@ export function UserMenu({
   owner,
   subscription,
   creditUsageState,
+  showCreditUsageLearnMoreOnly = false,
 }: UserMenuProps) {
   const router = useAppRouter();
   const { featureFlags } = useFeatureFlags();
@@ -305,6 +310,12 @@ export function UserMenu({
     return hasMultipleOrgs || hasMultipleLocalWorkspaces;
   }, [user]);
 
+  const handleCreditUsageLearnMore = () => {
+    trackUserMenuEvent("credit_usage_learn_more");
+    setUserMenuOpen(false);
+    setAnalyticsOpen(true);
+  };
+
   return (
     <>
       <UserSettingsPopover
@@ -377,20 +388,25 @@ export function UserMenu({
           sideOffset={8}
           className="w-64"
         >
-          {subscription?.plan.limits.canUseProduct && creditUsageState && (
-            <>
-              <CreditUsage
-                state={creditUsageState}
-                variant="profile_menu"
-                onLearnMore={() => {
-                  trackUserMenuEvent("credit_usage_learn_more");
-                  setUserMenuOpen(false);
-                  setAnalyticsOpen(true);
-                }}
-              />
-              <Separator className="my-1" />
-            </>
-          )}
+          {subscription?.plan.limits.canUseProduct &&
+            (creditUsageState || showCreditUsageLearnMoreOnly) && (
+              <>
+                {showCreditUsageLearnMoreOnly ? (
+                  <div className="p-2">
+                    <CreditUsageLearnMoreButton
+                      onClick={handleCreditUsageLearnMore}
+                    />
+                  </div>
+                ) : creditUsageState ? (
+                  <CreditUsage
+                    state={creditUsageState}
+                    variant="profile_menu"
+                    onLearnMore={handleCreditUsageLearnMore}
+                  />
+                ) : null}
+                <Separator className="my-1" />
+              </>
+            )}
 
           {hasMultipleWorkspaces && (
             <>
@@ -532,8 +548,8 @@ export function UserMenu({
                   setAutomationsOpen(true);
                 }}
               />
-              {/* The credit usage card is the analytics entry point when shown; keep exactly one. */}
-              {!creditUsageState && (
+              {/* The credit usage action is the analytics entry point when shown; keep exactly one. */}
+              {!creditUsageState && !showCreditUsageLearnMoreOnly && (
                 <DropdownMenuItem
                   label="Analytics"
                   icon={BarChart01}

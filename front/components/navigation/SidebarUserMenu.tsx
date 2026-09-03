@@ -15,17 +15,22 @@ interface SidebarUserMenuProps {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  isFairUseAwuLimitDisabled: boolean;
 }
 
 export function SidebarUserMenu({
   user,
   owner,
   subscription,
+  isFairUseAwuLimitDisabled,
 }: SidebarUserMenuProps) {
   const isCreditBased = isCreditPricedPlan(subscription.plan);
   const { maxAwuCredits, maxAwuCreditsTimeframe } =
     subscription.plan.limits.assistant;
-  const hasFairUseCreditUsage = !isCreditBased && maxAwuCredits > 0;
+  const showCreditUsageLearnMoreOnly =
+    !isCreditBased && isFairUseAwuLimitDisabled;
+  const hasFairUseCreditUsage =
+    !isCreditBased && !isFairUseAwuLimitDisabled && maxAwuCredits > 0;
   const { myUsage, creditUsageStatus } = useMyUsage({
     workspaceId: owner.sId,
     disabled: !isCreditBased,
@@ -69,7 +74,9 @@ export function SidebarUserMenu({
         }
       : null;
   const rollingCreditUsageState: CreditUsageState | null =
-    fairUseAwuCreditsState && fairUseAwuCreditsState.limit > 0
+    hasFairUseCreditUsage &&
+    fairUseAwuCreditsState &&
+    fairUseAwuCreditsState.limit > 0
       ? {
           kind: "rolling_window",
           usedCredits: fairUseAwuCreditsState.count,
@@ -92,6 +99,7 @@ export function SidebarUserMenu({
   return (
     <>
       {subscription.plan.code !== FREE_TRIAL_PHONE_PLAN_CODE &&
+        !isFairUseAwuLimitDisabled &&
         !isCreditBased &&
         maxAwuCredits !== -1 && <FairUseCreditsUsage workspaceId={owner.sId} />}
       {creditUsageState && !showCreditUsageInProfileMenu && (
@@ -103,6 +111,7 @@ export function SidebarUserMenu({
         user={user}
         owner={owner}
         subscription={subscription}
+        showCreditUsageLearnMoreOnly={showCreditUsageLearnMoreOnly}
         creditUsageState={
           showCreditUsageInProfileMenu ? creditUsageState : null
         }
