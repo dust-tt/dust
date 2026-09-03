@@ -973,6 +973,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     return !!group;
   }
 
+  // Fetches a group by name across every kind, without an ACL check: the result
+  // may be a group the caller cannot read, so never use it to grant access.
+  // Only for name-conflict handling, where (workspaceId, name) being unique
+  // forces us to see the colliding row whatever its kind.
+  // Prefer groupExistsByName when a boolean is enough.
   static async dangerouslyFetchByName(
     auth: Authenticator,
     name: string
