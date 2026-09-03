@@ -216,6 +216,7 @@ describe("consumption active users overlay", () => {
 
     const activeDot = container.querySelector(".recharts-active-dot circle");
     expect(activeDot).toHaveClass("text-golden-500");
+    expect(activeDot).toHaveClass("animate-active-users-dot-in");
     expect(activeDot).toHaveAttribute("r", "3.75");
     expect(activeDot).toHaveAttribute("fill", "white");
     expect(activeDot).toHaveAttribute("stroke", "currentColor");

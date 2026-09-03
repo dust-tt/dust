@@ -463,7 +463,7 @@ export function ConsumptionDailyChart({
             strokeWidth={2}
             dot={{ r: 3, fill: "currentColor", strokeWidth: 0 }}
             activeDot={{
-              className: ACTIVE_USERS_COLOR,
+              className: cn(ACTIVE_USERS_COLOR, "animate-active-users-dot-in"),
               r: 3.75,
               fill: "white",
               stroke: "currentColor",

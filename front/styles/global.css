@@ -263,6 +263,24 @@ body.document-scroll-mode #root {
   outline: none;
 }
 
+@keyframes active-users-dot-in {
+  from {
+    transform: scale(0.9);
+  }
+}
+
+.animate-active-users-dot-in {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: active-users-dot-in 50ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-active-users-dot-in {
+    animation: none;
+  }
+}
+
 /* Rich text table styles for Contentful blog posts */
 .rich-text-table table tr:last-child td,
 .rich-text-table table tr:last-child th {
