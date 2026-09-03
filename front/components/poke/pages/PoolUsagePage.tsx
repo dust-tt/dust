@@ -228,6 +228,15 @@ export function PoolUsagePage() {
   const { seatPlans, isSeatPlanLoading, isSeatPlanError } = usePokeSeatPlan({
     owner,
   });
+  const isSeatBased = Object.keys(seatPlans).length > 1;
+  const canUpgradeSeat = useCallback(
+    (member: MemberUsageType) =>
+      isSeatBased &&
+      !!member.seatType &&
+      member.seatType !== "none" &&
+      toBaseSeatType(member.seatType) !== "workspace",
+    [isSeatBased]
+  );
 
   const { data: allGroups } = usePokeGroups({ owner });
   const groups = useMemo(
@@ -412,6 +421,7 @@ export function PoolUsagePage() {
                   onChangeSeat={noopOnMember}
                   onOpenChangeSeatRecap={setChangeSeatRecapMember}
                   onOpenSpendLimitRecap={setSpendLimitRecapMember}
+                  canUpgradeSeat={canUpgradeSeat}
                   onRemoveSeat={noopOnMember}
                   onEditSpendLimit={noopOnMember}
                   pagination={pagination}

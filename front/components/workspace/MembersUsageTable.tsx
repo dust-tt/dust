@@ -87,6 +87,7 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
   ModelsTierDefinition
 >();
 const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
+const ALWAYS_CAN_UPGRADE_SEAT = (_member: MemberUsageType) => true;
 
 type RowData = {
   sId: string;
@@ -109,6 +110,7 @@ type RowData = {
   isSeatChangePending: boolean;
   overallUsageTarget: CreditUsageTarget | null;
   creditState: UserCreditState;
+  canUpgradeSeat: boolean;
   onOpenChangeSeatRecap: () => void;
   onOpenSpendLimitRecap: () => void;
   modelTiersSummary: string;
@@ -754,11 +756,29 @@ const offPaceColumn: ColumnDef<RowData, string> = {
     const {
       overallUsageTarget,
       creditState,
+      canUpgradeSeat,
       onOpenChangeSeatRecap,
       onOpenSpendLimitRecap,
     } = info.row.original;
 
     if (creditState === "capped") {
+      if (!canUpgradeSeat) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <div
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <Button
+                variant="highlight"
+                size="xs"
+                label="Unblock"
+                onClick={onOpenSpendLimitRecap}
+              />
+            </div>
+          </DataTable.CellContent>
+        );
+      }
       return (
         <DataTable.CellContent className="justify-center">
           <div
@@ -988,6 +1008,7 @@ interface MembersUsageTableProps {
   // ("legacy") variant, which never renders that column.
   onOpenChangeSeatRecap?: (member: MemberUsageType) => void;
   onOpenSpendLimitRecap?: (member: MemberUsageType) => void;
+  canUpgradeSeat?: (member: MemberUsageType) => boolean;
   onSetUserModelTier?: (
     member: MemberUsageType,
     selection: UserModelTierSelection
@@ -1031,6 +1052,7 @@ export function MembersUsageTable({
   onEditSpendLimit,
   onOpenChangeSeatRecap = NOOP_ON_MEMBER,
   onOpenSpendLimitRecap = NOOP_ON_MEMBER,
+  canUpgradeSeat = ALWAYS_CAN_UPGRADE_SEAT,
   onSetUserModelTier,
   showModelTiersColumn = false,
   variant = "legacy",
@@ -1090,6 +1112,7 @@ export function MembersUsageTable({
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           overallUsageTarget: m.overallUsageTarget,
           creditState: m.creditState,
+          canUpgradeSeat: canUpgradeSeat(m),
           onOpenChangeSeatRecap: () => onOpenChangeSeatRecap(m),
           onOpenSpendLimitRecap: () => onOpenSpendLimitRecap(m),
           modelTiersSummary: (() => {
@@ -1200,6 +1223,7 @@ export function MembersUsageTable({
       onEditSpendLimit,
       onOpenChangeSeatRecap,
       onOpenSpendLimitRecap,
+      canUpgradeSeat,
       onSetUserModelTier,
     ]
   );
