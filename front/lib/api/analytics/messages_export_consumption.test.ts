@@ -135,7 +135,7 @@ describe("fetchMessageExportRows (consumption index)", () => {
     expect(row.assistantId).toBe("agent_abc");
     expect(row.assistantTags).toBe("Alpha,Zeta");
     expect(row.conversationId).toBe("conv_xyz");
-    expect(row.parentMessageId).toBe(""); // not yet implemented
+    expect(row.parentMessageId).toBe("msg_parent");
     expect(row.userId).toBe("user_99");
     expect(row.source).toBe("slack");
     expect(row.toolsUsed).toContain("tool_search");

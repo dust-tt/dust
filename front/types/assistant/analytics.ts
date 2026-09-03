@@ -254,6 +254,7 @@ interface AgentMessageConsumptionAnalyticsBaseData
   credit_micro: number;
   execution_time_ms: number | null;
   message_version: string;
+  parent_message_id: string | null;
   model: AgentMessageAnalyticsModel | null;
   run_usage_id: string;
   space_id: string | null;

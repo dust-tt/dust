@@ -305,6 +305,7 @@ type SeedConsumptionBaseFields = Pick<
   | "message_version"
   | "model"
   | "normalized_origin"
+  | "parent_message_id"
   | "run_usage_id"
   | "space_id"
   | "status"
@@ -344,6 +345,7 @@ function makeBaseFields(
       resolution_method: "agent",
     },
     normalized_origin: normalizeOrigin(message.origin),
+    parent_message_id: null,
     run_usage_id: consumptionKey,
     space_id: null,
     status: "succeeded",

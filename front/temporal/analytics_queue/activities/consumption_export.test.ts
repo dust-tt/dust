@@ -78,6 +78,7 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
     reasoning_effort: "medium",
     resolution_method: "auto",
   },
+  parent_message_id: null,
   run_usage_id: "123",
   space_id: "space1",
   status: "succeeded",

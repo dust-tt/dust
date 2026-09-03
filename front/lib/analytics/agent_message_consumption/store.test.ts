@@ -43,6 +43,7 @@ function makeDocument(): AgentMessageConsumptionAnalyticsData {
     conversation_id: "conversation_1",
     credit_micro: 1_000_000,
     execution_time_ms: null,
+    parent_message_id: null,
     gross_credit_micro: {
       system: 0,
       input: 600_000,

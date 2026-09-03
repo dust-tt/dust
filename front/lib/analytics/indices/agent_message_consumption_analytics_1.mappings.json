@@ -15,6 +15,9 @@
     "agent_message_id": {
       "type": "keyword"
     },
+    "parent_message_id": {
+      "type": "keyword"
+    },
     "message_version": {
       "type": "keyword"
     },
