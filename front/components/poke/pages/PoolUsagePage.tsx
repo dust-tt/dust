@@ -1,4 +1,5 @@
 import { PokeChangeSeatModal } from "@app/components/poke/credits/PokeChangeSeatModal";
+import { PokeMemberSpendLimitModal } from "@app/components/poke/credits/PokeMemberSpendLimitModal";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
 import {
   SEAT_TYPE_ICONS,
@@ -142,6 +143,8 @@ export function PoolUsagePage() {
     useState<MembershipSeatType | null>(null);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [changeSeatRecapMember, setChangeSeatRecapMember] =
+    useState<MemberUsageType | null>(null);
+  const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -394,6 +397,7 @@ export function PoolUsagePage() {
                   readOnly
                   onChangeSeat={noopOnMember}
                   onOpenChangeSeatRecap={setChangeSeatRecapMember}
+                  onOpenSpendLimitRecap={setSpendLimitRecapMember}
                   onRemoveSeat={noopOnMember}
                   onEditSpendLimit={noopOnMember}
                   pagination={pagination}
@@ -426,6 +430,13 @@ export function PoolUsagePage() {
         isSeatPlanLoading={isSeatPlanLoading}
         isSeatPlanError={!!isSeatPlanError}
         onClose={() => setChangeSeatRecapMember(null)}
+      />
+
+      <PokeMemberSpendLimitModal
+        isOpen={!!spendLimitRecapMember}
+        member={spendLimitRecapMember}
+        groups={groups}
+        onClose={() => setSpendLimitRecapMember(null)}
       />
     </main>
   );
