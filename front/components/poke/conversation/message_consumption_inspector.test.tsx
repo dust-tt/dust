@@ -209,7 +209,12 @@ describe("PokeMessageConsumptionInspector", () => {
     expect(screen.queryByText("Attributed")).not.toBeInTheDocument();
     expect(
       document.getElementById("message-message_test-consumption-details")
-    ).toHaveClass("xl:absolute", "xl:w-[var(--poke-inspector-width)]");
+    ).toHaveClass(
+      "max-h-[calc(100dvh-2rem)]",
+      "overflow-y-auto",
+      "xl:absolute",
+      "xl:w-[var(--poke-inspector-width)]"
+    );
   });
 
   it("keeps the exact bill visible when detailed attribution is unavailable", () => {

@@ -1,8 +1,9 @@
 import type { RefObject } from "react";
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useLayoutEffect, useReducer } from "react";
 
 const COLLISION_MARGIN_PX = 12;
 const DESKTOP_INSPECTOR_MEDIA_QUERY = "(min-width: 1280px)";
+const MESSAGE_PANEL_VIEWPORT_GUTTER_PX = 16;
 
 interface InspectorPanelState {
   activeMessageId: string | null;
@@ -86,6 +87,16 @@ export function areInspectorPanelsOverlapping(
   );
 }
 
+export function getMessagePanelMaxHeightPx(
+  panelTopPx: number,
+  viewportHeightPx: number
+): number {
+  return Math.max(
+    0,
+    viewportHeightPx - panelTopPx - MESSAGE_PANEL_VIEWPORT_GUTTER_PX
+  );
+}
+
 interface UseConversationInspectorPanelsProps {
   activeMessagePanelRef: RefObject<HTMLDivElement | null>;
   stickyInspectorsRef: RefObject<HTMLElement | null>;
@@ -97,7 +108,7 @@ export function useConversationInspectorPanels({
 }: UseConversationInspectorPanelsProps) {
   const [state, dispatch] = useReducer(inspectorPanelReducer, INITIAL_STATE);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!state.activeMessageId) {
       return;
     }
@@ -114,7 +125,7 @@ export function useConversationInspectorPanels({
         : null;
     let animationFrameId: number | null = null;
 
-    const measureOverlap = () => {
+    const measurePanels = () => {
       animationFrameId = null;
 
       if (
@@ -123,11 +134,31 @@ export function useConversationInspectorPanels({
         return;
       }
 
+      const messagePanelRect = messagePanel.getBoundingClientRect();
+      const isDesktop = desktopInspectorMedia?.matches ?? true;
+      let measuredMessagePanelRect = messagePanelRect;
+      if (isDesktop) {
+        const maxHeightPx = getMessagePanelMaxHeightPx(
+          messagePanelRect.top,
+          window.innerHeight
+        );
+        messagePanel.style.maxHeight = `${maxHeightPx}px`;
+        measuredMessagePanelRect = {
+          ...messagePanelRect,
+          bottom:
+            messagePanelRect.top +
+            Math.min(messagePanelRect.height, maxHeightPx),
+          height: Math.min(messagePanelRect.height, maxHeightPx),
+        };
+      } else {
+        messagePanel.style.removeProperty("max-height");
+      }
+
       const isOccluded =
-        (desktopInspectorMedia?.matches ?? true) &&
+        isDesktop &&
         areInspectorPanelsOverlapping(
           stickyInspectors.getBoundingClientRect(),
-          messagePanel.getBoundingClientRect()
+          measuredMessagePanelRect
         );
 
       dispatch({ type: "set_sticky_rail_occluded", occluded: isOccluded });
@@ -135,11 +166,11 @@ export function useConversationInspectorPanels({
 
     const scheduleMeasurement = () => {
       if (animationFrameId === null) {
-        animationFrameId = window.requestAnimationFrame(measureOverlap);
+        animationFrameId = window.requestAnimationFrame(measurePanels);
       }
     };
 
-    scheduleMeasurement();
+    measurePanels();
     window.addEventListener("resize", scheduleMeasurement);
     window.addEventListener("scroll", scheduleMeasurement, true);
 

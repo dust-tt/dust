@@ -1,5 +1,6 @@
 import {
   areInspectorPanelsOverlapping,
+  getMessagePanelMaxHeightPx,
   useConversationInspectorPanels,
 } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { act, renderHook } from "@testing-library/react";
@@ -146,6 +147,9 @@ describe("useConversationInspectorPanels", () => {
     act(() => result.current.setMessageOpen("message_1", true));
     act(flushAnimationFrame);
     expect(result.current.isStickyRailOccluded).toBe(false);
+    expect(messagePanel.style.maxHeight).toBe(
+      `${getMessagePanelMaxHeightPx(500, window.innerHeight)}px`
+    );
 
     messagePanelRect = rect(170, 470);
     act(() => window.dispatchEvent(new Event("scroll")));
@@ -153,6 +157,9 @@ describe("useConversationInspectorPanels", () => {
 
     expect(result.current.isConversationOpen).toBe(false);
     expect(result.current.isStickyRailOccluded).toBe(true);
+    expect(messagePanel.style.maxHeight).toBe(
+      `${getMessagePanelMaxHeightPx(170, window.innerHeight)}px`
+    );
 
     messagePanelRect = rect(-400, -100);
     act(() => window.dispatchEvent(new Event("scroll")));
@@ -189,6 +196,7 @@ describe("useConversationInspectorPanels", () => {
     act(flushAnimationFrame);
 
     expect(result.current.isStickyRailOccluded).toBe(false);
+    expect(messagePanel.style.maxHeight).toBe("");
   });
 });
 
@@ -200,5 +208,15 @@ describe("areInspectorPanelsOverlapping", () => {
     expect(areInspectorPanelsOverlapping(rect(16, 180), rect(193, 400))).toBe(
       false
     );
+  });
+});
+
+describe("getMessagePanelMaxHeightPx", () => {
+  it("keeps the panel inside the viewport with a bottom gutter", () => {
+    expect(getMessagePanelMaxHeightPx(300, 800)).toBe(484);
+  });
+
+  it("never returns a negative height", () => {
+    expect(getMessagePanelMaxHeightPx(800, 800)).toBe(0);
   });
 });

@@ -23,7 +23,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { Variants } from "framer-motion";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 
 const MESSAGE_PANEL_VARIANTS: Variants = {
   closed: {
@@ -164,6 +164,13 @@ export function PokeMessageConsumptionInspector({
   const { isDark } = useTheme();
   const shouldReduceMotion = Boolean(useReducedMotion());
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const handlePanelContentRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      const panel = element?.parentElement;
+      onPanelRefChange(panel instanceof HTMLDivElement ? panel : null);
+    },
+    [onPanelRefChange]
+  );
   const { consumption, isConsumptionError, isConsumptionLoading } =
     usePokeMessageConsumption({
       conversationId,
@@ -262,17 +269,14 @@ export function PokeMessageConsumptionInspector({
             id={contentId}
             role="region"
             aria-labelledby={triggerId}
-            className="z-10 mt-3 rounded-xl border border-border bg-background xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:mt-0 xl:w-[var(--poke-inspector-width)]"
+            className="z-10 mt-3 max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-xl border border-border bg-background xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:mt-0 xl:w-[var(--poke-inspector-width)]"
+            data-message-consumption-panel-id={messageId}
             variants={MESSAGE_PANEL_VARIANTS}
             initial={shouldReduceMotion ? false : "closed"}
             animate="open"
             exit={shouldReduceMotion ? undefined : "closed"}
           >
-            <div
-              ref={onPanelRefChange}
-              className="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[inherit]"
-              data-message-consumption-panel-id={messageId}
-            >
+            <div ref={handlePanelContentRef} className="rounded-[inherit]">
               <div className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">
