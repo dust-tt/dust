@@ -1,7 +1,7 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 import type { ToolOutputItemType } from "@app/lib/actions/types";
-import type { PokePodFunctionMCPAction } from "@app/lib/api/poke/projects";
+import type { PokeSandboxFunctionMCPAction } from "@app/lib/api/poke/sandbox_functions";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
@@ -556,7 +556,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   // been deleted. The output itself stays behind `readOutput`, poke fetches it on demand.
   toPokeJSON(
     mcpServerView: MCPServerViewResource | null
-  ): PokePodFunctionMCPAction {
+  ): PokeSandboxFunctionMCPAction {
     return {
       ...this.toJSON(),
       mcpServerViewId: mcpServerView?.sId ?? null,

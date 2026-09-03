@@ -1,9 +1,9 @@
 import config from "@app/lib/api/config";
 import type {
-  PokePodFunctionInvocation,
-  PokePodFunctionInvocationDetails,
-  PokePodFunctionMCPAction,
-} from "@app/lib/api/poke/projects";
+  PokeSandboxFunctionInvocation,
+  PokeSandboxFunctionInvocationDetails,
+  PokeSandboxFunctionMCPAction,
+} from "@app/lib/api/poke/sandbox_functions";
 import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
@@ -1584,7 +1584,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   static rowToPokeJSON(
     row: SandboxFunctionInvocationRow,
     user: UserResource | null
-  ): PokePodFunctionInvocation {
+  ): PokeSandboxFunctionInvocation {
     return {
       sId: row.sId,
       status: row.status,
@@ -1600,8 +1600,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   // MCP actions the caller resolved for it.
   toPokeJSON(
     user: UserResource | null,
-    mcpActions: PokePodFunctionMCPAction[]
-  ): PokePodFunctionInvocationDetails {
+    mcpActions: PokeSandboxFunctionMCPAction[]
+  ): PokeSandboxFunctionInvocationDetails {
     return {
       ...SandboxFunctionInvocationResource.rowToPokeJSON(
         {

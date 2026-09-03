@@ -1,5 +1,9 @@
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { PokeFrameCtx } from "@front-api/middlewares/ctx";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import type {
+  PokeFrameCtx,
+  PokeFrameFunctionCtx,
+} from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
@@ -27,6 +31,39 @@ export function withFrame() {
     }
 
     ctx.set("frame", frame);
+    await next();
+  });
+}
+
+/**
+ * Resolves the `:functionId` route param into a function of the context Frame, 404s if it belongs
+ * to another Frame, and stashes it on the context under `frameFunction`.
+ *
+ * Apply after `withFrame()` so `ctx.get("frame")` is available.
+ */
+export function withFrameFunction() {
+  return createMiddleware<PokeFrameFunctionCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+    const frame = ctx.get("frame");
+    const functionId = ctx.req.param("functionId");
+
+    const frameFunction = functionId
+      ? await SandboxFunctionResource.fetchByFrameAndId(auth, {
+          frame,
+          sandboxFunctionId: functionId,
+        })
+      : null;
+    if (!frameFunction) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "sandbox_function_not_found",
+          message: "Frame function not found.",
+        },
+      });
+    }
+
+    ctx.set("frameFunction", frameFunction);
     await next();
   });
 }

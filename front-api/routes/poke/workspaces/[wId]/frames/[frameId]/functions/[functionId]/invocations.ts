@@ -13,7 +13,7 @@ import {
   SANDBOX_FUNCTION_INVOCATION_STATUSES,
 } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { pokePodFunctionApp } from "@front-api/middlewares/ctx";
+import { pokeFrameFunctionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -42,8 +42,8 @@ const ActionOutputParamsSchema = z.object({
 });
 
 // Mounted at
-// /api/poke/workspaces/:wId/projects/:projectId/pod-functions/:functionId/invocations.
-const app = pokePodFunctionApp();
+// /api/poke/workspaces/:wId/frames/:frameId/functions/:functionId/invocations.
+const app = pokeFrameFunctionApp();
 
 /** @ignoreswagger */
 app.get(
@@ -51,11 +51,11 @@ app.get(
   validate("query", InvocationsQuerySchema),
   async (ctx): HandlerResult<PokeListSandboxFunctionInvocations> => {
     const auth = ctx.get("auth");
-    const podFunction = ctx.get("podFunction");
+    const frameFunction = ctx.get("frameFunction");
     const { limit, status, origin } = ctx.req.valid("query");
 
     const items = await listSandboxFunctionInvocations(auth, {
-      sandboxFunction: podFunction,
+      sandboxFunction: frameFunction,
       limit,
       statuses: status ? [status] : undefined,
       origins: origin ? [origin] : undefined,
@@ -71,11 +71,11 @@ app.get(
   validate("param", InvocationParamsSchema),
   async (ctx): HandlerResult<PokeGetSandboxFunctionInvocation> => {
     const auth = ctx.get("auth");
-    const podFunction = ctx.get("podFunction");
+    const frameFunction = ctx.get("frameFunction");
     const { invocationId } = ctx.req.valid("param");
 
     const invocation = await getSandboxFunctionInvocation(auth, {
-      sandboxFunction: podFunction,
+      sandboxFunction: frameFunction,
       invocationId,
     });
     if (!invocation) {
@@ -98,11 +98,11 @@ app.get(
   validate("param", ActionOutputParamsSchema),
   async (ctx): HandlerResult<PokeGetSandboxFunctionMCPActionOutput> => {
     const auth = ctx.get("auth");
-    const podFunction = ctx.get("podFunction");
+    const frameFunction = ctx.get("frameFunction");
     const { invocationId, actionId } = ctx.req.valid("param");
 
     const outputResult = await getSandboxFunctionMCPActionOutput(auth, {
-      sandboxFunction: podFunction,
+      sandboxFunction: frameFunction,
       invocationId,
       actionId,
     });

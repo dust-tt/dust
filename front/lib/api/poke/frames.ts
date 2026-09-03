@@ -1,7 +1,10 @@
 import path from "node:path";
+import type { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 
-import { loadFramePublicationDescriptor } from "@app/lib/api/frames/publication_storage";
-import type { PokePodFunction } from "@app/lib/api/poke/projects";
+import {
+  loadFramePublicationDescriptor,
+  readFramePublicationFunctionBundle,
+} from "@app/lib/api/frames/publication_storage";
 import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { listDatabasesOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -18,11 +21,18 @@ import {
   getFrameDatabaseReplicasBasePath,
   getFramePublicationsBasePath,
 } from "@app/types/api/frame_storage";
+import type {
+  SandboxFunctionExecutionMode,
+  SandboxFunctionStake,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import type { FileStatus } from "@app/types/files";
 import type { PokeSandboxType } from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type PokeFrameListItem = {
   sId: string;
@@ -271,14 +281,48 @@ export async function getFrameDetails(
   };
 }
 
+/**
+ * Frame functions get their own shapes rather than reusing the Pod ones. A Pod function's `fileId`
+ * is its published bundle while a Frame function's is the Frame manifest, so the Pod shape would
+ * mislead here — and Pods are being retired, so sharing a type would only have to be untangled.
+ */
+export type PokeFrameFunction = {
+  sId: string;
+  // Also the key the published bundle is stored under: createForFramePublication sets
+  // `slug: fn.name`, and Frames have no app prefix to strip.
+  slug: string;
+  description: string;
+  publicationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PokeFrameFunctionDetails = PokeFrameFunction & {
+  userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  executionMode: SandboxFunctionExecutionMode;
+  defaultStake: SandboxFunctionStake;
+  bundleSha256: string | null;
+  inputSchema: JSONSchema;
+  outputSchema: JSONSchema;
+  isActivePublication: boolean;
+};
+
 export type PokeListFrameFunctions = {
-  items: PokePodFunction[];
+  items: PokeFrameFunction[];
+};
+
+export type PokeGetFrameFunction = {
+  frameFunction: PokeFrameFunctionDetails;
+};
+
+export type PokeGetFrameFunctionSource = {
+  source: string;
 };
 
 export async function listFrameFunctions(
   auth: Authenticator,
   frame: FileResource
-): Promise<PokePodFunction[]> {
+): Promise<PokeFrameFunction[]> {
   const publicationId = frame.useCaseMetadata?.activePublicationId;
   if (!publicationId) {
     return [];
@@ -289,19 +333,27 @@ export async function listFrameFunctions(
     { frame, publicationId }
   );
 
-  const authors = await UserResource.fetchByModelIds(
-    removeNulls(
-      sandboxFunctions.map((sandboxFunction) => sandboxFunction.file.userId)
-    )
+  return sandboxFunctions.map((sandboxFunction) =>
+    sandboxFunction.toPokeFrameJSON()
   );
-  const authorsByModelId = new Map(authors.map((user) => [user.id, user]));
+}
 
-  return sandboxFunctions.map((sandboxFunction) => {
-    const { userId } = sandboxFunction.file;
+export async function getFrameFunctionSource(
+  auth: Authenticator,
+  {
+    frame,
+    sandboxFunction,
+  }: { frame: FileResource; sandboxFunction: SandboxFunctionResource }
+): Promise<Result<string, FramePublicationError>> {
+  // `publicationId` is non-null for anything resolved as a Frame function: baseFetch drops rows
+  // without one.
+  const { publicationId } = sandboxFunction;
+  assert(publicationId, "A Frame function always belongs to a publication.");
 
-    return sandboxFunction.toPokeJSON(
-      userId !== null ? (authorsByModelId.get(userId) ?? null) : null
-    );
+  return readFramePublicationFunctionBundle(auth, {
+    frame,
+    publicationId,
+    functionName: sandboxFunction.slug,
   });
 }
 

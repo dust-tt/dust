@@ -1,3 +1,5 @@
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { makeTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
@@ -30,6 +32,52 @@ describe("GET /api/poke/workspaces/:wId/frames", () => {
       sandboxStatus: null,
     });
     expect(data.hasMore).toBe(false);
+  });
+
+  it("counts only the active publication's functions", async () => {
+    const { workspace, frame, adminAuth } = await makeTestFrameFunction({
+      isSuperUser: true,
+    });
+
+    // Function rows accumulate per publish and are never pruned, so a frame published more than
+    // once would report an inflated count if the query were not scoped to the active publication.
+    await withTransaction((transaction) =>
+      SandboxFunctionResource.createForFramePublication(
+        adminAuth,
+        {
+          frame,
+          publicationId: "publication-0",
+          functions: [
+            {
+              name: "stale-function",
+              description: "A function from a superseded publication.",
+              userIdentity: "optional",
+              executionMode: "durable",
+              defaultStake: "low",
+              bundleCode: "export default {};",
+              inputSchema: { type: "object" },
+              outputSchema: { type: "object" },
+            },
+          ],
+        },
+        transaction
+      )
+    );
+
+    // Prove the setup actually created a second function row, so a count of 1 below means
+    // "scoped to the active publication" rather than "the stale function was never created".
+    const stale = await SandboxFunctionResource.fetchByFramePublicationAndSlug(
+      adminAuth,
+      { frame, publicationId: "publication-0", slug: "stale-function" }
+    );
+    expect(stale).not.toBeNull();
+
+    const response = await honoApp.request(framesUrl(workspace.sId));
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].functionCount).toBe(1);
   });
 
   it("excludes v1 interactive content and other files", async () => {

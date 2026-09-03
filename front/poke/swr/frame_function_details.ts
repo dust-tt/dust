@@ -1,7 +1,7 @@
 import type {
-  PokeGetPodFunction,
-  PokeGetPodFunctionSource,
-} from "@app/lib/api/poke/projects";
+  PokeGetFrameFunction,
+  PokeGetFrameFunctionSource,
+} from "@app/lib/api/poke/frames";
 import type {
   PokeGetSandboxFunctionInvocation,
   PokeGetSandboxFunctionMCPActionOutput,
@@ -16,48 +16,48 @@ import type {
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
-interface PodFunctionScope {
+interface FrameFunctionScope {
   owner: LightWorkspaceType;
-  projectId: string;
+  frameId: string;
   functionId: string;
 }
 
-function podFunctionUrl({ owner, projectId, functionId }: PodFunctionScope) {
-  return `/api/poke/workspaces/${owner.sId}/projects/${projectId}/pod-functions/${functionId}`;
+function frameFunctionUrl({ owner, frameId, functionId }: FrameFunctionScope) {
+  return `/api/poke/workspaces/${owner.sId}/frames/${frameId}/functions/${functionId}`;
 }
 
-export function usePokePodFunction({
+export function usePokeFrameFunctionDetails({
   owner,
-  projectId,
+  frameId,
   functionId,
   disabled,
-}: PodFunctionScope & { disabled?: boolean }) {
+}: FrameFunctionScope & { disabled?: boolean }) {
   const { fetcher } = useFetcher();
-  const podFunctionFetcher: Fetcher<PokeGetPodFunction> = fetcher;
+  const frameFunctionFetcher: Fetcher<PokeGetFrameFunction> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    podFunctionUrl({ owner, projectId, functionId }),
-    podFunctionFetcher,
+    frameFunctionUrl({ owner, frameId, functionId }),
+    frameFunctionFetcher,
     { disabled }
   );
 
   return {
-    podFunction: data?.podFunction ?? null,
+    frameFunction: data?.frameFunction ?? null,
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
   };
 }
 
-export function usePokePodFunctionSource({
+export function usePokeFrameFunctionSource({
   owner,
-  projectId,
+  frameId,
   functionId,
   disabled,
-}: PodFunctionScope & { disabled?: boolean }) {
+}: FrameFunctionScope & { disabled?: boolean }) {
   const { fetcher } = useFetcher();
-  const sourceFetcher: Fetcher<PokeGetPodFunctionSource> = fetcher;
+  const sourceFetcher: Fetcher<PokeGetFrameFunctionSource> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `${podFunctionUrl({ owner, projectId, functionId })}/source`,
+    `${frameFunctionUrl({ owner, frameId, functionId })}/source`,
     sourceFetcher,
     { disabled }
   );
@@ -72,13 +72,13 @@ export function usePokePodFunctionSource({
 
 export function usePokeSandboxFunctionInvocations({
   owner,
-  projectId,
+  frameId,
   functionId,
   limit,
   status,
   origin,
   disabled,
-}: PodFunctionScope & {
+}: FrameFunctionScope & {
   limit: number;
   status?: SandboxFunctionInvocationStatus;
   origin?: SandboxFunctionInvocationOrigin;
@@ -97,7 +97,7 @@ export function usePokeSandboxFunctionInvocations({
   }
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `${podFunctionUrl({ owner, projectId, functionId })}/invocations?${params.toString()}`,
+    `${frameFunctionUrl({ owner, frameId, functionId })}/invocations?${params.toString()}`,
     invocationsFetcher,
     { disabled }
   );
@@ -112,15 +112,15 @@ export function usePokeSandboxFunctionInvocations({
 
 export function usePokeSandboxFunctionInvocation({
   owner,
-  projectId,
+  frameId,
   functionId,
   invocationId,
   disabled,
-}: PodFunctionScope & { invocationId: string; disabled?: boolean }) {
+}: FrameFunctionScope & { invocationId: string; disabled?: boolean }) {
   const { fetcher } = useFetcher();
   const invocationFetcher: Fetcher<PokeGetSandboxFunctionInvocation> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `${podFunctionUrl({ owner, projectId, functionId })}/invocations/${invocationId}`,
+    `${frameFunctionUrl({ owner, frameId, functionId })}/invocations/${invocationId}`,
     invocationFetcher,
     { disabled }
   );
@@ -135,12 +135,12 @@ export function usePokeSandboxFunctionInvocation({
 
 export function usePokeSandboxFunctionMCPActionOutput({
   owner,
-  projectId,
+  frameId,
   functionId,
   invocationId,
   actionId,
   disabled,
-}: PodFunctionScope & {
+}: FrameFunctionScope & {
   invocationId: string;
   actionId: string;
   disabled?: boolean;
@@ -148,7 +148,7 @@ export function usePokeSandboxFunctionMCPActionOutput({
   const { fetcher } = useFetcher();
   const outputFetcher: Fetcher<PokeGetSandboxFunctionMCPActionOutput> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `${podFunctionUrl({ owner, projectId, functionId })}/invocations/${invocationId}/actions/${actionId}/output`,
+    `${frameFunctionUrl({ owner, frameId, functionId })}/invocations/${invocationId}/actions/${actionId}/output`,
     outputFetcher,
     { disabled }
   );

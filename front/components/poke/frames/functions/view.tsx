@@ -7,16 +7,16 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import type { PokePodFunctionDetails } from "@app/lib/api/poke/projects";
+import type { PokeFrameFunctionDetails } from "@app/lib/api/poke/frames";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-interface ViewPodFunctionTableProps {
-  podFunction: PokePodFunctionDetails;
+interface ViewFrameFunctionTableProps {
+  frameFunction: PokeFrameFunctionDetails;
 }
 
-export function ViewPodFunctionTable({
-  podFunction,
-}: ViewPodFunctionTableProps) {
+export function ViewFrameFunctionTable({
+  frameFunction,
+}: ViewFrameFunctionTableProps) {
   return (
     <div className="flex flex-col space-y-8">
       <div className="flex justify-between gap-3">
@@ -28,43 +28,52 @@ export function ViewPodFunctionTable({
             <PokeTableBody>
               <PokeTableRow>
                 <PokeTableHead>Slug</PokeTableHead>
-                <PokeTableCellWithCopy label={podFunction.slug} />
+                <PokeTableCellWithCopy label={frameFunction.slug} />
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>sId</PokeTableHead>
-                <PokeTableCellWithCopy label={podFunction.sId} />
+                <PokeTableCellWithCopy label={frameFunction.sId} />
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Description</PokeTableHead>
-                <PokeTableCell>{podFunction.description}</PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableHead>Author</PokeTableHead>
-                <PokeTableCell>{podFunction.author ?? "—"}</PokeTableCell>
+                <PokeTableCell>{frameFunction.description}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>User identity</PokeTableHead>
                 <PokeTableCell>
-                  {podFunction.userIdentity ?? "optional"}
+                  {frameFunction.userIdentity ?? "optional"}
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Execution mode</PokeTableHead>
-                <PokeTableCell>{podFunction.executionMode}</PokeTableCell>
+                <PokeTableCell>{frameFunction.executionMode}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Default stake</PokeTableHead>
-                <PokeTableCell>{podFunction.defaultStake}</PokeTableCell>
+                <PokeTableCell>{frameFunction.defaultStake}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Bundle file</PokeTableHead>
-                <PokeTableCellWithCopy label={podFunction.fileId} />
+                <PokeTableHead>Publication</PokeTableHead>
+                <PokeTableCell>
+                  {frameFunction.publicationId ?? "unpublished"}
+                  {frameFunction.publicationId &&
+                    !frameFunction.isActivePublication &&
+                    " (superseded)"}
+                </PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
+                <PokeTableHead>Bundle sha256</PokeTableHead>
+                {frameFunction.bundleSha256 ? (
+                  <PokeTableCellWithCopy label={frameFunction.bundleSha256} />
+                ) : (
+                  <PokeTableCell>—</PokeTableCell>
+                )}
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Created At</PokeTableHead>
                 <PokeTableCell>
                   {formatTimestampToFriendlyDate(
-                    new Date(podFunction.createdAt).getTime()
+                    new Date(frameFunction.createdAt).getTime()
                   )}
                 </PokeTableCell>
               </PokeTableRow>
@@ -72,7 +81,7 @@ export function ViewPodFunctionTable({
                 <PokeTableHead>Updated At</PokeTableHead>
                 <PokeTableCell>
                   {formatTimestampToFriendlyDate(
-                    new Date(podFunction.updatedAt).getTime()
+                    new Date(frameFunction.updatedAt).getTime()
                   )}
                 </PokeTableCell>
               </PokeTableRow>
@@ -81,11 +90,11 @@ export function ViewPodFunctionTable({
           <div className="flex flex-col gap-2 pt-4">
             <PokeJsonBlock
               label="Input schema"
-              value={podFunction.inputSchema}
+              value={frameFunction.inputSchema}
             />
             <PokeJsonBlock
               label="Output schema"
-              value={podFunction.outputSchema}
+              value={frameFunction.outputSchema}
             />
           </div>
         </div>
