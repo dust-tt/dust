@@ -1,0 +1,13 @@
+{
+  "action": "frame.cloned",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "destination_path": "string",
+    "publication_id": "string",
+    "source_frame_id": "string",
+    "source_path": "string"
+  }
+}

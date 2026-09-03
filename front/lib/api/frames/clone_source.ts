@@ -1,5 +1,10 @@
 import path from "node:path";
 
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
 import {
   withFrameSourceLock,
@@ -257,6 +262,25 @@ export async function cloneFrameV2Source(
     },
     "Cloned Frame v2"
   );
+
+  void emitAuditLogEvent({
+    auth,
+    action: "frame.cloned",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("frame", {
+        sId: clonedFrame.sId,
+        name: path.posix.basename(destination),
+      }),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      destination_path: destination,
+      publication_id: publication.value.publicationId,
+      source_frame_id: sourceFrame.sId,
+      source_path: source,
+    },
+  });
 
   return new Ok({
     destinationDirectoryPath: destination,
