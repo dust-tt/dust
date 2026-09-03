@@ -302,10 +302,11 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
       const items: FileExplorerMenuAction[] = [];
 
-      if (
-        entry.kind === "file" &&
-        isInteractiveContentType(entry.contentType)
-      ) {
+      // Legacy Frames pin from their file; a Frame v2 pins from its package entry (manifest path).
+      const canBePinned =
+        entry.kind === "frame_package" ||
+        isInteractiveContentType(entry.contentType);
+      if (canBePinned) {
         const pinned = isPinned(entry.path);
         items.push({
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
