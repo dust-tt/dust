@@ -3,25 +3,14 @@ name: List Image Tags
 on:
   workflow_dispatch:
     inputs:
-      region:
-        description: "Region to list images from"
-        type: choice
-        options:
-          - "us-central1"
-          - "europe-west1"
-        default: "us-central1"
-        required: true
       component:
-        description: "Component to deploy"
+        description: "Component to list tags for"
         type: choice
         options:
           - connectors
           - core
           - front
           - front-edge
-          - marketing
-          - marketing-edge
-          - metabase
           - oauth
           - prodbox
           - viz
@@ -39,49 +28,30 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - name: Set image registry
-        id: registry
-        run: |
-          # Build-once components live in the global registry, the rest in the regional ones.
-          case "${{ inputs.component }}" in
-            connectors|core|front|front-edge|oauth|prodbox|viz)
-              PROJECT_ID="dust-infra"
-              IMAGE_REPO="us-central1-docker.pkg.dev/dust-infra/dust-images"
-              ;;
-            *)
-              if [ "${{ inputs.region }}" = "us-central1" ]; then
-                PROJECT_ID="${{ secrets.GCLOUD_US_PROJECT_ID }}"
-              else
-                PROJECT_ID="${{ secrets.GCLOUD_EU_PROJECT_ID }}"
-              fi
-              IMAGE_REPO="${{ inputs.region }}-docker.pkg.dev/${PROJECT_ID}/dust-images"
-              ;;
-          esac
-          # The front releases run the front-api images.
-          case "${{ inputs.component }}" in
-            front) IMAGE="front-api" ;;
-            front-edge) IMAGE="front-api-edge" ;;
-            *) IMAGE="${{ inputs.component }}" ;;
-          esac
-          echo "PROJECT_ID=${PROJECT_ID}" >> "$GITHUB_OUTPUT"
-          echo "IMAGE_REPO=${IMAGE_REPO}/${IMAGE}" >> "$GITHUB_OUTPUT"
-
       - id: "auth"
         name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093" # v3.0.0
         with:
           create_credentials_file: true
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-          service_account: "github-build-invoker@${{ steps.registry.outputs.PROJECT_ID }}.iam.gserviceaccount.com"
+          service_account: "github-build-invoker@dust-infra.iam.gserviceaccount.com"
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db" # v3.0.1
 
       - name: List available tags
         run: |
-          echo "Latest tags for ${{ inputs.component }} in ${{ steps.registry.outputs.IMAGE_REPO }}:"
+          # The front releases run the front-api images.
+          case "${{ inputs.component }}" in
+            front) IMAGE="front-api" ;;
+            front-edge) IMAGE="front-api-edge" ;;
+            *) IMAGE="${{ inputs.component }}" ;;
+          esac
+          IMAGE_REPO="us-central1-docker.pkg.dev/dust-infra/dust-images/${IMAGE}"
+
+          echo "Latest tags in ${IMAGE_REPO}:"
           echo "-------------------------------------------"
-          gcloud container images list-tags "${{ steps.registry.outputs.IMAGE_REPO }}" \
+          gcloud container images list-tags "${IMAGE_REPO}" \
             --limit=10 \
             --sort-by=~timestamp \
             --format="table(timestamp.date('%Y-%m-%d %H:%M:%S'),tags[0])"
