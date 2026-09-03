@@ -170,8 +170,8 @@ async function createConversationForAgentConfiguration({
       PostHogServerSideTracking.trackEvent({
         distinctId: auth.getNonNullableUser().sId,
         event: "trigger_blocked",
-        properties: {
-          workspace_id: auth.getNonNullableWorkspace().sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        extra: {
           trigger_id: trigger.sId,
           error_type: errorType,
         },

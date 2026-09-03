@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import type { TrackingExtra } from "@app/lib/tracking";
 import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import type { UserType } from "@app/types/user";
@@ -26,11 +27,13 @@ export class PostHogServerSideTracking {
   static trackEvent({
     distinctId,
     event,
-    properties,
+    extra,
+    workspaceId,
   }: {
     distinctId: string;
     event: string;
-    properties?: Record<string, string | number | boolean>;
+    extra?: TrackingExtra;
+    workspaceId?: string;
   }): void {
     const client = getClient();
     if (!client) {
@@ -38,7 +41,16 @@ export class PostHogServerSideTracking {
     }
 
     try {
-      client.capture({ distinctId, event, properties });
+      client.capture({
+        distinctId,
+        event,
+        properties: {
+          ...extra, // Spread for PostHog.
+          extra, // As object for Snowflake.
+        },
+        // Resolves the event to a workspace downstream (`properties:$groups:workspace`).
+        ...(workspaceId ? { groups: { workspace: workspaceId } } : {}),
+      });
     } catch (err) {
       logger.error(
         { distinctId, event, err },
