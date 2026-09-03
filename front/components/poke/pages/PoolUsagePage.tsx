@@ -1,3 +1,4 @@
+import { PokeChangeSeatModal } from "@app/components/poke/credits/PokeChangeSeatModal";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
 import {
   SEAT_TYPE_ICONS,
@@ -17,6 +18,7 @@ import {
   usePokeAwuPoolCurrentCycle,
   usePokeAwuPoolCycleHistory,
   usePokeMembersUsage,
+  usePokeSeatPlan,
 } from "@app/poke/swr/credits";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeGroups } from "@app/poke/swr/groups";
@@ -139,6 +141,8 @@ export function PoolUsagePage() {
   const [seatTypeFilter, setSeatTypeFilter] =
     useState<MembershipSeatType | null>(null);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [changeSeatRecapMember, setChangeSeatRecapMember] =
+    useState<MemberUsageType | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -202,6 +206,10 @@ export function PoolUsagePage() {
     orderDirection,
     seatType: seatTypeFilter ?? undefined,
     groupId: groupFilter ?? undefined,
+  });
+
+  const { seatPlans, isSeatPlanLoading, isSeatPlanError } = usePokeSeatPlan({
+    owner,
   });
 
   const { data: allGroups } = usePokeGroups({ owner });
@@ -385,6 +393,7 @@ export function PoolUsagePage() {
                   hasPool={hasPool}
                   readOnly
                   onChangeSeat={noopOnMember}
+                  onOpenChangeSeatRecap={setChangeSeatRecapMember}
                   onRemoveSeat={noopOnMember}
                   onEditSpendLimit={noopOnMember}
                   pagination={pagination}
@@ -409,6 +418,15 @@ export function PoolUsagePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <PokeChangeSeatModal
+        isOpen={!!changeSeatRecapMember}
+        member={changeSeatRecapMember}
+        seatPlans={seatPlans}
+        isSeatPlanLoading={isSeatPlanLoading}
+        isSeatPlanError={!!isSeatPlanError}
+        onClose={() => setChangeSeatRecapMember(null)}
+      />
     </main>
   );
 }

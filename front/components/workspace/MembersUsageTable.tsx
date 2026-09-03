@@ -86,6 +86,10 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
   ModelsTierName,
   ModelsTierDefinition
 >();
+// Stable reference for optional member-callback props so a caller that
+// doesn't pass one (e.g. the customer-facing "legacy" variant) doesn't bust
+// the `rows` useMemo below with a new function identity every render.
+const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
 
 type RowData = {
   sId: string;
@@ -108,6 +112,7 @@ type RowData = {
   isSeatChangePending: boolean;
   overallUsageTarget: CreditUsageTarget | null;
   creditState: UserCreditState;
+  onOpenChangeSeatRecap: () => void;
   modelTiersSummary: string;
   hasUserLevelModelTiersOverride: boolean;
   menuItems: MenuItem[];
@@ -748,7 +753,8 @@ const offPaceColumn: ColumnDef<RowData, string> = {
   enableSorting: false,
   accessorFn: (row) => row.overallUsageTarget ?? "",
   cell: (info: Info) => {
-    const { overallUsageTarget, creditState } = info.row.original;
+    const { overallUsageTarget, creditState, onOpenChangeSeatRecap } =
+      info.row.original;
 
     if (creditState === "capped") {
       return (
@@ -769,8 +775,7 @@ const offPaceColumn: ColumnDef<RowData, string> = {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   label="Upgrade seat"
-                  disabled
-                  description="Not available from Poke yet"
+                  onClick={onOpenChangeSeatRecap}
                 />
                 <DropdownMenuItem
                   label="Edit spend limit"
@@ -977,6 +982,10 @@ interface MembersUsageTableProps {
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
+  // Poke-only: opens the read-only change-seat recap modal from the
+  // off-pace column's "Unblock" panel. No-op default for the customer-facing
+  // ("legacy") variant, which never renders that column.
+  onOpenChangeSeatRecap?: (member: MemberUsageType) => void;
   onSetUserModelTier?: (
     member: MemberUsageType,
     selection: UserModelTierSelection
@@ -1018,6 +1027,7 @@ export function MembersUsageTable({
   onChangeSeat,
   onRemoveSeat,
   onEditSpendLimit,
+  onOpenChangeSeatRecap = NOOP_ON_MEMBER,
   onSetUserModelTier,
   showModelTiersColumn = false,
   variant = "legacy",
@@ -1077,6 +1087,7 @@ export function MembersUsageTable({
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           overallUsageTarget: m.overallUsageTarget,
           creditState: m.creditState,
+          onOpenChangeSeatRecap: () => onOpenChangeSeatRecap(m),
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
             switch (variant) {
@@ -1183,6 +1194,7 @@ export function MembersUsageTable({
       onChangeSeat,
       onRemoveSeat,
       onEditSpendLimit,
+      onOpenChangeSeatRecap,
       onSetUserModelTier,
     ]
   );

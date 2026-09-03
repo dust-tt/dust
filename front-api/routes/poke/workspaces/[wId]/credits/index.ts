@@ -9,6 +9,7 @@ import awuPoolCycleHistory from "./awu-pool-cycle-history";
 import awuPoolSummary from "./awu-pool-summary";
 import consumptionExport from "./consumption-export";
 import membersUsage from "./members-usage";
+import seatsPlan from "./seats-plan";
 import topUps from "./top-ups";
 
 // Mounted at /api/poke/workspaces/:wId/credits.
@@ -44,6 +45,7 @@ app.route("/awu-pool-current-cycle", awuPoolCurrentCycle);
 app.route("/awu-pool-cycle-history", awuPoolCycleHistory);
 app.route("/consumption-export", consumptionExport);
 app.route("/members-usage", membersUsage);
+app.route("/seats-plan", seatsPlan);
 app.route("/top-ups", topUps);
 
 export default app;

@@ -788,7 +788,7 @@ export function UsagePage() {
     disabled: !isCreditPriced,
   });
 
-  const { seatPlans } = useSeatPlan({
+  const { seatPlans, isSeatPlanLoading, isSeatPlanError } = useSeatPlan({
     workspaceId: owner.sId,
     disabled: !isCreditPriced,
   });
@@ -1418,6 +1418,8 @@ export function UsagePage() {
         member={changeSeatMember}
         owner={owner}
         seatPlans={seatPlans}
+        isSeatPlanLoading={isSeatPlanLoading}
+        isSeatPlanError={!!isSeatPlanError}
         onSavingChange={handleSeatChangePendingChange}
         onSaved={handleSeatMutationSaved}
       />
