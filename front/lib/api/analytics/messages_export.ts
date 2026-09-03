@@ -35,15 +35,20 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   message_id: string;
   timestamp: string;
   agent_id: string;
+  // Optional: docs indexed before agent_tag_ids shipped don't carry it.
   agent_tag_ids?: string[];
   conversation_id: string;
+  // Ids of the agent messages that triggered this message through `run_agent`,
+  // direct parent first. Empty or absent for user-initiated messages.
   ancestor_message_ids?: string[];
   user_id: string;
   context_origin: string;
   status: string;
   tools_used?: { server_name: string; tool_name: string }[];
   skills_used?: { skill_name: string }[];
+  // Optional: docs indexed before the cost fields shipped don't carry it.
   cost?: AgentMessageAnalyticsCost;
+  // Optional: docs indexed before the model fields shipped don't carry it.
   model?: AgentMessageAnalyticsModel | null;
 }
 
