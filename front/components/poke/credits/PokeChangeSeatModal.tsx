@@ -101,11 +101,6 @@ export function PokeChangeSeatModal({
   isSeatPlanLoading,
   isSeatPlanError,
 }: PokeChangeSeatModalProps) {
-  // Keep the last non-null member so the dialog can render its content
-  // through the exit animation after the parent has cleared `member`. Set in
-  // an effect, not during render: React can replay or discard a render, so a
-  // write during render could leak a member from an abandoned render into
-  // the exit-animation snapshot.
   const lastMemberRef = useRef<MemberUsageType | null>(null);
   useEffect(() => {
     if (member) {
@@ -116,10 +111,6 @@ export function PokeChangeSeatModal({
 
   const notifySaveUnavailable = useUnavailableSeatChangeSave();
 
-  // "free" seats are never a selectable target, same as the customer modal.
-  // Also restrict to monthly/annual plans: BillingPeriodSwitch only offers
-  // those two cadences, so a weekly/quarterly-only seat plan would either
-  // show under the wrong tab label or leave a tab with no cards.
   const seatTypes = sortSeatTypes(
     Object.keys(seatPlans)
       .filter(isMembershipSeatType)

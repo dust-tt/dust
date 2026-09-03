@@ -86,9 +86,6 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
   ModelsTierName,
   ModelsTierDefinition
 >();
-// Stable reference for optional member-callback props so a caller that
-// doesn't pass one (e.g. the customer-facing "legacy" variant) doesn't bust
-// the `rows` useMemo below with a new function identity every render.
 const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
 
 type RowData = {
