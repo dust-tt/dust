@@ -39,10 +39,6 @@ export function ViewFrameFunctionTable({
                 <PokeTableCell>{frameFunction.description}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Name</PokeTableHead>
-                <PokeTableCellWithCopy label={frameFunction.name} />
-              </PokeTableRow>
-              <PokeTableRow>
                 <PokeTableHead>User identity</PokeTableHead>
                 <PokeTableCell>
                   {frameFunction.userIdentity ?? "optional"}

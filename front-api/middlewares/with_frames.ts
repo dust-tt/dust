@@ -1,5 +1,5 @@
-import { fetchFrameFunction } from "@app/lib/api/poke/frames";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PokeFrameCtx,
   PokeFrameFunctionCtx,
@@ -48,7 +48,10 @@ export function withFrameFunction() {
     const functionId = ctx.req.param("functionId");
 
     const frameFunction = functionId
-      ? await fetchFrameFunction(auth, frame, functionId)
+      ? await SandboxFunctionResource.fetchByFrameAndId(auth, {
+          frame,
+          sandboxFunctionId: functionId,
+        })
       : null;
     if (!frameFunction) {
       return apiError(ctx, {

@@ -2,11 +2,7 @@ import type {
   PokeGetFrameFunction,
   PokeGetFrameFunctionSource,
 } from "@app/lib/api/poke/frames";
-import {
-  getFrameFunctionDetails,
-  getFrameFunctionSource,
-} from "@app/lib/api/poke/frames";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { getFrameFunctionSource } from "@app/lib/api/poke/frames";
 import { pokeFrameFunctionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { withFrameFunction } from "@front-api/middlewares/with_frames";
@@ -26,7 +22,9 @@ app.get("/", async (ctx): HandlerResult<PokeGetFrameFunction> => {
   const frameFunction = ctx.get("frameFunction");
 
   return ctx.json({
-    frameFunction: getFrameFunctionDetails(frame, frameFunction),
+    frameFunction: frameFunction.toPokeFrameDetailsJSON(
+      frame.useCaseMetadata?.activePublicationId ?? null
+    ),
   });
 });
 
@@ -41,27 +39,14 @@ app.get("/source", async (ctx): HandlerResult<PokeGetFrameFunctionSource> => {
     sandboxFunction: frameFunction,
   });
   if (sourceResult.isErr()) {
-    switch (sourceResult.error.type) {
-      case "not_published":
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "file_not_found",
-            message: "This Frame function has no published bundle.",
-          },
-        });
-      case "bundle_not_found":
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "file_not_found",
-            message:
-              "The published bundle for this Frame function is missing from storage.",
-          },
-        });
-      default:
-        return assertNever(sourceResult.error.type);
-    }
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message:
+          "The published bundle for this Frame function is missing from storage.",
+      },
+    });
   }
 
   return ctx.json({ source: sourceResult.value });

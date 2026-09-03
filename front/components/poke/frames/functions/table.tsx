@@ -18,7 +18,7 @@ function makeColumnsForFrameFunction({
 }): ColumnDef<PokeFrameFunction>[] {
   return [
     {
-      accessorKey: "name",
+      accessorKey: "slug",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Name" />
       ),
@@ -27,7 +27,7 @@ function makeColumnsForFrameFunction({
           href={`/poke/${owner.sId}/files/${frameId}/functions/${row.original.sId}`}
           className="text-highlight-500"
         >
-          {row.original.name}
+          {row.original.slug}
         </LinkWrapper>
       ),
     },
@@ -37,13 +37,6 @@ function makeColumnsForFrameFunction({
         <PokeColumnSortableHeader column={column} label="Description" />
       ),
       cell: ({ row }) => row.original.description,
-    },
-    {
-      accessorKey: "slug",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Slug" />
-      ),
-      cell: ({ row }) => row.original.slug,
     },
     {
       accessorKey: "sId",

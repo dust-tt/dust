@@ -1058,7 +1058,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return {
       sId: this.sId,
       slug: this.slug,
-      name: sandboxFunctionNameFromSlug(this.slug),
       description: this.description,
       publicationId: this.publicationId,
       createdAt: this.createdAt.toISOString(),

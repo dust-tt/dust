@@ -21,7 +21,7 @@ export function FrameFunctionPage() {
   });
 
   usePokePageMetadata({
-    name: frameFunction?.name,
+    name: frameFunction?.slug,
     subtitle: owner.name,
     sId: functionId,
   });
@@ -45,7 +45,7 @@ export function FrameFunctionPage() {
   return (
     <>
       <h3 className="text-xl font-bold">
-        Frame function {frameFunction.name} in frame{" "}
+        Frame function {frameFunction.slug} in frame{" "}
         <LinkWrapper
           href={`/poke/${owner.sId}/files/${frameId}`}
           className="text-highlight-500"

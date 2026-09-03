@@ -35,7 +35,6 @@ describe("GET /api/poke/workspaces/:wId/frames/:frameId/functions/:functionId", 
     expect(data.frameFunction).toMatchObject({
       sId: sandboxFunction.sId,
       slug: "run-function",
-      name: "run-function",
       description: "Run the Frame function.",
       publicationId: "publication-1",
       userIdentity: "optional",
@@ -138,7 +137,7 @@ describe("GET .../frames/:frameId/functions/:functionId/source", () => {
     expect((await response.json()).source).toBe(
       "export default { fetch: async () => Response.json({}) };"
     );
-    // The bundle is keyed by the bare function name, not the slug.
+    // For a Frame the slug IS the bundle key: createForFramePublication stores `slug: fn.name`.
     expect(readFramePublicationFunctionBundle).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
