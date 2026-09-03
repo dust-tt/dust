@@ -34,6 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Edit04,
   InfoCircle,
   Plus,
   Tooltip,
@@ -346,15 +347,19 @@ export function EditSpaceManagedDataSourcesViews({
     );
   }
 
+  const hasExistingData = filteredDataSourceViews.length > 0;
+
   const addToSpaceButton = (
     <Button
       label={
         dataSourceView
           ? `Add data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
-          : "Add data from connections"
+          : hasExistingData
+            ? "Edit data from connections"
+            : "Add data from connections"
       }
       variant="primary"
-      icon={Plus}
+      icon={hasExistingData ? Edit04 : Plus}
       size="sm"
       onClick={() => {
         openAddDataModal();
