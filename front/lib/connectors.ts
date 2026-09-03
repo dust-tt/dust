@@ -244,8 +244,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
   notion: {
     matcher: (url: URL): boolean => {
       return NOTION_HOSTS.some(
-        (host) =>
-          url.hostname === host || url.hostname.endsWith(`.${host}`)
+        (host) => url.hostname === host || url.hostname.endsWith(`.${host}`)
       );
     },
     extractor: (url: URL): NodeCandidate => {
