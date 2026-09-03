@@ -1789,7 +1789,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const spaces = await SpaceResource.fetchByIds(auth, spaceIds);
     // System and conversations spaces have no auto group of their own.
     const membershipSpaces = spaces.filter(
-      (space) => space.isGlobal() || space.isRegular() || space.isProject()
+      (space) => !space.isSystem() && !space.isConversations()
     );
 
     const [autoGroupByGrantKey, globalGroupRes] = await Promise.all([

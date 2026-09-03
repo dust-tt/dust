@@ -47,7 +47,7 @@ async function fetchAutoGroupIdsForSpaces(
     return new Err(new Error(groupIdsRes.error.message));
   }
 
-  return new Ok(groupIdsRes.value);
+  return groupIdsRes;
 }
 
 const autoGroupIdsCacheKey = (whitelistModelId: ModelId) =>
