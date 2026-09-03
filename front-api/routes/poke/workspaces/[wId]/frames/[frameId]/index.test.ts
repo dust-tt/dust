@@ -103,4 +103,59 @@ describe("GET /api/poke/workspaces/:wId/frames/:frameId", () => {
 
     expect(response.status).toBe(404);
   });
+
+  it("returns the Frame's share scope and every grant, revoked included", async () => {
+    const { workspace, frame, adminAuth } = await makeTestFrameFunction({
+      isSuperUser: true,
+    });
+    await frame.setShareScope(adminAuth, "emails_only");
+    await frame.addSharingGrantsAndGetCreatedEmails(adminAuth, {
+      emails: ["active@dust.tt", "revoked@dust.tt"],
+    });
+
+    const grants = await frame.listAllSharingGrants();
+    const toRevoke = grants.find((grant) => grant.email === "revoked@dust.tt");
+    if (!toRevoke) {
+      throw new Error("Expected the grant to revoke to exist.");
+    }
+    const revokeResult = await frame.revokeSharingGrant({
+      grantId: toRevoke.id,
+    });
+    expect(revokeResult.isOk()).toBe(true);
+
+    vi.mocked(loadFramePublicationDescriptor).mockResolvedValue(
+      new Ok({
+        schemaVersion: 1,
+        manifest: { uiEntryPoint: "app.tsx", functions: [], databases: [] },
+        publishedAt: "2026-09-01T00:00:00.000Z",
+        publisherId: null,
+        sourceFiles: [{ path: "app.tsx", contentSha256: "a".repeat(64) }],
+        ui: { bundleSha256: "b".repeat(64) },
+        functions: [],
+        databases: [],
+      } as never)
+    );
+
+    const response = await honoApp.request(frameUrl(workspace.sId, frame.sId));
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.sharing).toMatchObject({ scope: "emails_only" });
+    expect(data.sharing.shareUrl).toBeTruthy();
+
+    // Revoked grants must still be returned: they answer "they used to have access". The length
+    // assertion matters — without it, dropping revoked grants would leave `.get()` undefined and
+    // `not.toBeNull()` would pass anyway.
+    expect(data.sharingGrants).toHaveLength(2);
+    const revokedAtByEmail = new Map(
+      data.sharingGrants.map(
+        (grant: { email: string; revokedAt: number | null }) => [
+          grant.email,
+          grant.revokedAt,
+        ]
+      )
+    );
+    expect(revokedAtByEmail.get("active@dust.tt")).toBeNull();
+    expect(revokedAtByEmail.get("revoked@dust.tt")).toEqual(expect.any(Number));
+  });
 });
