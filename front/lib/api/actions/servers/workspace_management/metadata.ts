@@ -198,9 +198,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
       "equipped skills and capabilities, and its complete system prompt and " +
       "instructions. Use this to inspect what an agent actually does. Admins " +
       "get every agent of the workspace, but for the ones they cannot read " +
-      "(unpublished agents they do not edit, agents built on spaces they are " +
-      "not a member of) the instructions, skills, tools and knowledge are " +
-      "withheld; only name, description, scope and model are returned.",
+      "the instructions, skills, tools and knowledge are withheld.",
     schema: getAgentDetailsSchema,
     stake: "never_ask",
     eager: true,
