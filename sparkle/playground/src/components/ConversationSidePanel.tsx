@@ -1,7 +1,17 @@
-import { File02, ListSelect, Markdown, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  cn,
+  Download01,
+  Markdown,
+  PencilLine,
+  Spinner,
+  Trash04,
+  XClose,
+} from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 
+import { ConversationFilesTab } from "./ConversationFilesTab";
 import { type CreditsUsage, CreditUsageGauge } from "./CreditUsageGauge";
 import {
   contentHash,
@@ -14,48 +24,90 @@ import { PlanMarkdownList, PlanMarkdownListItem } from "./PlanTaskList";
  * The conversation side panel — Figma 14797:120638 (three tabs) on top of
  * 14800:125175 (the panel/top-bar simplification).
  *
- * The panel has no header of its own: the `Credit usage` / `Files` / `Plan` CTAs
- * stay put in the full-width top bar and become the panel's tab strip when it
- * opens (see `ConversationTopBar`), so the panel slides open directly underneath
- * them and nothing jumps.
+ * One panel per type, following front's `ConversationSidePanelContent`.
  *
- * The plan has its own tab and renders straight into the body, with no
- * breadcrumb. `Plan.md` still shows up in the Files list because it really is a
- * conversation file, but selecting it switches to the Plan tab rather than
- * rendering a second copy of the same content inside Files.
+ * Unlike front, there is no header bar naming the panel: the content starts
+ * straight away and closing is a floating outlined button over the top-right
+ * corner. Which panel is open is shown by its top-bar button carrying the
+ * selected wash, so the name does not need repeating.
+ *
+ * `plan.md` shows up in the Files list because it really is a conversation file;
+ * selecting it opens the Plan panel rather than rendering a second copy of the
+ * same content inside Files — see `ConversationFilesTab` (Figma 14969:31109).
  */
 
-export const PLAN_FILE_NAME = "Plan.md";
+export { PLAN_FILE_NAME } from "./ConversationFilesTab";
 
 export type SidePanelTab = "credits" | "files" | "plan";
 
 interface ConversationSidePanelProps {
   tab: SidePanelTab;
   onTabChange: (tab: SidePanelTab) => void;
+  onClose: () => void;
   creditsUsage: CreditsUsage;
   /** The active plan's markdown, or null when there is no plan. */
   planContent: string | null;
   isPlanLoading?: boolean;
   /** Marks the first open task as the step in flight. */
   isPlanRunning?: boolean;
+  /** production's `close_plan` — retires the plan. */
+  onClosePlan?: () => void;
 }
 
 export function ConversationSidePanel({
   tab,
   onTabChange,
+  onClose,
   creditsUsage,
   planContent,
   isPlanLoading = false,
   isPlanRunning = false,
+  onClosePlan,
 }: ConversationSidePanelProps) {
   return (
-    <div className="flex h-full flex-col">
-      {/* No header: the top-bar CTAs are this panel's tab strip, and the panel
-          opens directly underneath them. */}
+    <div
+      className={cn(
+        "relative flex h-full flex-col bg-background",
+        // Figma: 0 1px 1px -0.5px rgb(0 0 0 / 0.06), 0 0 0 1px rgb(0 0 0 / 0.06)
+        "shadow-[0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_0px_0px_1px_rgba(0,0,0,0.06)]"
+      )}
+    >
+      {/* Both floating controls sit outside the scroll container so they stay
+          put while the panel scrolls. */}
+      <div className="absolute right-3 top-3 z-10">
+        <Button variant="outline" size="xs" onClick={onClose} icon={XClose} />
+      </div>
+
+      {tab === "plan" && planContent && (
+        <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
+          <div className="flex items-center gap-6 rounded-xl border border-border-dark bg-muted-background px-3 py-2">
+            <Button
+              variant="ghost"
+              size="xs"
+              icon={PencilLine}
+              tooltip="Edit plan"
+            />
+            <Button
+              variant="ghost"
+              size="xs"
+              icon={Download01}
+              tooltip="Download"
+            />
+            <Button
+              variant="ghost"
+              size="xs"
+              icon={Trash04}
+              tooltip="Close plan"
+              onClick={onClosePlan}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {tab === "credits" && <CreditUsageGauge usage={creditsUsage} />}
         {tab === "files" && (
-          <FilesTab
+          <ConversationFilesTab
             hasPlan={!!planContent}
             onOpenPlan={() => onTabChange("plan")}
           />
@@ -68,40 +120,6 @@ export function ConversationSidePanel({
           />
         )}
       </div>
-    </div>
-  );
-}
-
-function FilesTab({
-  hasPlan,
-  onOpenPlan,
-}: {
-  hasPlan: boolean;
-  onOpenPlan: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Figma section header: 12px / leading-16, muted-foreground, name bold. */}
-      <div className="text-xs font-bold leading-4 text-muted-foreground">
-        All files
-      </div>
-      {hasPlan ? (
-        <button
-          type="button"
-          onClick={onOpenPlan}
-          className="flex items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted-background"
-        >
-          <ListSelect className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 truncate text-sm text-foreground">
-            {PLAN_FILE_NAME}
-          </span>
-        </button>
-      ) : (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <File02 className="h-4 w-4 shrink-0" />
-          No files in this conversation yet.
-        </div>
-      )}
     </div>
   );
 }
@@ -150,6 +168,15 @@ function PlanBody({
   );
   const markdownComponents = useMemo<Components>(
     () => ({
+      // The removed header used to read `Plan: {title}` (front's
+      // ConversationPlanModePanel); the frame moves that prefix into the body's
+      // own h1. Classes mirror sparkle's H1Block, which is not exported:
+      // headingSpacing[1] + markdownHeaderClasses.h1 + the default text colour.
+      h1: ({ children }) => (
+        <h1 className="heading-2xl pb-2 pt-4 text-foreground">
+          Plan: {children}
+        </h1>
+      ),
       // The badge carries the state now, so drop the checkbox entirely.
       input: () => null,
       ul: ({ children, className }) => (

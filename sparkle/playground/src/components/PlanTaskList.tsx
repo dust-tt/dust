@@ -18,6 +18,12 @@ import { type PlanTaskState, splitTaskLead } from "./planUtils";
  *   upcoming  bg #E7E5E4 / number #A6A09B  ->  bg-primary-200  / text-faint
  * Done rows strike their text through in #A6A09B (text-faint).
  *
+ * Sizing follows Figma 14918:28388: a 20px badge with a small number, a 10px
+ * gap, and rows top-aligned with no nudge — a 20px badge against a 20px
+ * line-height centres the first line on its own. Type is `copy-sm` with a
+ * `heading-sm` lead, which are 14/20/-0.28 at weights 400 and 550: exactly the
+ * frame's values.
+ *
  * `blocked` is not in the frame; it is this file's extension for production's
  * `- [!]` marker: grey, with a cross in place of the number.
  *
@@ -98,26 +104,30 @@ export function PlanTaskBadge({
   return (
     <div
       className={cn(
-        "relative flex size-7 shrink-0 items-center justify-center rounded-full",
+        "relative flex size-5 shrink-0 items-center justify-center rounded-full",
         BADGE_STYLES[state]
       )}
     >
-      {state === "done" && <Icon visual={Check} size="xs" />}
-      {state === "blocked" && <Icon visual={XClose} size="xs" />}
+      {state === "done" && (
+        <Icon visual={Check} size="xs" className="h-3 w-3" />
+      )}
+      {state === "blocked" && (
+        <Icon visual={XClose} size="xs" className="h-3 w-3" />
+      )}
       {(state === "running" || state === "upcoming") && (
-        <span className="text-base font-medium leading-none">{number}</span>
+        <span className="text-xs font-medium leading-none">{number}</span>
       )}
       {state === "running" && (
         // The frame draws a static ~130° arc on the badge — a spinner caught
         // mid-rotation. sparkle's worm spinner is that arc, animated.
         //
-        // Its ring is `r="9"` in a 24 viewBox, so the 32px `lg` spinner puts the
-        // centerline at radius 12 — inside the badge's 14px radius. The flex
-        // centring lines the 32px SVG up on the 28px badge, then scaling by
-        // 14/12 lands the centerline exactly on the badge's border. The stroke
-        // scales with it (2px -> 2.3px) and straddles the edge.
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center scale-[1.1667]">
-          <Spinner size="lg" variant="blue500" />
+        // Its ring is `r="9"` in a 24 viewBox, so the 24px `md` spinner puts the
+        // centerline at radius 9 — inside the badge's 10px radius. The flex
+        // centring lines the 24px SVG up on the 20px badge, then scaling by
+        // 10/9 lands the centerline exactly on the badge's border. The stroke
+        // scales with it (2px -> 2.2px) and straddles the edge.
+        <span className="pointer-events-none absolute inset-0 flex scale-[1.1111] items-center justify-center">
+          <Spinner size="md" variant="blue500" />
         </span>
       )}
     </div>
@@ -191,16 +201,15 @@ export function PlanMarkdownListItem({
       style={isRevealing ? revealStyle(index) : undefined}
     >
       <PlanTaskBadge state={state} number={index + 1} />
-      {/* pt-1 centres the first 20px line against the 28px badge (4 + 10 = 14). */}
       <div
         className={cn(
-          "min-w-0 flex-1 break-words pt-1 text-sm leading-5 tracking-[-0.28px]",
+          "copy-sm min-w-0 flex-1 break-words",
           state === "done" ? "text-faint line-through" : "text-foreground"
         )}
       >
         {lead ? (
           <>
-            <span className="font-semibold">{lead.lead}</span>
+            <span className="heading-sm">{lead.lead}</span>
             {lead.rest}
           </>
         ) : (

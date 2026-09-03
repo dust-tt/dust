@@ -1,6 +1,7 @@
 import {
   Button,
   Chip,
+  cn,
   ListSelect,
   Markdown,
   ResizableHandle,
@@ -15,6 +16,7 @@ import {
   type SidePanelTab,
 } from "../components/ConversationSidePanel";
 import { ConversationTopBar } from "../components/ConversationTopBar";
+import { NavigationSidebar } from "../components/NavigationSidebar";
 import {
   AskUserQuestion,
   type UserQuestion,
@@ -29,8 +31,8 @@ import {
   NewConversationMessageGroup,
   NewConversationUserMessage,
 } from "../components/NewConversationMessages";
-import { PlanPill } from "../components/PlanPill";
 import {
+  countProgress,
   editPlan,
   type PlanPresence,
   planPanelDecision,
@@ -47,9 +49,8 @@ import { mockAgents, mockUsers } from "../data";
  *    section and a `## Tasks` checklist. The agent writes it with `create_plan`
  *    and mutates it with `edit_plan` (one exact string replacement per call).
  *    Markers: `- [ ]` open, `- [x]` done, `- [!]` blocked.
- *  - It surfaces as a pill above the input bar (`PlanCard`) showing the title
- *    and `done/total`. `[!]` counts toward total but not toward done, so blocked
- *    work stays visible in the counter.
+ *  - `[!]` counts toward the total but not toward done, so blocked work stays
+ *    visible in the counter.
  *  - The panel auto-opens the first time a plan appears (never on load, never on
  *    mobile) and auto-closes when the plan is closed — see `planPanelDecision`.
  *
@@ -57,7 +58,7 @@ import { mockAgents, mockUsers } from "../data";
  *  - the approval question replaces the composer instead of sitting in the chat
  *    (14800:126108), and task rows carry status badges instead of checkboxes
  *    (14800:126251);
- *  - `Credit usage` / `Files` / `Plan` live in the full-width top bar and become
+ *  - `Credits` / `Files` / `Plan` live in the top bar and become
  *    the side panel's tab strip in place when it opens, so the panel slides open
  *    underneath them (14800:125175 + 14797:120638). The plan has its own tab
  *    rather than a panel of its own.
@@ -66,14 +67,16 @@ import { mockAgents, mockUsers } from "../data";
  *    the turn, which renders the standard `UserAnswerRequired` card. If the user
  *    does not approve, the agent must stop and ask what to change.
  *  - Exactly one active plan per conversation. `close_plan` retires it.
+ *
+ * Driving the story: it opens as an empty conversation. Send anything in the
+ * composer and the agent starts a plan for it — the plan itself is canned, so
+ * every request produces the same `plan.md`. Send "restart" to empty it again.
  */
 
 const locutor = mockUsers[0]; // Emma Andersson
 const agent = mockAgents[11]; // StrategyPlanner 🎯
 
 const CONVERSATION_TITLE = "Q3 enterprise churn risk";
-
-const USER_REQUEST = `Go through every enterprise deal we closed in Q3, cross-check the account notes and the support history, and give me a churn-risk brief for each one.`;
 
 const PLAN_INTRO = `38 accounts and four sources — this is worth planning before I touch anything. I've written it up in \`plan.md\`.`;
 
@@ -208,6 +211,8 @@ One task is left blocked in the plan: three deal-room channels are private, so t
 // ---------------------------------------------------------------------------
 
 type Phase =
+  // Nothing asked yet: an empty conversation with just the composer.
+  | "idle"
   | "creating_plan"
   | "awaiting_approval"
   | "revising"
@@ -218,9 +223,13 @@ type Phase =
 
 const CREATE_PLAN_MS = 2200;
 
+// front: DEFAULT_RIGHT_PANEL_SIZE in components/assistant/conversation/constant.ts
+const DEFAULT_RIGHT_PANEL_SIZE = 40;
+
 export default function PlanStory() {
   const [runId, setRunId] = useState(0);
-  const [phase, setPhase] = useState<Phase>("creating_plan");
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [userMessage, setUserMessage] = useState<string | null>(null);
   const [planContent, setPlanContent] = useState<string | null>(null);
   const [appliedEdits, setAppliedEdits] = useState(0);
   const [runningLabel, setRunningLabel] = useState<string | null>(null);
@@ -236,53 +245,47 @@ export default function PlanStory() {
     timers.current = [];
   }, []);
 
-  const closePanel = useCallback(() => setPanel(null), []);
+  /**
+   * front's `ConversationSidePanelContext`: closing collapses the panel through
+   * the imperative ref and leaves the panel type set, so the content stays
+   * mounted for the animation. `onPanelClosed` clears it from `onTransitionEnd`
+   * once the panel has actually collapsed — that is production's fix for
+   * content flickering mid-close, and it replaces retaining a copy of the state.
+   */
+  const onPanelClosed = useCallback(() => setPanel(null), []);
+  const closePanel = useCallback(() => {
+    if (panelRef.current) {
+      panelRef.current.collapse();
+    } else {
+      onPanelClosed();
+    }
+  }, [onPanelClosed]);
+
   const openPlanTab = useCallback(() => setPanel("plan"), []);
 
-  /**
-   * Clicking a CTA opens the panel on that tab; clicking the active one again
-   * closes it. The CTAs are the panel's only open/close control now, so there is
-   * no X inside the panel.
-   */
+  /** front's `togglePanel`: re-selecting the panel that is shown closes it. */
   const selectPanelTab = useCallback(
-    (tab: SidePanelTab) =>
-      setPanel((current) => (current === tab ? null : tab)),
-    []
+    (tab: SidePanelTab) => {
+      if (panel === tab) {
+        closePanel();
+        return;
+      }
+      setPanel(tab);
+    },
+    [panel, closePanel]
   );
 
-  /**
-   * The last non-null tab, kept for one collapse so the panel body stays mounted
-   * while the width animates out.
-   */
-  const [renderedPanel, setRenderedPanel] = useState<SidePanelTab | null>(null);
-  useEffect(() => {
-    if (panel) {
-      setRenderedPanel(panel);
-    }
-  }, [panel]);
-  /** The plan pill toggles the panel on the Plan tab. */
-  const togglePlanTab = useCallback(
-    () => setPanel((current) => (current === "plan" ? null : "plan")),
-    []
-  );
-
-  // The agent's first turn: create_plan, then ask for approval.
+  // Back to an empty conversation. Nothing runs until the user sends something.
   useEffect(() => {
     clearTimers();
-    setPhase("creating_plan");
+    setPhase("idle");
+    setUserMessage(null);
     setPlanContent(null);
     setAppliedEdits(0);
     setRunningLabel(null);
     setPanel(null);
     setAnswerLog([]);
     planPresenceRef.current = "unknown";
-
-    timers.current.push(
-      window.setTimeout(() => {
-        setPlanContent(INITIAL_PLAN);
-        setPhase("awaiting_approval");
-      }, CREATE_PLAN_MS)
-    );
 
     return clearTimers;
   }, [runId, clearTimers]);
@@ -305,16 +308,12 @@ export default function PlanStory() {
     }
   }, [planContent, panel, openPlanTab, closePanel]);
 
-  // Keep the resizable panel in sync with the panel state, like production.
+  // front only expands here; collapsing goes through `closePanel`.
   useEffect(() => {
-    if (!panelRef.current) {
+    if (!panelRef.current || !panel) {
       return;
     }
-    if (panel) {
-      panelRef.current.expand(34);
-    } else {
-      panelRef.current.collapse();
-    }
+    panelRef.current.expand(DEFAULT_RIGHT_PANEL_SIZE);
   }, [panel]);
 
   const runPlan = useCallback(() => {
@@ -409,12 +408,46 @@ export default function PlanStory() {
     [runPlan]
   );
 
-  // The only way to replay the scenario: type "restart" and send it.
-  const handleSend = useCallback((message: string) => {
-    if (message.trim().toLowerCase() === "restart") {
-      setRunId((n) => n + 1);
-    }
-  }, []);
+  /**
+   * The agent's first turn, triggered by the user sending a message: create_plan,
+   * then ask for approval. The plan itself is canned, so any request produces the
+   * same `plan.md`.
+   */
+  const startPlan = useCallback(
+    (request: string) => {
+      clearTimers();
+      setUserMessage(request);
+      setPlanContent(null);
+      setAppliedEdits(0);
+      setRunningLabel(null);
+      setAnswerLog([]);
+      setPhase("creating_plan");
+
+      timers.current.push(
+        window.setTimeout(() => {
+          setPlanContent(INITIAL_PLAN);
+          setPhase("awaiting_approval");
+        }, CREATE_PLAN_MS)
+      );
+    },
+    [clearTimers]
+  );
+
+  /** Sending anything starts a plan for it; "restart" empties the conversation. */
+  const handleSend = useCallback(
+    (message: string) => {
+      const text = message.trim();
+      if (!text) {
+        return;
+      }
+      if (text.toLowerCase() === "restart") {
+        setRunId((n) => n + 1);
+        return;
+      }
+      startPlan(text);
+    },
+    [startPlan]
+  );
 
   const closePlan = useCallback(() => {
     clearTimers();
@@ -465,234 +498,265 @@ export default function PlanStory() {
     []
   );
 
+  // Drives the `done/total` next to the top bar's Plan label. Derived from the
+  // markdown, like everything else here, so it ticks over as `edit_plan` lands.
+  const planProgress = useMemo(() => countProgress(planContent), [planContent]);
+
   return (
-    <div className="flex h-screen w-full flex-col bg-background">
-      {/* Spans both columns: the CTAs sit above the panel column, so the panel
-          opens under them and they become its tab strip in place. */}
-      <ConversationTopBar
-        title={CONVERSATION_TITLE}
-        activeTab={panel}
-        onSelectTab={selectPanelTab}
-      />
+    <div className="flex h-screen w-full bg-app-background">
+      <NavigationSidebar activeConversation={CONVERSATION_TITLE} />
 
-      <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1">
-        <ResizablePanel minSize={30}>
-          <div className="flex h-full flex-col overflow-hidden">
-            <div className="relative flex flex-1 flex-col overflow-hidden">
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                <NewConversationContainer>
-                  <div className="h-6 shrink-0" />
+      {/* Figma 14969:31873: the conversation area is a card on the app
+          background — 8px of margin on every side except against the nav, a 1px
+          border and a 12px radius. */}
+      <div className="min-w-0 flex-1 py-2 pr-2">
+        <div className="h-full overflow-hidden rounded-xl border border-border bg-background">
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="flex h-full w-full flex-1"
+          >
+            <ResizablePanel defaultSize={100}>
+              <div className="flex h-full flex-col overflow-hidden">
+                {/* front mounts ConversationTitle inside this column, so its
+                right-hand buttons align to the conversation, not the window. */}
+                <ConversationTopBar
+                  title={CONVERSATION_TITLE}
+                  activeTab={panel}
+                  onSelectTab={selectPanelTab}
+                  isPlanRunning={phase === "running"}
+                  planProgress={planProgress}
+                />
+                <div className="relative flex flex-1 flex-col overflow-hidden">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                    <NewConversationContainer>
+                      <div className="h-6 shrink-0" />
 
-                  <NewConversationMessageGroup
-                    type="locutor"
-                    name={locutor.fullName}
-                    timestamp="09:14"
-                  >
-                    <NewConversationUserMessage isLastMessage>
-                      {USER_REQUEST}
-                    </NewConversationUserMessage>
-                  </NewConversationMessageGroup>
+                      {userMessage && (
+                        <NewConversationMessageGroup
+                          type="locutor"
+                          name={locutor.fullName}
+                          timestamp="09:14"
+                        >
+                          <NewConversationUserMessage isLastMessage>
+                            {userMessage}
+                          </NewConversationUserMessage>
+                        </NewConversationMessageGroup>
+                      )}
 
-                  {phase === "creating_plan" ? (
-                    <NewConversationActiveIndicator
-                      type="agent"
-                      name={agent.name}
-                      action="creating plan"
-                      avatar={agentAvatar}
-                    />
-                  ) : (
-                    <NewConversationMessageGroup
-                      type="agent"
-                      name={agent.name}
-                      timestamp="09:14"
-                      avatar={agentAvatar}
-                    >
-                      <NewConversationAgentMessage isLastMessage>
-                        <div className="flex flex-col gap-3">
-                          <ToolRow label="Plan created" />
-                          <span>{PLAN_INTRO}</span>
-                        </div>
-                      </NewConversationAgentMessage>
-                    </NewConversationMessageGroup>
-                  )}
+                      {phase === "creating_plan" && (
+                        <NewConversationActiveIndicator
+                          type="agent"
+                          name={agent.name}
+                          action="creating plan"
+                          avatar={agentAvatar}
+                        />
+                      )}
 
-                  {/* The question itself is NOT in the chat — it replaces the
+                      {phase !== "idle" && phase !== "creating_plan" && (
+                        <NewConversationMessageGroup
+                          type="agent"
+                          name={agent.name}
+                          timestamp="09:14"
+                          avatar={agentAvatar}
+                        >
+                          <NewConversationAgentMessage isLastMessage>
+                            <div className="flex flex-col gap-3">
+                              <ToolRow label="Plan created" />
+                              <span>{PLAN_INTRO}</span>
+                            </div>
+                          </NewConversationAgentMessage>
+                        </NewConversationMessageGroup>
+                      )}
+
+                      {/* The question itself is NOT in the chat — it replaces the
                       composer at the bottom (Figma 14800:126108). Only the
                       agent's accompanying line stays in the thread. */}
-                  {phase === "declined" && (
-                    <NewConversationMessageGroup
-                      type="agent"
-                      name={agent.name}
-                      timestamp="09:15"
-                      avatar={agentAvatar}
-                    >
-                      <NewConversationAgentMessage isLastMessage>
-                        You skipped the question, so nothing has run.
-                      </NewConversationAgentMessage>
-                    </NewConversationMessageGroup>
-                  )}
+                      {phase === "declined" && (
+                        <NewConversationMessageGroup
+                          type="agent"
+                          name={agent.name}
+                          timestamp="09:15"
+                          avatar={agentAvatar}
+                        >
+                          <NewConversationAgentMessage isLastMessage>
+                            You skipped the question, so nothing has run.
+                          </NewConversationAgentMessage>
+                        </NewConversationMessageGroup>
+                      )}
 
-                  {phase === "revising" && (
-                    <NewConversationMessageGroup
-                      type="agent"
-                      name={agent.name}
-                      timestamp="09:16"
-                      avatar={agentAvatar}
-                    >
-                      <NewConversationAgentMessage isLastMessage>
-                        Understood — I haven't started. Pick what to change and
-                        I'll redraft <code>plan.md</code>, then ask again.
-                      </NewConversationAgentMessage>
-                    </NewConversationMessageGroup>
-                  )}
+                      {phase === "revising" && (
+                        <NewConversationMessageGroup
+                          type="agent"
+                          name={agent.name}
+                          timestamp="09:16"
+                          avatar={agentAvatar}
+                        >
+                          <NewConversationAgentMessage isLastMessage>
+                            Understood — I haven't started. Pick what to change
+                            and I'll redraft <code>plan.md</code>, then ask
+                            again.
+                          </NewConversationAgentMessage>
+                        </NewConversationMessageGroup>
+                      )}
 
-                  {(phase === "running" || phase === "done") && (
-                    <NewConversationMessageGroup
-                      type="agent"
-                      name={agent.name}
-                      timestamp="09:16"
-                      avatar={agentAvatar}
-                      completionStatus={
-                        phase === "done" ? "Completed in 4 min" : undefined
-                      }
-                    >
-                      <NewConversationAgentMessage isLastMessage>
-                        <div className="flex flex-col gap-3">
-                          <span>
-                            Approved — starting now. I'll tick tasks off in{" "}
-                            <code>plan.md</code> as I go.
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {PLAN_EDITS.slice(0, appliedEdits).map((edit) => (
-                              <ToolRow key={edit.label} label="Plan updated" />
-                            ))}
-                          </div>
-                        </div>
-                      </NewConversationAgentMessage>
-                    </NewConversationMessageGroup>
-                  )}
+                      {(phase === "running" || phase === "done") && (
+                        <NewConversationMessageGroup
+                          type="agent"
+                          name={agent.name}
+                          timestamp="09:16"
+                          avatar={agentAvatar}
+                          completionStatus={
+                            phase === "done" ? "Completed in 4 min" : undefined
+                          }
+                        >
+                          <NewConversationAgentMessage isLastMessage>
+                            <div className="flex flex-col gap-3">
+                              <span>
+                                Approved — starting now. I'll tick tasks off in{" "}
+                                <code>plan.md</code> as I go.
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {PLAN_EDITS.slice(0, appliedEdits).map(
+                                  (edit) => (
+                                    <ToolRow
+                                      key={edit.label}
+                                      label="Plan updated"
+                                    />
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          </NewConversationAgentMessage>
+                        </NewConversationMessageGroup>
+                      )}
 
-                  {phase === "running" && runningLabel && (
-                    <NewConversationActiveIndicator
-                      type="agent"
-                      name={agent.name}
-                      action={runningLabel}
-                      avatar={agentAvatar}
-                    />
-                  )}
-
-                  {phase === "done" && (
-                    <NewConversationMessageGroup
-                      type="agent"
-                      name={agent.name}
-                      timestamp="09:20"
-                      avatar={agentAvatar}
-                      completionStatus="Completed in 4 min"
-                    >
-                      <NewConversationAgentMessage isLastMessage>
-                        <Markdown content={FINAL_SUMMARY} />
-                      </NewConversationAgentMessage>
-                    </NewConversationMessageGroup>
-                  )}
-
-                  {phase === "dropped" && (
-                    <NewConversationMessageGroup
-                      type="agent"
-                      name={agent.name}
-                      timestamp="09:16"
-                      avatar={agentAvatar}
-                    >
-                      <NewConversationAgentMessage isLastMessage>
-                        <div className="flex flex-col gap-3">
-                          <ToolRow label="Plan closed" />
-                          <span>
-                            Dropped the plan — nothing ran and nothing was
-                            written. Say the word and I'll draft a new one.
-                          </span>
-                        </div>
-                      </NewConversationAgentMessage>
-                    </NewConversationMessageGroup>
-                  )}
-
-                  <div className="h-6 shrink-0" />
-                </NewConversationContainer>
-              </div>
-
-              {/* front: `AgentInputBar` is a sticky footer under the message
-                  column, not a floating overlay. */}
-              {/* Width matches NewConversationContainer so the composer lines
-                  up with the message column. */}
-              <div className="flex w-full justify-center">
-                <div className="relative z-20 flex w-full max-w-4xl flex-col px-4 pt-4 pb-6">
-                  <div className="flex w-full justify-center gap-2">
-                    <MessageNavigationPill />
-                  </div>
-                  {pendingQuestion ? (
-                    <AskUserQuestion
-                      actionId={pendingQuestion.actionId}
-                      question={pendingQuestion.question}
-                      onAnswer={pendingQuestion.onAnswer}
-                      onSkip={pendingQuestion.onSkip}
-                    />
-                  ) : (
-                    <InputBar
-                      toolbarStyle="production"
-                      agent={{
-                        name: agent.name,
-                        emoji: agent.emoji,
-                        backgroundColor: agent.backgroundColor,
-                      }}
-                      contextUsagePercentage={62}
-                      onSend={handleSend}
-                      aboveComposer={
-                        <PlanPill
-                          content={planContent}
-                          onToggle={togglePlanTab}
-                          onClose={closePlan}
+                      {phase === "running" && runningLabel && (
+                        <NewConversationActiveIndicator
+                          type="agent"
+                          name={agent.name}
+                          action={runningLabel}
+                          avatar={agentAvatar}
                         />
-                      }
-                    />
-                  )}
+                      )}
+
+                      {phase === "done" && (
+                        <NewConversationMessageGroup
+                          type="agent"
+                          name={agent.name}
+                          timestamp="09:20"
+                          avatar={agentAvatar}
+                          completionStatus="Completed in 4 min"
+                        >
+                          <NewConversationAgentMessage isLastMessage>
+                            <Markdown content={FINAL_SUMMARY} />
+                          </NewConversationAgentMessage>
+                        </NewConversationMessageGroup>
+                      )}
+
+                      {phase === "dropped" && (
+                        <NewConversationMessageGroup
+                          type="agent"
+                          name={agent.name}
+                          timestamp="09:16"
+                          avatar={agentAvatar}
+                        >
+                          <NewConversationAgentMessage isLastMessage>
+                            <div className="flex flex-col gap-3">
+                              <ToolRow label="Plan closed" />
+                              <span>
+                                Dropped the plan — nothing ran and nothing was
+                                written. Say the word and I'll draft a new one.
+                              </span>
+                            </div>
+                          </NewConversationAgentMessage>
+                        </NewConversationMessageGroup>
+                      )}
+
+                      <div className="h-6 shrink-0" />
+                    </NewConversationContainer>
+                  </div>
+
+                  {/* front: `AgentInputBar` is a sticky footer under the message
+                  column, not a floating overlay. */}
+                  {/* Width matches NewConversationContainer so the composer lines
+                  up with the message column. */}
+                  <div className="flex w-full justify-center">
+                    <div className="relative z-20 flex w-full max-w-4xl flex-col px-4 pt-4 pb-6">
+                      <div className="flex w-full justify-center gap-2">
+                        <MessageNavigationPill />
+                      </div>
+                      {pendingQuestion ? (
+                        <AskUserQuestion
+                          actionId={pendingQuestion.actionId}
+                          question={pendingQuestion.question}
+                          onAnswer={pendingQuestion.onAnswer}
+                          onSkip={pendingQuestion.onSkip}
+                        />
+                      ) : (
+                        <InputBar
+                          toolbarStyle="production"
+                          agent={{
+                            name: agent.name,
+                            emoji: agent.emoji,
+                            backgroundColor: agent.backgroundColor,
+                          }}
+                          contextUsagePercentage={62}
+                          onSend={handleSend}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </ResizablePanel>
+            </ResizablePanel>
 
-        <ResizableHandle
-          withHandle={!!panel}
-          disabled={!panel}
-          className="z-50"
-        />
-
-        <ResizablePanel
-          ref={panelRef}
-          minSize={20}
-          defaultSize={0}
-          collapsible
-          collapsedSize={0}
-          // Production's transition (ConversationSidePanelContainer): the panel's
-          // flex-grow animates, and overflow-hidden + min-w-0 keep the retained
-          // content from pushing the group around while it is collapsed.
-          className="flex-0 min-w-0 overflow-hidden bg-panel-background transition-all duration-300 ease-out"
-        >
-          {/* Rendered from the retained state, so the content does not unmount
-              mid-collapse and pop out of the transition. */}
-          {renderedPanel && (
-            <ConversationSidePanel
-              tab={renderedPanel}
-              onTabChange={setPanel}
-              creditsUsage={{
-                count: 8420,
-                limit: 10000,
-                timeframe: "this month",
-              }}
-              planContent={planContent}
-              isPlanRunning={phase === "running"}
+            {/* front: ConversationSidePanelContainer — handle + collapsible panel,
+            300ms width transition, and the content cleared only once the
+            collapse transition has ended. */}
+            <ResizableHandle
+              withHandle={!!panel}
+              disabled={!panel}
+              className="z-50"
             />
-          )}
-        </ResizablePanel>
-      </ResizablePanelGroup>
+
+            <ResizablePanel
+              ref={panelRef}
+              minSize={20}
+              defaultSize={0}
+              onTransitionEnd={() => {
+                if (panelRef.current?.isCollapsed()) {
+                  onPanelClosed();
+                }
+              }}
+              collapsible
+              collapsedSize={0}
+              className={cn(
+                "flex-0 overflow-hidden transition-all duration-300 ease-out",
+                !panel && "hidden w-0 md:block",
+                "md:relative",
+                panel &&
+                  "absolute inset-0 bg-panel-background md:relative md:inset-auto"
+              )}
+            >
+              {panel && (
+                <ConversationSidePanel
+                  tab={panel}
+                  onTabChange={setPanel}
+                  onClose={closePanel}
+                  creditsUsage={{
+                    count: 8420,
+                    limit: 10000,
+                    timeframe: "this month",
+                  }}
+                  planContent={planContent}
+                  isPlanRunning={phase === "running"}
+                  onClosePlan={closePlan}
+                />
+              )}
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
+      </div>
     </div>
   );
 }

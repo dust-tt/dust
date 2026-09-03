@@ -11,71 +11,77 @@ import type { ComponentType } from "react";
 
 import { AppLayoutTitle } from "./AppLayoutTitle";
 import type { SidePanelTab } from "./ConversationSidePanel";
+import { PlanRunningIcon } from "./PlanRunningIcon";
 
 /**
- * Mirrors front's `components/assistant/conversation/ConversationTitle.tsx`
- * (breadcrumbs left, actions right), with the simplification from Figma
- * 14800:125175.
+ * Conversation top bar — Figma 14969:31878.
  *
- * The top bar spans the full width, so the `Credit usage` / `Files` / `Plan` CTAs
- * already sit above the side-panel column: the panel opens *underneath them* and the
- * same buttons become its tab strip — active gets a bold label and a 2px
- * `bg-foreground` bar flush with the bar's bottom edge. Nothing moves between
- * the two states, which is the whole point.
+ * Layout follows front's `ConversationTitle`: the bar lives *inside* the
+ * conversation column, so the panel buttons sit at the right edge of the
+ * conversation rather than of the window. Title then the `...` menu on the left,
+ * the three panel entry points on the right.
  *
- * The `...` menu sits to the left of the title, and the title is plain — no space
- * breadcrumb — both as in the frame, which shows `... Top Singers of the Last
- * Decade`.
+ * The open panel's button carries `transparency-selected` — a flat 6% foreground
+ * overlay, the same token `OptionCard` uses for its selected row. Not a weight
+ * change: `ghost` is already `text-foreground`, so weight alone had nothing to
+ * work against.
+ *
+ * The buttons are hand-rolled rather than sparkle `Button`s because the frame
+ * puts two text runs inside one button — the label plus the `3/5` progress in
+ * smaller muted type — which the `label`-string API cannot express. Geometry
+ * mirrors sparkle's `size="xs"` ghost button exactly (h-6, rounded-[9px], px-2,
+ * gap-1.5, 14px/500).
  */
 
-interface PanelTabButtonProps {
+interface PanelButtonProps {
   label: string;
   icon: ComponentType;
-  /** Tab mode: the panel is open, so these read as tabs rather than buttons. */
-  isTabMode: boolean;
-  isActive: boolean;
+  isSelected: boolean;
+  /** Rendered after the label in smaller muted type, e.g. `3/5`. */
+  progress?: string;
   onClick: () => void;
 }
 
-function PanelTabButton({
+function PanelButton({
   label,
   icon,
-  isTabMode,
-  isActive,
+  isSelected,
+  progress,
   onClick,
-}: PanelTabButtonProps) {
-  // One element across both states — only classes change, so opening the panel
-  // never remounts or reflows the CTA.
+}: PanelButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={isTabMode ? isActive : undefined}
+      aria-pressed={isSelected}
       className={cn(
-        "relative flex h-full items-center gap-1.5 px-3 text-sm tracking-[-0.28px] transition-colors",
-        // The active bar sits flush on the bar's bottom edge, just above
-        // AppLayoutTitle's separator.
-        "after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-foreground",
-        "after:transition-opacity after:duration-200",
-        isTabMode && isActive ? "after:opacity-100" : "after:opacity-0",
-        isTabMode && isActive
-          ? "font-semibold text-foreground"
-          : "font-medium text-muted-foreground hover:text-foreground"
+        "inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[9px] px-2",
+        "text-sm font-medium leading-4 tracking-[-0.28px] text-foreground",
+        "transition-colors hover:bg-foreground/[0.04]",
+        // Figma: --transparency-selected, rgba(0,0,0,0.06).
+        isSelected && "bg-foreground/[0.06]"
       )}
     >
       <Icon visual={icon} size="xs" />
-      <span className="whitespace-nowrap">{label}</span>
+      <span className="truncate">{label}</span>
+      {progress && (
+        <span className="copy-xs text-muted-foreground">{progress}</span>
+      )}
     </button>
   );
 }
 
 interface ConversationTopBarProps {
   title: string;
-  /** The open panel's tab, or null when the panel is closed. */
+  /** The open panel, or null — its button renders selected. */
   activeTab: SidePanelTab | null;
   onSelectTab: (tab: SidePanelTab) => void;
   /** Production opens the rename dialog from the title. */
   onTitleClick?: () => void;
+  /** Animates the Plan glyph while the agent is working through the plan. */
+  isPlanRunning?: boolean;
+  /** Shown on the Plan button as `done/total` when a plan exists. */
+  planProgress?: { done: number; total: number } | null;
 }
 
 export function ConversationTopBar({
@@ -83,19 +89,13 @@ export function ConversationTopBar({
   activeTab,
   onSelectTab,
   onTitleClick,
+  isPlanRunning = false,
+  planProgress = null,
 }: ConversationTopBarProps) {
-  const isPanelOpen = activeTab !== null;
-
   return (
-    <AppLayoutTitle className="px-0">
-      <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3 pl-2">
-        <div className="flex min-w-0 items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={DotsHorizontal}
-            aria-label="Conversation menu"
-          />
+    <AppLayoutTitle>
+      <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2">
           <Button
             size="sm"
             variant="ghost"
@@ -103,27 +103,35 @@ export function ConversationTopBar({
             onClick={onTitleClick}
             className="min-w-0"
           />
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={DotsHorizontal}
+            aria-label="Conversation menu"
+          />
         </div>
-        <div className="flex h-full items-stretch gap-1 pr-2">
-          <PanelTabButton
-            label="Credit usage"
+        <div className="flex items-center gap-2">
+          <PanelButton
+            label="Credits"
             icon={CoinsStacked02}
-            isTabMode={isPanelOpen}
-            isActive={activeTab === "credits"}
+            isSelected={activeTab === "credits"}
             onClick={() => onSelectTab("credits")}
           />
-          <PanelTabButton
+          <PanelButton
             label="Files"
             icon={Folder}
-            isTabMode={isPanelOpen}
-            isActive={activeTab === "files"}
+            isSelected={activeTab === "files"}
             onClick={() => onSelectTab("files")}
           />
-          <PanelTabButton
+          <PanelButton
             label="Plan"
-            icon={ListSelect}
-            isTabMode={isPanelOpen}
-            isActive={activeTab === "plan"}
+            icon={isPlanRunning ? PlanRunningIcon : ListSelect}
+            isSelected={activeTab === "plan"}
+            progress={
+              planProgress && planProgress.total > 0
+                ? `${planProgress.done}/${planProgress.total}`
+                : undefined
+            }
             onClick={() => onSelectTab("plan")}
           />
         </div>
