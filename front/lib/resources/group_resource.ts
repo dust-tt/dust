@@ -2560,6 +2560,35 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
+    // TODO(2026-09-03 regular-auto-acl): temporary probe, remove once regular_auto stops
+    // granting permissions. These groups are only reachable through the resource that owns
+    // them, so no caller should be permission-checking one; the stack tells us where to look
+    // if any does.
+    if (this.isRegularAuto()) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          groupId: this.sId,
+          authRole: auth.role(),
+          isKey: auth.isKey(),
+          stack_trace: new Error().stack,
+        },
+        "[GroupResource.getAccessControlLists] Permission checked on a regular_auto group"
+      );
+
+      return [
+        {
+          roles: [
+            { role: "admin", permissions: ["read"] },
+            { role: "manager", permissions: ["read"] },
+            { role: "user", permissions: ["read"] },
+            { role: "builder", permissions: ["read"] },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
     // regular_manual: admins and managers manage the group; everyone can read.
     if (this.isRegularManual()) {
       return [
@@ -2575,9 +2604,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    // global, provisioned, regular_auto: read-only for every workspace member.
-    // Write/admin are gated through the associated resource (space/agent).
-    if (this.isGlobal() || this.isProvisioned() || this.isRegularAuto()) {
+    if (this.isGlobal() || this.isProvisioned()) {
       return [
         {
           roles: [
