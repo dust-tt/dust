@@ -92,6 +92,11 @@ export {
   ConversationMessageContent,
   ConversationMessageTitle,
 } from "./ConversationMessages";
+export {
+  ConversationPicker,
+  type ConversationPickerItem,
+  type ConversationPickerProps,
+} from "./ConversationPicker";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {
