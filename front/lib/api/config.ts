@@ -634,6 +634,11 @@ const config = {
       "PRODUCTION_DUST_WORKSPACE_ID"
     );
   },
+  getPokeUserConfigBucketName: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "DUST_POKE_USER_CONFIG_BUCKET"
+    );
+  },
   // Email validation secret for HMAC signing of action approval tokens.
   getEmailValidationSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_VALIDATION_SECRET");

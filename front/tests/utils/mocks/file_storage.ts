@@ -260,6 +260,7 @@ class FileStorageMock {
       getDustDataSourcesBucket: vi.fn(createStorage),
       getWebhookRequestsBucket: vi.fn(createStorage),
       getLLMTracesBucket: vi.fn(createStorage),
+      getPokeUserConfigBucket: vi.fn(createStorage),
     };
   }
 

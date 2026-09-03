@@ -18,6 +18,7 @@ import region from "./region";
 import sandboxKill from "./sandbox_kill";
 import search from "./search";
 import stripe from "./stripe";
+import superusers from "./superusers";
 import templates from "./templates";
 import workspaces from "./workspaces";
 
@@ -45,6 +46,7 @@ app.route("/region", region);
 app.route("/sandbox_kill", sandboxKill);
 app.route("/search", search);
 app.route("/stripe", stripe);
+app.route("/superusers", superusers);
 app.route("/templates", templates);
 app.route("/workspaces", workspaces);
 

@@ -23,6 +23,8 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type { MembershipRoleType } from "@app/types/memberships";
+import type { SuperuserMember } from "@app/types/poke/roles";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -561,6 +563,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async setDustSuperUser(isDustSuperUser: boolean) {
+    return this.update({
+      isDustSuperUser,
+    });
+  }
+
   async updateInfo(
     username: string,
     firstName: string,
@@ -945,6 +953,16 @@ export class UserResource extends BaseResource<UserModel> {
       fullName: this.fullName(),
       image: this.imageUrl,
       lastLoginAt: this.lastLoginAt?.getTime() ?? null,
+    };
+  }
+
+  toPokeSuperuserJSON(membershipRole: MembershipRoleType): SuperuserMember {
+    return {
+      sId: this.sId,
+      email: this.email,
+      fullName: this.fullName(),
+      membershipRole,
+      isDustSuperUser: this.isDustSuperUser,
     };
   }
 
