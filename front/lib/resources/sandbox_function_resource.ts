@@ -2,10 +2,6 @@ import type {
   PokeFrameFunction,
   PokeFrameFunctionDetails,
 } from "@app/lib/api/poke/frames";
-import type {
-  PokePodFunction,
-  PokePodFunctionDetails,
-} from "@app/lib/api/poke/projects";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import {
   appPrefixFromSlug,
@@ -31,7 +27,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import type { PodAppFunction } from "@app/types/api/pod_apps";
 import type {
   PostSandboxFunctionInvocationRequestBody,
@@ -1011,17 +1006,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
   }
 
-  toPokeJSON(author: UserResource | null): PokePodFunction {
-    return {
-      sId: this.sId,
-      slug: this.slug,
-      description: this.description,
-      createdAt: this.createdAt.toISOString(),
-      updatedAt: this.updatedAt.toISOString(),
-      author: author ? author.fullName() : null,
-    };
-  }
-
   // What the Pod's Apps tab shows for a function it lists under its app. Carries both the full slug
   // (which addresses the function) and the bare name (which is all the app's own view needs to show).
   toPodAppJSON(): PodAppFunction {
@@ -1031,20 +1015,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: this.description,
       executionMode: this.executionMode,
       defaultStake: this.defaultStake,
-    };
-  }
-
-  // The listing shape plus what only a single-function view needs: its contract and the bundle
-  // file it was published from.
-  toPokeDetailsJSON(author: UserResource | null): PokePodFunctionDetails {
-    return {
-      ...this.toPokeJSON(author),
-      fileId: this.file.sId,
-      userIdentity: this.userIdentity,
-      executionMode: this.executionMode,
-      defaultStake: this.defaultStake,
-      inputSchema: this.inputSchema,
-      outputSchema: this.outputSchema,
     };
   }
 

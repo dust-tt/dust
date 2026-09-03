@@ -5,7 +5,6 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ProjectConnectorKnowledgeDataTable } from "@app/components/poke/projects/connector_knowledge/table";
 import { ProjectConversationDataTable } from "@app/components/poke/projects/conversations/table";
 import { ProjectPodDatabaseDataTable } from "@app/components/poke/projects/pod_databases/table";
-import { ProjectPodFunctionDataTable } from "@app/components/poke/projects/pod_functions/table";
 import { ProjectTasksDataTable } from "@app/components/poke/projects/tasks/table";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
@@ -60,7 +59,6 @@ export function ProjectPage({ details }: ProjectPageProps) {
           />
           <ProjectTasksDataTable owner={owner} projectId={space.sId} />
           <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
-          <ProjectPodFunctionDataTable owner={owner} projectId={space.sId} />
           <ProjectPodDatabaseDataTable owner={owner} projectId={space.sId} />
           <GroupPermissionsDataTable
             owner={owner}
