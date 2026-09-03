@@ -340,7 +340,7 @@ export async function resolveMetronomeCycle(
 // `cycle` forces the window instead of resolving the Metronome contract billing
 // period — used by workspaces that have no contract to anchor one on (see
 // `spendLimitCycleOverrideForAuth`).
-async function fetchConsumedAwuCreditsByUserId({
+export async function fetchConsumedAwuCreditsByUserId({
   workspace,
   userIds,
   freeSeatUserIds,
