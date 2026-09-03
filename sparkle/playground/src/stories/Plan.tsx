@@ -223,8 +223,21 @@ type Phase =
 
 const CREATE_PLAN_MS = 2200;
 
-// front: DEFAULT_RIGHT_PANEL_SIZE in components/assistant/conversation/constant.ts
-const DEFAULT_RIGHT_PANEL_SIZE = 40;
+/**
+ * The side panel opens at a fixed 390px and snaps there — no width animation.
+ * 390 rather than 400 so opening it lands just under the nav-collapse threshold
+ * instead of on it.
+ * Animating the width re-wraps the panel's text on every frame, which reads as
+ * the content resizing itself open.
+ *
+ * Past that width the panel is eating the conversation, so the nav collapses to
+ * give it room. The nav animates instead, and can do so safely because its own
+ * content stays pinned at NAV_WIDTH_PX inside an `overflow-hidden` box — it
+ * slides away rather than reflowing.
+ */
+const SIDE_PANEL_WIDTH_PX = 390;
+const NAV_COLLAPSE_PANEL_PX = 400;
+const NAV_WIDTH_PX = 320;
 
 export default function PlanStory() {
   const [runId, setRunId] = useState(0);
@@ -240,25 +253,42 @@ export default function PlanStory() {
   const planPresenceRef = useRef<PlanPresence>("unknown");
   const panelRef = useRef<ImperativePanelHandle | null>(null);
 
+  // The panel group fills this box, so its width is the basis for converting
+  // between the library's percentages and the pixel widths above.
+  const groupBoxRef = useRef<HTMLDivElement | null>(null);
+  const [groupWidthPx, setGroupWidthPx] = useState(0);
+  const [panelSizePct, setPanelSizePct] = useState(0);
+
+  useEffect(() => {
+    const box = groupBoxRef.current;
+    if (!box) {
+      return;
+    }
+    const observer = new ResizeObserver(([entry]) => {
+      setGroupWidthPx(entry.contentRect.width);
+    });
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
+
+  const panelWidthPx = (panelSizePct / 100) * groupWidthPx;
+  const isNavCollapsed = panelWidthPx > NAV_COLLAPSE_PANEL_PX;
+
   const clearTimers = useCallback(() => {
     timers.current.forEach((id) => window.clearTimeout(id));
     timers.current = [];
   }, []);
 
   /**
-   * front's `ConversationSidePanelContext`: closing collapses the panel through
-   * the imperative ref and leaves the panel type set, so the content stays
-   * mounted for the animation. `onPanelClosed` clears it from `onTransitionEnd`
-   * once the panel has actually collapsed — that is production's fix for
-   * content flickering mid-close, and it replaces retaining a copy of the state.
+   * front keeps the panel type set through the close so the content survives the
+   * width animation, clearing it from `onTransitionEnd`. With no animation there
+   * is nothing to survive, so the state clears straight away; `onCollapse` keeps
+   * things in sync when the panel is collapsed by dragging the handle instead.
    */
   const onPanelClosed = useCallback(() => setPanel(null), []);
   const closePanel = useCallback(() => {
-    if (panelRef.current) {
-      panelRef.current.collapse();
-    } else {
-      onPanelClosed();
-    }
+    panelRef.current?.collapse();
+    onPanelClosed();
   }, [onPanelClosed]);
 
   const openPlanTab = useCallback(() => setPanel("plan"), []);
@@ -308,13 +338,13 @@ export default function PlanStory() {
     }
   }, [planContent, panel, openPlanTab, closePanel]);
 
-  // front only expands here; collapsing goes through `closePanel`.
+  // Only expands here; collapsing goes through `closePanel`.
   useEffect(() => {
-    if (!panelRef.current || !panel) {
+    if (!panelRef.current || !panel || !groupWidthPx) {
       return;
     }
-    panelRef.current.expand(DEFAULT_RIGHT_PANEL_SIZE);
-  }, [panel]);
+    panelRef.current.expand((SIDE_PANEL_WIDTH_PX / groupWidthPx) * 100);
+  }, [panel, groupWidthPx]);
 
   const runPlan = useCallback(() => {
     setPhase("running");
@@ -504,13 +534,24 @@ export default function PlanStory() {
 
   return (
     <div className="flex h-screen w-full bg-app-background">
-      <NavigationSidebar activeConversation={CONVERSATION_TITLE} />
+      {/* The nav's own content stays pinned at NAV_WIDTH_PX, so collapsing this
+          box slides it out of view instead of reflowing it. */}
+      <div
+        className="shrink-0 overflow-hidden transition-[width] duration-300 ease-out"
+        style={{ width: isNavCollapsed ? 0 : NAV_WIDTH_PX }}
+        aria-hidden={isNavCollapsed}
+      >
+        <NavigationSidebar activeConversation={CONVERSATION_TITLE} />
+      </div>
 
       {/* Figma 14969:31873: the conversation area is a card on the app
           background — 8px of margin on every side except against the nav, a 1px
           border and a 12px radius. */}
       <div className="min-w-0 flex-1 py-2 pr-2">
-        <div className="h-full overflow-hidden rounded-xl border border-border bg-background">
+        <div
+          ref={groupBoxRef}
+          className="h-full overflow-hidden rounded-xl border border-border bg-background"
+        >
           <ResizablePanelGroup
             direction="horizontal"
             className="flex h-full w-full flex-1"
@@ -521,6 +562,7 @@ export default function PlanStory() {
                 right-hand buttons align to the conversation, not the window. */}
                 <ConversationTopBar
                   title={CONVERSATION_TITLE}
+                  hasPlan={planContent !== null}
                   activeTab={panel}
                   onSelectTab={selectPanelTab}
                   isPlanRunning={phase === "running"}
@@ -710,9 +752,9 @@ export default function PlanStory() {
               </div>
             </ResizablePanel>
 
-            {/* front: ConversationSidePanelContainer — handle + collapsible panel,
-            300ms width transition, and the content cleared only once the
-            collapse transition has ended. */}
+            {/* front: ConversationSidePanelContainer — handle + collapsible
+            panel. The width transition is dropped here on purpose (see
+            SIDE_PANEL_WIDTH_PX). */}
             <ResizableHandle
               withHandle={!!panel}
               disabled={!panel}
@@ -723,15 +765,14 @@ export default function PlanStory() {
               ref={panelRef}
               minSize={20}
               defaultSize={0}
-              onTransitionEnd={() => {
-                if (panelRef.current?.isCollapsed()) {
-                  onPanelClosed();
-                }
-              }}
               collapsible
               collapsedSize={0}
+              onResize={setPanelSizePct}
+              onCollapse={onPanelClosed}
+              // Deliberately no width transition: the panel snaps to its 400px
+              // so its text lays out once. The nav is what animates.
               className={cn(
-                "flex-0 overflow-hidden transition-all duration-300 ease-out",
+                "flex-0 overflow-hidden",
                 !panel && "hidden w-0 md:block",
                 "md:relative",
                 panel &&
