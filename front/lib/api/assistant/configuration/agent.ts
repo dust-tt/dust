@@ -31,6 +31,7 @@ import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -934,15 +935,6 @@ export async function createAgentConfiguration(
               "Unexpected: agent should have exactly one editor group."
             );
           }
-          const newEditorIds = new Set(editors.map((editor) => editor.id));
-          removedEditors = (
-            await group.getActiveMembers(auth, {
-              transaction: t,
-            })
-          )
-            .filter((editor) => !newEditorIds.has(editor.id))
-            .map((editor) => editor.toJSON());
-
           // For pending agents updated in place, the group is already linked to the same agent ID
           // For regular updates, we need to link the group to the new agent configuration
           if (existingAgent.id !== agentConfigurationInstance.id) {
@@ -979,6 +971,7 @@ export async function createAgentConfiguration(
             );
             throw setMembersRes.error;
           }
+          removedEditors = setMembersRes.value.removedUsers;
         }
 
         const agentResource = AgentResource.fromAgentConfigurationModel(
@@ -1529,41 +1522,59 @@ export async function batchHardDeletePendingAgentConfigurations(
   agents: AgentConfigurationModel[]
 ) {
   const workspaceId = auth.getNonNullableWorkspace().id;
-  const agentIds = agents.map((a) => a.id);
-  const agentResources = new Map(
-    agents.map((agent) => [
-      agent.sId,
-      AgentResource.fromAgentConfigurationModel(agent),
-    ])
-  );
+  const agentConfigurationModelIds = agents.map((agent) => agent.id);
+  const agentModelIds = [...new Set(agents.map((agent) => agent.agentId))];
 
   // Find all editor group IDs for this batch.
   const groupAgents = await GroupAgentModel.findAll({
-    where: { agentConfigurationId: agentIds, workspaceId },
+    where: {
+      agentConfigurationId: agentConfigurationModelIds,
+      workspaceId,
+    },
   });
-  const groupIds = groupAgents.map((ga) => ga.groupId);
+  const editorGroupModelIds = groupAgents.map(
+    (groupAgent) => groupAgent.groupId
+  );
 
   await withTransaction(async (t) => {
-    if (groupIds.length > 0) {
+    const grantGroups =
+      await GroupPermissionResource.listRegularAutoGroupsForResources(auth, {
+        resourceType: "agent",
+        resourceIds: agentModelIds,
+        transaction: t,
+      });
+    await GroupPermissionResource.deleteAllForResources(auth, {
+      resourceType: "agent",
+      resourceIds: agentModelIds,
+      transaction: t,
+    });
+
+    const groupModelIds = [
+      ...new Set([
+        ...editorGroupModelIds,
+        ...grantGroups.map((group) => group.id),
+      ]),
+    ];
+    if (groupModelIds.length > 0) {
       await GroupMembershipModel.destroy({
-        where: { groupId: groupIds, workspaceId },
+        where: { groupId: groupModelIds, workspaceId },
         transaction: t,
       });
 
       await GroupAgentModel.destroy({
-        where: { groupId: groupIds, workspaceId },
+        where: { groupId: groupModelIds, workspaceId },
         transaction: t,
       });
 
       await GroupModel.destroy({
-        where: { id: groupIds, workspaceId },
+        where: { id: groupModelIds, workspaceId },
         transaction: t,
       });
     }
 
     // Delete agent suggestions before agents (FK constraint)
     await AgentSuggestionModel.destroy({
-      where: { agentConfigurationId: agentIds, workspaceId },
+      where: { agentConfigurationId: agentConfigurationModelIds, workspaceId },
       transaction: t,
     });
 
@@ -1573,13 +1584,16 @@ export async function batchHardDeletePendingAgentConfigurations(
     );
 
     await AgentConfigurationModel.destroy({
-      where: { id: agentIds, workspaceId },
+      where: { id: agentConfigurationModelIds, workspaceId },
       transaction: t,
     });
 
-    for (const agentResource of agentResources.values()) {
-      await deleteAgentIdentityIfUnused(auth, agentResource, t);
-    }
+    // Pending configurations are the only version of their logical agent. The FK protects this
+    // invariant by rolling the transaction back if another configuration still uses an identity.
+    await AgentModel.destroy({
+      where: { id: agentModelIds, workspaceId },
+      transaction: t,
+    });
   });
 }
 

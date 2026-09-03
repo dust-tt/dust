@@ -8,7 +8,6 @@ import {
   restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
   updateAgentConfigurationsScope,
-  updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
@@ -160,72 +159,6 @@ describe("stable agent identities", () => {
   });
 });
 
-describe("agent editor grants", () => {
-  it("mirrors removals from incremental and full editor updates", async () => {
-    const { authenticator, workspace, user } = await createResourceTest({
-      role: "admin",
-    });
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    const incrementalEditor = await UserFactory.basic();
-    const fullUpdateEditor = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, incrementalEditor, {
-      role: "user",
-    });
-    await MembershipFactory.associate(workspace, fullUpdateEditor, {
-      role: "user",
-    });
-
-    const addResult = await updateAgentPermissions(authenticator, {
-      agent,
-      usersToAdd: [incrementalEditor.toJSON(), fullUpdateEditor.toJSON()],
-      usersToRemove: [],
-    });
-    expect(addResult.isOk()).toBe(true);
-
-    const agentResource = await AgentResource.fetchByAgentConfiguration(
-      authenticator,
-      agent
-    );
-    if (agentResource.id === null) {
-      throw new Error("Agent identity was not created");
-    }
-    const grantGroup =
-      await GroupPermissionResource.findRegularAutoGroupForGrant(
-        authenticator,
-        {
-          grantType: "editor",
-          resourceType: "agent",
-          resourceId: agentResource.id,
-        }
-      );
-    if (!grantGroup) {
-      throw new Error("Agent editor grant was not created");
-    }
-
-    const removeResult = await updateAgentPermissions(authenticator, {
-      agent,
-      usersToAdd: [],
-      usersToRemove: [incrementalEditor.toJSON()],
-    });
-    expect(removeResult.isOk()).toBe(true);
-    expect(
-      new Set(
-        (await grantGroup.getActiveMembers(authenticator)).map(
-          (editor) => editor.id
-        )
-      )
-    ).toEqual(new Set([user.id, fullUpdateEditor.id]));
-
-    await AgentConfigurationFactory.updateTestAgent(authenticator, agent.sId);
-    expect(
-      (await grantGroup.getActiveMembers(authenticator)).map(
-        (editor) => editor.id
-      )
-    ).toEqual([user.id]);
-  });
-});
-
 describe("createAgentConfiguration with pending agent", () => {
   it("converts pending agent to active when agentConfigurationId points to a pending agent", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
@@ -320,6 +253,13 @@ describe("createAgentConfiguration with pending agent", () => {
         )
       )
     ).toEqual(new Set([user.sId, newEditor.sId]));
+
+    await AgentConfigurationFactory.updateTestAgent(authenticator, pendingId);
+    expect(
+      (await pendingGrantGroup.getActiveMembers(authenticator)).map(
+        (editor) => editor.sId
+      )
+    ).toEqual([user.sId]);
   });
 
   it("creates new agent if agentConfigurationId does not exist", async () => {

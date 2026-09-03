@@ -885,21 +885,46 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction?: Transaction;
     }
   ): Promise<number> {
+    return this.deleteAllForResources(auth, {
+      resourceType,
+      resourceIds: [resourceId],
+      transaction,
+    });
+  }
+
+  static async deleteAllForResources(
+    auth: Authenticator,
+    {
+      resourceType,
+      resourceIds,
+      transaction,
+    }: {
+      resourceType: GroupPermissionResourceType;
+      resourceIds: number[];
+      transaction?: Transaction;
+    }
+  ): Promise<number> {
+    const uniqueResourceIds = [...new Set(resourceIds)];
+    if (uniqueResourceIds.length === 0) {
+      return 0;
+    }
     assert(
-      resourceId > 0 && resourceId !== WHOLE_TYPE_RESOURCE_ID,
-      "deleteAllForResource targets a concrete resource; it must not clear type-wide grants."
+      uniqueResourceIds.every(
+        (resourceId) => resourceId > 0 && resourceId !== WHOLE_TYPE_RESOURCE_ID
+      ),
+      "deleteAllForResources targets concrete resources; it must not clear type-wide grants."
     );
 
     const workspaceId = auth.getNonNullableWorkspace().id;
     const groupModelIds = await this.listGroupModelIdsForGrants(
-      { workspaceId, resourceType, resourceId },
+      { workspaceId, resourceType, resourceId: uniqueResourceIds },
       transaction
     );
     const deleted = await GroupPermissionModel.destroy({
       where: {
         workspaceId,
         resourceType,
-        resourceId,
+        resourceId: uniqueResourceIds,
       },
       transaction,
     });
