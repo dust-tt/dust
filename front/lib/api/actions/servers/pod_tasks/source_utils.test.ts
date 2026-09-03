@@ -32,6 +32,14 @@ describe("inferProjectTaskSourceFromUrl", () => {
     expect(source.sourceType).toBe("github");
   });
 
+  it("detects current Notion URLs", () => {
+    const source = inferProjectTaskSourceFromUrl({
+      url: "https://app.notion.com/p/Project-12345678901234567890123456789012",
+      title: "Project",
+    });
+    expect(source.sourceType).toBe("notion");
+  });
+
   it("falls back to project_knowledge for unknown URLs", () => {
     const source = inferProjectTaskSourceFromUrl({
       url: "https://example.com/doc",

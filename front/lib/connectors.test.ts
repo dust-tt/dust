@@ -175,7 +175,7 @@ describe("nodeCandidateFromUrl", () => {
   describe("Notion", () => {
     it("should extract node ID from Notion page URL with 32-char ID", () => {
       const url =
-        "https://www.notion.so/Page-Title-12345678901234567890123456789012";
+        "https://app.notion.com/p/Page-Title-12345678901234567890123456789012";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).not.toBeNull();
@@ -189,7 +189,7 @@ describe("nodeCandidateFromUrl", () => {
     it("should handle Notion URLs with multiple dashes", () => {
       // The last part after splitting by "-" must be exactly 32 characters
       const url =
-        "https://www.notion.so/My-Page-Title-With-Many-Words-abcdef12345678901234567890123456";
+        "https://dust-tt.notion.site/My-Page-Title-With-Many-Words-abcdef12345678901234567890123456";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).not.toBeNull();
@@ -213,7 +213,7 @@ describe("nodeCandidateFromUrl", () => {
     });
 
     it("should return null node when ID is not 32 characters", () => {
-      const url = "https://www.notion.so/Page-12345";
+      const url = "https://app.notion.com/p/Page-12345";
       const result = nodeCandidateFromUrl(url);
 
       expect(result).not.toBeNull();
@@ -222,6 +222,14 @@ describe("nodeCandidateFromUrl", () => {
         expect(result.node).toBeNull();
         expect(result.provider).toBe("notion");
       }
+    });
+
+    it("should not match lookalike Notion domains", () => {
+      const result = nodeCandidateFromUrl(
+        "https://app.notion.com.example.com/p/Page-12345"
+      );
+
+      expect(result).toBeNull();
     });
   });
 

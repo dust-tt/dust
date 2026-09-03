@@ -267,7 +267,7 @@ export const createStripeSubscriptionCheckoutSession = async ({
     custom_text: {
       terms_of_service_acceptance: {
         message:
-          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://www.notion.so/dust-tt/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
+          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://dust-tt.notion.site/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
       },
     },
   });
@@ -362,7 +362,7 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
     custom_text: {
       terms_of_service_acceptance: {
         message:
-          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://www.notion.so/dust-tt/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
+          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://dust-tt.notion.site/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
       },
     },
   });
