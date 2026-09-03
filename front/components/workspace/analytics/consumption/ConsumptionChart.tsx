@@ -465,7 +465,7 @@ export function ConsumptionDailyChart({
             activeDot={{
               className: cn(
                 ACTIVE_USERS_COLOR,
-                "origin-center animate-in zoom-in-90 duration-[50ms] ease-out motion-reduce:animate-none [transform-box:fill-box]"
+                "origin-center animate-in zoom-in-90 duration-75 ease-out motion-reduce:animate-none [transform-box:fill-box]"
               ),
               r: 3.75,
               fill: "white",

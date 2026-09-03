@@ -218,7 +218,7 @@ describe("consumption active users overlay", () => {
     expect(activeDot).toHaveClass("text-golden-500");
     expect(activeDot).toHaveClass("animate-in");
     expect(activeDot).toHaveClass("zoom-in-90");
-    expect(activeDot).toHaveClass("duration-[50ms]");
+    expect(activeDot).toHaveClass("duration-75");
     expect(activeDot).toHaveClass("motion-reduce:animate-none");
     expect(activeDot).toHaveAttribute("r", "3.75");
     expect(activeDot).toHaveAttribute("fill", "white");
