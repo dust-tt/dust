@@ -1,6 +1,7 @@
 import {
   areInspectorPanelsOverlapping,
   getMessagePanelTopOffsetPx,
+  isMessagePanelAttachedToTrigger,
   useConversationInspectorPanels,
 } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { act, renderHook } from "@testing-library/react";
@@ -35,6 +36,7 @@ describe("useConversationInspectorPanels", () => {
   });
 
   afterEach(() => {
+    document.body.replaceChildren();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -196,6 +198,45 @@ describe("useConversationInspectorPanels", () => {
     expect(result.current.isStickyRailOccluded).toBe(false);
     expect(messagePanel.style.top).toBe("");
   });
+
+  it("closes a message panel before it detaches from its trigger", () => {
+    const messagePanel = document.createElement("div");
+    messagePanel.dataset.messageConsumptionPanelId = "message_1";
+    messagePanel.setAttribute("aria-labelledby", "message_1_trigger");
+    vi.spyOn(messagePanel, "getBoundingClientRect").mockReturnValue(
+      rect(760, 1060)
+    );
+
+    const messageTrigger = document.createElement("button");
+    messageTrigger.id = "message_1_trigger";
+    vi.spyOn(messageTrigger, "getBoundingClientRect").mockReturnValue(
+      rect(760, 804)
+    );
+    document.body.append(messageTrigger, messagePanel);
+
+    const stickyInspectors = document.createElement("aside");
+    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
+      rect(16, 180)
+    );
+    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
+      current: messagePanel,
+    };
+    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
+      current: stickyInspectors,
+    };
+    const { result } = renderHook(() =>
+      useConversationInspectorPanels({
+        activeMessagePanelRef,
+        stickyInspectorsRef,
+      })
+    );
+
+    act(() => result.current.setMessageOpen("message_1", true));
+    act(flushAnimationFrame);
+
+    expect(result.current.activeMessageId).toBeNull();
+    expect(result.current.isStickyRailOccluded).toBe(false);
+  });
 });
 
 describe("areInspectorPanelsOverlapping", () => {
@@ -216,5 +257,22 @@ describe("getMessagePanelTopOffsetPx", () => {
 
   it("keeps the panel aligned with its trigger when it already fits", () => {
     expect(getMessagePanelTopOffsetPx(700, 800)).toBe(0);
+  });
+});
+
+describe("isMessagePanelAttachedToTrigger", () => {
+  it("keeps a panel that spans its trigger", () => {
+    expect(
+      isMessagePanelAttachedToTrigger(rect(100, 500), rect(200, 244))
+    ).toBe(true);
+  });
+
+  it("rejects a panel whose top or bottom has passed its trigger", () => {
+    expect(
+      isMessagePanelAttachedToTrigger(rect(201, 500), rect(200, 244))
+    ).toBe(false);
+    expect(
+      isMessagePanelAttachedToTrigger(rect(100, 243), rect(200, 244))
+    ).toBe(false);
   });
 });

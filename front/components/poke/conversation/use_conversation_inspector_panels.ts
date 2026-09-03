@@ -97,6 +97,15 @@ export function getMessagePanelTopOffsetPx(
   );
 }
 
+export function isMessagePanelAttachedToTrigger(
+  messagePanel: Pick<DOMRect, "bottom" | "top">,
+  trigger: Pick<DOMRect, "bottom" | "top">
+): boolean {
+  return (
+    messagePanel.top <= trigger.top && messagePanel.bottom >= trigger.bottom
+  );
+}
+
 interface UseConversationInspectorPanelsProps {
   activeMessagePanelRef: RefObject<HTMLDivElement | null>;
   stickyInspectorsRef: RefObject<HTMLElement | null>;
@@ -154,6 +163,26 @@ export function useConversationInspectorPanels({
         };
       } else {
         messagePanel.style.removeProperty("top");
+      }
+
+      const triggerId = messagePanel.getAttribute("aria-labelledby");
+      const messageTrigger = triggerId
+        ? document.getElementById(triggerId)
+        : null;
+      if (
+        isDesktop &&
+        messageTrigger &&
+        !isMessagePanelAttachedToTrigger(
+          measuredMessagePanelRect,
+          messageTrigger.getBoundingClientRect()
+        )
+      ) {
+        dispatch({
+          type: "set_message_open",
+          messageId: state.activeMessageId,
+          open: false,
+        });
+        return;
       }
 
       const isOccluded =
