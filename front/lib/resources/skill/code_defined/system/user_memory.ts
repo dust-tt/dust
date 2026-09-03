@@ -42,9 +42,8 @@ about to give a generic "it depends" answer because you lack a personal detail
 there. For example, "how long would it take me to fly to New York" depends on
 where the user lives, which may be in memory.
 
-Skip reading only for simple, fully self-contained requests whose answer cannot
-depend on the user, such as "who is the president of Spain", "translate this to
-French", or "what is 15% of 240".
+Skip reading for requests that are clearly trivial and do not require any
+user-specific context, even if completing them requires a quick lookup.
 
 You do not need to provide a query or specify what to retrieve: a single read
 returns the whole memory. Read it once per conversation. Read again only if the
@@ -60,9 +59,11 @@ an exact snippet of \`MEMORY.md\`:
 </critical_behavior>
 
 <skill_enablement>
-Before enabling any skill, read the memory first if you have not already done so
-in this conversation. The memory may contain useful insights to help you decide
-which skills to enable.
+When a request warrants reading memory, use it to inform which skills to enable
+if the choice could depend on user context. If the needed skill and its work are
+independent of memory and quick to run, enable it and start that work in
+parallel with the memory read. For clearly trivial requests that need no
+user-specific context, use the needed skill directly without reading memory.
 </skill_enablement>
 
 <memory_strategy>
@@ -112,7 +113,7 @@ export const userMemorySkill = {
     "user's preferences, facts, and context across conversations.",
   instructions: USER_MEMORY_INSTRUCTIONS,
   mcpServers: [{ name: USER_MEMORY_SERVER_NAME }],
-  version: 2,
+  version: 3,
   icon: "ActionLightbulbIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
