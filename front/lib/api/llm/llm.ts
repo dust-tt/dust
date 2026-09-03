@@ -14,6 +14,7 @@ import {
   emitLLMTimeToFirstTokenMs,
   llmAttemptLogFields,
   requestedReasoningEffortTag,
+  serviceTierTags,
 } from "@app/lib/api/llm/telemetry";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
@@ -46,6 +47,7 @@ import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_st
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { statsDMetrics } from "@app/lib/utils/statsd";
@@ -172,29 +174,41 @@ export abstract class LLM<
     ];
   }
 
+  // Latency tags additionally carry the requested reasoning effort and the
+  // processing tier the provider billed, so llm_duration_ms,
+  // llm_time_to_first_event_ms and llm_time_to_first_token_ms can be compared
+  // across service tiers (for example flex versus default) on the same model.
   private getLatencyTelemetryTags({
+    serviceTier,
     surface,
   }: {
+    serviceTier: ServiceTier | undefined;
     surface: "stream" | "batch";
   }): string[] {
     return [
       ...this.getTelemetryTags({ surface }),
       requestedReasoningEffortTag(this.reasoningEffort),
+      ...serviceTierTags(serviceTier),
     ];
   }
 
   private emitStreamAttemptTelemetry({
     durationMs,
+    serviceTier,
     timeToFirstEventMs,
     timeToFirstTokenMs,
     ...outcomeTelemetry
   }: {
     durationMs: number;
+    serviceTier: ServiceTier | undefined;
     timeToFirstEventMs: number | undefined;
     timeToFirstTokenMs: number | undefined;
   } & LLMAttemptOutcomeTelemetry): void {
     const baseTags = this.getTelemetryTags({ surface: "stream" });
-    const latencyTags = this.getLatencyTelemetryTags({ surface: "stream" });
+    const latencyTags = this.getLatencyTelemetryTags({
+      serviceTier,
+      surface: "stream",
+    });
 
     switch (outcomeTelemetry.outcome) {
       case "error":
@@ -341,9 +355,7 @@ export abstract class LLM<
         if (currentEvent.type === "token_usage") {
           emitTokenUsageMetrics(currentEvent.content, [
             ...metricTags,
-            ...(currentEvent.content.serviceTier
-              ? [`service_tier:${currentEvent.content.serviceTier}`]
-              : []),
+            ...serviceTierTags(currentEvent.content.serviceTier),
           ]);
         }
 
@@ -373,6 +385,7 @@ export abstract class LLM<
           timeToFirstEventMs,
           timeToFirstTokenMs,
           requestedReasoningEffort: this.reasoningEffort,
+          serviceTier: tokenUsage?.serviceTier,
           surface: "stream",
         });
 
@@ -383,6 +396,7 @@ export abstract class LLM<
           this.emitStreamAttemptTelemetry({
             outcome: "error",
             durationMs,
+            serviceTier: tokenUsage?.serviceTier,
             timeToFirstEventMs,
             timeToFirstTokenMs,
             errorType,
@@ -422,6 +436,7 @@ export abstract class LLM<
           this.emitStreamAttemptTelemetry({
             outcome,
             durationMs,
+            serviceTier: tokenUsage?.serviceTier,
             timeToFirstEventMs,
             timeToFirstTokenMs,
           });
@@ -762,7 +777,10 @@ export abstract class LLM<
         buffer.addEvent(event);
 
         if (event.type === "token_usage") {
-          emitTokenUsageMetrics(event.content, metricTags);
+          emitTokenUsageMetrics(event.content, [
+            ...metricTags,
+            ...serviceTierTags(event.content.serviceTier),
+          ]);
         }
 
         if (event.type === "error") {
