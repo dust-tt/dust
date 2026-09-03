@@ -186,7 +186,8 @@ interface PanelSectionProps {
   content: ReactNode;
   /** Changing this resets the scrolled state (e.g. when the view swaps). */
   resetKey: string;
-  dragging: boolean;
+  /** When false, width and opacity changes apply instantly. */
+  animate: boolean;
 }
 
 function PanelSection({
@@ -195,7 +196,7 @@ function PanelSection({
   topBar,
   content,
   resetKey,
-  dragging,
+  animate,
 }: PanelSectionProps) {
   const hidden = width === 0;
   const contentRef = useRef<HTMLDivElement>(null);
@@ -221,19 +222,11 @@ function PanelSection({
     setIsScrolled(false);
   }, [resetKey, hidden]);
 
-  // The scrollable content area (shared by nav and content panels). When empty,
-  // it shows a diagonal hatch placeholder.
+  // The scrollable content area (shared by nav and content panels).
   const contentArea = (
     <div
       ref={contentRef}
-      className={[
-        "relative flex min-h-0 flex-1 flex-col overflow-hidden",
-        !content
-          ? isNav
-            ? "bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]"
-            : "bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.04)_11px,rgba(0,0,0,0.04)_12px)]"
-          : "",
-      ].join(" ")}
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       {content}
     </div>
@@ -247,9 +240,9 @@ function PanelSection({
         "relative flex h-full min-w-0 flex-none flex-col overflow-x-clip overflow-y-hidden",
         isNav ? "bg-app-background" : "",
         hidden ? "opacity-0" : "opacity-100",
-        dragging
-          ? ""
-          : "transition-[width,opacity] duration-[260ms] ease-[cubic-bezier(.4,0,.2,1)]",
+        animate
+          ? "transition-[width,opacity] duration-[260ms] ease-[cubic-bezier(.4,0,.2,1)]"
+          : "",
       ].join(" ")}
       style={{ width }}
       {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
@@ -493,8 +486,12 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     return 0;
   })();
 
+  // Read only by the drag handlers, which run long after the commit, so the
+  // write belongs in an effect rather than in render.
   const focusRef = useRef(effectiveFocus);
-  focusRef.current = effectiveFocus;
+  useEffect(() => {
+    focusRef.current = effectiveFocus;
+  }, [effectiveFocus]);
 
   const [navIntent, setNavIntent] = useState(true);
   const [navPeek, setNavPeek] = useState(false);
@@ -517,6 +514,22 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     observer.observe(stage);
     return () => observer.disconnect();
   }, []);
+
+  // Widths are 0 until the stage is measured, and the forced reflow in
+  // measure() arms a transition on that first jump. Keep transitions off until
+  // the measured widths have painted once, so panels take their space instead
+  // of stretching open. The rAF matters: the render carrying the real width
+  // must paint with no transition class, and only the frame after that may add
+  // it, since adding the class in the same style recalculation as the width
+  // change would still start a transition.
+  const [hasPainted, setHasPainted] = useState(false);
+  useEffect(() => {
+    if (hasPainted || stageW === 0) {
+      return;
+    }
+    const raf = requestAnimationFrame(() => setHasPainted(true));
+    return () => cancelAnimationFrame(raf);
+  }, [hasPainted, stageW]);
 
   const isMobile = stageW > 0 && stageW < MOBILE_BREAKPOINT;
 
@@ -748,8 +761,11 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     return { nav, p2: byIdx[0], p3: byIdx[1], p4: byIdx[2] };
   })();
 
+  // Same as focusRef above: only the drag handlers read it, so keep render pure.
   const layoutRef = useRef(layout);
-  layoutRef.current = layout;
+  useEffect(() => {
+    layoutRef.current = layout;
+  }, [layout]);
 
   const panelWidths = [layout.p2, layout.p3, layout.p4];
 
@@ -868,7 +884,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
               width={layout.nav}
               isNav
               resetKey="nav"
-              dragging={dragging}
+              animate={hasPainted && !dragging}
               topBar={
                 <PanelTopBar
                   left={navChild.props.topBarLeft}
@@ -998,7 +1014,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                     width={width}
                     isNav={false}
                     resetKey={panel.props.label}
-                    dragging={dragging}
+                    animate={hasPainted && !dragging}
                     topBar={
                       <PanelTopBar left={topBarLeft} right={topBarRight} />
                     }
@@ -1053,7 +1069,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                   left={navChild?.props.topBarLeft}
                   right={navChild?.props.topBarRight}
                 />
-                <div className="flex-1 bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
+                <div className="flex-1">
                   {mountNavOverlayContent ? resolvedNavChildren : null}
                 </div>
               </div>
