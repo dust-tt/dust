@@ -269,7 +269,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
       <Page.Vertical align="stretch" gap="xl">
         <Page.Horizontal align="right">
           <Button
-            label="Read the API reference"
+            label="API Reference"
             size="sm"
             variant="outline"
             icon={BookOpen01}

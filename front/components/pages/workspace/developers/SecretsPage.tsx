@@ -289,7 +289,7 @@ export function SecretsPage() {
               onChange={setSearchQuery}
             />
             <Button
-              label="Read the API reference"
+              label="API Reference"
               size="sm"
               variant="outline"
               icon={BookOpen01}
