@@ -145,8 +145,7 @@ jobs:
             echo "matrix=[\"${{ inputs.regions }}\"]" >> "$GITHUB_OUTPUT"
           fi
 
-  # Components on the build-once path: one build, pushed to the global registry and, for
-  # now, to both regional registries so the regional values files keep resolving.
+  # Components on the build-once path: one build, pushed to the global registry.
   # Marketing stays on the regional matrix: next build inlines region-specific
   # NEXT_PUBLIC_* values into its client bundle.
   build-once:
@@ -178,9 +177,6 @@ jobs:
           # Global registry, lives in the dust-infra project next to the helm charts.
           project_id: dust-infra
           region: us-central1
-          extra_image_registries: >-
-            us-central1-docker.pkg.dev/${{ secrets.GCLOUD_US_PROJECT_ID }}/dust-images
-            europe-west1-docker.pkg.dev/${{ secrets.GCLOUD_EU_PROJECT_ID }}/dust-images
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}

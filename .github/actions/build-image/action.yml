@@ -51,10 +51,6 @@ inputs:
   contentful_access_token:
     description: "Contentful access token"
     required: false
-  extra_image_registries:
-    description: "Space-separated <host>/<project>/<repo> prefixes that also receive the image, on top of the primary registry"
-    required: false
-    default: ""
 
 outputs:
   current_version:
@@ -85,16 +81,8 @@ runs:
 
     - name: "Configure GCP Docker Auth"
       shell: bash
-      env:
-        EXTRA_IMAGE_REGISTRIES: ${{ inputs.extra_image_registries }}
       run: |
-        HOSTS="${{ inputs.region }}-docker.pkg.dev"
-        # shellcheck disable=SC2086 # word splitting is the point
-        for registry in $EXTRA_IMAGE_REGISTRIES; do
-          HOSTS="${HOSTS},${registry%%/*}"
-        done
-        HOSTS=$(echo "$HOSTS" | tr ',' '\n' | sort -u | paste -sd, -)
-        gcloud auth configure-docker "$HOSTS" --quiet
+        gcloud auth configure-docker ${{ inputs.region }}-docker.pkg.dev --quiet
 
     - name: "Fetch custom models config"
       if: contains(inputs.component, 'front')
@@ -109,7 +97,6 @@ runs:
       shell: bash
       env:
         DEPOT_TOKEN: ${{ inputs.depot_region == 'eu' && inputs.depot_eu_token || inputs.depot_us_token }}
-        EXTRA_IMAGE_REGISTRIES: ${{ inputs.extra_image_registries }}
       run: |
         COMPONENT="${{ inputs.component }}"
 
@@ -199,16 +186,6 @@ runs:
           LATEST_TAGS+=("-t" "${REGISTRY}/${COMPONENT}:latest")
         fi
 
-        # Same image, additional registries.
-        EXTRA_TAGS=()
-        # shellcheck disable=SC2086 # word splitting is the point
-        for registry in $EXTRA_IMAGE_REGISTRIES; do
-          EXTRA_TAGS+=("-t" "${registry}/${COMPONENT}:${{ inputs.commit_sha }}")
-          if [[ "$PUSH_LATEST" == "true" ]]; then
-            EXTRA_TAGS+=("-t" "${registry}/${COMPONENT}:latest")
-          fi
-        done
-
         # Special handling for front component: Bake builds both targets in parallel
         # and deduplicates work in their shared base-deps stage.
         if [[ "$BASE_COMPONENT" == "front" ]]; then
@@ -222,17 +199,6 @@ runs:
           FRONT_API_IMAGE_TAG="${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${API_COMPONENT}:${{ inputs.commit_sha }}"
           WORKERS_LATEST_IMAGE_TAG=""
           FRONT_API_LATEST_IMAGE_TAG=""
-          WORKERS_EXTRA_TAGS=""
-          FRONT_API_EXTRA_TAGS=""
-          # shellcheck disable=SC2086 # word splitting is the point
-          for registry in $EXTRA_IMAGE_REGISTRIES; do
-            WORKERS_EXTRA_TAGS+="${WORKERS_EXTRA_TAGS:+,}${registry}/${COMPONENT}-workers:${{ inputs.commit_sha }}"
-            FRONT_API_EXTRA_TAGS+="${FRONT_API_EXTRA_TAGS:+,}${registry}/${API_COMPONENT}:${{ inputs.commit_sha }}"
-            if [[ "$PUSH_LATEST" == "true" ]]; then
-              WORKERS_EXTRA_TAGS+=",${registry}/${COMPONENT}-workers:latest"
-              FRONT_API_EXTRA_TAGS+=",${registry}/${API_COMPONENT}:latest"
-            fi
-          done
 
           BAKE_OVERRIDES=(
             --set "*.args.COMMIT_HASH=${{ inputs.commit_sha }}"
@@ -253,7 +219,6 @@ runs:
 
           export WORKERS_IMAGE_TAG FRONT_API_IMAGE_TAG
           export WORKERS_LATEST_IMAGE_TAG FRONT_API_LATEST_IMAGE_TAG
-          export WORKERS_EXTRA_TAGS FRONT_API_EXTRA_TAGS
 
           FRONT_BUILD_STARTED_SECONDS=$SECONDS
           depot bake \
@@ -274,7 +239,6 @@ runs:
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
             -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
             "${LATEST_TAGS[@]}" \
-            "${EXTRA_TAGS[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
