@@ -2724,11 +2724,17 @@ describe("SpaceResource group_permissions enforcement", () => {
     }
 
     const space = await SpaceFactory.regular(workspace);
-    // The space's own auto-created member group is readable by an admin, so only a kind check keeps
-    // it — and the workspace global group — out of a group-managed selection.
     const [autoGroup] = await space.fetchRegularAutoGroups(adminAuth);
 
-    for (const group of [globalGroupRes.value, autoGroup]) {
+    // The global group is readable by everyone, so only a kind check keeps it out of a
+    // group-managed selection. The space's own auto-created member group is readable by no one,
+    // so it is turned away by `fetchByIds` before the kind check runs.
+    const cases = [
+      { group: globalGroupRes.value, expectedCode: "invalid_group_kind" },
+      { group: autoGroup, expectedCode: "unauthorized" },
+    ];
+
+    for (const { group, expectedCode } of cases) {
       const res = await space.updatePermissions(adminAuth, {
         isRestricted: true,
         managementMode: "group",
@@ -2737,7 +2743,7 @@ describe("SpaceResource group_permissions enforcement", () => {
       });
       expect(res.isErr()).toBe(true);
       if (res.isErr()) {
-        expect(res.error.code).toBe("invalid_group_kind");
+        expect(res.error.code).toBe(expectedCode);
       }
     }
   });
