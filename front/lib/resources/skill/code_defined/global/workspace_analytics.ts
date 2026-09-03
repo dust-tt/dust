@@ -1,8 +1,10 @@
 import {
   GET_CONSUMPTION_OVERVIEW_TOOL_NAME,
+  GET_CREDIT_TIMESERIES_TOOL_NAME,
   GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME,
   GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME,
   GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME,
+  WORKSPACE_ANALYTICS_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import {
   GET_AGENT_DETAILS_TOOL_NAME,
@@ -16,62 +18,50 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_define
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
+const WORKSPACE_ANALYTICS_INSTRUCTIONS = `
+You help workspace admins and managers understand how their Dust workspace is used.
+Report only figures returned by the tools, never estimate or fabricate a number.
+
+# What the data covers
+Every analytics tool reads the same consumption record: one entry per model step and per tool call,
+carrying the agent, the user, the model, the source (the channel or integration the message came from), the API key,
+the user's groups, the agent's tags, the skills and tools involved, and the billed credits.
+Credits combine model compute and tool usage and are the same billed credits the workspace Analytics page shows.
+
+# Choosing a tool
+- Headline figures for a time period: ${GET_CONSUMPTION_OVERVIEW_TOOL_NAME}, in one call.
+- Who or what costs the most: ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} with the dimension asked about.
+- Who or what is most active, by volume rather than cost: ${GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME} with the dimension asked about, or ${GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME} for how often tools and skills ran.
+- Anything over time (trend, evolution, per day, per week): a single ${GET_CREDIT_TIMESERIES_TOOL_NAME} call. Set breakdownBy to split the trend along a dimension into its top groups plus an 'others' series. Never rebuild a trend by calling a ranking tool once per period, and never make one filtered call per entity when a breakdown does it in one call.
+- What an agent does: ${GET_AGENT_DETAILS_TOOL_NAME} with the agent's id.
+- What exists rather than what is used (which agents or skills the workspace has, whether they are published, which ones nobody uses): ${LIST_AGENTS_TOOL_NAME} or ${LIST_SKILLS_TOOL_NAME}, then ${GET_AGENT_DETAILS_TOOL_NAME} or ${GET_SKILL_DETAILS_TOOL_NAME} to inspect a single one. Listing the agents other members have not published is admin-only, so fall back to the default view on an authorization error.
+
+# Filters
+Filters take ids, not names. Every ranking row carries the entity's id: feed those back as filters to narrow any other call, and never guess an id from a display name.
+
+# Reporting
+- Lead with the answer, as a ranked list or a single figure. Chart timeseries results so the trend is visible.
+- Rankings report the credit total over the whole time period separately from the rows. Rows can overlap (an agent can carry several tags, a member can belong to several groups, a tool call can be attributed to several skills), so never sum rows to get a total: use that figure or ${GET_CONSUMPTION_OVERVIEW_TOOL_NAME}.
+- Credits are billed credits, not estimates.`.trim();
+
 export const workspaceAnalyticsSkill = {
   sId: "workspace-analytics",
   kind: "global",
   name: "Workspace Analytics",
   userFacingDescription:
-    "Analyze how your workspace is being used — for example, which agents " +
-    "are used most — and inventory its agents and skills. Available to " +
-    "workspace admins and managers only.",
+    "Analyze how your workspace is used: who and what consumes credits and " +
+    "drives activity, headline figures, and trends over time. Also " +
+    "inventories the workspace's agents and skills.",
   agentFacingDescription:
-    "Enable when a workspace admin or manager asks about workspace usage " +
-    "analytics, such as which agents are used most, or wants to inventory the " +
-    "workspace's agents and skills. Restricted to admins and managers.",
-  instructions:
-    "You help workspace admins and managers analyze how their Dust workspace " +
-    "is being used. Use the available workspace analytics tools to answer the " +
-    "question and present the results clearly. Only report figures returned " +
-    "by the tools — never fabricate numbers. If a tool reports an " +
-    "authorization error, explain that workspace analytics is restricted to " +
-    "workspace admins and managers.\n\n" +
-    "Choosing a tool:\n" +
-    "- For trends over time — anything spanning multiple days or phrased as " +
-    "'over time', 'per day', 'evolution', 'trend' — make a single timeseries " +
-    "call: get_credit_timeseries for credit/spend trends. It returns the " +
-    "whole series bucketed by day/week/month in one call.\n" +
-    "- Never build a trend by calling a snapshot tool once per day or in " +
-    "parallel per period — it is slower and unnecessary, the timeseries " +
-    "tools already bucket over time.\n" +
-    "- To attribute spend (which agents, users, models, tools, skills, " +
-    "sources, API keys, groups, tags or conversations cost the most), call " +
-    `${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} with that dimension. Use ` +
-    `${GET_CONSUMPTION_OVERVIEW_TOOL_NAME} for a window's totals: credits, messages, ` +
-    "active members and the top agent in one call.\n" +
-    "- For a credit trend split by agent, user or model (e.g. 'how did each " +
-    "agent's spend evolve'), set breakdownBy on get_credit_timeseries — one " +
-    "call returns the top groups plus an 'other' series. Do not make one " +
-    "filtered call per agent, user or model.\n" +
-    "- For volume rather than spend: who is most active, which agents or " +
-    "models get used most, where messages come from. Call " +
-    `${GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME} with that dimension, and ` +
-    `${GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME} for how often tools and skills ran.\n` +
-    "- The rankings return each row's id. Feed those ids back in as filters " +
-    "(agentIds, userIds, modelIds, agentTagIds, sources, ...) to narrow any " +
-    "other call — never guess an id from a display name.\n" +
-    `- To inventory what EXISTS rather than what is used — which agents or ` +
-    `skills the workspace has, whether they are published or discoverable, ` +
-    `which ones nobody uses — call ${LIST_AGENTS_TOOL_NAME} or ` +
-    `${LIST_SKILLS_TOOL_NAME}, then ${GET_AGENT_DETAILS_TOOL_NAME} or ` +
-    `${GET_SKILL_DETAILS_TOOL_NAME} to inspect a single one.\n` +
-    `- Listing the agents other members have not published is admin-only, so ` +
-    `fall back to the default view if it reports an authorization error.\n` +
-    "- Chart timeseries results so the admin can see the trend.",
+    "Enable when the user asks how their Dust workspace is used: credit " +
+    "consumption or spend, who or what is most active, headline figures, " +
+    "trends over time, or an inventory of the workspace's agents and skills.",
+  instructions: WORKSPACE_ANALYTICS_INSTRUCTIONS,
   mcpServers: [
-    { name: "workspace_analytics" },
+    { name: WORKSPACE_ANALYTICS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 8,
+  version: 9,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {
