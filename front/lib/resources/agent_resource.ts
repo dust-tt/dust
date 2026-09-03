@@ -135,6 +135,54 @@ export class AgentResource implements WithAccessControl {
     }
   }
 
+  async revokeEditors(
+    auth: Authenticator,
+    { editors, transaction }: { editors: UserType[]; transaction: Transaction }
+  ): Promise<void> {
+    assert(this.kind === "custom");
+    assert(this.id !== null);
+    assert(auth.getNonNullableWorkspace().id === this.workspaceId);
+
+    const revokeResult = await GroupPermissionResource.revokeFromUsers(auth, {
+      users: editors,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: this.id,
+      transaction,
+    });
+    if (revokeResult.isErr()) {
+      throw revokeResult.error;
+    }
+  }
+
+  async deletePermissions(
+    auth: Authenticator,
+    { transaction }: { transaction: Transaction }
+  ): Promise<void> {
+    assert(this.kind === "custom");
+    assert(this.id !== null);
+    assert(auth.getNonNullableWorkspace().id === this.workspaceId);
+
+    const grantGroups =
+      await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
+        resourceType: "agent",
+        resourceId: this.id,
+        transaction,
+      });
+    await GroupPermissionResource.deleteAllForResource(auth, {
+      resourceType: "agent",
+      resourceId: this.id,
+      transaction,
+    });
+
+    for (const grantGroup of grantGroups) {
+      const deleteResult = await grantGroup.delete(auth, { transaction });
+      if (deleteResult.isErr()) {
+        throw deleteResult.error;
+      }
+    }
+  }
+
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
     switch (this.kind) {
       case "global":

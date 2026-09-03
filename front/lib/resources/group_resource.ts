@@ -1826,6 +1826,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const { total } = await MembershipResource.getActiveMemberships({
       users: userResources,
       workspace: owner,
+      transaction,
     });
 
     if (total !== userIds.length) {
@@ -1840,7 +1841,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Check if the users are already a member of the group.
-    const activeMembers = await this.getActiveMembers(auth);
+    const activeMembers = await this.getActiveMembers(auth, { transaction });
     const activeMembersIds = activeMembers.map((m) => m.sId);
     const notActiveUserIds = userIds.filter(
       (userId) => !activeMembersIds.includes(userId)

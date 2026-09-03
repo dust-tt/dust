@@ -5,7 +5,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
@@ -534,6 +533,29 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
   ): Promise<Result<undefined, Error>> {
+    return this.revokeFromUsers(auth, {
+      users: [user],
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+  }
+
+  // Batched counterpart of revokeFromUser: one tuple lookup and one bulk membership write. If the
+  // removed users were the final members, the grant and its backing group are deleted.
+  static async revokeFromUsers(
+    auth: Authenticator,
+    { users, grantType, resourceType, resourceId, transaction }: UsersGrantSpec
+  ): Promise<Result<undefined, Error>> {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const uniqueUsers = [
+      ...new Map(users.map((user) => [user.id, user])).values(),
+    ];
+
     return withTransaction(async (t) => {
       await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
 
@@ -547,31 +569,26 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         return new Ok(undefined);
       }
 
-      const membership = await GroupMembershipModel.findOne({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          groupId: group.id,
-          userId: user.id,
-          status: "active",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
+      const activeMembers = await group.getActiveMembers(auth, {
         transaction: t,
       });
-      if (!membership) {
+      const userIds = new Set(uniqueUsers.map((user) => user.id));
+      const usersToRemove = activeMembers
+        .filter((member) => userIds.has(member.id))
+        .map((member) => member.toJSON());
+      if (usersToRemove.length === 0) {
         return new Ok(undefined);
       }
 
-      const memberCount = await group.getMemberCount(auth);
-      const removeResult = await group.dangerouslyRemoveMember(auth, {
-        user,
+      const removeResult = await group.dangerouslyRemoveMembers(auth, {
+        users: usersToRemove,
         transaction: t,
       });
       if (removeResult.isErr()) {
         return removeResult;
       }
 
-      if (memberCount === 1) {
+      if (usersToRemove.length === activeMembers.length) {
         await this.revoke(auth, {
           group,
           grantType,
