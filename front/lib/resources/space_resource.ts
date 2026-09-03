@@ -1707,6 +1707,72 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new Ok(users);
   }
 
+  /**
+   * Removes the authenticated user from this space's auto-created groups.
+   *
+   * Unlike `removeMembers`, no admin permission is required: a member may
+   * always leave on their own. Projects only, as membership in the other space
+   * kinds is not opt-out.
+   */
+  async leave(
+    auth: Authenticator
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "invalid_request_error"
+        | "user_not_member"
+        | "group_requirements_not_met"
+        | "unauthorized"
+        | "user_not_found"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!this.isProject()) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "You can only leave Pods, not regular spaces."
+        )
+      );
+    }
+
+    if (!this.isMember(auth)) {
+      return new Err(
+        new DustError("user_not_member", "You are not a member of this Pod.")
+      );
+    }
+
+    const user = auth.getNonNullableUser();
+
+    const editorGroup = await this.fetchManualEditorGroup(auth);
+    if (editorGroup) {
+      const activeEditors = await editorGroup.getActiveMembers(auth);
+      if (activeEditors.length === 1 && activeEditors[0].sId === user.sId) {
+        return new Err(
+          new DustError(
+            "group_requirements_not_met",
+            "You cannot leave this Pod as you are the last editor. Please add another editor first."
+          )
+        );
+      }
+    }
+
+    const groups = await this.fetchRegularAutoGroups(auth);
+    for (const group of groups) {
+      const removeRes = await group.dangerouslyRemoveMember(auth, {
+        user: user.toJSON(),
+      });
+      // A member of the space is not necessarily one of its editors.
+      if (removeRes.isErr() && removeRes.error.code !== "user_not_member") {
+        return removeRes;
+      }
+    }
+
+    return new Ok(undefined);
+  }
+
   // The space's manual editor group (project spaces only): the regular_auto group holding the
   // `admin` grant on this space in `group_permissions`. Read from `group_permissions` rather than
   // `group_vaults` (being removed). Returns null for non-project spaces and for provisioned mode,
@@ -1925,7 +1991,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // For each user, the groups they are an active member of among the spaces' grant groups. One
     // query, whatever the number of users and spaces.
     const groupModelIdsByUser =
-      await GroupResource.listGroupModelIdsByUserModelIdInWorkspace({
+      await GroupResource.dangerouslyListGroupModelIdsByUserModelIdInWorkspace({
         workspace,
         userModelIds,
         groupModelIds: [...new Set(grants.map((grant) => grant.groupId))],
@@ -2337,7 +2403,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const groups = await this.fetchRegularAutoGroups(auth, transaction);
 
     for (const group of groups) {
-      await group.suspendMembers(auth, { transaction });
+      await group.dangerouslySuspendMembers(auth, { transaction });
     }
   }
 
@@ -2351,7 +2417,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const groups = await this.fetchRegularAutoGroups(auth, transaction);
 
     for (const group of groups) {
-      await group.restoreMembers(auth, { transaction });
+      await group.dangerouslyRestoreMembers(auth, { transaction });
     }
   }
 

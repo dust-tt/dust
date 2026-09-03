@@ -1314,7 +1314,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * query to the caller's group ids keeps this to a single row-bounded query
    * regardless of how many groups the workspace has.
    */
-  static async listGroupModelIdsByUserModelIdInWorkspace({
+  static async dangerouslyListGroupModelIdsByUserModelIdInWorkspace({
     workspace,
     userModelIds,
     groupModelIds,
@@ -1913,67 +1913,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Allows the authenticated user to leave the group.
-   *
-   * Unlike removeMembers(), this method does not require admin/editor permissions.
-   * Users can always remove themselves from groups they are members of.
-   *
-   * Only works for "regular_auto" groups.
-   * TODO(remy): Replace this with dangerouslyRemoveMembers once available
-   */
-  async leaveGroup(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<
-    Result<undefined, DustError<"user_not_member" | "system_or_global_group">>
-  > {
-    const user = auth.getNonNullableUser();
-    const workspace = auth.getNonNullableWorkspace();
-
-    if (!this.isRegularAuto()) {
-      return new Err(
-        new DustError(
-          "system_or_global_group",
-          "Users can only leave regular groups."
-        )
-      );
-    }
-
-    const now = new Date();
-
-    const [updatedCount] = await GroupMembershipModel.update(
-      { endAt: now },
-      {
-        where: {
-          groupId: this.id,
-          userId: user.id,
-          workspaceId: workspace.id,
-          startAt: { [Op.lte]: now },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-        },
-        transaction,
-      }
-    );
-
-    if (updatedCount === 0) {
-      return new Err(
-        new DustError("user_not_member", "User is not a member of this group.")
-      );
-    }
-
-    const userId = user.id;
-    const workspaceId = workspace.id;
-    invalidateCacheAfterCommit(transaction, async () => {
-      await GroupResource.invalidateGroupIdsCacheForUser({
-        user: { id: userId },
-        workspace: { id: workspaceId },
-      });
-    });
-
-    return new Ok(undefined);
-  }
-
-  /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
   async dangerouslySetMembers(
@@ -2036,11 +1975,18 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Suspends all active members of this group.
    * Returns array of affected user ModelIds.
+   *
+   * Only regular_auto group members can be suspended: it is how a space keeps its
+   * manual members on record while it runs in group management mode.
    */
-  async suspendMembers(
+  async dangerouslySuspendMembers(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ModelId[]> {
+    assert(
+      this.isRegularAuto(),
+      `You can't suspend members of ${this.kind} groups.`
+    );
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const affectedMemberships = await GroupMembershipModel.findAll({
@@ -2098,7 +2044,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    *
    * Returns the number of group memberships restored.
    */
-  static async restoreGroupMembershipsRevokedWith({
+  static async dangerouslyRestoreGroupMembershipsRevokedWith({
     user,
     workspace,
     revokedAt,
@@ -2199,11 +2145,17 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Restores all suspended members of this group.
    * Returns array of affected user ModelIds.
+   *
+   * Counterpart of `dangerouslySuspendMembers`, so regular_auto only.
    */
-  async restoreMembers(
+  async dangerouslyRestoreMembers(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ModelId[]> {
+    assert(
+      this.isRegularAuto(),
+      `You can't restore members of ${this.kind} groups.`
+    );
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const affectedMemberships = await GroupMembershipModel.findAll({
@@ -2691,7 +2643,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    return provisionedGroups;
+    const readableGroups = provisionedGroups.filter((group) =>
+      group.canRead(auth)
+    );
+
+    return readableGroups;
   }
 
   /**
