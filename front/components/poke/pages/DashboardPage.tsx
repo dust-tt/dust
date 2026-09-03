@@ -16,14 +16,13 @@ import {
   isProPlanPrefix,
   POKE_PLAN_TYPE_FILTERS,
 } from "@app/lib/plans/plan_codes";
-import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { usePokeRegion } from "@app/lib/swr/poke";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
+import { usePokeCells } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
-import type { PokeWorkspaceWithPlacement } from "@app/poke/swr/search";
-import { usePokeWorkspacesAllRegions } from "@app/poke/swr/search";
-import type { RegionType } from "@app/types/region";
-import { SUPPORTED_REGIONS } from "@app/types/region";
+import type { PokeWorkspaceWithCell } from "@app/poke/swr/search";
+import { usePokeWorkspacesAllCells } from "@app/poke/swr/search";
+import type { CellType } from "@app/types/cell";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
@@ -54,10 +53,10 @@ const PLAN_TYPE_FILTER_LABELS: Record<PokePlanTypeFilter, string> = {
 };
 
 interface WorkspaceListProps {
-  workspaces: PokeWorkspaceWithPlacement[];
+  workspaces: PokeWorkspaceWithCell[];
   isWorkspacesLoading?: boolean;
   showCell?: boolean;
-  onWorkspaceClick?: (ws: PokeWorkspaceWithPlacement) => void;
+  onWorkspaceClick?: (ws: PokeWorkspaceWithCell) => void;
 }
 
 function WorkspaceList({
@@ -81,8 +80,8 @@ function WorkspaceList({
               <div className="flex items-center justify-between pb-2">
                 <h2 className="text-md flex-grow font-bold">{ws.name}</h2>
                 {showCell && (
-                  <Chip size="xs" color={getRegionChipColor(ws.region)}>
-                    {ws.cell} · {getRegionDisplay(ws.region)}
+                  <Chip size="xs" color={getCellChipColor(ws.region)}>
+                    {getCellDisplay({ name: ws.cell, region: ws.region })}
                   </Chip>
                 )}
               </div>
@@ -156,16 +155,14 @@ function DashboardPageSPA() {
   usePokePageMetadata({ name: "Home" });
 
   const { regionInfo, setRegionInfo } = useRegionContext();
-  const { regionData } = usePokeRegion();
-  const regionUrls = regionData?.regionUrls ?? null;
-  const cells = regionData?.cells ?? null;
+  const { currentCell, cells } = usePokeCells();
 
   const [planTypeFilter, setPlanTypeFilter] = useState<
     PokePlanTypeFilter | undefined
   >(undefined);
-  const [upgradedRegionFilter, setUpgradedRegionFilter] = useState<RegionType>(
-    regionInfo.name
-  );
+  const [upgradedCellFilter, setUpgradedCellFilter] = useState<
+    CellType | undefined
+  >(undefined);
   const [upgradedPage, setUpgradedPage] = useState(0);
 
   const handlePlanTypeFilterChange = useCallback(
@@ -176,20 +173,22 @@ function DashboardPageSPA() {
     []
   );
 
-  const handleUpgradedRegionFilterChange = useCallback((region: RegionType) => {
-    setUpgradedRegionFilter(region);
+  const handleUpgradedCellFilterChange = useCallback((cell: CellType) => {
+    setUpgradedCellFilter(cell);
     setUpgradedPage(0);
   }, []);
+
+  const selectedCell = upgradedCellFilter ?? currentCell?.name;
 
   const {
     workspaces: upgradedWorkspaces,
     isWorkspacesLoading: isUpgradedWorkspacesLoading,
     isWorkspacesError: isUpgradedWorkspacesError,
     hasMoreWorkspaces: hasMoreUpgradedWorkspaces,
-  } = usePokeWorkspacesAllRegions({
+  } = usePokeWorkspacesAllCells({
     upgraded: true,
     planType: planTypeFilter,
-    region: upgradedRegionFilter,
+    cell: selectedCell,
     limit: WORKSPACE_LIMIT,
     offset: upgradedPage * WORKSPACE_LIMIT,
     cells,
@@ -212,7 +211,7 @@ function DashboardPageSPA() {
     workspaces: searchResults,
     isWorkspacesLoading: isSearchResultsLoading,
     isWorkspacesError: isSearchResultsError,
-  } = usePokeWorkspacesAllRegions({
+  } = usePokeWorkspacesAllCells({
     search: searchQuery,
     disabled: !searchQuery,
     planType: planTypeFilter,
@@ -225,12 +224,13 @@ function DashboardPageSPA() {
   };
 
   const handleWorkspaceClick = useCallback(
-    (ws: PokeWorkspaceWithPlacement) => {
-      if (ws.region !== regionInfo.name && regionUrls) {
-        setRegionInfo({ name: ws.region, url: regionUrls[ws.region] });
+    (ws: PokeWorkspaceWithCell) => {
+      const targetCell = cells?.find((cell) => cell.name === ws.cell);
+      if (targetCell && targetCell.url !== regionInfo.url) {
+        setRegionInfo({ name: targetCell.region, url: targetCell.url });
       }
     },
-    [regionInfo, setRegionInfo, regionUrls]
+    [regionInfo, setRegionInfo, cells]
   );
 
   return (
@@ -290,17 +290,17 @@ function DashboardPageSPA() {
             })`}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          {SUPPORTED_REGIONS.map((region) => (
+          {(cells ?? []).map((cell) => (
             <Chip
-              key={region}
+              key={cell.name}
               size="xs"
-              label={getRegionDisplay(region)}
+              label={getCellDisplay(cell)}
               color={
-                upgradedRegionFilter === region
-                  ? getRegionChipColor(region)
+                selectedCell === cell.name
+                  ? getCellChipColor(cell.region)
                   : "primary"
               }
-              onClick={() => handleUpgradedRegionFilterChange(region)}
+              onClick={() => handleUpgradedCellFilterChange(cell.name)}
             />
           ))}
           <Button

@@ -9,6 +9,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetDataSourcePermissionsResponseBody } from "@app/types/api/data_sources/managed_permissions";
+import type { GetPokeCellsResponseType } from "@app/types/api/poke/cells";
 import type {
   GetPokeCouponRedemptionsResponseBody,
   GetPokeCouponsResponseBody,
@@ -16,7 +17,6 @@ import type {
 import type { GetPokeFeaturesResponseBody } from "@app/types/api/poke/features";
 import type { GetPokePlansResponseBody } from "@app/types/api/poke/plans";
 import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/types/api/poke/stripe_customers";
-import type { GetRegionResponseType } from "@app/types/api/regions/config";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
@@ -26,16 +26,17 @@ import { useEffect } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
-export function usePokeRegion() {
+export function usePokeCells() {
   const { fetcher } = useFetcher();
-  const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
+  const cellsFetcher: Fetcher<GetPokeCellsResponseType> = fetcher;
 
-  const { data, error } = useSWRWithDefaults("/api/poke/region", regionFetcher);
+  const { data, error } = useSWRWithDefaults("/api/poke/cells", cellsFetcher);
 
   return {
-    regionData: data,
-    isRegionLoading: !error && !data,
-    isRegionError: error,
+    currentCell: data?.currentCell ?? null,
+    cells: data?.cells ?? null,
+    isCellsLoading: !error && !data,
+    isCellsError: error,
   };
 }
 

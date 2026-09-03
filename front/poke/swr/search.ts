@@ -6,9 +6,8 @@ import type {
   GetPokeWorkspacesResponseBody,
   PokeWorkspaceType,
 } from "@app/types/api/poke/workspaces";
-import type { CellInfo } from "@app/types/cell";
+import type { CellInfo, CellType } from "@app/types/cell";
 import type { PokeItemBase } from "@app/types/poke";
-import type { RegionType } from "@app/types/region";
 import { useEffect, useState } from "react";
 
 // Deduplicate cells by URL. In dev, all cells can point to the same localhost
@@ -30,7 +29,7 @@ function getUniqueCells(cells: CellInfo[]): CellInfo[] {
  * Search across all cells in parallel.
  * Returns results tagged with their source cell and region.
  */
-export function usePokeSearchAllRegions({
+export function usePokeSearchAllCells({
   disabled,
   search,
   cells,
@@ -115,17 +114,17 @@ export function usePokeSearchAllRegions({
   };
 }
 
-export type PokeWorkspaceWithPlacement = PokeWorkspaceType;
+export type PokeWorkspaceWithCell = PokeWorkspaceType;
 
 /**
  * Search workspaces across all cells in parallel.
  */
-export function usePokeWorkspacesAllRegions({
+export function usePokeWorkspacesAllCells({
   disabled,
   search,
   upgraded,
   planType,
-  region,
+  cell,
   limit,
   offset,
   cells,
@@ -134,13 +133,13 @@ export function usePokeWorkspacesAllRegions({
   search?: string;
   upgraded?: boolean;
   planType?: PokePlanTypeFilter;
-  // Restrict fetching to a single region instead of merging all of them.
-  region?: RegionType;
+  // Restrict fetching to a single cell instead of merging all of them.
+  cell?: CellType;
   limit?: number;
   offset?: number;
   cells: CellInfo[] | null;
 }) {
-  const [workspaces, setWorkspaces] = useState<PokeWorkspaceWithPlacement[]>(
+  const [workspaces, setWorkspaces] = useState<PokeWorkspaceWithCell[]>(
     emptyArray()
   );
   const [isLoading, setIsLoading] = useState(false);
@@ -178,8 +177,8 @@ export function usePokeWorkspacesAllRegions({
       queryParams.set("offset", String(offset));
     }
 
-    const cellsToFetch = getUniqueCells(cells).filter(
-      (cell) => !region || cell.region === region
+    const cellsToFetch = getUniqueCells(
+      cells.filter((listedCell) => !cell || listedCell.name === cell)
     );
 
     const run = async () => {
@@ -204,7 +203,7 @@ export function usePokeWorkspacesAllRegions({
         });
 
         const settledResults = await Promise.allSettled(cellPromises);
-        const allWorkspaces: PokeWorkspaceWithPlacement[] = [];
+        const allWorkspaces: PokeWorkspaceWithCell[] = [];
         let hasErrors = false;
         let anyHasMore = false;
 
@@ -236,7 +235,7 @@ export function usePokeWorkspacesAllRegions({
     return () => {
       abortController.abort();
     };
-  }, [disabled, search, upgraded, planType, region, limit, offset, cells]);
+  }, [disabled, search, upgraded, planType, cell, limit, offset, cells]);
 
   return {
     workspaces,
