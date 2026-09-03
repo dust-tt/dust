@@ -3,6 +3,7 @@ import type {
   PokeFrameDetails,
   PokeFrameFunction,
   PokeFrameListItem,
+  PokeGetFrameDatabaseSchema,
   PokeListFrameDatabases,
   PokeListFrameFunctions,
   PokeListFrames,
@@ -113,6 +114,28 @@ export function usePokeFrameDatabases({
 
   return {
     data: data?.items ?? emptyArray<PokeFrameDatabase>(),
+    isLoading: !error && !data && !disabled,
+    isError: error,
+    mutate,
+  };
+}
+
+export function usePokeFrameDatabaseSchema({
+  disabled,
+  frameId,
+  database,
+  owner,
+}: UsePokeFrameSubResourceProps & { database: string }) {
+  const { fetcher } = useFetcher();
+  const schemaFetcher: Fetcher<PokeGetFrameDatabaseSchema> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/frames/${frameId}/databases/${database}/schema`,
+    schemaFetcher,
+    { disabled }
+  );
+
+  return {
+    schema: data?.schema ?? null,
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

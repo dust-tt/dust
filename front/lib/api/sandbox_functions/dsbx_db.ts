@@ -528,13 +528,16 @@ const DB_SCHEMA_STAGING_ROOT = "/tmp/dust-sandbox-db-schemas";
  * back. SQLite does not store column modes, so the text carries storage types only — the authored
  * databases/{db}.db.ts stays the source of truth.
  */
-export async function getDatabaseSchemaOnSandbox(
+export async function getDatabaseSchemaOnReadySandbox(
   auth: Authenticator,
-  { space, database }: { space: SpaceResource; database: string }
+  {
+    sandbox: readySandbox,
+    database,
+  }: { sandbox: SandboxResource; database: string }
 ): Promise<Result<string, SandboxFunctionError>> {
   const outDir = path.posix.join(DB_SCHEMA_STAGING_ROOT, randomUUID());
   const outPath = path.posix.join(outDir, `${database}.db.ts`);
-  const result = await execDbCommand(auth, space, {
+  const result = await execDbCommandOnReadySandbox(auth, readySandbox, {
     command: [
       "set -euo pipefail",
       `rm -rf -- ${shellEscape(outDir)}`,
@@ -581,6 +584,27 @@ export async function getDatabaseSchemaOnSandbox(
     return integrity;
   }
   return new Ok(fileResult.value.toString("utf8"));
+}
+
+/** `dsbx db schema` against the Pod's sandbox, bringing it up first. */
+export async function getDatabaseSchemaOnSandbox(
+  auth: Authenticator,
+  { space, database }: { space: SpaceResource; database: string }
+): Promise<Result<string, SandboxFunctionError>> {
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+
+  return getDatabaseSchemaOnReadySandbox(auth, {
+    sandbox: ensureResult.value.sandbox,
+    database,
+  });
 }
 
 // Success mirrors QueryOutcome in cli/dust-sandbox/functions-runner/db/query.ts.

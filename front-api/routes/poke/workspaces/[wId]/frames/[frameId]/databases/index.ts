@@ -3,8 +3,12 @@ import { listFrameDatabases } from "@app/lib/api/poke/frames";
 import { pokeFrameApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
+import schema from "./[database]/schema";
+
 // Mounted at /api/poke/workspaces/:wId/frames/:frameId/databases.
 const app = pokeFrameApp();
+
+app.route("/:database/schema", schema);
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListFrameDatabases> => {

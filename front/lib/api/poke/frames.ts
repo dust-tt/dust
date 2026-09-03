@@ -6,7 +6,10 @@ import {
   readFramePublicationFunctionBundle,
 } from "@app/lib/api/frames/publication_storage";
 import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import { listDatabasesOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
+import {
+  getDatabaseSchemaOnReadySandbox,
+  listDatabasesOnReadySandbox,
+} from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import filestorageConfig from "@app/lib/file_storage/config";
@@ -402,4 +405,34 @@ export async function listFrameDatabases(
       sizeBytes: entry.sizeBytes,
     }))
   );
+}
+
+export type PokeGetFrameDatabaseSchema = {
+  schema: string;
+};
+
+/**
+ * `dsbx db schema`: the drizzle schema regenerated from the live database. Wakes the sandbox like
+ * the database listing does, so it is only ever fetched on explicit operator action. SQLite does
+ * not store column modes, so the text carries storage types only — the authored
+ * `databases/{db}.db.ts` remains the source of truth.
+ */
+export async function getFrameDatabaseSchema(
+  auth: Authenticator,
+  { frame, database }: { frame: FileResource; database: string }
+): Promise<Result<string, SandboxFunctionError>> {
+  const ensureResult = await ensureFrameSandboxReady(auth, frame);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+
+  return getDatabaseSchemaOnReadySandbox(auth, {
+    sandbox: ensureResult.value.sandbox,
+    database,
+  });
 }
