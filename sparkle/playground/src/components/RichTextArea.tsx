@@ -556,6 +556,7 @@ export type RichTextAreaHandle = {
   insertMention: (options: { id: string; label: string }) => void;
   insertInstructionSnippet: (options: { id: string; label: string }) => void;
   setContent: (text: string) => void;
+  clear: () => void;
   applyRandomSuggestions: (changes: string[]) => void;
   hasSuggestions: () => boolean;
   acceptAllSuggestions: () => void;
@@ -792,6 +793,12 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         });
       };
     }, [editor]);
+    const clear = useMemo(() => {
+      return () => {
+        editor?.commands.clearContent();
+      };
+    }, [editor]);
+
     const applyRandomSuggestions = useMemo(() => {
       return (changes: string[]) => {
         if (!editor || changes.length === 0) {
@@ -1014,6 +1021,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         insertMention,
         insertInstructionSnippet,
         setContent,
+        clear,
         applyRandomSuggestions,
         hasSuggestions,
         acceptAllSuggestions,
@@ -1024,6 +1032,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         insertMention,
         insertInstructionSnippet,
         setContent,
+        clear,
         applyRandomSuggestions,
         hasSuggestions,
         acceptAllSuggestions,
