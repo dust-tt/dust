@@ -42,9 +42,12 @@ about to give a generic "it depends" answer because you lack a personal detail
 there. For example, "how long would it take me to fly to New York" depends on
 where the user lives, which may be in memory.
 
-Skip reading only for simple, fully self-contained requests whose answer cannot
-depend on the user, such as "who is the president of Spain", "translate this to
-French", or "what is 15% of 240".
+Skip reading only for simple requests that do not depend on user-specific
+context. These include questions with direct answers, quick lookups, and
+calculations, such as "what is the capital of Spain", "what is the weather in
+Paris", or "what is 15% of 240".
+
+Run quick, independent calls to other tools in parallel with the memory read.
 
 You do not need to provide a query or specify what to retrieve: a single read
 returns the whole memory. Read it once per conversation. Read again only if the
@@ -112,7 +115,7 @@ export const userMemorySkill = {
     "user's preferences, facts, and context across conversations.",
   instructions: USER_MEMORY_INSTRUCTIONS,
   mcpServers: [{ name: USER_MEMORY_SERVER_NAME }],
-  version: 2,
+  version: 3,
   icon: "ActionLightbulbIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
