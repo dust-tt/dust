@@ -158,10 +158,9 @@ interface ConsumptionMessageAggs {
   };
 }
 
-function buildConsumptionAggregations(): Record<
-  string,
-  estypes.AggregationsAggregationContainer
-> {
+function buildConsumptionAggregations(
+  afterKey?: Record<string, string>
+): Record<string, estypes.AggregationsAggregationContainer> {
   return {
     by_message: {
       composite: {
@@ -169,6 +168,7 @@ function buildConsumptionAggregations(): Record<
         sources: [
           { agent_message_id: { terms: { field: "agent_message_id" } } },
         ],
+        ...(afterKey ? { after: afterKey } : {}),
       },
       aggs: {
         min_completed_at: { min: { field: "completed_at" } },
@@ -309,18 +309,11 @@ async function fetchAllMessageDocumentsFromConsumptionIndex(
   let afterKey: Record<string, string> | undefined;
 
   while (true) {
-    const aggs = buildConsumptionAggregations();
-    if (afterKey) {
-      (
-        aggs.by_message as { composite: { after?: Record<string, string> } }
-      ).composite.after = afterKey;
-    }
-
     const result = await searchConsumptionAnalytics<
       never,
       ConsumptionMessageAggs
     >(query, {
-      aggregations: aggs,
+      aggregations: buildConsumptionAggregations(afterKey),
       size: 0,
     });
 
