@@ -73,6 +73,7 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import {
   checkProgrammaticUsageLimits,
@@ -84,7 +85,10 @@ import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { isFreeOrigin } from "@app/lib/metronome/events";
@@ -3084,6 +3088,21 @@ async function isMessagesLimitReached(
       result.isOk() &&
       result.value >= roundCreditsToMicroCredits(maxAwuCredits)
     ) {
+      // One event per blocked attempt, so we can count the messages a
+      // fair-use-capped user could not send, and over how long.
+      PostHogServerSideTracking.trackEvent({
+        distinctId: user.sId,
+        event: "fair_use_limit_blocked",
+        workspaceId: owner.sId,
+        extra: {
+          limit_credits: maxAwuCredits,
+          timeframe: maxAwuCreditsTimeframe,
+          used_credits: microCreditsToCredits(result.value),
+          plan_code: plan.code,
+          origin: context.origin,
+        },
+      });
+
       return {
         isLimitReached: true,
         limitType: "plan_message_limit_exceeded",
