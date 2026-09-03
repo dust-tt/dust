@@ -46,6 +46,13 @@ pub struct FrameValidateRequest<'a> {
     pub manifest_path: &'a str,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameConvertRequest<'a> {
+    pub source_path: &'a str,
+    pub manifest_path: &'a str,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FramePublishResponse {
@@ -81,6 +88,14 @@ pub struct FrameShareLinkResponse {
     pub share_scope: String,
     pub share_url: String,
     pub source_directory_path: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameConvertResponse {
+    pub frame_id: String,
+    pub manifest_path: String,
+    pub publication_id: String,
 }
 
 #[derive(Debug, Deserialize)]

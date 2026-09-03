@@ -65,6 +65,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("dsbx frame register");
     expect(instructions).toContain("dsbx frame share-link");
     expect(instructions).toContain("dsbx frame call");
+    expect(instructions).toContain("dsbx frame convert");
     expect(instructions).toContain("stable Frame ID");
     expect(instructions).toContain("additionally requires read access");
     expect(instructions).toContain("does not test the Frame");

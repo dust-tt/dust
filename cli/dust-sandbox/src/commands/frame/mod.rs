@@ -1,4 +1,5 @@
 mod call;
+mod convert;
 mod create;
 mod publish;
 mod register;
@@ -11,6 +12,7 @@ use anyhow::{bail, Context};
 use clap::Subcommand;
 
 pub use call::run as cmd_frame_call;
+pub use convert::run as cmd_frame_convert;
 pub use create::run as cmd_frame_create;
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
@@ -31,6 +33,13 @@ pub enum FrameCommand {
         /// JSON input passed to the function
         #[arg(long, value_name = "JSON")]
         input: Option<String>,
+    },
+    /// Convert a legacy Frame to Frames v2 while preserving identity and use rights
+    Convert {
+        /// Existing legacy Frame entry file under /files
+        source: PathBuf,
+        /// New v2 manifest path under the same mounted scope
+        manifest: PathBuf,
     },
     /// Create and register a new Frame folder
     Create {
