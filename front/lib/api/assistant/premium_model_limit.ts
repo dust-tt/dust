@@ -5,6 +5,7 @@ import {
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -137,6 +138,20 @@ export async function applyPremiumModelFairUse(
   }
 
   if (downgradeTarget) {
+    PostHogServerSideTracking.trackEvent({
+      distinctId: user.sId,
+      event: "premium_model_downgraded",
+      workspaceId: workspace.sId,
+      extra: {
+        limit_messages: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
+        requested_model_id: resolvedModel.modelId,
+        requested_reasoning_effort: resolvedModel.reasoningEffort,
+        downgraded_to_model_id: downgradeTarget.modelId,
+        downgraded_to_reasoning_effort: downgradeTarget.reasoningEffort,
+        origin: context.origin,
+      },
+    });
+
     return {
       action: "downgrade",
       requested: resolvedModel,
