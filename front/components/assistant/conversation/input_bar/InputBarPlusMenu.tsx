@@ -43,8 +43,7 @@ import {
   m,
   useReducedMotion,
 } from "framer-motion";
-import type React from "react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 const PLUS_BUTTON_CLASSNAME = cn(
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
@@ -84,34 +83,9 @@ const PAGE_VARIANTS: Variants = {
 
 type PlusMenuPage = "root" | "capabilities" | "attachments" | "spaces";
 
-type PanelHeights = Partial<Record<PlusMenuPage, number>>;
-
-interface PanelSizerProps {
-  children: React.ReactNode;
-  onHeightChange: (page: PlusMenuPage, height: number) => void;
+interface MeasuredPanel {
+  height: number;
   page: PlusMenuPage;
-}
-
-function PanelSizer({ children, onHeightChange, page }: PanelSizerProps) {
-  const nodeRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const node = nodeRef.current;
-    if (!node) {
-      return;
-    }
-
-    const measure = () => onHeightChange(page, node.offsetHeight);
-
-    measure();
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, [onHeightChange, page]);
-
-  return <div ref={nodeRef}>{children}</div>;
 }
 
 interface InputBarPlusMenuProps {
@@ -172,17 +146,26 @@ export function InputBarPlusMenu({
   );
   const [serverViewForDetails, setServerViewForDetails] =
     useState<MCPServerViewLightType | null>(null);
-  const [panelHeights, setPanelHeights] = useState<PanelHeights>({});
-
-  const handleHeightChange = useCallback(
-    (measuredPage: PlusMenuPage, measuredHeight: number) =>
-      setPanelHeights((previous) =>
-        previous[measuredPage] === measuredHeight
-          ? previous
-          : { ...previous, [measuredPage]: measuredHeight }
-      ),
-    []
+  const [measuredPanel, setMeasuredPanel] = useState<MeasuredPanel | null>(
+    null
   );
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const node = panelRef.current;
+    if (!node) {
+      return;
+    }
+
+    const measure = () => setMeasuredPanel({ height: node.offsetHeight, page });
+
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [page]);
 
   const hasAnyEntry = !hideCapabilities || !hideAttachments || spaces != null;
   if (!hasAnyEntry) {
@@ -352,32 +335,32 @@ export function InputBarPlusMenu({
           <div
             className="relative w-full overflow-hidden transition-[height] duration-quick-enter ease-enter motion-reduce:transition-none"
             style={
-              panelHeights[page] === undefined
-                ? undefined
-                : { height: panelHeights[page] }
+              measuredPanel?.page === page
+                ? { height: measuredPanel.height }
+                : undefined
             }
           >
-            <LazyMotion features={domAnimation}>
-              <AnimatePresence
-                initial={false}
-                mode="popLayout"
-                custom={direction}
-              >
-                <m.div
-                  key={page}
-                  className="w-full"
+            <div ref={panelRef}>
+              <LazyMotion features={domAnimation}>
+                <AnimatePresence
+                  initial={false}
+                  mode="popLayout"
                   custom={direction}
-                  variants={shouldReduceMotion ? undefined : PAGE_VARIANTS}
-                  initial="enter"
-                  animate="idle"
-                  exit="exit"
                 >
-                  <PanelSizer page={page} onHeightChange={handleHeightChange}>
+                  <m.div
+                    key={page}
+                    className="w-full"
+                    custom={direction}
+                    variants={shouldReduceMotion ? undefined : PAGE_VARIANTS}
+                    initial="enter"
+                    animate="idle"
+                    exit="exit"
+                  >
                     {renderPage()}
-                  </PanelSizer>
-                </m.div>
-              </AnimatePresence>
-            </LazyMotion>
+                  </m.div>
+                </AnimatePresence>
+              </LazyMotion>
+            </div>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
