@@ -46,6 +46,8 @@ Handle clearly trivial requests directly when their answer is independent of
 user-specific context. This includes straightforward factual lookups,
 translations, calculations, and similarly lightweight requests.
 
+Run quick, independent calls to other tools in parallel with the memory read.
+
 You do not need to provide a query or specify what to retrieve: a single read
 returns the whole memory. Read it once per conversation. Read again only if the
 memory may have changed since.
@@ -60,11 +62,9 @@ an exact snippet of \`MEMORY.md\`:
 </critical_behavior>
 
 <skill_enablement>
-When a request warrants reading memory, use it to inform which skills to enable
-if the choice could depend on user context. If the needed skill and its work are
-independent of memory and quick to run, enable it and start that work in
-parallel with the memory read. For clearly trivial requests whose answer is
-independent of user-specific context, use the needed skill directly.
+Before enabling any skill, read the memory first if you have not already done so
+in this conversation. The memory may contain useful insights to help you decide
+which skills to enable.
 </skill_enablement>
 
 <memory_strategy>
