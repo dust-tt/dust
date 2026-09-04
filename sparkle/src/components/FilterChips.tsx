@@ -25,14 +25,15 @@ function selectedButtonProps(
 export interface FilterChipProps {
   /** Chip text; omit it (with an `icon`) for an icon-only chip. */
   label?: string;
-  /** Leading icon component. */
-  icon?: React.ComponentType<{ className?: string }>;
+  /** Leading icon. */
+  icon?: ButtonProps["icon"];
   /** Whether this chip is selected. */
   isSelected?: boolean;
   /** Selected look: `primary` fills the chip, `secondary` uses the lighter selected background. */
   variant?: FilterChipVariant;
   /** Tooltip label; required for icon-only chips. */
   tooltip?: string;
+  /** Called on click; the caller owns the selection and toggles it. */
   onClick?: () => void;
 }
 
