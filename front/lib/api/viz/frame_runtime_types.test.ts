@@ -77,19 +77,30 @@ describe("getFrameRuntimeTypesArtifact", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it("returns null when Viz has no artifact and nothing is cached", async () => {
+  it("returns null when Viz has no artifact and does not retry before the interval", async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 404 }));
 
     expect(await getFrameRuntimeTypesArtifact()).toBeNull();
+    expect(await getFrameRuntimeTypesArtifact()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(61_000);
+    respondWith(manifest);
+
+    expect(await getFrameRuntimeTypesArtifact()).toMatchObject({
+      id: manifest.id,
+    });
   });
 
-  it("keeps the cached artifact when a refresh fails", async () => {
+  it("keeps the cached artifact when a refresh fails and does not retry before the interval", async () => {
     respondWith(manifest);
     const first = await getFrameRuntimeTypesArtifact();
     vi.advanceTimersByTime(61_000);
     fetchMock.mockRejectedValue(new Error("connection refused"));
 
     expect(await getFrameRuntimeTypesArtifact()).toBe(first);
+    expect(await getFrameRuntimeTypesArtifact()).toBe(first);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("rejects a tarball that does not match its manifest", async () => {

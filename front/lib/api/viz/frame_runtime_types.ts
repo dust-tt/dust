@@ -12,10 +12,10 @@ import { z } from "zod";
  * viz/app/lib/frame-runtime-types/build.ts) so Frame UI source can be type-checked in the
  * publishing sandbox against the exact modules and package versions the renderer exposes.
  *
- * The manifest is re-checked at most once per minute and the tarball is only downloaded when
- * its id changes. Fetch failures fall back to the last artifact this process fetched, or to
- * `null` when there is none, so a Viz outage degrades type checking instead of blocking
- * publication.
+ * Viz is contacted at most once per minute, whether the last attempt succeeded or failed, and
+ * the tarball is only downloaded when its id changes. Fetch failures fall back to the last
+ * artifact this process fetched, or to `null` when there is none, so a Viz outage degrades type
+ * checking instead of blocking publication or stalling every publish on a fetch timeout.
  */
 
 const MANIFEST_CHECK_INTERVAL_MS = 60_000;
@@ -129,6 +129,7 @@ async function refreshArtifact(): Promise<FrameRuntimeTypesArtifact | null> {
       { err: latest.error, cachedArtifactId: previous?.id ?? null },
       "Frame runtime types artifact unavailable; Frame UI type checking uses the cached artifact if any"
     );
+    cache = { ...cache, manifestCheckedAtMs: Date.now() };
     return previous;
   }
 
@@ -152,10 +153,7 @@ async function refreshArtifact(): Promise<FrameRuntimeTypesArtifact | null> {
 
 /** The current Frame runtime types artifact, or null when none could be fetched. */
 export async function getFrameRuntimeTypesArtifact(): Promise<FrameRuntimeTypesArtifact | null> {
-  if (
-    cache.artifact &&
-    Date.now() - cache.manifestCheckedAtMs < MANIFEST_CHECK_INTERVAL_MS
-  ) {
+  if (Date.now() - cache.manifestCheckedAtMs < MANIFEST_CHECK_INTERVAL_MS) {
     return cache.artifact;
   }
   if (cache.inflight) {
