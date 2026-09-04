@@ -76,8 +76,8 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     ? getConversationDisplayTitle(conversation)
     : "";
   // Side panel toggles read as filter chips: primary while their panel is open.
-  const panelChipVariant = (type: ConversationSidePanelType) =>
-    currentPanel === type && !isPanelClosing ? "primary" : "ghost";
+  const isPanelSelected = (type: ConversationSidePanelType) =>
+    currentPanel === type && !isPanelClosing;
 
   if (!activeConversationId) {
     return null;
@@ -192,14 +192,20 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             size="xs"
             label={isMobile ? undefined : "Credit usage"}
             icon={CoinsStacked01}
-            variant={panelChipVariant(CREDITS_SIDE_PANEL_TYPE)}
+            variant={
+              isPanelSelected(CREDITS_SIDE_PANEL_TYPE) ? "primary" : "ghost"
+            }
+            aria-pressed={isPanelSelected(CREDITS_SIDE_PANEL_TYPE)}
             onClick={() => togglePanel({ type: CREDITS_SIDE_PANEL_TYPE })}
           />
           <Button
             size="xs"
             label={isMobile ? undefined : "Files"}
             icon={Folder}
-            variant={panelChipVariant(FILES_SIDE_PANEL_TYPE)}
+            variant={
+              isPanelSelected(FILES_SIDE_PANEL_TYPE) ? "primary" : "ghost"
+            }
+            aria-pressed={isPanelSelected(FILES_SIDE_PANEL_TYPE)}
             onClick={() => togglePanel({ type: FILES_SIDE_PANEL_TYPE })}
           />
           <PlanPanelButton
