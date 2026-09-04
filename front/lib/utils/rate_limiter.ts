@@ -249,6 +249,44 @@ export async function getRateLimiterCount({
   }
 }
 
+// Same as `getRateLimiterCount`, but for many keys sharing the same
+// timeframe. Pipelines every `ZCOUNT` into a single Redis round-trip instead
+// of one round-trip per key, so callers sorting/ranking a whole workspace by
+// a rate-limited counter don't turn into an N+1 over Redis.
+export async function getRateLimiterCounts({
+  keys,
+  timeframeSeconds,
+}: {
+  keys: string[];
+  timeframeSeconds: number;
+}): Promise<Result<Map<string, number>, Error>> {
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    return new Err(new Error("timeframeSeconds must be a positive integer."));
+  }
+  if (keys.length === 0) {
+    return new Ok(new Map());
+  }
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const windowMs = timeframeSeconds * 1000;
+    const trimBeforeMs = Date.now() - windowMs;
+
+    const uniqueKeys = Array.from(new Set(keys));
+    const pipeline = redis.multi();
+    for (const key of uniqueKeys) {
+      pipeline.zCount(makeRateLimiterKey(key), trimBeforeMs, "+inf");
+    }
+    const counts = (await pipeline.exec()) as number[];
+
+    return new Ok(
+      new Map(uniqueKeys.map((key, index) => [key, counts[index]]))
+    );
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 // TODO: @jd 20260825 - Remove this once all legacy plans are gone
 // (or if we get rid of the premium limit)
 export async function getRateLimiterTimestamps({

@@ -779,7 +779,9 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
         : usedMessages > 0
           ? 100
           : 0;
-    const isOverLimit = usedMessages > limitMessages;
+    // `usedMessages` can never exceed `limitMessages`: both derive from the
+    // same rate-limit constant, and the backend caps the counted timestamps
+    // at that limit. No "over limit" state to render, only "at limit".
     const isAtLimit = limitMessages > 0 && usedMessages === limitMessages;
     const bar = (
       <ProgressBar
@@ -790,11 +792,9 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
         values={[
           {
             value: percentage,
-            className: isOverLimit
-              ? OVER_POOL_LIMIT_BAR_CLASSES.fill
-              : isAtLimit
-                ? AT_POOL_LIMIT_BAR_CLASSES.fill
-                : MUTED_BAR_CLASSES.fill,
+            className: isAtLimit
+              ? AT_POOL_LIMIT_BAR_CLASSES.fill
+              : MUTED_BAR_CLASSES.fill,
           },
           { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
         ]}

@@ -1,6 +1,7 @@
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import {
   getPremiumModelMessageUsage,
+  getPremiumModelMessageUsedCountsByUser,
   makeApiKeySpendLimitAwuCreditsRateLimitKey,
   makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
@@ -1827,7 +1828,6 @@ async function resolveMembersUsagePageUsers({
     {
       users: UserResource[];
       total: number;
-      premiumMessageUsageByUserId?: Map<string, PremiumModelMessageUsage>;
     },
     Error
   >
@@ -1867,10 +1867,6 @@ async function resolveMembersUsagePageUsers({
 
   const sortKeyByUserId = new Map<string, number | string>();
   const overageLimitByUserId = new Map<string, number>();
-  const premiumMessageUsageByUserId = new Map<
-    string,
-    PremiumModelMessageUsage
-  >();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
@@ -2056,18 +2052,16 @@ async function resolveMembersUsagePageUsers({
       break;
     }
     case "premiumMessageUsage": {
-      const entries = await concurrentExecutor(
-        allUsers,
-        async (u) =>
-          [
-            u.sId,
-            await getPremiumModelMessageUsage({ workspace, user: u.toJSON() }),
-          ] as const,
-        { concurrency: 8 }
-      );
-      for (const [sId, usage] of entries) {
-        sortKeyByUserId.set(sId, usage.usedMessages);
-        premiumMessageUsageByUserId.set(sId, usage);
+      // Count-only and pipelined into a single Redis round-trip: sorting can
+      // run over every matching user in the workspace, so per-user reads here
+      // would turn into an N+1 over Redis. The full usage (refill schedule
+      // included) is fetched separately, only for the returned page.
+      const usedCountByUserId = await getPremiumModelMessageUsedCountsByUser({
+        workspace,
+        users: allUsers.map((u) => u.toJSON()),
+      });
+      for (const u of allUsers) {
+        sortKeyByUserId.set(u.sId, usedCountByUserId.get(u.sId) ?? 0);
       }
       break;
     }
@@ -2104,10 +2098,6 @@ async function resolveMembersUsagePageUsers({
   return new Ok({
     users: sortedUsers.slice(offset, offset + limit),
     total,
-    premiumMessageUsageByUserId:
-      orderColumn === "premiumMessageUsage"
-        ? premiumMessageUsageByUserId
-        : undefined,
   });
 }
 
@@ -2159,11 +2149,7 @@ export async function getMembersUsage({
     return { members: [], total: 0, creditsResetAt };
   }
 
-  const {
-    users,
-    total,
-    premiumMessageUsageByUserId: precomputedPremiumMessageUsageByUserId,
-  } = usersResult.value;
+  const { users, total } = usersResult.value;
 
   if (users.length === 0) {
     return { members: [], total, creditsResetAt };
@@ -2409,31 +2395,23 @@ export async function getMembersUsage({
   if (includeAlertLinks) {
     const plan = auth.plan();
     if (plan && !isCreditPricedPlan(plan)) {
-      if (precomputedPremiumMessageUsageByUserId) {
-        // Already read from Redis while sorting the full matching set by
-        // this same column; avoid reading it again for the page.
-        for (const u of users) {
-          premiumMessageUsageByUserId.set(
+      // Bounded to the current page (≤ page size), regardless of whether the
+      // page is sorted by this column — the sort itself only reads a
+      // count per user (see `getPremiumModelMessageUsedCountsByUser`).
+      const entries = await concurrentExecutor(
+        users,
+        async (u) =>
+          [
             u.sId,
-            precomputedPremiumMessageUsageByUserId.get(u.sId) ?? null
-          );
-        }
-      } else {
-        const entries = await concurrentExecutor(
-          users,
-          async (u) =>
-            [
-              u.sId,
-              await getPremiumModelMessageUsage({
-                workspace,
-                user: u.toJSON(),
-              }),
-            ] as const,
-          { concurrency: 8 }
-        );
-        for (const [sId, usage] of entries) {
-          premiumMessageUsageByUserId.set(sId, usage);
-        }
+            await getPremiumModelMessageUsage({
+              workspace,
+              user: u.toJSON(),
+            }),
+          ] as const,
+        { concurrency: 8 }
+      );
+      for (const [sId, usage] of entries) {
+        premiumMessageUsageByUserId.set(sId, usage);
       }
     }
   }

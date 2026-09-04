@@ -56,7 +56,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -155,9 +155,10 @@ export function PoolUsagePage() {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "consumedFromPoolAwuCredits", desc: true },
-  ]);
+  // Empty until the user picks a column: the default depends on
+  // `isLegacyWithoutPoolOrMetronome`, which is derived below once workspace
+  // info has loaded.
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   // Debounce the search input, and reset to the first page on a new query.
   useEffect(() => {
@@ -186,16 +187,6 @@ export function PoolUsagePage() {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
-  const sort = sorting[0];
-  const orderColumn =
-    sort?.id === "email" ||
-    sort?.id === "consumedFromPoolAwuCredits" ||
-    sort?.id === "seatUsage" ||
-    sort?.id === "premiumMessageUsage"
-      ? sort.id
-      : "name";
-  const orderDirection = sort?.desc ? "desc" : "asc";
-
   const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
   const activeSubscription = workspaceInfo?.activeSubscription;
   const hasMetronomeContract =
@@ -216,16 +207,22 @@ export function PoolUsagePage() {
   });
   const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
 
-  const hasAppliedDefaultSortRef = useRef(false);
-  useEffect(() => {
-    if (hasAppliedDefaultSortRef.current || !activeSubscription) {
-      return;
-    }
-    hasAppliedDefaultSortRef.current = true;
-    if (isLegacyWithoutPoolOrMetronome) {
-      setSorting([{ id: "premiumMessageUsage", desc: true }]);
-    }
-  }, [activeSubscription, isLegacyWithoutPoolOrMetronome]);
+  // Sort by premium message usage for legacy no-pool workspaces, by pool
+  // credits otherwise, until the user picks a column explicitly.
+  const defaultSortId = isLegacyWithoutPoolOrMetronome
+    ? "premiumMessageUsage"
+    : "consumedFromPoolAwuCredits";
+  const effectiveSorting: SortingState =
+    sorting.length > 0 ? sorting : [{ id: defaultSortId, desc: true }];
+  const sort = effectiveSorting[0];
+  const orderColumn =
+    sort?.id === "email" ||
+    sort?.id === "consumedFromPoolAwuCredits" ||
+    sort?.id === "seatUsage" ||
+    sort?.id === "premiumMessageUsage"
+      ? sort.id
+      : "name";
+  const orderDirection = sort?.desc ? "desc" : "asc";
 
   const {
     members,
@@ -448,7 +445,7 @@ export function PoolUsagePage() {
                   pagination={pagination}
                   setPagination={setPagination}
                   totalRowCount={totalMembers}
-                  sorting={sorting}
+                  sorting={effectiveSorting}
                   setSorting={handleSetSorting}
                   variant="compact"
                   showGroupsColumn={false}
