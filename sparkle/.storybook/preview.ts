@@ -61,37 +61,18 @@ const preview: Preview = {
     themes: {
       default: "light",
       list: [
+        // Swatches mirror --color-background in each theme (see the canvas decorator below).
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "dark", color: "#000000" },
-      ],
-    },
-    backgrounds: {
-      default: "white",
-      values: [
-        {
-          name: "white",
-          value: "#ffffff",
-        },
-        {
-          name: "light",
-          value: "#F7F7F7",
-        },
-        {
-          name: "dark",
-          value: "#090F18",
-        },
-        {
-          name: "black",
-          value: "#000000",
-        },
+        { name: "dark", class: "dark", color: "#141211" },
       ],
     },
   },
 
   decorators: [
-    (Story, context) => {
-      const isDark = context.globals.theme === "dark";
-      const background = isDark ? "#000000" : "#ffffff";
+    (Story) => {
+      // Paint the canvas with the product's background token so components sit on the surface
+      // they ship on. The variable follows the theme class set by withThemeByClassName below.
+      const background = "var(--color-background)";
 
       // Update the document and every story canvas on a docs page (one per story).
       document.documentElement.style.backgroundColor = background;
