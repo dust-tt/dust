@@ -27,7 +27,8 @@ export function formatCreditsPrecise(credits: number): string {
 }
 
 export function formatCreditValue(credits: number): string {
-  return `${formatCredits(credits)} credit${pluralize(credits)}`;
+  const formattedCredits = formatCredits(credits);
+  return `${formattedCredits} credit${formattedCredits === "1" ? "" : "s"}`;
 }
 
 export function toolUsageLabel(callCount: number): string {
