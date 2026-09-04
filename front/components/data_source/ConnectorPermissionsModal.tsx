@@ -13,7 +13,7 @@ import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataU
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   CONNECTOR_UI_CONFIGURATIONS,
@@ -34,6 +34,7 @@ import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { CellInfo } from "@app/types/cell";
 import type {
   ConnectorPermission,
   ContentNode,
@@ -48,7 +49,6 @@ import type {
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
-import type { RegionInfo } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
@@ -104,7 +104,7 @@ async function handleUpdatePermissions(
   owner: LightWorkspaceType,
   extraConfig: Record<string, string>,
   sendNotification: (notification: NotificationType) => void,
-  regionInfo: RegionInfo | null
+  cellInfo: CellInfo | null
 ) {
   const provider = connector.type;
 
@@ -112,7 +112,7 @@ async function handleUpdatePermissions(
     owner,
     provider,
     extraConfig,
-    regionInfo,
+    cellInfo,
   });
   if (connectionRes.isErr()) {
     sendNotification({
@@ -745,7 +745,7 @@ export function ConnectorPermissionsModal({
   readOnly,
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   const confirm = useContext(ConfirmContext);
   const [selectedNodes, setSelectedNodes] = useState<
@@ -1219,7 +1219,7 @@ export function ConnectorPermissionsModal({
                     owner,
                     extraConfig,
                     sendNotification,
-                    regionContext.regionInfo
+                    cellContext.cellInfo
                   );
                   closeModal(false);
                 }}

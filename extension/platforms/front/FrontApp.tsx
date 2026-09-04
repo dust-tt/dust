@@ -1,8 +1,8 @@
 import { RootLayout } from "@app/components/app/RootLayout";
-import { RegionProvider } from "@app/lib/auth/RegionContext";
 import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { FrontPlatformProvider } from "@extension/platforms/front/context/FrontPlatformProvider";
 import { FrontContextProvider } from "@extension/platforms/front/context/FrontProvider";
+import { RegionProvider } from "@extension/shared/context/RegionContext";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
 import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";

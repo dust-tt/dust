@@ -25,7 +25,7 @@ import type {
   PatchMCPServerViewBody,
   PatchMCPServerViewResponseBody,
 } from "@app/lib/api/mcp/views";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   GetConnectionsResponseBody,
@@ -768,7 +768,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     owner,
     connectionType: "personal",
   });
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   const createPersonalConnection = async ({
     mcpServerId,
@@ -825,7 +825,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         provider,
         useCase,
         extraConfig,
-        regionInfo: regionContext.regionInfo,
+        cellInfo: cellContext.cellInfo,
       });
 
       if (cRes.isErr()) {

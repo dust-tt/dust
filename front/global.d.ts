@@ -80,6 +80,7 @@ declare global {
       VITE_DUST_CELL?: string;
       VITE_DUST_REGION?: string;
       VITE_DUST_REGION_STORAGE_KEY?: string;
+      VITE_DUST_CELL_STORAGE_KEY?: string;
     };
   }
 }

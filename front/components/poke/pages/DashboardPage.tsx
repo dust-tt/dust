@@ -6,7 +6,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import type { PokePlanTypeFilter } from "@app/lib/plans/plan_codes";
 import {
   isEnterprisePlanPrefix,
@@ -17,7 +17,6 @@ import {
   POKE_PLAN_TYPE_FILTERS,
 } from "@app/lib/plans/plan_codes";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
-import { usePokeCells } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PokeWorkspaceWithCell } from "@app/poke/swr/search";
@@ -154,8 +153,7 @@ export function DashboardPage() {
 function DashboardPageSPA() {
   usePokePageMetadata({ name: "Home" });
 
-  const { regionInfo, setRegionInfo } = useRegionContext();
-  const { currentCell, cells } = usePokeCells();
+  const { cellInfo, setCellInfo, cells } = useCellContext();
 
   const [planTypeFilter, setPlanTypeFilter] = useState<
     PokePlanTypeFilter | undefined
@@ -178,7 +176,7 @@ function DashboardPageSPA() {
     setUpgradedPage(0);
   }, []);
 
-  const selectedCell = upgradedCellFilter ?? currentCell?.name;
+  const selectedCell = upgradedCellFilter ?? cellInfo?.name;
 
   const {
     workspaces: upgradedWorkspaces,
@@ -226,11 +224,11 @@ function DashboardPageSPA() {
   const handleWorkspaceClick = useCallback(
     (ws: PokeWorkspaceWithCell) => {
       const targetCell = cells?.find((cell) => cell.name === ws.cell);
-      if (targetCell && targetCell.url !== regionInfo.url) {
-        setRegionInfo({ name: targetCell.region, url: targetCell.url });
+      if (targetCell && targetCell.name !== cellInfo.name) {
+        setCellInfo(targetCell);
       }
     },
-    [regionInfo, setRegionInfo, cells]
+    [cellInfo, setCellInfo, cells]
   );
 
   return (

@@ -33,7 +33,7 @@ import type {
   MCPServerType,
   MCPServerViewNameConflictDetails,
 } from "@app/lib/api/mcp";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import {
   useCreateInternalMCPServer,
   useCreateMCPServerConnection,
@@ -121,7 +121,7 @@ export function CreateMCPServerDialog({
   existingViewNames = [],
 }: CreateMCPServerDialogProps) {
   const sendNotification = useSendNotification();
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   // Determine if this is a multi-instance server that already has an existing instance.
   const needsCustomName = useMemo(
@@ -303,7 +303,7 @@ export function CreateMCPServerDialog({
       createWithURL,
       createInternalMCPServer,
       onBeforeCreateServer: () => setExternalIsLoading(true),
-      regionInfo: regionContext.regionInfo,
+      cellInfo: cellContext.cellInfo,
     });
 
     if (submitRes.isErr()) {

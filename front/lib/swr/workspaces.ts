@@ -19,7 +19,7 @@ import type {
   GetWorkspaceSeatsCountResponseBody,
   GetWorkspaceVerifiedDomainsResponseBody,
 } from "@app/lib/api/workspace";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   GetMetronomeInvoiceLinesResponseBody,
@@ -612,7 +612,7 @@ export function useAuthContext(
 ) {
   const { workspaceId, disabled } = options;
   const { fetcher } = useFetcher();
-  const regionContext = useRegionContext();
+  const { setCellInfo, cells } = useCellContext();
 
   const url = workspaceId
     ? workspaceAuthContextUrl(workspaceId)
@@ -636,16 +636,14 @@ export function useAuthContext(
   // Handle region redirect.
   useEffect(() => {
     if (regionRedirect) {
-      regionContext.setRegionInfo(
-        {
-          name: regionRedirect.region,
-          url: regionRedirect.url,
-        },
-        { keepInStorage: true }
+      setCellInfo(
+        // TODO(single-tenant): fix so that regionRedirect becomes cellRedirect.
+        // Fallback to first cell with a matching region.
+        cells.find((c) => c.region === regionRedirect.region) ?? cells[0]
       );
       void mutate();
     }
-  }, [regionRedirect, mutate, regionContext]);
+  }, [regionRedirect, mutate, setCellInfo, cells]);
 
   return {
     authContext: isRegionRedirectResponse ? undefined : data,
@@ -757,7 +755,7 @@ export function useJoinData({
   conversationId: string | null;
 }) {
   const { fetcher } = useFetcher();
-  const regionContext = useRegionContext();
+  const { setCellInfo, cells } = useCellContext();
   const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
 
   const params = new URLSearchParams();
@@ -780,16 +778,14 @@ export function useJoinData({
   // Handle region redirect.
   useEffect(() => {
     if (regionRedirect) {
-      regionContext.setRegionInfo(
-        {
-          name: regionRedirect.region,
-          url: regionRedirect.url,
-        },
-        { keepInStorage: true }
+      setCellInfo(
+        // TODO(single-tenant): fix so that regionRedirect becomes cellRedirect.
+        // Fallback to first cell with a matching region.
+        cells.find((c) => c.region === regionRedirect.region) ?? cells[0]
       );
       void mutate();
     }
-  }, [regionRedirect, mutate, regionContext]);
+  }, [regionRedirect, mutate, setCellInfo, cells]);
 
   // The join API returns { redirectUrl: "..." } (e.g. for invalid/expired
   // tokens). This is not a standard API error response, so the fetcher wraps

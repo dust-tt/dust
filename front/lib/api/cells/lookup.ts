@@ -1,11 +1,9 @@
 import { config } from "@app/lib/api/cells/config";
-import type { WorkspaceLookupResponse } from "@app/lib/api/regions/lookup";
 import { handleLookupWorkspace } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
-import type { CellInfo, CellType } from "@app/types/cell";
+import type { CellType } from "@app/types/cell";
 import { isCellType } from "@app/types/cell";
-import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -51,64 +49,6 @@ async function lookupWorkspaceCellFromWorkOS(
   }
 }
 
-async function lookupWorkspaceInCell(
-  wId: string,
-  cell: CellInfo
-): Promise<boolean> {
-  const body = { workspace: wId };
-
-  // eslint-disable-next-line no-restricted-globals
-  const response = await fetch(
-    `${config.getCellUrl(cell.name)}/api/lookup/workspace`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.getLookupApiSecret()}`,
-      },
-      body: JSON.stringify(body),
-    }
-  );
-
-  const data: WorkspaceLookupResponse = await response.json();
-  if (isAPIErrorResponse(data)) {
-    throw new Error(data.error.message);
-  }
-
-  return data.workspace !== null;
-}
-
-async function lookupWorkspaceCellFromOtherCells(
-  wId: string
-): Promise<CellType | null> {
-  const otherCells = config.getOtherCells();
-  if (otherCells.length === 0) {
-    return null;
-  }
-
-  const results = await Promise.allSettled(
-    otherCells.map(async (cell) => {
-      const exists = await lookupWorkspaceInCell(wId, cell);
-      return exists ? cell.name : null;
-    })
-  );
-
-  for (const result of results) {
-    if (result.status === "fulfilled" && result.value) {
-      return result.value;
-    }
-  }
-
-  const errors = results.filter(
-    (result): result is PromiseRejectedResult => result.status === "rejected"
-  );
-  if (errors.length === results.length) {
-    throw normalizeError(errors[0].reason);
-  }
-
-  return null;
-}
-
 async function _lookupWorkspaceCellUncached(
   wId: string
 ): Promise<CellType | null> {
@@ -122,7 +62,7 @@ async function _lookupWorkspaceCellUncached(
     return workOSCell;
   }
 
-  return lookupWorkspaceCellFromOtherCells(wId);
+  throw new Error("Workspace not found in WorkOS.");
 }
 
 const _lookupWorkspaceCellCached = cacheWithRedis(

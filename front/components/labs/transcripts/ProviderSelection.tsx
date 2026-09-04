@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useLabsTranscriptsIsConnectorConnected } from "@app/lib/swr/labs";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -33,7 +33,7 @@ export function ProviderSelection({
   owner,
 }: ProviderSelectionProps) {
   const sendNotification = useSendNotification();
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
   const [selectedProvider, setSelectedProvider] =
     useState<LabsTranscriptsProviderType | null>(
       transcriptsConfiguration?.provider ?? null
@@ -104,7 +104,7 @@ export function ProviderSelection({
       provider: "google_drive",
       useCase: "labs_transcripts",
       extraConfig: {},
-      regionInfo: regionContext.regionInfo,
+      cellInfo: cellContext.cellInfo,
     });
 
     if (cRes.isErr()) {
@@ -117,7 +117,7 @@ export function ProviderSelection({
     }
 
     await saveOAuthConnection(cRes.value.connection_id, "google_drive");
-  }, [owner, sendNotification, saveOAuthConnection, regionContext.regionInfo]);
+  }, [owner, sendNotification, saveOAuthConnection, cellContext.cellInfo]);
 
   const saveConnectorConnection = useCallback(
     async (provider: string) => {

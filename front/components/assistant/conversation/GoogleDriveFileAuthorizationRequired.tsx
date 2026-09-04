@@ -7,7 +7,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
@@ -42,7 +42,7 @@ export function GoogleDriveFileAuthorizationRequired({
 }: GoogleDriveFileAuthorizationRequiredProps) {
   const { user } = useAuth();
   const clientType = useClientType();
-  const { regionInfo } = useRegionContext();
+  const { cellInfo } = useCellContext();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isOpeningPicker, setIsOpeningPicker] = useState(false);
   const [pickerCredentials, setPickerCredentials] = useState<{
@@ -181,7 +181,7 @@ export function GoogleDriveFileAuthorizationRequired({
     blockedAction.messageId,
   ]);
 
-  const webAppConversationUrl = `${regionInfo.url}/w/${owner.sId}/conversation/${blockedAction.conversationId}`;
+  const webAppConversationUrl = `${cellInfo.url}/w/${owner.sId}/conversation/${blockedAction.conversationId}`;
 
   const handleOpenInWebApp = () => {
     window.open(webAppConversationUrl, "_blank");

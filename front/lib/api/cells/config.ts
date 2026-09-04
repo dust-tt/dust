@@ -62,14 +62,15 @@ export const config = {
   getCellUrl(cell: CellType): string {
     return this.getCellInfo(cell).url;
   },
+  getAllCells(): CellInfo[] {
+    return SUPPORTED_CELLS.map((cell) => this.getCellInfo(cell));
+  },
   isMainCell(): boolean {
     return this.getCurrentCell().name === MAIN_CELL;
   },
   getOtherCells(): CellInfo[] {
     const currentCell = this.getCurrentCell();
-    return Object.values(CELLS).filter(
-      (cell) => cell.name !== currentCell.name
-    );
+    return this.getAllCells().filter((cell) => cell.name !== currentCell.name);
   },
   getDustCellSyncEnabled: (): boolean => {
     return (
