@@ -5,15 +5,11 @@
  * without a workflow environment.
  */
 
-// Share of provider-attributed errors over attempts, within the window, at
-// which an endpoint is declared degraded. A real outage is routinely 60%.
 export const ERROR_RATIO_THRESHOLD = 0.2;
 
 // Length of the sliding window, in whole UTC minutes.
 export const WINDOW_MINUTES = 5;
 
-// Volume floor. Below this the ratio is noise, and it is low enough that we
-// fail back quickly after reopening an endpoint to 100% of traffic.
 export const MIN_ATTEMPTS_IN_WINDOW = 200;
 
 // How long an endpoint stays degraded before the first recovery probe.
