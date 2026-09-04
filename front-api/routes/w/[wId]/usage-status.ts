@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { getUpgradeRequestAvailabilityForUser } from "@app/lib/api/credits/upgrade_requests";
 import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
-import { getFeatureFlags } from "@app/lib/auth";
 import type {
   GetWorkspaceUsageStatusResponseBody,
   ProgrammaticCreditStatus,
@@ -35,10 +34,12 @@ app.get(
     // Workspaces not on Metronome billing have no usage status to report,
     // unless we've overriden their default per-user credit limit.
     if (!workspace.metronomeCustomerId || !isCreditPriced) {
-      const featureFlags = await getFeatureFlags(auth);
-      const isLimitReached =
-        featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
-        (await isNonCreditPricedUserSpendLimitReached(auth, { user }));
+      const isLimitReached = await isNonCreditPricedUserSpendLimitReached(
+        auth,
+        {
+          user,
+        }
+      );
 
       return ctx.json({
         userNearCreditLimit: false,
@@ -68,9 +69,8 @@ app.get(
       isWorkspaceBalanceThresholdReached(workspace.sId),
     ]);
 
-    // `isUserAwuWarned` is flag-aware: the Redis rate-limiter warning (80% of
-    // the effective cap) when the flag is on, the Metronome near-limit flag
-    // otherwise.
+    // `isUserAwuWarned`: the Redis rate-limiter warning (80% of the effective
+    // cap).
     const userNearCreditLimit =
       !userBlockedReason && (await isUserAwuWarned(auth, { user }));
 

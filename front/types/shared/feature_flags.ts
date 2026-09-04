@@ -387,12 +387,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "avervaet",
   },
-  enforce_user_spend_limit_rate_cap: {
-    description:
-      "Enable the Redis fixed-window spend-cap backups (per-user, per-API-key, programmatic, and workspace usage cap): record AWU usage into the counters and enforce them at message send. When off, usage is neither recorded nor enforced.",
-    stage: "ask_owner",
-    owner: "tdraier",
-  },
   enforce_premium_model_message_limit: {
     description:
       "Enforce the premium-model cap: once the user has spent 25 premium-tier messages in the rolling week, run the message on the Standard stream instead, on workspaces with a non-credit-priced (legacy) plan. Usage is counted regardless, so the flag only controls enforcement.",

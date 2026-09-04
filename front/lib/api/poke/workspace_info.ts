@@ -96,14 +96,10 @@ export type PokeWorkspaceInfo = {
   defaultAlerts: DefaultMetronomeAlerts;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
-  // Whether the rate-cap enforcement flag is on for this workspace. When true,
-  // the poke programmatic badge must reflect the rate-limiter verdict
-  // (`programmaticRateLimiterState`), not the Metronome `programmaticCreditState`.
-  spendLimitRateCapEnabled: boolean;
-  // The rate-limiter's verdict for the programmatic monthly cap: "capped"
-  // (counter ≥ cap), "near_limit" (≥ 80%), or "ok", from the RL counter vs
-  // `creditUsageConfig.programmaticMonthlyCapAwuCredits`. Null when there's no
-  // cap or the counter couldn't be read. Mirrors the enforcement switch in
+  // The rate-limiter's verdict for the programmatic monthly cap (the poke badge):
+  // "capped" (counter ≥ cap), "near_limit" (≥ 80%), or "ok", from the RL counter
+  // vs `creditUsageConfig.programmaticMonthlyCapAwuCredits`. Null when there's no
+  // cap or the counter couldn't be read. Backs enforcement in
   // `isProgrammaticApiBlocked` (lib/api/credits/access_control.ts).
   programmaticRateLimiterState: RateLimiterState | null;
   // Programmatic spend for the current billing cycle across the three sources,
@@ -196,14 +192,9 @@ export async function getPokeWorkspaceInfo(
       : null;
   }
 
-  // Rate-limiter verdict for the programmatic monthly cap — the badge source
-  // under the flag (the Metronome `programmaticCreditState` must not be read
-  // then). Compare the RL counter to the configured cap; both are in credits
+  // Rate-limiter verdict for the programmatic monthly cap — the poke badge
+  // source. Compare the RL counter to the configured cap; both are in credits
   // here. Mirrors the api-key / member rate-limiter chips.
-  const spendLimitRateCapEnabled = await hasFeatureFlag(
-    auth,
-    "enforce_user_spend_limit_rate_cap"
-  );
   const programmaticCapAwuCredits =
     creditUsageConfig?.programmaticMonthlyCapAwuCredits ?? null;
   let programmaticRateLimiterState: RateLimiterState | null = null;
@@ -330,7 +321,6 @@ export async function getPokeWorkspaceInfo(
     programmaticCreditState: workspaceResource.programmaticCreditState,
     programmaticWarningReached:
       await isWorkspaceProgrammaticWarningReached(auth),
-    spendLimitRateCapEnabled,
     programmaticRateLimiterState,
     programmaticSpendLimitRateCapCount,
     programmaticEsConsumedAwuCredits,

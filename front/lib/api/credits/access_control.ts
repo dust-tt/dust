@@ -1,10 +1,10 @@
-// Flag-aware access-control readers.
+// Access-control readers for spend enforcement.
 //
-// Each reader switches on the `enforce_user_spend_limit_rate_cap` feature flag:
-// when enabled it enforces from the Redis fixed-window rate-limiter counters,
-// when disabled it falls back to the Metronome credit state in
-// `lib/metronome/user_block.ts`. Usage is recorded into the counters regardless
-// (in credit_cost), so the flag only controls which signal blocks.
+// Per-user, per-API-key and programmatic caps are enforced from the Redis
+// fixed-window rate-limiter counters (usage is recorded into them in
+// credit_cost). Pool depletion, no_seat and the personal-seat carve-out have no
+// rate-limiter dimension and always come from the Metronome pool state in
+// `lib/metronome/user_block.ts`.
 //
 // Callers doing access-control decisions should import from here. The low-level
 // Redis cache getters/setters and the fine-grained status reads still live in
@@ -19,23 +19,13 @@ import {
   isUserSpendLimitRateWarningReached,
 } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
-import { isApiKeyCappedByMetronome } from "@app/lib/metronome/api_key_block";
 import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import {
   isApiBlockedByMetronome,
-  isProgrammaticApiBlockedByMetronome,
-  isUserAwuWarnedByMetronome,
   isUserBlockedByMetronome,
-  isWorkspaceProgrammaticWarningReachedByMetronome,
 } from "@app/lib/metronome/user_block";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelId } from "@app/types/shared/model_id";
-
-async function spendLimitRateCapEnabled(auth: Authenticator): Promise<boolean> {
-  const featureFlags = await getFeatureFlags(auth);
-  return featureFlags.includes("enforce_user_spend_limit_rate_cap");
-}
 
 /**
  * Whether the workspace credit pool is depleted (API calls with no per-user
@@ -48,19 +38,16 @@ export async function isApiBlocked(auth: Authenticator): Promise<boolean> {
 }
 
 /**
- * Whether the user is blocked from sending billable messages, and why. With the
- * rate-cap flag on, the per-user cap comes from the Redis fixed-window counter;
- * the pool part (no_seat, pool depletion, personal-seat carve-out) always comes
- * from the Metronome pool state. With the flag off, both come from Metronome.
+ * Whether the user is blocked from sending billable messages, and why. The
+ * per-user cap comes from the Redis fixed-window counter; the pool part
+ * (no_seat, pool depletion, personal-seat carve-out) comes from the Metronome
+ * pool state.
  */
 export async function isUserBlocked(
   auth: Authenticator,
   user: UserResource
 ): Promise<UserBlockedReason | null> {
   const workspace = auth.getNonNullableWorkspace();
-  if (!(await spendLimitRateCapEnabled(auth))) {
-    return isUserBlockedByMetronome(workspace, user);
-  }
   const userCapBlockedOverride = await isUserSpendLimitRateCapReached(auth, {
     user,
   });
@@ -68,64 +55,44 @@ export async function isUserBlocked(
 }
 
 /**
- * Whether the workspace programmatic monthly cap is reached. With the rate-cap
- * flag on, from the Redis fixed-window counter; with it off, from the
- * Metronome-driven programmatic credit state.
+ * Whether the workspace programmatic monthly cap is reached, from the Redis
+ * fixed-window counter.
  */
 export async function isProgrammaticApiBlocked(
   auth: Authenticator
 ): Promise<boolean> {
-  const workspace = auth.getNonNullableWorkspace();
-  if (!(await spendLimitRateCapEnabled(auth))) {
-    return isProgrammaticApiBlockedByMetronome(workspace.sId);
-  }
   return isProgrammaticSpendLimitRateCapReached(auth);
 }
 
 /**
- * Whether the API key has reached its per-key credit spend cap. With the
- * rate-cap flag on, from the Redis fixed-window counter; with it off, from the
- * Metronome-driven per-key credit state.
+ * Whether the API key has reached its per-key credit spend cap, from the Redis
+ * fixed-window counter.
  */
 export async function isApiKeyBlocked(
   auth: Authenticator,
   { keyModelId }: { keyModelId: ModelId }
 ): Promise<boolean> {
-  const workspace = auth.getNonNullableWorkspace();
-  if (!(await spendLimitRateCapEnabled(auth))) {
-    return isApiKeyCappedByMetronome(workspace.sId, keyModelId);
-  }
   return isApiKeySpendLimitRateCapReached(auth, { keyModelId });
 }
 
 /**
- * Whether the user has consumed ≥ 80% of their per-user cap (soft warning). With
- * the rate-cap flag on, entirely from the Redis fixed-window counters (per-cycle
- * cap for pool seats, lifetime allowance for free seats) — no Metronome
- * fallback. With the flag off, from the Metronome-driven near-limit flag.
+ * Whether the user has consumed ≥ 80% of their per-user cap (soft warning), from
+ * the Redis fixed-window counters (per-cycle cap for pool seats, lifetime
+ * allowance for free seats).
  */
 export async function isUserAwuWarned(
   auth: Authenticator,
   { user }: { user: UserResource }
 ): Promise<boolean> {
-  if (await spendLimitRateCapEnabled(auth)) {
-    return isUserSpendLimitRateWarningReached(auth, { user });
-  }
-  const workspace = auth.getNonNullableWorkspace();
-  return isUserAwuWarnedByMetronome(workspace.sId, user.sId);
+  return isUserSpendLimitRateWarningReached(auth, { user });
 }
 
 /**
  * Whether workspace programmatic usage has crossed 80% of the monthly cap (soft
- * warning). With the rate-cap flag on, from the Redis fixed-window counter; with
- * it off, from the Metronome-driven programmatic warning flag.
+ * warning), from the Redis fixed-window counter.
  */
 export async function isWorkspaceProgrammaticWarningReached(
   auth: Authenticator
 ): Promise<boolean> {
-  const workspace = auth.getNonNullableWorkspace();
-  if (!(await spendLimitRateCapEnabled(auth))) {
-    return isWorkspaceProgrammaticWarningReachedByMetronome(workspace.sId);
-  }
   return isProgrammaticSpendLimitRateWarningReached(auth);
 }

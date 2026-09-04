@@ -37,9 +37,6 @@ interface PokeUsageTabProps {
   subscription: SubscriptionType;
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
-  programmaticCreditState: WorkspaceProgrammaticCreditState;
-  programmaticWarningReached: boolean;
-  spendLimitRateCapEnabled: boolean;
   programmaticRateLimiterState: RateLimiterState | null;
   programmaticSpendLimitRateCapCount: number | null;
   programmaticEsConsumedAwuCredits: number | null;
@@ -119,9 +116,6 @@ interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolCreditState: WorkspacePoolCreditState;
-  programmaticCreditState: WorkspaceProgrammaticCreditState;
-  programmaticWarningReached: boolean;
-  spendLimitRateCapEnabled: boolean;
   programmaticRateLimiterState: RateLimiterState | null;
   programmaticSpendLimitRateCapCount: number | null;
   programmaticEsConsumedAwuCredits: number | null;
@@ -134,9 +128,6 @@ function PokeCreditStatesCard({
   owner,
   creditUsageConfig,
   poolCreditState,
-  programmaticCreditState,
-  programmaticWarningReached,
-  spendLimitRateCapEnabled,
   programmaticRateLimiterState,
   programmaticSpendLimitRateCapCount,
   programmaticEsConsumedAwuCredits,
@@ -163,34 +154,20 @@ function PokeCreditStatesCard({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Programmatic</span>
-          {spendLimitRateCapEnabled ? (
-            // Flag on: the rate-limiter is authoritative, so show its verdict
-            // and do not read the Metronome `programmaticCreditState`. The RL
-            // state already encodes near-limit, so no separate warning chip.
-            programmaticRateLimiterState !== null ? (
-              <Chip
-                size="xs"
-                color={
-                  RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].color
-                }
-                label={
-                  RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].label
-                }
-              />
-            ) : (
-              <span className="text-xs text-muted-foreground">—</span>
-            )
+          {/* The rate-limiter is authoritative; its verdict already encodes
+              near-limit, so there is no separate warning chip. */}
+          {programmaticRateLimiterState !== null ? (
+            <Chip
+              size="xs"
+              color={
+                RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].color
+              }
+              label={
+                RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].label
+              }
+            />
           ) : (
-            <>
-              <Chip
-                size="xs"
-                color={creditStateChipColor(programmaticCreditState)}
-                label={programmaticCreditState}
-              />
-              {programmaticWarningReached && (
-                <Chip size="xs" color="warning" label="near limit" />
-              )}
-            </>
+            <span className="text-xs text-muted-foreground">—</span>
           )}
           <span className="text-xs text-muted-foreground">
             cap:{" "}
@@ -382,9 +359,6 @@ export function PokeUsageTab({
   subscription,
   stripeSubscription,
   poolCreditState,
-  programmaticCreditState,
-  programmaticWarningReached,
-  spendLimitRateCapEnabled,
   programmaticRateLimiterState,
   programmaticSpendLimitRateCapCount,
   programmaticEsConsumedAwuCredits,
@@ -424,9 +398,6 @@ export function PokeUsageTab({
         owner={owner}
         creditUsageConfig={creditUsageConfig}
         poolCreditState={poolCreditState}
-        programmaticCreditState={programmaticCreditState}
-        programmaticWarningReached={programmaticWarningReached}
-        spendLimitRateCapEnabled={spendLimitRateCapEnabled}
         programmaticRateLimiterState={programmaticRateLimiterState}
         programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
         programmaticEsConsumedAwuCredits={programmaticEsConsumedAwuCredits}

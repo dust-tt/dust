@@ -1,10 +1,10 @@
 // Redis fast-path cache for credit-state-driven access control.
 //
-// This is the Metronome-credit-state layer. When the
-// `enforce_user_spend_limit_rate_cap` flag is on, callers should instead go
-// through the flag-aware readers in `lib/api/credits/access_control.ts`, which
-// enforce from the Redis rate-limiter counters and fall back to the functions
-// here when the flag is off.
+// This is the Metronome-credit-state layer. Access-control callers go through
+// `lib/api/credits/access_control.ts`, which enforces spend caps from the Redis
+// rate-limiter counters; the pool/no_seat/personal-seat logic here still backs
+// `isUserBlockedByMetronome` (via a `userCapBlockedOverride`) and
+// `isApiBlockedByMetronome`.
 //
 // Four keys back the credit state machines:
 //   - `metronome:user_credit_state:<ws>:<user>`: fine-grained user credit state

@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { isUserBlocked } from "@app/lib/api/credits/access_control";
 import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
@@ -156,12 +156,8 @@ export async function isEligibleForNudge(
     } else {
       // Legacy plans: `seatType === "none"` is the backfill/default, not a
       // block, so skip isUserBlocked. The matching conversation-posting gate
-      // is the non-CP spend cap when that flag is on.
-      const flags = await getFeatureFlags(auth);
-      if (
-        flags.includes("enforce_user_spend_limit_rate_cap") &&
-        (await isNonCreditPricedUserSpendLimitReached(auth, { user }))
-      ) {
+      // is the non-CP spend cap.
+      if (await isNonCreditPricedUserSpendLimitReached(auth, { user })) {
         return false;
       }
     }
