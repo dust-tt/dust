@@ -73,14 +73,24 @@ const PatchSkillRequestBodySchema = z.object({
 // failure Response. See [API10].
 async function loadSkill(
   ctx: Context,
-  sId: string
+  sId: string,
+  {
+    redactUnreadableForAdmin = false,
+  }: {
+    redactUnreadableForAdmin?: boolean;
+  } = {}
 ): Promise<
   | { skill: SkillResource; sId: string }
   | (Response & TypedResponse<APIErrorResponse>)
 > {
   const auth = ctx.get("auth");
 
-  const skill = await SkillResource.fetchById(auth, sId);
+  const skill = await SkillResource.fetchById(auth, sId, {
+    permissionFiltering:
+      redactUnreadableForAdmin && auth.isAdmin()
+        ? "redact_unreadable"
+        : "strict",
+  });
   if (!skill) {
     return apiError(ctx, {
       status_code: 404,
@@ -117,7 +127,9 @@ app.get(
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkill(ctx, sId);
+    const loaded = await loadSkill(ctx, sId, {
+      redactUnreadableForAdmin: true,
+    });
     if (loaded instanceof Response) {
       return loaded;
     }
@@ -496,7 +508,11 @@ app.delete(
     const owner = auth.getNonNullableWorkspace();
     const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkill(ctx, sId);
+    // Admins can archive the skills built on spaces they are not a member of (shown to them
+    // redacted).
+    const loaded = await loadSkill(ctx, sId, {
+      redactUnreadableForAdmin: true,
+    });
     if (loaded instanceof Response) {
       return loaded;
     }

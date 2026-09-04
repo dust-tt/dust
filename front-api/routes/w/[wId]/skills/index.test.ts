@@ -319,6 +319,52 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).toContain("Someone Else's Unpublished Skill");
   });
 
+  it("lists skills built on spaces the admin cannot read with bypassEditorVisibility, redacted", async () => {
+    const { workspace, auth } = await setupTest("admin");
+
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      availability: "workspace_users",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    // Without the bypass the skill is filtered out by the space.
+    const withoutParamResponse = await getSkills(workspace);
+    expect(withoutParamResponse.status).toBe(200);
+    const withoutParamNames = (await withoutParamResponse.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(withoutParamNames).not.toContain("Restricted Space Skill");
+
+    const response = await getSkills(workspace, {
+      bypassEditorVisibility: "true",
+    });
+    expect(response.status).toBe(200);
+    const skills: SkillWithoutInstructionsAndToolsType[] = (
+      await response.json()
+    ).skills;
+    const restrictedSkill = skills.find(
+      (s) => s.name === "Restricted Space Skill"
+    );
+    expect(restrictedSkill).toBeDefined();
+    expect(restrictedSkill!.canRead).toBe(false);
+    expect(restrictedSkill!.fileAttachments).toEqual([]);
+    expect(restrictedSkill!.requestedSpaceIds).toEqual([restrictedSpace.sId]);
+
+    // Readable skills keep `canRead` true.
+    expect(skills.filter((s) => s.canRead)).not.toHaveLength(0);
+  });
+
   it("rejects bypassEditorVisibility for non-admins", async () => {
     const { workspace } = await setupTest("user");
 

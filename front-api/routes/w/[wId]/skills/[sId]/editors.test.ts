@@ -282,4 +282,33 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(data.editors).toHaveLength(1); // Creator is editor
     expect(data.editors[0].sId).toBe(user.sId);
   });
+
+  it("GET endpoint lists the editors of a skill built on a space the admin cannot read", async () => {
+    const { workspace } = await setup();
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, { role: "user" });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(internalAdminAuth, {
+      userIds: [skillOwner.sId],
+    });
+    const skill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await get(workspace, skill.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toEqual([
+      skillOwner.sId,
+    ]);
+  });
 });

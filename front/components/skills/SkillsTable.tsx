@@ -537,7 +537,8 @@ export function SkillsTable({
                 {
                   label: "Edit",
                   icon: Edit04,
-                  disabled: !skill.canAdministrate,
+                  // `canRead` is false for skills redacted for an admin (see the details sheet).
+                  disabled: !skill.canAdministrate || !skill.canRead,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     void router.push(

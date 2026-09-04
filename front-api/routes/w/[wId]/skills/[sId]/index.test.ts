@@ -238,6 +238,120 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.isFavorite).toBe(true);
   });
 
+  it("redacts the private fields of a skill built on a space the admin cannot read", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      instructions: "Secret guidelines",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    // Give the skill a tool and a file, so the redaction is tested on real data.
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Restricted Server",
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      restrictedSpace
+    );
+    const file = await FileFactory.create(skillOwnerAuth, skillOwner, {
+      contentType: "text/plain",
+      fileName: "secret.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+    await restrictedSkill.updateSkill(skillOwnerAuth, {
+      name: restrictedSkill.name,
+      agentFacingDescription: restrictedSkill.agentFacingDescription,
+      userFacingDescription: restrictedSkill.userFacingDescription,
+      instructions: "Secret guidelines",
+      icon: null,
+      attachedKnowledge: [],
+      mcpServerViews: [serverView],
+      fileAttachments: [file],
+      requestedSpaceIds: [restrictedSpace.id],
+      manuallyRequestedSpaceIds: [],
+    });
+    const ownerView = await getSkill(workspace, restrictedSkill.sId);
+    // Sanity check on the fixture through the owner's own resource: the private data is there.
+    const ownerSkill = (
+      await SkillResource.fetchByIds(skillOwnerAuth, [restrictedSkill.sId])
+    )[0];
+    expect(ownerSkill.toJSON(skillOwnerAuth).tools).toHaveLength(1);
+    expect(ownerSkill.toJSON(skillOwnerAuth).fileAttachments).toHaveLength(1);
+    expect(ownerView.status).toBe(200);
+
+    const response = await getSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.sId).toBe(restrictedSkill.sId);
+    expect(data.skill.name).toBe("Restricted Space Skill");
+    expect(data.skill.canRead).toBe(false);
+    // Not an editor, but an admin: archiving and availability changes stay possible.
+    expect(data.skill.canWrite).toBe(false);
+    expect(data.skill.canAdministrate).toBe(true);
+    expect(data.skill.instructions).toBeNull();
+    expect(data.skill.instructionsHtml).toBeNull();
+    expect(data.skill.tools).toEqual([]);
+    expect(data.skill.fileAttachments).toEqual([]);
+
+    // The details sheet also asks for the relations (editors, usage): they stay available.
+    const withRelationsResponse = await getSkillWithRelations(
+      workspace,
+      restrictedSkill.sId
+    );
+    expect(withRelationsResponse.status).toBe(200);
+    const withRelations = await withRelationsResponse.json();
+    expect(withRelations.skill.canRead).toBe(false);
+    expect(withRelations.skill.instructions).toBeNull();
+    expect(
+      withRelations.skill.relations.editors.map((e: { sId: string }) => e.sId)
+    ).toEqual([skillOwner.sId]);
+  });
+
+  it("returns 404 for a skill built on a space a non-admin cannot read", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "builder",
+    });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(internalAdminAuth, {
+      userIds: [skillOwner.sId],
+    });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await getSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(404);
+  });
+
   it("should return 404 for non-existent skill", async () => {
     const { workspace } = await setupTest();
 
@@ -1455,6 +1569,34 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
 });
 
 describe("DELETE /api/w/:wId/skills/:sId", () => {
+  it("lets an admin archive a skill built on a space they cannot read", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await deleteSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(200);
+    const [archived] = await SkillResource.fetchByIds(skillOwnerAuth, [
+      restrictedSkill.sId,
+    ]);
+    expect(archived.status).toBe("archived");
+  });
+
   it("should return 403 for non-editor user", async () => {
     const { workspace, skill } = await setupTest({
       skillOwnerRole: "admin",
