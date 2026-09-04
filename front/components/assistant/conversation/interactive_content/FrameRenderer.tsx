@@ -16,6 +16,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import { useEditFrameText, useFramePermissions } from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
@@ -154,50 +155,44 @@ export function FrameRenderer({
 
   const [showCode, setShowCode] = React.useState(false);
 
+  const { isFrameAuthor } = useFramePermissions({
+    owner,
+    frameId: fileId,
+    disabled: renderMode !== "v2" || !conversation,
+  });
+  const editFrameText = useEditFrameText({
+    owner,
+    fileId,
+    conversationId: conversation?.sId,
+    renderMode,
+  });
+  const isEditable =
+    renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
+
   const handleEditText = useCallback(
-    async ({
-      newText,
-      oldText,
-      targetFileId,
-      source,
-    }: {
-      newText: string;
-      oldText: string;
-      targetFileId?: string;
-      source?: string;
-    }) => {
+    async (params: Parameters<typeof editFrameText>[0]) => {
+      let result: Awaited<ReturnType<typeof editFrameText>>;
       try {
-        // Location-based edits address the published entry Frame (the clicked bundle); the source
-        // path inside `source` resolves within its build root. Legacy context edits route to the
-        // nested target file.
-        const editFileId = source ? fileId : (targetFileId ?? fileId);
-        const response = await clientFetch(
-          `/api/w/${owner.sId}/files/${editFileId}/edit-text`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ oldText, newText, source }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await getErrorFromResponse(response);
-          return { success: false, error: errorData.message };
-        }
-
-        await mutateFileContent(
-          `/api/w/${owner.sId}/files/${fileId}?action=view`
-        );
-
-        return { success: true };
-      } catch (e) {
+        result = await editFrameText(params);
+      } catch (error) {
         return {
           success: false,
-          error: normalizeAsInternalDustError(e).message,
+          error: normalizeAsInternalDustError(error).message,
         };
       }
+
+      if (result.success) {
+        try {
+          await mutateFileContent();
+        } catch {
+          // The mutation already succeeded. Keep the inline edit and let the next reload fetch
+          // the active publication rather than reporting a false save failure to the iframe.
+        }
+      }
+
+      return result;
     },
-    [owner.sId, fileId, mutateFileContent]
+    [editFrameText, mutateFileContent]
   );
 
   const restoreLayout = useCallback(() => {
@@ -487,8 +482,8 @@ export function FrameRenderer({
               framePath={framePath}
               frameId={renderMode === "v2" ? fileId : undefined}
               isInDrawer={true}
-              isEditable={renderMode === "legacy"}
-              onEditText={renderMode === "legacy" ? handleEditText : undefined}
+              isEditable={isEditable}
+              onEditText={isEditable ? handleEditText : undefined}
               ref={iframeRef}
             />
             {conversation && (

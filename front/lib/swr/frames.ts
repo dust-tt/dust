@@ -1,5 +1,3 @@
-// This hook uses a public API endpoint, so it's fine to use the client types.
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -7,10 +5,106 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { PostFrameEditTextRequestBody } from "@app/types/api/frame_edit";
+import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
+import type { EditTextFn } from "@app/types/assistant/visualization";
+import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
+import { useCallback } from "react";
 import type { Fetcher } from "swr";
+
+export function useFramePermissions({
+  owner,
+  frameId,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  frameId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const permissionsFetcher: Fetcher<GetFramePermissionsResponseBody> = fetcher;
+  const swrKey = disabled
+    ? null
+    : `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/permissions`;
+
+  const { data, error } = useSWRWithDefaults(swrKey, permissionsFetcher, {
+    disabled,
+    revalidateOnFocus: false,
+  });
+
+  return {
+    isFrameAuthor: data?.isFrameAuthor ?? false,
+    isFramePermissionsLoading: !disabled && !data && !error,
+    isFramePermissionsError: error,
+  };
+}
+
+export function useEditFrameText({
+  conversationId,
+  fileId,
+  owner,
+  renderMode,
+}: {
+  conversationId?: string;
+  fileId: string;
+  owner: LightWorkspaceType;
+  renderMode: "legacy" | "v2";
+}): EditTextFn {
+  return useCallback(
+    async ({ newText, oldText, targetFileId, source }) => {
+      try {
+        let url: string;
+        let body:
+          | PostFrameEditTextRequestBody
+          | {
+              newText: string;
+              oldText: string;
+              source?: string;
+            };
+
+        if (renderMode === "v2") {
+          if (!conversationId || !source) {
+            return {
+              success: false,
+              error:
+                "Frame editing requires a conversation and source location.",
+            };
+          }
+
+          url = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/edit-text`;
+          body = { conversationId, newText, oldText, source };
+        } else {
+          // Location-based edits address the published entry Frame; legacy context edits route
+          // to the nested target file.
+          const editFileId = source ? fileId : (targetFileId ?? fileId);
+          url = `/api/w/${owner.sId}/files/${encodeURIComponent(editFileId)}/edit-text`;
+          body = { newText, oldText, source };
+        }
+
+        const response = await clientFetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const errorData = await getErrorFromResponse(response);
+          return { success: false, error: errorData.message };
+        }
+
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: normalizeAsInternalDustError(error).message,
+        };
+      }
+    },
+    [conversationId, fileId, owner.sId, renderMode]
+  );
+}
 
 export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
   const { fetcher } = useFetcher();
