@@ -24,14 +24,6 @@ export type AvailableTool = {
   totalExecutions: number;
 };
 
-export type GetWorkspaceToolsResponse = {
-  tools: AvailableTool[];
-};
-
-export type GetWorkspaceToolUsageResponse = {
-  points: ToolUsagePoint[];
-};
-
 type DateBucket = {
   key: number;
   key_as_string: string;

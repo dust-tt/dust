@@ -24,10 +24,6 @@ type AvailableSkillById = {
   totalExecutions: number;
 };
 
-export type GetWorkspaceSkillsResponse = {
-  skills: AvailableSkill[];
-};
-
 type DateBucket = {
   key: number;
   key_as_string: string;

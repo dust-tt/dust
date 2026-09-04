@@ -2,7 +2,6 @@ import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observabilit
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
-import type { WorkspaceTopAgentRow } from "@app/lib/api/workspace/analytics";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -18,10 +17,18 @@ type TopAgentsAggs = {
   by_agent?: estypes.AggregationsMultiBucketAggregateBase<TopAgentBucket>;
 };
 
+type WorkspaceTopAgentRow = {
+  agentId: string;
+  name: string;
+  pictureUrl: string | null;
+  messageCount: number;
+  userCount: number;
+};
+
 // Ranks agents by message count over a time window, with unique-user counts and
-// name/picture resolution. Backs both the top-agents analytics endpoint and the
-// workspace_analytics get_top_agents tool. Either `days` or `startDate`/`endDate`
-// bounds the window; the source/agent/user/model filters are optional.
+// name/picture resolution. Backs the workspace_analytics get_top_agents tool.
+// Either `days` or `startDate`/`endDate` bounds the window; the
+// source/agent/user/model filters are optional.
 export async function fetchTopAgents(
   auth: Authenticator,
   {
