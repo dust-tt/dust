@@ -59,7 +59,10 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
+import {
+  lifetimeSpendCycleUtc,
+  spendLimitCycleOverrideForAuth,
+} from "@app/lib/spend_limits/cycle";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import {
   resolveEffectiveSpendLimitAwuCredits,
@@ -1253,7 +1256,11 @@ export async function getEffectiveSpendCapAwuCreditsForUser(
  *
  * Resyncs whichever cycle the workspace is bucketed on — the Metronome contract
  * billing period, or the UTC calendar month for workspaces without a contract —
- * so it writes the same Redis keys enforcement reads.
+ * so it writes the same Redis keys enforcement reads. Free seats are enforced on
+ * a never-rolling lifetime counter instead: for them it seeds the free-seat
+ * lifetime key from all-time `is_free_seat` consumption and zeroes the per-cycle
+ * key (and vice-versa for paid seats), so a seat that changed type is never left
+ * capped on a stale counter.
  */
 export async function resyncSpendLimitCountersFromEsUsage(
   auth: Authenticator
@@ -1268,10 +1275,11 @@ export async function resyncSpendLimitCountersFromEsUsage(
       new Error("No active Metronome billing period to resync against.")
     );
   }
-  const bounds = makeSpendLimitCycleWindowBounds(
+  const cycleBounds = makeSpendLimitCycleWindowBounds(
     cycle.cycleStart,
     cycle.cycleEnd
   );
+  const lifetimeBounds = makeSpendLimitLifetimeWindowBounds();
 
   const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
@@ -1285,19 +1293,34 @@ export async function resyncSpendLimitCountersFromEsUsage(
   );
   const userByModelId = new Map(users.map((u) => [u.id, u]));
 
-  // Read the same Elasticsearch-derived consumption the members table shows as
-  // "Consumed (ES)": keyed by user sId, with the free/paid split applied per
-  // seat. This is the source of truth we overwrite the counter with.
-  const freeSeatUserIds = memberships.flatMap((m) => {
+  // Free and paid seats are enforced on different Redis counters over different
+  // windows: free seats on a never-rolling *lifetime* counter (their all-time
+  // `is_free_seat` consumption against a lifetime credit allowance), everyone
+  // else on the per-cycle counter. Read each side over its own window so we seed
+  // the exact key/value enforcement reads (mirroring `isUserRateLimiterSpendCapped`
+  // and the members-table read).
+  const freeUserIds = memberships.flatMap((m) => {
     const u = userByModelId.get(m.userId);
     return u && m.seatType === "free" ? [u.sId] : [];
   });
-  const consumedByUserId = await fetchConsumedAwuCreditsByUserId({
-    workspace,
-    userIds: users.map((u) => u.sId),
-    freeSeatUserIds,
-    cycle,
+  const paidUserIds = memberships.flatMap((m) => {
+    const u = userByModelId.get(m.userId);
+    return u && m.seatType !== "free" ? [u.sId] : [];
   });
+  const [cycleConsumedByUserId, lifetimeConsumedByUserId] = await Promise.all([
+    fetchConsumedAwuCreditsByUserId({
+      workspace,
+      userIds: paidUserIds,
+      freeSeatUserIds: [],
+      cycle,
+    }),
+    fetchConsumedAwuCreditsByUserId({
+      workspace,
+      userIds: freeUserIds,
+      freeSeatUserIds: freeUserIds,
+      cycle: lifetimeSpendCycleUtc(),
+    }),
+  ]);
 
   const results = await concurrentExecutor(
     memberships,
@@ -1306,17 +1329,36 @@ export async function resyncSpendLimitCountersFromEsUsage(
       if (!user) {
         return false;
       }
-      const consumed = consumedByUserId.get(user.sId) ?? 0;
-      const setResult = await setFixedWindowCount({
-        key: makeSpendLimitAwuCreditsRateLimitKeyForUser(
-          workspace,
-          user.toJSON()
-        ),
-        bounds,
+      const isFreeSeat = membership.seatType === "free";
+      const consumed = isFreeSeat
+        ? (lifetimeConsumedByUserId.get(user.sId) ?? 0)
+        : (cycleConsumedByUserId.get(user.sId) ?? 0);
+
+      const cycleKey = makeSpendLimitAwuCreditsRateLimitKeyForUser(
+        workspace,
+        user.toJSON()
+      );
+      const lifetimeKey = makeFreeSeatLifetimeAwuCreditsRateLimitKeyForUser(
+        workspace,
+        user.toJSON()
+      );
+
+      // Seed the counter enforcement reads for this seat, and zero the other one
+      // so a seat that changed type since the last resync can't stay capped on a
+      // stale counter enforcement no longer reads for it.
+      const seedResult = await setFixedWindowCount({
+        key: isFreeSeat ? lifetimeKey : cycleKey,
+        bounds: isFreeSeat ? lifetimeBounds : cycleBounds,
         value: Math.max(0, roundCreditsToMicroCredits(consumed)),
         logger,
       });
-      return setResult.isOk();
+      const clearResult = await setFixedWindowCount({
+        key: isFreeSeat ? cycleKey : lifetimeKey,
+        bounds: isFreeSeat ? cycleBounds : lifetimeBounds,
+        value: 0,
+        logger,
+      });
+      return seedResult.isOk() && clearResult.isOk();
     },
     { concurrency: 8 }
   );
