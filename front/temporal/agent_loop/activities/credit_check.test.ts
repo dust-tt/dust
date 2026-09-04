@@ -17,6 +17,7 @@ const {
   mockListByDustRunIds,
   mockListRunUsagesForRuns,
   mockAwuFromMicroUsd,
+  mockNotifyManualActionRequired,
 } = vi.hoisted(() => ({
   mockFromJson: vi.fn(),
   mockCheckPoolCreditGate: vi.fn(),
@@ -30,6 +31,7 @@ const {
   mockListByDustRunIds: vi.fn(),
   mockListRunUsagesForRuns: vi.fn(),
   mockAwuFromMicroUsd: vi.fn(),
+  mockNotifyManualActionRequired: vi.fn(),
 }));
 
 vi.mock("@app/lib/auth", () => ({
@@ -63,6 +65,10 @@ vi.mock("@app/lib/resources/run_resource", () => ({
 
 vi.mock("@app/lib/credits/agent_message_billing", () => ({
   awuFromMicroUsd: mockAwuFromMicroUsd,
+}));
+
+vi.mock("@app/lib/notifications/workflows/manual-action-required", () => ({
+  notifyManualActionRequired: mockNotifyManualActionRequired,
 }));
 
 vi.mock("@app/types/assistant/agent_run", () => ({
@@ -231,7 +237,7 @@ describe("checkCreditSpendCheckpointActivity", () => {
       value: {
         agentConfiguration: { sId: "agent_config_id" },
         agentMessage: { sId: "msg_id", contents: [{ step: 2 }] },
-        conversation: { sId: "conv_id" },
+        conversation: { sId: "conv_id", actionRequired: false },
       },
     });
 
@@ -243,6 +249,10 @@ describe("checkCreditSpendCheckpointActivity", () => {
     });
 
     expect(result).toEqual({ crossed: true, acknowledged: false });
+    expect(mockNotifyManualActionRequired).toHaveBeenCalledWith(
+      expect.anything(),
+      { conversationId: "conv_id" }
+    );
     expect(mockPublishConversationRelatedEvent).toHaveBeenCalledWith({
       conversationId: "conv_id",
       step: 2,
@@ -254,6 +264,30 @@ describe("checkCreditSpendCheckpointActivity", () => {
         thresholdAwuCredits: 1500,
       },
     });
+  });
+
+  it("does not notify again when the conversation already has an action required", async () => {
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
+      crossed: true,
+      thresholdAwuCredits: 1500,
+    });
+    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
+      isErr: () => false,
+      value: {
+        agentConfiguration: { sId: "agent_config_id" },
+        agentMessage: { sId: "msg_id", contents: [{ step: 2 }] },
+        conversation: { sId: "conv_id", actionRequired: true },
+      },
+    });
+
+    await checkCreditSpendCheckpointActivity({} as never, {
+      agentLoopArgs: {
+        conversationId: "conv_id",
+        agentMessageId: "msg_id",
+      } as never,
+    });
+
+    expect(mockNotifyManualActionRequired).not.toHaveBeenCalled();
   });
 
   it("still reports crossed but skips publishing when the message was soft-deleted", async () => {
@@ -306,7 +340,7 @@ describe("checkCreditSpendCheckpointActivity", () => {
       value: {
         agentConfiguration: { sId: "agent_config_id" },
         agentMessage: { sId: "msg_id", contents: [{ step: 2 }] },
-        conversation: { sId: "conv_id" },
+        conversation: { sId: "conv_id", actionRequired: false },
       },
     });
     mockPublishConversationRelatedEvent.mockRejectedValue(
