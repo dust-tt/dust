@@ -4,7 +4,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
