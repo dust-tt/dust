@@ -3,6 +3,7 @@ import React from "react";
 import { expect, fn, waitFor } from "storybook/test";
 
 import {
+  FILTER_CHIP_VARIANTS,
   FilterChip,
   FilterChips,
   Folder,
@@ -34,7 +35,7 @@ const meta = {
   },
   argTypes: {
     variant: {
-      options: ["primary", "secondary"],
+      options: FILTER_CHIP_VARIANTS,
       control: { type: "radio" },
     },
   },
@@ -89,7 +90,9 @@ export const Secondary: Story = {
  * @summary Controlled single chips with icons.
  */
 export const SingleChips: Story = {
-  // Renders FilterChip directly; the row args are irrelevant here.
+  // Renders FilterChip directly: row args are irrelevant, and the manifest skips it so the story
+  // is not attributed to FilterChips.
+  tags: ["!manifest"],
   args: { filters: [] },
   render: () => (
     <div className="flex items-center gap-2">

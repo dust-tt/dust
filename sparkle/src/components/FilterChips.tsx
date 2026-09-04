@@ -1,11 +1,30 @@
-import { cn } from "@sparkle/lib/utils";
+import { assertNever } from "@sparkle/lib/utils";
 import React, { useCallback, useState } from "react";
-import { Button } from "./Button";
+import { Button, type ButtonProps } from "./Button";
 
 export const FILTER_CHIP_VARIANTS = ["primary", "secondary"] as const;
 export type FilterChipVariant = (typeof FILTER_CHIP_VARIANTS)[number];
 
-interface FilterChipProps {
+// Selected look per variant. `bg-selected` is the token NavTabPill uses for its active pill and
+// flips with the theme on its own. Hover and active are pinned so a selected chip does not dip to
+// the ghost hover tint.
+function selectedButtonProps(
+  variant: FilterChipVariant
+): Pick<ButtonProps, "variant" | "className"> {
+  switch (variant) {
+    case "primary":
+      return { variant: "primary" };
+    case "secondary":
+      return {
+        variant: "ghost",
+        className: "bg-selected hover:bg-selected active:bg-selected",
+      };
+    default:
+      return assertNever(variant);
+  }
+}
+
+export interface FilterChipProps {
   /** Chip text; omit it (with an `icon`) for an icon-only chip. */
   label?: string;
   /** Leading icon component. */
@@ -34,22 +53,15 @@ export function FilterChip({
   tooltip,
   onClick,
 }: FilterChipProps) {
-  const isFilled = isSelected && variant === "primary";
   return (
     <Button
       size="xs"
       label={label}
       icon={icon}
       tooltip={tooltip}
-      variant={isFilled ? "primary" : "ghost"}
       aria-pressed={isSelected}
-      // Same token as NavTabPill's active pill, so the two selected states match.
-      className={cn(
-        isSelected &&
-          variant === "secondary" &&
-          "bg-selected hover:bg-selected dark:bg-selected dark:hover:bg-selected"
-      )}
       onClick={onClick}
+      {...(isSelected ? selectedButtonProps(variant) : { variant: "ghost" })}
     />
   );
 }

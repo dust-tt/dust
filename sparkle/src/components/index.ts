@@ -153,6 +153,7 @@ export { FaviconIcon } from "./FaviconIcon";
 export {
   FILTER_CHIP_VARIANTS,
   FilterChip,
+  type FilterChipProps,
   FilterChips,
   type FilterChipVariant,
 } from "./FilterChips";
