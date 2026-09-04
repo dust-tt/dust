@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -52,4 +53,27 @@ export async function checkPoolCreditGate(
   }
 
   return DO_NOT_STOP;
+}
+
+export type CreditSpendCheckpointCheckResult =
+  | { crossed: false }
+  | { crossed: true; thresholdAwuCredits: number };
+
+const DO_NOT_NOTIFY: CreditSpendCheckpointCheckResult = { crossed: false };
+
+export async function checkCreditSpendCheckpointGate(
+  auth: Authenticator,
+  { consumedAwuCredits }: { consumedAwuCredits: number }
+): Promise<CreditSpendCheckpointCheckResult> {
+  const user = auth.user();
+  if (!user) {
+    return DO_NOT_NOTIFY;
+  }
+
+  const thresholdAwuCredits =
+    config.getCreditSpendCheckpointThresholdAwuCredits();
+
+  return consumedAwuCredits >= thresholdAwuCredits
+    ? { crossed: true, thresholdAwuCredits }
+    : DO_NOT_NOTIFY;
 }

@@ -140,6 +140,17 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   },
 });
 
+// No retries: this is a fail-open check, so a
+// failure should resolve immediately rather than delaying the step with retries.
+const { checkCreditSpendCheckpointActivity } = proxyActivities<
+  typeof creditCheckActivities
+>({
+  startToCloseTimeout: "15 seconds",
+  retry: {
+    maximumAttempts: 1,
+  },
+});
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -270,6 +281,11 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
+  let creditSpendCheckpointPauseRequested = false;
+
+  // Cached per execution: acknowledgment can't flip back to false once observed true (see checkCreditSpendCheckpointActivity).
+  let creditSpendCheckpointAcknowledged = false;
+
   const runIds: string[] = [];
 
   try {
@@ -360,6 +376,29 @@ export async function agentLoopWorkflow({
         });
         if (creditCheckResult.shouldStop) {
           creditStopRequested = true;
+          break;
+        }
+
+        if (!creditSpendCheckpointAcknowledged) {
+          try {
+            const workflowAlertResult =
+              await checkCreditSpendCheckpointActivity(authType, {
+                agentLoopArgs: {
+                  ...agentLoopArgs,
+                  initialStartTime,
+                },
+              });
+            if (workflowAlertResult.acknowledged) {
+              creditSpendCheckpointAcknowledged = true;
+            } else if (workflowAlertResult.crossed) {
+              creditSpendCheckpointPauseRequested = true;
+            }
+          } catch {
+            // Non-critical: fails open, must never fail the agent loop.
+          }
+        }
+
+        if (creditSpendCheckpointPauseRequested) {
           break;
         }
       }

@@ -756,6 +756,9 @@ export function useAgentMessageStream({
           );
           break;
 
+        case "agent_credit_spend_checkpoint_reached":
+          break;
+
         case "agent_generation_cancelled": {
           isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
