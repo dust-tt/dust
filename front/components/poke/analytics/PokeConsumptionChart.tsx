@@ -49,6 +49,7 @@ function PokeConsumptionDailyChart({
           : "No consumption over this period."
       }
       additionalControls={additionalControls}
+      showActiveUsers={filter?.users?.length !== 1}
     />
   );
 }
