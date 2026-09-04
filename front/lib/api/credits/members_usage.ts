@@ -101,6 +101,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import { z } from "zod";
@@ -296,14 +297,9 @@ export const MembersUsagePaginationSchema = z.object({
 
 type MembersUsagePaginationInput = z.infer<typeof MembersUsagePaginationSchema>;
 
-type ConsumedCreditsSplit = {
-  credits?: estypes.AggregationsSumAggregate;
-};
-
 type ConsumedCreditsBucket = {
   key: string;
-  paid_credits?: ConsumedCreditsSplit;
-  free_credits?: ConsumedCreditsSplit;
+  credits?: estypes.AggregationsSumAggregate;
 };
 
 type ConsumedCreditsAggs = {
@@ -348,63 +344,37 @@ export async function resolveMetronomeCycle(
   return periodResult.value;
 }
 
-// Per-user consumed AWU credits for the current billing cycle, summed from the
-// analytics index (`cost.billable_awu`, precomputed at index time) by Elasticsearch.
-// This replaces the per-user Metronome usage scan that previously dominated the
-// members-table load.
+// Paid per-user consumed AWU credits for the requested cycle, summed from the
+// consumption analytics index by Elasticsearch.
 //
-// Consumption is split on the `is_free_seat` dimension (the seat the author held
-// when each message was indexed), mirroring Metronome's free-seat user-id split
-// (`free-<sId>` vs `<sId>`): free-seat users see their free-seat usage, paid (and
-// seatless) users see only their paid-seat usage. A free→paid upgrade therefore
-// drops the user's pre-upgrade free usage (its docs stay `is_free_seat: true`),
-// while paid→paid changes (pro→max) keep counting (all `is_free_seat: false`).
-//
-// Sums `cost.billable_awu` (= the message's `costCredits`), which already encodes
-// the billing policy per execution: every non-error execution counts, the errored
-// terminal execution does not — so failed-terminal messages contribute their
-// non-error work (0 when the only/last execution errored). This matches Metronome
-// without a status filter. Returns an empty map on any failure so the table still
-// renders (the consumed column shows 0).
-//
-// `cycle` forces the window instead of resolving the Metronome contract billing
-// period — used by workspaces that have no contract to anchor one on (see
-// `spendLimitCycleOverrideForAuth`).
-async function fetchConsumedAwuCreditsByUserId({
+// The index contains one document per billed LLM or tool unit. Summing
+// `credit_micro` across every document attributed through `user.id` includes
+// both user and programmatic usage, matching the Metronome per-user total.
+// Returns an empty map on any failure so the table still renders (the consumed
+// column shows 0).
+async function fetchPaidConsumedAwuCreditsByUserId({
   workspace,
   userIds,
-  freeSeatUserIds,
   cycle,
 }: {
   workspace: LightWorkspaceType;
   userIds: string[];
-  freeSeatUserIds: string[];
-  cycle?: BillingCycle;
+  cycle: BillingCycle;
 }): Promise<Map<string, number>> {
   if (userIds.length === 0) {
     return new Map();
   }
+  const { cycleStart, cycleEnd } = cycle;
 
-  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
-  if (!resolvedCycle) {
-    return new Map();
-  }
-  const { cycleStart, cycleEnd } = resolvedCycle;
-
-  const freeSeatUserIdSet = new Set(freeSeatUserIds);
-
-  const result = await searchAnalytics<never, ConsumedCreditsAggs>(
+  const result = await searchConsumptionAnalytics<never, ConsumedCreditsAggs>(
     {
       bool: {
         filter: [
           { term: { workspace_id: workspace.sId } },
-          { terms: { user_id: userIds } },
-          // No status filter: `cost.billable_awu` is already 0 for the non-billable
-          // (errored terminal execution) part, so failed-terminal messages
-          // contribute only their non-error work — matching Metronome per execution.
+          { terms: { "user.id": userIds } },
           {
             range: {
-              timestamp: {
+              completed_at: {
                 gte: cycleStart.toISOString(),
                 lte: cycleEnd.toISOString(),
               },
@@ -415,30 +385,12 @@ async function fetchConsumedAwuCreditsByUserId({
     },
     {
       aggregations: {
-        // One bucket per user, each splitting consumption on the `is_free_seat`
-        // dimension so we can pick the side matching the user's current seat:
-        //   - `paid_credits`: paid-seat usage. `must_not is_free_seat=true`
-        //     (rather than `is_free_seat=false`) so historical docs indexed
-        //     before this field existed — which can't be backfilled — count as
-        //     paid.
-        //   - `free_credits`: free-seat usage (from before an upgrade).
         by_user: {
           terms: {
-            field: "user_id",
+            field: "user.id",
             size: Math.max(1, userIds.length),
           },
-          aggs: {
-            paid_credits: {
-              filter: {
-                bool: { must_not: [{ term: { is_free_seat: true } }] },
-              },
-              aggs: { credits: { sum: { field: "cost.billable_awu" } } },
-            },
-            free_credits: {
-              filter: { term: { is_free_seat: true } },
-              aggs: { credits: { sum: { field: "cost.billable_awu" } } },
-            },
-          },
+          aggs: { credits: { sum: { field: "credit_micro" } } },
         },
       },
       size: 0,
@@ -457,22 +409,133 @@ async function fetchConsumedAwuCreditsByUserId({
     result.value.aggregations?.by_user?.buckets
   )) {
     const userId = String(bucket.key);
-    // Free-seat users count their free-seat usage; paid (and seatless) users
-    // count only their paid-seat usage.
-    const split = freeSeatUserIdSet.has(userId)
-      ? bucket.free_credits
-      : bucket.paid_credits;
-    consumedByUserId.set(userId, Math.round(split?.credits?.value ?? 0));
+    consumedByUserId.set(
+      userId,
+      Math.round(microCreditsToCredits(bucket.credits?.value ?? 0))
+    );
   }
   return consumedByUserId;
+}
+
+// The consumption index intentionally has no seat-history dimension. Keep the
+// legacy query narrowly scoped to current free-seat users, whose lifetime
+// counter must include only documents created while they had a free seat.
+async function fetchFreeSeatConsumedAwuCreditsByUserId({
+  workspace,
+  userIds,
+  cycle,
+}: {
+  workspace: LightWorkspaceType;
+  userIds: string[];
+  cycle: BillingCycle;
+}): Promise<Map<string, number>> {
+  if (userIds.length === 0) {
+    return new Map();
+  }
+  const { cycleStart, cycleEnd } = cycle;
+
+  const result = await searchAnalytics<never, ConsumedCreditsAggs>(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          { terms: { user_id: userIds } },
+          { term: { is_free_seat: true } },
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: {
+        by_user: {
+          terms: {
+            field: "user_id",
+            size: Math.max(1, userIds.length),
+          },
+          aggs: { credits: { sum: { field: "cost.billable_awu" } } },
+        },
+      },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read free-seat consumed credits from legacy analytics index"
+    );
+    return new Map();
+  }
+
+  const consumedByUserId = new Map<string, number>();
+  for (const bucket of bucketsToArray<ConsumedCreditsBucket>(
+    result.value.aggregations?.by_user?.buckets
+  )) {
+    consumedByUserId.set(
+      String(bucket.key),
+      Math.round(bucket.credits?.value ?? 0)
+    );
+  }
+  return consumedByUserId;
+}
+
+// Per-user consumed AWU credits for the requested cycle. Paid-seat values come
+// from consumption analytics. Current free-seat values retain the legacy
+// `is_free_seat` query until the consumption index carries an equivalent seat
+// history dimension.
+async function fetchConsumedAwuCreditsByUserId({
+  workspace,
+  userIds,
+  freeSeatUserIds,
+  cycle,
+}: {
+  workspace: LightWorkspaceType;
+  userIds: string[];
+  freeSeatUserIds: string[];
+  cycle?: BillingCycle;
+}): Promise<Map<string, number>> {
+  if (userIds.length === 0) {
+    return new Map();
+  }
+
+  let resolvedCycle: BillingCycle | null | undefined = cycle;
+  if (!resolvedCycle) {
+    resolvedCycle = await resolveMetronomeCycle(workspace);
+  }
+  if (!resolvedCycle) {
+    return new Map();
+  }
+
+  const freeSeatUserIdSet = new Set(freeSeatUserIds);
+  const paidUserIds = userIds.filter(
+    (userId) => !freeSeatUserIdSet.has(userId)
+  );
+  const [paidCreditsByUserId, freeCreditsByUserId] = await Promise.all([
+    fetchPaidConsumedAwuCreditsByUserId({
+      workspace,
+      userIds: paidUserIds,
+      cycle: resolvedCycle,
+    }),
+    fetchFreeSeatConsumedAwuCreditsByUserId({
+      workspace,
+      userIds: freeSeatUserIds,
+      cycle: resolvedCycle,
+    }),
+  ]);
+  return new Map([...paidCreditsByUserId, ...freeCreditsByUserId]);
 }
 
 /**
  * A single user's Elasticsearch-derived AWU consumption for the current billing
  * cycle — the same figure the members table shows as "Consumed (ES)", scoped to
- * one user (with the free/paid seat split applied). Used to lazily seed the
- * per-user spend-cap counter on a Redis miss. Returns 0 when there is no usage
- * or the analytics read fails.
+ * one user. Used to lazily seed the per-user spend-cap counter on a Redis miss.
+ * Returns 0 when there is no usage or the analytics read fails.
  */
 export async function getEsConsumedAwuCreditsForUser(
   auth: Authenticator,
@@ -1306,14 +1369,18 @@ export async function resyncSpendLimitCountersFromEsUsage(
   // else on the per-cycle counter. Read each side over its own window so we seed
   // the exact key/value enforcement reads (mirroring `isUserRateLimiterSpendCapped`
   // and the members-table read).
-  const freeUserIds = memberships.flatMap((m) => {
-    const u = userByModelId.get(m.userId);
-    return u && m.seatType === "free" ? [u.sId] : [];
-  });
-  const paidUserIds = memberships.flatMap((m) => {
-    const u = userByModelId.get(m.userId);
-    return u && m.seatType !== "free" ? [u.sId] : [];
-  });
+  const freeUserIds = removeNulls(
+    memberships.map((m) => {
+      const u = userByModelId.get(m.userId);
+      return u && m.seatType === "free" ? u.sId : null;
+    })
+  );
+  const paidUserIds = removeNulls(
+    memberships.map((m) => {
+      const u = userByModelId.get(m.userId);
+      return u && m.seatType !== "free" ? u.sId : null;
+    })
+  );
   const [cycleConsumedByUserId, lifetimeConsumedByUserId] = await Promise.all([
     fetchConsumedAwuCreditsByUserId({
       workspace,
@@ -2001,10 +2068,10 @@ async function resolveMembersUsagePageUsers({
   const overageLimitByUserId = new Map<string, number>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
-      // Split consumed credits on seat type so free-seat users sort by their
-      // free-seat usage and everyone else by their paid-seat usage.
-      const freeSeatUserIds = allUsers.flatMap((u) =>
-        membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
+      const freeSeatUserIds = removeNulls(
+        allUsers.map((u) =>
+          membershipByUserModelId.get(u.id)?.seatType === "free" ? u.sId : null
+        )
       );
       const creditsByUserId = await fetchConsumedAwuCreditsByUserId({
         workspace,
@@ -2301,9 +2368,8 @@ export async function getMembersUsage({
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  // Memberships are needed up front to split consumed credits on seat type:
-  // free-seat users are counted from `is_free_seat: true` usage, everyone else
-  // from `is_free_seat: false`.
+  // Memberships are needed up front for seat-aware balances, allowances, and
+  // spend limits below.
   const membershipsResult = await MembershipResource.getActiveMemberships({
     workspace,
     users,
@@ -2311,8 +2377,10 @@ export async function getMembersUsage({
   const membershipByUserId = new Map(
     membershipsResult.memberships.map((m) => [m.userId, m])
   );
-  const freeSeatUserIds = users.flatMap((u) =>
-    membershipByUserId.get(u.id)?.seatType === "free" ? [u.sId] : []
+  const freeSeatUserIds = removeNulls(
+    users.map((u) =>
+      membershipByUserId.get(u.id)?.seatType === "free" ? u.sId : null
+    )
   );
   // Only pro/max (and their _yearly variants) carry an individual Metronome
   // seat balance — querying free/none/workspace users too would just waste
