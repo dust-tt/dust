@@ -528,9 +528,24 @@ async function auditWorkspace(
     if (overGrantedAwu <= RECONCILE_TOLERANCE_AWU) {
       continue;
     }
-    const strayCandidates = creditBearingSeatTypes.filter(
-      (t) => t !== homeSeatType && (assignedCountByTier.get(t) ?? 0) > 0
+    // Stray tier = the OTHER credit-bearing tier whose allocation equals the
+    // over-grant (which always equals the stray allocation exactly). A
+    // same-family collision (pro + pro_yearly both 8000) is broken by which one
+    // has assigned seats; in-use is only a tiebreaker, since the stray tier can
+    // itself have 0 seats now (the user moved off it).
+    let strayCandidates = creditBearingSeatTypes.filter(
+      (t) =>
+        t !== homeSeatType &&
+        Math.abs((allocationBySeatType.get(t) ?? -1) - overGrantedAwu) <= 200
     );
+    if (strayCandidates.length > 1) {
+      const inUse = strayCandidates.filter(
+        (t) => (assignedCountByTier.get(t) ?? 0) > 0
+      );
+      if (inUse.length === 1) {
+        strayCandidates = inUse;
+      }
+    }
     overAllocatedSeats.push({
       seatId,
       homeSeatType,
