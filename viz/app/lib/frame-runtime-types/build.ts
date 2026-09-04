@@ -25,8 +25,9 @@ import ts from "typescript";
  * - `node_modules/@types/dust-frame-refs`: ambient modules for Dust file references.
  */
 
-// Source module behind each runtime import name, as VisualizationWrapper wires it.
-const FRAME_RUNTIME_MODULE_SOURCES = {
+// Source module behind each runtime import name. `frame-runtime-modules.test.ts` checks these
+// resolve to the very modules the renderer exposes under the same names.
+export const FRAME_RUNTIME_MODULE_SOURCES = {
   papaparse: "papaparse",
   react: "react",
   recharts: "recharts",
