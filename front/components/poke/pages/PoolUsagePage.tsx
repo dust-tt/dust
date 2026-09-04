@@ -224,7 +224,6 @@ export function PoolUsagePage() {
   const {
     members,
     totalMembers,
-    creditsResetAt,
     isMembersUsageLoading,
     isMembersUsageValidating,
     isMembersUsageError,
@@ -421,7 +420,6 @@ export function PoolUsagePage() {
               ) : (
                 <MembersUsageTable
                   members={members}
-                  creditsResetAt={creditsResetAt}
                   isLoading={isMembersUsageLoading}
                   isRefreshing={
                     isMembersUsageValidating && !isMembersUsageLoading
@@ -444,7 +442,6 @@ export function PoolUsagePage() {
                   totalRowCount={totalMembers}
                   sorting={effectiveSorting}
                   setSorting={handleSetSorting}
-                  variant="compact"
                   showGroupsColumn={false}
                   showModelTiersColumn
                   userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
