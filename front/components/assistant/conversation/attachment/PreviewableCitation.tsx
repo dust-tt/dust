@@ -8,7 +8,7 @@ import { useFilePreviewContext } from "@app/components/assistant/conversation/Fi
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
-  isInteractiveContentType,
+  isFrameContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -64,7 +64,7 @@ export function PreviewableCitation({
   const sidePanel = useContext(ConversationSidePanelContext);
 
   const handleClick = async () => {
-    if (isInteractiveContentType(contentType) && sidePanel) {
+    if (isFrameContentType(contentType) && sidePanel) {
       try {
         const resolvedFileId =
           fileId ?? (filePath ? await resolveFileIdFromPath(filePath) : null);

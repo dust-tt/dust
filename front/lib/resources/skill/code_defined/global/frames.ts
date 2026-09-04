@@ -55,7 +55,10 @@ export const framesSkill = {
       podFunctionsSkillName: POD_FUNCTIONS_SKILL_NAME,
     });
   },
-  mcpServers: [{ name: "interactive_content" }],
-  version: 5,
+  mcpServers: [
+    { name: "interactive_content" },
+    { name: "conversation_side_panel" },
+  ],
+  version: 6,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

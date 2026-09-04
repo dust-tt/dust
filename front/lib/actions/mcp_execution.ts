@@ -40,6 +40,7 @@ import type { Logger } from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   extensionsForContentType,
+  getFileDisplayName,
   isSupportedFileContentType,
 } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -552,7 +553,7 @@ export async function processToolResults(
           contentType: c.file.contentType,
           fileId: c.file.sId,
           snippet: c.file.snippet,
-          title: c.file.fileName,
+          title: getFileDisplayName(c.file),
           createdAt: c.file.createdAt.getTime(),
           updatedAt: c.file.updatedAt.getTime(),
           isInProjectContext: c.file.useCase === "project_context",

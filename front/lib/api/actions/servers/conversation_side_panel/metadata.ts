@@ -11,16 +11,22 @@ export const CONVERSATION_SIDE_PANEL_TOOLS_METADATA = [
   {
     name: OPEN_FRAME_TOOL_NAME,
     description:
-      "Open and show an existing Frame in the conversation side panel without modifying it. " +
-      "Use this when a Frame was already created and you want the user to see it now " +
-      "(for example after referring back to a prior Frame). Creating, editing, reverting, " +
-      "renaming, or publishing a Frame already opens it automatically — call this only to " +
-      "re-open a Frame that is not currently shown.",
+      "Open and show a Frame in the conversation side panel without modifying it. " +
+      "Call this after publishing a Frame so the user sees it and receives a Frame card, " +
+      "or to re-open an existing Frame. Identify it with exactly one of `file_id` or `path`.",
     schema: {
       file_id: z
         .string()
+        .optional()
         .describe(
           "The ID of the Interactive Content file to open (e.g., 'fil_abc123')"
+        ),
+      path: z
+        .string()
+        .optional()
+        .describe(
+          "The canonical Frame source path, with or without the `/files/` prefix " +
+            "(e.g., '/files/pod-abc123/my-frame/manifest.json')"
         ),
     },
     stake: "never_ask",

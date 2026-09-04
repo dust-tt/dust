@@ -351,6 +351,10 @@ stored, and activated atomically:
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
+After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
+set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds
+the Frame card to the answer. Do not parse the Frame ID from the CLI output for this step.
+
 If validation, a function build, or database reconciliation fails, no partial publication becomes
 active. Fix the reported error and rerun the command.
 
