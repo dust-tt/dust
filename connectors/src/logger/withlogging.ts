@@ -1,4 +1,8 @@
 import logger from "@connectors/logger/logger";
+import {
+  getSafeRequestLogContext,
+  sanitizeRequestUrl,
+} from "@connectors/logger/request_logging";
 import type {
   ConnectorsAPIErrorWithStatusCode,
   WithConnectorsAPIErrorReponse,
@@ -18,13 +22,11 @@ export const withLogging = (handler: any) => {
       const elapsed = new Date().getTime() - now.getTime();
       logger.error(
         {
-          method: req.method,
-          url: req.url,
+          ...getSafeRequestLogContext(req),
           durationMs: elapsed,
           error: err,
           // @ts-expect-error we can't really know what the error is
           error_stack: err?.stack,
-          headers: req.headers,
         },
         "Unhandled API Error"
       );
@@ -67,11 +69,9 @@ export const withLogging = (handler: any) => {
 
     logger.info(
       {
-        method: req.method,
-        url: req.url,
+        ...getSafeRequestLogContext(req),
         statusCode: res.statusCode,
         durationMs: elapsed,
-        headers: req.headers,
       },
       "Processed request"
     );
@@ -87,7 +87,7 @@ export function apiError<T>(
   logger.error(
     {
       method: req.method,
-      url: req.url,
+      url: sanitizeRequestUrl(req.originalUrl || req.url),
       statusCode: apiError.status_code,
       apiError: apiError,
       error: error,

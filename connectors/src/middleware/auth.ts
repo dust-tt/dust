@@ -1,4 +1,5 @@
 import logger from "@connectors/logger/logger";
+import { sanitizeRequestUrl } from "@connectors/logger/request_logging";
 import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorsAPIErrorResponse } from "@connectors/types";
 import crypto from "crypto";
@@ -121,7 +122,10 @@ const _authMiddlewareWebhooksGithub = (
   next: NextFunction
 ) => {
   if (!req.path.split("/").includes(DUST_CONNECTORS_WEBHOOKS_SECRET)) {
-    logger.error({ path: req.path }, `Invalid webhook secret`);
+    logger.error(
+      { path: sanitizeRequestUrl(req.path) },
+      `Invalid webhook secret`
+    );
     return apiError(req, res, {
       api_error: {
         type: "not_found",
@@ -165,10 +169,7 @@ const _authMiddlewareWebhooksGithub = (
     .digest("hex")}`;
 
   if (Array.isArray(signatureHeader)) {
-    logger.error(
-      { signatureHeader },
-      `Unexpected x-hub-signature-256 header format`
-    );
+    logger.error(`Unexpected x-hub-signature-256 header format`);
     return apiError(req, res, {
       api_error: {
         type: "connector_not_found",
@@ -185,7 +186,6 @@ const _authMiddlewareWebhooksGithub = (
     )
   ) {
     logger.error(
-      { signatureHeader, computedSignature },
       `x-hub-signature-256 header does not match computed signature`
     );
     return apiError(req, res, {
@@ -206,7 +206,10 @@ const _authMiddlewareWebhooksIntercom = (
   next: NextFunction
 ) => {
   if (!req.path.split("/").includes(DUST_CONNECTORS_WEBHOOKS_SECRET)) {
-    logger.error({ path: req.path }, `Invalid webhook secret`);
+    logger.error(
+      { path: sanitizeRequestUrl(req.path) },
+      `Invalid webhook secret`
+    );
     return apiError(req, res, {
       api_error: {
         type: "not_found",
@@ -258,10 +261,7 @@ const _authMiddlewareWebhooksIntercom = (
       .digest("hex")}`;
 
     if (Array.isArray(signatureHeader)) {
-      logger.error(
-        { signatureHeader },
-        `Unexpected x-hub-signature header format`
-      );
+      logger.error(`Unexpected x-hub-signature header format`);
       return apiError(req, res, {
         api_error: {
           type: "connector_not_found",
@@ -277,10 +277,7 @@ const _authMiddlewareWebhooksIntercom = (
         Buffer.from(computedSignature)
       )
     ) {
-      logger.error(
-        { signatureHeader, computedSignature },
-        `x-hub-signature header does not match computed signature`
-      );
+      logger.error(`x-hub-signature header does not match computed signature`);
       return apiError(req, res, {
         api_error: {
           type: "not_found",
