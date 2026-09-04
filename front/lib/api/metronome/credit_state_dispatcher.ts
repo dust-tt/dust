@@ -1,5 +1,4 @@
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
-import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
@@ -192,16 +191,6 @@ export async function dispatchSeatBalanceResolved({
     );
     return;
   }
-
-  // A deferred seat change may have just taken effect (the future membership
-  // row became active). Re-derive the per-user cap alert from the membership's
-  // pool cap override and the current seat allowance — a no-op when the user
-  // has no override or the threshold is unchanged.
-  await recalculatePerUserCapAlertForSeatChange({
-    workspace: lightWorkspace,
-    membership,
-    userId,
-  });
 
   // The seat balance came back: a seat-based user returns to `user_seat`.
   const result = await transitionUserCreditState(

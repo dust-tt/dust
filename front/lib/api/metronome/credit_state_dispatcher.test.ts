@@ -1,5 +1,4 @@
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
-import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -26,24 +25,13 @@ vi.mock("@app/lib/api/credits/auto_seat_upgrade", () => ({
   maybeAutoUpgradeSeat: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/membership", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/api/membership")
-  >("@app/lib/api/membership");
-  return {
-    ...actual,
-    recalculatePerUserCapAlertForSeatChange: vi.fn(),
-  };
-});
-
 const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(transitionUserCreditState).mockResolvedValue(new Ok("on_pool"));
-  vi.mocked(maybeAutoUpgradeSeat).mockResolvedValue(new Ok({ upgraded: false }));
-  vi.mocked(recalculatePerUserCapAlertForSeatChange).mockResolvedValue(
-    undefined
+  vi.mocked(maybeAutoUpgradeSeat).mockResolvedValue(
+    new Ok({ upgraded: false })
   );
 });
 
@@ -86,7 +74,7 @@ describe("credit_state_dispatcher seat balance", () => {
     });
   });
 
-  it("dispatchSeatBalanceResolved recalculates the cap alert and transitions the seat back", async () => {
+  it("dispatchSeatBalanceResolved transitions the seat back", async () => {
     const workspaceType = await WorkspaceFactory.metronome({
       metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
     });
@@ -106,9 +94,6 @@ describe("credit_state_dispatcher seat balance", () => {
       userId: user.sId,
     });
 
-    expect(recalculatePerUserCapAlertForSeatChange).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: user.sId })
-    );
     expect(transitionUserCreditState).toHaveBeenCalledWith(
       expect.objectContaining({ seatType: "max", creditState: "user_seat" }),
       { type: "seat_balance_resolved" },

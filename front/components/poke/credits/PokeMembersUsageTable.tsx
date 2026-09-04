@@ -123,11 +123,13 @@ function EnumFilterDropdown<T extends string>({
 
 const DEFAULT_PAGE_SIZE = 25;
 
-const USER_CREDIT_STATE_CHIP_COLOR: Record<UserCreditState, "success" | "info"> =
-  {
-    user_seat: "info",
-    on_pool: "success",
-  };
+const USER_CREDIT_STATE_CHIP_COLOR: Record<
+  UserCreditState,
+  "success" | "info"
+> = {
+  user_seat: "info",
+  on_pool: "success",
+};
 
 // Free seats hold a per-user credit with two balance alerts: "low" (≤20%) and
 // "empty" (0). Both are shown beside the balance via the shared `AlertChip`,
