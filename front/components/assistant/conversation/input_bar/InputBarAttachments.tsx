@@ -193,7 +193,7 @@ export function InputBarAttachments({
           attachmentCitation={attachmentToAttachmentCitation(attachment, {
             iconSize: "sm",
           })}
-          size="xs"
+          variant="chip"
         />
       ))}
     </div>

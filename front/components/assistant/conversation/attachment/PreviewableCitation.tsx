@@ -1,3 +1,4 @@
+import { AttachmentChipCitation } from "@app/components/assistant/conversation/attachment/AttachmentChipCitation";
 import type {
   FileCitationCardIcon,
   FileCitationCardSize,
@@ -45,7 +46,8 @@ interface PreviewableCitationProps {
   thumbnailUrl?: string;
   title: string;
   tooltipLabel?: React.ReactNode;
-  variant?: "card" | "inline";
+  // `chip` is the composer attachment row; `inline` is a text-level reference.
+  variant?: "card" | "chip" | "inline";
 }
 
 export function PreviewableCitation({
@@ -158,6 +160,21 @@ export function PreviewableCitation({
   }
 
   const FileIcon = getFileTypeIcon(contentType, title);
+  if (variant === "chip") {
+    return (
+      <AttachmentChipCitation
+        icon={icon ?? FileIcon}
+        title={title}
+        description={description}
+        isLoading={isLoading}
+        loadingLabel={loadingLabel}
+        onClick={handleClick}
+        onRemove={onRemove}
+        tooltipLabel={tooltipLabel ?? title}
+      />
+    );
+  }
+
   return (
     <FileCitationCard
       icon={icon ?? FileIcon}

@@ -1,8 +1,9 @@
-import type { FileCitationCardSize } from "@app/components/assistant/conversation/attachment/FileCitationCard";
-import {
-  FileCitationCard,
-  FileCitationTooltipLabel,
+import { AttachmentChipCitation } from "@app/components/assistant/conversation/attachment/AttachmentChipCitation";
+import type {
+  FileCitationCardProps,
+  FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
@@ -16,17 +17,35 @@ import type { ImagePreviewTitlePositionType } from "@dust-tt/sparkle";
 import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
+// `card` is the Citation card shown under messages; `chip` is the compact
+// AttachmentChip of the composer's attachment row (images stay previews).
+export type AttachmentCitationVariant = "card" | "chip";
+
 interface AttachmentCitationProps {
   attachmentCitation: AttachmentCitation;
   size?: FileCitationCardSize;
+  variant?: AttachmentCitationVariant;
   // Image citations only: container class and hover title placement.
   imageContainerClassName?: string;
   imageTitlePosition?: ImagePreviewTitlePositionType;
 }
 
+type FileCitationProps = FileCitationCardProps & {
+  variant: AttachmentCitationVariant;
+};
+
+function FileCitation({ variant, size, ...props }: FileCitationProps) {
+  return variant === "chip" ? (
+    <AttachmentChipCitation {...props} />
+  ) : (
+    <FileCitationCard {...props} size={size} />
+  );
+}
+
 export function AttachmentCitation({
   attachmentCitation,
   size = "md",
+  variant = "card",
   imageContainerClassName,
   imageTitlePosition,
 }: AttachmentCitationProps) {
@@ -54,18 +73,27 @@ export function AttachmentCitation({
 
   // Node citation: link to an external datasource document.
   if (attachmentCitation.type === "node") {
-    const tooltipContent = (
-      <div className="flex flex-col gap-1">
+    const tooltipHeader = (
+      <>
         <div className="font-bold">{attachmentCitation.title}</div>
         <div className="flex gap-1 pt-1 text-sm">
           <Icon visual={attachmentCitation.spaceIcon} />
           <p>{attachmentCitation.spaceName}</p>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {attachmentCitation.path}
-        </div>
-      </div>
+      </>
     );
+    // The chip appends the description (path) to its tooltip itself.
+    const tooltipContent =
+      variant === "chip" ? (
+        <div className="flex flex-col gap-1">{tooltipHeader}</div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          {tooltipHeader}
+          <div className="text-sm text-muted-foreground">
+            {attachmentCitation.path}
+          </div>
+        </div>
+      );
     const nodeUrl = attachmentCitation.sourceUrl;
     const nodeBase = {
       icon: attachmentCitation.visual,
@@ -73,24 +101,19 @@ export function AttachmentCitation({
       description: attachmentCitation.path ?? attachmentCitation.spaceName,
       onRemove: attachmentCitation.onRemove,
       size,
+      variant,
       tooltipLabel: tooltipContent,
     };
     return nodeUrl ? (
-      <FileCitationCard {...nodeBase} href={nodeUrl} />
+      <FileCitation {...nodeBase} href={nodeUrl} />
     ) : (
-      <FileCitationCard {...nodeBase} />
+      <FileCitation {...nodeBase} />
     );
   }
 
-  const { fileId, contentType, title, sourceUrl, description } =
-    attachmentCitation;
+  const { fileId, contentType, title, sourceUrl } = attachmentCitation;
   const filePath =
     "filePath" in attachmentCitation ? attachmentCitation.filePath : undefined;
-  const tooltipLabel = description ? (
-    <FileCitationTooltipLabel title={title} description={description} />
-  ) : (
-    title
-  );
 
   // Interactive content (spreadsheets etc.): open side panel instead of preview dialog.
   // Path-backed interactive citations are handled by PreviewableCitation below.
@@ -101,16 +124,17 @@ export function AttachmentCitation({
     sidePanel != null
   ) {
     return (
-      <FileCitationCard
+      <FileCitation
         icon={attachmentCitation.visual}
         title={title}
-        description={description}
+        description={attachmentCitation.description}
         size={size}
+        variant={variant}
         onClick={() =>
           sidePanel.openPanel({ type: "interactive_content", fileId })
         }
         onRemove={attachmentCitation.onRemove}
-        tooltipLabel={tooltipLabel}
+        tooltipLabel={title}
       />
     );
   }
@@ -125,14 +149,15 @@ export function AttachmentCitation({
     sidePanel != null
   ) {
     return (
-      <FileCitationCard
+      <FileCitation
         icon={attachmentCitation.visual}
         title={title}
-        description={description}
+        description={attachmentCitation.description}
         size={size}
+        variant={variant}
         onClick={() => sidePanel.openPanel({ type: "file_preview", filePath })}
         onRemove={attachmentCitation.onRemove}
-        tooltipLabel={tooltipLabel}
+        tooltipLabel={title}
       />
     );
   }
@@ -153,12 +178,13 @@ export function AttachmentCitation({
         thumbnailUrl={sourceUrl ?? undefined}
         downloadUrl={sourceUrl ?? undefined}
         icon={attachmentCitation.visual}
-        description={description}
+        description={attachmentCitation.description}
         size={size}
+        variant={variant}
         isLoading={isLoading}
         loadingLabel={loadingLabel}
         onRemove={attachmentCitation.onRemove}
-        tooltipLabel={tooltipLabel}
+        tooltipLabel={title}
       />
     );
   }
@@ -167,16 +193,17 @@ export function AttachmentCitation({
   const fallbackBase = {
     icon: attachmentCitation.visual,
     title,
-    description,
+    description: attachmentCitation.description,
     size,
+    variant,
     isLoading,
     loadingLabel,
     onRemove: attachmentCitation.onRemove,
-    tooltipLabel,
+    tooltipLabel: title,
   };
   return sourceUrl ? (
-    <FileCitationCard {...fallbackBase} href={sourceUrl} />
+    <FileCitation {...fallbackBase} href={sourceUrl} />
   ) : (
-    <FileCitationCard {...fallbackBase} />
+    <FileCitation {...fallbackBase} />
   );
 }

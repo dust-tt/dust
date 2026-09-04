@@ -1,7 +1,4 @@
-import {
-  FileCitationCard,
-  FileCitationTooltipLabel,
-} from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   getFileNameFromScopedPath,
@@ -41,11 +38,10 @@ export function FilePreviewComponent({ node }: FilePreviewComponentProps) {
     <NodeViewWrapper className="inline-flex align-middle">
       <FileCitationCard
         size="xs"
+        description={typeLabel}
         icon={FileIcon}
         title={fileName}
-        tooltipLabel={
-          <FileCitationTooltipLabel title={fileName} description={typeLabel} />
-        }
+        tooltipLabel={fileName}
       />
     </NodeViewWrapper>
   );
