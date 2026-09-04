@@ -83,6 +83,57 @@ describe("SkillSearchDocumentResource", () => {
       )
     ).resolves.toBeNull();
   });
+  it("fails closed when permission-bearing fields are stale", async () => {
+    const regularSpace = await SpaceFactory.regular(testContext.workspace);
+    const skill = await SkillFactory.create(testContext.authenticator, {
+      requestedSpaceIds: [regularSpace.id],
+    });
+    const document = await SkillSearchDocumentResource.fetchSearchDocument(
+      testContext.authenticator,
+      skill.sId
+    );
+    expect(document).not.toBeNull();
+    if (!document) {
+      return;
+    }
+
+    const staleDocuments = [
+      { ...document, availability: "workspace_users" as const },
+      { ...document, requested_space_ids: [] },
+      { ...document, non_pod_space_ids: [], non_pod_space_count: 0 },
+      { ...document, pod_space_id: regularSpace.sId },
+      { ...document, editor_user_ids: [999_999_999] },
+      {
+        ...document,
+        editor_user_ids: 999_999_999 as unknown as number[],
+      },
+      {
+        ...document,
+        requested_space_ids: regularSpace.sId as unknown as string[],
+      },
+      {
+        ...document,
+        non_pod_space_ids: undefined as unknown as string[],
+      },
+      { ...document, workspace_id: "workspace-invalid" },
+    ];
+
+    await expect(
+      SkillSearchDocumentResource.filterSearchDocumentsByCurrentState(
+        testContext.authenticator,
+        [document, ...staleDocuments]
+      )
+    ).resolves.toEqual([document]);
+
+    await skill.archive(testContext.authenticator);
+    await expect(
+      SkillSearchDocumentResource.filterSearchDocumentsByCurrentState(
+        testContext.authenticator,
+        [document]
+      )
+    ).resolves.toEqual([]);
+  });
+
   it("pages active skills by model ID", async () => {
     const firstActiveSkill = await SkillFactory.create(
       testContext.authenticator,
