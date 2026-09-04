@@ -83,9 +83,9 @@ export const Secondary: Story = {
 };
 
 /**
- * Standalone **FilterChip** with caller-controlled selection, as used for side
- * panel toggles: icon plus label, one selected in `secondary` style, and an
- * icon-only chip with its label as a tooltip.
+ * Standalone **FilterChip** with caller-controlled selection: icon plus label,
+ * one selected in `secondary` style, and an icon-only chip with its label as a
+ * tooltip.
  * @summary Controlled single chips with icons.
  */
 export const SingleChips: Story = {

@@ -37,9 +37,9 @@ export interface FilterChipProps {
 }
 
 /**
- * A single filter chip whose selection is controlled by the caller, e.g. a
- * side panel toggle. Selected chips are `primary` (filled) or `secondary`
- * (lighter background); unselected chips are ghost. Sets `aria-pressed`.
+ * A single filter chip whose selection is controlled by the caller. Selected
+ * chips are `primary` (filled) or `secondary` (lighter background); unselected
+ * chips are ghost. Sets `aria-pressed`.
  * @summary Controlled single filter chip.
  */
 export function FilterChip({
