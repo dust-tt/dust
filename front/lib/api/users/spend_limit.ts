@@ -621,9 +621,27 @@ export async function isUserSpendLimitRateCapReached(
 ): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const threshold = await getEffectiveSpendCapAwuCreditsForUser(auth, { user });
-  if (threshold === null) {
+  // Free seats have no per-cycle cap; they enforce their lifetime credit
+  // allowance instead. Branch on the actual seat type rather than inferring it
+  // from a null effective cap.
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return false;
+  }
+  if (membership.seatType === "free") {
     return isFreeSeatLifetimeCapReached(auth, { user });
+  }
+
+  const threshold = await getEffectiveSpendCapAwuCreditsForUser(auth, {
+    user,
+    membership,
+  });
+  if (threshold === null) {
+    return false;
   }
 
   const bounds = await resolveSpendLimitCycleBounds(workspace);
@@ -657,9 +675,26 @@ export async function isUserSpendLimitRateWarningReached(
 ): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const threshold = await getEffectiveSpendCapAwuCreditsForUser(auth, { user });
-  if (threshold === null) {
+  // Free seats warn on their lifetime credit allowance, not a per-cycle cap.
+  // Branch on the actual seat type rather than inferring it from a null cap.
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return false;
+  }
+  if (membership.seatType === "free") {
     return isFreeSeatLifetimeWarningReached(auth, { user });
+  }
+
+  const threshold = await getEffectiveSpendCapAwuCreditsForUser(auth, {
+    user,
+    membership,
+  });
+  if (threshold === null) {
+    return false;
   }
 
   const bounds = await resolveSpendLimitCycleBounds(workspace);

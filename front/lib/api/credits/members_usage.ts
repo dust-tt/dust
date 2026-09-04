@@ -1190,19 +1190,10 @@ export async function fetchRemainingCapCreditsPercentageForUser({
  */
 export async function getEffectiveSpendCapAwuCreditsForUser(
   auth: Authenticator,
-  { user }: { user: UserResource }
+  { user, membership }: { user: UserResource; membership: MembershipResource }
 ): Promise<number | null> {
   const workspace = auth.getNonNullableWorkspace();
   const { metronomeCustomerId } = workspace;
-
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace,
-    });
-  if (!membership) {
-    return null;
-  }
 
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
@@ -1442,6 +1433,59 @@ export async function resyncProgrammaticSpendLimitCounterFromEsUsage(
   return new Ok({ programmaticCounterSeeded: setResult.isOk() });
 }
 
+/**
+ * Reads a single user's Redis fixed-window spend-cap counter and returns whether
+ * it has reached the given threshold. Free seats read the never-rolling lifetime
+ * counter; everyone else the per-contract-cycle counter. Returns `false` (not
+ * capped) when no threshold applies, the billing cycle can't be resolved, or on
+ * a Redis read error — matching the fail-open enforcement in
+ * `lib/api/users/spend_limit.ts` (no Metronome fallback under the flag).
+ */
+async function isUserRateLimiterSpendCapped(
+  auth: Authenticator,
+  {
+    user,
+    isFreeSeat,
+    thresholdAwuCredits,
+    billingCycle,
+  }: {
+    user: UserResource;
+    isFreeSeat: boolean;
+    thresholdAwuCredits: number | null;
+    billingCycle: BillingCycle | null;
+  }
+): Promise<boolean> {
+  if (thresholdAwuCredits === null || thresholdAwuCredits <= 0) {
+    return false;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const bounds = isFreeSeat
+    ? makeSpendLimitLifetimeWindowBounds()
+    : billingCycle
+      ? makeSpendLimitCycleWindowBounds(
+          billingCycle.cycleStart,
+          billingCycle.cycleEnd
+        )
+      : null;
+  if (!bounds) {
+    return false;
+  }
+
+  const key = isFreeSeat
+    ? makeFreeSeatLifetimeAwuCreditsRateLimitKeyForUser(
+        workspace,
+        user.toJSON()
+      )
+    : makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON());
+  const result = await getFixedWindowCount({ key, bounds });
+  if (result.isErr()) {
+    return false;
+  }
+
+  return microCreditsToCredits(result.value) >= thresholdAwuCredits;
+}
+
 export type GetMemberUsageResponseBody = {
   member: MemberUsageType | null;
   // Optional for backward compatibility with clients deployed before target
@@ -1633,6 +1677,26 @@ export async function getMemberUsage({
     defaultAwuCredits: effectiveDefaultAwuCredits,
   });
 
+  // Flag-aware per-user cap verdict, consistent with the members table and with
+  // enforcement in lib/api/credits/access_control.ts: under the flag, read the
+  // Redis rate-limiter counter (lifetime allowance for free seats, per-cycle cap
+  // otherwise) with no Metronome fallback; with it off, the persisted Metronome
+  // credit state.
+  const spendCapEnabled = (await getFeatureFlags(auth)).includes(
+    "enforce_user_spend_limit_rate_cap"
+  );
+  const isSpendCapped = spendCapEnabled
+    ? await isUserRateLimiterSpendCapped(auth, {
+        user: userResource,
+        isFreeSeat: membership.seatType === "free",
+        thresholdAwuCredits:
+          membership.seatType === "free"
+            ? freeSeatAllowanceAwu
+            : spendLimitAwuCredits,
+        billingCycle,
+      })
+    : membership.creditState === "capped";
+
   const member: MemberUsageType = {
     sId: userId,
     name: userResource.fullName() || userResource.name,
@@ -1667,9 +1731,7 @@ export async function getMemberUsage({
     creditState: membership.creditState,
     nearLimit: false,
     rateLimiterState: null,
-    // Single-member path (my-usage): no rate-limiter read here, so fall back to
-    // the persisted credit state. Not consumed by the poke Unblock action.
-    isSpendCapped: membership.creditState === "capped",
+    isSpendCapped,
     seatUsageTarget: null,
     overallUsageTarget: null,
   };
