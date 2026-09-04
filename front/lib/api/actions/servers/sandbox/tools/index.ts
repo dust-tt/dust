@@ -27,7 +27,7 @@ import {
   generateSandboxExecToken,
   revokeExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
-import { readNewDenyLogEntries } from "@app/lib/api/sandbox/egress";
+import { collectEgressDenials } from "@app/lib/api/sandbox/egress_deny_log";
 import type { RequestOwnerPolicyDomainOutcome } from "@app/lib/api/sandbox/egress_policy";
 import {
   addOwnerPolicyDomain,
@@ -66,7 +66,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
-import { z } from "zod";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h
@@ -106,70 +105,6 @@ function formatExecOutput(
   }
 
   return sections.join("\n") || "(no output)";
-}
-
-// The egress proxy's domain-allowlist gate writes this reason. It is the only
-// deny reason that means "this domain was blocked" and is actionable by the
-// agent (ask an admin / add_egress_domain).
-const PROXY_ALLOWLIST_DENY_REASON = "proxy_denied";
-
-const DenyLogLineSchema = z.object({
-  reason: z.string(),
-  domain: z.string().nullish(),
-  port: z.number().nullish(),
-});
-
-function safeJsonParse(value: string): unknown {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return undefined;
-  }
-}
-
-// The sandbox deny log is written by two distinct layers into one file: the
-// egress proxy's domain-allowlist gate (`proxy_denied`) and the in-sandbox
-// request-rewrite harness (malformed headers, secret-to-host scoping, SNI
-// checks, ...). Only the allowlist denials mean "this domain was blocked".
-// Surfacing the harness reasons under the same `<network_proxy_logs>` block
-// makes agents misread auth/4xx failures on *allowed* domains as proxy blocks,
-// so we keep only allowlist denials for the agent and present them as a clean,
-// unambiguous line. Unrecognized lines are kept verbatim (fail open) so we
-// never silently swallow a real denial we don't understand.
-//
-// Harness denials are hidden from the agent but still returned here so the
-// caller can log them: they are how we notice a request-policy check firing in
-// production, whether that is a real attack or legitimate traffic we broke.
-function partitionDenyLogEntries(rawLines: string[]): {
-  agentFacing: string[];
-  harnessDenials: { reason: string; domain: string | null }[];
-} {
-  const agentFacing: string[] = [];
-  const harnessDenials: { reason: string; domain: string | null }[] = [];
-
-  for (const line of rawLines) {
-    const parsed = DenyLogLineSchema.safeParse(safeJsonParse(line));
-    if (!parsed.success) {
-      agentFacing.push(line);
-      continue;
-    }
-
-    const { reason, domain, port } = parsed.data;
-    if (reason !== PROXY_ALLOWLIST_DENY_REASON) {
-      harnessDenials.push({ reason, domain: domain ?? null });
-      continue;
-    }
-    if (!domain) {
-      agentFacing.push(line);
-      continue;
-    }
-
-    agentFacing.push(
-      `denied ${domain}${port ? `:${port}` : ""} (blocked by egress allowlist)`
-    );
-  }
-
-  return { agentFacing, harnessDenials };
 }
 
 // Shannon entropy in bits/char. Uniform random characters approach
@@ -516,31 +451,11 @@ export async function runSandboxBashTool(
     return new Err(new MCPError(execResult.error.message));
   }
 
-  let denyLogEntries: string[] | undefined;
-  const denyResult = await readNewDenyLogEntries(auth, sandbox);
-  if (denyResult.isErr()) {
-    logger.warn(
-      { err: denyResult.error, providerId: sandbox.providerId },
-      "Failed to read egress deny log"
-    );
-  } else if (denyResult.value.length > 0) {
-    const { agentFacing, harnessDenials } = partitionDenyLogEntries(
-      denyResult.value
-    );
-    if (harnessDenials.length > 0) {
-      logger.info(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          sandboxId: sandbox.sId,
-          harnessDenials,
-        },
-        "Sandbox egress request policy denied requests"
-      );
-    }
-    if (agentFacing.length > 0) {
-      denyLogEntries = agentFacing;
-    }
-  }
+  const denials = await collectEgressDenials(auth, sandbox, {
+    workspaceId: auth.getNonNullableWorkspace().sId,
+  });
+  const denyLogEntries =
+    denials && denials.agentFacing.length > 0 ? denials.agentFacing : undefined;
 
   const output = formatExecOutput(execResult.value, { denyLogEntries });
   const redactedOutputResult = await redactSandboxEnvVarsFromOutput(
