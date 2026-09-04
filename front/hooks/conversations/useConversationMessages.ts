@@ -5,7 +5,6 @@ import {
 } from "@app/lib/swr/swr";
 import type {
   FetchConversationMessageActionResponse,
-  FetchConversationMessageResponse,
   FetchConversationMessagesResponse,
 } from "@app/types/api/assistant/messages";
 import { useMemo } from "react";
@@ -62,39 +61,6 @@ export function useConversationMessages({
     mutateMessages: mutate,
     setSize,
     size,
-  };
-}
-
-export function useConversationMessage({
-  conversationId,
-  workspaceId,
-  messageId,
-  options,
-}: {
-  conversationId: string;
-  workspaceId: string;
-  messageId: string | null;
-  options?: {
-    disabled: boolean;
-  };
-}) {
-  const { fetcher } = useFetcher();
-  const messageFetcher: Fetcher<FetchConversationMessageResponse> = fetcher;
-
-  const { data, error, mutate, isLoading, isValidating } = useSWRWithDefaults(
-    messageId
-      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}`
-      : null,
-    messageFetcher,
-    options
-  );
-
-  return {
-    message: data?.message,
-    isMessageError: error,
-    isMessageLoading: isLoading,
-    isValidating,
-    mutateMessage: mutate,
   };
 }
 

@@ -4,7 +4,6 @@ import type {
   AgentMessageType,
   LegacyLightMessageType,
   LightMessageType,
-  MessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -28,10 +27,6 @@ export interface FetchConversationMessagesResponse {
   lastValue: number | null;
   messages: LightMessageType[];
 }
-
-export type FetchConversationMessageResponse = {
-  message: MessageType;
-};
 
 export type FetchConversationMessageResponseLight = {
   message: LightMessageType;
