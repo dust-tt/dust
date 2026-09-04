@@ -118,7 +118,8 @@ app.get(
             status_code: 429,
             api_error: {
               type: "rate_limit_error",
-              message: result.error.message,
+              message:
+                "Rate limit error while retrieving the data source permissions",
             },
           });
         case "connector_authorization_error":
@@ -126,6 +127,15 @@ app.get(
             status_code: 401,
             api_error: {
               type: "data_source_auth_error",
+              message:
+                "Authorization error while retrieving the data source permissions.",
+            },
+          });
+        case "connector_oauth_user_missing_rights":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "connector_oauth_user_missing_rights",
               message: result.error.message,
             },
           });
