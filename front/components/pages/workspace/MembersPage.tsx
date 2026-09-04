@@ -1,4 +1,5 @@
 import { WorkspaceGroupsList } from "@app/components/groups/WorkspaceGroupsList";
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { WorkspaceMembersSection } from "@app/components/members/WorkspaceMembersSection";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -45,9 +46,11 @@ export function MembersPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
+      <AdminPageContainer>
+        <div className="flex h-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      </AdminPageContainer>
     );
   }
 
@@ -64,25 +67,30 @@ export function MembersPage() {
   );
 
   return (
-    <div className="mb-4">
-      <div className="flex flex-col gap-6">
-        <Page.Header
-          title="People"
-          description="Manage team members and their roles."
-        />
-        <Tabs value={activeTab} onValueChange={(value) => tab.setParam(value)}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="members" label="Members" />
-            <TabsTrigger value="groups" label="Groups" />
-          </TabsList>
-          <TabsContent value="members" className="flex flex-col gap-4">
-            {membersContent}
-          </TabsContent>
-          <TabsContent value="groups" className="flex flex-col gap-4">
-            <WorkspaceGroupsList owner={owner} />
-          </TabsContent>
-        </Tabs>
+    <AdminPageContainer>
+      <div className="mb-4">
+        <div className="flex flex-col gap-6">
+          <Page.Header
+            title="People"
+            description="Manage team members and their roles."
+          />
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => tab.setParam(value)}
+          >
+            <TabsList className="mb-6">
+              <TabsTrigger value="members" label="Members" />
+              <TabsTrigger value="groups" label="Groups" />
+            </TabsList>
+            <TabsContent value="members" className="flex flex-col gap-4">
+              {membersContent}
+            </TabsContent>
+            <TabsContent value="groups" className="flex flex-col gap-4">
+              <WorkspaceGroupsList owner={owner} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-    </div>
+    </AdminPageContainer>
   );
 }

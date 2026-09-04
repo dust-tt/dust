@@ -1,6 +1,7 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
@@ -186,12 +187,14 @@ export function AnalyticsConsumptionPage() {
         skillId={skillDetailsId}
         onClose={() => setSkillDetailsId(null)}
       />
-      <AnalyticsConsumptionContent
-        owner={owner}
-        state={{ ...state, filter }}
-        onAgentClick={setAgentDetailsId}
-        onSkillClick={setSkillDetailsId}
-      />
+      <AdminPageContainer>
+        <AnalyticsConsumptionContent
+          owner={owner}
+          state={{ ...state, filter }}
+          onAgentClick={setAgentDetailsId}
+          onSkillClick={setSkillDetailsId}
+        />
+      </AdminPageContainer>
     </>
   );
 }

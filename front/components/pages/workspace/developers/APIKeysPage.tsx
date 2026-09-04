@@ -1,3 +1,4 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
@@ -338,25 +339,27 @@ export function APIKeysPage() {
   );
 
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <Page.Header
-        title={
-          <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
-            <div className="flex max-w-2xl flex-col gap-1">
-              <Page.H variant="h3">API Keys</Page.H>
-              <Page.P variant="secondary">
-                Create and manage API keys, track what they consume, and control
-                their monthly spend.
-              </Page.P>
+    <AdminPageContainer>
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title={
+            <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
+              <div className="flex max-w-2xl flex-col gap-1">
+                <Page.H variant="h3">API Keys</Page.H>
+                <Page.P variant="secondary">
+                  Create and manage API keys, track what they consume, and
+                  control their monthly spend.
+                </Page.P>
+              </div>
+              <ConsumptionPeriodSelector
+                period={period}
+                onPeriodChange={setPeriod}
+              />
             </div>
-            <ConsumptionPeriodSelector
-              period={period}
-              onPeriodChange={setPeriod}
-            />
-          </div>
-        }
-      />
-      <APIKeysPageContent owner={owner} period={period} />
-    </Page.Vertical>
+          }
+        />
+        <APIKeysPageContent owner={owner} period={period} />
+      </Page.Vertical>
+    </AdminPageContainer>
   );
 }
