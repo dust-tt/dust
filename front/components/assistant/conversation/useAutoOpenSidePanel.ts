@@ -11,7 +11,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { FILES_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
-import { isInteractiveContentType } from "@app/types/files";
+import { isFrameContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import React from "react";
 
@@ -123,7 +123,7 @@ export function useAutoOpenSidePanel({
   const completedInteractiveFiles = React.useMemo(
     () =>
       agentMessage.generatedFiles.filter((file) =>
-        isInteractiveContentType(file.contentType)
+        isFrameContentType(file.contentType)
       ),
     [agentMessage.generatedFiles]
   );
@@ -131,7 +131,7 @@ export function useAutoOpenSidePanel({
   const regularGeneratedFiles = React.useMemo(
     () =>
       agentMessage.generatedFiles.filter(
-        (file) => !file.hidden && !isInteractiveContentType(file.contentType)
+        (file) => !file.hidden && !isFrameContentType(file.contentType)
       ),
     [agentMessage.generatedFiles]
   );

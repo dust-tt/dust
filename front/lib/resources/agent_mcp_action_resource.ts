@@ -73,6 +73,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { UNRESUMABLE_AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
+import { getFileDisplayName } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -932,7 +933,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           workspaceId: file.workspaceId,
         }),
         contentType: file.contentType,
-        title: file.fileName,
+        title: getFileDisplayName(file),
         snippet: file.snippet,
         createdAt: file.createdAt.getTime(),
         updatedAt: file.updatedAt.getTime(),
@@ -1464,7 +1465,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                       workspaceId: file.workspaceId,
                     }),
                     contentType: file.contentType,
-                    title: file.fileName,
+                    title: getFileDisplayName(file),
                     snippet: file.snippet,
                     createdAt: file.createdAt.getTime(),
                     updatedAt: file.updatedAt.getTime(),

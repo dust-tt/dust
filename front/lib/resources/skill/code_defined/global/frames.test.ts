@@ -116,7 +116,10 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(
       "Other interactive-content tools remain available"
     );
-    expect(framesSkill.mcpServers).toEqual([{ name: "interactive_content" }]);
+    expect(framesSkill.mcpServers).toEqual([
+      { name: "interactive_content" },
+      { name: "conversation_side_panel" },
+    ]);
     await expect(
       InternalMCPServerInMemoryResource.isRestrictedForWorkspace(
         auth,

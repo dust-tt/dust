@@ -864,6 +864,21 @@ export function isFrameContentType(
   );
 }
 
+export function getFileDisplayName(file: {
+  contentType: string;
+  fileName: string;
+  useCaseMetadata?: FileUseCaseMetadata | null;
+}): string {
+  if (
+    isFrameV2ContentType(file.contentType) &&
+    file.useCaseMetadata?.frameName
+  ) {
+    return file.useCaseMetadata.frameName;
+  }
+
+  return file.fileName;
+}
+
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
