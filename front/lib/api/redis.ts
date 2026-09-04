@@ -71,6 +71,7 @@ export type RedisUsageTagsType =
   | "mcp_client_side_request"
   | "mcp_client_side_results"
   | "mentions_count"
+  | "model_health"
   | "stripe_checkout_status"
   | "metronome_credit_cache"
   | "metronome_limit"
