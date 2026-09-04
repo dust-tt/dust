@@ -156,6 +156,9 @@ function memberFromUpgradeRequest(
     freeCreditEmptyAlert: null,
     creditState: "capped",
     nearLimit: false,
+    rateLimiterState: null,
+    // Synthesized from a capped user's upgrade request.
+    isSpendCapped: true,
     seatUsageTarget: null,
     overallUsageTarget: null,
   };
