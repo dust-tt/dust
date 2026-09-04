@@ -94,14 +94,25 @@ export const SingleChips: Story = {
   args: { filters: [] },
   render: () => (
     <div className="flex items-center gap-2">
-      <FilterChip label="Files" icon={Folder} variant="secondary" />
+      <FilterChip
+        label="Files"
+        icon={Folder}
+        variant="secondary"
+        onClick={fn()}
+      />
       <FilterChip
         label="Plan 2/7"
         icon={ListSelect}
         variant="secondary"
         isSelected
+        onClick={fn()}
       />
-      <FilterChip icon={Folder} tooltip="Files" variant="secondary" />
+      <FilterChip
+        icon={Folder}
+        tooltip="Files"
+        variant="secondary"
+        onClick={fn()}
+      />
     </div>
   ),
   play: async ({ canvasElement }) => {

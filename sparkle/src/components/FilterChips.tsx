@@ -33,8 +33,8 @@ export interface FilterChipProps {
   variant?: FilterChipVariant;
   /** Tooltip label; required for icon-only chips. */
   tooltip?: string;
-  /** Called on click; the caller owns the selection and toggles it. */
-  onClick?: () => void;
+  /** Called on click; the caller owns the selection and toggles it. For a non-interactive badge use Chip. */
+  onClick: () => void;
 }
 
 /**
