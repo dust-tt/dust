@@ -169,7 +169,6 @@ function PokeCreditStatesCard({
             label="critical (-10)"
           />
           <CreditStateLogsLink machine="programmatic" workspaceId={owner.sId} />
-          <ReconcileCreditStateButton owner={owner} target="programmatic" />
         </div>
       </div>
     </div>

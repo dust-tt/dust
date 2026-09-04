@@ -1,25 +1,17 @@
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { fetchRemainingCapCreditsPercentageForUser } from "@app/lib/api/credits/members_usage";
 import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
-import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
-import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
-import {
-  clearWorkspaceProgrammaticWarningReached,
-  setUserCreditState,
-  setWorkspaceProgrammaticWarningReached,
-} from "@app/lib/metronome/user_block";
+import { setUserCreditState } from "@app/lib/metronome/user_block";
 import type { LiveUserSeatBalance } from "@app/lib/metronome/user_credit_state_machine";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
-import { notifyAdminsProgrammaticCapReached } from "@app/lib/notifications/workflows/programmatic-cap-reached";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -510,135 +502,6 @@ async function transitionWorkspacePool(
     workspaceId: workspace.sId,
     paygEnabled,
   });
-}
-
-// ---------------------------------------------------------------------------
-// Programmatic credit state dispatchers
-// ---------------------------------------------------------------------------
-
-export async function dispatchProgrammaticLowBalance({
-  workspace,
-  remainingCredits,
-}: {
-  workspace: WorkspaceResource;
-  remainingCredits: number;
-}): Promise<void> {
-  await transitionProgrammaticCreditState(workspace, {
-    type: "programmatic_low_balance",
-    remainingCredits,
-  });
-}
-
-export async function dispatchProgrammaticCapReached({
-  workspace,
-  eventId,
-}: {
-  workspace: WorkspaceResource;
-  eventId: string;
-}): Promise<void> {
-  await transitionProgrammaticCreditState(workspace, {
-    type: "programmatic_cap_reached",
-  });
-  void notifyAdminsProgrammaticCapAboutStatus({
-    workspace,
-    isBlocked: true,
-    eventId,
-  });
-}
-
-export async function dispatchProgrammaticCapReset({
-  workspace,
-}: {
-  workspace: WorkspaceResource;
-}): Promise<void> {
-  void clearWorkspaceProgrammaticWarningReached(workspace.sId);
-  await transitionProgrammaticCreditState(workspace, {
-    type: "programmatic_cap_reset",
-  });
-}
-
-/**
- * Notify admins that programmatic spend has crossed the early-warning
- * threshold (80% of the monthly cap). Unlike the other programmatic
- * dispatchers this does not transition the credit state machine — the
- * workspace stays in its current balance state and no throttling kicks in.
- * Sets the warning flag in Redis and emails workspace admins.
- */
-export async function dispatchProgrammaticWarning({
-  workspace,
-  eventId,
-}: {
-  workspace: WorkspaceResource;
-  eventId: string;
-}): Promise<void> {
-  void setWorkspaceProgrammaticWarningReached(workspace.sId);
-  void notifyAdminsProgrammaticCapAboutStatus({
-    workspace,
-    isBlocked: false,
-    eventId,
-  });
-  logger.info(
-    { workspaceId: workspace.sId },
-    "[ProgrammaticCreditDispatcher] Programmatic warning threshold reached"
-  );
-}
-
-async function notifyAdminsProgrammaticCapAboutStatus({
-  workspace,
-  isBlocked,
-  eventId,
-}: {
-  workspace: WorkspaceResource;
-  isBlocked: boolean;
-  eventId: string;
-}): Promise<void> {
-  const metronomeCustomerId = workspace.metronomeCustomerId;
-  if (!metronomeCustomerId) {
-    return;
-  }
-
-  try {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const lightWorkspace = renderLightWorkspaceType({ workspace });
-
-    const creditUsageConfig =
-      await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
-        workspace.id
-      );
-    const monthlyCapCredits =
-      creditUsageConfig?.programmaticMonthlyCapAwuCredits ?? 0;
-
-    const { members: admins } = await getMembers(auth, {
-      roles: ["admin"],
-      activeOnly: true,
-    });
-    if (admins.length === 0) {
-      logger.warn(
-        { workspaceId: workspace.sId },
-        "[ProgrammaticCreditDispatcher] No active admins found for cap notification"
-      );
-      return;
-    }
-
-    notifyAdminsProgrammaticCapReached({
-      admins: admins.map((admin) => ({
-        sId: admin.sId,
-        email: admin.email,
-        firstName: admin.firstName,
-        lastName: admin.lastName,
-      })),
-      workspaceId: workspace.sId,
-      workspaceName: lightWorkspace.name,
-      monthlyCapCredits,
-      isBlocked,
-      eventId,
-    });
-  } catch (err) {
-    logger.error(
-      { workspaceId: workspace.sId, isBlocked, err },
-      "[ProgrammaticCreditDispatcher] Failed to notify admins of programmatic cap status"
-    );
-  }
 }
 
 /**
