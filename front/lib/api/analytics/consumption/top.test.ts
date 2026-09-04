@@ -58,11 +58,13 @@ function mockAggs({
   buckets,
   totalCount = buckets.length,
   totalMicro,
+  totalActiveMembers = 0,
   filtered = false,
 }: {
   buckets: Array<Record<string, unknown> & { key: string }>;
   totalCount?: number;
   totalMicro: number;
+  totalActiveMembers?: number;
   filtered?: boolean;
 }) {
   vi.mocked(searchConsumptionAnalytics).mockImplementation(
@@ -89,6 +91,7 @@ function mockAggs({
       return esResponse({
         ...(filtered ? { ranking } : ranking),
         total_credit_micro: { value: totalMicro },
+        active_members: { value: totalActiveMembers },
       });
     }
   );
@@ -543,9 +546,11 @@ describe("consumption top rankings", () => {
           doc_count: 6,
           credit_micro: { value: 2_000_000 },
           messages: { value: 4 },
+          active_members: { value: 2 },
         },
       ],
       totalMicro: 2_000_000,
+      totalActiveMembers: 3,
     });
 
     mockLabels({ key1: "Jane Doe" });
@@ -570,7 +575,20 @@ describe("consumption top rankings", () => {
       field: "user.id",
     });
 
-    mockLabels({ key1: "Engineering" });
+    vi.mocked(searchConsumptionAnalytics).mockClear();
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(
+      new Map([
+        [
+          "key1",
+          {
+            name: "Engineering",
+            pictureUrl: null,
+            description: null,
+            memberCount: 5,
+          },
+        ],
+      ])
+    );
     const groups = await fetchConsumptionTopGroups(auth, {
       period: PERIOD,
       limit: 10,
@@ -583,13 +601,24 @@ describe("consumption top rankings", () => {
       groupId: "key1",
       name: "Engineering",
       credits: 2,
+      activeMembers: 2,
+      totalMembers: 5,
       previousCredits: 2,
       messageCount: 4,
       avgCreditsPerMessage: 0.5,
     });
-    expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
+    expect(groups.value.totalActiveMembers).toBe(3);
+    const [, groupRankingOptions] = rankingSearchCall();
+    expect(groupRankingOptions?.aggregations?.by_group?.terms).toMatchObject({
       field: "user.group_ids",
     });
+    expect(
+      groupRankingOptions?.aggregations?.by_group?.aggs?.active_members
+        ?.cardinality
+    ).toMatchObject({ field: "user.id" });
+    expect(
+      groupRankingOptions?.aggregations?.active_members?.cardinality
+    ).toMatchObject({ field: "user.id" });
 
     mockLabels({ key1: "Claude 4 Sonnet" });
     const models = await fetchConsumptionTopModels(auth, {
