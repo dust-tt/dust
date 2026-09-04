@@ -1110,6 +1110,93 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
   });
 
+  it("names the blocked egress domains on a failed Frame invocation", async () => {
+    const { authenticator, invocation, sandbox } =
+      await setupFrameExecutionTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: stdoutEnvelope({
+          ok: false,
+          error: { code: "threw", message: "fetch failed." },
+        }),
+        stderr: "",
+      })
+    );
+    const execRootSpy = vi.spyOn(sandbox, "execRoot").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout:
+          JSON.stringify({
+            reason: "proxy_denied",
+            domain: "api.stripe.com",
+            port: 443,
+          }) + "\n",
+        stderr: "",
+      })
+    );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    expect(execRootSpy).toHaveBeenCalledTimes(1);
+    const outcome = invocation.settledOutcome();
+    expect(outcome?.status).toBe("errored");
+    if (outcome?.status === "errored") {
+      expect(outcome.error.code).toBe("threw");
+      expect(outcome.error.message).toBe(
+        "fetch failed. Egress blocked for: api.stripe.com. To allow them, add them to the " +
+          'manifest\'s "domains" and republish, or call request_egress_domain.'
+      );
+    }
+  });
+
+  it("does not read the deny log when the invocation succeeds", async () => {
+    const { authenticator, invocation, sandbox } =
+      await setupFrameExecutionTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+    );
+    const execRootSpy = vi.spyOn(sandbox, "execRoot");
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    expect(execRootSpy).not.toHaveBeenCalled();
+    expect(invocation.settledOutcome()?.status).toBe("succeeded");
+  });
+
+  it("keeps the runner error as-is when the deny log cannot be read", async () => {
+    const { authenticator, invocation, sandbox } =
+      await setupFrameExecutionTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: stdoutEnvelope({
+          ok: false,
+          error: { code: "threw", message: "fetch failed." },
+        }),
+        stderr: "",
+      })
+    );
+    vi.spyOn(sandbox, "execRoot").mockResolvedValue(
+      new Err(new Error("sandbox gone"))
+    );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    const outcome = invocation.settledOutcome();
+    if (outcome?.status === "errored") {
+      expect(outcome.error).toEqual({
+        code: "threw",
+        message: "fetch failed.",
+      });
+    } else {
+      throw new Error("expected an errored outcome");
+    }
+  });
+
   it("reads back a spilled result and delivers the full output", async () => {
     const { authenticator, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();
