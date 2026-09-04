@@ -6,9 +6,6 @@ const KEY_PREFIX = "mh";
 
 export const ATTEMPTS_FIELD = "attempts";
 
-// Only provider-attributed errors land here, so the name says so: a reader that
-// took this for "all failures" would compute a ratio the threshold is not
-// calibrated against.
 export const PROVIDER_ERRORS_FIELD = "error_provider";
 
 /** `yyyymmddHHMM` in UTC. */
