@@ -21,6 +21,7 @@ import { z } from "zod";
 import actions from "./actions";
 import answerQuestion from "./answer-question";
 import consumption from "./consumption";
+import creditSpendCheckpoint from "./credit-spend-checkpoint";
 import edit from "./edit";
 import editAndValidateAction from "./edit-and-validate-action";
 import events from "./events";
@@ -301,5 +302,6 @@ app.route("/resolve-file-authorization", resolveFileAuthorization);
 app.route("/retry", retry);
 app.route("/skills", skills);
 app.route("/validate-action", validateAction);
+app.route("/credit-spend-checkpoint", creditSpendCheckpoint);
 
 export default app;
