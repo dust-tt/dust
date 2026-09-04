@@ -11,9 +11,9 @@ export const CONVERSATION_SIDE_PANEL_TOOLS_METADATA = [
   {
     name: OPEN_FRAME_TOOL_NAME,
     description:
-      "Open and show a Frame in the conversation side panel without modifying it. " +
-      "Call this after publishing a Frame so the user sees it and receives a Frame card, " +
-      "or to re-open an existing Frame. Identify it with exactly one of `file_id` or `path`.",
+      "Open and show an existing Frame in the conversation side panel without modifying it. " +
+      "Use this to show the user a Frame that was already created or just published, " +
+      "and add its Frame card to the answer. Identify it with exactly one of `file_id` or `path`.",
     schema: {
       file_id: z
         .string()
@@ -26,7 +26,7 @@ export const CONVERSATION_SIDE_PANEL_TOOLS_METADATA = [
         .optional()
         .describe(
           "The canonical Frame source path, with or without the `/files/` prefix " +
-            "(e.g., '/files/pod-abc123/my-frame/manifest.json')"
+            "(e.g., '/files/pod-abc123/frame-folder/manifest.json')"
         ),
     },
     stake: "never_ask",
