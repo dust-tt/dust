@@ -151,7 +151,7 @@ export async function fetchConsumptionTimeseries(
   }
 
   let workspaceMemberCount: number | null = null;
-  if (includeWorkspaceContext) {
+  if (includeWorkspaceContext && auth.isManager()) {
     workspaceMemberCount =
       await MembershipResource.countActiveMembersForWorkspace({
         workspace: auth.getNonNullableWorkspace(),

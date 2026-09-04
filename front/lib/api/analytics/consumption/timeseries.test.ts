@@ -229,6 +229,29 @@ describe("fetchConsumptionTimeseries", () => {
     expect(result.value.workspaceMemberCount).toBeNull();
   });
 
+  it("omits the workspace member count for non-managers", async () => {
+    const { period, workspace } = await setup();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    mockBuckets([]);
+
+    const result = await fetchConsumptionTimeseries(memberAuth, {
+      period,
+      granularity: "day",
+      mode: "period",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.workspaceMemberCount).toBeNull();
+  });
+
   it("zeroes buckets that have not started yet", async () => {
     const { auth, period } = await setup();
     mockBuckets([
