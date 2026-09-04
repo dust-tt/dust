@@ -1405,6 +1405,149 @@ async function carryConsumptionToNewSeatCredits({
   }
 }
 
+/**
+ * Reclaim the origin seat credit's NEXT-period pre-grant after a seat change.
+ *
+ * Recurring per-seat credits are materialized one period AHEAD: when period N
+ * starts, Metronome creates the credit's N+1 segment and grants the origin
+ * seat's allocation to whoever is on it. A mid-period origin→new move only
+ * empties/carries the CURRENT (N) segment (`emptyOriginSeatCreditsForTransfers`
+ * / `carryConsumptionToNewSeatCredits` both read the segment covering "now"), so
+ * the origin's N+1 pre-grant survives untouched. When N+1 begins, the user holds
+ * that orphaned origin allocation ON TOP of the new seat's allocation — a fresh,
+ * no-usage stack (e.g. pro 8000 + max 40000) that needs no sync failure and no
+ * stray seat assignment to appear. This empties that pre-grant too.
+ *
+ * At sync time the N+1 segment holds ONLY the origin pre-grant — the new seat's
+ * N+1 grant is created when N+1 actually starts — so we remove the seat's whole
+ * N+1 balance, capped at the origin allocation so it can never go negative. That
+ * cap also makes it idempotent: once removed, the next read is 0 and the delta
+ * is 0. Best-effort; a per-user failure is logged and skipped.
+ */
+async function emptyOriginNextPeriodCredits({
+  metronomeCustomerId,
+  contractId,
+  workspaceId,
+  contract,
+  productSeatTypes,
+  transfers,
+  recurringCreditIdBySeatType,
+  allocationBySeatType,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  workspaceId: string;
+  contract: CachedContract;
+  productSeatTypes: Map<string, MembershipSeatType>;
+  transfers: SeatCreditTransfer[];
+  recurringCreditIdBySeatType: Map<MembershipSeatType, string>;
+  allocationBySeatType: Map<MembershipSeatType, number>;
+}): Promise<void> {
+  const awuCreditTypeId = getCreditTypeAwuId();
+  const now = new Date();
+  const segmentCache = new Map<
+    string,
+    { creditId: string; segmentId: string; segmentStartingAt: string } | null
+  >();
+  for (const t of transfers) {
+    await heartbeat();
+    const originCreditId = recurringCreditIdBySeatType.get(t.oldSeatType);
+    const originAllocation = allocationBySeatType.get(t.oldSeatType);
+    if (
+      !originCreditId ||
+      originAllocation === undefined ||
+      originAllocation <= 0
+    ) {
+      continue;
+    }
+    // Start of the origin credit's pre-materialized N+1 segment. Undefined for a
+    // non-recurring origin (nothing is pre-granted, so nothing to reclaim).
+    const nextRenewalAt = getNextSeatCreditRenewalDate({
+      contract,
+      seatType: t.oldSeatType,
+      productSeatTypes,
+      now,
+    });
+    if (!nextRenewalAt) {
+      continue;
+    }
+    // The seat's AWU balance as it will stand at the start of the next period.
+    const balancesRes = await listMetronomeSeatBalances({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+      coveringDate: nextRenewalAt,
+      seatIds: [t.userSId],
+    });
+    if (balancesRes.isErr()) {
+      logger.error(
+        { workspaceId, contractId, userId: t.userSId, error: balancesRes.error },
+        "[Metronome] Failed to read next-period seat balance — skipping"
+      );
+      continue;
+    }
+    const nextBalance = balancesRes.value
+      .find((s) => s.seat_id === t.userSId)
+      ?.balances.find((b) => b.credit_type_id === awuCreditTypeId)?.balance;
+    if (nextBalance === undefined || nextBalance <= 0) {
+      continue;
+    }
+    const amount = Math.min(originAllocation, nextBalance);
+    const segKey = `${originCreditId}:${nextRenewalAt.toISOString()}`;
+    let seg = segmentCache.get(segKey);
+    if (seg === undefined) {
+      const segRes = await findSeatCreditSegmentForPeriod({
+        metronomeCustomerId,
+        metronomeContractId: contractId,
+        recurringCreditId: originCreditId,
+        coveringDate: nextRenewalAt,
+      });
+      seg = segRes.isOk() ? segRes.value : null;
+      segmentCache.set(segKey, seg);
+    }
+    if (!seg) {
+      logger.warn(
+        {
+          workspaceId,
+          contractId,
+          userId: t.userSId,
+          credit: t.oldCreditName,
+          nextRenewalAt: nextRenewalAt.toISOString(),
+        },
+        "[Metronome] No next-period origin segment — skipping next-period empty"
+      );
+      continue;
+    }
+    logger.info(
+      {
+        workspaceId,
+        contractId,
+        userId: t.userSId,
+        credit: t.oldCreditName,
+        segmentStartingAt: seg.segmentStartingAt,
+        adjustmentTimestamp: nextRenewalAt.toISOString(),
+        amount: -amount,
+      },
+      "[Metronome] Emptying origin seat credit for transfer (next period)"
+    );
+    const adjustRes = await adjustSeatCreditBalances({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+      creditId: seg.creditId,
+      segmentId: seg.segmentId,
+      perSeatAmounts: { [t.userSId]: -amount },
+      reason: `Seat change ${t.oldSeatType}→${t.newSeatType}: empty origin credit (next period)`,
+      timestamp: nextRenewalAt,
+      alignToHour: false,
+    });
+    if (adjustRes.isErr()) {
+      logger.error(
+        { workspaceId, contractId, userId: t.userSId, error: adjustRes.error },
+        "[Metronome] Failed to empty next-period origin seat credit"
+      );
+    }
+  }
+}
+
 // Summary of the work `syncSeatCount` actually did, surfaced up to the poke
 // plugin so an operator can see what happened without digging through logs.
 export type SyncSeatCountSummary = {
@@ -2013,6 +2156,31 @@ export async function syncSeatCount({
           durationMs: Date.now() - carryStartedAt,
         },
         "[Metronome] carryConsumptionToNewSeatCredits done"
+      );
+
+      // Recurring credits are materialized one period ahead, so the origin
+      // seat's pre-grant on the NEXT period's segment survives the move and
+      // re-stacks when that period starts. Empty it too — see
+      // `emptyOriginNextPeriodCredits`.
+      const nextPeriodStartedAt = Date.now();
+      await emptyOriginNextPeriodCredits({
+        metronomeCustomerId,
+        contractId,
+        workspaceId: workspace.sId,
+        contract: resolvedContract,
+        productSeatTypes,
+        transfers: pendingCreditTransfers,
+        recurringCreditIdBySeatType,
+        allocationBySeatType,
+      });
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          contractId,
+          transferCount: pendingCreditTransfers.length,
+          durationMs: Date.now() - nextPeriodStartedAt,
+        },
+        "[Metronome] emptyOriginNextPeriodCredits done"
       );
     }
 
