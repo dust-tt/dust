@@ -1,6 +1,6 @@
 ---
 name: dust-hive
-description: Information about dust-hive, a CLI tool for running multiple isolated Dust development environments. ALWAYS enable this skill when the working directory is in a registered dust-hive worktree. Use for understanding port allocation, running tests, and working with the environment.
+description: Information about dust-hive, a CLI tool for running multiple isolated Dust development environments. ALWAYS enable this skill when the working directory is under a repository's `.hives/` directory or `~/dust-hive/`, when its `.envrc` identifies a dust-hive environment, or when working with dust-hive. Use for understanding port allocation, running tests, and working with the environment.
 ---
 
 # dust-hive
@@ -150,6 +150,8 @@ Do not run `npm install` directly in a Hive worktree:
 dust-hive sync
 dust-hive refresh [ENV_NAME]
 ```
+
+Do not use `dust-hive refresh` with a legacy `~/dust-hive/` worktree; move or recreate it under the main repository first.
 
 ### SDK watcher doesn't detect changes after git rebase
 
