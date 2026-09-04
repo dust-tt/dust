@@ -1,4 +1,7 @@
-import { PROBES_PER_RECOVERY } from "@app/lib/api/llm/health/config";
+import {
+  PROBE_TIMEOUT_MS,
+  PROBES_PER_RECOVERY,
+} from "@app/lib/api/llm/health/config";
 import { dangerouslyGetDustManagedLlmCredentials } from "@app/lib/api/provider_credentials";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
@@ -6,10 +9,9 @@ import type { DegradedModelEndpointType } from "@app/lib/model_constructors/type
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import logger from "@app/logger/logger";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-// Short enough that the provider has nothing to think about, and phrased so the
-// first token arrives immediately.
 const PROBE_PROMPT = "Reply with the single character: 1";
 
 export function findStreamEndpoint({
@@ -31,15 +33,9 @@ export function findStreamEndpoint({
 }
 
 /**
- * The cheapest config an endpoint will accept.
- *
- * Reasoning off is the goal, but each endpoint's schema mirrors what its
- * provider actually supports, and they disagree: some expose `none`, some reject
- * it and rely on a `configParsers` entry to map it onto their own floor. The
- * parsers therefore run before `parse`, exactly as `buildConfig` does in
- * transitionLLM. Where even that is refused, fall back to the empty config so
- * the schema applies its own defaults -- a probe that thinks for a moment is
- * still a probe, and we abort at the first token either way.
+ * The cheapest config an endpoint will accept. Reasoning off where possible,
+ * running `configParsers` before `parse` as `buildConfig` does in transitionLLM,
+ * and falling back to the schema defaults when `none` is refused.
  */
 function buildProbeConfig(
   endpoint: DustStreamEndpointConstructor
@@ -61,14 +57,10 @@ function buildProbeConfig(
 }
 
 /**
- * One synthetic inference against a live endpoint.
- *
- * Deliberately bypasses `LLM`: no `Run` row, no usage row, no Langfuse trace and
- * no counter write, so a probe can never feed the very signal it is measuring.
- *
- * Resolves as soon as the endpoint emits its first token. That is all we need --
- * one inferred token proves it is serving -- and returning early from the
- * generator stops the generation instead of paying for a full response.
+ * One synthetic inference against a live endpoint. Bypasses `LLM` so a probe
+ * writes no `Run`, usage, trace or counter, and never feeds the signal it
+ * measures. Resolves on the first event -- reasoning included -- then stops the
+ * generation, with `PROBE_TIMEOUT_MS` bounding an endpoint that streams nothing.
  */
 async function runSingleProbe(
   endpoint: DustStreamEndpointConstructor
@@ -90,34 +82,78 @@ async function runSingleProbe(
   const input = await instance.buildRequestPayload(payload, config);
   const events = instance.rawStreamOutputToEvents(instance.streamRaw(input));
 
-  try {
-    for await (const event of events) {
-      switch (event.type) {
-        case "text_delta":
-        case "reasoning_delta":
-        case "text":
-        case "reasoning":
-        case "success":
-          return true;
-        case "error":
-          return false;
-        default:
-          continue;
+  const firstEvent = (async (): Promise<boolean> => {
+    try {
+      for await (const event of events) {
+        switch (event.type) {
+          case "text_delta":
+          case "reasoning_delta":
+          case "text":
+          case "reasoning":
+          case "success":
+            return true;
+          case "error":
+            return false;
+          case "response_id":
+          case "tool_call_started":
+          case "tool_call_delta":
+          case "tool_call":
+          case "provider_passthrough":
+          case "token_usage":
+            // Not evidence the endpoint can generate: keep waiting.
+            continue;
+          default:
+            assertNeverAndIgnore(event);
+            continue;
+        }
       }
+    } finally {
+      // Stops the provider stream when we returned before it ended.
+      await events.return(undefined);
     }
+
+    // Closed without a terminal event: not healthy.
+    return false;
+  })();
+
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<"timeout">((resolve) => {
+    timeoutHandle = setTimeout(() => resolve("timeout"), PROBE_TIMEOUT_MS);
+  });
+
+  let raced;
+  try {
+    raced = await Promise.race([firstEvent, timeoutPromise]);
   } finally {
-    // Stops the provider stream when we returned before it ended.
-    await events.return(undefined);
+    clearTimeout(timeoutHandle);
   }
 
-  // The stream closed without a terminal event: not a healthy endpoint.
+  if (raced !== "timeout") {
+    return raced;
+  }
+
+  logger.info(
+    {
+      modelId: endpoint.modelConfig.modelId,
+      providerId: endpoint.modelConfig.providerId,
+      modelHost: endpoint.host,
+      timeoutMs: PROBE_TIMEOUT_MS,
+    },
+    "Model health probe timed out"
+  );
+
+  // Queued behind the in-flight `next()`, so awaiting it would reintroduce the
+  // hang the deadline bounds.
+  void events.return(undefined);
+  // Swallow a late rejection from the abandoned generator.
+  firstEvent.catch(() => {});
+
   return false;
 }
 
 /**
- * A recovery round: `PROBES_PER_RECOVERY` sequential probes, all of which must
- * succeed. Sequential rather than parallel so a provider that is only
- * intermittently serving cannot pass on a lucky burst.
+ * A recovery round: `PROBES_PER_RECOVERY` probes that must all succeed. Run
+ * sequentially so an intermittent provider cannot pass on a lucky burst.
  */
 export async function probeEndpoint(
   endpoint: DegradedModelEndpointType
@@ -128,7 +164,7 @@ export async function probeEndpoint(
       {
         modelId: endpoint.modelId,
         providerId: endpoint.providerId,
-        host: endpoint.host,
+        modelHost: endpoint.host,
       },
       "No stream endpoint matches the endpoint to probe"
     );
@@ -140,14 +176,13 @@ export async function probeEndpoint(
     try {
       healthy = await runSingleProbe(constructor);
     } catch (err) {
-      // The provider SDKs are external, so a throw here is expected shape, not
-      // a bug on our side: treat it as a failed probe.
+      // Provider SDKs are external: a throw is a failed probe, not a bug.
       logger.info(
         {
           err: normalizeError(err),
           modelId: endpoint.modelId,
           providerId: endpoint.providerId,
-          host: endpoint.host,
+          modelHost: endpoint.host,
           attempt,
         },
         "Model health probe threw"
