@@ -99,6 +99,10 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import { z } from "zod";
 
+// The rate-limiter's spend-cap verdict for a member (poke debugging): the
+// synchronous counter vs the seat's cap threshold.
+export type RateLimiterState = "capped" | "near_limit" | "ok";
+
 export type MemberUsageType = {
   sId: string;
   name: string;
@@ -170,10 +174,16 @@ export type MemberUsageType = {
   // Per-user credit state machine state (personal-credits → pool → capped
   // progression) persisted on the membership. Surfaced for debugging.
   creditState: UserCreditState;
-  // Whether the user has consumed ≥ 80% of their effective limit. With the
-  // rate-cap flag on, derived from the Redis rate-limiter counter; with it off,
-  // from the Metronome nearLimit flag (see user_block.ts). Poke-only.
+  // Whether the user has consumed ≥ 80% of their effective limit, per the
+  // Metronome near-limit flag (see user_block.ts). Shown in the "Credit state"
+  // column. Poke-only. See `rateLimiterState` for the rate-limiter view.
   nearLimit: boolean;
+  // The rate-limiter's view of the user's spend cap (independent of the flag):
+  // "capped" (counter ≥ cap), "near_limit" (≥ 80%), or "ok". The counter is the
+  // lifetime one for free seats and the per-cycle one otherwise, compared to the
+  // free-seat allowance / effective cycle cap. Null when no cap applies or not
+  // requested. Poke-only.
+  rateLimiterState: RateLimiterState | null;
   // Classifies seat-allowance consumption against how far the billing cycle
   // has elapsed: "elevated"/"critical" mean the member is burning through
   // their seat allowance faster than a linear pace would predict. Poke-only
@@ -1648,6 +1658,7 @@ export async function getMemberUsage({
     freeCreditEmptyAlert: null,
     creditState: membership.creditState,
     nearLimit: false,
+    rateLimiterState: null,
     seatUsageTarget: null,
     overallUsageTarget: null,
   };
@@ -2275,23 +2286,22 @@ export async function getMembersUsage({
     "enforce_user_spend_limit_rate_cap"
   );
 
-  // Bulk-fetch Metronome near-limit flags from Redis (poke-only, and only when
-  // the rate-cap flag is off). With the flag on, near-limit is derived entirely
-  // from the rate-limiter counters below — no Metronome fallback.
-  const nearLimitByUserId =
-    includeAlertLinks && !spendCapEnabled
-      ? new Map(
-          await concurrentExecutor(
-            users,
-            async (u) =>
-              [
-                u.sId,
-                await isUserAwuWarnedByMetronome(workspace.sId, u.sId),
-              ] as const,
-            { concurrency: 8 }
-          )
+  // Bulk-fetch Metronome near-limit flags from Redis (poke-only). This backs the
+  // "near limit" chip in the Metronome "Credit state" column; the rate-limiter's
+  // own verdict is surfaced separately as `rateLimiterState`.
+  const nearLimitByUserId = includeAlertLinks
+    ? new Map(
+        await concurrentExecutor(
+          users,
+          async (u) =>
+            [
+              u.sId,
+              await isUserAwuWarnedByMetronome(workspace.sId, u.sId),
+            ] as const,
+          { concurrency: 8 }
         )
-      : new Map<string, boolean>();
+      )
+    : new Map<string, boolean>();
 
   // Bulk-fetch the Redis fixed-window spend-cap counter per user (poke-only), to
   // display beside the Elasticsearch-derived usage. Free seats are enforced on a
@@ -2539,25 +2549,34 @@ export async function getMembersUsage({
     const rateLimiterSpendAwuCredits = includeAlertLinks
       ? (rateLimiterSpendByUserId.get(userId) ?? 0)
       : null;
-    // Poke-only near-limit. With the rate-cap flag on, mirror enforcement: the
-    // rate-limiter counter ≥ 80% of the threshold the seat is capped against —
-    // the free-seat *lifetime* allowance for free seats, the effective per-cycle
-    // cap otherwise. `rateLimiterSpendAwuCredits` already holds the matching
-    // counter (lifetime for free seats, per-cycle otherwise). When no rate-cap
-    // threshold applies (no cap) it reads `false`; with the flag off it uses the
-    // Metronome near-limit flag. No Metronome fallback under the flag.
+    // Poke-only near-limit for the Metronome "Credit state" column, from the
+    // Metronome near-limit flag.
+    const nearLimit =
+      includeAlertLinks && (nearLimitByUserId.get(userId) ?? false);
+
+    // Poke-only rate-limiter verdict (independent of the flag): the counter vs
+    // the threshold the seat is capped against — the free-seat lifetime
+    // allowance for free seats, the effective per-cycle cap otherwise.
+    // `rateLimiterSpendAwuCredits` already holds the matching counter (lifetime
+    // for free seats, per-cycle otherwise). Null when no cap applies.
     const rateCapThresholdAwuCredits =
       membership.seatType === "free"
         ? freeStartingBalanceAwu
         : effectiveSpendLimitAwuCredits;
-    const nearLimit =
+    let rateLimiterState: RateLimiterState | null = null;
+    if (
       includeAlertLinks &&
-      (spendCapEnabled &&
       rateCapThresholdAwuCredits !== null &&
       rateCapThresholdAwuCredits > 0
-        ? (rateLimiterSpendAwuCredits ?? 0) >=
-          USER_AWU_WARNING_PERCENTAGE * rateCapThresholdAwuCredits
-        : (nearLimitByUserId.get(userId) ?? false));
+    ) {
+      const spend = rateLimiterSpendAwuCredits ?? 0;
+      rateLimiterState =
+        spend >= rateCapThresholdAwuCredits
+          ? "capped"
+          : spend >= USER_AWU_WARNING_PERCENTAGE * rateCapThresholdAwuCredits
+            ? "near_limit"
+            : "ok";
+    }
 
     // Seat-allowance consumption used for pace classification below: free
     // seats track their live Metronome balance instead of the period spend
@@ -2642,6 +2661,7 @@ export async function getMembersUsage({
         freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
         creditState: membership.creditState,
         nearLimit,
+        rateLimiterState,
         fairUse: fairUseByUserId.get(userId) ?? null,
         premiumMessageUsage: premiumMessageUsageByUserId.get(userId) ?? null,
         seatUsageTarget,

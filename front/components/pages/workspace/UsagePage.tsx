@@ -155,6 +155,7 @@ function memberFromUpgradeRequest(
     freeCreditEmptyAlert: null,
     creditState: "capped",
     nearLimit: false,
+    rateLimiterState: null,
     seatUsageTarget: null,
     overallUsageTarget: null,
   };

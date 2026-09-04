@@ -20,6 +20,7 @@ export function makeMemberUsage(
     memberUsageLimit: null,
     name: "Member One",
     nearLimit: false,
+    rateLimiterState: null,
     nextCreditResetAt: null,
     sId: "member1",
     scheduledSeatChangeAt: null,
