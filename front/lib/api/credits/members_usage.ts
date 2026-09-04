@@ -66,6 +66,7 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getFixedWindowCount,
+  getTimeframeSecondsFromLiteral,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -192,6 +193,11 @@ export type MemberFairUseUsage = {
   usedCredits: number;
   limitCredits: number;
   timeframe: MaxAwuCreditsTimeframeType;
+  // Same rolling-window mechanism as premium messages: each credit-consuming
+  // event frees up its slot `windowDays` after it was recorded, not all at
+  // once. Derived from `timeframe`, in days, for display.
+  windowDays: number;
+  nextResetAt: string | null;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -2377,6 +2383,10 @@ export async function getMembersUsage({
               usedCredits: status.count,
               limitCredits: status.limit,
               timeframe: status.timeframe,
+              windowDays:
+                getTimeframeSecondsFromLiteral(status.timeframe) /
+                (24 * 60 * 60),
+              nextResetAt: status.nextResetAt ?? null,
             }
       );
     }
