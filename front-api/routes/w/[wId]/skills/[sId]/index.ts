@@ -73,14 +73,24 @@ const PatchSkillRequestBodySchema = z.object({
 // failure Response. See [API10].
 async function loadSkill(
   ctx: Context,
-  sId: string
+  sId: string,
+  {
+    redactUnreadableForAdmin = false,
+  }: {
+    redactUnreadableForAdmin?: boolean;
+  } = {}
 ): Promise<
   | { skill: SkillResource; sId: string }
   | (Response & TypedResponse<APIErrorResponse>)
 > {
   const auth = ctx.get("auth");
 
-  const skill = await SkillResource.fetchById(auth, sId);
+  const skill = await SkillResource.fetchById(auth, sId, {
+    permissionFiltering:
+      redactUnreadableForAdmin && auth.isAdmin()
+        ? "redact_unreadable"
+        : "strict",
+  });
   if (!skill) {
     return apiError(ctx, {
       status_code: 404,
@@ -117,21 +127,14 @@ app.get(
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
 
-    // Admins get the skills built on spaces they are not a member of too, redacted (`canRead`
-    // false); see `SkillResource.fetchById`.
-    const skill = await SkillResource.fetchById(auth, sId, {
-      // biome-ignore lint/plugin/noDirectRoleCheck: the mode is admin-only, everyone else gets the regular fetch
-      permissionFiltering: auth.isAdmin() ? "redact_unreadable" : "strict",
+    const loaded = await loadSkill(ctx, sId, {
+      redactUnreadableForAdmin: true,
     });
-    if (!skill) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "skill_not_found",
-          message: "The skill you're trying to access was not found.",
-        },
-      });
+    if (loaded instanceof Response) {
+      return loaded;
     }
+    const { skill } = loaded;
+
     const withRelations = ctx.req.query("withRelations");
 
     const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
@@ -505,7 +508,11 @@ app.delete(
     const owner = auth.getNonNullableWorkspace();
     const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkill(ctx, sId);
+    // Admins can archive the skills built on spaces they are not a member of (shown to them
+    // redacted).
+    const loaded = await loadSkill(ctx, sId, {
+      redactUnreadableForAdmin: true,
+    });
     if (loaded instanceof Response) {
       return loaded;
     }

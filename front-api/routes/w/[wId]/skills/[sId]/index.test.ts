@@ -301,8 +301,9 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.sId).toBe(restrictedSkill.sId);
     expect(data.skill.name).toBe("Restricted Space Skill");
     expect(data.skill.canRead).toBe(false);
+    // Not an editor, but an admin: archiving and availability changes stay possible.
     expect(data.skill.canWrite).toBe(false);
-    expect(data.skill.canAdministrate).toBe(false);
+    expect(data.skill.canAdministrate).toBe(true);
     expect(data.skill.instructions).toBeNull();
     expect(data.skill.instructionsHtml).toBeNull();
     expect(data.skill.tools).toEqual([]);
@@ -1568,6 +1569,34 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
 });
 
 describe("DELETE /api/w/:wId/skills/:sId", () => {
+  it("lets an admin archive a skill built on a space they cannot read", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await deleteSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(200);
+    const [archived] = await SkillResource.fetchByIds(skillOwnerAuth, [
+      restrictedSkill.sId,
+    ]);
+    expect(archived.status).toBe("archived");
+  });
+
   it("should return 403 for non-editor user", async () => {
     const { workspace, skill } = await setupTest({
       skillOwnerRole: "admin",

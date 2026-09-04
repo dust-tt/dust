@@ -4,6 +4,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -96,6 +97,39 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
     );
     expect(untouchedSkill?.availability).toBe("workspace_users");
     expect(untouchedSkill?.editedBy).toBe(skillOwner.id);
+  });
+
+  it("lets an admin change the availability of a skill built on a space they cannot read", async () => {
+    const { workspace, requestUserAuth, skillOwner, skillOwnerAuth } =
+      await setupTest();
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(requestUserAuth, {
+      userIds: [skillOwner.sId],
+    });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      availability: "editors",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    // The admin cannot read the skill through the regular fetch.
+    expect(
+      await SkillResource.fetchByIds(requestUserAuth, [restrictedSkill.sId])
+    ).toEqual([]);
+
+    const response = await patchSkillsAvailability(workspace, {
+      skillIds: [restrictedSkill.sId],
+      availability: "workspace_users",
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skills[0].availability).toBe("workspace_users");
+    expect(data.skills[0].canRead).toBe(false);
+    expect(data.skills[0].instructions).toBeNull();
+    const [updated] = await SkillResource.fetchByIds(skillOwnerAuth, [
+      restrictedSkill.sId,
+    ]);
+    expect(updated.availability).toBe("workspace_users");
   });
 
   it("refuses the batch when one of the skills is archived", async () => {

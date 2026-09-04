@@ -47,8 +47,8 @@ export function SkillDetailsButtonBar({
 
   // The API redacts the private fields of the skills an admin cannot read (built on spaces they
   // are not a member of) and flags it with `canRead: false`; only admins ever get such a skill.
-  // Trying or favoriting it would fail, so those entry points are hidden (the edit and archive
-  // ones already are, since the redaction drops `canAdministrate`).
+  // Trying, favoriting or editing it would fail or work on an empty skill, so those entry points
+  // are hidden. Archiving stays: it only needs the admin role.
   const isRedactedForAdmin = !skill.canRead;
 
   return (
@@ -81,7 +81,7 @@ export function SkillDetailsButtonBar({
             icon={MessagePlusCircle}
           />
         )}
-        {skill.canAdministrate && (
+        {skill.canAdministrate && !isRedactedForAdmin && (
           <Button
             size="sm"
             tooltip="Edit skill"
