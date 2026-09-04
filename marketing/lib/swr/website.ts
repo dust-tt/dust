@@ -1,8 +1,7 @@
 import {
   AUTH_CONTEXT_URL,
-  getRegionalAuthContextUrl,
-  parseAuthContextResponse,
   type MarketingAuthContext,
+  resolveAuthContext,
 } from "@marketing/lib/api/authContext";
 import { useSWRWithDefaults } from "@marketing/lib/swr/swr";
 import { assertNever } from "@marketing/types/shared/utils/assert_never";
@@ -17,32 +16,21 @@ type GetNoWorkspaceAuthContextResponseType = MarketingAuthContext;
 async function landingFetcher(
   url: string
 ): Promise<GetNoWorkspaceAuthContextResponseType> {
-  // eslint-disable-next-line no-restricted-globals
-  const response = await fetch(url, { credentials: "include" });
-  const parsed = await parseAuthContextResponse(response);
+  const resolution = await resolveAuthContext(url, (target) =>
+    fetch(target, { credentials: "include" })
+  );
 
-  if (!parsed) {
-    throw new Error(`Failed to fetch ${url}: ${response.status}`);
-  }
-
-  switch (parsed.type) {
-    case "region_redirect": {
-      const regionalUrl = getRegionalAuthContextUrl(parsed.redirect);
-      if (regionalUrl && regionalUrl !== url) {
-        const regionalResponse = await fetch(regionalUrl, {
-          credentials: "include",
-        });
-        const regionalParsed = await parseAuthContextResponse(regionalResponse);
-        if (regionalParsed?.type === "success") {
-          return regionalParsed.authContext;
-        }
-      }
-      throw new Error(`Failed to fetch ${url}: ${response.status}`);
-    }
+  switch (resolution.type) {
     case "success":
-      return parsed.authContext;
+      return resolution.authContext;
+    case "failure":
+      throw new Error(`Failed to fetch ${url}: ${resolution.status}`);
+    case "regional_failure":
+      throw new Error(
+        `Failed to fetch auth context from region ${resolution.region}: ${resolution.status}`
+      );
     default:
-      assertNever(parsed);
+      assertNever(resolution);
   }
 }
 

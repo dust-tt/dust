@@ -2,13 +2,18 @@ import config from "@marketing/lib/api/config";
 import logger from "@marketing/logger/logger";
 import { assertNever } from "@marketing/types/shared/utils/assert_never";
 import { normalizeError } from "@marketing/types/shared/utils/error_utils";
+import { safeParseJSON } from "@marketing/types/shared/utils/json_utils";
 import type { UserType } from "@marketing/types/user";
 import { z } from "zod";
 
-export const AUTH_CONTEXT_URL = `${config.getApiBaseUrl()}/api/auth-context`;
+const AUTH_CONTEXT_PATH = "/api/auth-context";
 
-// Cap SSR auth-context lookups so a slow/unavailable front API never hangs pages.
-export const AUTH_CONTEXT_TIMEOUT_MS = 1500;
+export const AUTH_CONTEXT_URL = `${config.getApiBaseUrl()}${AUTH_CONTEXT_PATH}`;
+
+// Cap each SSR auth-context request so a slow/unavailable front API never hangs
+// pages. A session from another region costs two requests (home region, then
+// regional host), so the worst case is twice this value.
+export const AUTH_CONTEXT_TIMEOUT_MS = 1_500;
 
 export type MarketingAuthContext = {
   user: UserType;
@@ -36,39 +41,37 @@ const AuthContextResponseSchema = z.object({
   defaultWorkspaceId: z.string().nullable().optional(),
 });
 
+// front-api answers 400 with this body when the session's workspace lives in
+// the other region. Mirrors `RegionRedirectError` in front/types/error.ts.
+const RegionRedirectSchema = z.object({
+  region: z.string(),
+  url: z.string().url(),
+});
+
 const RegionRedirectResponseSchema = z.object({
   error: z.object({
     type: z.literal("workspace_in_different_region"),
-    message: z.string(),
-    redirect: z.object({
-      region: z.string(),
-      url: z.string().url(),
-    }),
+    redirect: RegionRedirectSchema,
   }),
 });
 
-export type MarketingRegionRedirect = z.infer<
-  typeof RegionRedirectResponseSchema
->["error"]["redirect"];
-
-type AuthContextResponse =
+type ParsedAuthContextResponse =
   | { type: "success"; authContext: MarketingAuthContext }
-  | { type: "region_redirect"; redirect: MarketingRegionRedirect }
-  | null;
+  | { type: "region_redirect"; redirect: z.infer<typeof RegionRedirectSchema> }
+  | { type: "failure" };
 
-/**
- * Parse the auth-context response while preserving the cross-region routing
- * signal. This is shared by the server-side and browser-side marketing flows.
- */
-export async function parseAuthContextResponse(
+async function parseAuthContextResponse(
   response: Response
-): Promise<AuthContextResponse> {
-  const body: unknown = await response.json().catch(() => null);
+): Promise<ParsedAuthContextResponse> {
+  const body = safeParseJSON(await response.text());
+  if (body.isErr()) {
+    return { type: "failure" };
+  }
 
   if (response.ok) {
-    const parsed = AuthContextResponseSchema.safeParse(body);
+    const parsed = AuthContextResponseSchema.safeParse(body.value);
     if (!parsed.success) {
-      return null;
+      return { type: "failure" };
     }
     return {
       type: "success",
@@ -79,42 +82,56 @@ export async function parseAuthContextResponse(
     };
   }
 
-  const regionRedirect = RegionRedirectResponseSchema.safeParse(body);
-  if (regionRedirect.success) {
-    return {
-      type: "region_redirect",
-      redirect: regionRedirect.data.error.redirect,
-    };
+  const redirect = RegionRedirectResponseSchema.safeParse(body.value);
+  if (redirect.success) {
+    return { type: "region_redirect", redirect: redirect.data.error.redirect };
   }
 
-  return null;
+  return { type: "failure" };
 }
 
+export type AuthContextResolution =
+  | { type: "success"; authContext: MarketingAuthContext }
+  | { type: "failure"; status: number }
+  | { type: "regional_failure"; region: string; status: number };
+
 /**
- * Build the regional auth-context URL returned by front-api, while refusing
- * unexpected hosts before forwarding the session cookie or browser credentials.
+ * Fetch the auth context from `url`, following a region redirect once.
+ *
+ * `fetchUrl` supplies the transport (cookie forwarding on the server, browser
+ * credentials on the client). `redirect.url` is trusted as-is: front-api builds
+ * it from its own region config. A second redirect is treated as a failure, so
+ * at most two requests are ever made.
  */
-export function getRegionalAuthContextUrl(
-  redirect: MarketingRegionRedirect
-): string | null {
-  try {
-    const url = new URL("/api/auth-context", redirect.url);
-    const isDustHost =
-      url.hostname === "dust.tt" || url.hostname.endsWith(".dust.tt");
-    const isLocalHost =
-      url.hostname === "localhost" || url.hostname === "127.0.0.1";
-    if (
-      url.protocol !== "https:" &&
-      !(url.protocol === "http:" && isLocalHost)
-    ) {
-      return null;
+export async function resolveAuthContext(
+  url: string,
+  fetchUrl: (url: string) => Promise<Response>
+): Promise<AuthContextResolution> {
+  const initialResponse = await fetchUrl(url);
+  const initial = await parseAuthContextResponse(initialResponse);
+
+  switch (initial.type) {
+    case "success":
+      return initial;
+    case "failure":
+      return { type: "failure", status: initialResponse.status };
+    case "region_redirect": {
+      const { region } = initial.redirect;
+      const regionalResponse = await fetchUrl(
+        new URL(AUTH_CONTEXT_PATH, initial.redirect.url).toString()
+      );
+      const regional = await parseAuthContextResponse(regionalResponse);
+      if (regional.type !== "success") {
+        return {
+          type: "regional_failure",
+          region,
+          status: regionalResponse.status,
+        };
+      }
+      return regional;
     }
-    if (!isDustHost && !isLocalHost) {
-      return null;
-    }
-    return url.toString();
-  } catch {
-    return null;
+    default:
+      assertNever(initial);
   }
 }
 
@@ -136,42 +153,38 @@ export async function fetchAuthContext(
   }: { failureLogMessage?: string } = {}
 ): Promise<MarketingAuthContext | null> {
   try {
-    const deadline = Date.now() + AUTH_CONTEXT_TIMEOUT_MS;
-    const fetchAt = async (url: string): Promise<AuthContextResponse> => {
-      const remainingMs = Math.max(deadline - Date.now(), 1);
-      const response = await fetch(url, {
+    const resolution = await resolveAuthContext(AUTH_CONTEXT_URL, (url) =>
+      fetch(url, {
         headers: { cookie: cookieHeader },
-        signal: AbortSignal.timeout(remainingMs),
-      });
-      return parseAuthContextResponse(response);
-    };
+        signal: AbortSignal.timeout(AUTH_CONTEXT_TIMEOUT_MS),
+      })
+    );
 
-    const initialResponse = await fetchAt(AUTH_CONTEXT_URL);
-    if (!initialResponse) {
-      return null;
-    }
-
-    switch (initialResponse.type) {
-      case "region_redirect": {
-        const regionalUrl = getRegionalAuthContextUrl(initialResponse.redirect);
-        if (!regionalUrl || regionalUrl === AUTH_CONTEXT_URL) {
-          return null;
-        }
-
-        const regionalResponse = await fetchAt(regionalUrl);
-        if (regionalResponse?.type !== "success") {
-          logger.warn(
-            { region: initialResponse.redirect.region },
-            `${failureLogMessage}: regional retry failed`
-          );
-          return null;
-        }
-        return regionalResponse.authContext;
-      }
+    switch (resolution.type) {
       case "success":
-        return initialResponse.authContext;
+        return resolution.authContext;
+      case "failure":
+        // 401/403 is the normal anonymous path. Anything 5xx means front-api is
+        // degraded and would otherwise be indistinguishable from anonymous.
+        if (resolution.status >= 500) {
+          logger.warn(
+            { statusCode: resolution.status, context: failureLogMessage },
+            "auth-context lookup failed upstream"
+          );
+        }
+        return null;
+      case "regional_failure":
+        logger.warn(
+          {
+            region: resolution.region,
+            statusCode: resolution.status,
+            context: failureLogMessage,
+          },
+          "auth-context regional retry failed"
+        );
+        return null;
       default:
-        assertNever(initialResponse);
+        assertNever(resolution);
     }
   } catch (err) {
     logger.warn({ err: normalizeError(err) }, failureLogMessage);
