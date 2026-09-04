@@ -304,9 +304,7 @@ export async function getFairUseAwuCreditsStatus({
   };
 }
 
-// Bulk variant of `getFairUseAwuCreditsStatus`, batched into a single Redis
-// round trip (per chunk). Used to sort the full matching set of members by
-// fair-use credit consumption without one round trip per member.
+// Bulk variant of `getFairUseAwuCreditsStatus`
 export async function getFairUseAwuCreditsUsedCountsByUser({
   workspace,
   users,

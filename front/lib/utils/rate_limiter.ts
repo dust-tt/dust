@@ -407,10 +407,6 @@ const WeightedRateLimiterUsageForKeysReplySchema = z.array(
   z.tuple([z.number(), z.number()])
 );
 
-// Same computation as `getWeightedRateLimiterUsage`, batched over multiple
-// keys in a single round trip (looped server-side in Lua, chunked to a safe
-// KEYS array size), so a full-table sort doesn't issue one round trip per
-// member.
 export async function getWeightedRateLimiterUsageForKeys({
   keys,
   timeframeSeconds,
