@@ -331,7 +331,7 @@ describe("useConversationAutoScroll", () => {
       harness.dispatchScroll({
         scrollTop: 600,
         scrollHeight: 1100,
-        location: { bottomOffset: 200, isAtBottom: false },
+        location: { bottomOffset: 0, isAtBottom: true },
       });
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
@@ -371,7 +371,7 @@ describe("useConversationAutoScroll", () => {
 
       harness.dispatchScroll({
         scrollTop: 450,
-        location: { bottomOffset: 200, isAtBottom: false },
+        location: { bottomOffset: 80, isAtBottom: false },
       });
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
@@ -403,6 +403,45 @@ describe("useConversationAutoScroll", () => {
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
       expect(harness.methods.scrollToItem).not.toHaveBeenCalled();
+    });
+
+    it("uses Virtuoso's bottom offset instead of the document geometry", () => {
+      const harness = setupAutoScroll();
+      detach(harness);
+
+      harness.dispatchWheel(100);
+      harness.dispatchScroll({
+        // The raw DOM geometry says this is the bottom (1100 - 600 - 500),
+        // while Virtuoso still has 200px of list content below the viewport.
+        scrollTop: 600,
+        scrollHeight: 1100,
+        location: { bottomOffset: 200, isAtBottom: false },
+      });
+
+      expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
+      expect(harness.methods.scrollToItem).not.toHaveBeenCalled();
+    });
+
+    it("keeps content buffered until a reattaching gesture actually ends", () => {
+      const harness = setupAutoScroll();
+      const onScrollEnd = vi.fn();
+      harness.result.current.userScrollActivity.subscribeToEnd(onScrollEnd);
+      detach(harness);
+
+      harness.dispatchWheel(100);
+      harness.dispatchScroll({
+        scrollTop: 420,
+        location: { bottomOffset: 80, isAtBottom: false },
+      });
+
+      expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
+      expect(onScrollEnd).not.toHaveBeenCalled();
+
+      harness.dispatchScrollEnd();
+
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
+      expect(onScrollEnd).toHaveBeenCalledOnce();
     });
 
     it("does not treat content growth as downward user movement", () => {
@@ -443,8 +482,9 @@ describe("useConversationAutoScroll", () => {
     it("can be explicitly re-enabled for a new message", () => {
       const harness = setupAutoScroll();
       detach(harness);
+      harness.dispatchScrollEnd();
 
-      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
 
       act(() => harness.result.current.enableAutoScroll());
 

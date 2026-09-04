@@ -61,8 +61,7 @@ export function useConversationAutoScroll({
   const enableAutoScroll = useCallback(() => {
     isAutoScrollEnabledRef.current = true;
     userScrollDirectionRef.current = null;
-    finishUserScroll();
-  }, [finishUserScroll]);
+  }, []);
 
   // Track gestures separately from their resulting scroll movement so
   // Virtuoso's concurrent movement cannot hide the user's direction.
@@ -200,12 +199,8 @@ export function useConversationAutoScroll({
         0,
         viewportHeight - location.visibleListHeight
       );
-      const bottomOffset = Math.max(
-        0,
-        scrollHeight - scrollTop - viewportHeight
-      );
       const isNearBottom =
-        location.isAtBottom || bottomOffset <= stickyFooterHeight;
+        location.isAtBottom || location.bottomOffset <= stickyFooterHeight;
       const isUserScrollingDown =
         userScrollDirectionRef.current === "down" ||
         (userScrollDirectionRef.current === null &&

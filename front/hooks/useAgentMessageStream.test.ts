@@ -466,6 +466,20 @@ describe("useAgentMessageStream", () => {
     expect(harness.getContent()).toBe("Hello world");
   });
 
+  it("keeps content buffered when auto-scroll reattaches before scrolling ends", () => {
+    mockIsAutoScrollEnabledRef.current = false;
+    isUserScrollActive = true;
+    const harness = setupStreamingContentUpdateTest();
+
+    harness.sendToken("Hello");
+    mockIsAutoScrollEnabledRef.current = true;
+
+    expect(harness.getContent()).toBeNull();
+
+    act(() => finishUserScroll());
+    expect(harness.getContent()).toBe("Hello");
+  });
+
   it("cancels a deferred stream update when the message unmounts", () => {
     mockIsAutoScrollEnabledRef.current = false;
     isUserScrollActive = true;
