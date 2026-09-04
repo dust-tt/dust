@@ -127,7 +127,7 @@ export function toConsumptionTopRows(
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
       activeMembers: row.activeMembers,
-      totalMembers: row.totalMembers,
+      totalMembers: Math.max(row.totalMembers, row.activeMembers),
       previousCredits: row.previousCredits,
     }));
   }
