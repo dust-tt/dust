@@ -274,6 +274,7 @@ export async function backfillAgentEditorGrants({
   return stats;
 }
 
+// Importing this module in the migration test must not start the CLI or call process.exit.
 if (process.argv[1]?.endsWith("20260903_backfill_agent_editor_grants.ts")) {
   makeScript(
     {
@@ -299,6 +300,12 @@ if (process.argv[1]?.endsWith("20260903_backfill_agent_editor_grants.ts")) {
           fromWorkspaceId: fromWorkspace,
           where,
         }
+      );
+
+      logger.info(
+        execute
+          ? "Agent editor grant backfill completed"
+          : "Agent editor grant backfill dry run completed"
       );
     }
   );
