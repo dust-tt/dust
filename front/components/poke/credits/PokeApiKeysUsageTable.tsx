@@ -1,10 +1,8 @@
 import { RateLimiterStateChip } from "@app/components/poke/credits/RateLimiterStateChip";
-import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { ApiKeyUsageType } from "@app/lib/api/credits/api_keys_usage";
 import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
 import { usePokeApiKeysUsage } from "@app/poke/swr/credits";
-import type { ApiKeyCreditState } from "@app/types/key";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
@@ -17,25 +15,11 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
-const API_KEY_CREDIT_STATE_CHIP_COLOR: Record<
-  ApiKeyCreditState,
-  "success" | "warning"
-> = {
-  on_pool: "success",
-  capped: "warning",
-};
-
 interface PokeApiKeysUsageTableProps {
   owner: WorkspaceType;
 }
 
-function makeColumns({
-  owner,
-  onReconciled,
-}: {
-  owner: WorkspaceType;
-  onReconciled: () => void;
-}): ColumnDef<ApiKeyUsageType>[] {
+function makeColumns(): ColumnDef<ApiKeyUsageType>[] {
   return [
     {
       accessorKey: "name",
@@ -97,20 +81,6 @@ function makeColumns({
       },
     },
     {
-      accessorKey: "creditState",
-      header: "Credit state",
-      cell: ({ row }) => {
-        const { creditState } = row.original;
-        return (
-          <Chip
-            size="xs"
-            color={API_KEY_CREDIT_STATE_CHIP_COLOR[creditState]}
-            label={creditState}
-          />
-        );
-      },
-    },
-    {
       accessorKey: "rateLimiterState",
       header: "Rate limiter state",
       enableSorting: false,
@@ -121,21 +91,6 @@ function makeColumns({
           />
         );
       },
-    },
-    {
-      id: "actions",
-      header: () => null,
-      enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex items-center justify-end">
-          <ReconcileCreditStateButton
-            owner={owner}
-            target="api_key"
-            keyName={row.original.name}
-            onReconciled={onReconciled}
-          />
-        </div>
-      ),
     },
   ];
 }
@@ -149,21 +104,10 @@ function PokeApiKeysUsageTableContent({
   isOpen,
   owner,
 }: PokeApiKeysUsageTableContentProps) {
-  const {
-    apiKeys,
-    isApiKeysUsageLoading,
-    isApiKeysUsageError,
-    mutateApiKeysUsage,
-  } = usePokeApiKeysUsage({ owner, disabled: !isOpen });
+  const { apiKeys, isApiKeysUsageLoading, isApiKeysUsageError } =
+    usePokeApiKeysUsage({ owner, disabled: !isOpen });
 
-  const columns = useMemo(
-    () =>
-      makeColumns({
-        owner,
-        onReconciled: () => void mutateApiKeysUsage(),
-      }),
-    [owner, mutateApiKeysUsage]
-  );
+  const columns = useMemo(() => makeColumns(), []);
 
   if (isApiKeysUsageError) {
     return (

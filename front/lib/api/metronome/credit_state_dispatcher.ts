@@ -4,8 +4,6 @@ import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
-import type { ApiKeyCreditEvent } from "@app/lib/metronome/api_key_credit_state_machine";
-import { transitionApiKeyCreditState } from "@app/lib/metronome/api_key_credit_state_machine";
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
@@ -442,76 +440,6 @@ async function resolveLiveUserBalance({
     perUserCapAwuCredits: liveResult.value.effectiveCapAwuCredits,
     consumedAwuCredits: liveResult.value.consumedAwuCredits,
   };
-}
-
-// ---------------------------------------------------------------------------
-// Per-API-key credit state dispatchers
-// ---------------------------------------------------------------------------
-
-// Key names are not unique and Metronome aggregates spend per name, so the cap
-// is per-name: a single `api_key_name` alert covers every active key sharing
-// that name. Transition them all so they are blocked/unblocked together.
-async function transitionActiveKeysByName(
-  workspace: WorkspaceResource,
-  keyName: string,
-  event: ApiKeyCreditEvent,
-  logLabel: string
-): Promise<Result<void, Error>> {
-  const keys = await KeyResource.listActiveByWorkspaceAndName(
-    renderLightWorkspaceType({ workspace }),
-    keyName
-  );
-  if (keys.length === 0) {
-    logger.warn(
-      { workspaceId: workspace.sId, keyName },
-      `[CreditStateDispatcher] ${logLabel}: no active key found, skipping`
-    );
-    return new Ok(undefined);
-  }
-
-  for (const key of keys) {
-    const result = await transitionApiKeyCreditState(key, event, {
-      workspaceId: workspace.sId,
-      keyModelId: key.id,
-    });
-    if (result.isErr()) {
-      logger.warn(
-        { workspaceId: workspace.sId, keyName, keyModelId: key.id, event },
-        `[CreditStateDispatcher] ${logLabel}: transition skipped for a key`
-      );
-    }
-  }
-  return new Ok(undefined);
-}
-
-export async function dispatchApiKeyCapReached({
-  workspace,
-  keyName,
-}: {
-  workspace: WorkspaceResource;
-  keyName: string;
-}): Promise<Result<void, Error>> {
-  return transitionActiveKeysByName(
-    workspace,
-    keyName,
-    { type: "api_key_cap_reached" },
-    "api_key_cap_reached"
-  );
-}
-
-export async function dispatchApiKeyCapResolved({
-  workspace,
-  keyName,
-}: {
-  workspace: WorkspaceResource;
-  keyName: string;
-}): Promise<Result<void, Error>> {
-  return transitionActiveKeysByName(
-    workspace,
-    keyName,
-    { type: "api_key_cap_resolved" },
-    "api_key_cap_resolved"
-  );
 }
 
 export async function dispatchPoolExhausted({
