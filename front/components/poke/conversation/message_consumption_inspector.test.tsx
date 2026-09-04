@@ -26,7 +26,7 @@ vi.mock("@app/poke/swr/message_consumption", () => ({
 
 type InspectorProps = Omit<
   ComponentProps<typeof PokeMessageConsumptionInspector>,
-  "isOpen" | "onOpenChange" | "onPanelRefChange"
+  "isOpen" | "onOpenChange" | "onPanelExitComplete" | "onPanelRefChange"
 >;
 
 const defaultProps: InspectorProps = {
@@ -37,7 +37,10 @@ const defaultProps: InspectorProps = {
   workspaceId: "workspace_test",
 };
 
-function TestInspector(props: InspectorProps) {
+function TestInspector({
+  onPanelExitComplete = () => {},
+  ...props
+}: InspectorProps & { onPanelExitComplete?: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -45,6 +48,7 @@ function TestInspector(props: InspectorProps) {
       {...props}
       isOpen={isOpen}
       onOpenChange={setIsOpen}
+      onPanelExitComplete={onPanelExitComplete}
       onPanelRefChange={() => {}}
     />
   );
@@ -61,7 +65,13 @@ describe("PokeMessageConsumptionInspector", () => {
   });
 
   it("shows the authoritative total immediately and loads details on expansion", async () => {
-    render(<TestInspector {...defaultProps} />);
+    const onPanelExitComplete = vi.fn();
+    render(
+      <TestInspector
+        {...defaultProps}
+        onPanelExitComplete={onPanelExitComplete}
+      />
+    );
 
     expect(screen.getByText("30 credits")).toBeInTheDocument();
     expect(screen.queryByText("Authoritative bill")).not.toBeInTheDocument();
@@ -114,6 +124,7 @@ describe("PokeMessageConsumptionInspector", () => {
     await waitFor(() => {
       expect(panel?.style.transform).toMatch(/^translateX\(-/);
     });
+    await waitFor(() => expect(onPanelExitComplete).toHaveBeenCalledOnce());
 
     expect(trigger).toHaveFocus();
     expect(trigger).toHaveAttribute("aria-expanded", "false");

@@ -71,6 +71,7 @@ describe("useConversationInspectorPanels", () => {
 
     expect(result.current.activeMessageId).toBe("message_1");
     expect(result.current.isConversationOpen).toBe(false);
+    expect(result.current.isMessageRailTakeover).toBe(false);
     expect(result.current.isWakeUpsOpen).toBe(false);
   });
 
@@ -108,6 +109,10 @@ describe("useConversationInspectorPanels", () => {
 
     expect(result.current.activeMessageId).toBeNull();
     expect(result.current.isConversationOpen).toBe(true);
+    expect(result.current.isMessageRailTakeover).toBe(true);
+
+    act(() => result.current.completeMessagePanelExit("message_1"));
+    expect(result.current.isMessageRailTakeover).toBe(false);
 
     act(() => result.current.setMessageOpen("message_1", true));
     act(() => result.current.setWakeUpsOpen(true));
@@ -117,7 +122,7 @@ describe("useConversationInspectorPanels", () => {
     expect(result.current.isWakeUpsOpen).toBe(true);
   });
 
-  it("closes the message panel before it crowds the sticky inspectors", () => {
+  it("switches to a rail takeover before crowding the sticky inspectors", () => {
     let messagePanelRect = rect(500, 700);
     const messagePanel = document.createElement("div");
     messagePanel.dataset.messageConsumptionPanelId = "message_1";
@@ -159,10 +164,17 @@ describe("useConversationInspectorPanels", () => {
     act(() => window.dispatchEvent(new Event("scroll")));
     act(flushAnimationFrame);
 
-    expect(result.current.activeMessageId).toBeNull();
+    expect(result.current.activeMessageId).toBe("message_1");
+    expect(result.current.isMessageRailTakeover).toBe(true);
+
+    messagePanelRect = rect(500, 700);
+    act(() => window.dispatchEvent(new Event("scroll")));
+    act(flushAnimationFrame);
+
+    expect(result.current.isMessageRailTakeover).toBe(true);
   });
 
-  it("keeps the panel bottom-aligned while its exit animation runs", () => {
+  it("keeps the rail hidden until a taking-over panel finishes exiting", () => {
     let messagePanelRect = rect(500, 900);
     const messagePanel = document.createElement("div");
     messagePanel.dataset.messageConsumptionPanelId = "message_1";
@@ -200,10 +212,50 @@ describe("useConversationInspectorPanels", () => {
     act(() => window.dispatchEvent(new Event("scroll")));
     act(flushAnimationFrame);
 
-    expect(result.current.activeMessageId).toBeNull();
+    expect(result.current.activeMessageId).toBe("message_1");
+    expect(result.current.isMessageRailTakeover).toBe(true);
     expect(messagePanel.style.translate).toBe(
       `0 ${getMessagePanelTopOffsetPx(1200, window.innerHeight)}px`
     );
+
+    act(() => result.current.setMessageOpen("message_1", false));
+    expect(result.current.activeMessageId).toBeNull();
+    expect(result.current.isMessageRailTakeover).toBe(true);
+
+    act(() => result.current.completeMessagePanelExit("message_1"));
+    expect(result.current.isMessageRailTakeover).toBe(false);
+  });
+
+  it("takes over the rail when opening a message would overlap it", () => {
+    const messagePanel = document.createElement("div");
+    messagePanel.dataset.messageConsumptionPanelId = "message_1";
+    vi.spyOn(messagePanel, "getBoundingClientRect").mockReturnValue(
+      rect(195, 495)
+    );
+
+    const stickyInspectors = document.createElement("aside");
+    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
+      rect(16, 180)
+    );
+
+    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
+      current: messagePanel,
+    };
+    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
+      current: stickyInspectors,
+    };
+    const { result } = renderHook(() =>
+      useConversationInspectorPanels({
+        activeMessagePanelRef,
+        stickyInspectorsRef,
+      })
+    );
+
+    act(() => result.current.setMessageOpen("message_1", true));
+    act(flushAnimationFrame);
+
+    expect(result.current.activeMessageId).toBe("message_1");
+    expect(result.current.isMessageRailTakeover).toBe(true);
   });
 
   it("does not enforce inspector spacing in the single-column layout", () => {

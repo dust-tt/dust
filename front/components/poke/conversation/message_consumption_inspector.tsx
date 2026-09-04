@@ -146,6 +146,7 @@ interface PokeMessageConsumptionInspectorProps {
   isOpen: boolean;
   messageId: string;
   onOpenChange: (open: boolean) => void;
+  onPanelExitComplete: () => void;
   onPanelRefChange: (element: HTMLDivElement | null) => void;
   subAgentBilledCredits: number | null | undefined;
   workspaceId: string;
@@ -157,6 +158,7 @@ export function PokeMessageConsumptionInspector({
   isOpen,
   messageId,
   onOpenChange,
+  onPanelExitComplete,
   onPanelRefChange,
   subAgentBilledCredits,
   workspaceId,
@@ -263,7 +265,7 @@ export function PokeMessageConsumptionInspector({
         />
       </button>
 
-      <AnimatePresence initial={false}>
+      <AnimatePresence initial={false} onExitComplete={onPanelExitComplete}>
         {isOpen && (
           <motion.div
             id={contentId}

@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useCallback, useLayoutEffect, useReducer } from "react";
+import { useCallback, useLayoutEffect, useReducer, useRef } from "react";
 
 const DESKTOP_INSPECTOR_MEDIA_QUERY = "(min-width: 1280px)";
 const INSPECTOR_PANEL_GAP_PX = 16;
@@ -9,17 +9,21 @@ interface InspectorPanelState {
   activeMessageId: string | null;
   isConversationOpen: boolean;
   isWakeUpsOpen: boolean;
+  messageRailTakeoverId: string | null;
 }
 
 type InspectorPanelAction =
+  | { type: "complete_message_panel_exit"; messageId: string }
   | { type: "set_conversation_open"; open: boolean }
   | { type: "set_message_open"; messageId: string; open: boolean }
-  | { type: "set_wake_ups_open"; open: boolean };
+  | { type: "set_wake_ups_open"; open: boolean }
+  | { type: "take_over_message_rail"; messageId: string };
 
 const INITIAL_STATE: InspectorPanelState = {
   activeMessageId: null,
   isConversationOpen: false,
   isWakeUpsOpen: false,
+  messageRailTakeoverId: null,
 };
 
 function inspectorPanelReducer(
@@ -27,12 +31,19 @@ function inspectorPanelReducer(
   action: InspectorPanelAction
 ): InspectorPanelState {
   switch (action.type) {
+    case "complete_message_panel_exit":
+      return state.messageRailTakeoverId === action.messageId &&
+        state.activeMessageId !== action.messageId
+        ? { ...state, messageRailTakeoverId: null }
+        : state;
     case "set_conversation_open":
       return action.open
         ? {
             ...state,
             activeMessageId: null,
             isConversationOpen: true,
+            messageRailTakeoverId:
+              state.activeMessageId ?? state.messageRailTakeoverId,
           }
         : { ...state, isConversationOpen: false };
     case "set_wake_ups_open":
@@ -41,6 +52,8 @@ function inspectorPanelReducer(
             ...state,
             activeMessageId: null,
             isWakeUpsOpen: true,
+            messageRailTakeoverId:
+              state.activeMessageId ?? state.messageRailTakeoverId,
           }
         : { ...state, isWakeUpsOpen: false };
     case "set_message_open":
@@ -49,6 +62,8 @@ function inspectorPanelReducer(
           activeMessageId: action.messageId,
           isConversationOpen: false,
           isWakeUpsOpen: false,
+          messageRailTakeoverId:
+            state.messageRailTakeoverId === null ? null : action.messageId,
         };
       }
 
@@ -57,6 +72,10 @@ function inspectorPanelReducer(
             ...state,
             activeMessageId: null,
           }
+        : state;
+    case "take_over_message_rail":
+      return state.activeMessageId === action.messageId
+        ? { ...state, messageRailTakeoverId: action.messageId }
         : state;
   }
 }
@@ -99,6 +118,8 @@ export function useConversationInspectorPanels({
   stickyInspectorsRef,
 }: UseConversationInspectorPanelsProps) {
   const [state, dispatch] = useReducer(inspectorPanelReducer, INITIAL_STATE);
+  const messageRailTakeoverIdRef = useRef(state.messageRailTakeoverId);
+  messageRailTakeoverIdRef.current = state.messageRailTakeoverId;
 
   useLayoutEffect(() => {
     if (!state.activeMessageId) {
@@ -162,15 +183,11 @@ export function useConversationInspectorPanels({
         : null;
       if (
         isDesktop &&
-        ((messageTrigger &&
-          !isMessagePanelAttachedToTrigger(
-            measuredMessagePanelRect,
-            messageTrigger.getBoundingClientRect()
-          )) ||
-          !hasRoomForStickyInspectors(
-            stickyInspectors.getBoundingClientRect(),
-            measuredMessagePanelRect
-          ))
+        messageTrigger &&
+        !isMessagePanelAttachedToTrigger(
+          measuredMessagePanelRect,
+          messageTrigger.getBoundingClientRect()
+        )
       ) {
         dispatch({
           type: "set_message_open",
@@ -178,6 +195,20 @@ export function useConversationInspectorPanels({
           open: false,
         });
         return;
+      }
+
+      if (
+        isDesktop &&
+        messageRailTakeoverIdRef.current !== state.activeMessageId &&
+        !hasRoomForStickyInspectors(
+          stickyInspectors.getBoundingClientRect(),
+          measuredMessagePanelRect
+        )
+      ) {
+        dispatch({
+          type: "take_over_message_rail",
+          messageId: state.activeMessageId,
+        });
       }
     };
 
@@ -208,6 +239,10 @@ export function useConversationInspectorPanels({
     };
   }, [activeMessagePanelRef, state.activeMessageId, stickyInspectorsRef]);
 
+  const completeMessagePanelExit = useCallback((messageId: string) => {
+    dispatch({ type: "complete_message_panel_exit", messageId });
+  }, []);
+
   const setConversationOpen = useCallback((open: boolean) => {
     dispatch({ type: "set_conversation_open", open });
   }, []);
@@ -222,6 +257,8 @@ export function useConversationInspectorPanels({
 
   return {
     ...state,
+    completeMessagePanelExit,
+    isMessageRailTakeover: state.messageRailTakeoverId !== null,
     setConversationOpen,
     setMessageOpen,
     setWakeUpsOpen,

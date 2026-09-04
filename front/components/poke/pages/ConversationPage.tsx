@@ -583,6 +583,7 @@ interface AgentMessageViewProps {
   isConsumptionOpen: boolean;
   message: PokeAgentMessageType;
   onConsumptionOpenChange: (open: boolean) => void;
+  onConsumptionPanelExitComplete: () => void;
   onConsumptionPanelRefChange: (element: HTMLDivElement | null) => void;
   useMarkdown: boolean;
   owner: LightWorkspaceType;
@@ -594,6 +595,7 @@ const AgentMessageView = ({
   isConsumptionOpen,
   message,
   onConsumptionOpenChange,
+  onConsumptionPanelExitComplete,
   onConsumptionPanelRefChange,
   useMarkdown,
   owner,
@@ -712,6 +714,7 @@ const AgentMessageView = ({
           isOpen={isConsumptionOpen}
           messageId={message.sId}
           onOpenChange={onConsumptionOpenChange}
+          onPanelExitComplete={onConsumptionPanelExitComplete}
           onPanelRefChange={onConsumptionPanelRefChange}
           subAgentBilledCredits={message.subAgentCostCredits}
           workspaceId={owner.sId}
@@ -883,7 +886,9 @@ export function ConversationPage() {
   const stickyInspectorsRef = useRef<HTMLElement | null>(null);
   const {
     activeMessageId,
+    completeMessagePanelExit,
     isConversationOpen,
+    isMessageRailTakeover,
     isWakeUpsOpen,
     setConversationOpen,
     setMessageOpen,
@@ -1287,7 +1292,15 @@ export function ConversationPage() {
               ref={stickyInspectorsRef}
               className="z-20 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start"
             >
-              <div className="flex flex-col gap-4">
+              <div
+                aria-hidden={isMessageRailTakeover}
+                className={cn(
+                  "flex flex-col gap-4",
+                  isMessageRailTakeover
+                    ? "invisible opacity-0"
+                    : "visible opacity-100 transition-opacity duration-150 ease-out motion-reduce:transition-none"
+                )}
+              >
                 <PokeConversationConsumptionInspector
                   conversationId={conversationId}
                   isOpen={isConversationOpen}
@@ -1317,6 +1330,9 @@ export function ConversationPage() {
                               message={m}
                               onConsumptionOpenChange={(open) =>
                                 setMessageOpen(m.sId, open)
+                              }
+                              onConsumptionPanelExitComplete={() =>
+                                completeMessagePanelExit(m.sId)
                               }
                               onConsumptionPanelRefChange={(element) =>
                                 handleMessagePanelRefChange(m.sId, element)
