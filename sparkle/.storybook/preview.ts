@@ -89,9 +89,10 @@ const preview: Preview = {
   },
 
   decorators: [
-    (Story, context) => {
-      const isDark = context.globals.theme === "dark";
-      const background = isDark ? "#000000" : "#ffffff";
+    (Story) => {
+      // Paint the canvas with the product's background token so components sit on the surface
+      // they ship on. The variable follows the theme class set by withThemeByClassName below.
+      const background = "var(--color-background)";
 
       // Update the document and every story canvas on a docs page (one per story).
       document.documentElement.style.backgroundColor = background;
