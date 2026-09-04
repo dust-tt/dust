@@ -12,6 +12,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import chunk from "lodash/chunk";
 import { v4 as uuidv4 } from "uuid";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export class RateLimitError extends Error {}
 
@@ -400,6 +402,11 @@ export async function getWeightedRateLimiterUsage({
   }
 }
 
+// One [total, oldestTimestampMs] pair per requested key, in the same order.
+const WeightedRateLimiterUsageForKeysReplySchema = z.array(
+  z.tuple([z.number(), z.number()])
+);
+
 // Same computation as `getWeightedRateLimiterUsage`, batched over multiple
 // keys in a single round trip (looped server-side in Lua, chunked to a safe
 // KEYS array size), so a full-table sort doesn't issue one round trip per
@@ -459,10 +466,20 @@ export async function getWeightedRateLimiterUsageForKeys({
     const usageByKey = new Map<string, WeightedRateLimiterUsage>();
     for (const batchKeys of chunk(uniqueKeys, RATE_LIMITER_COUNTS_BATCH_SIZE)) {
       const redisKeys = batchKeys.map((key) => makeRateLimiterKey(key));
-      const replies = (await redis.eval(luaScript, {
+      const rawReplies = await redis.eval(luaScript, {
         keys: redisKeys,
         arguments: [windowMs.toString()],
-      })) as [number, number][];
+      });
+      const parsedReplies =
+        WeightedRateLimiterUsageForKeysReplySchema.safeParse(rawReplies);
+      if (!parsedReplies.success) {
+        return new Err(
+          new Error(
+            `Unexpected reply shape from getWeightedRateLimiterUsageForKeys: ${fromError(parsedReplies.error).toString()}`
+          )
+        );
+      }
+      const replies = parsedReplies.data;
       for (const [index, key] of batchKeys.entries()) {
         const [count, oldestTimestampMs] = replies[index];
         usageByKey.set(key, {
