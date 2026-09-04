@@ -7,13 +7,13 @@ import { getSkillIcon } from "@app/lib/skill";
 import { extractSkillReferenceTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { AttachmentChip, Chip, cn, File02 } from "@dust-tt/sparkle";
-import type { Ref } from "react";
-import { useMemo } from "react";
+import { AttachmentChip, Button, ChevronDown, ChevronUp, Chip, cn, File02 } from "@dust-tt/sparkle";
+import type { Ref, RefObject } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
-  containerRef?: Ref<HTMLDivElement>;
+  containerRef?: RefObject<HTMLDivElement>;
   hasError: boolean;
   instructions: string;
   onReferenceClick: (target: ReferenceSummaryItem) => void;
@@ -117,8 +117,12 @@ export function SkillBuilderInstructionsReferenceSummary({
   onReferenceClick,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
+  const [isOverflow, setIsOverflow] = useState(false);
+  const [isExpand, setIsExpand] = useState(false);
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
+
+  
 
   const knowledgeReferences = useMemo(
     () =>
@@ -202,16 +206,23 @@ export function SkillBuilderInstructionsReferenceSummary({
     [knowledgeReferences, skillReferences, toolReferences]
   );
 
-  if (referenceItems.length === 0) {
-    return null;
-  }
 
+  useEffect(() => {
+    // check everytime reference items number changes if the content is overflowing or not
+    if (containerRef?.current) {
+      console.log("overflow", containerRef.current.scrollHeight, containerRef.current.offsetHeight);
+      setIsOverflow(containerRef.current.scrollHeight > containerRef.current.offsetHeight);
+    }
+  }, [referenceItems.length]);
+
+ // have min height to always keep space to show references so there is less content shift.
   return (
-    <div
+    <div className="min-h-6"> 
+    {
+      referenceItems.length > 0 &&  <div
       ref={containerRef}
-      className={cn(
-        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b bg-background px-3 pb-3 pt-3",
-        "",
+      className={cn(!isExpand &&
+        "overflow-y-hidden max-h-15",
         hasError
           ? [
               "border-border-warning/30 group-focus-within:border-border-warning",
@@ -220,14 +231,19 @@ export function SkillBuilderInstructionsReferenceSummary({
           : ["border-border group-focus-within:border-highlight-300", ""]
       )}
     >
-      <div className="mb-2 text-sm font-medium text-foreground">
-        Capabilities and knowledge
-      </div>
       <div className="flex flex-wrap gap-2">
         {referenceItems.map((item) =>
           renderReferenceSummaryItem({ item, onReferenceClick })
-        )}
+        )} 
+      </div> 
+      </div> 
+      }
+            {
+        isOverflow && 
+         <div className="flex justify-end">
+      <Button label={`See ${isExpand ? "less" : "more"}`} onClick={() => setIsExpand((prev) => !prev)} icon={isExpand ? ChevronUp : ChevronDown} variant="ghost-secondary" size="xs" />
       </div>
+      }
     </div>
-  );
+  )
 }

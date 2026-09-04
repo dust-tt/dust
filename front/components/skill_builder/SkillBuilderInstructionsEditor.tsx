@@ -222,10 +222,6 @@ function sanitizeSkillInstructionsHtml(html: string): string {
 }
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[50vh]";
-const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_CONTAINER_SIZE =
-  "h-80 min-h-80 max-h-[50vh]";
-const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
-  "h-full min-h-0 max-h-none resize-none rounded-b-none border-b-0 pb-44";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
@@ -736,8 +732,6 @@ export function SkillBuilderInstructionsEditor({
               readOnly: isInstructionsReadOnly,
             }),
             INSTRUCTIONS_EDITOR_SIZE,
-            hasInstructionReferenceSummary &&
-              INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE
           ),
         },
       },
@@ -840,8 +834,6 @@ export function SkillBuilderInstructionsEditor({
         <div
           className={cn(
             "group relative overflow-hidden rounded-xl",
-            hasInstructionReferenceSummary &&
-              INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_CONTAINER_SIZE,
             hasInstructionReferenceSummary && !isDiffMode && "resize-y"
           )}
         >
@@ -849,14 +841,6 @@ export function SkillBuilderInstructionsEditor({
             className={hasInstructionReferenceSummary ? "h-full" : undefined}
             editor={editor}
             isReadOnly={isInstructionsReadOnly}
-          />
-          <SkillBuilderInstructionsReferenceSummary
-            attachedKnowledge={attachedKnowledgeField.value}
-            containerRef={instructionReferenceSummaryRef}
-            hasError={displayError}
-            instructions={instructionsField.value ?? ""}
-            onReferenceClick={handleReferenceClick}
-            tools={tools}
           />
         </div>
 
@@ -866,6 +850,15 @@ export function SkillBuilderInstructionsEditor({
           </div>
         )}
       </div>
+
+      <SkillBuilderInstructionsReferenceSummary
+            attachedKnowledge={attachedKnowledgeField.value}
+            containerRef={instructionReferenceSummaryRef}
+            hasError={displayError}
+            instructions={instructionsField.value ?? ""}
+            onReferenceClick={handleReferenceClick}
+            tools={tools}
+        />
 
       <CapabilityDetailsSheets
         owner={owner}
