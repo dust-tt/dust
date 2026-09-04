@@ -17,7 +17,7 @@ import {
   File02,
 } from "@dust-tt/sparkle";
 import type { RefObject } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
@@ -117,6 +117,10 @@ function renderReferenceSummaryItem({
   }
 }
 
+const BROWSER_DEFAULT_FONT_SIZE = 16;
+const THRESHOLD_HEIGHT_REM = 3.75; // max-h-15 => 3.75 rem 
+const DEFAULT_OVERFLOW_THRESHOLD_HEIGHT = BROWSER_DEFAULT_FONT_SIZE * THRESHOLD_HEIGHT_REM; // 60px
+
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
   containerRef,
@@ -125,8 +129,9 @@ export function SkillBuilderInstructionsReferenceSummary({
   onReferenceClick,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
-  const [isOverflow, setIsOverflow] = useState(false);
   const [isExpand, setIsExpand] = useState(false);
+  const [overflowThresholdHeight, setOverflowThresholdHeight] = useState(DEFAULT_OVERFLOW_THRESHOLD_HEIGHT);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -212,24 +217,27 @@ export function SkillBuilderInstructionsReferenceSummary({
     [knowledgeReferences, skillReferences, toolReferences]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ref is a stable reference
+  // compute root font size only once
   useEffect(() => {
-    // check everytime reference items number changes if the content is overflowing or not
-    if (containerRef?.current) {
-      setIsOverflow(
-        containerRef.current.scrollHeight > containerRef.current.offsetHeight
-      );
+    const rootFontSize = parseFloat(
+      getComputedStyle(document.documentElement).fontSize
+    );
+
+    if (rootFontSize !== BROWSER_DEFAULT_FONT_SIZE) {
+      setOverflowThresholdHeight(rootFontSize * THRESHOLD_HEIGHT_REM)
     }
-  }, [referenceItems.length]);
+  }, []);
+
+  const isOverflow = contentRef.current && contentRef.current.scrollHeight > overflowThresholdHeight
 
   // have min height to always keep space to show references so there is less content shift.
   return (
-    <div className="min-h-6">
+    <div>
       {referenceItems.length > 0 && (
         <div
           ref={containerRef}
           className={cn(
-            !isExpand && "overflow-y-hidden max-h-15",
+            !isExpand && "overflow-y-hidden max-h-14",
             hasError
               ? [
                   "border-border-warning/30 group-focus-within:border-border-warning",
@@ -238,7 +246,7 @@ export function SkillBuilderInstructionsReferenceSummary({
               : ["border-border group-focus-within:border-highlight-300", ""]
           )}
         >
-          <div className="flex flex-wrap gap-2">
+          <div ref={contentRef} className="flex flex-wrap gap-2">
             {referenceItems.map((item) =>
               renderReferenceSummaryItem({ item, onReferenceClick })
             )}
