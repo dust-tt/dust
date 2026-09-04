@@ -2,6 +2,7 @@ import { makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace } from "@a
 import config from "@app/lib/api/config";
 import { isWorkspaceProgrammaticWarningReached } from "@app/lib/api/credits/access_control";
 import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/members_usage";
+import type { RateLimiterState } from "@app/lib/api/credits/members_usage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { getSeatPlan } from "@app/lib/api/credits/seat_plan";
 import { getWorkspacePlanLimitOverrides } from "@app/lib/api/plan_limit_overrides";
@@ -13,6 +14,7 @@ import { microCreditsToCredits } from "@app/lib/credits/units";
 import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedWorkspaceMetronomeAlerts } from "@app/lib/metronome/alerts/workspace_alerts";
+import { USER_AWU_WARNING_PERCENTAGE } from "@app/lib/metronome/alerts/spend_limits";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
@@ -94,6 +96,16 @@ export type PokeWorkspaceInfo = {
   defaultAlerts: DefaultMetronomeAlerts;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  // Whether the rate-cap enforcement flag is on for this workspace. When true,
+  // the poke programmatic badge must reflect the rate-limiter verdict
+  // (`programmaticRateLimiterState`), not the Metronome `programmaticCreditState`.
+  spendLimitRateCapEnabled: boolean;
+  // The rate-limiter's verdict for the programmatic monthly cap: "capped"
+  // (counter ≥ cap), "near_limit" (≥ 80%), or "ok", from the RL counter vs
+  // `creditUsageConfig.programmaticMonthlyCapAwuCredits`. Null when there's no
+  // cap or the counter couldn't be read. Mirrors the enforcement switch in
+  // `isProgrammaticApiBlocked` (lib/api/credits/access_control.ts).
+  programmaticRateLimiterState: RateLimiterState | null;
   // Programmatic spend for the current billing cycle across the three sources,
   // for debugging the rate-limiter backup: the Redis fixed-window counter (RL),
   // the Elasticsearch-derived consumption (ES), and the Metronome-derived
@@ -182,6 +194,31 @@ export async function getPokeWorkspaceInfo(
     programmaticMetronomeConsumedAwuCredits = spendResult.isOk()
       ? spendResult.value
       : null;
+  }
+
+  // Rate-limiter verdict for the programmatic monthly cap — the badge source
+  // under the flag (the Metronome `programmaticCreditState` must not be read
+  // then). Compare the RL counter to the configured cap; both are in credits
+  // here. Mirrors the api-key / member rate-limiter chips.
+  const spendLimitRateCapEnabled = await hasFeatureFlag(
+    auth,
+    "enforce_user_spend_limit_rate_cap"
+  );
+  const programmaticCapAwuCredits =
+    creditUsageConfig?.programmaticMonthlyCapAwuCredits ?? null;
+  let programmaticRateLimiterState: RateLimiterState | null = null;
+  if (
+    programmaticCapAwuCredits !== null &&
+    programmaticCapAwuCredits > 0 &&
+    programmaticSpendLimitRateCapCount !== null
+  ) {
+    programmaticRateLimiterState =
+      programmaticSpendLimitRateCapCount >= programmaticCapAwuCredits
+        ? "capped"
+        : programmaticSpendLimitRateCapCount >=
+            USER_AWU_WARNING_PERCENTAGE * programmaticCapAwuCredits
+          ? "near_limit"
+          : "ok";
   }
 
   // Resolve the Metronome alert ids backing each credit dimension so Poke can
@@ -293,6 +330,8 @@ export async function getPokeWorkspaceInfo(
     programmaticCreditState: workspaceResource.programmaticCreditState,
     programmaticWarningReached:
       await isWorkspaceProgrammaticWarningReached(auth),
+    spendLimitRateCapEnabled,
+    programmaticRateLimiterState,
     programmaticSpendLimitRateCapCount,
     programmaticEsConsumedAwuCredits,
     programmaticMetronomeConsumedAwuCredits,

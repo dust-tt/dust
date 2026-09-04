@@ -6,6 +6,7 @@ import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/Pok
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
+import type { RateLimiterState } from "@app/lib/api/credits/members_usage";
 import type {
   PokeCreditUsageConfig,
   PokeProgrammaticAlerts,
@@ -38,6 +39,8 @@ interface PokeUsageTabProps {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  spendLimitRateCapEnabled: boolean;
+  programmaticRateLimiterState: RateLimiterState | null;
   programmaticSpendLimitRateCapCount: number | null;
   programmaticEsConsumedAwuCredits: number | null;
   programmaticMetronomeConsumedAwuCredits: number | null;
@@ -75,6 +78,18 @@ function SpendCountersInline({
   );
 }
 
+// The rate-limiter's verdict, rendered as a chip. Labels distinguish capped vs
+// near-limit (both warning-toned). Mirrors PokeMembersUsageTable /
+// PokeApiKeysUsageTable.
+const RATE_LIMITER_STATE_CHIP: Record<
+  RateLimiterState,
+  { color: "success" | "warning"; label: string }
+> = {
+  capped: { color: "warning", label: "capped" },
+  near_limit: { color: "warning", label: "near limit" },
+  ok: { color: "success", label: "ok" },
+};
+
 type CreditStateChipColor = "success" | "warning" | "warning" | "info";
 
 // Shared color mapping for the workspace pool and programmatic credit states.
@@ -106,6 +121,8 @@ interface PokeCreditStatesCardProps {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  spendLimitRateCapEnabled: boolean;
+  programmaticRateLimiterState: RateLimiterState | null;
   programmaticSpendLimitRateCapCount: number | null;
   programmaticEsConsumedAwuCredits: number | null;
   programmaticMetronomeConsumedAwuCredits: number | null;
@@ -119,6 +136,8 @@ function PokeCreditStatesCard({
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
+  spendLimitRateCapEnabled,
+  programmaticRateLimiterState,
   programmaticSpendLimitRateCapCount,
   programmaticEsConsumedAwuCredits,
   programmaticMetronomeConsumedAwuCredits,
@@ -144,13 +163,32 @@ function PokeCreditStatesCard({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Programmatic</span>
-          <Chip
-            size="xs"
-            color={creditStateChipColor(programmaticCreditState)}
-            label={programmaticCreditState}
-          />
-          {programmaticWarningReached && (
-            <Chip size="xs" color="warning" label="near limit" />
+          {spendLimitRateCapEnabled ? (
+            // Flag on: the rate-limiter is authoritative, so show its verdict
+            // and do not read the Metronome `programmaticCreditState`. The RL
+            // state already encodes near-limit, so no separate warning chip.
+            programmaticRateLimiterState !== null ? (
+              <Chip
+                size="xs"
+                color={
+                  RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].color
+                }
+                label={RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].label}
+              />
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )
+          ) : (
+            <>
+              <Chip
+                size="xs"
+                color={creditStateChipColor(programmaticCreditState)}
+                label={programmaticCreditState}
+              />
+              {programmaticWarningReached && (
+                <Chip size="xs" color="warning" label="near limit" />
+              )}
+            </>
           )}
           <span className="text-xs text-muted-foreground">
             cap:{" "}
@@ -344,6 +382,8 @@ export function PokeUsageTab({
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
+  spendLimitRateCapEnabled,
+  programmaticRateLimiterState,
   programmaticSpendLimitRateCapCount,
   programmaticEsConsumedAwuCredits,
   programmaticMetronomeConsumedAwuCredits,
@@ -384,6 +424,8 @@ export function PokeUsageTab({
         poolCreditState={poolCreditState}
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
+        spendLimitRateCapEnabled={spendLimitRateCapEnabled}
+        programmaticRateLimiterState={programmaticRateLimiterState}
         programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
         programmaticEsConsumedAwuCredits={programmaticEsConsumedAwuCredits}
         programmaticMetronomeConsumedAwuCredits={

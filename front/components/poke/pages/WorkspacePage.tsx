@@ -146,6 +146,8 @@ export function WorkspacePage() {
     defaultAlerts,
     programmaticCreditState,
     programmaticWarningReached,
+    spendLimitRateCapEnabled,
+    programmaticRateLimiterState,
     programmaticSpendLimitRateCapCount,
     programmaticEsConsumedAwuCredits,
     programmaticMetronomeConsumedAwuCredits,
@@ -389,6 +391,8 @@ export function WorkspacePage() {
                 poolCreditState={poolCreditState}
                 programmaticCreditState={programmaticCreditState}
                 programmaticWarningReached={programmaticWarningReached}
+                spendLimitRateCapEnabled={spendLimitRateCapEnabled}
+                programmaticRateLimiterState={programmaticRateLimiterState}
                 programmaticSpendLimitRateCapCount={
                   programmaticSpendLimitRateCapCount
                 }
