@@ -37,6 +37,7 @@ verification.
    - `GCP_GLOBAL_PROJECT_ID`
    - `GCP_US_PROJECT_ID`
    - `GCP_EU_PROJECT_ID`
+   - `GCP_CELL_00002_PROJECT_ID`
    - `GCP_WEBHOOK_ROUTER_CONFIG_BUCKET`
 
 ### Project Configuration
@@ -82,6 +83,7 @@ NOTION_SIGNING_SECRET="your-notion-signing-secret"
 OAUTH_SHOPIFY_CLIENT_SECRET="your-shopify-client-secret"
 US_CONNECTOR_URL=http://localhost:3002
 EU_CONNECTOR_URL=http://localhost:3002
+CELL_00002_CONNECTOR_URL=http://localhost:3002
 ```
 
 Note: `GCP_WEBHOOK_ROUTER_CONFIG_BUCKET` must be set to `dust-infra.firebasestorage.app` for the config sync function to work properly with the emulator.

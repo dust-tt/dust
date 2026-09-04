@@ -1,7 +1,7 @@
 import type { Database } from "firebase-admin/database";
 import { z } from "zod";
 
-export const ALL_CELLS = ["cell-00000", "cell-00001"] as const;
+export const ALL_CELLS = ["cell-00000", "cell-00001", "cell-00002"] as const;
 export type Cell = (typeof ALL_CELLS)[number];
 
 type ProviderWithSigningSecret = "slack" | "notion";
