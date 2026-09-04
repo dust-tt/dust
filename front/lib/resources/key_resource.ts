@@ -1,7 +1,10 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
+import { makeApiKeySpendLimitAwuCreditsRateLimitKey } from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -11,12 +14,15 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { getFixedWindowCount } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { ApiKeyCreditState, KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -354,7 +360,11 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
-  private toJSON(requestingUserModelId: ModelId, spaces: SpaceType[]): KeyType {
+  private toJSON(
+    requestingUserModelId: ModelId,
+    spaces: SpaceType[],
+    isSpendCapped: boolean
+  ): KeyType {
     // We only display the full secret key to the admin who created it, and only
     // for the first 10 minutes after creation. Every other admin (or the
     // creator past the window) sees a redacted value.
@@ -383,7 +393,60 @@ export class KeyResource extends BaseResource<KeyModel> {
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
       monthlyCapAwuCredits: this.monthlyCapAwuCredits,
       creditState: this.creditState,
+      isSpendCapped,
     };
+  }
+
+  /**
+   * The flag-aware per-key "capped" verdict for each of `keys`, keyed by key
+   * model id. Mirrors the enforcement switch in `isApiKeyBlocked`
+   * (lib/api/credits/access_control.ts): with the
+   * `enforce_user_spend_limit_rate_cap` flag on, the persisted Metronome
+   * `creditState` must not be read — the per-key Redis fixed-window counter
+   * (compared to the key's cap) is authoritative; with it off, from
+   * `creditState === "capped"`. Fails open (not capped) when the flag is on but
+   * the billing cycle can't be resolved or the counter read errors.
+   */
+  private static async computeSpendCappedByModelId(
+    auth: Authenticator,
+    keys: KeyResource[]
+  ): Promise<Map<ModelId, boolean>> {
+    const featureFlags = await getFeatureFlags(auth);
+    const spendCapEnabled = featureFlags.includes(
+      "enforce_user_spend_limit_rate_cap"
+    );
+    if (!spendCapEnabled) {
+      return new Map(keys.map((key) => [key.id, key.creditState === "capped"]));
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const bounds = await resolveSpendLimitCycleBounds(workspace);
+    if (!bounds) {
+      // No resolvable billing cycle: nothing to enforce against (fail-open).
+      return new Map(keys.map((key) => [key.id, false]));
+    }
+
+    // Redis reads (not database queries), one per key of the workspace.
+    const entries = await concurrentExecutor(
+      keys,
+      async (key) => {
+        const cap = key.monthlyCapAwuCredits;
+        if (cap === null) {
+          return [key.id, false] as const;
+        }
+        const result = await getFixedWindowCount({
+          key: makeApiKeySpendLimitAwuCreditsRateLimitKey(key.id),
+          bounds,
+        });
+        // Compare in microCredits to match enforcement exactly
+        // (isApiKeySpendLimitRateCapReached).
+        const capped =
+          result.isOk() && result.value >= roundCreditsToMicroCredits(cap);
+        return [key.id, capped] as const;
+      },
+      { concurrency: 8 }
+    );
+    return new Map(entries);
   }
 
   /**
@@ -467,10 +530,17 @@ export class KeyResource extends BaseResource<KeyModel> {
     keys: KeyResource[],
     requestingUserModelId: ModelId
   ): Promise<KeyType[]> {
-    const spacesByKeyModelId = await this.listSpacesByKeyModelId(auth, keys);
+    const [spacesByKeyModelId, spendCappedByModelId] = await Promise.all([
+      this.listSpacesByKeyModelId(auth, keys),
+      this.computeSpendCappedByModelId(auth, keys),
+    ]);
 
     return keys.map((key) =>
-      key.toJSON(requestingUserModelId, spacesByKeyModelId.get(key.id) ?? [])
+      key.toJSON(
+        requestingUserModelId,
+        spacesByKeyModelId.get(key.id) ?? [],
+        spendCappedByModelId.get(key.id) ?? false
+      )
     );
   }
 
