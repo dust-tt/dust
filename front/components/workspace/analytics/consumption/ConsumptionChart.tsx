@@ -178,6 +178,7 @@ interface ConsumptionDailyTooltipProps
   partialTimestamp: number | undefined;
   currentBucketLabel: string;
   showActiveUsers: boolean;
+  totalUsers: number | null;
 }
 
 function ConsumptionDailyTooltip({
@@ -188,6 +189,7 @@ function ConsumptionDailyTooltip({
   partialTimestamp,
   currentBucketLabel,
   showActiveUsers,
+  totalUsers,
 }: ConsumptionDailyTooltipProps) {
   const datum = payload?.[0]?.payload;
   if (!active || !isConsumptionTimeseriesPoint(datum)) {
@@ -228,6 +230,10 @@ function ConsumptionDailyTooltip({
                 label: "Active users",
                 value: activeUsers,
                 colorClassName: ACTIVE_USERS_COLOR,
+                percent:
+                  totalUsers !== null && totalUsers > 0
+                    ? Math.round((activeUsers / totalUsers) * 100)
+                    : null,
               },
             ]
           : []),
@@ -254,6 +260,7 @@ interface ConsumptionDailyChartProps {
   isTimeseriesError: boolean;
   emptyMessage: string;
   showActiveUsers: boolean;
+  totalUsers: number | null;
   additionalControls?: ReactNode;
 }
 
@@ -263,6 +270,7 @@ export function ConsumptionDailyChart({
   isTimeseriesError,
   emptyMessage,
   showActiveUsers,
+  totalUsers,
   additionalControls,
 }: ConsumptionDailyChartProps) {
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
@@ -315,6 +323,7 @@ export function ConsumptionDailyChart({
         partialTimestamp={partialTimestamp}
         currentBucketLabel={currentBucketLabel}
         showActiveUsers={showActiveUsers}
+        totalUsers={totalUsers}
       />
     ),
     [
@@ -323,6 +332,7 @@ export function ConsumptionDailyChart({
       partialTimestamp,
       currentBucketLabel,
       showActiveUsers,
+      totalUsers,
     ]
   );
 
@@ -514,6 +524,8 @@ function WorkspaceConsumptionDailyChart({
   analyticsScope,
   disabled,
 }: ConsumptionChartProps) {
+  const showActiveUsers =
+    analyticsScope?.kind !== "personal" && filter?.users?.length !== 1;
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
       workspaceId,
@@ -526,6 +538,13 @@ function WorkspaceConsumptionDailyChart({
       analyticsScope,
       disabled,
     });
+  const { overview } = useConsumptionOverview({
+    workspaceId,
+    period,
+    filter,
+    analyticsScope,
+    disabled: disabled || !showActiveUsers,
+  });
 
   return (
     <ConsumptionDailyChart
@@ -533,9 +552,8 @@ function WorkspaceConsumptionDailyChart({
       isTimeseriesLoading={isTimeseriesLoading}
       isTimeseriesError={Boolean(isTimeseriesError)}
       emptyMessage="No consumption over this period."
-      showActiveUsers={
-        analyticsScope?.kind !== "personal" && filter?.users?.length !== 1
-      }
+      showActiveUsers={showActiveUsers}
+      totalUsers={overview?.members.total ?? null}
     />
   );
 }
