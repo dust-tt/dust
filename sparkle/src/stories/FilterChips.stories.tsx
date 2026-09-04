@@ -84,14 +84,12 @@ export const Secondary: Story = {
 
 /**
  * Standalone **FilterChip** with caller-controlled selection, as used for side
- * panel toggles: icon plus label, the selected one in `secondary` style, and an
- * icon-only chip carrying its label as a tooltip. Every chip exposes
- * `aria-pressed`.
+ * panel toggles: icon plus label, one selected in `secondary` style, and an
+ * icon-only chip with its label as a tooltip.
  * @summary Controlled single chips with icons.
  */
 export const SingleChips: Story = {
-  // Renders FilterChip directly: row args are irrelevant, and the manifest skips it so the story
-  // is not attributed to FilterChips.
+  // Renders FilterChip on its own, so keep it out of the FilterChips manifest.
   tags: ["!manifest"],
   args: { filters: [] },
   render: () => (
