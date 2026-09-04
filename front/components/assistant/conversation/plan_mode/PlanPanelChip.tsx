@@ -11,17 +11,17 @@ import { PLAN_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import { FilterChip, ListSelect } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
-interface PlanPanelButtonProps {
+interface PlanPanelChipProps {
   conversationId: string;
   workspaceId: string;
 }
 
 // Title bar entry point for the plan panel: shows progress and toggles the panel. Mount it keyed
 // by conversation so the presence tracking below restarts on navigation.
-export function PlanPanelButton({
+export function PlanPanelChip({
   conversationId,
   workspaceId,
-}: PlanPanelButtonProps) {
+}: PlanPanelChipProps) {
   const { hasFeature } = useFeatureFlags();
   const isPlanModeEnabled = hasFeature("plan_mode");
   const { content, isPlanLoading } = usePlanFile({
