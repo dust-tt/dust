@@ -4,6 +4,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { formatCreditValue, toolUsageLabel } from "@app/lib/client/credits";
 import { usePokeMessageConsumption } from "@app/poke/swr/message_consumption";
 import type {
+  AgentMessageConsumptionDetailsWithModels,
   AgentMessageConsumptionModelDetails,
   AgentMessageConsumptionToolDetails,
 } from "@app/types/assistant/agent_message_consumption";
@@ -170,6 +171,160 @@ function ToolRow({ tool, totalCredits }: ToolRowProps) {
   );
 }
 
+interface MessageConsumptionBreakdownProps {
+  details: AgentMessageConsumptionDetailsWithModels;
+  directMessageCredits: number;
+  isDark: boolean;
+  messageId: string;
+  totalCredits: number;
+}
+
+function MessageConsumptionBreakdown({
+  details,
+  directMessageCredits,
+  isDark,
+  messageId,
+  totalCredits,
+}: MessageConsumptionBreakdownProps) {
+  const rankedTools = [...details.tools].sort(
+    (left, right) => right.attributedCredits - left.attributedCredits
+  );
+  const toolCredits = rankedTools.reduce(
+    (total, tool) => total + tool.attributedCredits,
+    0
+  );
+  const attributionDeltaCredits =
+    totalCredits - details.agentWorkCredits - toolCredits;
+  const isReconciled = Math.abs(attributionDeltaCredits) < 0.000001;
+
+  return (
+    <>
+      <section
+        aria-labelledby={`message-${messageId}-attribution-heading`}
+        className="flex flex-col gap-4"
+      >
+        <h3
+          id={`message-${messageId}-attribution-heading`}
+          className="text-sm font-semibold text-foreground"
+        >
+          Attribution
+        </h3>
+
+        {totalCredits > 0 && (
+          <div className="flex flex-col gap-3">
+            <ProgressBar
+              className="h-2 w-full bg-background"
+              values={[
+                {
+                  value: details.agentWorkCredits,
+                  className: "bg-highlight-500",
+                },
+                {
+                  value: toolCredits,
+                  className: "bg-primary-400",
+                },
+              ]}
+              radius="xs"
+              label="Message credits split between agent work and tools"
+            />
+            <dl className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="size-2 rounded-full bg-highlight-500" />
+                  Context and reasoning
+                </dt>
+                <dd className="text-sm font-semibold tabular-nums text-foreground">
+                  {formatCreditValue(details.agentWorkCredits)}
+                  &nbsp;
+                  <span className="font-normal text-muted-foreground">
+                    {formatShare(details.agentWorkCredits, totalCredits)}
+                  </span>
+                </dd>
+              </div>
+              <div className="flex flex-col gap-1">
+                <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="size-2 rounded-full bg-primary-400" />
+                  Tools
+                </dt>
+                <dd className="text-sm font-semibold tabular-nums text-foreground">
+                  {formatCreditValue(toolCredits)}&nbsp;
+                  <span className="font-normal text-muted-foreground">
+                    {formatShare(toolCredits, totalCredits)}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+            {!isReconciled && (
+              <p className="text-xs text-warning">
+                Attribution differs from the authoritative bill by&nbsp;
+                {formatCreditValue(attributionDeltaCredits)}.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {rankedTools.length > 0 && (
+        <section
+          aria-labelledby={`message-${messageId}-tools-heading`}
+          className="flex flex-col gap-3 border-t border-border pt-5"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h3
+                id={`message-${messageId}-tools-heading`}
+                className="text-sm font-semibold text-foreground"
+              >
+                Tools
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {rankedTools.length} tool
+              {pluralize(rankedTools.length)}&nbsp;·&nbsp;
+              {toolUsageLabel(
+                rankedTools.reduce((total, tool) => total + tool.callCount, 0)
+              )}
+            </p>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {rankedTools.map((tool) => (
+              <ToolRow
+                key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
+                tool={tool}
+                totalCredits={totalCredits}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {details.models.length > 0 && (
+        <section
+          aria-labelledby={`message-${messageId}-models-heading`}
+          className="flex flex-col gap-3 border-t border-border pt-5"
+        >
+          <h3
+            id={`message-${messageId}-models-heading`}
+            className="text-sm font-semibold text-foreground"
+          >
+            By model
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {details.models.map((model) => (
+              <ModelRow
+                key={`${model.providerId}:${model.modelId}`}
+                directMessageCredits={directMessageCredits}
+                isDark={isDark}
+                model={model}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  );
+}
+
 interface PokeMessageConsumptionInspectorProps {
   billedCredits: number | null;
   conversationId: string;
@@ -221,25 +376,6 @@ export function PokeMessageConsumptionInspector({
   );
   const hasAuthoritativeBill =
     directMessageCredits !== null || resolvedSubAgentBilledCredits > 0;
-  const details = consumption?.details;
-  const rankedTools = details
-    ? [...details.tools].sort(
-        (left, right) => right.attributedCredits - left.attributedCredits
-      )
-    : [];
-  const toolCredits = rankedTools.reduce(
-    (total, tool) => total + tool.attributedCredits,
-    0
-  );
-  const explainedCredits = details
-    ? details.agentWorkCredits + toolCredits
-    : null;
-  const attributionDeltaCredits =
-    explainedCredits === null ? null : totalCredits - explainedCredits;
-  const isReconciled =
-    attributionDeltaCredits !== null &&
-    Math.abs(attributionDeltaCredits) < 0.000001;
-
   const contentId = `message-${messageId}-consumption-details`;
   const triggerId = `message-${messageId}-consumption-trigger`;
 
@@ -373,144 +509,14 @@ export function PokeMessageConsumptionInspector({
                   </div>
                 ) : (
                   <div className="flex flex-col gap-5 p-4">
-                    {details ? (
-                      <>
-                        <section
-                          aria-labelledby={`message-${messageId}-attribution-heading`}
-                          className="flex flex-col gap-4"
-                        >
-                          <h3
-                            id={`message-${messageId}-attribution-heading`}
-                            className="text-sm font-semibold text-foreground"
-                          >
-                            Attribution
-                          </h3>
-
-                          {totalCredits > 0 && (
-                            <div className="flex flex-col gap-3">
-                              <ProgressBar
-                                className="h-2 w-full bg-background"
-                                values={[
-                                  {
-                                    value: details.agentWorkCredits,
-                                    className: "bg-highlight-500",
-                                  },
-                                  {
-                                    value: toolCredits,
-                                    className: "bg-primary-400",
-                                  },
-                                ]}
-                                radius="xs"
-                                label="Message credits split between agent work and tools"
-                              />
-                              <dl className="grid grid-cols-2 gap-3">
-                                <div className="flex flex-col gap-1">
-                                  <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <span className="size-2 rounded-full bg-highlight-500" />
-                                    Context and reasoning
-                                  </dt>
-                                  <dd className="text-sm font-semibold tabular-nums text-foreground">
-                                    {formatCreditValue(
-                                      details.agentWorkCredits
-                                    )}
-                                    &nbsp;
-                                    <span className="font-normal text-muted-foreground">
-                                      {formatShare(
-                                        details.agentWorkCredits,
-                                        totalCredits
-                                      )}
-                                    </span>
-                                  </dd>
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <span className="size-2 rounded-full bg-primary-400" />
-                                    Tools
-                                  </dt>
-                                  <dd className="text-sm font-semibold tabular-nums text-foreground">
-                                    {formatCreditValue(toolCredits)}&nbsp;
-                                    <span className="font-normal text-muted-foreground">
-                                      {formatShare(toolCredits, totalCredits)}
-                                    </span>
-                                  </dd>
-                                </div>
-                              </dl>
-                              {!isReconciled &&
-                                attributionDeltaCredits !== null && (
-                                  <p className="text-xs text-warning">
-                                    Attribution differs from the authoritative
-                                    bill by&nbsp;
-                                    {formatCreditValue(attributionDeltaCredits)}
-                                    .
-                                  </p>
-                                )}
-                            </div>
-                          )}
-                        </section>
-
-                        {rankedTools.length > 0 && (
-                          <section
-                            aria-labelledby={`message-${messageId}-tools-heading`}
-                            className="flex flex-col gap-3 border-t border-border pt-5"
-                          >
-                            <div className="flex flex-wrap items-end justify-between gap-2">
-                              <div>
-                                <h3
-                                  id={`message-${messageId}-tools-heading`}
-                                  className="text-sm font-semibold text-foreground"
-                                >
-                                  Tools
-                                </h3>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                {rankedTools.length} tool
-                                {pluralize(rankedTools.length)}&nbsp;·&nbsp;
-                                {toolUsageLabel(
-                                  rankedTools.reduce(
-                                    (total, tool) => total + tool.callCount,
-                                    0
-                                  )
-                                )}
-                              </p>
-                            </div>
-                            <ul className="flex flex-col gap-2">
-                              {rankedTools.map((tool) => (
-                                <ToolRow
-                                  key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
-                                  tool={tool}
-                                  totalCredits={totalCredits}
-                                />
-                              ))}
-                            </ul>
-                          </section>
-                        )}
-
-                        {details.models.length > 0 && (
-                          <section
-                            aria-labelledby={`message-${messageId}-models-heading`}
-                            className="flex flex-col gap-3 border-t border-border pt-5"
-                          >
-                            <h3
-                              id={`message-${messageId}-models-heading`}
-                              className="text-sm font-semibold text-foreground"
-                            >
-                              By model
-                            </h3>
-                            <ul className="flex flex-col gap-2">
-                              {details.models.map((model) => (
-                                <ModelRow
-                                  key={`${model.providerId}:${model.modelId}`}
-                                  directMessageCredits={
-                                    directMessageCredits ?? 0
-                                  }
-                                  isDark={isDark}
-                                  model={model}
-                                />
-                              ))}
-                            </ul>
-                          </section>
-                        )}
-                      </>
+                    {consumption?.details ? (
+                      <MessageConsumptionBreakdown
+                        details={consumption.details}
+                        directMessageCredits={directMessageCredits ?? 0}
+                        isDark={isDark}
+                        messageId={messageId}
+                        totalCredits={totalCredits}
+                      />
                     ) : (
                       <div className="flex flex-col gap-1 rounded-xl border border-border bg-background p-3">
                         <p className="text-sm font-medium text-foreground">
