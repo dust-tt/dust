@@ -353,6 +353,13 @@ describe("publishFrameFromSource", () => {
       gcsSourceDirectoryPath,
       manifestContent: manifestWithDomains,
     });
+    // The workspace layer applies to Pod sandboxes too, so a domain it
+    // already allows must not become a redundant Pod request.
+    const workspacePolicyPath = `w/${workspace.sId}/sandbox-egress-policy.json`;
+    fileStorageMock.setObject(
+      workspacePolicyPath,
+      JSON.stringify({ allowedDomains: ["api.stripe.com"] })
+    );
 
     const result = await publishFrameFromSource(auth, {
       conversation: conversation.toJSON(),
@@ -362,16 +369,80 @@ describe("publishFrameFromSource", () => {
 
     assert(result.isOk());
     assert(result.value.kind === "v2");
-    expect(result.value.egressDomains).toMatchObject({
+    expect(result.value.egressDomains).toEqual({
       kind: "filed",
       scope: "pod",
+      requested: ["*.stripe.com"],
+      alreadyAllowed: ["api.stripe.com"],
     });
     expect(
       requestedDomainsAt(`w/${workspace.sId}/sandboxes/${projectId}.json`)
-    ).toEqual(["api.stripe.com", "*.stripe.com"]);
-    expect(
-      fileStorageMock.getObject(`w/${workspace.sId}/sandbox-egress-policy.json`)
-    ).toBeUndefined();
+    ).toEqual(["*.stripe.com"]);
+    expect(requestedDomainsAt(workspacePolicyPath)).toEqual([]);
+  });
+
+  it("reports domains the workspace already allows without re-requesting them", async () => {
+    const { auth, conversation, manifestPath, workspace } = await setup({
+      manifestContent: manifestWithDomains,
+    });
+    const policyPath = `w/${workspace.sId}/sandbox-egress-policy.json`;
+    fileStorageMock.setObject(
+      policyPath,
+      JSON.stringify({ allowedDomains: ["api.stripe.com"] })
+    );
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toEqual({
+      kind: "filed",
+      scope: "workspace",
+      requested: ["*.stripe.com"],
+      alreadyAllowed: ["api.stripe.com"],
+    });
+    expect(requestedDomainsAt(policyPath)).toEqual(["*.stripe.com"]);
+  });
+
+  it("publishes but reports the domains as failed when the scope is at its pending cap", async () => {
+    const { auth, conversation, manifestPath, workspace } = await setup({
+      manifestContent: manifestWithDomains,
+    });
+    const policyPath = `w/${workspace.sId}/sandbox-egress-policy.json`;
+    fileStorageMock.setObject(
+      policyPath,
+      JSON.stringify({
+        allowedDomains: [],
+        requestedDomains: Array.from(
+          { length: SANDBOX_POLICY_MAX_REQUESTED_DOMAINS },
+          (_, index) => ({
+            domain: `service-${index}.example.com`,
+            requestedAtMs: 1,
+          })
+        ),
+      })
+    );
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "failed",
+      domains: ["api.stripe.com", "*.stripe.com"],
+      message: expect.stringContaining("pending domain requests"),
+    });
+    expect(requestedDomainsAt(policyPath)).toHaveLength(
+      SANDBOX_POLICY_MAX_REQUESTED_DOMAINS
+    );
   });
 
   it("reports no domain requests when the manifest declares none", async () => {
