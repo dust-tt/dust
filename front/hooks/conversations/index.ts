@@ -10,6 +10,7 @@ export {
   useConversationMarkAsRead,
 } from "./useConversationMarkAsRead";
 export {
+  useConversationMessage,
   useConversationMessageAction,
   useConversationMessages,
 } from "./useConversationMessages";
