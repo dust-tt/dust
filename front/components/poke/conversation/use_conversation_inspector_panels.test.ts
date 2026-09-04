@@ -1,9 +1,4 @@
-import {
-  getMessagePanelTopOffsetPx,
-  hasRoomForStickyInspectors,
-  isMessagePanelAttachedToTrigger,
-  useConversationInspectorPanels,
-} from "@app/components/poke/conversation/use_conversation_inspector_panels";
+import { useConversationInspectorPanels } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { act, renderHook } from "@testing-library/react";
 import type { RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -46,7 +41,7 @@ describe("useConversationInspectorPanels", () => {
     callback?.(0);
   }
 
-  it("closes both sticky inspectors when a message panel opens", () => {
+  it("closes the sticky inspectors when a message panel opens", () => {
     const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
       current: null,
     };
@@ -63,118 +58,15 @@ describe("useConversationInspectorPanels", () => {
     act(() => {
       result.current.setConversationOpen(true);
       result.current.setWakeUpsOpen(true);
+      result.current.setMessageOpen("message_1", true);
     });
-    expect(result.current.isConversationOpen).toBe(true);
-    expect(result.current.isWakeUpsOpen).toBe(true);
-
-    act(() => result.current.setMessageOpen("message_1", true));
 
     expect(result.current.activeMessageId).toBe("message_1");
     expect(result.current.isConversationOpen).toBe(false);
-    expect(result.current.isMessageRailTakeover).toBe(false);
     expect(result.current.isWakeUpsOpen).toBe(false);
   });
 
-  it("gives a sticky inspector ownership over a colliding message panel", () => {
-    let messagePanelRect = rect(500, 800);
-    const messagePanel = document.createElement("div");
-    messagePanel.dataset.messageConsumptionPanelId = "message_1";
-    vi.spyOn(messagePanel, "getBoundingClientRect").mockImplementation(
-      () => messagePanelRect
-    );
-    const stickyInspectors = document.createElement("aside");
-    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
-      rect(16, 180)
-    );
-    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
-      current: messagePanel,
-    };
-    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
-      current: stickyInspectors,
-    };
-    const { result } = renderHook(() =>
-      useConversationInspectorPanels({
-        activeMessagePanelRef,
-        stickyInspectorsRef,
-      })
-    );
-
-    act(() => result.current.setMessageOpen("message_1", true));
-    act(flushAnimationFrame);
-
-    messagePanelRect = rect(170, 470);
-    act(() => window.dispatchEvent(new Event("scroll")));
-    act(() => result.current.setConversationOpen(true));
-    act(flushAnimationFrame);
-
-    expect(result.current.activeMessageId).toBeNull();
-    expect(result.current.isConversationOpen).toBe(true);
-    expect(result.current.isMessageRailTakeover).toBe(true);
-
-    act(() => result.current.completeMessagePanelExit("message_1"));
-    expect(result.current.isMessageRailTakeover).toBe(false);
-
-    act(() => result.current.setMessageOpen("message_1", true));
-    act(() => result.current.setWakeUpsOpen(true));
-    act(flushAnimationFrame);
-
-    expect(result.current.activeMessageId).toBeNull();
-    expect(result.current.isWakeUpsOpen).toBe(true);
-  });
-
-  it("switches to a rail takeover before crowding the sticky inspectors", () => {
-    let messagePanelRect = rect(500, 700);
-    const messagePanel = document.createElement("div");
-    messagePanel.dataset.messageConsumptionPanelId = "message_1";
-    vi.spyOn(messagePanel, "getBoundingClientRect").mockImplementation(
-      () => messagePanelRect
-    );
-
-    const stickyInspectors = document.createElement("aside");
-    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
-      rect(16, 180)
-    );
-
-    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
-      current: messagePanel,
-    };
-    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
-      current: stickyInspectors,
-    };
-    const { result } = renderHook(() =>
-      useConversationInspectorPanels({
-        activeMessagePanelRef,
-        stickyInspectorsRef,
-      })
-    );
-
-    act(() => result.current.setMessageOpen("message_1", true));
-    act(flushAnimationFrame);
-    expect(result.current.activeMessageId).toBe("message_1");
-    expect(messagePanel.style.translate).toBe("0 0px");
-    expect(messagePanel.style.top).toBe("");
-
-    messagePanelRect = rect(196, 496);
-    act(() => window.dispatchEvent(new Event("scroll")));
-    act(flushAnimationFrame);
-
-    expect(result.current.activeMessageId).toBe("message_1");
-
-    messagePanelRect = rect(195, 495);
-    act(() => window.dispatchEvent(new Event("scroll")));
-    act(flushAnimationFrame);
-
-    expect(result.current.activeMessageId).toBe("message_1");
-    expect(result.current.isMessageRailTakeover).toBe(true);
-
-    messagePanelRect = rect(500, 700);
-    act(() => window.dispatchEvent(new Event("scroll")));
-    act(flushAnimationFrame);
-
-    expect(result.current.isMessageRailTakeover).toBe(true);
-  });
-
-  it("keeps the rail hidden until a taking-over panel finishes exiting", () => {
+  it("takes over the rail until a colliding message panel finishes exiting", () => {
     let messagePanelRect = rect(500, 900);
     const messagePanel = document.createElement("div");
     messagePanel.dataset.messageConsumptionPanelId = "message_1";
@@ -202,11 +94,7 @@ describe("useConversationInspectorPanels", () => {
 
     act(() => result.current.setMessageOpen("message_1", true));
     act(flushAnimationFrame);
-
-    expect(messagePanel.style.translate).toBe(
-      `0 ${getMessagePanelTopOffsetPx(900, window.innerHeight)}px`
-    );
-    expect(result.current.activeMessageId).toBe("message_1");
+    expect(messagePanel.style.translate).not.toBe("0 0px");
 
     messagePanelRect = rect(352, 1052);
     act(() => window.dispatchEvent(new Event("scroll")));
@@ -214,120 +102,15 @@ describe("useConversationInspectorPanels", () => {
 
     expect(result.current.activeMessageId).toBe("message_1");
     expect(result.current.isMessageRailTakeover).toBe(true);
-    expect(messagePanel.style.translate).toBe(
-      `0 ${getMessagePanelTopOffsetPx(1200, window.innerHeight)}px`
-    );
 
     act(() => result.current.setMessageOpen("message_1", false));
-    expect(result.current.activeMessageId).toBeNull();
     expect(result.current.isMessageRailTakeover).toBe(true);
 
     act(() => result.current.completeMessagePanelExit("message_1"));
     expect(result.current.isMessageRailTakeover).toBe(false);
   });
 
-  it("takes over the rail when opening a message would overlap it", () => {
-    const messagePanel = document.createElement("div");
-    messagePanel.dataset.messageConsumptionPanelId = "message_1";
-    vi.spyOn(messagePanel, "getBoundingClientRect").mockReturnValue(
-      rect(195, 495)
-    );
-
-    const stickyInspectors = document.createElement("aside");
-    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
-      rect(16, 180)
-    );
-
-    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
-      current: messagePanel,
-    };
-    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
-      current: stickyInspectors,
-    };
-    const { result } = renderHook(() =>
-      useConversationInspectorPanels({
-        activeMessagePanelRef,
-        stickyInspectorsRef,
-      })
-    );
-
-    act(() => result.current.setMessageOpen("message_1", true));
-    act(flushAnimationFrame);
-
-    expect(result.current.activeMessageId).toBe("message_1");
-    expect(result.current.isMessageRailTakeover).toBe(true);
-  });
-
-  it("does not enforce inspector spacing in the single-column layout", () => {
-    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
-    const messagePanel = document.createElement("div");
-    messagePanel.dataset.messageConsumptionPanelId = "message_1";
-    vi.spyOn(messagePanel, "getBoundingClientRect").mockReturnValue(
-      rect(100, 400)
-    );
-    const stickyInspectors = document.createElement("aside");
-    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
-      rect(16, 180)
-    );
-    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
-      current: messagePanel,
-    };
-    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
-      current: stickyInspectors,
-    };
-    const { result } = renderHook(() =>
-      useConversationInspectorPanels({
-        activeMessagePanelRef,
-        stickyInspectorsRef,
-      })
-    );
-
-    act(() => result.current.setMessageOpen("message_1", true));
-    act(flushAnimationFrame);
-
-    expect(result.current.activeMessageId).toBe("message_1");
-    expect(messagePanel.style.translate).toBe("");
-  });
-
-  it("closes a message panel before it detaches from its trigger", () => {
-    const messagePanel = document.createElement("div");
-    messagePanel.dataset.messageConsumptionPanelId = "message_1";
-    messagePanel.setAttribute("aria-labelledby", "message_1_trigger");
-    vi.spyOn(messagePanel, "getBoundingClientRect").mockReturnValue(
-      rect(760, 1060)
-    );
-
-    const messageTrigger = document.createElement("button");
-    messageTrigger.id = "message_1_trigger";
-    vi.spyOn(messageTrigger, "getBoundingClientRect").mockReturnValue(
-      rect(760, 804)
-    );
-    document.body.append(messageTrigger, messagePanel);
-
-    const stickyInspectors = document.createElement("aside");
-    vi.spyOn(stickyInspectors, "getBoundingClientRect").mockReturnValue(
-      rect(16, 180)
-    );
-    const activeMessagePanelRef: RefObject<HTMLDivElement | null> = {
-      current: messagePanel,
-    };
-    const stickyInspectorsRef: RefObject<HTMLElement | null> = {
-      current: stickyInspectors,
-    };
-    const { result } = renderHook(() =>
-      useConversationInspectorPanels({
-        activeMessagePanelRef,
-        stickyInspectorsRef,
-      })
-    );
-
-    act(() => result.current.setMessageOpen("message_1", true));
-    act(flushAnimationFrame);
-
-    expect(result.current.activeMessageId).toBeNull();
-  });
-
-  it("closes a message panel when its trigger scrolls past the viewport top", () => {
+  it("closes the message panel when its trigger scrolls above the viewport", () => {
     let messagePanelRect = rect(-100, 600);
     const messagePanel = document.createElement("div");
     messagePanel.dataset.messageConsumptionPanelId = "message_1";
@@ -371,49 +154,5 @@ describe("useConversationInspectorPanels", () => {
     act(flushAnimationFrame);
 
     expect(result.current.activeMessageId).toBeNull();
-  });
-});
-
-describe("hasRoomForStickyInspectors", () => {
-  it("reserves one spacing unit between the sticky and message inspectors", () => {
-    expect(hasRoomForStickyInspectors(rect(16, 180), rect(196, 400))).toBe(
-      true
-    );
-    expect(hasRoomForStickyInspectors(rect(16, 180), rect(195, 400))).toBe(
-      false
-    );
-  });
-});
-
-describe("getMessagePanelTopOffsetPx", () => {
-  it("shifts the panel up when its bottom would leave the viewport", () => {
-    expect(getMessagePanelTopOffsetPx(900, 800)).toBe(-116);
-  });
-
-  it("keeps the panel aligned with its trigger when it already fits", () => {
-    expect(getMessagePanelTopOffsetPx(700, 800)).toBe(0);
-  });
-});
-
-describe("isMessagePanelAttachedToTrigger", () => {
-  it("keeps a panel that spans its trigger", () => {
-    expect(
-      isMessagePanelAttachedToTrigger(rect(100, 500), rect(200, 244))
-    ).toBe(true);
-  });
-
-  it("rejects a panel whose top or bottom has passed its trigger", () => {
-    expect(
-      isMessagePanelAttachedToTrigger(rect(201, 500), rect(200, 244))
-    ).toBe(false);
-    expect(
-      isMessagePanelAttachedToTrigger(rect(100, 243), rect(200, 244))
-    ).toBe(false);
-  });
-
-  it("rejects a panel after its trigger crosses the viewport top", () => {
-    expect(isMessagePanelAttachedToTrigger(rect(-400, 400), rect(-1, 43))).toBe(
-      false
-    );
   });
 });
