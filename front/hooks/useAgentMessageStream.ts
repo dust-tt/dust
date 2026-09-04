@@ -756,8 +756,20 @@ export function useAgentMessageStream({
           );
           break;
 
-        case "agent_credit_spend_checkpoint_reached":
+        case "agent_credit_spend_checkpoint_reached": {
+          const thresholdData = eventPayload.data;
+          mapMessagesWithAutoScroll((m) =>
+            isAgentMessageWithStreaming(m) && m.sId === sId
+              ? {
+                  ...m,
+                  creditSpendCheckpointCrossed: {
+                    thresholdAwuCredits: thresholdData.thresholdAwuCredits,
+                  },
+                }
+              : m
+          );
           break;
+        }
 
         case "agent_generation_cancelled": {
           isStreamTerminated.current = true;

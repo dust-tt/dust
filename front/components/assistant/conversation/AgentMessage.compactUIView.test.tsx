@@ -52,6 +52,13 @@ vi.mock("@app/hooks/useAgentMessageStream", () => ({
   useAgentMessageStream: () => ({ shouldStream: false, streamError: null }),
 }));
 
+vi.mock("@app/lib/swr/credit_spend_checkpoint", () => ({
+  useResolveCreditSpendCheckpointPause: () => ({
+    resolve: vi.fn(),
+    submittingDecision: null,
+  }),
+}));
+
 vi.mock(
   "@app/components/assistant/conversation/BlockedActionsProvider",
   () => ({

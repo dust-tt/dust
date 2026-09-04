@@ -9,6 +9,7 @@ import { markdownCitationToAttachmentCitation } from "@app/components/assistant/
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { CreditCostPopover } from "@app/components/assistant/conversation/CreditCostPopover";
+import { CreditSpendCheckpointPausedCard } from "@app/components/assistant/conversation/CreditSpendCheckpointPausedCard";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -69,6 +70,7 @@ import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { LinkWrapper } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useResolveCreditSpendCheckpointPause } from "@app/lib/swr/credit_spend_checkpoint";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -1251,6 +1253,45 @@ function AgentMessageContent({
 
   const blockedAction = getFirstBlockedActionForMessage(sId);
 
+  // The persisted flag survives a refresh; the streamed one is only there for instant feedback
+  // right when the pause happens, ahead of the persisted flag catching up.
+  const [creditSpendCheckpointResolved, setCreditSpendCheckpointResolved] =
+    useState(false);
+  const showCreditSpendCheckpointPausedCard =
+    !creditSpendCheckpointResolved &&
+    (agentMessage.pausedAtCreditSpendCheckpoint ||
+      !!agentMessage.creditSpendCheckpointCrossed) &&
+    agentMessage.status === "created";
+
+  const { resolve: resolveCreditSpendCheckpoint, submittingDecision } =
+    useResolveCreditSpendCheckpointPause({
+      owner,
+      conversationId,
+      messageId: sId,
+    });
+
+  const handleResolveCreditSpendCheckpoint = useCallback(
+    async (decision: "continue" | "decline") => {
+      const { success } = await resolveCreditSpendCheckpoint(decision);
+      if (success) {
+        setCreditSpendCheckpointResolved(true);
+      }
+    },
+    [resolveCreditSpendCheckpoint]
+  );
+
+  const creditSpendCheckpointPausedElement =
+    showCreditSpendCheckpointPausedCard ? (
+      <CreditSpendCheckpointPausedCard
+        thresholdAwuCredits={
+          agentMessage.creditSpendCheckpointCrossed?.thresholdAwuCredits ?? null
+        }
+        submittingDecision={submittingDecision}
+        onContinue={() => void handleResolveCreditSpendCheckpoint("continue")}
+        onDecline={() => void handleResolveCreditSpendCheckpoint("decline")}
+      />
+    ) : null;
+
   const retryHandlerWithResetState = useCallback(
     // Conversation and message might be different than the current ones in case of subagents.
     async (conversationAndMessage: {
@@ -1466,6 +1507,7 @@ function AgentMessageContent({
           isLastMessage={isLastMessage}
         />
         {blockedActionElement}
+        {creditSpendCheckpointPausedElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
           collapsible={uiView === "compact"}
