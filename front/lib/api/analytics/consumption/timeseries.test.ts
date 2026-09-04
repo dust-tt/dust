@@ -209,6 +209,26 @@ describe("fetchConsumptionTimeseries", () => {
     expect(result.value.workspaceMemberCount).toBe(2);
   });
 
+  it("omits the workspace member count without workspace context", async () => {
+    const { auth, period, workspace } = await setup();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    mockBuckets([]);
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "period",
+      includeWorkspaceContext: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.workspaceMemberCount).toBeNull();
+  });
+
   it("zeroes buckets that have not started yet", async () => {
     const { auth, period } = await setup();
     mockBuckets([

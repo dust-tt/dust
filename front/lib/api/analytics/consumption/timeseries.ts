@@ -59,7 +59,7 @@ export type ConsumptionTimeseries = {
   metric: ConsumptionMetric;
   timezone: string;
   breakdownBy: ConsumptionBreakdownDimension | null;
-  workspaceMemberCount: number;
+  workspaceMemberCount: number | null;
   // In rank order, highest consumption first, with "others" last when present.
   groups: ConsumptionTimeseriesGroup[];
   points: ConsumptionTimeseriesPoint[];
@@ -116,6 +116,7 @@ export async function fetchConsumptionTimeseries(
     breakdownCount = DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
     filter,
     timezone = "UTC",
+    includeWorkspaceContext = true,
   }: {
     period: ConsumptionPeriod;
     granularity: ConsumptionGranularity;
@@ -125,6 +126,7 @@ export async function fetchConsumptionTimeseries(
     breakdownCount?: number;
     filter?: ConsumptionScopeFilter;
     timezone?: string;
+    includeWorkspaceContext?: boolean;
   }
 ): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
@@ -148,10 +150,13 @@ export async function fetchConsumptionTimeseries(
     return timeseriesResult;
   }
 
-  const workspaceMemberCount =
-    await MembershipResource.countActiveMembersForWorkspace({
-      workspace: auth.getNonNullableWorkspace(),
-    });
+  let workspaceMemberCount: number | null = null;
+  if (includeWorkspaceContext) {
+    workspaceMemberCount =
+      await MembershipResource.countActiveMembersForWorkspace({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+  }
 
   return new Ok({
     ...timeseriesResult.value,
