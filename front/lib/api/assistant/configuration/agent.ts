@@ -457,12 +457,13 @@ export async function getAgentConfigurationForDetails(
   }
 
   // Either not readable (unpublished, not an editor) or filtered out by a space the admin is not a
-  // member of: refetch without the space filtering to redact it.
+  // member of: refetch without the space filtering to redact it. The light variant is enough, the
+  // full one only adds fields the redaction drops.
   const restrictedAgent =
     agent ??
     (await getAgentConfiguration(auth, {
       agentId,
-      variant: "full",
+      variant: "light",
       dangerouslySkipPermissionFiltering: true,
     }));
 

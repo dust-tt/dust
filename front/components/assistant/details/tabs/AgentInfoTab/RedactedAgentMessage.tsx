@@ -77,7 +77,7 @@ export function RedactedAgentMessage({
     const confirmed = await confirm({
       title: "Security notice",
       message:
-        "You are modifying this space's settings while not being a member yourself. " +
+        `You are about to join ${missingSpaceIds.length === 1 ? "this space" : "these spaces"}. ` +
         "This action will be logged for security purposes. Do you want to proceed?",
       validateLabel: "Proceed",
       validateVariant: "warning",
@@ -116,24 +116,20 @@ export function RedactedAgentMessage({
   const showBecomeEditor = needsEditorAccess && missingSpaceIds.length === 0;
 
   return (
-    <ContentMessage title="Not Available" icon={Lock01} size="md">
+    <ContentMessage title="Restricted access" icon={Lock01} size="md">
       <div className="flex flex-col gap-2">
-        <span>
-          You cannot see agent details of this agent, even as an admin.
-        </span>
-        <ul className="list-disc pl-4">
-          {needsEditorAccess && (
-            <li>
-              The agent is not published and you are not one of its editors.
-            </li>
-          )}
-          {missingSpaceNames.length > 0 && (
-            <li>
-              The agent uses restricted spaces you are not a member of:{" "}
-              {missingSpaceNames.join(", ")}.
-            </li>
-          )}
-        </ul>
+        <span>You cannot see the details of this agent.</span>
+        {needsEditorAccess && (
+          <span>
+            The agent is not published and you are not one of its editors.
+          </span>
+        )}
+        {missingSpaceNames.length > 0 && (
+          <span>
+            The agent uses restricted spaces you are not a member of:{" "}
+            {missingSpaceNames.join(", ")}.
+          </span>
+        )}
         {missingSpaceNames.length > 0 && (
           <div>
             <Button

@@ -247,7 +247,7 @@ export function AgentDetailsDropdownMenu({
       />
       {!isRedactedForAdmin && (
         <DropdownMenuItem
-          label={isExporting ? "Exporting..." : "Export to YAML"}
+          label={isExporting ? "Exporting…" : "Export to YAML"}
           onClick={(e) => {
             e.stopPropagation();
             void handleExportToYAML();
