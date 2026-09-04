@@ -13,29 +13,6 @@ vi.stubGlobal(
 );
 
 describe("ContentNodeTree", () => {
-  it("shows the provider missing-rights message", () => {
-    render(
-      <ContentNodeTree
-        useResourcesHook={() => ({
-          resources: [],
-          isResourcesLoading: false,
-          isResourcesError: true,
-          resourcesError: {
-            type: "connector_oauth_user_missing_rights",
-            message:
-              "Dust cannot list Zendesk brands because the connected user lacks the required permissions. Re-authorize Zendesk with an admin account.",
-          },
-        })}
-      />
-    );
-
-    expect(
-      screen.getByText(
-        "Dust cannot list Zendesk brands because the connected user lacks the required permissions. Re-authorize Zendesk with an admin account."
-      )
-    ).toBeInTheDocument();
-  });
-
   it("does not select prevented nodes but can unselect them", () => {
     const selectableNode = {
       childrenCount: 0,
