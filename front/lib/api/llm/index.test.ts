@@ -47,7 +47,7 @@ describe("getWorkspaceFilter", () => {
     expect(flashEndpoints.every((e) => e.host === AGENT_PLATFORM_HOST)).toBe(
       true
     );
-    expect(flashEndpoints.map((e) => e.region)).toEqual(["global"]);
+    expect(flashEndpoints.map((e) => e.region)).toEqual(["eu", "global"]);
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,

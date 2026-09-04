@@ -361,10 +361,10 @@ export const GEMINI_3_6_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
-    // Day-one Vertex AI availability in us-central1; the EU (europe-west1)
-    // agent-platform endpoint is not live yet (mirrors Gemini 3.5 Flash).
+    // EU multi-region availability was verified on 2026-09-04:
+    // https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.
     "us-central1": true,
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
 
@@ -400,10 +400,10 @@ export const GEMINI_3_7_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
-    // Day-one Vertex AI availability in us-central1; the EU (europe-west1)
-    // agent-platform endpoint is not live yet (mirrors Gemini 3.6 Flash).
+    // EU multi-region availability was verified on 2026-09-04:
+    // https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.
     "us-central1": true,
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
 
@@ -440,10 +440,9 @@ export const GEMINI_3_8_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
-    // The native Agent Platform API serves the model globally, but `eu` failed
-    // with "Invalid hostname: eu-aiplatform.googleapis.com" in a live test on
-    // 2026-09-04. Keep EU disabled until the native API supports it.
+    // EU multi-region availability was verified on 2026-09-04:
+    // https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.
     "us-central1": true,
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
