@@ -2,7 +2,6 @@ import {
   reconcileUser,
   reconcileWorkspaceUserCreditStates,
 } from "@app/lib/api/metronome/reconcile_credit_state";
-import { syncDefaultPoolCapAlertsForWorkspace } from "@app/lib/api/workspace/default_user_spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import { getMetronomeContractById } from "@app/lib/metronome/client";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
@@ -54,9 +53,9 @@ type SeatSyncOutcome =
  * propagated as `Err` rather than swallowed, so the caller can surface it.
  *
  * `reconcileUserId` scopes the post-sync credit-state reconcile to a single
- * user (e.g. an auto-upgrade unblocking one member mid-flow) and skips the
- * workspace-wide cap-alert sync. The seat-count push itself is always
- * workspace-wide. When omitted, the whole workspace is reconciled.
+ * user (e.g. an auto-upgrade unblocking one member mid-flow). The seat-count
+ * push itself is always workspace-wide. When omitted, the whole workspace is
+ * reconciled.
  *
  * `forceFreeCreditRevokeCheck` runs the ex-free-seat credit revoke check
  * unconditionally instead of only when the cheap gate signals a change (see
@@ -157,8 +156,8 @@ export async function syncMetronomeSeatCountForWorkspace({
   await heartbeat();
 
   // Single-user scope: reconcile just this user from the live balances now that
-  // their seat credits are assigned. Skips the whole-workspace reconcile and the
-  // cap-alert sync below — the debounced workflow runs the full path as backstop.
+  // their seat credits are assigned. Skips the whole-workspace reconcile below —
+  // the debounced workflow runs the full path as backstop.
   if (reconcileUserId) {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
@@ -209,22 +208,6 @@ export async function syncMetronomeSeatCountForWorkspace({
     "[SeatSync] reconcileWorkspaceUserCreditStates done"
   );
   await heartbeat();
-
-  // Ensure per-seat-type cap alerts exist with the current default pool limit.
-  // Best-effort: a failure here must not fail the seat sync.
-  const alertSyncStartedAt = Date.now();
-  const alertSyncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
-  if (alertSyncResult.isErr()) {
-    logger.warn(
-      { workspaceId, err: alertSyncResult.error.message },
-      "[SeatSync] Failed to sync default pool cap alerts; continuing"
-    );
-  } else {
-    logger.info(
-      { workspaceId, durationMs: Date.now() - alertSyncStartedAt },
-      "[SeatSync] syncDefaultPoolCapAlertsForWorkspace done"
-    );
-  }
 
   logger.info(
     { workspaceId },

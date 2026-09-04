@@ -4,21 +4,8 @@ import {
   syncProgrammaticUsageLimit,
 } from "@app/lib/api/credits/programmatic_usage_limit";
 import { Authenticator } from "@app/lib/auth";
-import * as programmaticCap from "@app/lib/metronome/alerts/programmatic_cap";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/metronome/alerts/programmatic_cap", async () => {
-  const actual = await vi.importActual<typeof programmaticCap>(
-    "@app/lib/metronome/alerts/programmatic_cap"
-  );
-  return {
-    ...actual,
-    upsertMetronomeProgrammaticCapAlerts: vi.fn(),
-    clearMetronomeProgrammaticCapAlerts: vi.fn(),
-  };
-});
 
 vi.mock("@app/lib/api/audit/workos_audit", async () => {
   const actual = await vi.importActual<typeof workosAudit>(
@@ -34,12 +21,6 @@ const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const AUDIT_CONTEXT = { location: "127.0.0.1" };
 
 beforeEach(() => {
-  vi.mocked(
-    programmaticCap.upsertMetronomeProgrammaticCapAlerts
-  ).mockResolvedValue(new Ok(undefined));
-  vi.mocked(
-    programmaticCap.clearMetronomeProgrammaticCapAlerts
-  ).mockResolvedValue(new Ok(undefined));
   vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
 });
 
@@ -54,12 +35,9 @@ describe("syncProgrammaticUsageLimit persistence", () => {
 
     const read = await getProgrammaticUsageLimit(auth);
     expect(read.isOk() && read.value).toBe(500);
-    expect(
-      programmaticCap.upsertMetronomeProgrammaticCapAlerts
-    ).toHaveBeenCalled();
   });
 
-  it("persists 0 as a hard cap and clears alerts (cap of 0 is always depleted — no alert transition can fire)", async () => {
+  it("persists 0 as a hard cap (cap of 0 is always depleted)", async () => {
     const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -69,15 +47,9 @@ describe("syncProgrammaticUsageLimit persistence", () => {
 
     const read = await getProgrammaticUsageLimit(auth);
     expect(read.isOk() && read.value).toBe(0);
-    expect(
-      programmaticCap.upsertMetronomeProgrammaticCapAlerts
-    ).not.toHaveBeenCalled();
-    expect(
-      programmaticCap.clearMetronomeProgrammaticCapAlerts
-    ).toHaveBeenCalled();
   });
 
-  it("resets to 0 (no access) and clears the alerts", async () => {
+  it("resets to 0 (no access)", async () => {
     const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -88,9 +60,6 @@ describe("syncProgrammaticUsageLimit persistence", () => {
 
     const read = await getProgrammaticUsageLimit(auth);
     expect(read.isOk() && read.value).toBe(0);
-    expect(
-      programmaticCap.clearMetronomeProgrammaticCapAlerts
-    ).toHaveBeenCalled();
   });
 
   it("clamps a negative cap to 0", async () => {
@@ -179,24 +148,5 @@ describe("syncProgrammaticUsageLimit audit", () => {
         },
       })
     );
-  });
-
-  it("skips audit when upsert fails", async () => {
-    const workspace = await WorkspaceFactory.creditPriced({
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-    });
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(
-      programmaticCap.upsertMetronomeProgrammaticCapAlerts
-    ).mockResolvedValue(new Err(new Error("metronome down")));
-
-    const result = await syncProgrammaticUsageLimit({
-      auth,
-      monthlyCapCredits: 500,
-      auditContext: AUDIT_CONTEXT,
-    });
-
-    expect(result.isErr()).toBe(true);
-    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
   });
 });

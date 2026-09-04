@@ -12,9 +12,7 @@ import {
 } from "@app/lib/credits/units";
 import {
   CRITICAL_BALANCE_OFFSET,
-  clearMetronomeProgrammaticCapAlerts,
   LOW_BALANCE_OFFSET,
-  upsertMetronomeProgrammaticCapAlerts,
   WARNING_BALANCE_RATIO,
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -55,9 +53,8 @@ export async function getProgrammaticUsageLimit(
 /**
  * Set the workspace's programmatic usage monthly cap.
  *
- * Persists the cap on `credit_usage_configurations` (the source of truth), then
- * syncs the Metronome programmatic cap alerts from it (positive cap → upsert;
- * 0 → clear). Enforcement reads the cap from the Redis rate-limiter counter at
+ * Persists the cap on `credit_usage_configurations` (the source of truth).
+ * Enforcement reads the cap from the Redis rate-limiter counter at
  * message-send time.
  *
  * The cap is non-nullable: 0 blocks all programmatic access, a positive value
@@ -79,10 +76,9 @@ export async function syncProgrammaticUsageLimit({
     );
   }
 
-  // Persist the admin's intent first: the credit-usage configuration column is
-  // the source of truth; the Metronome alerts below are derived enforcement (a
-  // failed sync can be retried and re-derives from this value). The config row
-  // is created lazily, so upsert it. Negative inputs are clamped to 0.
+  // Persist the admin's intent on the credit-usage configuration column, the
+  // source of truth the Redis rate-limiter reads at enforcement time. The
+  // config row is created lazily, so upsert it. Negative inputs are clamped to 0.
   const normalizedCapCredits = Math.max(0, monthlyCapCredits);
   const existingConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
@@ -98,27 +94,6 @@ export async function syncProgrammaticUsageLimit({
       usageCapCredits: null,
       programmaticMonthlyCapAwuCredits: normalizedCapCredits,
     });
-  }
-
-  // Alerts only make sense for a positive cap: a cap of 0 means usage is
-  // always fully depleted, so no threshold transition can ever fire.
-  const alertResult =
-    normalizedCapCredits > 0
-      ? await upsertMetronomeProgrammaticCapAlerts({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          workspaceId: workspace.sId,
-          monthlyCapCredits: normalizedCapCredits,
-        })
-      : await clearMetronomeProgrammaticCapAlerts({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          workspaceId: workspace.sId,
-        });
-  if (alertResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to sync Metronome programmatic cap alerts: ${alertResult.error.message}`
-      )
-    );
   }
 
   void emitAuditLogEvent({
