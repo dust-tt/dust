@@ -58,9 +58,7 @@ export function FramePublicationSection({
           </h3>
           <Tree isBoxed>
             {renderSourceFileTree(
-              buildSourceFileTree(
-                publication.sourceFiles.map((sourceFile) => sourceFile.path)
-              )
+              publication.sourceFiles.map((sourceFile) => sourceFile.path)
             )}
           </Tree>
 
@@ -96,61 +94,33 @@ export function FramePublicationSection({
   );
 }
 
-interface SourceFileTreeNode {
-  name: string;
-  path: string;
-  children: SourceFileTreeNode[];
-}
-
-function buildSourceFileTree(paths: string[]): SourceFileTreeNode[] {
-  const root: SourceFileTreeNode = { name: "", path: "", children: [] };
-  const nodesByPath = new Map<string, SourceFileTreeNode>([["", root]]);
-
+// Directories first, then files, each alphabetically.
+function renderSourceFileTree(paths: string[]): React.ReactNode {
+  const directories = new Map<string, string[]>();
+  const files: string[] = [];
   for (const path of paths) {
-    let parent = root;
-    let currentPath = "";
-    for (const segment of path.split("/")) {
-      currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-      let node = nodesByPath.get(currentPath);
-      if (!node) {
-        node = { name: segment, path: currentPath, children: [] };
-        nodesByPath.set(currentPath, node);
-        parent.children.push(node);
-      }
-      parent = node;
+    const slashIndex = path.indexOf("/");
+    if (slashIndex === -1) {
+      files.push(path);
+    } else {
+      const directory = path.slice(0, slashIndex);
+      const rest = path.slice(slashIndex + 1);
+      directories.set(directory, [...(directories.get(directory) ?? []), rest]);
     }
   }
 
-  return sortSourceFileTree(root.children);
-}
-
-// Directories first, then files, each alphabetically.
-function sortSourceFileTree(nodes: SourceFileTreeNode[]): SourceFileTreeNode[] {
-  return [...nodes]
-    .sort((a, b) => {
-      const aIsDir = a.children.length > 0;
-      const bIsDir = b.children.length > 0;
-      if (aIsDir !== bIsDir) {
-        return aIsDir ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    })
-    .map((node) => ({ ...node, children: sortSourceFileTree(node.children) }));
-}
-
-function renderSourceFileTree(nodes: SourceFileTreeNode[]): React.ReactNode {
-  return nodes.map((node) =>
-    node.children.length > 0 ? (
-      <Tree.Item key={node.path} label={node.name} visual={Folder} type="node">
-        {renderSourceFileTree(node.children)}
-      </Tree.Item>
-    ) : (
-      <Tree.Item
-        key={node.path}
-        label={node.name}
-        visual={File02}
-        type="leaf"
-      />
-    )
-  );
+  return [
+    ...[...directories]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, children]) => (
+        <Tree.Item key={name} label={name} visual={Folder} type="node">
+          {renderSourceFileTree(children)}
+        </Tree.Item>
+      )),
+    ...files
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => (
+        <Tree.Item key={name} label={name} visual={File02} type="leaf" />
+      )),
+  ];
 }
