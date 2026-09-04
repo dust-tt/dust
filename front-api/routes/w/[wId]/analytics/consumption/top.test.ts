@@ -253,6 +253,7 @@ const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
       name: "Engineering",
       credits: 200,
       activeMembers: 3,
+      totalMembers: 5,
       previousCredits: null,
       messageCount: 4,
       avgCreditsPerMessage: 50,

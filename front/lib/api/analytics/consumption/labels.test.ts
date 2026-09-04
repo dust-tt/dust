@@ -241,11 +241,17 @@ describe("resolveDimensionLabels", () => {
     });
   });
 
-  it("labels groups with their group name", async () => {
-    const { authenticator, workspace } = await createResourceTest({
+  it("labels groups with their name and current member count", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
     const group = await GroupFactory.regularManual(workspace, "Engineering");
+    const addMemberResult = await GroupFactory.withMembers(
+      authenticator,
+      group,
+      [user]
+    );
+    expect(addMemberResult.isOk()).toBe(true);
 
     const labels = await resolveDimensionLabels(authenticator, "group", [
       group.sId,
@@ -255,6 +261,7 @@ describe("resolveDimensionLabels", () => {
       name: "Engineering",
       pictureUrl: null,
       description: null,
+      memberCount: 1,
     });
   });
 

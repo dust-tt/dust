@@ -53,6 +53,8 @@ export type DimensionLabel = {
   scope?: AgentConfigurationScope;
   maker?: ModelMakerIdType;
   tier?: ModelsTierName;
+  // Only groups have one; this is the current active membership count.
+  memberCount?: number;
 };
 
 function labelsFromNames(
@@ -121,9 +123,27 @@ export async function resolveDimensionLabels(
       const groups = await GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
       });
-      const namesById = new Map(groups.map((group) => [group.sId, group.name]));
-      return labelsFromNames(
-        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
+      const groupsWithMemberCounts = await GroupResource.toJSONWithMemberCounts(
+        auth,
+        groups
+      );
+      const groupsById = new Map(
+        groupsWithMemberCounts.map((group) => [group.sId, group])
+      );
+
+      return new Map(
+        keys.map((key) => {
+          const group = groupsById.get(key);
+          return [
+            key,
+            {
+              name: group?.name ?? key,
+              pictureUrl: null,
+              description: null,
+              memberCount: group?.memberCount ?? 0,
+            },
+          ];
+        })
       );
     }
 

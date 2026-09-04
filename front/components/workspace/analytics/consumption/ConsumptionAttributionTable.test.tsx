@@ -297,6 +297,7 @@ describe("ConsumptionAttributionTable", () => {
           credits: 300,
           avgCredits: 100,
           activeMembers: 2,
+          totalMembers: 5,
           previousCredits: null,
         },
       ],
@@ -322,7 +323,7 @@ describe("ConsumptionAttributionTable", () => {
     );
 
     expect(
-      screen.getByRole("columnheader", { name: "Active members" })
+      screen.getByRole("columnheader", { name: "Active / total members" })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("columnheader", { name: "Usage vs workspace avg" })
@@ -330,6 +331,7 @@ describe("ConsumptionAttributionTable", () => {
     expect(
       screen.queryByRole("columnheader", { name: "Consumption share" })
     ).not.toBeInTheDocument();
+    expect(screen.getByText("2 / 5")).toBeInTheDocument();
     expect(screen.getByText("1.5×")).toBeInTheDocument();
   });
 

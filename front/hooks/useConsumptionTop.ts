@@ -53,6 +53,7 @@ export type ConsumptionTopRow = {
   credits: number;
   avgCredits: number;
   activeMembers?: number;
+  totalMembers?: number;
   previousCredits: number | null;
 };
 
@@ -126,6 +127,7 @@ export function toConsumptionTopRows(
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
       activeMembers: row.activeMembers,
+      totalMembers: row.totalMembers,
       previousCredits: row.previousCredits,
     }));
   }

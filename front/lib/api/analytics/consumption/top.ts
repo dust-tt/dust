@@ -526,6 +526,7 @@ export type ResolvedConsumptionGroup = {
   count: number;
   avgCredits: number;
   activeMembers?: number;
+  memberCount?: number;
   previousCredits: number | null;
 };
 
@@ -558,6 +559,9 @@ export async function resolveConsumptionGroupLabels(
     avgCredits: avgCreditsPerUnit(group.credits, group.count),
     ...(group.activeMembers !== undefined
       ? { activeMembers: group.activeMembers }
+      : {}),
+    ...(labels.get(group.key)?.memberCount !== undefined
+      ? { memberCount: labels.get(group.key)?.memberCount }
       : {}),
     previousCredits: group.previousCredits,
   }));

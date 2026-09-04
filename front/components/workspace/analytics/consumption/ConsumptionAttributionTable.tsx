@@ -369,15 +369,21 @@ function buildColumns({
       ? ([
           {
             id: "activeMembers",
-            header: "Active members",
+            header: "Active / total members",
             enableSorting: false,
             meta: { sizeRatio: 18, headerAlign: "right" },
             cell: (info) => (
               <DataTable.BasicCellContent
                 className="justify-end text-right tabular-nums"
                 label={
-                  info.row.original.activeMembers?.toLocaleString("en-US") ??
-                  "--"
+                  info.row.original.activeMembers !== undefined &&
+                  info.row.original.totalMembers !== undefined
+                    ? `${info.row.original.activeMembers.toLocaleString(
+                        "en-US"
+                      )} / ${info.row.original.totalMembers.toLocaleString(
+                        "en-US"
+                      )}`
+                    : "--"
                 }
               />
             ),

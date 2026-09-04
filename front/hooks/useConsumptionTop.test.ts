@@ -57,6 +57,7 @@ describe("toConsumptionTopRows", () => {
           name: "Engineering",
           credits: 300,
           activeMembers: 2,
+          totalMembers: 5,
           previousCredits: 250,
           messageCount: 3,
           avgCreditsPerMessage: 100,
@@ -76,6 +77,7 @@ describe("toConsumptionTopRows", () => {
         credits: 300,
         avgCredits: 100,
         activeMembers: 2,
+        totalMembers: 5,
         previousCredits: 250,
       },
     ]);

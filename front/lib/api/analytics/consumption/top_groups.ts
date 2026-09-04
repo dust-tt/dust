@@ -24,6 +24,8 @@ export type ConsumptionTopGroupRow = {
   name: string;
   credits: number;
   activeMembers: number;
+  // Current active group membership count.
+  totalMembers: number;
   previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
@@ -92,6 +94,7 @@ export async function fetchConsumptionTopGroups(
       name: row.name,
       credits: row.credits,
       activeMembers: row.activeMembers ?? 0,
+      totalMembers: row.memberCount ?? 0,
       previousCredits: row.previousCredits,
       messageCount: row.count,
       avgCreditsPerMessage: row.avgCredits,

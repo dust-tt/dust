@@ -576,7 +576,19 @@ describe("consumption top rankings", () => {
     });
 
     vi.mocked(searchConsumptionAnalytics).mockClear();
-    mockLabels({ key1: "Engineering" });
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(
+      new Map([
+        [
+          "key1",
+          {
+            name: "Engineering",
+            pictureUrl: null,
+            description: null,
+            memberCount: 5,
+          },
+        ],
+      ])
+    );
     const groups = await fetchConsumptionTopGroups(auth, {
       period: PERIOD,
       limit: 10,
@@ -590,6 +602,7 @@ describe("consumption top rankings", () => {
       name: "Engineering",
       credits: 2,
       activeMembers: 2,
+      totalMembers: 5,
       previousCredits: 2,
       messageCount: 4,
       avgCreditsPerMessage: 0.5,
