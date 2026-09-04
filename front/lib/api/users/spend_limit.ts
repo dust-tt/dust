@@ -609,17 +609,16 @@ async function isSpendCapCounterReached(
  * uses. Runs alongside the Metronome per-user cap (`isUserBlocked`) as a faster,
  * independent backup.
  *
- * Free/none seats have no cycle cap; free seats instead enforce their lifetime
- * credit allowance via `isFreeSeatLifetimeCapReached`. Returns `null` only when
- * no rate-limiter cap applies at all (none seats, or free seats with no
- * resolvable allowance) — the caller must fall back to the Metronome credit
- * state for those. Returns `false` (does not block) when the billing period
- * can't be resolved or on a Redis read error (fail-open).
+ * Free seats have no cycle cap; they enforce their lifetime credit allowance via
+ * `isFreeSeatLifetimeCapReached` instead. Under the flag there is no Metronome
+ * credit-state fallback: this always returns a boolean. `false` when no cap
+ * applies (no cycle cap and no free-seat allowance), the billing period can't be
+ * resolved, or on a Redis read error (fail-open).
  */
 export async function isUserSpendLimitRateCapReached(
   auth: Authenticator,
   { user }: { user: UserResource }
-): Promise<boolean | null> {
+): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
 
   const threshold = await getEffectiveSpendCapAwuCreditsForUser(auth, { user });
@@ -647,16 +646,15 @@ export async function isUserSpendLimitRateCapReached(
  * is the rate-limiter counterpart of the Metronome-driven `isUserAwuWarned`
  * flag.
  *
- * Free/none seats have no cycle cap; free seats instead warn on their lifetime
- * credit allowance via `isFreeSeatLifetimeWarningReached`. Returns `null` only
- * when no rate-limiter cap applies at all — the caller falls back to the
- * Metronome near-limit flag. Returns `false` when the billing period can't be
- * resolved or on a Redis read error (fail-open).
+ * Free seats warn on their lifetime credit allowance via
+ * `isFreeSeatLifetimeWarningReached` instead. Under the flag there is no
+ * Metronome near-limit fallback: this always returns a boolean (`false` when no
+ * cap applies, the billing period can't be resolved, or on a Redis read error).
  */
 export async function isUserSpendLimitRateWarningReached(
   auth: Authenticator,
   { user }: { user: UserResource }
-): Promise<boolean | null> {
+): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
 
   const threshold = await getEffectiveSpendCapAwuCreditsForUser(auth, { user });
@@ -684,8 +682,9 @@ export async function isUserSpendLimitRateWarningReached(
  *
  * Returns `null` when the workspace isn't Metronome-billed, the cached read
  * fails, or the user has no positive free-seat grant (e.g. "none" seats, or a
- * misconfigured 0 grant) — callers treat `null` as "not free-seat-governed" and
- * fall back to the Metronome credit state.
+ * misconfigured 0 grant). For an actual free seat the grant should always
+ * resolve; a `null` there is a transient read failure and callers fail open (no
+ * Metronome fallback under the flag).
  */
 async function getFreeSeatLifetimeAllowanceAwuCredits(
   auth: Authenticator,
@@ -713,21 +712,26 @@ async function getFreeSeatLifetimeAllowanceAwuCredits(
  * Redis fixed-window counter. Unlike the per-cycle cap, the window never rolls:
  * the counter accumulates the seat's lifetime AWU (seeded from all-time
  * `is_free_seat` consumption) and the threshold is the per-user Metronome grant.
- * Returns `null` when the user has no free-seat allowance (caller falls back to
- * the Metronome credit state); `false` on a Redis read error (fail-open).
+ * Returns `false` (does not block, fail-open) when the user has no free-seat
+ * allowance (a non-free seat, or a transient allowance-read failure) or on a
+ * Redis read error — there is no Metronome credit-state fallback under the flag.
  */
 export async function isFreeSeatLifetimeCapReached(
   auth: Authenticator,
   { user }: { user: UserResource }
-): Promise<boolean | null> {
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
   const allowance = await getFreeSeatLifetimeAllowanceAwuCredits(auth, {
     user,
   });
   if (allowance === null) {
-    return null;
+    logger.error(
+      { workspaceId: workspace.sId, userId: user.sId },
+      "[FreeSeatLifetime] cap: no free-seat allowance resolved; failing open"
+    );
+    return false;
   }
 
-  const workspace = auth.getNonNullableWorkspace();
   return isSpendCapCounterReached(auth, {
     user,
     thresholdAwuCredits: allowance,
@@ -743,20 +747,25 @@ export async function isFreeSeatLifetimeCapReached(
 /**
  * "Near limit" (warning) counterpart of `isFreeSeatLifetimeCapReached`: the
  * lifetime counter against `USER_AWU_WARNING_PERCENTAGE` (80%) of the free-seat
- * allowance. Returns `null` when the user has no free-seat allowance.
+ * allowance. Fails open (`false`) with no resolvable allowance; no Metronome
+ * fallback under the flag.
  */
 export async function isFreeSeatLifetimeWarningReached(
   auth: Authenticator,
   { user }: { user: UserResource }
-): Promise<boolean | null> {
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
   const allowance = await getFreeSeatLifetimeAllowanceAwuCredits(auth, {
     user,
   });
   if (allowance === null) {
-    return null;
+    logger.error(
+      { workspaceId: workspace.sId, userId: user.sId },
+      "[FreeSeatLifetime] warning: no free-seat allowance resolved; failing open"
+    );
+    return false;
   }
 
-  const workspace = auth.getNonNullableWorkspace();
   return isSpendCapCounterReached(auth, {
     user,
     thresholdAwuCredits: allowance * USER_AWU_WARNING_PERCENTAGE,
