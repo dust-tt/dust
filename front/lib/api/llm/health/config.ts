@@ -17,3 +17,6 @@ export const PROBES_PER_RECOVERY = 3;
 // Counter keys are only ever read across `WINDOW_MINUTES`; the extra headroom
 // covers clock skew between pods.
 export const COUNTER_KEY_TTL_SECONDS = WINDOW_MINUTES * 60 * 3;
+
+// Wall-clock ceiling for a single probe, from request to first event.
+export const PROBE_TIMEOUT_MS = 30 * 1000;
