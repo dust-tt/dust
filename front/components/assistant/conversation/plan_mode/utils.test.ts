@@ -1,4 +1,7 @@
-import { planPanelDecision } from "@app/components/assistant/conversation/plan_mode/utils";
+import {
+  countProgress,
+  planPanelDecision,
+} from "@app/components/assistant/conversation/plan_mode/utils";
 import { describe, expect, it } from "vitest";
 
 const base = {
@@ -90,5 +93,37 @@ describe("planPanelDecision", () => {
     // Recreate -> open again.
     state = planPanelDecision({ ...base, hasContent: true, prev: state.next });
     expect(state).toEqual({ next: "present", action: "open" });
+  });
+});
+
+describe("countProgress", () => {
+  it("returns zero without content", () => {
+    expect(countProgress(null)).toEqual({ done: 0, total: 0 });
+  });
+
+  it("counts numbered task items", () => {
+    expect(
+      countProgress("## Tasks\n1. [x] one\n2. [ ] two\n3. [X] three\n")
+    ).toEqual({ done: 2, total: 3 });
+  });
+
+  it("still counts bulleted task items from older plans", () => {
+    expect(countProgress("- [x] one\n- [ ] two\n")).toEqual({
+      done: 1,
+      total: 2,
+    });
+  });
+
+  it("counts legacy [!] items in the total but not as done", () => {
+    expect(countProgress("1. [!] one\n2. [x] two\n")).toEqual({
+      done: 1,
+      total: 2,
+    });
+  });
+
+  it("ignores plain list items and prose", () => {
+    expect(
+      countProgress("1. plain item\n- [link](x)\n[ ] not a list\n")
+    ).toEqual({ done: 0, total: 0 });
   });
 });
