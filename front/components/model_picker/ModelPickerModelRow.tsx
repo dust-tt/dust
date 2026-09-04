@@ -27,6 +27,9 @@ interface ModelPickerModelRowProps {
   effort: ReasoningEffort | null;
   effortStops: EffortStop[];
   icon?: ComponentType;
+  // Indents the row by one icon slot, so its label lines up with the label of
+  // the maker row it is nested under (inline makers only).
+  inset?: boolean;
   onSelectModel: (model: ModelConfigurationType) => void;
   onChangeEffort?: (effort: ReasoningEffort) => void;
   onRevert?: () => void;
@@ -41,6 +44,7 @@ export function ModelPickerModelRow({
   effort,
   effortStops,
   icon,
+  inset,
   onSelectModel,
   onChangeEffort,
   onRevert,
@@ -53,6 +57,7 @@ export function ModelPickerModelRow({
         ref={itemRef}
         label={model.displayName}
         icon={icon}
+        inset={inset}
         truncateText
         disabled
         tooltip={getModelLockTooltip(lockReason)}
@@ -87,6 +92,7 @@ export function ModelPickerModelRow({
         ref={itemRef}
         label={`${model.displayName}${isDefault ? " (Default)" : ""}`}
         icon={icon}
+        inset={inset}
         truncateText
         tooltip={
           isDegraded ? getDegradedModelTooltip(model.displayName) : undefined

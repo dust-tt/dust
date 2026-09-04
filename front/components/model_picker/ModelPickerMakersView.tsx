@@ -104,6 +104,7 @@ export function ModelPickerMakersView({
           isDefault={isDefault}
           lockReason={lockReason}
           isDegraded={degradedModelIds.has(model.modelId)}
+          inset={useInlineMakers}
           effort={effort}
           effortStops={getEffortStops(model, { lockPremiumEfforts })}
           onSelectModel={onSelectModel}
