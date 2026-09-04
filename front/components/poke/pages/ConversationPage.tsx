@@ -1299,9 +1299,10 @@ export function ConversationPage() {
                 aria-hidden={isMessageRailTakeover}
                 className={cn(
                   "flex flex-col gap-4",
+                  "transition-[opacity,visibility] duration-150 ease-out motion-reduce:transition-none",
                   isMessageRailTakeover
                     ? "invisible opacity-0"
-                    : "visible opacity-100 transition-opacity duration-150 ease-out motion-reduce:transition-none"
+                    : "visible opacity-100"
                 )}
               >
                 <PokeConversationConsumptionInspector
