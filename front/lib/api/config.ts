@@ -125,12 +125,22 @@ const config = {
   getCloudflareAccessAud: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CLOUDFLARE_ACCESS_AUD");
   },
-  // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
-  // from NEXT_PUBLIC_DUST_API_URL. Falls back to getClientFacingUrl() when not set.
+  // For the WorkOS callback, which must reach the API. Allows overriding the
+  // redirect base URL separately from NEXT_PUBLIC_DUST_API_URL.
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
       config.getApiBaseUrl()
+    );
+  },
+  // For OAuth provider redirects. The finalize page is served by the SPA on the
+  // app URL for every cell, so providers register one redirect URI per provider
+  // instead of one per cell.
+  getOAuthRedirectBaseUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "DUST_OAUTH_REDIRECT_BASE_URL"
+      ) ?? config.getAppUrl()
     );
   },
   getDustInviteTokenSecret: (): string => {
