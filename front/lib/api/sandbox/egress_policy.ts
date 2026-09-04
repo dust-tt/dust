@@ -419,13 +419,18 @@ export type PolicyDomainRequestOutcome = {
 // requests the workspace file — the logic is otherwise identical.
 type PolicyDomainScope = {
   read: () => Promise<Result<EgressPolicy, Error>>;
+  // A layer the sandbox also honors (the workspace file, for a Pod). Read
+  // only to skip redundant requests; requests always land on this scope.
+  readInherited: (() => Promise<Result<EgressPolicy, Error>>) | null;
   write: (policy: EgressPolicy) => Promise<Result<EgressPolicy, Error>>;
   label: string;
 };
 
 // Exact-string membership on the normalized pattern: a domain covered by an
 // existing wildcard still records a request and surfaces to the admin, who
-// resolves it by approving (redundant entry) or dismissing.
+// resolves it by approving (redundant entry) or dismissing. `allowed` spans
+// this scope and any inherited layer, so a Pod request for a domain the
+// workspace already allows reports already_allowed instead of duplicating it.
 function classifyDomainRequest(
   domain: string,
   { allowed, pending }: { allowed: Set<string>; pending: Set<string> }
@@ -459,14 +464,28 @@ async function requestPolicyDomains(
     return new Err(parsedDomains.error);
   }
 
-  const currentPolicy = await scope.read();
+  // Two reads at most: this scope's file and its inherited layer.
+  const [currentPolicy, inheritedPolicy] = await Promise.all([
+    scope.read(),
+    scope.readInherited ? scope.readInherited() : Promise.resolve(null),
+  ]);
   if (currentPolicy.isErr()) {
     return new Err(currentPolicy.error);
+  }
+  let inheritedAllowedDomains: string[] = [];
+  if (inheritedPolicy) {
+    if (inheritedPolicy.isErr()) {
+      return new Err(inheritedPolicy.error);
+    }
+    inheritedAllowedDomains = inheritedPolicy.value.allowedDomains;
   }
 
   const pending = currentPolicy.value.requestedDomains ?? [];
   const membership = {
-    allowed: new Set(currentPolicy.value.allowedDomains),
+    allowed: new Set([
+      ...currentPolicy.value.allowedDomains,
+      ...inheritedAllowedDomains,
+    ]),
     pending: new Set(pending.map((request) => request.domain)),
   };
   const outcomes = parsedDomains.value.map((domain) => ({
@@ -555,6 +574,7 @@ async function dismissRequestedPolicyDomain(
 function ownerScope(auth: Authenticator, ownerId: string): PolicyDomainScope {
   return {
     read: () => readOwnerPolicy(auth, ownerId),
+    readInherited: () => readWorkspacePolicy(auth),
     write: (policy) => writeOwnerPolicy(auth, { ownerId, policy }),
     label: "Pod",
   };
@@ -563,6 +583,7 @@ function ownerScope(auth: Authenticator, ownerId: string): PolicyDomainScope {
 function workspaceScope(auth: Authenticator): PolicyDomainScope {
   return {
     read: () => readWorkspacePolicy(auth),
+    readInherited: null,
     write: (policy) => writeWorkspacePolicy(auth, { policy }),
     label: "workspace",
   };

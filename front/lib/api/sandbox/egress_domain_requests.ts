@@ -3,6 +3,7 @@ import {
   requestWorkspacePolicyDomains,
 } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Where a publish files the domains it declares: the Pod whose policy the
 // published functions run under, or the workspace when there is no Pod.
@@ -74,5 +75,7 @@ export function formatEgressDomainRequestsNote(
       }
       return parts.length > 0 ? parts.join(" ") : null;
     }
+    default:
+      return assertNever(summary);
   }
 }

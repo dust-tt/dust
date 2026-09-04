@@ -623,6 +623,33 @@ describe("pod egress domain batch requests", () => {
     expect(mockUploadRawContentToBucket).toHaveBeenCalledTimes(1);
   });
 
+  it("reports already_allowed for a domain the workspace allows when filing on a Pod", async () => {
+    setGcsObjects({
+      [WORKSPACE_PATH]: { allowedDomains: ["api.stripe.com"] },
+      [OWNER_PATH]: { allowedDomains: [] },
+    });
+
+    const result = await requestOwnerPolicyDomains(mockAuth, {
+      ownerId: "owner-sid",
+      domains: ["api.stripe.com", "hooks.slack.com"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcomes).toEqual([
+        { domain: "api.stripe.com", outcome: "already_allowed" },
+        { domain: "hooks.slack.com", outcome: "requested" },
+      ]);
+      expect(
+        result.value.policy.requestedDomains?.map((request) => request.domain)
+      ).toEqual(["hooks.slack.com"]);
+    }
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledTimes(1);
+    expect(mockUploadRawContentToBucket.mock.calls[0]?.[0]).toMatchObject({
+      filePath: OWNER_PATH,
+    });
+  });
+
   it("does not write when nothing new is requested", async () => {
     setGcsObjects({
       [OWNER_PATH]: {

@@ -181,6 +181,13 @@ describe("publishFrameFromSource", () => {
       gcsSourceDirectoryPath,
       manifestContent: manifestWithDomains,
     });
+    // The workspace layer applies to Pod sandboxes too, so a domain it
+    // already allows must not become a redundant Pod request.
+    const workspacePolicyPath = `w/${workspace.sId}/sandbox-egress-policy.json`;
+    fileStorageMock.setObject(
+      workspacePolicyPath,
+      JSON.stringify({ allowedDomains: ["api.stripe.com"] })
+    );
 
     const result = await publishFrameFromSource(auth, {
       conversation: conversation.toJSON(),
@@ -190,16 +197,16 @@ describe("publishFrameFromSource", () => {
 
     assert(result.isOk());
     assert(result.value.kind === "v2");
-    expect(result.value.egressDomains).toMatchObject({
+    expect(result.value.egressDomains).toEqual({
       kind: "filed",
       scope: "pod",
+      requested: ["*.stripe.com"],
+      alreadyAllowed: ["api.stripe.com"],
     });
     expect(
       requestedDomainsAt(`w/${workspace.sId}/sandboxes/${projectId}.json`)
-    ).toEqual(["api.stripe.com", "*.stripe.com"]);
-    expect(
-      fileStorageMock.getObject(`w/${workspace.sId}/sandbox-egress-policy.json`)
-    ).toBeUndefined();
+    ).toEqual(["*.stripe.com"]);
+    expect(requestedDomainsAt(workspacePolicyPath)).toEqual([]);
   });
 
   it("reports domains the workspace already allows without re-requesting them", async () => {
@@ -259,6 +266,7 @@ describe("publishFrameFromSource", () => {
     expect(result.value.egressDomains).toMatchObject({
       kind: "failed",
       domains: ["api.stripe.com", "*.stripe.com"],
+      message: expect.stringContaining("pending domain requests"),
     });
     expect(requestedDomainsAt(policyPath)).toHaveLength(
       SANDBOX_POLICY_MAX_REQUESTED_DOMAINS

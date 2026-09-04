@@ -78,6 +78,7 @@ const FrameDomainsSchema = z
   .array(z.string())
   .max(SANDBOX_POLICY_MAX_REQUESTED_DOMAINS)
   .default([])
+  // zod's documented abort-from-transform: addIssue, then return z.NEVER.
   .transform((domains, context) => {
     const normalized = normalizeEgressPolicyDomains(domains);
     if (normalized.isErr()) {

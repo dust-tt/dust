@@ -131,8 +131,9 @@ The manifest declares the UI entry point, every server function, and every datab
 - \`domains\` lists every exact domain or \`*.example.com\` wildcard the functions make outbound
   HTTPS requests to. Publishing files each one as an egress request that a workspace admin reviews
   (for the Pod when the Frame lives in a Pod, otherwise for the workspace); it never grants access
-  on its own, and a domain already allowed is skipped. For a domain discovered after publishing,
-  use \`request_egress_domain\` instead of republishing.
+  on its own, and a domain already allowed for that scope (or the workspace) is skipped. For a
+  domain discovered after publishing, use \`request_egress_domain\` instead of republishing, and
+  add it to \`domains\` so the next publish stays accurate.
 - Input, output, and caller-identity schemas belong in the function's TypeScript \`schema\` export,
   not in \`manifest.json\`. The build extracts them from source.
 
