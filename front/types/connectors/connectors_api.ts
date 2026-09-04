@@ -151,8 +151,7 @@ export interface ContentNodeWithParent extends ContentNode {
 
 export type WhitelistedSlackBotType = {
   botName: string;
-  groupIds: string[];
-  spaceIds: string[] | null;
+  spaceIds: string[];
   createdAt: number;
 };
 
@@ -589,12 +588,10 @@ export class ConnectorsAPI {
   async whitelistSlackBotToSummon({
     connectorId,
     botName,
-    groupIds,
     spaceIds,
   }: {
     connectorId: string;
     botName: string;
-    groupIds: string[];
     spaceIds: string[];
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await this._fetchWithError(
@@ -605,7 +602,6 @@ export class ConnectorsAPI {
         body: JSON.stringify({
           connector_id: connectorId,
           bot_name: botName,
-          group_ids: groupIds,
           space_ids: spaceIds,
         }),
       }
