@@ -11,7 +11,10 @@ import {
   allowSyncZendeskBrand,
   forbidSyncZendeskBrand,
 } from "@connectors/connectors/zendesk/lib/brand_permissions";
-import { isZendeskForbiddenError } from "@connectors/connectors/zendesk/lib/errors";
+import {
+  isZendeskForbiddenError,
+  ZendeskApiError,
+} from "@connectors/connectors/zendesk/lib/errors";
 import {
   allowSyncZendeskCategory,
   allowSyncZendeskHelpCenter,
@@ -363,6 +366,18 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       nodes.sort((a, b) => a.title.localeCompare(b.title));
       return new Ok(nodes);
     } catch (e) {
+      if (
+        parentInternalId === null &&
+        e instanceof ZendeskApiError &&
+        e.status === 403
+      ) {
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_USER_MISSING_RIGHTS",
+            "Dust cannot list Zendesk brands because the connected user lacks the required permissions. Re-authorize Zendesk with an admin account."
+          )
+        );
+      }
       if (e instanceof ExternalOAuthTokenError || isZendeskForbiddenError(e)) {
         return new Err(
           new ConnectorManagerError(

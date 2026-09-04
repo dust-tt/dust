@@ -131,6 +131,14 @@ app.get(
                 "Authorization error while retrieving the data source permissions.",
             },
           });
+        case "connector_oauth_user_missing_rights":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "connector_oauth_user_missing_rights",
+              message: result.error.message,
+            },
+          });
         case "internal_error":
           return apiError(ctx, {
             status_code: 500,

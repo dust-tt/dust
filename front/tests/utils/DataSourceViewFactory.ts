@@ -32,7 +32,8 @@ export class DataSourceViewFactory {
     workspace: WorkspaceType,
     space: SpaceResource,
     connectorProvider: ConnectorProvider,
-    editedByUser?: UserResource | null
+    editedByUser?: UserResource | null,
+    overrides?: { connectorId?: string }
   ) {
     return DataSourceViewResource.createDataSourceAndDefaultView(
       {
@@ -43,6 +44,7 @@ export class DataSourceViewFactory {
           "dust-datasource-id" + faker.string.alphanumeric(8),
         workspaceId: workspace.id,
         connectorProvider: connectorProvider,
+        connectorId: overrides?.connectorId,
       },
       space,
       editedByUser

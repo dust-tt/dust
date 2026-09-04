@@ -240,9 +240,11 @@ function ContentNodeTreeChildren({
 
   if (isResourcesError) {
     const errorMessage =
-      (resourcesError?.type &&
-        PERMISSIONS_ERROR_MESSAGES[resourcesError.type]) ||
-      "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.";
+      resourcesError?.type === "connector_oauth_user_missing_rights"
+        ? resourcesError.message
+        : (resourcesError?.type &&
+            PERMISSIONS_ERROR_MESSAGES[resourcesError.type]) ||
+          "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.";
 
     return <div className="text-sm text-warning">{errorMessage}</div>;
   }

@@ -13,7 +13,7 @@ vi.mock(
 );
 
 describe("ZendeskConnectorManager", () => {
-  it("returns an authorization error when Zendesk forbids listing brands", async () => {
+  it("returns a missing rights error when Zendesk forbids listing brands", async () => {
     const connector = await ConnectorResource.makeNew(
       "zendesk",
       {
@@ -49,9 +49,9 @@ describe("ZendeskConnectorManager", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.code).toBe("EXTERNAL_OAUTH_TOKEN_ERROR");
+      expect(result.error.code).toBe("CONNECTOR_OAUTH_USER_MISSING_RIGHTS");
       expect(result.error.message).toBe(
-        "Authorization error, please re-authorize Zendesk."
+        "Dust cannot list Zendesk brands because the connected user lacks the required permissions. Re-authorize Zendesk with an admin account."
       );
     }
   });
