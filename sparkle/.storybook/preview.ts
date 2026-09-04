@@ -93,11 +93,13 @@ const preview: Preview = {
       const isDark = context.globals.theme === "dark";
       const background = isDark ? "#000000" : "#ffffff";
 
-      // Update both document and storybook-docs background
+      // Update the document and every story canvas on a docs page (one per story).
       document.documentElement.style.backgroundColor = background;
       document
-        .querySelector(".docs-story")
-        ?.setAttribute("style", `background-color: ${background}`);
+        .querySelectorAll<HTMLElement>(".docs-story")
+        .forEach((canvas) => {
+          canvas.style.backgroundColor = background;
+        });
 
       return Story();
     },
