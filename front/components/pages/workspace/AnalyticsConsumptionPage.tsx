@@ -219,16 +219,7 @@ export function AnalyticsConsumptionPage() {
   }, [isNavigationBarOpen]);
 
   const content = (
-    <AdminPageContainer className="relative">
-      {analyticsAssistantEnabled && !isOpen && (
-        <Button
-          variant="outline"
-          icon={Robot}
-          label="Ask @analyst"
-          className="absolute right-4 top-4 z-10 sm:right-10 sm:top-8"
-          onClick={() => setIsOpen(true)}
-        />
-      )}
+    <AdminPageContainer>
       <AnalyticsConsumptionContent
         owner={owner}
         state={{ ...state, filter }}
@@ -272,6 +263,15 @@ export function AnalyticsConsumptionPage() {
         </ResizableSidePanel>
       ) : (
         content
+      )}
+      {analyticsAssistantEnabled && !isOpen && (
+        <Button
+          variant="primary"
+          icon={Robot}
+          tooltip="Ask @analyst"
+          className="fixed bottom-6 right-6 w-10 z-20"
+          onClick={() => setIsOpen(true)}
+        />
       )}
     </>
   );
