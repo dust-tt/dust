@@ -53,6 +53,7 @@ describe("ValidationPage", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_DUST_API_URL_EU", "https://eu.dust.tt");
     vi.stubEnv("VITE_DUST_API_URL_US", "https://dust.tt");
+    vi.stubEnv("VITE_DUST_API_URL_CELL_00002", "https://eu2.dust.tt");
     window.localStorage.clear();
     window.history.replaceState(
       null,

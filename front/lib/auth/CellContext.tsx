@@ -28,7 +28,7 @@ const DEFAULT_CELL: CellType = isCellType(import.meta.env?.VITE_DUST_CELL ?? "")
   : "cell-00000";
 
 // Client-side cell catalog — mirrors front/lib/api/cells/config.ts CELLS, but
-// resolves URLs from Vite env (VITE_DUST_API_URL_US / _EU) instead of server env.
+// resolves URLs from Vite env (VITE_DUST_API_URL_US / _EU / _CELL_00002) instead of server env.
 function getCellInfo(cell: CellType): CellInfo {
   switch (cell) {
     case "cell-00000":
@@ -42,6 +42,12 @@ function getCellInfo(cell: CellType): CellInfo {
         name: cell,
         region: "europe-west1",
         url: import.meta.env?.VITE_DUST_API_URL_EU ?? DEFAULT_URL,
+      };
+    case "cell-00002":
+      return {
+        name: cell,
+        region: "europe-west1",
+        url: import.meta.env?.VITE_DUST_API_URL_CELL_00002 ?? DEFAULT_URL,
       };
     default:
       assertNever(cell);

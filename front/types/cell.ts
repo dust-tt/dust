@@ -1,7 +1,11 @@
 import { SUPPORTED_REGIONS } from "@app/types/region";
 
 // Cells are standalone deployments of a whole Dust environment.
-export const SUPPORTED_CELLS = ["cell-00000", "cell-00001"] as const;
+export const SUPPORTED_CELLS = [
+  "cell-00000",
+  "cell-00001",
+  "cell-00002",
+] as const;
 export type CellType = (typeof SUPPORTED_CELLS)[number];
 
 import { z } from "zod";

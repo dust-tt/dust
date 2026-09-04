@@ -36,6 +36,20 @@ const CELLS: Record<CellType, CellInfo> = Object.fromEntries(
                 "https://eu.dust.tt"),
           },
         ];
+      // EU 2
+      case "cell-00002":
+        return [
+          cell,
+          {
+            name: cell,
+            region: "europe-west1",
+            url: isDevelopment()
+              ? "http://localhost:3000"
+              : (EnvironmentConfig.getOptionalEnvVariable(
+                  "DUST_CELL_00002_URL"
+                ) ?? "https://eu2.dust.tt"),
+          },
+        ];
       default:
         // This ensures that if a new CellType is added, TypeScript will error until handled.
         assertNever(cell);

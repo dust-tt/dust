@@ -5,6 +5,7 @@ declare global {
       VITE_DUST_API_URL?: string;
       VITE_DUST_API_URL_EU?: string;
       VITE_DUST_API_URL_US?: string;
+      VITE_DUST_API_URL_CELL_00002?: string;
       VITE_DUST_CLIENT_FACING_URL?: string;
       VITE_DUST_REGION?: string;
       VITE_DUST_REGION_STORAGE_KEY?: string;
