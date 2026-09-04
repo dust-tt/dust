@@ -15,8 +15,13 @@ import type {
 } from "@google/genai";
 import { GoogleGenAI } from "@google/genai";
 
-// Agent Platform `location` targeted by an endpoint. Each registered endpoint
-// selects a location where its model is available.
+// Vertex AI `location` the endpoint targets. Only `global` today: Gemini 3.x
+// preview models are published solely to the global endpoint (they 404 on
+// `europe-west1`), and the native `generateContent` API does not serve the
+// `eu` multi-region alias that the Anthropic partner API uses. Legacy reaches
+// the same place — it passes no location, so `@google/genai` defaults to
+// `global`. Extend with a specific region (e.g. `europe-west1`) once these
+// models become available there.
 export type GoogleAgentPlatformLocation = "global" | "eu";
 
 // Gemini-on-Vertex transport. Same @google/genai SDK and converters as the AI
