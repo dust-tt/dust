@@ -1017,17 +1017,21 @@ function buildCreditPlanColumns({
   premiumMessageWindowDays: number;
 }): ColumnDef<RowData, string>[] {
   return [
-    ...(() => {
-      switch (variant) {
-        case "compact":
-          return [seatsIconColumn, seatUsageColumn];
-        case "legacy":
-          return [seatTypeColumn];
-        default:
-          assertNeverAndIgnore(variant);
-          return [seatTypeColumn];
-      }
-    })(),
+    // Premium message plans have no seats: every member is billed per
+    // message, so the seat columns have nothing to show.
+    ...(showPremiumMessageUsage
+      ? []
+      : (() => {
+          switch (variant) {
+            case "compact":
+              return [seatsIconColumn, seatUsageColumn];
+            case "legacy":
+              return [seatTypeColumn];
+            default:
+              assertNeverAndIgnore(variant);
+              return [seatTypeColumn];
+          }
+        })()),
     {
       ...(showPremiumMessageUsage
         ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
@@ -1248,7 +1252,7 @@ export function MembersUsageTable({
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
-            ...(showSeatAndCredits && !hasSeat
+            ...(showSeatAndCredits && !hasSeat && !showPremiumMessageUsage
               ? [
                   {
                     kind: "item" as const,
@@ -1334,6 +1338,7 @@ export function MembersUsageTable({
       groupNameToId,
       readOnly,
       showSeatAndCredits,
+      showPremiumMessageUsage,
       seatActionsDisabled,
       onChangeSeat,
       onRemoveSeat,
