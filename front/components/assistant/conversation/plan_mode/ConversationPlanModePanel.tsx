@@ -51,7 +51,8 @@ export function ConversationPlanModePanel({
           </div>
         ) : (
           // Plain (non-memoized) blocks so each edit re-renders items in place and the step
-          // badges can transition when the agent ticks a task.
+          // badges can transition when the agent ticks a task. Items are matched by position,
+          // so inserting a task above completed ones replays their check animation once.
           <Markdown
             content={content}
             taskListVariant="step"
