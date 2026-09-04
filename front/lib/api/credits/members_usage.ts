@@ -50,6 +50,7 @@ import {
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   getFairUseAwuCreditsStatus,
+  getFairUseAwuCreditsUsedCountsByUser,
   isUserAwuWarnedByMetronome,
 } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -196,6 +197,7 @@ export type MemberFairUseUsage = {
   timeframe: MaxAwuCreditsTimeframeType;
   windowDays: number;
   nextResetAt: string | null;
+  refillSchedule: { date: string; credits: number }[];
 };
 
 export type GetMembersUsageResponseBody = {
@@ -254,6 +256,7 @@ export const MembersUsagePaginationSchema = z.object({
       "creditState",
       "seatUsage",
       "premiumMessageUsage",
+      "fairUse",
     ])
     .catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
@@ -2063,6 +2066,18 @@ async function resolveMembersUsagePageUsers({
       }
       break;
     }
+    case "fairUse": {
+      // Count-only and pipelined into a single Redis round-trip
+      const usedCreditsByUserId = await getFairUseAwuCreditsUsedCountsByUser({
+        workspace,
+        users: allUsers.map((u) => u.toJSON()),
+        plan: auth.plan(),
+      });
+      for (const u of allUsers) {
+        sortKeyByUserId.set(u.sId, usedCreditsByUserId.get(u.sId) ?? 0);
+      }
+      break;
+    }
     default:
       assertNever(orderColumn);
   }
@@ -2385,6 +2400,7 @@ export async function getMembersUsage({
                 getTimeframeSecondsFromLiteral(status.timeframe) /
                 (ONE_DAY_MS / 1000),
               nextResetAt: status.nextResetAt ?? null,
+              refillSchedule: status.refillSchedule ?? [],
             }
       );
     }

@@ -264,7 +264,8 @@ export function usePokeMembersUsage({
     | "seatType"
     | "creditState"
     | "seatUsage"
-    | "premiumMessageUsage";
+    | "premiumMessageUsage"
+    | "fairUse";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType;
   creditState?: UserCreditState;
