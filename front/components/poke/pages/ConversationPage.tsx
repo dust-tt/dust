@@ -1284,7 +1284,13 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          <div className="grid w-full grid-cols-1 gap-6 py-4 [--poke-inspector-width:28rem] xl:grid-cols-[minmax(0,1fr)_var(--poke-inspector-width)]">
+          <div
+            className={cn(
+              "grid w-full grid-cols-1 gap-6 py-4",
+              "[--poke-inspector-width:28rem]",
+              "xl:grid-cols-[minmax(0,1fr)_var(--poke-inspector-width)]"
+            )}
+          >
             <aside
               ref={stickyInspectorsRef}
               className="z-20 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start"

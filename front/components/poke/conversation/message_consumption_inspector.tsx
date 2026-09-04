@@ -94,7 +94,12 @@ function ModelRow({ directMessageCredits, isDark, model }: ModelRowProps) {
   const modelIcon = getModelLogoByModelId(model.modelId, isDark);
 
   return (
-    <li className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+    <li
+      className={cn(
+        "flex min-w-0 items-center justify-between gap-3",
+        "rounded-xl border border-border bg-background p-3"
+      )}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted-background">
           <Icon visual={modelIcon ?? DustLogoSquare} size="xs" />
@@ -247,7 +252,11 @@ export function PokeMessageConsumptionInspector({
         aria-controls={contentId}
         aria-expanded={isOpen}
         aria-label={`${isOpen ? "Collapse" : "Expand"} consumption details for message ${messageId}`}
-        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-border bg-background p-3 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className={cn(
+          "flex min-h-11 w-full items-center justify-between gap-3 rounded-xl",
+          "border border-border bg-background p-3 text-left outline-hidden",
+          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        )}
         onClick={() => onOpenChange(!isOpen)}
       >
         <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
@@ -296,7 +305,11 @@ export function PokeMessageConsumptionInspector({
             id={contentId}
             role="region"
             aria-labelledby={triggerId}
-            className="z-10 mt-3 overflow-clip rounded-xl border border-border bg-background will-change-transform xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:mt-0 xl:w-[var(--poke-inspector-width)]"
+            className={cn(
+              "z-10 mt-3 overflow-clip rounded-xl border border-border bg-background",
+              "will-change-transform",
+              "xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:mt-0 xl:w-[var(--poke-inspector-width)]"
+            )}
             data-message-consumption-panel-id={messageId}
             variants={MESSAGE_PANEL_VARIANTS}
             initial={shouldReduceMotion ? false : "closed"}
@@ -304,7 +317,12 @@ export function PokeMessageConsumptionInspector({
             exit={shouldReduceMotion ? undefined : "closed"}
           >
             <div ref={handlePanelContentRef} className="rounded-[inherit]">
-              <div className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
+              <div
+                className={cn(
+                  "sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3",
+                  "border-b border-border bg-background px-4 py-3"
+                )}
+              >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">
                     Message consumption
@@ -318,7 +336,11 @@ export function PokeMessageConsumptionInspector({
                 <button
                   type="button"
                   aria-label={`Close consumption details for message ${messageId}`}
-                  className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  className={cn(
+                    "flex size-11 shrink-0 items-center justify-center rounded-lg",
+                    "text-muted-foreground outline-none hover:bg-muted-background hover:text-foreground",
+                    "focus-visible:ring-2 focus-visible:ring-ring"
+                  )}
                   onClick={() => {
                     onOpenChange(false);
                     triggerRef.current?.focus();
