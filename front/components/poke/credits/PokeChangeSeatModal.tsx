@@ -43,8 +43,7 @@ interface PokeChangeSeatModalProps {
 }
 
 // Poke has no working write route for member seat changes yet, so Validate
-// is wired to nothing but a notice rather than an actual mutation — mirrors
-// PokeMemberSpendLimitModal's Save behavior.
+// is wired to nothing but a notice rather than an actual mutation.
 function useUnavailableSeatChangeSave() {
   const sendNotification = useSendNotification();
   return () =>
