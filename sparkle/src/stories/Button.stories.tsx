@@ -320,7 +320,7 @@ export const Pressed: Story = {
     await waitFor(() => {
       const pressed = canvasElement.querySelectorAll('[aria-pressed="true"]');
       const resting = canvasElement.querySelectorAll(
-        'button:not([aria-pressed])'
+        "button:not([aria-pressed])"
       );
       // 4 variants x 2 surfaces, pressed and resting alternate.
       expect(pressed).toHaveLength(8);
