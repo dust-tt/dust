@@ -134,23 +134,23 @@ export async function fetchConsumptionTimeseries(
     filter,
   });
   const scope = { period, granularity, mode, metric, timezone };
-  const workspace = auth.getNonNullableWorkspace();
-  const workspaceMemberCountPromise =
-    MembershipResource.countActiveMembersForWorkspace({ workspace });
-  const timeseriesPromise = !breakdownBy
-    ? fetchTimeseries(query, scope)
-    : fetchTimeseriesBreakdown(auth, query, scope, {
-        breakdownBy,
-        breakdownCount,
-      });
-  const [timeseriesResult, workspaceMemberCount] = await Promise.all([
-    timeseriesPromise,
-    workspaceMemberCountPromise,
-  ]);
+  let timeseriesResult: Result<ConsumptionTimeseriesData, ElasticsearchError>;
+  if (!breakdownBy) {
+    timeseriesResult = await fetchTimeseries(query, scope);
+  } else {
+    timeseriesResult = await fetchTimeseriesBreakdown(auth, query, scope, {
+      breakdownBy,
+      breakdownCount,
+    });
+  }
 
   if (timeseriesResult.isErr()) {
     return timeseriesResult;
   }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const workspaceMemberCount =
+    await MembershipResource.countActiveMembersForWorkspace({ workspace });
 
   return new Ok({
     ...timeseriesResult.value,
