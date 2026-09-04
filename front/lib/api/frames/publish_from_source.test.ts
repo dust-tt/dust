@@ -9,6 +9,7 @@ import { getRedisStreamClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { setupProjectConversation } from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -34,36 +35,18 @@ const manifest = JSON.stringify({
 });
 const uiSource = "export default function Status() { return <p>Ready</p>; }";
 
-async function setup({
+// Serves a Frame folder (manifest + index.tsx) from the mocked source bucket.
+function stageFrameSource({
+  gcsSourceDirectoryPath,
+  manifestContent,
   uiContentType = "text/typescript",
 }: {
+  gcsSourceDirectoryPath: string;
+  manifestContent: string;
   uiContentType?: string;
-} = {}) {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const conversation = await ConversationFactory.create(auth, {
-    agentConfigurationId: "test-agent",
-    messagesCreatedAt: [],
-  });
-  const sourceDirectoryPath = `conversation-${conversation.sId}/Status`;
-  const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
-  const gcsSourceDirectoryPath = `${getConversationFilesBasePath({
-    workspaceId: workspace.sId,
-    conversationId: conversation.sId,
-  })}Status`;
-  const frame = await FileFactory.create(auth, null, {
-    contentType: frameV2ContentType,
-    fileName: FRAME_MANIFEST_FILE,
-    fileSize: Buffer.byteLength(manifest),
-    status: "created",
-    useCase: "conversation",
-    useCaseMetadata: { conversationId: conversation.sId },
-    mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
-  });
-
+}) {
   const sourceByPath = new Map([
-    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifestContent],
     [`${gcsSourceDirectoryPath}/index.tsx`, uiSource],
   ]);
   fileStorageMock.setFilesByPrefix((prefix) =>
@@ -82,6 +65,38 @@ async function setup({
   fileStorageMock.setFileContent(
     (filePath) => sourceByPath.get(filePath) ?? null
   );
+}
+
+async function setup({
+  manifestContent = manifest,
+  uiContentType = "text/typescript",
+}: {
+  manifestContent?: string;
+  uiContentType?: string;
+} = {}) {
+  const { authenticator: auth, workspace } = await createResourceTest({
+    role: "admin",
+  });
+  const conversation = await ConversationFactory.create(auth, {
+    agentConfigurationId: "test-agent",
+    messagesCreatedAt: [],
+  });
+  const sourceDirectoryPath = `conversation-${conversation.sId}/Status`;
+  const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+  const gcsSourceDirectoryPath = `${getConversationFilesBasePath({
+    workspaceId: workspace.sId,
+    conversationId: conversation.sId,
+  })}Status`;
+  const frame = await FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: FRAME_MANIFEST_FILE,
+    fileSize: Buffer.byteLength(manifestContent),
+    status: "created",
+    useCase: "conversation",
+    useCaseMetadata: { conversationId: conversation.sId },
+    mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+  });
+  stageFrameSource({ gcsSourceDirectoryPath, manifestContent, uiContentType });
 
   return {
     auth,
@@ -95,9 +110,108 @@ async function setup({
 
 beforeEach(() => {
   fileStorageMock.reset();
+  // Egress policy files are absent until written, so domain requests start
+  // from an empty policy instead of the mock's placeholder content.
+  fileStorageMock.setFetchFileContentNotFound(
+    (filePath) =>
+      filePath.endsWith("/sandbox-egress-policy.json") ||
+      /\/sandboxes\/[^/]+\.json$/.test(filePath)
+  );
 });
 
+const manifestWithDomains = JSON.stringify({
+  version: 1,
+  name: "Status",
+  description: "Show the current status.",
+  domains: ["API.Stripe.COM", "*.stripe.com"],
+});
+
+function requestedDomainsAt(policyPath: string): string[] {
+  const policy = JSON.parse(fileStorageMock.getObject(policyPath) ?? "{}");
+  return (policy.requestedDomains ?? []).map(
+    (request: { domain: string }) => request.domain
+  );
+}
+
 describe("publishFrameFromSource", () => {
+  it("files declared domains as workspace requests for a Frame outside a Pod", async () => {
+    const { auth, conversation, manifestPath, workspace } = await setup({
+      manifestContent: manifestWithDomains,
+    });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toEqual({
+      scope: "workspace",
+      requested: ["api.stripe.com", "*.stripe.com"],
+      alreadyAllowed: [],
+      failed: [],
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+  });
+
+  it("files declared domains as Pod requests for a Frame in a Pod", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const workspace = auth.getNonNullableWorkspace();
+    const sourceDirectoryPath = `pod-${projectId}/Status`;
+    const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const gcsSourceDirectoryPath = `${getPodFilesBasePath({
+      workspaceId: workspace.sId,
+      podId: projectId,
+    })}Status`;
+    await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifestWithDomains),
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: projectId },
+      mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    });
+    stageFrameSource({
+      gcsSourceDirectoryPath,
+      manifestContent: manifestWithDomains,
+    });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation: conversation.toJSON(),
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains?.scope).toBe("pod");
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandboxes/${projectId}.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+    expect(
+      fileStorageMock.getObject(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toBeUndefined();
+  });
+
+  it("reports no domain requests when the manifest declares none", async () => {
+    const { auth, conversation, manifestPath } = await setup();
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toBeNull();
+  });
+
   it("rejects a Frame outside the signed conversation scope", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",

@@ -6,6 +6,7 @@ import {
   SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
   SANDBOX_FUNCTION_STAKES,
 } from "@app/types/api/sandbox_functions";
+import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -20,6 +21,8 @@ export const MAX_FRAME_FUNCTION_NAME_LENGTH = 128;
 export const MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH = 255;
 // Each schema reconcile can take 60 seconds and runs under the 10-minute publication lease.
 export const MAX_FRAME_DATABASE_COUNT = 4;
+// Matches the pending-request cap of a single egress policy scope.
+export const MAX_FRAME_DOMAIN_COUNT = 50;
 export const FRAME_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
 
 /** Manifest paths are always relative to the Frame source folder. */
@@ -68,6 +71,21 @@ export const FrameDatabaseManifestSchema = z.object({
   schema: FrameRelativePathSchema,
 });
 
+// Exact domains or `*.example.com` wildcards the Frame's functions reach at
+// runtime. Publishing files each one as an egress request for admin review.
+const FrameDomainsSchema = z
+  .array(z.string())
+  .max(MAX_FRAME_DOMAIN_COUNT)
+  .default([])
+  .transform((domains, context) => {
+    const normalized = normalizeEgressPolicyDomains(domains);
+    if (normalized.isErr()) {
+      context.addIssue({ code: "custom", message: normalized.error.message });
+      return z.NEVER;
+    }
+    return normalized.value;
+  });
+
 export const FrameSourceManifestSchema = z
   .object({
     version: z.literal(FRAME_MANIFEST_VERSION),
@@ -79,6 +97,7 @@ export const FrameSourceManifestSchema = z
       .array(FrameDatabaseManifestSchema)
       .max(MAX_FRAME_DATABASE_COUNT)
       .default([]),
+    domains: FrameDomainsSchema,
   })
   .superRefine((manifest, context) => {
     const functionNames = new Set<string>();
