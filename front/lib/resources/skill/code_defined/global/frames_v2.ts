@@ -359,8 +359,9 @@ dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
 The publish output includes \`egressDomains\` when the manifest declares domains: which were
-requested (pending admin approval), already allowed, or failed. Tell the user about pending
-requests; the functions cannot reach those domains until an admin approves them.
+requested (pending admin approval) and which were already allowed, or why filing them failed.
+Tell the user about pending requests; the functions cannot reach those domains until an admin
+approves them.
 
 After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
 set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds

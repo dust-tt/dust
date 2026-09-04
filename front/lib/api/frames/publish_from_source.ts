@@ -9,10 +9,7 @@ import {
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
-import type {
-  EgressDomainRequestScope,
-  EgressDomainRequestsSummary,
-} from "@app/lib/api/sandbox/egress_domain_requests";
+import type { EgressDomainRequestsSummary } from "@app/lib/api/sandbox/egress_domain_requests";
 import { requestEgressDomainsForScope } from "@app/lib/api/sandbox/egress_domain_requests";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
@@ -25,6 +22,7 @@ import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import {
@@ -33,7 +31,6 @@ import {
   parseFrameManifest,
 } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isPodConversation } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
   contentTypeFromFileName,
@@ -175,10 +172,7 @@ export async function publishFrameFromSource(
     const { domains } = publication.value.manifest;
     const egressDomains =
       domains.length > 0
-        ? await requestEgressDomainsForScope(auth, {
-            scope: frameEgressRequestScope(frame, conversation),
-            domains,
-          })
+        ? await requestFrameEgressDomains(auth, { frame, domains })
         : null;
 
     return new Ok({
@@ -216,16 +210,21 @@ export async function publishFrameFromSource(
 }
 
 // Requests land where the Frame's functions run: the Pod whose policy the Frame
-// sandbox inherits (same rule as FrameSandboxAdapter.resolveScope), else the
-// workspace. Never the Frame's own owner file, which no admin surface lists.
-function frameEgressRequestScope(
-  frame: FileResource,
-  conversation: ConversationWithoutContentType
-): EgressDomainRequestScope {
-  const podId =
-    frame.useCaseMetadata?.spaceId ??
-    (isPodConversation(conversation) ? conversation.spaceId : null);
-  return podId ? { kind: "pod", podId } : { kind: "workspace" };
+// sandbox inherits, else the workspace. Never the Frame's own owner file, which
+// no admin surface lists.
+async function requestFrameEgressDomains(
+  auth: Authenticator,
+  { frame, domains }: { frame: FileResource; domains: string[] }
+): Promise<EgressDomainRequestsSummary> {
+  const scope = await FrameSandboxAdapter.resolveScope(auth, frame);
+  if (scope.isErr()) {
+    return { kind: "failed", domains, message: scope.error.message };
+  }
+  const { spaceId } = scope.value;
+  return requestEgressDomainsForScope(auth, {
+    scope: spaceId ? { kind: "pod", podId: spaceId } : { kind: "workspace" },
+    domains,
+  });
 }
 
 export async function validateFrameFromSource(
@@ -642,6 +641,8 @@ export async function editFrameV2TextAtSource(
       dustFs.write(sourcePath, originalSource, contentType);
 
     try {
+      // A text edit republishes the same manifest: its domains were requested
+      // on the first publish, so none are filed here.
       const publishResult = await publishFrameV2FromSourceWithSourceLockHeld(
         auth,
         {

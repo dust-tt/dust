@@ -6,7 +6,9 @@ import type {
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
-/** Invocation routes are shared while Frames v2 progressively replaces Pod Functions. */
+// Function invocation routes serve both legacy Pod Functions and Frames v2
+// functions, so they accept either flag while Frames v2 replaces Pod
+// Functions. Settings routes are gated on `frames_v2` alone via withFeatureFlag.
 export function withSandboxFunctionInvocationFeature() {
   return createMiddleware<PublicApiCtx | WorkspaceAwareCtx>(
     async (ctx, next) => {
