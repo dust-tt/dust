@@ -326,15 +326,14 @@ describe("ConsumptionAttributionTable", () => {
       screen.getByRole("columnheader", { name: "Active / total members" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("columnheader", { name: "Per-member usage vs avg" })
+      screen.getByRole("columnheader", { name: "Vs workspace avg" })
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("columnheader", { name: "Consumption share" })
     ).not.toBeInTheDocument();
     expect(screen.getByText("2 / 5")).toBeInTheDocument();
-    const usagePercentage = screen.getByText("250%");
+    const usagePercentage = screen.getByText("+150%");
     expect(usagePercentage.parentElement).toHaveClass("text-highlight-600");
-    expect(screen.getByText("Higher")).toBeInTheDocument();
     expect(usagePercentage.parentElement?.querySelector("svg")).toBeNull();
   });
 

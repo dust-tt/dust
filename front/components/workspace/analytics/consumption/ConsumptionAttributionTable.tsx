@@ -243,28 +243,24 @@ function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
   }
 
   const roundedPercentage = Math.round(percentage);
-  const comparison =
-    roundedPercentage > 100
-      ? "Higher"
-      : roundedPercentage < 100
-        ? "Lower"
-        : "Average";
+  const sign = roundedPercentage > 0 ? "+" : "";
 
   return (
     <div
       className={cn(
-        "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
-        roundedPercentage > 100 ? "text-highlight-600" : "text-muted-foreground"
+        "flex w-full items-center justify-end text-right text-sm tabular-nums",
+        percentage > 100 ? "text-highlight-600" : "text-muted-foreground"
       )}
     >
-      <span>{roundedPercentage}%</span>
-      <span aria-hidden="true">·</span>
-      <span>{comparison}</span>
+      <span>
+        {sign}
+        {roundedPercentage}%
+      </span>
     </div>
   );
 }
 
-function usagePercentOfAverage({
+function usageDifferenceFromAveragePercent({
   credits,
   activeMembers,
   totalCredits,
@@ -282,7 +278,10 @@ function usagePercentOfAverage({
   const groupAverageCredits = credits / activeMembers;
   const overallAverageCredits = totalCredits / totalActiveMembers;
 
-  return (groupAverageCredits / overallAverageCredits) * 100;
+  return (
+    ((groupAverageCredits - overallAverageCredits) / overallAverageCredits) *
+    100
+  );
 }
 
 function buildColumns({
@@ -431,11 +430,11 @@ function buildColumns({
           },
           {
             id: "usageVsAverage",
-            header: "Per-member usage vs avg",
+            header: "Vs workspace avg",
             enableSorting: false,
             meta: { sizeRatio: 22, headerAlign: "right" },
             cell: (info) => {
-              const usagePercent = usagePercentOfAverage({
+              const usagePercent = usageDifferenceFromAveragePercent({
                 credits: info.row.original.credits,
                 activeMembers: info.row.original.activeMembers,
                 totalCredits,
