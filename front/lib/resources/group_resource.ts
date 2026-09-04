@@ -1984,22 +1984,24 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Suspends all active members of this group.
+   * Ends all active memberships of this group, exactly as removing every member would.
    * Returns array of affected user ModelIds.
    *
-   * Only regular_auto group members can be suspended: it is how a space keeps its
-   * manual members on record while it runs in group management mode.
+   * Only regular_auto groups: it is how a space clears its manual members when it switches to
+   * group management mode. Memberships used to be suspended (kept on record but inert) so that
+   * the switch could be undone; they are now ended, so the manual member list does not come back
+   * when the space switches back to manual mode.
    *
    * Dangerous: no permission check — the owning space authorizes the
    * management-mode switch.
    */
-  async dangerouslySuspendMembers(
+  async dangerouslyEndAllMemberships(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ModelId[]> {
     assert(
       this.isRegularAuto(),
-      `You can't suspend members of ${this.kind} groups.`
+      `You can't end the memberships of ${this.kind} groups.`
     );
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -2018,8 +2020,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       ...new Set(affectedMemberships.map((m) => m.userId)),
     ];
 
+    // Same mutation as `dangerouslyRemoveMembers`: `endAt` set in the past, `status` untouched.
     await GroupMembershipModel.update(
-      { status: "suspended" },
+      { endAt: new Date() },
       {
         where: {
           groupId: this.id,
@@ -2164,9 +2167,14 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Restores all suspended members of this group.
    * Returns array of affected user ModelIds.
    *
-   * Counterpart of `dangerouslySuspendMembers`, so regular_auto only, and
-   * dangerous for the same reason: no permission check, the owning space
-   * authorizes the switch.
+   * Transitional: nothing suspends memberships any more (a space switching to group management
+   * mode ends them, see `dangerouslyEndAllMemberships`), so this only reactivates the rows left
+   * suspended by the previous behaviour. It becomes a no-op once the backfill
+   * (`20260904_end_suspended_group_memberships`) has run, and is removed with the `status`
+   * column.
+   *
+   * regular_auto only, and dangerous for the same reason as its former counterpart: no
+   * permission check, the owning space authorizes the switch.
    */
   async dangerouslyRestoreMembers(
     auth: Authenticator,

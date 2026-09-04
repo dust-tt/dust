@@ -476,10 +476,10 @@ describe("GroupResource", () => {
     });
   });
 
-  describe("suspendMembers", () => {
-    it("suspends active members and returns affected user IDs", async () => {
+  describe("endAllMemberships", () => {
+    it("ends active memberships and returns affected user IDs", async () => {
       const regularGroup = await GroupResource.makeNew({
-        name: "Suspend Test Group",
+        name: "End Memberships Test Group",
         workspaceId: workspace.id,
         kind: "regular_auto",
       });
@@ -494,10 +494,10 @@ describe("GroupResource", () => {
           workspaceId: workspace.id,
         },
       });
-      expect(membership?.status).toBe("active");
+      expect(membership?.endAt).toBeNull();
 
       const affectedUserIds =
-        await regularGroup.dangerouslySuspendMembers(authenticator);
+        await regularGroup.dangerouslyEndAllMemberships(authenticator);
 
       expect(affectedUserIds).toContain(user.id);
 
@@ -508,7 +508,26 @@ describe("GroupResource", () => {
           workspaceId: workspace.id,
         },
       });
-      expect(updatedMembership?.status).toBe("suspended");
+      // Ended, not suspended: the membership must not be restorable.
+      expect(updatedMembership?.endAt).not.toBeNull();
+      expect(updatedMembership?.status).toBe("active");
+      expect(await regularGroup.getActiveMembers(authenticator)).toEqual([]);
+    });
+
+    it("does not leave the user in the group after a restore", async () => {
+      const regularGroup = await GroupResource.makeNew({
+        name: "End Then Restore Test Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      await regularGroup.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+
+      await regularGroup.dangerouslyEndAllMemberships(authenticator);
+      await regularGroup.dangerouslyRestoreMembers(authenticator);
+
+      expect(await regularGroup.getActiveMembers(authenticator)).toEqual([]);
     });
 
     it("invalidates cache for all affected users", async () => {
@@ -525,11 +544,20 @@ describe("GroupResource", () => {
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-      await regularGroup.dangerouslySuspendMembers(authenticator);
+      await regularGroup.dangerouslyEndAllMemberships(authenticator);
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
     });
   });
+
+  // Suspended memberships are only left over from the former management-mode switch; nothing
+  // creates them any more, so the tests below suspend the row by hand.
+  async function suspendMemberships(group: GroupResource) {
+    await GroupMembershipModel.update(
+      { status: "suspended" },
+      { where: { groupId: group.id, workspaceId: workspace.id } }
+    );
+  }
 
   describe("restoreMembers", () => {
     it("restores suspended members and returns affected user IDs", async () => {
@@ -542,7 +570,7 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      await regularGroup.dangerouslySuspendMembers(authenticator);
+      await suspendMemberships(regularGroup);
       const suspendedMembership = await GroupMembershipModel.findOne({
         where: {
           groupId: regularGroup.id,
@@ -577,7 +605,7 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      await regularGroup.dangerouslySuspendMembers(authenticator);
+      await suspendMemberships(regularGroup);
 
       await GroupResource.dangerouslyListUserGroupsForAuth({ user, workspace });
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
