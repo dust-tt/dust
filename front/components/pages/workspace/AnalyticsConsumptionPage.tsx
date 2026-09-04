@@ -222,10 +222,10 @@ export function AnalyticsConsumptionPage() {
     <AdminPageContainer className="relative">
       {analyticsAssistantEnabled && !isOpen && (
         <Button
-          variant="outline"
+          variant="primary"
           icon={Robot}
-          label="Ask @analyst"
-          className="absolute right-4 top-4 z-10 sm:right-10 sm:top-8"
+          tooltip="Ask @analyst"
+          className="absolute bottom-4 right-4 z-10 sm:bottom-8 sm:right-10"
           onClick={() => setIsOpen(true)}
         />
       )}
