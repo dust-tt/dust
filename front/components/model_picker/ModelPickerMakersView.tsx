@@ -14,7 +14,7 @@ import {
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
+import { useCanHover, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -68,7 +68,8 @@ export function ModelPickerMakersView({
   // a narrow viewport they would open off-screen (focusing them then scrolls the
   // page sideways). Either way, makers expand inline instead.
   const isWidthConstrained = useIsWidthConstrained();
-  const useInlineMakers = isWidthConstrained;
+  const canHover = useCanHover();
+  const useInlineMakers = isWidthConstrained || !canHover;
 
   const makerIcon = (maker: MakerGroup) => {
     const makerLogo = getModelMakerLogo(maker.makerId, isDark);
