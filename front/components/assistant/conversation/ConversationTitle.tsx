@@ -19,6 +19,7 @@ import {
   getPodRoute,
 } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
+import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   CREDITS_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
@@ -45,7 +46,8 @@ const MOBILE_FORKED_TITLE_TRUNCATE_LENGTH = 35;
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
-  const { currentPanel, togglePanel } = useConversationSidePanelContext();
+  const { currentPanel, isPanelClosing, togglePanel } =
+    useConversationSidePanelContext();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -73,6 +75,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const currentTitle = conversation
     ? getConversationDisplayTitle(conversation)
     : "";
+  // Side panel toggles read as filter chips: primary while their panel is open.
+  const panelChipVariant = (type: ConversationSidePanelType) =>
+    currentPanel === type && !isPanelClosing ? "primary" : "ghost";
 
   if (!activeConversationId) {
     return null;
@@ -183,23 +188,18 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
-          {/* Side panel toggles read as filter chips: primary while their panel is open. */}
           <Button
             size="xs"
             label={isMobile ? undefined : "Credit usage"}
             icon={CoinsStacked01}
-            variant={
-              currentPanel === CREDITS_SIDE_PANEL_TYPE ? "primary" : "ghost"
-            }
+            variant={panelChipVariant(CREDITS_SIDE_PANEL_TYPE)}
             onClick={() => togglePanel({ type: CREDITS_SIDE_PANEL_TYPE })}
           />
           <Button
             size="xs"
             label={isMobile ? undefined : "Files"}
             icon={Folder}
-            variant={
-              currentPanel === FILES_SIDE_PANEL_TYPE ? "primary" : "ghost"
-            }
+            variant={panelChipVariant(FILES_SIDE_PANEL_TYPE)}
             onClick={() => togglePanel({ type: FILES_SIDE_PANEL_TYPE })}
           />
           <PlanPanelButton

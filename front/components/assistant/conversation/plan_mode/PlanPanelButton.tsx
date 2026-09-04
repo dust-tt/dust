@@ -29,10 +29,11 @@ export function PlanPanelButton({
     conversationId: isPlanModeEnabled ? conversationId : null,
     workspaceId,
   });
-  const { currentPanel, openPanel, togglePanel, closePanel } =
+  const { currentPanel, isPanelClosing, openPanel, togglePanel, closePanel } =
     useConversationSidePanelContext();
   const isMobile = useIsMobile();
-  const isPlanPanelOpen = currentPanel === PLAN_SIDE_PANEL_TYPE;
+  const isPlanPanelOpen =
+    currentPanel === PLAN_SIDE_PANEL_TYPE && !isPanelClosing;
 
   // Single owner of the plan panel: open when the plan appears, close when it goes away. Driving
   // this off `content` (not a specific event) keeps it correct however the change arrived (live

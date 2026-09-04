@@ -61,6 +61,10 @@ const isSupportedPanelType = (
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
+  // True between closePanel() and the end of the collapse transition. `currentPanel` keeps the
+  // old value meanwhile so the panel content does not flicker; toggles read this to unselect
+  // right away.
+  isPanelClosing: boolean;
   openPanel: (params: OpenPanelParams) => void;
   togglePanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
@@ -117,6 +121,7 @@ export function ConversationSidePanelProvider({
   const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+  const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -130,6 +135,7 @@ export function ConversationSidePanelProvider({
   // This should be called once the closing animation is done (onTransitionEnd)
   // so you won't have content flickering
   const onPanelClosed = useCallback(() => {
+    setIsPanelClosing(false);
     setData(undefined);
     setCurrentPanel(undefined);
   }, [setData, setCurrentPanel]);
@@ -137,6 +143,11 @@ export function ConversationSidePanelProvider({
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const closePanel = useCallback(() => {
     if (panelRef && panelRef.current) {
+      // Only flag a real collapse: on an already collapsed panel no transition runs, so
+      // onPanelClosed would never clear the flag.
+      if (!panelRef.current.isCollapsed()) {
+        setIsPanelClosing(true);
+      }
       panelRef.current.collapse();
     } else {
       // in case there is no ref found (agent builder preview), close the panel directly
@@ -147,6 +158,7 @@ export function ConversationSidePanelProvider({
   // Shared selection; `toggle` decides whether re-selecting the shown panel closes it.
   const applyPanel = useCallback(
     (params: OpenPanelParams, { toggle }: { toggle: boolean }) => {
+      setIsPanelClosing(false);
       setCurrentPanel(params.type);
 
       switch (params.type) {
@@ -265,6 +277,7 @@ export function ConversationSidePanelProvider({
       currentPanel: isSupportedPanelType(currentPanel)
         ? currentPanel
         : undefined,
+      isPanelClosing,
       openPanel,
       togglePanel,
       closePanel,
@@ -277,6 +290,7 @@ export function ConversationSidePanelProvider({
     }),
     [
       currentPanel,
+      isPanelClosing,
       openPanel,
       togglePanel,
       closePanel,
