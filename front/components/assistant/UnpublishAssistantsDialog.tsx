@@ -37,7 +37,7 @@ export function UnpublishAssistantsDialog({
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView: "list", // Any view works; the concrete key is used to invalidate all views.
-      disabled: true, // We only use the hook to mutate the cache.
+      disabled: true,
     });
 
   const batchUpdateAgentScope = useBatchUpdateAgentScope({ owner });
