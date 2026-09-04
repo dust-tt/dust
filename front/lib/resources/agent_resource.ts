@@ -1,7 +1,9 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type {
   AgentConfigurationScope,
@@ -20,6 +22,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
@@ -37,6 +40,36 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "user", permissions: ["read"] },
   { role: "none", permissions: ["read"] },
 ];
+
+export async function fetchAllAgentsForWorkspace(
+  auth: Authenticator,
+  { includeDrafts = false }: { includeDrafts?: boolean } = {}
+): Promise<AgentConfigurationModel[]> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  // The workspace index bounds the aggregate, then (agentId, version) resolves each agent head.
+  const latestVersions = await AgentConfigurationModel.findAll({
+    attributes: ["agentId", [fn("MAX", col("version")), "version"]],
+    where: {
+      workspaceId,
+      ...(includeDrafts ? {} : { status: { [Op.ne]: "draft" } }),
+    },
+    group: ["agentId"],
+  });
+  if (latestVersions.length === 0) {
+    return [];
+  }
+
+  return AgentConfigurationModel.findAll({
+    where: {
+      workspaceId,
+      [Op.or]: latestVersions.map(({ agentId, version }) => ({
+        agentId,
+        version,
+      })),
+    },
+  });
+}
 
 export class AgentResource implements WithAccessControl {
   private constructor(

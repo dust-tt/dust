@@ -1,5 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentResource,
+  fetchAllAgentsForWorkspace,
+} from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -30,6 +34,29 @@ describe("AgentResource", () => {
     expect(resource.id).not.toBeNull();
     expect(resource.sId).toBe(agent.sId);
     expect(resource.workspaceId).toBe(testContext.workspace.id);
+  });
+
+  it("fetches each agent's latest non-draft version by default", async () => {
+    const firstVersion = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+    const draft = await AgentConfigurationFactory.updateTestAgent(
+      testContext.authenticator,
+      firstVersion.sId
+    );
+    await AgentConfigurationModel.update(
+      { status: "draft" },
+      { where: { id: draft.id, workspaceId: testContext.workspace.id } }
+    );
+
+    const agents = await fetchAllAgentsForWorkspace(testContext.authenticator);
+    const agentsWithDrafts = await fetchAllAgentsForWorkspace(
+      testContext.authenticator,
+      { includeDrafts: true }
+    );
+
+    expect(agents.map(({ id }) => id)).toEqual([firstVersion.id]);
+    expect(agentsWithDrafts.map(({ id }) => id)).toEqual([draft.id]);
   });
 
   it("applies author, admin, and editor permissions to custom agents", async () => {
