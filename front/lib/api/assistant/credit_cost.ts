@@ -208,17 +208,13 @@ export async function computeAndStoreAgentMessageCredits(
   // contract billing cycle).
   if (recordedCostDelta > 0) {
     if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
-      // Per-user cap.
+      // Per-user cap. Free and paid consumption are kept in separate counters:
+      // free seats accrue only against their lifetime counter, everyone else
+      // only against the per-cycle counter. Recording a free seat's usage into
+      // the per-cycle counter would leak it into their paid cap after a
+      // free→pro switch within the same cycle (mirrors the Metronome
+      // `free-<sId>` user-key split).
       if (user) {
-        await recordUserSpendLimitUsage(auth, {
-          user,
-          incrementBy: recordedCostDelta,
-          cycle: spendLimitCycleOverrideForAuth(auth),
-        });
-
-        // Free seats accrue against a lifetime counter (their enforced limiter)
-        // instead of the per-cycle cap. Their per-cycle counter above is
-        // recorded but never read.
         const membership =
           await MembershipResource.getActiveMembershipOfUserInWorkspace({
             user,
@@ -228,6 +224,12 @@ export async function computeAndStoreAgentMessageCredits(
           await recordFreeSeatLifetimeUsage(auth, {
             user,
             incrementBy: recordedCostDelta,
+          });
+        } else {
+          await recordUserSpendLimitUsage(auth, {
+            user,
+            incrementBy: recordedCostDelta,
+            cycle: spendLimitCycleOverrideForAuth(auth),
           });
         }
       }
