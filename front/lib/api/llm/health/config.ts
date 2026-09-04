@@ -7,3 +7,7 @@
 
 // Length of the sliding window, in whole UTC minutes.
 export const WINDOW_MINUTES = 5;
+
+// Counter keys are only ever read across `WINDOW_MINUTES`; the extra headroom
+// covers clock skew between pods.
+export const COUNTER_KEY_TTL_SECONDS = 900;
