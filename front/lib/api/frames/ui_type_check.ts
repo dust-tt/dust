@@ -207,9 +207,9 @@ export async function ensureFrameRuntimeTypesInstalled(
           `/usr/bin/chown -R root:root -- ${shellEscape(extractDirectory)}`,
           `/usr/bin/find ${shellEscape(extractDirectory)} -type d -exec /usr/bin/chmod 0755 -- {} +`,
           `/usr/bin/find ${shellEscape(extractDirectory)} -type f -exec /usr/bin/chmod 0644 -- {} +`,
-          `test -z "$(/usr/bin/find ${shellEscape(extractDirectory)} ! -type d ! -type f -print -quit)"`,
-          `test -f ${shellEscape(path.posix.join(extractDirectory, "tsconfig.json"))}`,
-          `{ /usr/bin/mv -T -- ${shellEscape(extractDirectory)} ${shellEscape(runtimeDirectory)} 2>/dev/null || test -f ${shellEscape(runtimeTsconfigPath)}; }`,
+          `/usr/bin/test -z "$(/usr/bin/find ${shellEscape(extractDirectory)} ! -type d ! -type f -print -quit)"`,
+          `/usr/bin/test -f ${shellEscape(path.posix.join(extractDirectory, "tsconfig.json"))}`,
+          `{ /usr/bin/mv -T -- ${shellEscape(extractDirectory)} ${shellEscape(runtimeDirectory)} 2>/dev/null || /usr/bin/test -f ${shellEscape(runtimeTsconfigPath)}; }`,
         ].join(" && "),
         "Verify, extract, harden and atomically publish the Frame runtime types artifact."
       )
@@ -360,7 +360,13 @@ export async function typeCheckFrameUiOnSandbox(
     if (exitCode === 0) {
       return new Ok({ warnings: [] });
     }
-    const diagnostics = parseTscOutput(stdout);
+    const diagnostics = parseTscOutput(stdout).map((diagnostic) => ({
+      ...diagnostic,
+      file:
+        diagnostic.file === null
+          ? null
+          : path.posix.resolve(scratchDirectory, diagnostic.file),
+    }));
     if (exitCode !== TSC_DIAGNOSTICS_EXIT_CODE || diagnostics.length === 0) {
       const detail = stderr.trim() || stdout.trim();
       return new Err(

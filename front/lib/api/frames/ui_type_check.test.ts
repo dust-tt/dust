@@ -1,5 +1,7 @@
 // @vitest-environment node
 
+import path from "node:path";
+
 import {
   ensureFrameRuntimeTypesInstalled,
   FRAME_RUNTIME_TYPES_ROOT,
@@ -248,15 +250,15 @@ describe("typeCheckFrameUiOnSandbox", () => {
   });
 
   it("fails publication when the entry point is not a prop-less component", async () => {
-    const { auth, sandbox, exec, writeFile } = await setup();
-    exec.mockImplementation(async () => {
-      const [, entryCheckPath] = writeFile.mock.calls[0];
-      return new Ok({
+    const { auth, sandbox, exec } = await setup();
+    exec.mockResolvedValue(
+      new Ok({
         exitCode: 2,
-        stdout: `${entryCheckPath}(2,28): error TS2741: Property 'title' is missing in type '{}' but required in type '{ title: string; }'.`,
+        stdout:
+          "entry-check.tsx(2,28): error TS2741: Property 'title' is missing in type '{}' but required in type '{ title: string; }'.",
         stderr: "",
-      });
-    });
+      })
+    );
 
     const result = await typeCheckFrameUiOnSandbox(auth, {
       sandbox,
@@ -272,14 +274,19 @@ describe("typeCheckFrameUiOnSandbox", () => {
   });
 
   it("returns type errors as warnings", async () => {
-    const { auth, sandbox, exec } = await setup();
-    exec.mockResolvedValue(
-      new Ok({
+    const { auth, sandbox, exec, writeFile } = await setup();
+    exec.mockImplementation(async () => {
+      const [, entryCheckPath] = writeFile.mock.calls[0];
+      const diagnosticPath = path.posix.relative(
+        path.posix.dirname(entryCheckPath),
+        `${stagingDirectory}/lib/util.ts`
+      );
+      return new Ok({
         exitCode: 2,
-        stdout: `${stagingDirectory}/lib/util.ts(4,7): error TS2322: Type 'string' is not assignable to type 'number'.`,
+        stdout: `${diagnosticPath}(4,7): error TS2322: Type 'string' is not assignable to type 'number'.`,
         stderr: "",
-      })
-    );
+      });
+    });
 
     const result = await typeCheckFrameUiOnSandbox(auth, {
       sandbox,
