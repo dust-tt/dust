@@ -193,9 +193,6 @@ export type MemberFairUseUsage = {
   usedCredits: number;
   limitCredits: number;
   timeframe: MaxAwuCreditsTimeframeType;
-  // Same rolling-window mechanism as premium messages: each credit-consuming
-  // event frees up its slot `windowDays` after it was recorded, not all at
-  // once. Derived from `timeframe`, in days, for display.
   windowDays: number;
   nextResetAt: string | null;
 };
