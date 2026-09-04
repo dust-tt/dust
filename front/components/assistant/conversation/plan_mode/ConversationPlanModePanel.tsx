@@ -1,14 +1,10 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  contentHash,
-  extractPlanTitle,
-} from "@app/components/assistant/conversation/plan_mode/utils";
+import { extractPlanTitle } from "@app/components/assistant/conversation/plan_mode/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Markdown, Spinner, XClose } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 
 interface ConversationPlanModePanelProps {
   conversation: ConversationWithoutContentType;
@@ -26,10 +22,6 @@ export function ConversationPlanModePanel({
   });
 
   const title = extractPlanTitle(content);
-  const markdownKey = useMemo(
-    () => (content ? contentHash(content) : ""),
-    [content]
-  );
 
   return (
     <div className="flex h-panel flex-col">
@@ -58,9 +50,13 @@ export function ConversationPlanModePanel({
             No active plan for this conversation.
           </div>
         ) : (
-          // Remount on each edit: Sparkle's `Markdown` memoizes AST nodes for streaming reveal and
-          // can keep stale children when the whole content prop is replaced between edits.
-          <Markdown key={markdownKey} content={content} />
+          // Plain (non-memoized) blocks so each edit re-renders items in place and the step
+          // badges can transition when the agent ticks a task.
+          <Markdown
+            content={content}
+            taskListVariant="step"
+            optimizeForStreaming={false}
+          />
         )}
       </div>
     </div>
