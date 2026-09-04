@@ -102,12 +102,12 @@ export function PodSettingsTab({
   const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
   // The pod env vars section stays workspace-admin only (matching the API,
   // which keeps env-vars admin-only). Mirrors that gate — change both together.
-  const isPodSandboxAdminEnabled = isAdmin && hasFeature("sandbox_functions");
+  const isPodSandboxAdminEnabled = isAdmin && hasFeature("frames_v2");
   // The pod network section is visible to anyone who can open this page once
   // the feature is on (the API opens the egress GET to Pod readers); editing
   // stays workspace-admin only. Mirrors the egress-policy route gates — change
   // both together.
-  const canViewPodNetwork = hasFeature("sandbox_functions");
+  const canViewPodNetwork = hasFeature("frames_v2");
   const canEditPodNetwork = isPodSandboxAdminEnabled;
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
