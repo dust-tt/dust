@@ -1216,14 +1216,6 @@ export function useJITMCPServerViewsFromSpaces(
   };
 }
 
-export function useManualMCPServerViewsFromSpaces(
-  owner: LightWorkspaceType,
-  spaces: SpaceType[],
-  swrOptions?: SWRConfiguration & { disabled?: boolean }
-) {
-  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"], swrOptions);
-}
-
 export function useMCPServerViewsWithPersonalConnections({
   owner,
   mcpServerViewToCheckIds,
