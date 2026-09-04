@@ -81,6 +81,8 @@ function AttributionSkeletonCell({
       );
     case "credits":
     case "avgCredits":
+    case "activeMembers":
+    case "usageVsWorkspaceAverage":
     case "vsPrev":
       return (
         <div className="flex h-12 items-center justify-end">
