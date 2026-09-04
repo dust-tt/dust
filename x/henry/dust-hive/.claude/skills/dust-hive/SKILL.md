@@ -11,8 +11,8 @@ its own Git worktree, port range, Docker containers, databases, and service proc
 ## Find the environment
 
 Hive-owned worktrees normally live at `<repo>/.hives/<name>`. Worktrees registered with
-`dust-hive adopt` may live elsewhere, and older environments may still use
-`~/dust-hive/<name>`. Do not identify a Hive environment from its path alone.
+`dust-hive adopt` may live elsewhere under the main repository root, and older environments may
+still use `~/dust-hive/<name>`. Do not identify a Hive environment from its path alone.
 
 Use the CLI and registered metadata instead:
 
@@ -93,9 +93,10 @@ When forwarding is enabled, the standard development ports map to the selected e
 | 3011 | Main SPA |
 | 6006 | Storybook |
 
-`dust-hive warm` forwards these ports unless passed `--no-forward`. Before switching the forwarded
-environment, run `dust-hive forward status`. If another environment owns the standard ports, ask
-the user before changing it.
+`dust-hive warm` normally starts forwarding unless passed `--no-forward`, but it does not change
+forwarding when the environment is already warm. Use `dust-hive forward [ENV_NAME]` to switch
+explicitly. Before switching, run `dust-hive forward status`. If another environment owns the
+standard ports, ask the user before changing it.
 
 ## Checks and tests
 
