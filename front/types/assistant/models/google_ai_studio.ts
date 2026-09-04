@@ -440,10 +440,10 @@ export const GEMINI_3_8_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsBatchProcessing: true,
   regionalAvailability: {
-    // The legacy flags map to Agent Platform's `us` and `eu` multi-regions.
-    // https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-8-flash
-    // (2026-09-04): Gemini 3.8 Flash is available globally and in both multi-regions.
+    // The native Agent Platform API serves the model globally, but `eu` failed
+    // with "Invalid hostname: eu-aiplatform.googleapis.com" in a live test on
+    // 2026-09-04. Keep EU disabled until the native API supports it.
     "us-central1": true,
-    "europe-west1": true,
+    "europe-west1": false,
   },
 };
