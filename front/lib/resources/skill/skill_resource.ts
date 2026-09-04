@@ -654,17 +654,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * referencing one are dropped too. This is what the fetch path applies (see
    * `SkillPermissionFilteringMode`).
    */
-  static async filterReadable<
-    T extends {
-      id: ModelId;
-      workspaceId: ModelId;
-      requestedSpaceIds: ModelId[];
-    },
-  >(
+  private static async filterReadable(
     auth: Authenticator,
-    skills: T[],
+    skills: SkillConfigurationModel[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<T[]> {
+  ): Promise<SkillConfigurationModel[]> {
     const uniqueRequestedSpaceIds = uniq(
       skills.flatMap((skill) => skill.requestedSpaceIds)
     );
@@ -674,12 +668,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             transaction,
           })
         : [];
-    const spaceById = new Map(spaces.map((s) => [s.id, s]));
+    const spaceByModelId = new Map(spaces.map((s) => [s.id, s]));
 
     return skills.filter(
       (skill) =>
         this.canReadRow(auth, skill) &&
-        canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
+        canReadRequestedSpaces(auth, spaceByModelId, skill.requestedSpaceIds)
     );
   }
 
@@ -2330,7 +2324,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   // skill the caller cannot read is never hydrated.
   private static canReadRow(
     auth: Authenticator,
-    skill: { id: ModelId; workspaceId: ModelId }
+    skill: SkillConfigurationModel
   ): boolean {
     // See canWrite: API keys hold no skill grant, so any key reads any skill.
     if (auth.isKey()) {
