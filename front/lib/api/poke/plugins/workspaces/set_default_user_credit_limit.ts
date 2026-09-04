@@ -3,7 +3,6 @@ import {
   getNonCreditPricedDefaultUserSpendLimit,
   setNonCreditPricedDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -38,8 +37,7 @@ export const setDefaultUserCreditLimitPlugin = createPlugin({
       "AWU credits any single member can spend per calendar month. Applies to " +
       "current and future members — it is a limit per member, not a shared " +
       "workspace pool. Once a member reaches it they cannot send messages until " +
-      "the next month. Enforcement requires the " +
-      "`enforce_user_spend_limit_rate_cap` feature flag.",
+      "the next month.",
     resourceTypes: ["workspaces"],
     args: {
       awuCredits: {
@@ -96,23 +94,11 @@ export const setDefaultUserCreditLimitPlugin = createPlugin({
       });
     }
 
-    // The limit is stored and read regardless, but only enforced where the flag
-    // is on — say so rather than letting an admin believe it is live.
-    const featureFlags = await getFeatureFlags(auth);
-    const enforcementNote = featureFlags.includes(
-      "enforce_user_spend_limit_rate_cap"
-    )
-      ? ""
-      : " Enforcement is OFF for this workspace: enable the " +
-        "`enforce_user_spend_limit_rate_cap` feature flag to block messages " +
-        "once a member reaches their limit.";
-
     return new Ok({
       display: "text",
       value:
         `Every member of ${workspace.name} can now spend up to ` +
-        `${awuCredits.toLocaleString()} AWU credits per calendar ` +
-        `month.${enforcementNote}`,
+        `${awuCredits.toLocaleString()} AWU credits per calendar month.`,
     });
   },
 });
