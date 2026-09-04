@@ -5,13 +5,8 @@ import type {
   AuthContextValue,
 } from "@app/lib/auth/AuthContext";
 import { AuthContext, AuthContextNoWorkspace } from "@app/lib/auth/AuthContext";
-import { usePokeRegion } from "@app/lib/swr/poke";
-import type { RegionType } from "@app/types/region";
+import { usePokeCells } from "@app/lib/swr/poke";
 import type React from "react";
-
-export interface PokeLayoutProps {
-  currentRegion: RegionType;
-}
 
 // Layout for workspace-scoped poke pages (uses AuthContext).
 export default function PokeLayout({
@@ -41,7 +36,7 @@ export function PokeLayoutNoWorkspace({
   return (
     <AuthContextNoWorkspace.Provider value={authContext}>
       <ThemeProvider>
-        <PokeLayoutContent showRegionPicker>{children}</PokeLayoutContent>
+        <PokeLayoutContent showCellPicker>{children}</PokeLayoutContent>
       </ThemeProvider>
     </AuthContextNoWorkspace.Provider>
   );
@@ -49,20 +44,19 @@ export function PokeLayoutNoWorkspace({
 
 interface PokeLayoutContentProps {
   children: React.ReactNode;
-  showRegionPicker?: boolean;
+  showCellPicker?: boolean;
 }
 
 const PokeLayoutContent = ({
   children,
-  showRegionPicker = false,
+  showCellPicker = false,
 }: PokeLayoutContentProps) => {
-  const { regionData } = usePokeRegion();
-  const regionUrls = regionData?.regionUrls;
+  const { cells } = usePokeCells();
   return (
     // Poke overrides the default border token with the form one: the subtle stone-100 border is
     // invisible on dense backoffice pages, and per-component overrides do not scale.
     <div className="min-h-dvh bg-background text-foreground [--color-border:var(--color-border-form)]">
-      <PokeNavbar regionUrls={regionUrls} showRegionPicker={showRegionPicker} />
+      <PokeNavbar cells={cells ?? undefined} showCellPicker={showCellPicker} />
       <div className="flex flex-col p-6">{children}</div>
     </div>
   );

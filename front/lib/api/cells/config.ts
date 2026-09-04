@@ -15,9 +15,12 @@ const CELLS: Record<CellType, CellInfo> = Object.fromEntries(
           {
             name: cell,
             region: "us-central1",
-            url:
-              EnvironmentConfig.getOptionalEnvVariable("DUST_US_URL") ??
-              "https://dust.tt",
+            // Local poke/dev talks to the single local front-api, even when
+            // production cell public URLs are configured in the environment.
+            url: isDevelopment()
+              ? "http://localhost:3000"
+              : (EnvironmentConfig.getOptionalEnvVariable("DUST_US_URL") ??
+                "https://dust.tt"),
           },
         ];
       // EU Global
@@ -27,9 +30,10 @@ const CELLS: Record<CellType, CellInfo> = Object.fromEntries(
           {
             name: cell,
             region: "europe-west1",
-            url:
-              EnvironmentConfig.getOptionalEnvVariable("DUST_EU_URL") ??
-              "https://eu.dust.tt",
+            url: isDevelopment()
+              ? "http://localhost:3000"
+              : (EnvironmentConfig.getOptionalEnvVariable("DUST_EU_URL") ??
+                "https://eu.dust.tt"),
           },
         ];
       default:
@@ -56,10 +60,6 @@ export const config = {
     return CELLS[cell];
   },
   getCellUrl(cell: CellType): string {
-    if (isDevelopment()) {
-      return "http://localhost:3000";
-    }
-
     return this.getCellInfo(cell).url;
   },
   isMainCell(): boolean {
