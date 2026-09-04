@@ -22,7 +22,14 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import type { Variants } from "framer-motion";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  domAnimation,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
+import type { ReactNode } from "react";
 import { useCallback, useRef } from "react";
 
 const MESSAGE_PANEL_VARIANTS: Variants = {
@@ -43,6 +50,24 @@ const MESSAGE_PANEL_VARIANTS: Variants = {
     },
   },
 };
+
+interface MessagePanelPresenceProps {
+  children: ReactNode;
+  onExitComplete: () => void;
+}
+
+function MessagePanelPresence({
+  children,
+  onExitComplete,
+}: MessagePanelPresenceProps) {
+  return (
+    <LazyMotion features={domAnimation}>
+      <AnimatePresence initial={false} onExitComplete={onExitComplete}>
+        {children}
+      </AnimatePresence>
+    </LazyMotion>
+  );
+}
 
 function formatShare(credits: number, totalCredits: number): string {
   if (totalCredits <= 0 || credits <= 0) {
@@ -265,9 +290,9 @@ export function PokeMessageConsumptionInspector({
         />
       </button>
 
-      <AnimatePresence initial={false} onExitComplete={onPanelExitComplete}>
+      <MessagePanelPresence onExitComplete={onPanelExitComplete}>
         {isOpen && (
-          <motion.div
+          <m.div
             id={contentId}
             role="region"
             aria-labelledby={triggerId}
@@ -478,9 +503,9 @@ export function PokeMessageConsumptionInspector({
                 )}
               </div>
             </div>
-          </motion.div>
+          </m.div>
         )}
-      </AnimatePresence>
+      </MessagePanelPresence>
     </div>
   );
 }

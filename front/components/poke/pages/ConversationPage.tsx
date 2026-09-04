@@ -51,7 +51,7 @@ import {
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { ComponentProps, ReactNode } from "react";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
@@ -897,26 +897,23 @@ export function ConversationPage() {
     activeMessagePanelRef,
     stickyInspectorsRef,
   });
-  const activeMessageIdRef = useRef(activeMessageId);
-  activeMessageIdRef.current = activeMessageId;
+  function handleMessagePanelRefChange(
+    messageId: string,
+    element: HTMLDivElement | null
+  ) {
+    if (element && messageId === activeMessageId) {
+      activeMessagePanelRef.current = element;
+      return;
+    }
 
-  const handleMessagePanelRefChange = useCallback(
-    (messageId: string, element: HTMLDivElement | null) => {
-      if (element && messageId === activeMessageIdRef.current) {
-        activeMessagePanelRef.current = element;
-        return;
-      }
-
-      if (
-        !element &&
-        activeMessagePanelRef.current?.dataset.messageConsumptionPanelId ===
-          messageId
-      ) {
-        activeMessagePanelRef.current = null;
-      }
-    },
-    []
-  );
+    if (
+      !element &&
+      activeMessagePanelRef.current?.dataset.messageConsumptionPanelId ===
+        messageId
+    ) {
+      activeMessagePanelRef.current = null;
+    }
+  }
 
   const { copyTestCase, isLoading: isTestCaseLoading } =
     useCopyReinforcementTestCase({ owner, conversationId });

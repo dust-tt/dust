@@ -119,7 +119,10 @@ export function useConversationInspectorPanels({
 }: UseConversationInspectorPanelsProps) {
   const [state, dispatch] = useReducer(inspectorPanelReducer, INITIAL_STATE);
   const messageRailTakeoverIdRef = useRef(state.messageRailTakeoverId);
-  messageRailTakeoverIdRef.current = state.messageRailTakeoverId;
+
+  useLayoutEffect(() => {
+    messageRailTakeoverIdRef.current = state.messageRailTakeoverId;
+  }, [state.messageRailTakeoverId]);
 
   useLayoutEffect(() => {
     if (!state.activeMessageId) {
