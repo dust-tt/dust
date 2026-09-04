@@ -5,7 +5,11 @@ import { unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { createTypeGuard, isErrnoException } from "./errors";
-import { FORWARDER_MAPPINGS, FORWARDER_PORTS } from "./forwarderConfig";
+import {
+  FORWARDER_MAPPINGS,
+  FORWARDER_PORTS,
+  partitionOccupiedForwarderPorts,
+} from "./forwarderConfig";
 import { fileExists } from "./fs";
 import { logger } from "./logger";
 import { FORWARDER_LOG_PATH, FORWARDER_PID_PATH, FORWARDER_STATE_PATH } from "./paths";
@@ -16,6 +20,7 @@ const ForwarderStateFields = z.object({
   targetEnv: z.string(),
   basePort: z.number(),
   updatedAt: z.string(),
+  skippedPorts: z.array(z.number()).optional(),
 });
 
 const ForwarderStateSchema = ForwarderStateFields.passthrough();
@@ -181,15 +186,23 @@ export async function startForwarder(basePort: number, envName: string): Promise
   await stopForwarder();
 
   // Check if any standard ports are already in use by something else
-  const portsInUse = FORWARDER_PORTS.filter((port) => isPortInUse(port));
-  if (portsInUse.length > 0) {
-    const stopped = await stopForwarderProcessesOnPorts(portsInUse);
+  const occupiedPorts = FORWARDER_PORTS.filter((port) => isPortInUse(port));
+  const { portsToClear, portsToPreserve: preservablePorts } =
+    partitionOccupiedForwarderPorts(occupiedPorts);
+  if (portsToClear.length > 0) {
+    const stopped = await stopForwarderProcessesOnPorts(portsToClear);
     if (!stopped) {
-      const details = formatPortProcessInfo(portsInUse);
+      const details = formatPortProcessInfo(portsToClear);
       throw new Error(
-        `Ports ${portsInUse.join(", ")} are already in use (${details}). Stop the processes using them before starting the forwarder.`
+        `Ports ${portsToClear.join(", ")} are already in use (${details}). Stop the processes using them before starting the forwarder.`
       );
     }
+  }
+  // A stray forwarder cleared above may also have owned a preservable port.
+  const portsToPreserve = preservablePorts.filter((port) => isPortInUse(port));
+  if (portsToPreserve.length > 0) {
+    const details = formatPortProcessInfo(portsToPreserve);
+    logger.warn(`Preserving existing listeners instead of forwarding: ${details}`);
   }
 
   // Find the daemon script relative to this module (src/lib/forward.ts → src/forward-daemon.ts)
@@ -202,12 +215,15 @@ export async function startForwarder(basePort: number, envName: string): Promise
   // Spawn the forwarder daemon
   const logFile = Bun.file(FORWARDER_LOG_PATH);
 
-  const proc = Bun.spawn(["bun", "run", daemonPath, String(basePort)], {
-    env: process.env,
-    stdout: logFile,
-    stderr: logFile,
-    detached: true,
-  });
+  const proc = Bun.spawn(
+    ["bun", "run", daemonPath, String(basePort), ...portsToPreserve.map((port) => String(port))],
+    {
+      env: process.env,
+      stdout: logFile,
+      stderr: logFile,
+      detached: true,
+    }
+  );
 
   proc.unref();
 
@@ -226,10 +242,18 @@ export async function startForwarder(basePort: number, envName: string): Promise
     targetEnv: envName,
     basePort,
     updatedAt: new Date().toISOString(),
+    skippedPorts: portsToPreserve,
   });
 
   logger.success(`Forwarding ports → ${envName} (base ${basePort})`);
+  const skippedPorts = new Set(portsToPreserve);
   for (const m of FORWARDER_MAPPINGS) {
+    if (skippedPorts.has(m.listenPort)) {
+      console.log(
+        `  ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → existing listener (preserved)`
+      );
+      continue;
+    }
     console.log(
       `  ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → ${basePort + m.targetOffset}`
     );

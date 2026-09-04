@@ -8,6 +8,18 @@ import { restoreTerminal, selectEnvironment } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
 
+function formatForwarderMapping(
+  mapping: (typeof FORWARDER_MAPPINGS)[number],
+  basePort: number,
+  skippedPorts: Set<number>
+): string {
+  const label = `${mapping.name.padEnd(16)} ${String(mapping.listenPort).padStart(4)}`;
+  if (skippedPorts.has(mapping.listenPort)) {
+    return `${label} → existing listener (preserved)`;
+  }
+  return `${label} → ${basePort + mapping.targetOffset}`;
+}
+
 export async function forwardStatusCommand(): Promise<Result<void>> {
   const status = await getForwarderStatus();
 
@@ -21,10 +33,9 @@ export async function forwardStatusCommand(): Promise<Result<void>> {
     console.log(`Target:     ${status.state.targetEnv} (base port ${status.state.basePort})`);
     console.log(`Updated:    ${status.state.updatedAt}`);
     console.log("Listening:");
+    const skippedPorts = new Set(status.state.skippedPorts ?? []);
     for (const m of FORWARDER_MAPPINGS) {
-      console.log(
-        `            ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → ${status.state.basePort + m.targetOffset}`
-      );
+      console.log(`            ${formatForwarderMapping(m, status.state.basePort, skippedPorts)}`);
     }
 
     // Check if target is still warm
