@@ -52,9 +52,9 @@ interface BundleModuleParams {
    */
   transform?: (relPath: string, content: string) => string;
   /**
-   * Gate for non-relative specifiers, the engine's other consumer-specific seam. Returns an error
-   * message for an import the runtime cannot provide, or null to leave it external. Frames use it
-   * to reject packages missing from the renderer's import map at build time.
+   * Called for every bare import (`react`, `lodash`, ...). Return an error message to fail the
+   * build, or null to keep the import external. Frames use it to reject packages the renderer
+   * does not provide.
    */
   unsupportedExternalMessage?: (specifier: string) => string | null;
 }
