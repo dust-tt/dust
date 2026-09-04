@@ -31,6 +31,7 @@ import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -627,8 +628,8 @@ export async function createAgentConfiguration(
 
   let userFavorite = false;
 
-  // For hidden agents, track previous editors to disable triggers when editors are removed.
-  let previousEditorIds: Set<ModelId> = new Set();
+  // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.
+  let removedEditors: UserType[] = [];
   // The scope the agent has before this write. A new agent starts hidden, so saving it
   // visible counts as publishing.
   let currentScope: AgentConfigurationScope = "hidden";
@@ -639,16 +640,6 @@ export async function createAgentConfiguration(
     });
     if (existingAgent) {
       currentScope = existingAgent.scope;
-      if (scope === "hidden") {
-        const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-          auth,
-          existingAgent
-        );
-        if (editorGroupRes.isOk()) {
-          const members = await editorGroupRes.value.getActiveMembers(auth);
-          previousEditorIds = new Set(members.map((m) => m.id));
-        }
-      }
     }
   }
 
@@ -981,11 +972,17 @@ export async function createAgentConfiguration(
             );
             throw setMembersRes.error;
           }
+          removedEditors = setMembersRes.value.removedUsers;
         }
 
-        await AgentResource.fromAgentConfigurationModel(
+        const agentResource = AgentResource.fromAgentConfigurationModel(
           agentConfigurationInstance
-        ).grantEditors(auth, { editors, transaction: t });
+        );
+        await agentResource.grantEditors(auth, { editors, transaction: t });
+        await agentResource.revokeEditors(auth, {
+          editors: removedEditors,
+          transaction: t,
+        });
       }
 
       return agentConfigurationInstance;
@@ -1033,32 +1030,25 @@ export async function createAgentConfiguration(
     });
 
     // Disable triggers for editors who were removed from a hidden agent.
-    if (previousEditorIds.size > 0 && scope === "hidden") {
-      const newEditorIds = new Set(editors.map((e) => e.id));
-      const removedEditorIds = Array.from(previousEditorIds).filter(
-        (id) => !newEditorIds.has(id)
-      );
-
-      if (removedEditorIds.length > 0) {
-        const triggersToDisableRes =
-          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-            agentConfigurationId: agent.sId,
-            editorIds: removedEditorIds,
-          });
-        if (triggersToDisableRes.isOk()) {
-          for (const trigger of triggersToDisableRes.value) {
-            const disableResult = await trigger.disable(auth);
-            if (disableResult.isErr()) {
-              logger.error(
-                {
-                  workspaceId: owner.sId,
-                  agentConfigurationId: agent.sId,
-                  triggerId: trigger.sId,
-                  error: disableResult.error,
-                },
-                `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
-              );
-            }
+    if (removedEditors.length > 0 && scope === "hidden") {
+      const triggersToDisableRes =
+        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+          agentConfigurationId: agent.sId,
+          editorIds: removedEditors.map((editor) => editor.id),
+        });
+      if (triggersToDisableRes.isOk()) {
+        for (const trigger of triggersToDisableRes.value) {
+          const disableResult = await trigger.disable(auth);
+          if (disableResult.isErr()) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: agent.sId,
+                triggerId: trigger.sId,
+                error: disableResult.error,
+              },
+              `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
+            );
           }
         }
       }
@@ -1408,12 +1398,13 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
 }
 
 async function deleteAgentIdentityIfUnused(
-  workspaceId: number,
-  sId: string,
+  auth: Authenticator,
+  agent: AgentResource,
   transaction: Transaction
 ): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
   const remainingConfiguration = await AgentConfigurationModel.findOne({
-    where: { sId, workspaceId },
+    where: { sId: agent.sId, workspaceId },
     attributes: ["id"],
     transaction,
   });
@@ -1421,8 +1412,9 @@ async function deleteAgentIdentityIfUnused(
     return;
   }
 
+  await agent.destroyPermissionsAndGroups(auth, { transaction });
   await AgentModel.destroy({
-    where: { sId, workspaceId },
+    where: { sId: agent.sId, workspaceId },
     transaction,
   });
 }
@@ -1436,6 +1428,12 @@ export async function unsafeHardDeleteAgentConfiguration(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   await withTransaction(async (t) => {
+    const agentResource = await AgentResource.fetchByAgentConfiguration(
+      auth,
+      agentConfiguration,
+      { transaction: t }
+    );
+
     // Clean up MCP server configurations and their children first
     const mcpConfigs = await AgentMCPServerConfigurationModel.findAll({
       where: {
@@ -1513,7 +1511,7 @@ export async function unsafeHardDeleteAgentConfiguration(
       transaction: t,
     });
 
-    await deleteAgentIdentityIfUnused(workspaceId, agentConfiguration.sId, t);
+    await deleteAgentIdentityIfUnused(auth, agentResource, t);
   });
 }
 
@@ -1521,38 +1519,63 @@ export async function unsafeHardDeleteAgentConfiguration(
  * Batch-deletes pending agent configurations and their editor groups.
  */
 export async function batchHardDeletePendingAgentConfigurations(
-  agents: AgentConfigurationModel[],
-  workspaceId: number
+  auth: Authenticator,
+  agents: AgentConfigurationModel[]
 ) {
-  const agentIds = agents.map((a) => a.id);
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const agentConfigurationModelIds = agents.map((agent) => agent.id);
+  const agentModelIds = [...new Set(agents.map((agent) => agent.agentId))];
 
   // Find all editor group IDs for this batch.
   const groupAgents = await GroupAgentModel.findAll({
-    where: { agentConfigurationId: agentIds, workspaceId },
+    where: {
+      agentConfigurationId: agentConfigurationModelIds,
+      workspaceId,
+    },
   });
-  const groupIds = groupAgents.map((ga) => ga.groupId);
+  const editorGroupModelIds = groupAgents.map(
+    (groupAgent) => groupAgent.groupId
+  );
 
   await withTransaction(async (t) => {
-    if (groupIds.length > 0) {
+    const grantGroups =
+      await GroupPermissionResource.listRegularAutoGroupsForResources(auth, {
+        resourceType: "agent",
+        resourceIds: agentModelIds,
+        transaction: t,
+      });
+    await GroupPermissionResource.deleteAllForResources(auth, {
+      resourceType: "agent",
+      resourceIds: agentModelIds,
+      transaction: t,
+    });
+
+    const groupModelIds = [
+      ...new Set([
+        ...editorGroupModelIds,
+        ...grantGroups.map((group) => group.id),
+      ]),
+    ];
+    if (groupModelIds.length > 0) {
       await GroupMembershipModel.destroy({
-        where: { groupId: groupIds, workspaceId },
+        where: { groupId: groupModelIds, workspaceId },
         transaction: t,
       });
 
       await GroupAgentModel.destroy({
-        where: { groupId: groupIds, workspaceId },
+        where: { groupId: groupModelIds, workspaceId },
         transaction: t,
       });
 
       await GroupModel.destroy({
-        where: { id: groupIds, workspaceId },
+        where: { id: groupModelIds, workspaceId },
         transaction: t,
       });
     }
 
     // Delete agent suggestions before agents (FK constraint)
     await AgentSuggestionModel.destroy({
-      where: { agentConfigurationId: agentIds, workspaceId },
+      where: { agentConfigurationId: agentConfigurationModelIds, workspaceId },
       transaction: t,
     });
 
@@ -1562,13 +1585,16 @@ export async function batchHardDeletePendingAgentConfigurations(
     );
 
     await AgentConfigurationModel.destroy({
-      where: { id: agentIds, workspaceId },
+      where: { id: agentConfigurationModelIds, workspaceId },
       transaction: t,
     });
 
-    for (const sId of new Set(agents.map((agent) => agent.sId))) {
-      await deleteAgentIdentityIfUnused(workspaceId, sId, t);
-    }
+    // Pending configurations are the only version of their logical agent. The FK protects this
+    // invariant by rolling the transaction back if another configuration still uses an identity.
+    await AgentModel.destroy({
+      where: { id: agentModelIds, workspaceId },
+      transaction: t,
+    });
   });
 }
 
@@ -1622,6 +1648,12 @@ export async function updateAgentPermissions(
 
   try {
     const transactionResult = await withTransaction(async (t) => {
+      const agentResource = await AgentResource.fetchByAgentConfiguration(
+        auth,
+        agent,
+        { transaction: t }
+      );
+
       if (usersToAdd.length > 0) {
         // TODO(governance) replace by permission check on agent resource
         if (
@@ -1643,11 +1675,6 @@ export async function updateAgentPermissions(
           return addRes;
         }
 
-        const agentResource = await AgentResource.fetchByAgentConfiguration(
-          auth,
-          agent,
-          { transaction: t }
-        );
         await agentResource.grantEditors(auth, {
           editors: usersToAdd,
           transaction: t,
@@ -1677,6 +1704,11 @@ export async function updateAgentPermissions(
         if (removeRes.isErr()) {
           return removeRes;
         }
+
+        await agentResource.revokeEditors(auth, {
+          editors: usersToRemove,
+          transaction: t,
+        });
       }
       return new Ok(undefined);
     });

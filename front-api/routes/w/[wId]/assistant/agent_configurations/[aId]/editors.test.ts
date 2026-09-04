@@ -319,6 +319,32 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     const data = await response.json();
     expect(data.editors).toHaveLength(1);
     expect(data.editors[0].sId).toBe(editorToRemove.sId);
+
+    const agentGrant = (
+      await GroupPermissionResource.listForWorkspace(agentOwnerAuth)
+    ).find(
+      (grant) => grant.grantType === "editor" && grant.resourceType === "agent"
+    );
+    if (!agentGrant) {
+      throw new Error("Agent editor grant was not created");
+    }
+    const grantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        agentOwnerAuth,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: agentGrant.resourceId,
+        }
+      );
+    if (!grantGroup) {
+      throw new Error("Agent editor group was not created");
+    }
+    expect(
+      (await grantGroup.getActiveMembers(agentOwnerAuth)).map(
+        (editor) => editor.sId
+      )
+    ).toEqual([editorToRemove.sId]);
   });
 
   it("editor should successfully add another editor and get light response", async () => {
