@@ -4,6 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
+import { PlanPanelButton } from "@app/components/assistant/conversation/plan_mode/PlanPanelButton";
 import { getParentConversationTitleLabel } from "@app/components/assistant/conversation/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
@@ -191,6 +192,11 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             icon={Folder}
             variant="ghost"
             onClick={() => togglePanel({ type: "files" })}
+          />
+          <PlanPanelButton
+            key={activeConversationId}
+            conversationId={activeConversationId}
+            workspaceId={owner.sId}
           />
           <ConversationMenu
             activeConversationId={activeConversationId}
