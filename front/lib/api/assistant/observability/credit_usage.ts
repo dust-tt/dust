@@ -15,9 +15,7 @@ import {
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { TopConversationCreditsRow } from "@app/types/api/credits/my_top_conversations";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -354,83 +352,6 @@ export async function fetchCreditUsage(
   });
 
   return new Ok({ totalCredits, rows });
-}
-
-type TopConversationsAggs = {
-  by_conversation?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
-};
-
-// Conversations ranked by summed per-message billed AWU credits (cost.billable_awu) over
-// the window. Same source and scope as fetchCreditUsage; scope to a user via
-// `userIds` so the ranking only counts that user's messages. Conversations
-// that can no longer be fetched (deleted, or the caller lost access) are
-// dropped since they cannot be linked to.
-export async function fetchTopConversationsByCredits(
-  auth: Authenticator,
-  {
-    startDate,
-    endDate,
-    limit,
-    userIds,
-  }: {
-    startDate: string;
-    endDate: string;
-    limit: number;
-    userIds?: string[];
-  }
-): Promise<Result<TopConversationCreditsRow[], ElasticsearchError>> {
-  const query = buildCreditsScopeQuery(auth, {
-    startDate,
-    endDate,
-    userIds,
-    extraFilters: [{ exists: { field: "conversation_id" } }],
-  });
-
-  const result = await searchAnalytics<never, TopConversationsAggs>(query, {
-    aggregations: {
-      by_conversation: {
-        terms: {
-          field: "conversation_id",
-          size: limit,
-          order: { total_cost: "desc" },
-        },
-        aggs: { ...creditSubAggs },
-      },
-    },
-    size: 0,
-  });
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  const ranked = bucketsToArray<GroupBucket>(
-    result.value.aggregations?.by_conversation?.buckets
-  ).map((bucket) => ({
-    conversationId: String(bucket.key),
-    totalCredits: totalCreditsFromSlice(bucket),
-  }));
-
-  if (ranked.length === 0) {
-    return new Ok([]);
-  }
-
-  const conversations = await ConversationResource.fetchByIds(
-    auth,
-    ranked.map((row) => row.conversationId)
-  );
-  const titlesByConversationId = new Map(
-    conversations.map((conversation) => [conversation.sId, conversation.title])
-  );
-
-  return new Ok(
-    ranked
-      .filter((row) => titlesByConversationId.has(row.conversationId))
-      .map((row) => ({
-        ...row,
-        title: titlesByConversationId.get(row.conversationId) ?? null,
-      }))
-  );
 }
 
 // Per-message AWU credits bucketed over time (the trend behind

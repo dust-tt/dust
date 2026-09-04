@@ -1,6 +1,5 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import automations from "./automations";
-import awuUsageAnalytics from "./awu-usage-analytics";
 import { createWorkspaceConsumptionRoutes } from "./consumption";
 import exportTableRoute from "./export";
 import programmaticCost from "./programmatic-cost";
@@ -12,7 +11,6 @@ const app = workspaceApp();
 const consumption = createWorkspaceConsumptionRoutes();
 
 app.route("/automations", automations);
-app.route("/awu-usage-analytics", awuUsageAnalytics);
 app.route("/consumption", consumption);
 app.route("/export", exportTableRoute);
 app.route("/programmatic-cost-export", programmaticCostExport);
