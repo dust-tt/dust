@@ -1,4 +1,8 @@
-import { COUNTER_KEY_TTL_SECONDS } from "@app/lib/api/llm/health/config";
+import {
+  COUNTER_KEY_TTL_SECONDS,
+  MIN_EVALUATION_INTERVAL_MS,
+} from "@app/lib/api/llm/health/config";
+import { evaluateEndpoint } from "@app/lib/api/llm/health/detect";
 import {
   ATTEMPTS_FIELD,
   minuteBucket,
@@ -8,8 +12,31 @@ import {
 import type { LLMAttemptOutcomeTelemetry } from "@app/lib/api/llm/telemetry";
 import { runOnRedisCache } from "@app/lib/api/redis";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
+import { degradedModelEndpointKey } from "@app/lib/model_constructors/types/degradations";
 import { NOOP_HOST } from "@app/lib/model_constructors/types/hosts";
 import { statsDMetrics } from "@app/lib/utils/statsd";
+
+// One entry per endpoint, so bounded by the endpoint catalog.
+const lastEvaluatedAtMs = new Map<string, number>();
+
+function isEvaluationDue(
+  endpoint: DegradedModelEndpointType,
+  now: Date
+): boolean {
+  const key = degradedModelEndpointKey(endpoint);
+  const previousMs = lastEvaluatedAtMs.get(key);
+
+  if (
+    previousMs !== undefined &&
+    now.getTime() - previousMs < MIN_EVALUATION_INTERVAL_MS
+  ) {
+    return false;
+  }
+
+  lastEvaluatedAtMs.set(key, now.getTime());
+
+  return true;
+}
 
 /**
  * Records one model call attempt at its terminal outcome.
@@ -21,6 +48,9 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
  * Dropping writes is acceptable by design. The threshold is a share of hundreds
  * of attempts over five minutes, so a handful of lost increments cannot change
  * the verdict -- which is why nothing here retries, batches or blocks.
+ *
+ * An error write is also what triggers detection for that endpoint, throttled to
+ * `MIN_EVALUATION_INTERVAL_MS`.
  *
  * Only provider-attributed errors count towards the numerator. That is exactly
  * the `error_source:provider` filter the existing Datadog monitor applies at
@@ -58,6 +88,13 @@ export async function recordLLMAttempt({
 
       await multi.exec();
     });
+
+    // Only an error can push the ratio over the threshold, so a successful
+    // attempt has nothing to detect. This reads back the window for this one
+    // endpoint -- the one we just served -- and never for any other.
+    if (isProviderError && isEvaluationDue(endpoint, now)) {
+      await evaluateEndpoint(endpoint, now);
+    }
   } catch {
     // Counted rather than logged: this runs once per attempt, so a Redis outage
     // would put one line per attempt in the logs. The connection error itself is
