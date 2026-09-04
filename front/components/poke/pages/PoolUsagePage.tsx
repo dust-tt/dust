@@ -155,9 +155,6 @@ export function PoolUsagePage() {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  // Empty until the user picks a column: the default depends on
-  // `isLegacyWithoutPoolOrMetronome`, which is derived below once workspace
-  // info has loaded.
   const [sorting, setSorting] = useState<SortingState>([]);
 
   // Debounce the search input, and reset to the first page on a new query.

@@ -111,9 +111,6 @@ export type PremiumModelMessageUsage = {
   nextRefill?: { availableAt: string; messages: number } | null;
   // Optional for compatibility with clients deployed before the daily breakdown was added.
   dailyUsage?: { date: string; usedMessages: number }[];
-  // Upcoming refills grouped by the day each message ages out of the rolling
-  // window, chronologically ordered. Optional for compatibility with clients
-  // deployed before this was added.
   refillSchedule?: { date: string; messages: number }[];
 };
 
@@ -230,10 +227,6 @@ export async function getPremiumModelMessageUsage({
   };
 }
 
-// Lean count-only counterpart to `getPremiumModelMessageUsage`, for ranking a
-// whole workspace by premium message usage (e.g. the poke sort column)
-// without paying for the refill schedule/timestamps of every member. Pipelines
-// every user's `ZCOUNT` into a single Redis round-trip.
 export async function getPremiumModelMessageUsedCountsByUser({
   workspace,
   users,

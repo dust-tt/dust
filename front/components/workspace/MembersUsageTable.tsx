@@ -779,9 +779,6 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
         : usedMessages > 0
           ? 100
           : 0;
-    // `usedMessages` can never exceed `limitMessages`: both derive from the
-    // same rate-limit constant, and the backend caps the counted timestamps
-    // at that limit. No "over limit" state to render, only "at limit".
     const isAtLimit = limitMessages > 0 && usedMessages === limitMessages;
     const bar = (
       <ProgressBar
@@ -1028,8 +1025,6 @@ function buildCreditPlanColumns({
         : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool)),
       meta: { className: "w-56" },
     },
-    // The pace-warning/unblock column reads the credit-pool pacing, which
-    // doesn't exist for premium-message-only legacy workspaces.
     ...(variant === "compact" && !showPremiumMessageUsage
       ? [offPaceColumn]
       : []),

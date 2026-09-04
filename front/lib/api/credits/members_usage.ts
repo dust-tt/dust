@@ -249,9 +249,6 @@ export const MembersUsagePaginationSchema = z.object({
       "seatType",
       "creditState",
       "seatUsage",
-      // Legacy (non credit-priced) plans only: sorts by weekly premium-model
-      // message usage, the replacement for the credit-pool column on those
-      // workspaces.
       "premiumMessageUsage",
     ])
     .catch("name"),
@@ -2052,10 +2049,7 @@ async function resolveMembersUsagePageUsers({
       break;
     }
     case "premiumMessageUsage": {
-      // Count-only and pipelined into a single Redis round-trip: sorting can
-      // run over every matching user in the workspace, so per-user reads here
-      // would turn into an N+1 over Redis. The full usage (refill schedule
-      // included) is fetched separately, only for the returned page.
+      // Count-only and pipelined into a single Redis round-trip
       const usedCountByUserId = await getPremiumModelMessageUsedCountsByUser({
         workspace,
         users: allUsers.map((u) => u.toJSON()),
@@ -2395,9 +2389,7 @@ export async function getMembersUsage({
   if (includeAlertLinks) {
     const plan = auth.plan();
     if (plan && !isCreditPricedPlan(plan)) {
-      // Bounded to the current page (≤ page size), regardless of whether the
-      // page is sorted by this column — the sort itself only reads a
-      // count per user (see `getPremiumModelMessageUsedCountsByUser`).
+      // Bounded to the current page size
       const entries = await concurrentExecutor(
         users,
         async (u) =>

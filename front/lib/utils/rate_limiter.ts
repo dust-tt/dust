@@ -249,10 +249,6 @@ export async function getRateLimiterCount({
   }
 }
 
-// Same as `getRateLimiterCount`, but for many keys sharing the same
-// timeframe. Pipelines every `ZCOUNT` into a single Redis round-trip instead
-// of one round-trip per key, so callers sorting/ranking a whole workspace by
-// a rate-limited counter don't turn into an N+1 over Redis.
 export async function getRateLimiterCounts({
   keys,
   timeframeSeconds,
