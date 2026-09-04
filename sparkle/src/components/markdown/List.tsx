@@ -61,13 +61,13 @@ UlBlock.displayName = "UlBlock";
 
 export const olBlockVariants = cva("pb-2 flex flex-col gap-1", {
   variants: {
-    taskSteps: {
+    taskList: {
       false: "list-decimal pl-6",
       true: "",
     },
   },
   defaultVariants: {
-    taskSteps: false,
+    taskList: false,
   },
 });
 
@@ -80,22 +80,21 @@ interface OlBlockProps {
 
 /**
  * Renders ordered lists inside Markdown output, honoring the `start` number
- * from the source Markdown. Task lists in the "step" variant drop the decimal
- * markers since the badges carry the numbers.
+ * from the source Markdown; GFM task lists (detected via the `contains-task-list`
+ * class) drop the decimal markers and indent, like UlBlock does for bullets.
  * @summary Ordered-list renderer for Markdown.
  */
 export const OlBlock = memo(
   ({ children, className, start }: OlBlockProps) => {
-    const { textColor, forcedTextSize, taskListVariant } = useMarkdownStyle();
+    const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
-    const isTaskSteps =
-      taskListVariant === "step" && className?.includes("contains-task-list");
+    const isTaskList = className?.includes("contains-task-list");
     return (
       <OlStartContext.Provider value={start ?? 1}>
         <ol
           start={start}
           className={cn(
-            olBlockVariants({ taskSteps: isTaskSteps }),
+            olBlockVariants({ taskList: isTaskList }),
             textColor,
             textSize,
             className
