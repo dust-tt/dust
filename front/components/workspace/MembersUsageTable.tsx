@@ -33,10 +33,7 @@ import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective"
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
-import type {
-  MembershipSeatType,
-  UserCreditState,
-} from "@app/types/memberships";
+import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isPaidSeatType,
   SEAT_TYPE_ORDER,
@@ -113,7 +110,7 @@ type RowData = {
   isTotalAllowedUsagePending: boolean;
   isSeatChangePending: boolean;
   overallUsageTarget: CreditUsageTarget | null;
-  creditState: UserCreditState;
+  isSpendCapped: boolean;
   canUpgradeSeat: boolean;
   onOpenChangeSeatRecap: () => void;
   onOpenSpendLimitRecap: () => void;
@@ -851,13 +848,13 @@ const offPaceColumn: ColumnDef<RowData, string> = {
   cell: (info: Info) => {
     const {
       overallUsageTarget,
-      creditState,
+      isSpendCapped,
       canUpgradeSeat,
       onOpenChangeSeatRecap,
       onOpenSpendLimitRecap,
     } = info.row.original;
 
-    if (creditState === "capped") {
+    if (isSpendCapped) {
       if (!canUpgradeSeat) {
         return (
           <DataTable.CellContent className="justify-center">
@@ -1227,7 +1224,7 @@ export function MembersUsageTable({
           ),
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           overallUsageTarget: m.overallUsageTarget,
-          creditState: m.creditState,
+          isSpendCapped: m.isSpendCapped,
           canUpgradeSeat: canUpgradeSeat(m),
           onOpenChangeSeatRecap: () => onOpenChangeSeatRecap(m),
           onOpenSpendLimitRecap: () => onOpenSpendLimitRecap(m),

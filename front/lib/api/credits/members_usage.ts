@@ -184,6 +184,14 @@ export type MemberUsageType = {
   // free-seat allowance / effective cycle cap. Null when no cap applies or not
   // requested. Poke-only.
   rateLimiterState: RateLimiterState | null;
+  // Flag-aware "blocked by the per-user spend cap" verdict — the signal the poke
+  // Unblock action keys off. With the rate-cap flag on, from the rate-limiter
+  // counter (`rateLimiterState`); with it off, from the persisted Metronome
+  // credit state. Mirrors the enforcement switch in
+  // lib/api/credits/access_control.ts, so it never disagrees with what actually
+  // blocks. The single-member / synthetic construction paths (which don't read
+  // the rate-limiter) fall back to the persisted credit state.
+  isSpendCapped: boolean;
   // Classifies seat-allowance consumption against how far the billing cycle
   // has elapsed: "elevated"/"critical" mean the member is burning through
   // their seat allowance faster than a linear pace would predict. Poke-only
@@ -1659,6 +1667,9 @@ export async function getMemberUsage({
     creditState: membership.creditState,
     nearLimit: false,
     rateLimiterState: null,
+    // Single-member path (my-usage): no rate-limiter read here, so fall back to
+    // the persisted credit state. Not consumed by the poke Unblock action.
+    isSpendCapped: membership.creditState === "capped",
     seatUsageTarget: null,
     overallUsageTarget: null,
   };
@@ -2578,6 +2589,13 @@ export async function getMembersUsage({
             : "ok";
     }
 
+    // Flag-aware per-user cap verdict for the poke Unblock action: the
+    // rate-limiter counter under the flag, the Metronome credit state otherwise
+    // (mirrors the enforcement switch in lib/api/credits/access_control.ts).
+    const isSpendCapped = spendCapEnabled
+      ? rateLimiterState === "capped"
+      : membership.creditState === "capped";
+
     // Seat-allowance consumption used for pace classification below: free
     // seats track their live Metronome balance instead of the period spend
     // (same distinction the seat-usage ring draws client-side). A missing
@@ -2662,6 +2680,7 @@ export async function getMembersUsage({
         creditState: membership.creditState,
         nearLimit,
         rateLimiterState,
+        isSpendCapped,
         fairUse: fairUseByUserId.get(userId) ?? null,
         premiumMessageUsage: premiumMessageUsageByUserId.get(userId) ?? null,
         seatUsageTarget,
