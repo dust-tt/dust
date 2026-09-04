@@ -18,7 +18,6 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { LightWorkspaceType } from "@app/types/user";
 
 type DefaultUserSpendLimitErrorType =
   | "workspace_not_metronome_billed"

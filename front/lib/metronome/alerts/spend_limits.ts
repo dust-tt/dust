@@ -80,7 +80,9 @@ export function isUnusedSpendCapAlertUniquenessKey(
   // the user id.
   if (
     uniquenessKey.startsWith(perUserAlertUniquenessKeyPrefix(workspaceId)) ||
-    uniquenessKey.startsWith(perUserWarningAlertUniquenessKeyPrefix(workspaceId))
+    uniquenessKey.startsWith(
+      perUserWarningAlertUniquenessKeyPrefix(workspaceId)
+    )
   ) {
     return true;
   }
