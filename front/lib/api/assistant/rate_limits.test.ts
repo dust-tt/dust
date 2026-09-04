@@ -63,6 +63,11 @@ describe("getPremiumModelMessageUsage", () => {
         { date: "2026-08-25", usedMessages: 0 },
         { date: "2026-08-26", usedMessages: 1 },
       ],
+      refillSchedule: [
+        { date: "2026-08-26", messages: 1 },
+        { date: "2026-08-27", messages: 2 },
+        { date: "2026-09-02", messages: 1 },
+      ],
     });
   });
 
@@ -115,6 +120,7 @@ describe("getPremiumModelMessageUsage", () => {
         { date: "2026-08-25", usedMessages: 0 },
         { date: "2026-08-26", usedMessages: 0 },
       ],
+      refillSchedule: [],
     });
   });
 });

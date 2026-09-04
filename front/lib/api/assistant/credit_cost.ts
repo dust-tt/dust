@@ -5,7 +5,10 @@ import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
+import {
+  recordFreeSeatLifetimeUsage,
+  recordUserSpendLimitUsage,
+} from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
@@ -15,6 +18,7 @@ import {
 import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
@@ -204,13 +208,30 @@ export async function computeAndStoreAgentMessageCredits(
   // contract billing cycle).
   if (recordedCostDelta > 0) {
     if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
-      // Per-user cap.
+      // Per-user cap. Free and paid consumption are kept in separate counters:
+      // free seats accrue only against their lifetime counter, everyone else
+      // only against the per-cycle counter. Recording a free seat's usage into
+      // the per-cycle counter would leak it into their paid cap after a
+      // free→pro switch within the same cycle (mirrors the Metronome
+      // `free-<sId>` user-key split).
       if (user) {
-        await recordUserSpendLimitUsage(auth, {
-          user,
-          incrementBy: recordedCostDelta,
-          cycle: spendLimitCycleOverrideForAuth(auth),
-        });
+        const membership =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: auth.getNonNullableWorkspace(),
+          });
+        if (membership?.seatType === "free") {
+          await recordFreeSeatLifetimeUsage(auth, {
+            user,
+            incrementBy: recordedCostDelta,
+          });
+        } else {
+          await recordUserSpendLimitUsage(auth, {
+            user,
+            incrementBy: recordedCostDelta,
+            cycle: spendLimitCycleOverrideForAuth(auth),
+          });
+        }
       }
 
       // Per-API-key cap, for calls authenticated with an API key.

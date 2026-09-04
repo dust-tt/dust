@@ -11,6 +11,10 @@ import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
+import {
+  parseSourceLocation,
+  replaceJsxTextAtSourceLocation,
+} from "@app/lib/api/viz/edit_source_text";
 import type { PublishFrameError } from "@app/lib/api/viz/publish_frame";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
@@ -40,6 +44,13 @@ const MAX_FRAME_SOURCE_BYTES = 100 * 1024 * 1024;
 
 function frameError(code: FramePublicationError["code"], message: string) {
   return new Err(new FramePublicationError(code, message));
+}
+
+function frameSourceConflictError() {
+  return new SandboxFunctionError(
+    "publish_conflict",
+    "Another source operation is in progress for this Frame; retry shortly."
+  );
 }
 
 export type PublishFrameFromSourceError =
@@ -225,6 +236,43 @@ export async function validateFrameFromSource(
   });
 }
 
+async function resolveWritableFrameV2Source(
+  auth: Authenticator,
+  frame: FileResource
+): Promise<
+  Result<
+    { canonicalManifestPath: string; dustFs: DustFileSystem },
+    FramePublicationError
+  >
+> {
+  const canonicalManifestPath = frame.toScopedPath(auth);
+  if (
+    !canonicalManifestPath ||
+    path.posix.basename(canonicalManifestPath) !== FRAME_MANIFEST_FILE
+  ) {
+    return frameError(
+      "invalid_source",
+      `Frame '${frame.sId}' has no canonical ${FRAME_MANIFEST_FILE} path.`
+    );
+  }
+
+  const fsResult = await DustFileSystem.fromScopedPath(
+    auth,
+    canonicalManifestPath
+  );
+  if (fsResult.isErr()) {
+    return frameError("invalid_source", fsResult.error.message);
+  }
+  const dustFs = fsResult.value;
+
+  const writeAccess = dustFs.checkWriteAccess(canonicalManifestPath);
+  if (writeAccess.isErr()) {
+    return frameError("unauthorized", writeAccess.error.message);
+  }
+
+  return new Ok({ canonicalManifestPath, dustFs });
+}
+
 /**
  * Capture the manifest and source tree addressed by a Frames v2 FileResource. The FileResource
  * path is authoritative: callers cannot point a Frame identity at a different source tree.
@@ -244,16 +292,11 @@ async function readFrameV2SourceWithSourceLockHeld(
     FramePublicationError
   >
 > {
-  const canonicalManifestPath = frame.toScopedPath(auth);
-  if (
-    !canonicalManifestPath ||
-    path.posix.basename(canonicalManifestPath) !== FRAME_MANIFEST_FILE
-  ) {
-    return frameError(
-      "invalid_source",
-      `Frame '${frame.sId}' has no canonical ${FRAME_MANIFEST_FILE} path.`
-    );
+  const resolved = await resolveWritableFrameV2Source(auth, frame);
+  if (resolved.isErr()) {
+    return resolved;
   }
+  const { canonicalManifestPath, dustFs } = resolved.value;
 
   if (
     DustFileSystem.normalizeScopedPath(manifestPath) !== canonicalManifestPath
@@ -262,20 +305,6 @@ async function readFrameV2SourceWithSourceLockHeld(
       "invalid_source",
       `Frame '${frame.sId}' must be published from '${canonicalManifestPath}'.`
     );
-  }
-
-  const fsResult = await DustFileSystem.fromScopedPath(
-    auth,
-    canonicalManifestPath
-  );
-  if (fsResult.isErr()) {
-    return frameError("invalid_source", fsResult.error.message);
-  }
-  const dustFs = fsResult.value;
-
-  const writeAccess = dustFs.checkWriteAccess(canonicalManifestPath);
-  if (writeAccess.isErr()) {
-    return frameError("unauthorized", writeAccess.error.message);
   }
 
   const manifestBufferResult = await dustFs.readBuffer(canonicalManifestPath);
@@ -469,12 +498,136 @@ export async function publishFrameV2FromSource(
   });
   if (publication.isErr()) {
     if (isLockAcquisitionTimeoutError(publication.error)) {
-      return new Err(
-        new SandboxFunctionError(
-          "publish_conflict",
-          "Another source operation is in progress for this Frame; retry shortly."
-        )
+      return new Err(frameSourceConflictError());
+    }
+    return new Err(publication.error);
+  }
+
+  return publication;
+}
+
+export async function editFrameV2TextAtSource(
+  auth: Authenticator,
+  {
+    conversation,
+    frame,
+    source,
+    oldText,
+    newText,
+  }: {
+    conversation: ConversationWithoutContentType;
+    frame: FileResource;
+    source: string;
+    oldText: string;
+    newText: string;
+  }
+): Promise<Result<{ publicationId: string }, PublishFrameFromSourceError>> {
+  if (!frame.isFrameV2) {
+    return frameError(
+      "invalid_frame",
+      `File '${frame.sId}' is not a Frames v2 manifest.`
+    );
+  }
+
+  const location = parseSourceLocation(source);
+  if (!location || !isSafeFrameRelativePath(location.relPath)) {
+    return frameError("invalid_source", `Invalid source location: ${source}.`);
+  }
+
+  const publication = await withFrameSourceLock<
+    { publicationId: string },
+    PublishFrameFromSourceError
+  >(frame.sId, async () => {
+    const freshFrame = await frame.fetchFreshFrameV2(auth);
+    if (!freshFrame) {
+      return frameError(
+        "invalid_frame",
+        `Frame '${frame.sId}' no longer exists.`
       );
+    }
+
+    const resolved = await resolveWritableFrameV2Source(auth, freshFrame);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+    const { canonicalManifestPath: manifestPath, dustFs } = resolved.value;
+
+    const sourcePath = path.posix.join(
+      path.posix.dirname(manifestPath),
+      location.relPath
+    );
+    const sourceBuffer = await dustFs.readBuffer(sourcePath);
+    if (sourceBuffer.isErr()) {
+      return new Err(sourceBuffer.error);
+    }
+    if (sourceBuffer.value === null) {
+      return frameError(
+        "invalid_source",
+        `Frame source file not found: ${location.relPath}`
+      );
+    }
+    const originalSource = sourceBuffer.value;
+
+    const edited = replaceJsxTextAtSourceLocation(
+      originalSource.toString("utf8"),
+      {
+        line: location.line,
+        col: location.col,
+        oldText,
+        newText,
+      }
+    );
+    if (edited.isErr()) {
+      return frameError("invalid_source", edited.error.message);
+    }
+
+    const stat = await dustFs.stat(sourcePath);
+    if (stat.isErr()) {
+      return new Err(stat.error);
+    }
+    const contentType =
+      stat.value?.contentType ??
+      contentTypeFromFileName(location.relPath) ??
+      "text/plain";
+    const writeResult = await dustFs.write(
+      sourcePath,
+      edited.value,
+      contentType
+    );
+    if (writeResult.isErr()) {
+      return new Err(writeResult.error);
+    }
+    const rollbackSource = () =>
+      dustFs.write(sourcePath, originalSource, contentType);
+
+    try {
+      const publishResult = await publishFrameV2FromSourceWithSourceLockHeld(
+        auth,
+        {
+          conversation,
+          frame: freshFrame,
+          manifestPath,
+        }
+      );
+      if (publishResult.isErr()) {
+        const rollbackResult = await rollbackSource();
+        if (rollbackResult.isErr()) {
+          return new Err(rollbackResult.error);
+        }
+      }
+
+      return publishResult;
+    } catch (error) {
+      const rollbackResult = await rollbackSource();
+      if (rollbackResult.isErr()) {
+        throw rollbackResult.error;
+      }
+      throw error;
+    }
+  });
+  if (publication.isErr()) {
+    if (isLockAcquisitionTimeoutError(publication.error)) {
+      return new Err(frameSourceConflictError());
     }
     return new Err(publication.error);
   }
@@ -530,12 +683,7 @@ export async function validateFrameV2FromSource(
   });
   if (validation.isErr()) {
     if (isLockAcquisitionTimeoutError(validation.error)) {
-      return new Err(
-        new SandboxFunctionError(
-          "publish_conflict",
-          "Another source operation is in progress for this Frame; retry shortly."
-        )
-      );
+      return new Err(frameSourceConflictError());
     }
     return new Err(validation.error);
   }

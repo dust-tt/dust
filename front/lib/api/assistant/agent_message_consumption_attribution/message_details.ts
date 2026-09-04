@@ -8,10 +8,7 @@ import type {
   RunUsageWithRunKeyType,
 } from "@app/lib/resources/run_resource";
 import type { AgentMCPActionType } from "@app/types/actions";
-import type {
-  AgentMessageConsumptionDetails,
-  AgentMessageConsumptionModelDetails,
-} from "@app/types/assistant/agent_message_consumption";
+import type { AgentMessageConsumptionDetailsWithModels } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
 import partition from "lodash/partition";
 import type {
@@ -20,9 +17,8 @@ import type {
 } from "./allocation";
 import { buildLatestMessageConsumptionAllocation } from "./allocation";
 
-export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
-  models: AgentMessageConsumptionModelDetails[];
-};
+export type MessageConsumptionDetails =
+  AgentMessageConsumptionDetailsWithModels;
 
 export type ToolConsumptionDetailsOverride = {
   additionalAttributedCredits: number;

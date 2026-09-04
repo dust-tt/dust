@@ -7,7 +7,7 @@ const PLAN_MODE_SKELETON = `# <plan title>
 _Why we're doing this, what the user asked for._
 
 ## Tasks
-- [ ] _First task_
+1. [ ] _First task_
 `;
 
 export const PLAN_MODE_SERVER_NAME = "plan_mode" as const;
@@ -36,7 +36,7 @@ export const PLAN_MODE_TOOLS_METADATA = [
         .string()
         .describe(
           "The full markdown content of the plan. Use a `# title`, a `## Context` section, and " +
-            "a `## Tasks` checklist (`- [ ]` items)."
+            "a `## Tasks` numbered checklist (`1. [ ]` items)."
         ),
     },
     stake: "never_ask",

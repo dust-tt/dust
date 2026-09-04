@@ -196,7 +196,9 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     description:
       "Return an agent's full configuration: name, description, scope, model, " +
       "equipped skills and capabilities, and its complete system prompt and " +
-      "instructions. Use this to inspect what an agent actually does.",
+      "instructions. Use this to inspect what an agent actually does. Admins " +
+      "get every agent of the workspace, but for the ones they cannot read " +
+      "the instructions, skills, tools and knowledge are withheld.",
     schema: getAgentDetailsSchema,
     stake: "never_ask",
     eager: true,

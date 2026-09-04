@@ -15,6 +15,7 @@ import {
 import type {
   BrowseResultResourceType,
   DataSourceNodeContentType,
+  ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolContext } from "@app/lib/actions/types";
 import { Authenticator } from "@app/lib/auth";
@@ -25,6 +26,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -34,6 +36,7 @@ import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctio
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { frameV2ContentType } from "@app/types/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -273,6 +276,46 @@ describe("getAugmentedInputs", () => {
 });
 
 describe("processToolResults", () => {
+  it("preserves the display title of an existing generated file", async () => {
+    const { auth, toolContext } = await setupTest();
+    assert(toolContext.runContext.contextType === "agent_loop");
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: toolContext.runContext.conversation.sId,
+        frameName: "Hello Frame",
+      },
+    });
+
+    const generatedFrame: ToolGeneratedFileType = {
+      contentType: frameV2ContentType,
+      fileId: frame.sId,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+      snippet: null,
+      text: "Opened Frame.",
+      title: "Hello Frame",
+      uri: "https://dust.tt/frame",
+    };
+
+    const { generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [
+        {
+          type: "resource",
+          resource: generatedFrame,
+        },
+      ],
+    });
+
+    expect(generatedFiles).toHaveLength(1);
+    expect(generatedFiles[0]?.title).toBe("Hello Frame");
+  });
+
   it("should store snippet in DB when text exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES", async () => {
     const { auth, toolContext } = await setupTest();
 

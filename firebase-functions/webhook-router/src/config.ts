@@ -4,6 +4,7 @@ import { defineString } from "firebase-functions/params";
 const gcpGlobalProjectId = defineString("GCP_GLOBAL_PROJECT_ID");
 const gcpUsProjectId = defineString("GCP_US_PROJECT_ID");
 const gcpEuProjectId = defineString("GCP_EU_PROJECT_ID");
+const gcpCell00002ProjectId = defineString("GCP_CELL_00002_PROJECT_ID");
 
 export const CONFIG = {
   FETCH_TIMEOUT_MS: 20_000,
@@ -28,6 +29,9 @@ export const CONFIG = {
     process.env.US_CONNECTOR_URL ?? "https://connectors.dust.tt",
   EU_CONNECTOR_URL:
     process.env.EU_CONNECTOR_URL ?? "https://eu.connectors.dust.tt",
+  CELL_00002_CONNECTOR_URL:
+    process.env.CELL_00002_CONNECTOR_URL ??
+    "https://cell-00002.cells.dust.tt/connectors",
 
   // Secret names.
   SECRET_NAME: "connectors-DUST_CONNECTORS_WEBHOOKS_SECRET",
@@ -52,4 +56,5 @@ export const getProjectIds = () => ({
   GCP_GLOBAL_PROJECT_ID: gcpGlobalProjectId.value(),
   GCP_US_PROJECT_ID: gcpUsProjectId.value(),
   GCP_EU_PROJECT_ID: gcpEuProjectId.value(),
+  GCP_CELL_00002_PROJECT_ID: gcpCell00002ProjectId.value(),
 });

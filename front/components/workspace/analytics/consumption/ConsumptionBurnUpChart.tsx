@@ -7,7 +7,11 @@ import {
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
-import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import {
+  formatCredits,
+  formatCreditsCompact,
+  formatCreditValue,
+} from "@app/lib/client/credits";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import {
@@ -84,7 +88,7 @@ function ConsumptionBurnUpTooltip({
       rows={rows}
       footer={
         delta !== null
-          ? `${formatCredits(Math.abs(delta))} ${delta > 0 ? "ahead of" : "behind"} target`
+          ? `${formatCreditValue(Math.abs(delta))} ${delta > 0 ? "ahead of" : "behind"} target`
           : undefined
       }
     />
@@ -147,25 +151,21 @@ export function ConsumptionBurnUpChart({
       : []),
   ];
 
-  const hasConsumption = chartData.some(
+  const hasData = chartData.some(
     (point) => point.actual !== null && point.actual > 0
   );
 
   return (
     <ChartContainer
-      title="Credits over time"
       additionalControls={additionalControls}
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
       }
-      emptyMessage={
-        !isTimeseriesLoading && !hasConsumption ? emptyMessage : undefined
-      }
+      emptyMessage={!isTimeseriesLoading && !hasData ? emptyMessage : undefined}
       height={CHART_HEIGHT}
       legendItems={legendItems}
       legendAlignment="center"
-      showHeaderDivider
     >
       <LineChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
         <CartesianGrid
@@ -190,6 +190,12 @@ export function ConsumptionBurnUpChart({
           axisLine={false}
           tickMargin={8}
           tickFormatter={formatCreditsCompact}
+          label={{
+            value: "Credits",
+            angle: -90,
+            position: "insideLeft",
+            className: "fill-muted-foreground text-xs",
+          }}
         />
         <Tooltip
           cursor={false}

@@ -39,6 +39,8 @@ export type ConsumptionTopGroup = {
   credits: number;
   // Distinct messages, or tool invocations, per the ranking's unit.
   count: number;
+  // Only populated for the group dimension.
+  activeMembers?: number;
   // This key's credits over the equivalent window immediately preceding the
   // period, for period-over-period growth. Null when the key had no
   // consumption at all in that prior window.
@@ -54,12 +56,15 @@ export type ConsumptionTopGroups = {
   // sum of `groups`. The ranking is capped at `limit`, and a dimension that only
   // exists on some documents (a tool, a skill) accounts for part of the total.
   totalCredits: number;
+  // Only populated for the group dimension.
+  totalActiveMembers?: number;
 };
 
 // Sub-aggregation names, kept out of the callers so the ranking order and the
 // bucket reads below cannot drift apart.
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
+const ACTIVE_MEMBERS_AGG = "active_members";
 const TOTAL_COUNT_AGG = "total_count";
 const RANKING_TERMS_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
@@ -70,13 +75,24 @@ type GroupBucket = {
   doc_count: number;
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
+  [ACTIVE_MEMBERS_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
-function subAggs(unit: ConsumptionTopUnit) {
+function subAggs(unit: ConsumptionTopUnit, dimension: ConsumptionTopDimension) {
   return {
     [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
     ...(unit === "message"
       ? { [MESSAGES_AGG]: uniqueMessagesCardinalityAgg() }
+      : {}),
+    ...(dimension === "group"
+      ? {
+          [ACTIVE_MEMBERS_AGG]: {
+            cardinality: {
+              field: CONSUMPTION_DIMENSION_FIELDS.user,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        }
       : {}),
   };
 }
@@ -89,6 +105,7 @@ type RankingAggs = {
 type TopAggs = RankingAggs & {
   ranking?: estypes.AggregationsSingleBucketAggregateBase & RankingAggs;
   total_credit_micro?: estypes.AggregationsSumAggregate;
+  [ACTIVE_MEMBERS_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
 function countFromBucket(
@@ -233,7 +250,7 @@ function buildConsumptionTopAggregations({
         order: rankingOrder(dimension, rankBy, sortOrder),
         ...(excludedKeys.length > 0 ? { exclude: excludedKeys } : {}),
       },
-      aggs: subAggs(unit),
+      aggs: subAggs(unit, dimension),
     },
     ...(includeTotalCount
       ? {
@@ -259,6 +276,16 @@ function buildConsumptionTopAggregations({
   return {
     ...rankingRootAggregations,
     total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+    ...(dimension === "group"
+      ? {
+          [ACTIVE_MEMBERS_AGG]: {
+            cardinality: {
+              field: CONSUMPTION_DIMENSION_FIELDS.user,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        }
+      : {}),
   };
 }
 
@@ -377,6 +404,7 @@ export async function fetchConsumptionTopGroups(
   let batchSize = 0;
   let totalCount = 0;
   let totalCredits = 0;
+  let totalActiveMembers = 0;
 
   // Terms aggregations do not expose an after_key when ordered by a metric.
   // Continue the ranked result in bounded batches by excluding the keys
@@ -409,19 +437,31 @@ export async function fetchConsumptionTopGroups(
       : result.value.aggregations;
     buckets = bucketsToArray<GroupBucket>(ranking?.by_group?.buckets);
     rankedGroups.push(
-      ...buckets.map((bucket) => ({
-        key: String(bucket.key),
-        credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-        count: countFromBucket(
-          bucket,
-          CONSUMPTION_TOP_DIMENSION_UNIT[dimension]
-        ),
-      }))
+      ...buckets.map((bucket) => {
+        const group = {
+          key: String(bucket.key),
+          credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+          count: countFromBucket(
+            bucket,
+            CONSUMPTION_TOP_DIMENSION_UNIT[dimension]
+          ),
+        };
+
+        return dimension === "group"
+          ? {
+              ...group,
+              activeMembers: Math.round(bucket[ACTIVE_MEMBERS_AGG]?.value ?? 0),
+            }
+          : group;
+      })
     );
     totalCredits = microCreditsToCredits(
       result.value.aggregations?.total_credit_micro?.value ?? 0
     );
     totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
+    totalActiveMembers = Math.round(
+      result.value.aggregations?.[ACTIVE_MEMBERS_AGG]?.value ?? 0
+    );
   } while (
     rankedGroups.length < requestedBucketCount &&
     buckets.length === batchSize
@@ -461,6 +501,7 @@ export async function fetchConsumptionTopGroups(
     hasMore: totalCount > offset + limit,
     totalCount,
     totalCredits,
+    ...(dimension === "group" ? { totalActiveMembers } : {}),
   });
 }
 
@@ -484,6 +525,8 @@ export type ResolvedConsumptionGroup = {
   credits: number;
   count: number;
   avgCredits: number;
+  activeMembers?: number;
+  memberCount?: number;
   previousCredits: number | null;
 };
 
@@ -514,6 +557,12 @@ export async function resolveConsumptionGroupLabels(
     credits: group.credits,
     count: group.count,
     avgCredits: avgCreditsPerUnit(group.credits, group.count),
+    ...(group.activeMembers !== undefined
+      ? { activeMembers: group.activeMembers }
+      : {}),
+    ...(labels.get(group.key)?.memberCount !== undefined
+      ? { memberCount: labels.get(group.key)?.memberCount }
+      : {}),
     previousCredits: group.previousCredits,
   }));
 }

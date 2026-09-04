@@ -156,6 +156,7 @@ export const AUDIT_ACTIONS = [
   "agent.archived",
   "agent.restored",
   "agent.scope_changed",
+  "agent.editors_updated",
   // Spaces.
   "space.accessed",
   "space.created",

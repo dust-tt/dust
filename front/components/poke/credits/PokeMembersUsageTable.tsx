@@ -5,7 +5,10 @@ import { MemberConsumptionExportButton } from "@app/components/poke/credits/Memb
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import { ResetFairUseButton } from "@app/components/poke/credits/ResetFairUseButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import type {
+  MemberUsageType,
+  RateLimiterState,
+} from "@app/lib/api/credits/members_usage";
 import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
@@ -132,6 +135,17 @@ const USER_CREDIT_STATE_CHIP_COLOR: Record<
   on_pool: "success",
   on_pool_low_balance: "warning",
   capped: "warning",
+};
+
+// The rate-limiter's verdict, rendered as a chip. Labels distinguish capped vs
+// near-limit (both warning-toned).
+const RATE_LIMITER_STATE_CHIP: Record<
+  RateLimiterState,
+  { color: "success" | "warning"; label: string }
+> = {
+  capped: { color: "warning", label: "capped" },
+  near_limit: { color: "warning", label: "near limit" },
+  ok: { color: "success", label: "ok" },
 };
 
 // Free seats hold a per-user credit with two balance alerts: "low" (≤20%) and
@@ -394,6 +408,19 @@ function makeColumns({
             />
           </span>
         );
+      },
+    },
+    {
+      accessorKey: "rateLimiterState",
+      header: "Rate limiter state",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const { rateLimiterState } = row.original;
+        if (rateLimiterState === null) {
+          return <span>—</span>;
+        }
+        const { color, label } = RATE_LIMITER_STATE_CHIP[rateLimiterState];
+        return <Chip size="xs" color={color} label={label} />;
       },
     },
     {

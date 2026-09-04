@@ -2,11 +2,9 @@ import {
   COMPLETED_AT_FIELD,
   uniqueMessagesCardinalityAgg,
 } from "@app/lib/api/analytics/consumption/scope";
-import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import {
   bucketsToArray,
   formatDateFromMillis,
-  searchAnalytics,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
@@ -54,78 +52,6 @@ export function contextOriginFilter(
       },
     },
   ];
-}
-
-type ContextOriginBucket = {
-  origin: string;
-  count: number;
-};
-
-type LabeledSource = {
-  label: string;
-  count: number;
-};
-
-// Maps raw context_origin buckets to the dashboard's display labels, merging
-// origins that share a label (e.g. triggered + triggered_programmatic ->
-// "Trigger"). Origins outside the visible set — including the "unknown"
-// sentinel — are dropped, mirroring the usage page's source chart.
-export function toLabeledSources(
-  buckets: ContextOriginBucket[]
-): LabeledSource[] {
-  const countByLabel = new Map<string, number>();
-  for (const bucket of buckets) {
-    const label = sourceLabelForOrigin(bucket.origin);
-    if (!label) {
-      continue;
-    }
-    countByLabel.set(label, (countByLabel.get(label) ?? 0) + bucket.count);
-  }
-  return Array.from(countByLabel.entries())
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
-type ContextOriginAggs = {
-  by_origin?: estypes.AggregationsMultiBucketAggregateBase<{
-    key: string;
-    doc_count: number;
-  }>;
-};
-
-export async function fetchContextOriginBreakdown(
-  baseQuery: estypes.QueryDslQueryContainer
-): Promise<Result<ContextOriginBucket[], Error>> {
-  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    by_origin: {
-      terms: {
-        field: "context_origin",
-        size: 20,
-        missing: UNKNOWN_CONTEXT_ORIGIN,
-      },
-    },
-  };
-
-  const result = await searchAnalytics<never, ContextOriginAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
-  });
-
-  if (result.isErr()) {
-    return new Err(new Error(result.error.message));
-  }
-
-  const buckets = bucketsToArray<{
-    key: string;
-    doc_count: number;
-  }>(result.value.aggregations?.by_origin?.buckets);
-
-  const mapped: ContextOriginBucket[] = buckets.map((b) => ({
-    origin: String(b.key),
-    count: b.doc_count ?? 0,
-  }));
-
-  return new Ok(mapped);
 }
 
 type ContextOriginDailyPoint = {
@@ -212,19 +138,3 @@ export async function fetchContextOriginDailyBreakdown(
 
   return new Ok(points);
 }
-
-export type GetContextOriginResponse = {
-  total: number;
-  buckets: {
-    origin: string;
-    count: number;
-  }[];
-};
-
-export type GetWorkspaceContextOriginResponse = {
-  total: number;
-  buckets: {
-    origin: string;
-    count: number;
-  }[];
-};

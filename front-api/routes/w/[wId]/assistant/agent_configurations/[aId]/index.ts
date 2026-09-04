@@ -1,6 +1,7 @@
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
+  getAgentConfigurationForDetails,
 } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
@@ -24,7 +25,6 @@ import feedbacks from "./feedbacks";
 import history from "./history";
 import lastAuthor from "./last_author";
 import linkedSlackChannels from "./linked_slack_channels";
-import mcpConfigurations from "./mcp_configurations";
 import memories from "./memories";
 import observability from "./observability";
 import restore from "./restore";
@@ -57,11 +57,10 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfiguration(auth, {
+    const agent = await getAgentConfigurationForDetails(auth, {
       agentId: aId,
-      variant: "full",
     });
-    if (!agent || (!agent.canRead && !auth.isAdmin())) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -213,7 +212,6 @@ app.route("/feedbacks", feedbacks);
 app.route("/history", history);
 app.route("/last_author", lastAuthor);
 app.route("/linked_slack_channels", linkedSlackChannels);
-app.route("/mcp_configurations", mcpConfigurations);
 app.route("/memories", memories);
 app.route("/observability", observability);
 app.route("/restore", restore);

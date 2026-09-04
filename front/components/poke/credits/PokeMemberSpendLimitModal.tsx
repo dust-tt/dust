@@ -89,19 +89,16 @@ export function PokeMemberSpendLimitModal({
 
   // When there's no personal override, the highest group cap the member is
   // part of is the one currently granting their extra credits.
-  const highestGroupId = memberGroups.reduce<string | null>(
-    (highestSId, g) => {
-      if (g.poolCapAwuCredits === null) {
-        return highestSId;
-      }
-      const highest = memberGroups.find((h) => h.sId === highestSId);
-      if (!highest || g.poolCapAwuCredits > (highest.poolCapAwuCredits ?? -1)) {
-        return g.sId;
-      }
+  const highestGroupId = memberGroups.reduce<string | null>((highestSId, g) => {
+    if (g.poolCapAwuCredits === null) {
       return highestSId;
-    },
-    null
-  );
+    }
+    const highest = memberGroups.find((h) => h.sId === highestSId);
+    if (!highest || g.poolCapAwuCredits > (highest.poolCapAwuCredits ?? -1)) {
+      return g.sId;
+    }
+    return highestSId;
+  }, null);
 
   const memberGroupRows: GroupRow[] = memberGroups.map((g) => ({
     sId: g.sId,

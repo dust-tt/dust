@@ -26,6 +26,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     requestedSpaceIds: [],
     tools: [],
     fileAttachments: [],
+    canRead: true,
     canAdministrate: true,
     canWrite: true,
     isDefault: false,

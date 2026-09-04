@@ -13,8 +13,12 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
-import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { formatCredits } from "@app/lib/client/credits";
+import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
+import type {
+  MemberFairUseUsage,
+  MemberUsageType,
+} from "@app/lib/api/credits/members_usage";
+import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
   getUserModelTierMenuItemsWithSelection,
@@ -32,10 +36,7 @@ import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective"
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
-import type {
-  MembershipSeatType,
-  UserCreditState,
-} from "@app/types/memberships";
+import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isPaidSeatType,
   SEAT_TYPE_ORDER,
@@ -89,6 +90,8 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
 const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
 const ALWAYS_CAN_UPGRADE_SEAT = (_member: MemberUsageType) => true;
 
+const DEFAULT_PREMIUM_MESSAGE_WINDOW_DAYS = 7;
+
 type RowData = {
   sId: string;
   name: string;
@@ -109,10 +112,12 @@ type RowData = {
   isTotalAllowedUsagePending: boolean;
   isSeatChangePending: boolean;
   overallUsageTarget: CreditUsageTarget | null;
-  creditState: UserCreditState;
+  isSpendCapped: boolean;
   canUpgradeSeat: boolean;
   onOpenChangeSeatRecap: () => void;
   onOpenSpendLimitRecap: () => void;
+  premiumMessageUsage: PremiumModelMessageUsage | null;
+  fairUse: MemberFairUseUsage | null;
   modelTiersSummary: string;
   hasUserLevelModelTiersOverride: boolean;
   menuItems: MenuItem[];
@@ -747,6 +752,193 @@ function buildPoolCreditUsageColumn(
   };
 }
 
+function buildPremiumMessageUsageColumn(
+  windowDays: number
+): ColumnDef<RowData, string> {
+  return {
+    id: "premiumMessageUsage" as const,
+    header: () => (
+      <div className="flex flex-col">
+        <span className="flex items-center gap-1">
+          <Icon visual={CoinsStacked03} size="xs" />
+          Premium messages
+        </span>
+        <span className="text-xs font-normal text-muted-foreground">
+          Resets on a rolling {windowDays}-day basis
+        </span>
+      </div>
+    ),
+    accessorFn: (row) =>
+      (row.premiumMessageUsage?.usedMessages ?? 0).toString(),
+    cell: (info: Info) => {
+      const usage = info.row.original.premiumMessageUsage;
+      if (!usage) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <span className="text-sm text-muted-foreground">--</span>
+          </DataTable.CellContent>
+        );
+      }
+      const { usedMessages, limitMessages, windowDays, refillSchedule } = usage;
+      const percentage =
+        limitMessages > 0
+          ? Math.min(100, (usedMessages / limitMessages) * 100)
+          : usedMessages > 0
+            ? 100
+            : 0;
+      const isAtLimit = limitMessages > 0 && usedMessages === limitMessages;
+      const bar = (
+        <ProgressBar
+          aria-label="Premium message usage"
+          aria-valuenow={percentage}
+          aria-valuetext={`${usedMessages} of ${limitMessages} premium messages used over the last ${windowDays} days`}
+          className="h-1 w-full gap-px bg-transparent"
+          values={[
+            {
+              value: percentage,
+              className: isAtLimit
+                ? AT_POOL_LIMIT_BAR_CLASSES.fill
+                : MUTED_BAR_CLASSES.fill,
+            },
+            { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
+          ]}
+        />
+      );
+      return (
+        <div className="flex w-full flex-col gap-1 pr-3">
+          <div className="flex justify-between text-xs tabular-nums text-foreground">
+            <span>{usedMessages}</span>
+            <span>{limitMessages}</span>
+          </div>
+          {refillSchedule && refillSchedule.length > 0 ? (
+            <Tooltip
+              tooltipTriggerAsChild
+              trigger={
+                <div className="flex h-3 w-full cursor-help items-center">
+                  {bar}
+                </div>
+              }
+              label={
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium">Reset schedule:</span>
+                  {refillSchedule.map(({ date, messages }) => (
+                    <span key={date}>
+                      {new Date(date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        timeZone: "UTC",
+                      })}
+                      : +{messages}
+                    </span>
+                  ))}
+                </div>
+              }
+            />
+          ) : (
+            <div className="flex h-3 w-full items-center">{bar}</div>
+          )}
+        </div>
+      );
+    },
+    enableSorting: true,
+  };
+}
+
+function buildFairUseCreditsColumn(
+  windowDays: number
+): ColumnDef<RowData, string> {
+  return {
+    id: "fairUse" as const,
+    header: () => (
+      <div className="flex flex-col">
+        <span className="flex items-center gap-1">
+          <Icon visual={CoinsStacked03} size="xs" />
+          Fair Usage Credits
+        </span>
+        <span className="text-xs font-normal text-muted-foreground">
+          Resets on a rolling {windowDays}-day basis
+        </span>
+      </div>
+    ),
+    accessorFn: (row) => (row.fairUse?.usedCredits ?? 0).toString(),
+    cell: (info: Info) => {
+      const fairUse = info.row.original.fairUse;
+      if (!fairUse) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <span className="text-sm text-muted-foreground">--</span>
+          </DataTable.CellContent>
+        );
+      }
+      const { usedCredits, limitCredits, refillSchedule } = fairUse;
+      const percentage =
+        limitCredits > 0
+          ? Math.min(100, (usedCredits / limitCredits) * 100)
+          : usedCredits > 0
+            ? 100
+            : 0;
+      const isAtLimit = limitCredits > 0 && usedCredits >= limitCredits;
+      const bar = (
+        <ProgressBar
+          aria-label="Fair-use credits usage"
+          aria-valuenow={percentage}
+          aria-valuetext={`${formatCredits(usedCredits)} of ${formatCreditValue(limitCredits)} used`}
+          className="w-full bg-transparent"
+          values={[
+            {
+              value: percentage,
+              className: isAtLimit
+                ? AT_POOL_LIMIT_BAR_CLASSES.fill
+                : MUTED_BAR_CLASSES.fill,
+            },
+            { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
+          ]}
+        />
+      );
+      return (
+        <div className="flex w-full flex-col gap-1">
+          <div className="flex justify-between text-xs tabular-nums text-foreground">
+            <span>{formatCredits(usedCredits)}</span>
+            <span>{formatCredits(limitCredits)}</span>
+          </div>
+          {refillSchedule.length > 0 ? (
+            <Tooltip
+              tooltipTriggerAsChild
+              trigger={
+                <div className="flex h-3 w-full cursor-help items-center">
+                  {bar}
+                </div>
+              }
+              label={
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium">Reset schedule:</span>
+                  {refillSchedule.map(({ date, credits }) => (
+                    <span key={date}>
+                      {new Date(date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        timeZone: "UTC",
+                      })}
+                      : +{formatCredits(credits)}
+                    </span>
+                  ))}
+                </div>
+              }
+            />
+          ) : (
+            <div className="flex h-3 w-full items-center">{bar}</div>
+          )}
+        </div>
+      );
+    },
+    enableSorting: true,
+    sortDescFirst: true,
+    meta: {
+      className: "w-56",
+    },
+  };
+}
+
 const offPaceColumn: ColumnDef<RowData, string> = {
   id: "overallUsageTarget" as const,
   header: "",
@@ -755,13 +947,13 @@ const offPaceColumn: ColumnDef<RowData, string> = {
   cell: (info: Info) => {
     const {
       overallUsageTarget,
-      creditState,
+      isSpendCapped,
       canUpgradeSeat,
       onOpenChangeSeatRecap,
       onOpenSpendLimitRecap,
     } = info.row.original;
 
-    if (creditState === "capped") {
+    if (isSpendCapped) {
       if (!canUpgradeSeat) {
         return (
           <DataTable.CellContent className="justify-center">
@@ -911,28 +1103,47 @@ function buildCreditPlanColumns({
   creditsResetAt,
   variant,
   hasPool,
+  showPremiumMessageUsage,
+  premiumMessageWindowDays,
+  fairUseWindowDays,
 }: {
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
   hasPool: boolean;
+  showPremiumMessageUsage: boolean;
+  premiumMessageWindowDays: number;
+  fairUseWindowDays: number | null;
 }): ColumnDef<RowData, string>[] {
   return [
-    ...(() => {
-      switch (variant) {
-        case "compact":
-          return [seatsIconColumn, seatUsageColumn];
-        case "legacy":
-          return [seatTypeColumn];
-        default:
-          assertNeverAndIgnore(variant);
-          return [seatTypeColumn];
-      }
-    })(),
+    // Premium message plans have no seats: every member is billed per
+    // message, so the seat columns have nothing to show.
+    ...(showPremiumMessageUsage
+      ? []
+      : (() => {
+          switch (variant) {
+            case "compact":
+              return [seatsIconColumn, seatUsageColumn];
+            case "legacy":
+              return [seatTypeColumn];
+            default:
+              assertNeverAndIgnore(variant);
+              return [seatTypeColumn];
+          }
+        })()),
     {
-      ...buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool),
+      ...(showPremiumMessageUsage
+        ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
+        : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool)),
       meta: { className: "w-56" },
     },
-    ...(variant === "compact" ? [offPaceColumn] : []),
+    // Premium message plans also carry a fixed AWU credit allowance for
+    // usage on non-premium models, alongside the rolling message limit.
+    ...(showPremiumMessageUsage && fairUseWindowDays !== null
+      ? [buildFairUseCreditsColumn(fairUseWindowDays)]
+      : []),
+    ...(variant === "compact" && !showPremiumMessageUsage
+      ? [offPaceColumn]
+      : []),
   ];
 }
 
@@ -944,6 +1155,9 @@ function buildColumns({
   creditsResetAt,
   variant,
   hasPool,
+  showPremiumMessageUsage,
+  premiumMessageWindowDays,
+  fairUseWindowDays,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
@@ -952,6 +1166,9 @@ function buildColumns({
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
   hasPool: boolean;
+  showPremiumMessageUsage: boolean;
+  premiumMessageWindowDays: number;
+  fairUseWindowDays: number | null;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -959,7 +1176,14 @@ function buildColumns({
     ...(showGroupsColumn ? [groupsColumn] : []),
     ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
     ...(showSeatAndCredits
-      ? buildCreditPlanColumns({ creditsResetAt, variant, hasPool })
+      ? buildCreditPlanColumns({
+          creditsResetAt,
+          variant,
+          hasPool,
+          showPremiumMessageUsage,
+          premiumMessageWindowDays,
+          fairUseWindowDays,
+        })
       : []),
     // Every row action belongs to one of these two groups.
     ...(showSeatAndCredits || showModelTiersColumn ? [actionsColumn] : []),
@@ -1018,6 +1242,7 @@ interface MembersUsageTableProps {
   // Whether the workspace has an active credit pool. Only affects the
   // "compact" (poke) variant's credit column header.
   hasPool?: boolean;
+  showPremiumMessageUsage?: boolean;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
   userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
   groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
@@ -1057,6 +1282,7 @@ export function MembersUsageTable({
   showModelTiersColumn = false,
   variant = "legacy",
   hasPool = true,
+  showPremiumMessageUsage = false,
   userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
   userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
   groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
@@ -1111,10 +1337,12 @@ export function MembersUsageTable({
           ),
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           overallUsageTarget: m.overallUsageTarget,
-          creditState: m.creditState,
+          isSpendCapped: m.isSpendCapped,
           canUpgradeSeat: canUpgradeSeat(m),
           onOpenChangeSeatRecap: () => onOpenChangeSeatRecap(m),
           onOpenSpendLimitRecap: () => onOpenSpendLimitRecap(m),
+          premiumMessageUsage: m.premiumMessageUsage ?? null,
+          fairUse: m.fairUse ?? null,
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
             switch (variant) {
@@ -1131,7 +1359,7 @@ export function MembersUsageTable({
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
-            ...(showSeatAndCredits && !hasSeat
+            ...(showSeatAndCredits && !hasSeat && !showPremiumMessageUsage
               ? [
                   {
                     kind: "item" as const,
@@ -1217,6 +1445,7 @@ export function MembersUsageTable({
       groupNameToId,
       readOnly,
       showSeatAndCredits,
+      showPremiumMessageUsage,
       seatActionsDisabled,
       onChangeSeat,
       onRemoveSeat,
@@ -1228,6 +1457,14 @@ export function MembersUsageTable({
     ]
   );
 
+  // All members share the same rolling-window/plan configuration, so the
+  // first loaded usage payload is representative of the whole table.
+  const premiumMessageWindowDays =
+    members.find((m) => m.premiumMessageUsage)?.premiumMessageUsage
+      ?.windowDays ?? DEFAULT_PREMIUM_MESSAGE_WINDOW_DAYS;
+  const fairUseWindowDays =
+    members.find((m) => m.fairUse)?.fairUse?.windowDays ?? null;
+
   const columns = useMemo(
     () =>
       buildColumns({
@@ -1238,6 +1475,9 @@ export function MembersUsageTable({
         creditsResetAt,
         variant,
         hasPool,
+        showPremiumMessageUsage,
+        premiumMessageWindowDays,
+        fairUseWindowDays,
       }),
     [
       enableSelection,
@@ -1247,6 +1487,9 @@ export function MembersUsageTable({
       creditsResetAt,
       variant,
       hasPool,
+      premiumMessageWindowDays,
+      showPremiumMessageUsage,
+      fairUseWindowDays,
     ]
   );
 

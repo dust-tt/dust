@@ -4,6 +4,7 @@ import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { frameSourceErrorStatus } from "@front-api/lib/api/frame_source_errors";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -13,7 +14,6 @@ import { z } from "zod";
 
 import call from "./call";
 import callById from "./call_by_id";
-import { frameSourceErrorStatus } from "./errors";
 import register from "./register";
 import share from "./share";
 import validateFrame from "./validate";

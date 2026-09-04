@@ -2,18 +2,16 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
 import { Ok } from "@app/types/shared/result";
 
 export async function getAgentDetails(
   { agentId }: { agentId: string },
   { auth }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const agents = await getAgentConfigurations(auth, {
-    agentIds: [agentId],
-    variant: "full",
-  });
-  const agent = agents[0];
+  // Admins get every agent of the workspace, with the private fields redacted (`canRead` false)
+  // for the ones they cannot read. Everyone else only gets the agents they can read.
+  const agent = await getAgentConfigurationForDetails(auth, { agentId });
 
   if (!agent) {
     return new Ok([
@@ -26,17 +24,21 @@ export async function getAgentDetails(
     ]);
   }
 
+  const header =
+    `Agent ${agent.name} [${agent.sId}]\n` +
+    `- Description: ${agent.description}\n` +
+    `- Scope: ${agent.scope}\n` +
+    `- Model: ${agent.model.providerId}/${agent.model.modelId}\n`;
+
   if (!agent.canRead) {
     return new Ok([
       {
         type: "text" as const,
         text:
-          `Agent ${agent.name} [${agent.sId}]\n` +
-          `- Description: (private agent - not available)\n` +
-          `- Scope: ${agent.scope}\n` +
-          `- Model: ${agent.model.providerId}/${agent.model.modelId}\n\n` +
-          "Instructions, skills, and tools are not available for private " +
-          "agents you do not have access to.",
+          header +
+          "\nInstructions, skills, tools and knowledge are private: you are " +
+          "not an editor of this agent, or not a member of every space it " +
+          "requires. This cannot be overridden from this tool.",
       },
     ]);
   }
@@ -48,10 +50,7 @@ export async function getAgentDetails(
     {
       type: "text" as const,
       text:
-        `Agent ${agent.name} [${agent.sId}]\n` +
-        `- Description: ${agent.description}\n` +
-        `- Scope: ${agent.scope}\n` +
-        `- Model: ${agent.model.providerId}/${agent.model.modelId}\n` +
+        header +
         `- Skills: ${skillNames || "none"}\n` +
         `- Tools: ${toolNames || "none"}\n\n` +
         "Instructions (full system prompt):\n" +

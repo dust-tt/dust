@@ -1,10 +1,13 @@
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import {
   getPremiumModelMessageUsage,
+  getPremiumModelMessageUsedCountsByUser,
   makeApiKeySpendLimitAwuCreditsRateLimitKey,
+  makeFreeSeatLifetimeAwuCreditsRateLimitKeyForUser,
   makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
   makeSpendLimitCycleWindowBounds,
+  makeSpendLimitLifetimeWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import {
@@ -49,6 +52,7 @@ import {
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   getFairUseAwuCreditsStatus,
+  getFairUseAwuCreditsUsedCountsByUser,
   isUserAwuWarnedByMetronome,
 } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -56,7 +60,10 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
+import {
+  lifetimeSpendCycleUtc,
+  spendLimitCycleOverrideForAuth,
+} from "@app/lib/spend_limits/cycle";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import {
   resolveEffectiveSpendLimitAwuCredits,
@@ -65,6 +72,7 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getFixedWindowCount,
+  getTimeframeSecondsFromLiteral,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -91,10 +99,15 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import { z } from "zod";
+
+// The rate-limiter's spend-cap verdict for a member (poke debugging): the
+// synchronous counter vs the seat's cap threshold.
+export type RateLimiterState = "capped" | "near_limit" | "ok";
 
 export type MemberUsageType = {
   sId: string;
@@ -167,10 +180,24 @@ export type MemberUsageType = {
   // Per-user credit state machine state (personal-credits → pool → capped
   // progression) persisted on the membership. Surfaced for debugging.
   creditState: UserCreditState;
-  // Whether the user has consumed ≥ 80% of their effective limit. With the
-  // rate-cap flag on, derived from the Redis rate-limiter counter; with it off,
-  // from the Metronome nearLimit flag (see user_block.ts). Poke-only.
+  // Whether the user has consumed ≥ 80% of their effective limit, per the
+  // Metronome near-limit flag (see user_block.ts). Shown in the "Credit state"
+  // column. Poke-only. See `rateLimiterState` for the rate-limiter view.
   nearLimit: boolean;
+  // The rate-limiter's view of the user's spend cap (independent of the flag):
+  // "capped" (counter ≥ cap), "near_limit" (≥ 80%), or "ok". The counter is the
+  // lifetime one for free seats and the per-cycle one otherwise, compared to the
+  // free-seat allowance / effective cycle cap. Null when no cap applies or not
+  // requested. Poke-only.
+  rateLimiterState: RateLimiterState | null;
+  // Flag-aware "blocked by the per-user spend cap" verdict — the signal the poke
+  // Unblock action keys off. With the rate-cap flag on, from the rate-limiter
+  // counter (`rateLimiterState`); with it off, from the persisted Metronome
+  // credit state. Mirrors the enforcement switch in
+  // lib/api/credits/access_control.ts, so it never disagrees with what actually
+  // blocks. The single-member / synthetic construction paths (which don't read
+  // the rate-limiter) fall back to the persisted credit state.
+  isSpendCapped: boolean;
   // Classifies seat-allowance consumption against how far the billing cycle
   // has elapsed: "elevated"/"critical" mean the member is burning through
   // their seat allowance faster than a linear pace would predict. Poke-only
@@ -184,12 +211,16 @@ export type MemberUsageType = {
   // (free/trial) where a fair-use limit is set. Null when the plan carries no
   // fair-use limit (limit === -1) or when not requested. Poke-only.
   fairUse?: MemberFairUseUsage | null;
+  premiumMessageUsage?: PremiumModelMessageUsage | null;
 };
 
 export type MemberFairUseUsage = {
   usedCredits: number;
   limitCredits: number;
   timeframe: MaxAwuCreditsTimeframeType;
+  windowDays: number;
+  nextResetAt: string | null;
+  refillSchedule: { date: string; credits: number }[];
 };
 
 export type GetMembersUsageResponseBody = {
@@ -247,6 +278,8 @@ export const MembersUsagePaginationSchema = z.object({
       "seatType",
       "creditState",
       "seatUsage",
+      "premiumMessageUsage",
+      "fairUse",
     ])
     .catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
@@ -1167,19 +1200,10 @@ export async function fetchRemainingCapCreditsPercentageForUser({
  */
 export async function getEffectiveSpendCapAwuCreditsForUser(
   auth: Authenticator,
-  { user }: { user: UserResource }
+  { user, membership }: { user: UserResource; membership: MembershipResource }
 ): Promise<number | null> {
   const workspace = auth.getNonNullableWorkspace();
   const { metronomeCustomerId } = workspace;
-
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace,
-    });
-  if (!membership) {
-    return null;
-  }
 
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
@@ -1239,7 +1263,11 @@ export async function getEffectiveSpendCapAwuCreditsForUser(
  *
  * Resyncs whichever cycle the workspace is bucketed on — the Metronome contract
  * billing period, or the UTC calendar month for workspaces without a contract —
- * so it writes the same Redis keys enforcement reads.
+ * so it writes the same Redis keys enforcement reads. Free seats are enforced on
+ * a never-rolling lifetime counter instead: for them it seeds the free-seat
+ * lifetime key from all-time `is_free_seat` consumption and zeroes the per-cycle
+ * key (and vice-versa for paid seats), so a seat that changed type is never left
+ * capped on a stale counter.
  */
 export async function resyncSpendLimitCountersFromEsUsage(
   auth: Authenticator
@@ -1254,10 +1282,11 @@ export async function resyncSpendLimitCountersFromEsUsage(
       new Error("No active Metronome billing period to resync against.")
     );
   }
-  const bounds = makeSpendLimitCycleWindowBounds(
+  const cycleBounds = makeSpendLimitCycleWindowBounds(
     cycle.cycleStart,
     cycle.cycleEnd
   );
+  const lifetimeBounds = makeSpendLimitLifetimeWindowBounds();
 
   const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
@@ -1271,19 +1300,34 @@ export async function resyncSpendLimitCountersFromEsUsage(
   );
   const userByModelId = new Map(users.map((u) => [u.id, u]));
 
-  // Read the same Elasticsearch-derived consumption the members table shows as
-  // "Consumed (ES)": keyed by user sId, with the free/paid split applied per
-  // seat. This is the source of truth we overwrite the counter with.
-  const freeSeatUserIds = memberships.flatMap((m) => {
+  // Free and paid seats are enforced on different Redis counters over different
+  // windows: free seats on a never-rolling *lifetime* counter (their all-time
+  // `is_free_seat` consumption against a lifetime credit allowance), everyone
+  // else on the per-cycle counter. Read each side over its own window so we seed
+  // the exact key/value enforcement reads (mirroring `isUserRateLimiterSpendCapped`
+  // and the members-table read).
+  const freeUserIds = memberships.flatMap((m) => {
     const u = userByModelId.get(m.userId);
     return u && m.seatType === "free" ? [u.sId] : [];
   });
-  const consumedByUserId = await fetchConsumedAwuCreditsByUserId({
-    workspace,
-    userIds: users.map((u) => u.sId),
-    freeSeatUserIds,
-    cycle,
+  const paidUserIds = memberships.flatMap((m) => {
+    const u = userByModelId.get(m.userId);
+    return u && m.seatType !== "free" ? [u.sId] : [];
   });
+  const [cycleConsumedByUserId, lifetimeConsumedByUserId] = await Promise.all([
+    fetchConsumedAwuCreditsByUserId({
+      workspace,
+      userIds: paidUserIds,
+      freeSeatUserIds: [],
+      cycle,
+    }),
+    fetchConsumedAwuCreditsByUserId({
+      workspace,
+      userIds: freeUserIds,
+      freeSeatUserIds: freeUserIds,
+      cycle: lifetimeSpendCycleUtc(),
+    }),
+  ]);
 
   const results = await concurrentExecutor(
     memberships,
@@ -1292,17 +1336,36 @@ export async function resyncSpendLimitCountersFromEsUsage(
       if (!user) {
         return false;
       }
-      const consumed = consumedByUserId.get(user.sId) ?? 0;
-      const setResult = await setFixedWindowCount({
-        key: makeSpendLimitAwuCreditsRateLimitKeyForUser(
-          workspace,
-          user.toJSON()
-        ),
-        bounds,
+      const isFreeSeat = membership.seatType === "free";
+      const consumed = isFreeSeat
+        ? (lifetimeConsumedByUserId.get(user.sId) ?? 0)
+        : (cycleConsumedByUserId.get(user.sId) ?? 0);
+
+      const cycleKey = makeSpendLimitAwuCreditsRateLimitKeyForUser(
+        workspace,
+        user.toJSON()
+      );
+      const lifetimeKey = makeFreeSeatLifetimeAwuCreditsRateLimitKeyForUser(
+        workspace,
+        user.toJSON()
+      );
+
+      // Seed the counter enforcement reads for this seat, and zero the other one
+      // so a seat that changed type since the last resync can't stay capped on a
+      // stale counter enforcement no longer reads for it.
+      const seedResult = await setFixedWindowCount({
+        key: isFreeSeat ? lifetimeKey : cycleKey,
+        bounds: isFreeSeat ? lifetimeBounds : cycleBounds,
         value: Math.max(0, roundCreditsToMicroCredits(consumed)),
         logger,
       });
-      return setResult.isOk();
+      const clearResult = await setFixedWindowCount({
+        key: isFreeSeat ? cycleKey : lifetimeKey,
+        bounds: isFreeSeat ? cycleBounds : lifetimeBounds,
+        value: 0,
+        logger,
+      });
+      return seedResult.isOk() && clearResult.isOk();
     },
     { concurrency: 8 }
   );
@@ -1417,6 +1480,59 @@ export async function resyncProgrammaticSpendLimitCounterFromEsUsage(
     logger,
   });
   return new Ok({ programmaticCounterSeeded: setResult.isOk() });
+}
+
+/**
+ * Reads a single user's Redis fixed-window spend-cap counter and returns whether
+ * it has reached the given threshold. Free seats read the never-rolling lifetime
+ * counter; everyone else the per-contract-cycle counter. Returns `false` (not
+ * capped) when no threshold applies, the billing cycle can't be resolved, or on
+ * a Redis read error — matching the fail-open enforcement in
+ * `lib/api/users/spend_limit.ts` (no Metronome fallback under the flag).
+ */
+async function isUserRateLimiterSpendCapped(
+  auth: Authenticator,
+  {
+    user,
+    isFreeSeat,
+    thresholdAwuCredits,
+    billingCycle,
+  }: {
+    user: UserResource;
+    isFreeSeat: boolean;
+    thresholdAwuCredits: number | null;
+    billingCycle: BillingCycle | null;
+  }
+): Promise<boolean> {
+  if (thresholdAwuCredits === null || thresholdAwuCredits <= 0) {
+    return false;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const bounds = isFreeSeat
+    ? makeSpendLimitLifetimeWindowBounds()
+    : billingCycle
+      ? makeSpendLimitCycleWindowBounds(
+          billingCycle.cycleStart,
+          billingCycle.cycleEnd
+        )
+      : null;
+  if (!bounds) {
+    return false;
+  }
+
+  const key = isFreeSeat
+    ? makeFreeSeatLifetimeAwuCreditsRateLimitKeyForUser(
+        workspace,
+        user.toJSON()
+      )
+    : makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON());
+  const result = await getFixedWindowCount({ key, bounds });
+  if (result.isErr()) {
+    return false;
+  }
+
+  return microCreditsToCredits(result.value) >= thresholdAwuCredits;
 }
 
 export type GetMemberUsageResponseBody = {
@@ -1610,6 +1726,26 @@ export async function getMemberUsage({
     defaultAwuCredits: effectiveDefaultAwuCredits,
   });
 
+  // Flag-aware per-user cap verdict, consistent with the members table and with
+  // enforcement in lib/api/credits/access_control.ts: under the flag, read the
+  // Redis rate-limiter counter (lifetime allowance for free seats, per-cycle cap
+  // otherwise) with no Metronome fallback; with it off, the persisted Metronome
+  // credit state.
+  const spendCapEnabled = (await getFeatureFlags(auth)).includes(
+    "enforce_user_spend_limit_rate_cap"
+  );
+  const isSpendCapped = spendCapEnabled
+    ? await isUserRateLimiterSpendCapped(auth, {
+        user: userResource,
+        isFreeSeat: membership.seatType === "free",
+        thresholdAwuCredits:
+          membership.seatType === "free"
+            ? freeSeatAllowanceAwu
+            : spendLimitAwuCredits,
+        billingCycle,
+      })
+    : membership.creditState === "capped";
+
   const member: MemberUsageType = {
     sId: userId,
     name: userResource.fullName() || userResource.name,
@@ -1643,6 +1779,8 @@ export async function getMemberUsage({
     freeCreditEmptyAlert: null,
     creditState: membership.creditState,
     nearLimit: false,
+    rateLimiterState: null,
+    isSpendCapped,
     seatUsageTarget: null,
     overallUsageTarget: null,
   };
@@ -1817,7 +1955,15 @@ async function resolveMembersUsagePageUsers({
   workspace: LightWorkspaceType;
   paginationParams: MembersUsagePaginationInput;
   restrictToUserIds: string[] | undefined;
-}): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+}): Promise<
+  Result<
+    {
+      users: UserResource[];
+      total: number;
+    },
+    Error
+  >
+> {
   const { orderColumn, orderDirection, offset, limit } = paginationParams;
   const searchTerm = paginationParams.search ?? "";
 
@@ -2037,6 +2183,29 @@ async function resolveMembersUsagePageUsers({
       }
       break;
     }
+    case "premiumMessageUsage": {
+      // Count-only and pipelined into a single Redis round-trip
+      const usedCountByUserId = await getPremiumModelMessageUsedCountsByUser({
+        workspace,
+        users: allUsers.map((u) => ({ id: u.id, sId: u.sId })),
+      });
+      for (const u of allUsers) {
+        sortKeyByUserId.set(u.sId, usedCountByUserId.get(u.sId) ?? 0);
+      }
+      break;
+    }
+    case "fairUse": {
+      // Count-only and pipelined into a single Redis round-trip
+      const usedCreditsByUserId = await getFairUseAwuCreditsUsedCountsByUser({
+        workspace,
+        users: allUsers.map((u) => u.toJSON()),
+        plan: auth.plan(),
+      });
+      for (const u of allUsers) {
+        sortKeyByUserId.set(u.sId, usedCreditsByUserId.get(u.sId) ?? 0);
+      }
+      break;
+    }
     default:
       assertNever(orderColumn);
   }
@@ -2067,7 +2236,10 @@ async function resolveMembersUsagePageUsers({
     return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
   });
 
-  return new Ok({ users: sortedUsers.slice(offset, offset + limit), total });
+  return new Ok({
+    users: sortedUsers.slice(offset, offset + limit),
+    total,
+  });
 }
 
 export async function getMembersUsage({
@@ -2248,10 +2420,9 @@ export async function getMembersUsage({
     "enforce_user_spend_limit_rate_cap"
   );
 
-  // Bulk-fetch Metronome near-limit flags from Redis (poke-only). Still needed
-  // when the rate-cap flag is on: free/none seats have no cycle cap for the
-  // rate-limiter counter to model, so they fall back to this flag (driven by
-  // their lifetime credit-balance alert).
+  // Bulk-fetch Metronome near-limit flags from Redis (poke-only). This backs the
+  // "near limit" chip in the Metronome "Credit state" column; the rate-limiter's
+  // own verdict is surfaced separately as `rateLimiterState`.
   const nearLimitByUserId = includeAlertLinks
     ? new Map(
         await concurrentExecutor(
@@ -2267,9 +2438,10 @@ export async function getMembersUsage({
     : new Map<string, boolean>();
 
   // Bulk-fetch the Redis fixed-window spend-cap counter per user (poke-only), to
-  // display beside the Elasticsearch-derived usage. The counter is bucketed on
-  // the current contract billing cycle — resolve the window once, then read each
-  // user's key. The same cycle also backs the per-member seat-usage pace below.
+  // display beside the Elasticsearch-derived usage. Free seats are enforced on a
+  // never-rolling *lifetime* counter (their lifetime credit allowance); everyone
+  // else on the per-contract-cycle counter. The cycle also backs the per-member
+  // seat-usage pace below, so resolve it regardless.
   const rateLimiterSpendByUserId = new Map<string, number>();
   let billingCycle: BillingCycle | null = null;
   if (includeAlertLinks) {
@@ -2278,32 +2450,41 @@ export async function getMembersUsage({
     );
     if (periodResult.isOk() && periodResult.value) {
       billingCycle = periodResult.value;
-      const bounds = makeSpendLimitCycleWindowBounds(
-        periodResult.value.cycleStart,
-        periodResult.value.cycleEnd
-      );
-      const entries = await concurrentExecutor(
-        users,
-        async (u) => {
-          const result = await getFixedWindowCount({
-            key: makeSpendLimitAwuCreditsRateLimitKeyForUser(
+    }
+    const cycleBounds = billingCycle
+      ? makeSpendLimitCycleWindowBounds(
+          billingCycle.cycleStart,
+          billingCycle.cycleEnd
+        )
+      : null;
+    const lifetimeBounds = makeSpendLimitLifetimeWindowBounds();
+    const entries = await concurrentExecutor(
+      users,
+      async (u) => {
+        const isFreeSeat = membershipByUserId.get(u.id)?.seatType === "free";
+        const key = isFreeSeat
+          ? makeFreeSeatLifetimeAwuCreditsRateLimitKeyForUser(
               workspace,
               u.toJSON()
-            ),
-            bounds,
-          });
-          // The counter stores microCredits; convert back to credits so it
-          // lines up with the ES/MT figures (all in credits).
-          return [
-            u.sId,
-            result.isOk() ? microCreditsToCredits(result.value) : 0,
-          ] as const;
-        },
-        { concurrency: 8 }
-      );
-      for (const [sId, value] of entries) {
-        rateLimiterSpendByUserId.set(sId, value);
-      }
+            )
+          : makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, u.toJSON());
+        const bounds = isFreeSeat ? lifetimeBounds : cycleBounds;
+        if (!bounds) {
+          // Non-free seat with no resolvable contract cycle: nothing to read.
+          return [u.sId, 0] as const;
+        }
+        const result = await getFixedWindowCount({ key, bounds });
+        // The counter stores microCredits; convert back to credits so it
+        // lines up with the ES/MT figures (all in credits).
+        return [
+          u.sId,
+          result.isOk() ? microCreditsToCredits(result.value) : 0,
+        ] as const;
+      },
+      { concurrency: 8 }
+    );
+    for (const [sId, value] of entries) {
+      rateLimiterSpendByUserId.set(sId, value);
     }
   }
 
@@ -2352,8 +2533,39 @@ export async function getMembersUsage({
               usedCredits: status.count,
               limitCredits: status.limit,
               timeframe: status.timeframe,
+              windowDays:
+                getTimeframeSecondsFromLiteral(status.timeframe) /
+                (ONE_DAY_MS / 1000),
+              nextResetAt: status.nextResetAt ?? null,
+              refillSchedule: status.refillSchedule ?? [],
             }
       );
+    }
+  }
+
+  const premiumMessageUsageByUserId = new Map<
+    string,
+    PremiumModelMessageUsage | null
+  >();
+  if (includeAlertLinks) {
+    const plan = auth.plan();
+    if (plan && !isCreditPricedPlan(plan)) {
+      // Bounded to the current page size
+      const entries = await concurrentExecutor(
+        users,
+        async (u) =>
+          [
+            u.sId,
+            await getPremiumModelMessageUsage({
+              workspace,
+              user: u.toJSON(),
+            }),
+          ] as const,
+        { concurrency: 8 }
+      );
+      for (const [sId, usage] of entries) {
+        premiumMessageUsageByUserId.set(sId, usage);
+      }
     }
   }
 
@@ -2453,10 +2665,15 @@ export async function getMembersUsage({
         : spendLimitSource === "default" && normalizedSeatType
           ? (defaultCapAlertsBySeatType[normalizedSeatType] ?? null)
           : null;
-    const spendLimitAlertId = includeAlertLinks
+    // With the rate-cap flag on, the per-user cap / 80%-warning and free-seat
+    // balance Metronome alerts no longer drive enforcement (the Redis rate
+    // limiter does), so their poke badges/deep-links are dropped to avoid
+    // showing signals that are no longer authoritative.
+    const showMetronomeAlerts = includeAlertLinks && !spendCapEnabled;
+    const spendLimitAlertId = showMetronomeAlerts
       ? (effectiveCapAlert?.alertId ?? null)
       : null;
-    const spendLimitWarningAlertId = includeAlertLinks
+    const spendLimitWarningAlertId = showMetronomeAlerts
       ? (effectiveCapAlert?.warningAlertId ?? null)
       : null;
 
@@ -2464,27 +2681,48 @@ export async function getMembersUsage({
     // these per-user credit-balance alerts. Alerts are keyed by the
     // free-prefixed Metronome user id.
     const freeCreditAlerts =
-      membership.seatType === "free"
+      showMetronomeAlerts && membership.seatType === "free"
         ? (freeCreditAlertIds?.get(metronomeUserId) ?? null)
         : null;
 
     const rateLimiterSpendAwuCredits = includeAlertLinks
       ? (rateLimiterSpendByUserId.get(userId) ?? 0)
       : null;
-    // Poke-only near-limit. With the rate-cap flag on, use the rate-limiter
-    // counter ≥ 80% of the effective cap — but only for seats that actually
-    // have a cycle cap. Free/none seats (no effective cap) have no counter to
-    // model their lifetime balance, so they fall back to the Metronome
-    // near-limit flag, same as when the flag is off.
-    const hasCycleCap =
-      effectiveSpendLimitAwuCredits !== null &&
-      effectiveSpendLimitAwuCredits > 0;
+    // Poke-only near-limit for the Metronome "Credit state" column, from the
+    // Metronome near-limit flag.
     const nearLimit =
+      includeAlertLinks && (nearLimitByUserId.get(userId) ?? false);
+
+    // Poke-only rate-limiter verdict (independent of the flag): the counter vs
+    // the threshold the seat is capped against — the free-seat lifetime
+    // allowance for free seats, the effective per-cycle cap otherwise.
+    // `rateLimiterSpendAwuCredits` already holds the matching counter (lifetime
+    // for free seats, per-cycle otherwise). Null when no cap applies.
+    const rateCapThresholdAwuCredits =
+      membership.seatType === "free"
+        ? freeStartingBalanceAwu
+        : effectiveSpendLimitAwuCredits;
+    let rateLimiterState: RateLimiterState | null = null;
+    if (
       includeAlertLinks &&
-      (spendCapEnabled && hasCycleCap
-        ? (rateLimiterSpendAwuCredits ?? 0) >=
-          USER_AWU_WARNING_PERCENTAGE * effectiveSpendLimitAwuCredits
-        : (nearLimitByUserId.get(userId) ?? false));
+      rateCapThresholdAwuCredits !== null &&
+      rateCapThresholdAwuCredits > 0
+    ) {
+      const spend = rateLimiterSpendAwuCredits ?? 0;
+      rateLimiterState =
+        spend >= rateCapThresholdAwuCredits
+          ? "capped"
+          : spend >= USER_AWU_WARNING_PERCENTAGE * rateCapThresholdAwuCredits
+            ? "near_limit"
+            : "ok";
+    }
+
+    // Flag-aware per-user cap verdict for the poke Unblock action: the
+    // rate-limiter counter under the flag, the Metronome credit state otherwise
+    // (mirrors the enforcement switch in lib/api/credits/access_control.ts).
+    const isSpendCapped = spendCapEnabled
+      ? rateLimiterState === "capped"
+      : membership.creditState === "capped";
 
     // Seat-allowance consumption used for pace classification below: free
     // seats track their live Metronome balance instead of the period spend
@@ -2569,7 +2807,10 @@ export async function getMembersUsage({
         freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
         creditState: membership.creditState,
         nearLimit,
+        rateLimiterState,
+        isSpendCapped,
         fairUse: fairUseByUserId.get(userId) ?? null,
+        premiumMessageUsage: premiumMessageUsageByUserId.get(userId) ?? null,
         seatUsageTarget,
         overallUsageTarget,
       },

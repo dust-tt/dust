@@ -1,6 +1,7 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { PlanPresence } from "@app/components/assistant/conversation/plan_mode/utils";
 import {
+  countProgress,
   extractPlanTitle,
   planPanelDecision,
 } from "@app/components/assistant/conversation/plan_mode/utils";
@@ -21,24 +22,6 @@ import React, { useEffect, useMemo, useRef } from "react";
 interface PlanCardProps {
   conversationId: string | null;
   workspaceId: string;
-}
-
-// Total counts every task marker (open, done, blocked); done counts only checked boxes.
-// `[!]` is "blocked" by convention and is intentionally excluded from the "done" set so the
-// progress chip surfaces unfinished work.
-const TASK_TOTAL_REGEX = /^\s*-\s*\[[ xX!]\]/gm;
-const TASK_DONE_REGEX = /^\s*-\s*\[[xX]\]/gm;
-
-function countProgress(content: string | null): {
-  done: number;
-  total: number;
-} {
-  if (!content) {
-    return { done: 0, total: 0 };
-  }
-  const total = (content.match(TASK_TOTAL_REGEX) ?? []).length;
-  const done = (content.match(TASK_DONE_REGEX) ?? []).length;
-  return { done, total };
 }
 
 export const PlanCard = React.memo(function PlanCard({

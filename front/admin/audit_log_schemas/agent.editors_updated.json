@@ -1,0 +1,19 @@
+{
+  "action": "agent.editors_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "agent"
+    }
+  ],
+  "metadata": {
+    "agent_name": "string",
+    "scope": "string",
+    "added_editor_ids": "string",
+    "removed_editor_ids": "string",
+    "actor_added_self": "string",
+    "actor_type": "string"
+  }
+}

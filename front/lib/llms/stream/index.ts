@@ -27,6 +27,8 @@ import { DustGoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream } from "@app/
 import { DustGoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_6_flash_global_google_ai_studio";
 import { DustGoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_7_flash_global_agent_platform";
 import { DustGoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_7_flash_global_google_ai_studio";
+import { DustGoogleGeminiThreeDotEightFlashGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_8_flash_global_agent_platform";
+import { DustGoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_8_flash_global_google_ai_studio";
 import { DustMistralCodestralEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_codestral_eu_mistral";
 import { DustMistralMistralLargeEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { DustMistralMistralMedium35EuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
@@ -92,6 +94,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustGoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream,
   [DustGoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream.id]:
     DustGoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream,
+  [DustGoogleGeminiThreeDotEightFlashGlobalAgentPlatformStream.id]:
+    DustGoogleGeminiThreeDotEightFlashGlobalAgentPlatformStream,
   [DustGoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream.id]:
     DustGoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream,
   [DustGoogleGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream.id]:
@@ -146,6 +150,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustGoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream,
   [DustGoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream.id]:
     DustGoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream,
+  [DustGoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream.id]:
+    DustGoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream,
 
   [DustMistralCodestralEuropeMistralStream.id]:
     DustMistralCodestralEuropeMistralStream,

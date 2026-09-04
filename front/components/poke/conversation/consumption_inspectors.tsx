@@ -7,19 +7,20 @@ import {
   CollapsibleTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
 
 interface PokeConversationConsumptionInspectorProps {
   conversationId: string;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   workspaceId: string;
 }
 
 export function PokeConversationConsumptionInspector({
   conversationId,
+  isOpen,
+  onOpenChange,
   workspaceId,
 }: PokeConversationConsumptionInspectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
   const { consumption, isConsumptionError, isConsumptionLoading } =
     usePokeConversationConsumption({
       conversationId,
@@ -30,17 +31,17 @@ export function PokeConversationConsumptionInspector({
   return (
     <Collapsible
       open={isOpen}
-      onOpenChange={setIsOpen}
+      onOpenChange={onOpenChange}
       className="overflow-hidden rounded-xl border border-border bg-background"
     >
-      <CollapsibleTrigger className="min-h-11 w-full justify-between gap-3 p-4 text-left">
-        <div className="min-w-0">
+      <CollapsibleTrigger className="min-h-11 w-full gap-2 p-4 text-left">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center">
             <span className="text-sm font-semibold text-foreground">
               Conversation consumption
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground xl:whitespace-nowrap">
             Includes completed messages and recursively spawned sub-agents.
           </p>
         </div>

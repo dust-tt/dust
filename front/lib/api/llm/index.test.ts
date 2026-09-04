@@ -8,7 +8,7 @@ import {
 } from "@app/lib/model_constructors/types/hosts";
 import {
   GEMINI_3_1_PRO,
-  GEMINI_3_5_FLASH,
+  GEMINI_3_8_FLASH,
   GLM_5P2,
 } from "@app/lib/model_constructors/types/models";
 import {
@@ -41,12 +41,13 @@ describe("getWorkspaceFilter", () => {
 
     const flashEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
-      model: { eq: GEMINI_3_5_FLASH },
+      model: { eq: GEMINI_3_8_FLASH },
     });
     expect(flashEndpoints.length).toBeGreaterThan(0);
     expect(flashEndpoints.every((e) => e.host === AGENT_PLATFORM_HOST)).toBe(
       true
     );
+    expect(flashEndpoints.map((e) => e.region)).toEqual(["global"]);
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
@@ -70,6 +71,14 @@ describe("getWorkspaceFilter", () => {
       model: { eq: GEMINI_3_1_PRO },
     });
     expect(proEndpoints.some((e) => e.host === GOOGLE_AI_STUDIO_HOST)).toBe(
+      true
+    );
+
+    const flashEndpoints = getStreamEndpoints(workspaceConfig, {
+      ...filter,
+      model: { eq: GEMINI_3_8_FLASH },
+    });
+    expect(flashEndpoints.some((e) => e.host === GOOGLE_AI_STUDIO_HOST)).toBe(
       true
     );
   });

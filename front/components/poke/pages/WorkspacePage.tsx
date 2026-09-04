@@ -32,8 +32,8 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { usePokeRegion } from "@app/lib/swr/poke";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
+import { usePokeCells } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
@@ -56,7 +56,7 @@ import {
 export function WorkspacePage() {
   const owner = useWorkspace();
   usePokePageMetadata({ name: owner.name ?? "Workspace", sId: owner.sId });
-  const { regionData } = usePokeRegion();
+  const { currentCell } = usePokeCells();
 
   const router = useAppRouter();
 
@@ -185,9 +185,9 @@ export function WorkspacePage() {
         <div className="flex-grow">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold">{owner.name}</span>
-            {regionData && (
-              <Chip size="xs" color={getRegionChipColor(regionData.region)}>
-                {getRegionDisplay(regionData.region)}
+            {currentCell && (
+              <Chip size="xs" color={getCellChipColor(currentCell.region)}>
+                {getCellDisplay(currentCell)}
               </Chip>
             )}
           </div>

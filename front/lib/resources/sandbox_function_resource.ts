@@ -3,10 +3,7 @@ import type {
   PokeFrameFunctionDetails,
 } from "@app/lib/api/poke/frames";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
-import {
-  appPrefixFromSlug,
-  sandboxFunctionNameFromSlug,
-} from "@app/lib/api/sandbox_functions/slug";
+import { appPrefixFromSlug } from "@app/lib/api/sandbox_functions/slug";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -27,7 +24,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { PodAppFunction } from "@app/types/api/pod_apps";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionExecutionMode,
@@ -1004,18 +1000,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       body,
       origin,
     });
-  }
-
-  // What the Pod's Apps tab shows for a function it lists under its app. Carries both the full slug
-  // (which addresses the function) and the bare name (which is all the app's own view needs to show).
-  toPodAppJSON(): PodAppFunction {
-    return {
-      slug: this.slug,
-      name: sandboxFunctionNameFromSlug(this.slug),
-      description: this.description,
-      executionMode: this.executionMode,
-      defaultStake: this.defaultStake,
-    };
   }
 
   /**

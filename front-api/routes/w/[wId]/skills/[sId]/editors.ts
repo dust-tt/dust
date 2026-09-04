@@ -26,11 +26,21 @@ const ParamsSchema = z.object({
 // describing the failure — keeps the validation prelude in one place per [API10].
 async function loadSkill(
   ctx: Context,
-  sId: string
+  sId: string,
+  {
+    redactUnreadableForAdmin = false,
+  }: {
+    redactUnreadableForAdmin?: boolean;
+  } = {}
 ): Promise<SkillResource | Response> {
   const auth = ctx.get("auth");
 
-  const skill = await SkillResource.fetchById(auth, sId);
+  const skill = await SkillResource.fetchById(auth, sId, {
+    permissionFiltering:
+      redactUnreadableForAdmin && auth.isAdmin()
+        ? "redact_unreadable"
+        : "strict",
+  });
   if (!skill) {
     return apiError(ctx, {
       status_code: 404,
@@ -52,7 +62,9 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { sId } = ctx.req.valid("param");
 
-  const skill = await loadSkill(ctx, sId);
+  // Editors are not private: admins can list them for the skills they cannot read too, e.g. to
+  // know whom to ask for access.
+  const skill = await loadSkill(ctx, sId, { redactUnreadableForAdmin: true });
   if (skill instanceof Response) {
     return skill;
   }

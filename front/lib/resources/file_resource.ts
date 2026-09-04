@@ -53,6 +53,7 @@ import {
   ShareableFileModel,
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
+import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -246,10 +247,12 @@ export class FileResource extends BaseResource<FileModel> {
       // pagination.
       lastValue,
       orderDirection,
+      hasSandbox = false,
     }: {
       limit: number;
       lastValue?: string;
       orderDirection: "asc" | "desc";
+      hasSandbox?: boolean;
     }
   ): Promise<{
     frames: FileResource[];
@@ -272,6 +275,19 @@ export class FileResource extends BaseResource<FileModel> {
 
     const rows = await this.model.findAll({
       where,
+      // A Frame has at most one sandbox owner link (unique index), so the inner join never
+      // duplicates rows. `subQuery: false` keeps the join out of the LIMIT subquery.
+      include: hasSandbox
+        ? [
+            {
+              model: SandboxOwnerModel,
+              as: "sandboxOwnerLinks",
+              required: true,
+              attributes: [],
+            },
+          ]
+        : [],
+      subQuery: false,
       order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
       limit: limit + 1,
     });
