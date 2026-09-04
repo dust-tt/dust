@@ -130,7 +130,7 @@ interface ToolRowProps {
 
 function ToolRow({ tool, totalCredits }: ToolRowProps) {
   return (
-    <li className="rounded-xl border border-border bg-background p-3">
+    <li className="flex flex-col gap-3 rounded-xl border border-border bg-background p-3">
       <div className="flex min-w-0 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted-background">
@@ -152,7 +152,7 @@ function ToolRow({ tool, totalCredits }: ToolRowProps) {
           {formatShare(tool.attributedCredits, totalCredits)}
         </p>
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">
+      <dl className="grid grid-cols-2 gap-2 border-t border-border pt-3">
         <div>
           <dt className="text-xs text-muted-foreground">Tokens</dt>
           <dd className="text-sm font-semibold tabular-nums text-foreground">
@@ -244,7 +244,7 @@ export function PokeMessageConsumptionInspector({
   const triggerId = `message-${messageId}-consumption-trigger`;
 
   return (
-    <div className="relative mt-3">
+    <div className="relative mt-3 flex flex-col gap-3">
       <button
         ref={triggerRef}
         id={triggerId}
@@ -306,9 +306,9 @@ export function PokeMessageConsumptionInspector({
             role="region"
             aria-labelledby={triggerId}
             className={cn(
-              "z-10 mt-3 overflow-clip rounded-xl border border-border bg-background",
+              "z-10 overflow-clip rounded-xl border border-border bg-background",
               "will-change-transform",
-              "xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:mt-0 xl:w-[var(--poke-inspector-width)]"
+              "xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:w-[var(--poke-inspector-width)]"
             )}
             data-message-consumption-panel-id={messageId}
             variants={MESSAGE_PANEL_VARIANTS}
@@ -351,14 +351,14 @@ export function PokeMessageConsumptionInspector({
               </div>
               <div className="bg-muted-background">
                 {isConsumptionError ? (
-                  <div className="p-4">
+                  <div className="flex flex-col gap-1 p-4">
                     <p
                       role="alert"
                       className="text-sm font-medium text-warning"
                     >
                       Consumption details could not be loaded.
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       The amount shown above still comes from the authoritative
                       stored bill.
                     </p>
@@ -372,11 +372,12 @@ export function PokeMessageConsumptionInspector({
                     <LoadingBlock className="h-16 w-full rounded-xl" />
                   </div>
                 ) : (
-                  <div className="space-y-5 p-4">
+                  <div className="flex flex-col gap-5 p-4">
                     {details ? (
                       <>
                         <section
                           aria-labelledby={`message-${messageId}-attribution-heading`}
+                          className="flex flex-col gap-4"
                         >
                           <h3
                             id={`message-${messageId}-attribution-heading`}
@@ -386,7 +387,7 @@ export function PokeMessageConsumptionInspector({
                           </h3>
 
                           {totalCredits > 0 && (
-                            <div className="mt-4">
+                            <div className="flex flex-col gap-3">
                               <ProgressBar
                                 className="h-2 w-full bg-background"
                                 values={[
@@ -402,13 +403,13 @@ export function PokeMessageConsumptionInspector({
                                 radius="xs"
                                 label="Message credits split between agent work and tools"
                               />
-                              <dl className="mt-3 grid grid-cols-2 gap-3">
-                                <div>
+                              <dl className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-col gap-1">
                                   <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                     <span className="size-2 rounded-full bg-highlight-500" />
                                     Context and reasoning
                                   </dt>
-                                  <dd className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+                                  <dd className="text-sm font-semibold tabular-nums text-foreground">
                                     {formatCreditValue(
                                       details.agentWorkCredits
                                     )}
@@ -421,12 +422,12 @@ export function PokeMessageConsumptionInspector({
                                     </span>
                                   </dd>
                                 </div>
-                                <div>
+                                <div className="flex flex-col gap-1">
                                   <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                     <span className="size-2 rounded-full bg-primary-400" />
                                     Tools
                                   </dt>
-                                  <dd className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+                                  <dd className="text-sm font-semibold tabular-nums text-foreground">
                                     {formatCreditValue(toolCredits)}&nbsp;
                                     <span className="font-normal text-muted-foreground">
                                       {formatShare(toolCredits, totalCredits)}
@@ -436,7 +437,7 @@ export function PokeMessageConsumptionInspector({
                               </dl>
                               {!isReconciled &&
                                 attributionDeltaCredits !== null && (
-                                  <p className="mt-3 text-xs text-warning">
+                                  <p className="text-xs text-warning">
                                     Attribution differs from the authoritative
                                     bill by&nbsp;
                                     {formatCreditValue(attributionDeltaCredits)}
@@ -450,7 +451,7 @@ export function PokeMessageConsumptionInspector({
                         {rankedTools.length > 0 && (
                           <section
                             aria-labelledby={`message-${messageId}-tools-heading`}
-                            className="border-t border-border pt-5"
+                            className="flex flex-col gap-3 border-t border-border pt-5"
                           >
                             <div className="flex flex-wrap items-end justify-between gap-2">
                               <div>
@@ -472,7 +473,7 @@ export function PokeMessageConsumptionInspector({
                                 )}
                               </p>
                             </div>
-                            <ul className="mt-3 space-y-2">
+                            <ul className="flex flex-col gap-2">
                               {rankedTools.map((tool) => (
                                 <ToolRow
                                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
@@ -487,7 +488,7 @@ export function PokeMessageConsumptionInspector({
                         {details.models.length > 0 && (
                           <section
                             aria-labelledby={`message-${messageId}-models-heading`}
-                            className="border-t border-border pt-5"
+                            className="flex flex-col gap-3 border-t border-border pt-5"
                           >
                             <h3
                               id={`message-${messageId}-models-heading`}
@@ -495,7 +496,7 @@ export function PokeMessageConsumptionInspector({
                             >
                               By model
                             </h3>
-                            <ul className="mt-3 space-y-2">
+                            <ul className="flex flex-col gap-2">
                               {details.models.map((model) => (
                                 <ModelRow
                                   key={`${model.providerId}:${model.modelId}`}
@@ -511,11 +512,11 @@ export function PokeMessageConsumptionInspector({
                         )}
                       </>
                     ) : (
-                      <div className="rounded-xl border border-border bg-background p-3">
+                      <div className="flex flex-col gap-1 rounded-xl border border-border bg-background p-3">
                         <p className="text-sm font-medium text-foreground">
                           Detailed attribution unavailable
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           The exact stored charge is available, but no complete
                           attribution version covers this message's runs and
                           tools.
