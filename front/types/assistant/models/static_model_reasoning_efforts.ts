@@ -364,6 +364,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "gemini-3.8-flash": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "deepseek-chat": {
     none: true,
     light: false,
