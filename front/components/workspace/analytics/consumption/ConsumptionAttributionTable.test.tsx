@@ -334,6 +334,7 @@ describe("ConsumptionAttributionTable", () => {
     expect(screen.getByText("2 / 5")).toBeInTheDocument();
     const usagePercentage = screen.getByText("250%");
     expect(usagePercentage.parentElement).toHaveClass("text-highlight-600");
+    expect(screen.getByText("Higher")).toBeInTheDocument();
     expect(usagePercentage.parentElement?.querySelector("svg")).toBeNull();
   });
 

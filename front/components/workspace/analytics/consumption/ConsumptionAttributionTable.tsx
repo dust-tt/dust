@@ -242,14 +242,24 @@ function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
     );
   }
 
+  const roundedPercentage = Math.round(percentage);
+  const comparison =
+    roundedPercentage > 100
+      ? "Higher"
+      : roundedPercentage < 100
+        ? "Lower"
+        : "Average";
+
   return (
     <div
       className={cn(
-        "flex w-full items-center justify-end text-right text-sm tabular-nums",
-        percentage > 100 ? "text-highlight-600" : "text-muted-foreground"
+        "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
+        roundedPercentage > 100 ? "text-highlight-600" : "text-muted-foreground"
       )}
     >
-      <span>{Math.round(percentage)}%</span>
+      <span>{roundedPercentage}%</span>
+      <span aria-hidden="true">·</span>
+      <span>{comparison}</span>
     </div>
   );
 }
