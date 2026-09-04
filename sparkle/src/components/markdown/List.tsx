@@ -113,6 +113,7 @@ export const OlBlock = memo(
 );
 OlBlock.displayName = "OlBlock";
 
+// mt-[3px] centers the 20px badge on the 26px leading-relaxed text line.
 const taskStepBadgeVariants = cva(
   "mt-[3px] flex size-5 shrink-0 items-center justify-center rounded-full",
   {
@@ -130,9 +131,20 @@ interface TaskStepBadgeProps {
   number?: number;
 }
 
+function taskStepLabel({ checked, number }: TaskStepBadgeProps) {
+  if (checked) {
+    return "Done";
+  }
+  return number !== undefined ? `Step ${number}` : "To do";
+}
+
 function TaskStepBadge({ checked, number }: TaskStepBadgeProps) {
   return (
-    <div className={taskStepBadgeVariants({ checked })}>
+    <div
+      role="img"
+      aria-label={taskStepLabel({ checked, number })}
+      className={taskStepBadgeVariants({ checked })}
+    >
       {checked ? (
         <Icon visual={Check} size="2xs" />
       ) : (
@@ -182,12 +194,13 @@ export const LiBlock = memo(
         >
           <TaskStepBadge
             checked={isChecked}
-            number={
-              ordered && index !== undefined ? start + index : undefined
-            }
+            number={ordered && index !== undefined ? start + index : undefined}
           />
           <div
-            className={cn("min-w-0 flex-1", isChecked && "text-faint line-through")}
+            className={cn(
+              "min-w-0 flex-1",
+              isChecked && "text-faint line-through"
+            )}
           >
             {children}
           </div>

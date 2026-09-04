@@ -140,11 +140,20 @@ export const TaskLists: Story = {
       expect(canvasElement.querySelectorAll('[role="checkbox"]')).toHaveLength(
         8
       );
-      // Step badges: done ones show an icon, numbered pending ones their number.
+      // Step badges expose their state, numbered only inside ordered lists.
       const badges = Array.from(
-        canvasElement.querySelectorAll(".rounded-full")
-      ).map((badge) => badge.textContent);
-      expect(badges).toEqual(["", "", "", "", "", "", "3", "4"]);
+        canvasElement.querySelectorAll('[role="img"]')
+      ).map((badge) => badge.getAttribute("aria-label"));
+      expect(badges).toEqual([
+        "Done",
+        "Done",
+        "To do",
+        "To do",
+        "Done",
+        "Done",
+        "Step 3",
+        "Step 4",
+      ]);
     });
   },
 };
