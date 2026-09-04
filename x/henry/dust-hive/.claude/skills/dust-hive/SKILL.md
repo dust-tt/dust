@@ -86,6 +86,9 @@ npm -w front run tsgo -- --noEmit
 npm -w front-api run tsgo -- --noEmit
 npm -w front-spa run tsgo -- --noEmit
 
+# Format and lint changed files (from the repository root)
+npm run format:changed
+
 # Core and OAuth (Rust)
 cd core && cargo check && cargo clippy
 
@@ -95,8 +98,8 @@ npm -w connectors run build  # Type-check + build
 
 ### Quick health check after warming:
 ```bash
-curl -sf http://localhost:10000/api/healthz  # front API through proxy
-curl -sf http://localhost:10001/             # core
+curl -sf "$DUST_FRONT_API/api/healthz"  # front API
+curl -sf "$CORE_API/"                    # core
 ```
 
 ## Running Front Tests in Cold Environments
@@ -105,8 +108,8 @@ The `front` project requires a Postgres database and Redis to run tests. dust-hi
 
 ### How it works
 
-- A shared Postgres container runs on port **5433** (started by `dust-hive up`)
-- A shared Redis container runs on port **6479** (started by `dust-hive up`)
+- A shared Postgres container runs on port **5433** (started by `dust-hive up` from the clean main repository)
+- A shared Redis container runs on port **6479** (started by `dust-hive up` from the clean main repository)
 - Each environment gets its own test database: `dust_front_test_{env_name}`
 - `TEST_FRONT_DATABASE_URI` and `TEST_REDIS_URI` are already set in each environment's `env.sh`
 
@@ -123,13 +126,13 @@ cd front && npm run test -- lib/resources/user_resource.test.ts
 cd front && npm run test -- --reporter verbose path/to/test.test.ts
 ```
 
-**No need to warm the environment** - `dust-hive up` starts the shared test Postgres and Redis.
+**No need to warm the environment** - `dust-hive up`, run from the clean main repository, starts the shared test Postgres and Redis.
 
 ### Troubleshooting front tests
 
 If front tests fail with database connection errors:
 1. Check if test postgres is running: `docker ps | grep dust-hive-test-postgres`
-2. If not running, start the shared services: `dust-hive up`
+2. If not running, start the shared services from the clean main repository: `dust-hive up`
 3. Verify the database exists: `docker exec dust-hive-test-postgres psql -U test -l`
 
 ## Known Issues
