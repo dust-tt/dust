@@ -58,6 +58,18 @@ export type AshbyReportSynchronousRequest = z.infer<
   typeof AshbyReportSynchronousRequestSchema
 >;
 
+const AshbyReportMetadataSchema = z
+  .object({
+    updatedAt: z.string(),
+    title: z.string(),
+  })
+  .passthrough();
+
+const AshbyReportDownloadDataSchema = z.object({
+  url: z.string(),
+  metadata: AshbyReportMetadataSchema,
+});
+
 export const AshbyReportSynchronousResponseSchema = z
   .union([
     z.object({
@@ -66,18 +78,19 @@ export const AshbyReportSynchronousResponseSchema = z
       reportData: z.object({
         data: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
         columnNames: z.array(z.string()),
-        metadata: z
-          .object({
-            updatedAt: z.string(),
-            title: z.string(),
-          })
-          .passthrough(),
+        metadata: AshbyReportMetadataSchema,
       }),
       failureReason: z.string().nullable(),
     }),
     z.object({
       requestId: z.string(),
-      status: z.enum(["failed", "in_progress"]),
+      status: z.literal("failed"),
+      reportData: z.union([z.null(), AshbyReportDownloadDataSchema]),
+      failureReason: z.string().nullable(),
+    }),
+    z.object({
+      requestId: z.string(),
+      status: z.literal("in_progress"),
       reportData: z.null(),
       failureReason: z.string().nullable(),
     }),
