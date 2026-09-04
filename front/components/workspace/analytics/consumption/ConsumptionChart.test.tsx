@@ -9,15 +9,8 @@ import { fireEvent, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseConsumptionOverview, mockUseConsumptionTimeseries } = vi.hoisted(
-  () => ({
-    mockUseConsumptionOverview: vi.fn(),
-    mockUseConsumptionTimeseries: vi.fn(),
-  })
-);
-
-vi.mock("@app/hooks/useConsumptionOverview", () => ({
-  useConsumptionOverview: mockUseConsumptionOverview,
+const { mockUseConsumptionTimeseries } = vi.hoisted(() => ({
+  mockUseConsumptionTimeseries: vi.fn(),
 }));
 
 vi.mock("@app/hooks/useConsumptionTimeseries", () => ({
@@ -57,6 +50,7 @@ function timeseries(
     metric: "credit_micro",
     timezone: "UTC",
     breakdownBy: null,
+    workspaceMemberCount: 20,
     groups: [{ groupKey: "total", name: "Total" }],
     points: [
       {
@@ -152,12 +146,6 @@ function expectActiveUsersOverlay(container: HTMLElement) {
 
 describe("consumption active users overlay", () => {
   beforeEach(() => {
-    mockUseConsumptionOverview.mockReset().mockReturnValue({
-      overview: null,
-      isOverviewLoading: false,
-      isOverviewError: undefined,
-      isOverviewValidating: false,
-    });
     mockUseConsumptionTimeseries.mockReset().mockReturnValue({
       timeseries: null,
       isTimeseriesLoading: true,
@@ -197,7 +185,6 @@ describe("consumption active users overlay", () => {
         isTimeseriesError={false}
         emptyMessage="No consumption."
         showActiveUsers
-        totalUsers={20}
       />
     );
 
@@ -289,6 +276,34 @@ describe("consumption active users overlay", () => {
         period={{ kind: "days", days: 30 }}
         dimension="agent"
         analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
+      />
+    );
+
+    expect(container.querySelectorAll(".recharts-yAxis")).toHaveLength(1);
+    expect(
+      container.querySelector(".recharts-line.text-golden-500")
+    ).toBeNull();
+    expect(
+      Array.from(
+        container.querySelectorAll("span.text-sm.text-muted-foreground")
+      ).some((label) => label.textContent === "Active users")
+    ).toBe(false);
+  });
+
+  it("hides the active-user overlay for agent analytics", () => {
+    mockUseConsumptionTimeseries.mockReturnValue({
+      timeseries: timeseries("period"),
+      isTimeseriesLoading: false,
+      isTimeseriesError: undefined,
+      isTimeseriesValidating: false,
+    });
+
+    const { container } = render(
+      <ConsumptionChart
+        workspaceId="workspace-id"
+        period={{ kind: "days", days: 30 }}
+        dimension="user"
+        analyticsScope={{ kind: "agent", agentId: "agent-id" }}
       />
     );
 

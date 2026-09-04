@@ -9,6 +9,8 @@ import {
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -91,7 +93,7 @@ function mockGroupNames(names: Record<string, string>) {
 async function setup() {
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  return { auth, period: PERIOD };
+  return { auth, period: PERIOD, workspace };
 }
 
 describe("fetchConsumptionTimeseries", () => {
@@ -181,6 +183,73 @@ describe("fetchConsumptionTimeseries", () => {
     expect(result.value.points.map((point) => point.activeUsers)).toEqual([
       4, 2,
     ]);
+  });
+
+  it("returns the workspace member count independently of scope filters", async () => {
+    const { auth, period, workspace } = await setup();
+    const firstMember = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, firstMember, { role: "user" });
+    const secondMember = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondMember, {
+      role: "manager",
+    });
+    mockBuckets([]);
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "period",
+      filter: { agents: ["agent-id"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.workspaceMemberCount).toBe(2);
+  });
+
+  it("omits the workspace member count without workspace context", async () => {
+    const { auth, period, workspace } = await setup();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    mockBuckets([]);
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "period",
+      includeWorkspaceContext: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.workspaceMemberCount).toBeNull();
+  });
+
+  it("omits the workspace member count for non-managers", async () => {
+    const { period, workspace } = await setup();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    mockBuckets([]);
+
+    const result = await fetchConsumptionTimeseries(memberAuth, {
+      period,
+      granularity: "day",
+      mode: "period",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.workspaceMemberCount).toBeNull();
   });
 
   it("zeroes buckets that have not started yet", async () => {
