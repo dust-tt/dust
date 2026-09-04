@@ -295,6 +295,18 @@ async function fixWorkspace(
     return resolved;
   };
 
+  // How many seats are currently assigned to each tier — used to disambiguate
+  // the stray. A contract can expose dormant tiers (e.g. pro_yearly/max_yearly
+  // with 0 seats); the stray is always an ACTIVELY-USED tier, so ignore the
+  // empty ones. (Removing 8000 from any pro-family credit reconciles the same,
+  // but targeting the in-use one keeps the ledger clean.)
+  const assignedCountByTier = new Map<MembershipSeatType, number>();
+  for (const seatType of seatTypeBySeatId.values()) {
+    assignedCountByTier.set(
+      seatType,
+      (assignedCountByTier.get(seatType) ?? 0) + 1
+    );
+  }
   const creditBearingTiers = [...tierBySeatType.values()];
   const strayInfoBySeat = new Map<
     string,
@@ -323,11 +335,13 @@ async function fixWorkspace(
       continue;
     }
     const strayCandidates = creditBearingTiers.filter(
-      (t) => t.seatType !== homeSeatType
+      (t) =>
+        t.seatType !== homeSeatType &&
+        (assignedCountByTier.get(t.seatType) ?? 0) > 0
     );
     if (strayCandidates.length !== 1) {
-      // >2 credit-bearing tiers (e.g. yearly variants present): can't infer
-      // which pool holds the stray grant. Reported and skipped.
+      // Still >1 in-use credit-bearing tier other than home: can't infer which
+      // pool holds the stray grant. Reported and skipped.
       skippedAmbiguousStray.add(homeSeatType);
       continue;
     }

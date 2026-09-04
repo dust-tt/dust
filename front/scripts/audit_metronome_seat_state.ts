@@ -485,6 +485,16 @@ async function auditWorkspace(
       candidateSeatTypeById.set(seatId, seatType);
     }
   }
+  // Seats currently assigned per tier — the stray is an actively-used tier, so
+  // dormant tiers (e.g. pro_yearly/max_yearly with 0 seats) are ignored when
+  // labelling the stray.
+  const assignedCountByTier = new Map<MembershipSeatType, number>();
+  for (const seatType of seatTypeBySeatId.values()) {
+    assignedCountByTier.set(
+      seatType,
+      (assignedCountByTier.get(seatType) ?? 0) + 1
+    );
+  }
   const RECONCILE_TOLERANCE_AWU = 1000;
   const candidateSeatIds = [...candidateSeatTypeById.keys()];
   const consumedByUserId = await fetchConsumedAwuCreditsFromMetronomeByUserId({
@@ -519,7 +529,7 @@ async function auditWorkspace(
       continue;
     }
     const strayCandidates = creditBearingSeatTypes.filter(
-      (t) => t !== homeSeatType
+      (t) => t !== homeSeatType && (assignedCountByTier.get(t) ?? 0) > 0
     );
     overAllocatedSeats.push({
       seatId,
