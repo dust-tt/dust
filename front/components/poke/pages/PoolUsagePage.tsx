@@ -7,10 +7,7 @@ import {
 import { MemberSpendLimitModal } from "@app/components/workspace/MemberSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
-import {
-  toCreditPoolFetchStatus,
-  WorkspaceCreditPoolSection,
-} from "@app/components/workspace/WorkspaceCreditPoolCards";
+import { CreditPoolCardsFromCycleData } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { expandMaxTierName } from "@app/lib/client/model_tiers";
@@ -89,51 +86,15 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
     isAwuPoolCycleHistoryError,
   } = usePokeAwuPoolCycleHistory({ owner });
 
-  const {
-    totalRemainingCredits,
-    totalActiveCredits,
-    currentCycleConsumedCredits,
-    currentCycleStartMs,
-    currentCycleEndMs,
-    excessConsumedCredits,
-    programmaticConsumedCredits,
-    otherConsumedCredits,
-  } = awuPoolCurrentCycle ?? {
-    totalRemainingCredits: 0,
-    totalActiveCredits: 0,
-    currentCycleConsumedCredits: null,
-    currentCycleStartMs: null,
-    currentCycleEndMs: null,
-    excessConsumedCredits: null,
-    programmaticConsumedCredits: null,
-    otherConsumedCredits: null,
-  };
-
-  const hasPool = totalActiveCredits > 0;
-  const hasExcessData =
-    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
-
   return (
-    <WorkspaceCreditPoolSection
-      cardsStatus={toCreditPoolFetchStatus(
-        isAwuPoolCurrentCycleLoading,
-        !!isAwuPoolCurrentCycleError
-      )}
-      tableStatus={toCreditPoolFetchStatus(
-        isAwuPoolCycleHistoryLoading,
-        !!isAwuPoolCycleHistoryError
-      )}
-      showPoolCard={hasPool}
-      isVisible={hasPool || hasExcessData}
-      totalRemainingCredits={totalRemainingCredits}
-      consumedCredits={
-        hasPool ? currentCycleConsumedCredits : excessConsumedCredits
-      }
-      currentCycleStartMs={currentCycleStartMs}
-      currentCycleEndMs={currentCycleEndMs}
-      cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
-      programmaticConsumedCredits={programmaticConsumedCredits}
-      otherConsumedCredits={otherConsumedCredits}
+    <CreditPoolCardsFromCycleData
+      awuPoolCurrentCycle={awuPoolCurrentCycle}
+      isAwuPoolCurrentCycleLoading={isAwuPoolCurrentCycleLoading}
+      isAwuPoolCurrentCycleError={!!isAwuPoolCurrentCycleError}
+      poolCycleBreakdown={poolCycleBreakdown}
+      excessCycleBreakdown={excessCycleBreakdown}
+      isAwuPoolCycleHistoryLoading={isAwuPoolCycleHistoryLoading}
+      isAwuPoolCycleHistoryError={!!isAwuPoolCycleHistoryError}
     />
   );
 }
