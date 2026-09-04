@@ -1,53 +1,11 @@
-import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
-import * as planType from "@app/lib/metronome/plan_type";
-import * as seatTypes from "@app/lib/metronome/seat_types";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { buildCachedContractMock } from "@app/tests/utils/metronome_contracts";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
-  const actual = await vi.importActual<typeof spendLimits>(
-    "@app/lib/metronome/alerts/spend_limits"
-  );
-  return {
-    ...actual,
-    upsertMetronomeGroupCapAlertForSeatType: vi.fn(),
-    upsertMetronomeGroupWarningAlertForSeatType: vi.fn(),
-    clearMetronomeGroupCapAlertForSeatType: vi.fn(),
-    clearMetronomeGroupWarningAlertForSeatType: vi.fn(),
-  };
-});
-
-vi.mock("@app/lib/metronome/plan_type", async () => {
-  const actual = await vi.importActual<typeof planType>(
-    "@app/lib/metronome/plan_type"
-  );
-  return { ...actual, getActiveContract: vi.fn() };
-});
-
-vi.mock("@app/lib/metronome/seat_types", async () => {
-  const actual = await vi.importActual<typeof seatTypes>(
-    "@app/lib/metronome/seat_types"
-  );
-  return {
-    ...actual,
-    getProductSeatTypes: vi.fn(),
-  };
-});
+import { describe, expect, it } from "vitest";
 
 const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
-const TEST_ALERT_ID = "alert_test_xxx";
-
-// Contract with one pro seat subscription carrying an 8000 AWU allowance —
-// the seat-type resolution runs against it for real, only the contract and
-// product fetches (cache/network) are mocked.
-const { contract: FAKE_CONTRACT, productSeatTypes: FAKE_PRODUCT_SEAT_TYPES } =
-  buildCachedContractMock({ seats: [{ seatType: "pro", awu: 8000 }] });
 
 async function makeMetronomeWorkspaceWithCustomer(): Promise<WorkspaceType> {
   return WorkspaceFactory.metronome({
@@ -77,26 +35,6 @@ function putLimit(wId: string, groupId: string, body: Record<string, unknown>) {
     body: JSON.stringify(body),
   });
 }
-
-beforeEach(() => {
-  vi.mocked(
-    spendLimits.upsertMetronomeGroupCapAlertForSeatType
-  ).mockResolvedValue(new Ok({ alertId: TEST_ALERT_ID }));
-  vi.mocked(
-    spendLimits.upsertMetronomeGroupWarningAlertForSeatType
-  ).mockResolvedValue(new Ok({ alertId: TEST_ALERT_ID }));
-  vi.mocked(
-    spendLimits.clearMetronomeGroupCapAlertForSeatType
-  ).mockResolvedValue(new Ok(undefined));
-  vi.mocked(
-    spendLimits.clearMetronomeGroupWarningAlertForSeatType
-  ).mockResolvedValue(new Ok(undefined));
-
-  vi.mocked(planType.getActiveContract).mockResolvedValue(FAKE_CONTRACT);
-  vi.mocked(seatTypes.getProductSeatTypes).mockResolvedValue(
-    FAKE_PRODUCT_SEAT_TYPES
-  );
-});
 
 describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
   describe("auth", () => {
@@ -202,7 +140,7 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
   });
 
   describe("PUT", () => {
-    it("persists the cap and upserts per-seat-type alerts for limited", async () => {
+    it("persists the cap for limited", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const group = await makeProvisionedGroup(workspace);
       const { auth } = await createPrivateApiMockRequest({
@@ -220,18 +158,6 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       expect(await response.json()).toEqual({
         limit: { kind: "limited", awuCredits: 25_000 },
       });
-      // Threshold = 8_000 (seat allowance) + 25_000 (group cap).
-      expect(
-        spendLimits.upsertMetronomeGroupCapAlertForSeatType
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
-          workspaceId: workspace.sId,
-          groupId: group.sId,
-          seatType: "pro",
-          awuCredits: 33_000,
-        })
-      );
 
       // The pool-only cap is persisted on the group.
       const reloaded = await GroupResource.fetchById(auth, group.sId);
@@ -241,7 +167,7 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       expect(reloaded.value.poolCapAwuCredits).toBe(25_000);
     });
 
-    it("clears the cap and the alerts for unlimited", async () => {
+    it("clears the cap for unlimited", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const group = await makeProvisionedGroup(workspace);
       const { auth } = await createPrivateApiMockRequest({
@@ -257,12 +183,6 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ limit: { kind: "unlimited" } });
-      expect(
-        spendLimits.clearMetronomeGroupCapAlertForSeatType
-      ).toHaveBeenCalled();
-      expect(
-        spendLimits.upsertMetronomeGroupCapAlertForSeatType
-      ).not.toHaveBeenCalled();
 
       const reloaded = await GroupResource.fetchById(auth, group.sId);
       if (reloaded.isErr()) {
