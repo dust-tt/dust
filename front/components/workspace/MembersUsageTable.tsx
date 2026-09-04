@@ -21,6 +21,7 @@ import type {
 import {
   formatCreditResetCountdown,
   formatCredits,
+  formatCreditValue,
 } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
@@ -891,8 +892,8 @@ function buildFairUseCreditsColumn(
         <ProgressBar
           aria-label="Fair-use credits usage"
           aria-valuenow={percentage}
-          aria-valuetext={`${formatCredits(usedCredits)} of ${formatCredits(limitCredits)} credits used`}
-          className="h-1 w-full gap-px bg-transparent"
+          aria-valuetext={`${formatCredits(usedCredits)} of ${formatCreditValue(limitCredits)} used`}
+          className="w-full bg-transparent"
           values={[
             {
               value: percentage,
@@ -905,7 +906,7 @@ function buildFairUseCreditsColumn(
         />
       );
       return (
-        <div className="flex w-full flex-col gap-1 pr-3">
+        <div className="flex w-full flex-col gap-1">
           <div className="flex justify-between text-xs tabular-nums text-foreground">
             <span>{formatCredits(usedCredits)}</span>
             <span>{formatCredits(limitCredits)}</span>

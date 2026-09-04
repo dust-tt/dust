@@ -93,6 +93,7 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
@@ -2382,7 +2383,7 @@ export async function getMembersUsage({
               timeframe: status.timeframe,
               windowDays:
                 getTimeframeSecondsFromLiteral(status.timeframe) /
-                (24 * 60 * 60),
+                (ONE_DAY_MS / 1000),
               nextResetAt: status.nextResetAt ?? null,
             }
       );
