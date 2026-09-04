@@ -123,9 +123,11 @@ export async function resolveDimensionLabels(
       const groups = await GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
       });
+      const keySet = new Set(keys);
+      const groupsToResolve = groups.filter((group) => keySet.has(group.sId));
       const groupsWithMemberCounts = await GroupResource.toJSONWithMemberCounts(
         auth,
-        groups
+        groupsToResolve
       );
       const groupsById = new Map(
         groupsWithMemberCounts.map((group) => [group.sId, group])
