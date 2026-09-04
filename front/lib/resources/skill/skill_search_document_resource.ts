@@ -10,7 +10,8 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
-import type { Transaction } from "sequelize";
+import assert from "assert";
+import type { Transaction, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 interface TransactionOptions {
@@ -56,6 +57,48 @@ export class SkillSearchDocumentResource {
         return { skillId, skillModelId: parsed.resourceModelId };
       })
     );
+  }
+
+  static async listActiveSearchIndexSkillIds(
+    auth: Authenticator,
+    {
+      afterSkillModelId,
+      limit,
+      transaction: existingTransaction,
+    }: {
+      afterSkillModelId: ModelId | null;
+      limit: number;
+      transaction?: Transaction;
+    }
+  ): Promise<{ skillId: string; skillModelId: ModelId }[]> {
+    assert(Number.isInteger(limit) && limit > 0, "limit must be positive");
+
+    return withTransaction(async (transaction) => {
+      const workspace = auth.getNonNullableWorkspace();
+      const where: WhereOptions<SkillConfigurationModel> = {
+        workspaceId: workspace.id,
+        status: "active",
+      };
+      if (afterSkillModelId !== null) {
+        where.id = { [Op.gt]: afterSkillModelId };
+      }
+
+      const skills = await SkillConfigurationModel.findAll({
+        attributes: ["id"],
+        where,
+        order: [["id", "ASC"]],
+        limit,
+        transaction,
+      });
+
+      return skills.map((skill) => ({
+        skillId: this.modelIdToSId({
+          id: skill.id,
+          workspaceId: workspace.id,
+        }),
+        skillModelId: skill.id,
+      }));
+    }, existingTransaction);
   }
 
   static async fetchSearchDocument(
