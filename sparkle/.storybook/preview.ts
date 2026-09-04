@@ -61,29 +61,9 @@ const preview: Preview = {
     themes: {
       default: "light",
       list: [
+        // Swatches mirror --color-background in each theme (see the canvas decorator below).
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "dark", color: "#000000" },
-      ],
-    },
-    backgrounds: {
-      default: "white",
-      values: [
-        {
-          name: "white",
-          value: "#ffffff",
-        },
-        {
-          name: "light",
-          value: "#F7F7F7",
-        },
-        {
-          name: "dark",
-          value: "#090F18",
-        },
-        {
-          name: "black",
-          value: "#000000",
-        },
+        { name: "dark", class: "dark", color: "#141211" },
       ],
     },
   },
