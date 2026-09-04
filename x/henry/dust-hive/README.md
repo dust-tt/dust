@@ -288,8 +288,8 @@ dust-hive forward env-b     # Switch OAuth to env-b
 
 If the ports are already owned by another dust-hive forwarder, `dust-hive forward NAME` will switch it automatically.
 If those ports are owned by a different process, the command will fail with details so you can stop it.
-Port 6006 is an exception: if a standalone Storybook already owns it, dust-hive preserves that
-listener and starts the remaining forwarders.
+A standalone Storybook on port 6006 is also stopped automatically so all forwarded ports target
+the same environment.
 
 ## Preconditions
 

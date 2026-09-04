@@ -5,22 +5,17 @@ import { unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { createTypeGuard, isErrnoException } from "./errors";
-import {
-  FORWARDER_MAPPINGS,
-  FORWARDER_PORTS,
-  partitionOccupiedForwarderPorts,
-} from "./forwarderConfig";
+import { FORWARDER_MAPPINGS, FORWARDER_PORTS, STORYBOOK_FORWARDER_PORT } from "./forwarderConfig";
 import { fileExists } from "./fs";
 import { logger } from "./logger";
 import { FORWARDER_LOG_PATH, FORWARDER_PID_PATH, FORWARDER_STATE_PATH } from "./paths";
-import { getPortProcessInfo, isPortInUse } from "./ports";
+import { getPortProcessInfo, isPortInUse, type PortProcessInfo } from "./ports";
 import { isProcessRunning, killProcess } from "./process";
 
 const ForwarderStateFields = z.object({
   targetEnv: z.string(),
   basePort: z.number(),
   updatedAt: z.string(),
-  skippedPorts: z.array(z.number()).optional(),
 });
 
 const ForwarderStateSchema = ForwarderStateFields.passthrough();
@@ -125,30 +120,67 @@ function looksLikeForwarderProcess(command: string | null): boolean {
   return normalized.includes("forward-daemon");
 }
 
-async function stopForwarderProcessesOnPorts(ports: number[]): Promise<boolean> {
-  const portInfos = ports.map((port) => ({ port, processes: getPortProcessInfo(port) }));
-  const forwarderPids = new Set<number>();
-  const nonForwarder = portInfos.some((info) =>
-    info.processes.some((proc) => !looksLikeForwarderProcess(proc.command))
+function looksLikeStorybookProcess(command: string | null): boolean {
+  if (!command) return false;
+  const args = command.toLowerCase().split(/\s+/);
+  const storybookArgIndex = args.findIndex(
+    (arg) => arg === "storybook" || arg.endsWith("/storybook")
   );
+  return storybookArgIndex >= 0 && args[storybookArgIndex + 1] === "dev";
+}
 
-  if (nonForwarder) {
-    return false;
-  }
+export function canAutoStopForwarderPortProcess(port: number, command: string | null): boolean {
+  return (
+    looksLikeForwarderProcess(command) ||
+    (port === STORYBOOK_FORWARDER_PORT && looksLikeStorybookProcess(command))
+  );
+}
+
+interface ForwarderPortProcessInfo {
+  port: number;
+  processes: PortProcessInfo[];
+}
+
+function collectAutoStoppableProcessPids(
+  portInfos: ForwarderPortProcessInfo[]
+): { processPids: Set<number>; storybookPids: Set<number> } | null {
+  const processPids = new Set<number>();
+  const storybookPids = new Set<number>();
 
   for (const info of portInfos) {
     for (const proc of info.processes) {
-      if (looksLikeForwarderProcess(proc.command)) {
-        forwarderPids.add(proc.pid);
+      if (!canAutoStopForwarderPortProcess(info.port, proc.command)) {
+        return null;
+      }
+      processPids.add(proc.pid);
+      if (info.port === STORYBOOK_FORWARDER_PORT && looksLikeStorybookProcess(proc.command)) {
+        storybookPids.add(proc.pid);
       }
     }
   }
 
-  if (forwarderPids.size === 0) {
+  return { processPids, storybookPids };
+}
+
+async function stopReplaceableProcessesOnPorts(ports: number[]): Promise<boolean> {
+  const portInfos = ports.map((port) => ({ port, processes: getPortProcessInfo(port) }));
+  const stoppablePids = collectAutoStoppableProcessPids(portInfos);
+  if (!stoppablePids) {
+    return false;
+  }
+  const { processPids, storybookPids } = stoppablePids;
+
+  if (processPids.size === 0) {
     return false;
   }
 
-  for (const pid of forwarderPids) {
+  if (storybookPids.size > 0) {
+    logger.warn(
+      `Stopping standalone Storybook on port ${STORYBOOK_FORWARDER_PORT} (PID ${[...storybookPids].join(", ")})`
+    );
+  }
+
+  for (const pid of processPids) {
     await killProcess(pid, "SIGTERM");
   }
 
@@ -160,7 +192,7 @@ async function stopForwarderProcessesOnPorts(ports: number[]): Promise<boolean> 
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  for (const pid of forwarderPids) {
+  for (const pid of processPids) {
     await killProcess(pid, "SIGKILL");
   }
 
@@ -186,23 +218,15 @@ export async function startForwarder(basePort: number, envName: string): Promise
   await stopForwarder();
 
   // Check if any standard ports are already in use by something else
-  const occupiedPorts = FORWARDER_PORTS.filter((port) => isPortInUse(port));
-  const { portsToClear, portsToPreserve: preservablePorts } =
-    partitionOccupiedForwarderPorts(occupiedPorts);
-  if (portsToClear.length > 0) {
-    const stopped = await stopForwarderProcessesOnPorts(portsToClear);
+  const portsInUse = FORWARDER_PORTS.filter((port) => isPortInUse(port));
+  if (portsInUse.length > 0) {
+    const stopped = await stopReplaceableProcessesOnPorts(portsInUse);
     if (!stopped) {
-      const details = formatPortProcessInfo(portsToClear);
+      const details = formatPortProcessInfo(portsInUse);
       throw new Error(
-        `Ports ${portsToClear.join(", ")} are already in use (${details}). Stop the processes using them before starting the forwarder.`
+        `Ports ${portsInUse.join(", ")} are already in use (${details}). Stop the processes using them before starting the forwarder.`
       );
     }
-  }
-  // A stray forwarder cleared above may also have owned a preservable port.
-  const portsToPreserve = preservablePorts.filter((port) => isPortInUse(port));
-  if (portsToPreserve.length > 0) {
-    const details = formatPortProcessInfo(portsToPreserve);
-    logger.warn(`Preserving existing listeners instead of forwarding: ${details}`);
   }
 
   // Find the daemon script relative to this module (src/lib/forward.ts → src/forward-daemon.ts)
@@ -215,15 +239,12 @@ export async function startForwarder(basePort: number, envName: string): Promise
   // Spawn the forwarder daemon
   const logFile = Bun.file(FORWARDER_LOG_PATH);
 
-  const proc = Bun.spawn(
-    ["bun", "run", daemonPath, String(basePort), ...portsToPreserve.map((port) => String(port))],
-    {
-      env: process.env,
-      stdout: logFile,
-      stderr: logFile,
-      detached: true,
-    }
-  );
+  const proc = Bun.spawn(["bun", "run", daemonPath, String(basePort)], {
+    env: process.env,
+    stdout: logFile,
+    stderr: logFile,
+    detached: true,
+  });
 
   proc.unref();
 
@@ -242,18 +263,10 @@ export async function startForwarder(basePort: number, envName: string): Promise
     targetEnv: envName,
     basePort,
     updatedAt: new Date().toISOString(),
-    skippedPorts: portsToPreserve,
   });
 
   logger.success(`Forwarding ports → ${envName} (base ${basePort})`);
-  const skippedPorts = new Set(portsToPreserve);
   for (const m of FORWARDER_MAPPINGS) {
-    if (skippedPorts.has(m.listenPort)) {
-      console.log(
-        `  ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → existing listener (preserved)`
-      );
-      continue;
-    }
     console.log(
       `  ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → ${basePort + m.targetOffset}`
     );

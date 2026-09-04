@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // TCP forwarder daemon - forwards standard local dev ports to dust-hive env ports
-// Usage: bun run forward-daemon.ts <base-port> [skip-port ...]
+// Usage: bun run forward-daemon.ts <base-port>
 //
 // Port mappings (standard → env):
 //   3000 → base + 0 (proxy)
@@ -17,28 +17,15 @@ import { FORWARDER_MAPPINGS } from "./lib/forwarderConfig";
 
 const basePortArg = process.argv[2];
 if (!basePortArg) {
-  console.error("Usage: forward-daemon.ts <base-port> [skip-port ...]");
+  console.error("Usage: forward-daemon.ts <base-port>");
   process.exit(1);
 }
 
 const basePort = Number.parseInt(basePortArg, 10);
 
 if (Number.isNaN(basePort) || basePort < 1 || basePort > 65535) {
-  console.error("Usage: forward-daemon.ts <base-port> [skip-port ...]");
+  console.error("Usage: forward-daemon.ts <base-port>");
   process.exit(1);
-}
-
-const skippedPorts = new Set<number>();
-for (const skippedPortArg of process.argv.slice(3)) {
-  const skippedPort = Number(skippedPortArg);
-  const isPreservablePort = FORWARDER_MAPPINGS.some(
-    (mapping) => mapping.listenPort === skippedPort && mapping.preserveExistingListener
-  );
-  if (!(Number.isInteger(skippedPort) && isPreservablePort)) {
-    console.error("Usage: forward-daemon.ts <base-port> [skip-port ...]");
-    process.exit(1);
-  }
-  skippedPorts.add(skippedPort);
 }
 
 const LISTEN_HOST = process.env["DUST_HIVE_FORWARD_LISTEN_HOST"] ?? "127.0.0.1";
@@ -283,11 +270,6 @@ const servers: ServerHandle[] = [];
 const failedPorts: number[] = [];
 
 for (const mapping of FORWARDER_MAPPINGS) {
-  if (skippedPorts.has(mapping.listenPort)) {
-    console.log(`Preserving existing listener on port ${mapping.listenPort} (${mapping.name})`);
-    continue;
-  }
-
   const targetPort = basePort + mapping.targetOffset;
   try {
     const server = createForwarder(mapping.listenPort, targetPort, mapping.name);
