@@ -9,11 +9,8 @@ import {
   awuSeatBalanceForUser,
   fetchLiveUserCreditInputs,
 } from "@app/lib/metronome/live_user_credit_inputs";
-import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
-import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
-import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import { setUserCreditStateReconciled } from "@app/lib/metronome/user_credit_state_machine";
 import {
   expectedPoolCreditStateFromBalance,
@@ -25,21 +22,18 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
 import { heartbeat } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type {
   MembershipSeatType,
-  NormalizedPoolLimitSeatType,
   UserCreditState,
 } from "@app/types/memberships";
 import {
-  computeUserNearLimit,
   expectedUserCreditState,
   hasMetronomeSeatBalance,
-  normalizeToPoolLimitSeatType,
+  normalizeUserCreditState,
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -87,12 +81,6 @@ type UserReconcileReport = {
 };
 
 type ReconcileCreditStateReport = PoolReconcileReport | UserReconcileReport;
-
-// Treat the legacy "normal" alias as its canonical "on_pool" value when
-// comparing the persisted state with the expected one (see USER_CREDIT_STATES).
-function normalizeUserCreditState(state: UserCreditState): UserCreditState {
-  return state === "normal" ? "on_pool" : state;
-}
 
 /**
  * Debug/reconcile entry point behind the poke "Check & Reconcile Credit State"
@@ -261,16 +249,6 @@ export async function reconcileUser({
   const expectedState = expectedUserCreditState({
     seatType,
     seatBalanceAwu,
-    seatStartingBalanceAwu,
-    perUserCapAwuCredits: effectiveCapAwuCredits,
-    consumedAwuCredits,
-  });
-  const nearLimit = computeUserNearLimit({
-    seatType,
-    seatBalanceAwu,
-    seatStartingBalanceAwu,
-    effectiveCapAwuCredits,
-    consumedAwuCredits,
   });
   const wasInvalid = normalizeUserCreditState(previousState) !== expectedState;
 
@@ -281,7 +259,6 @@ export async function reconcileUser({
       userId,
       seatType,
     });
-    void setUserNearLimit(workspace.sId, userId, nearLimit);
   }
 
   return new Ok({
@@ -332,37 +309,22 @@ export async function reconcileWorkspaceUserCreditStates({
   }
   const workspaceId = workspace.sId;
 
-  // The seat-allowance cache (contract) and the DB queries can genuinely
-  // throw, so they stay wrapped — the ERR1-authorised case. None of these
-  // three depend on each other's results, so they run concurrently instead
-  // of one round trip at a time.
-  let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
-  let defaultPoolCapAwuCredits: number;
+  // The DB query can genuinely throw, so it stays wrapped — the ERR1-authorised
+  // case.
   let memberships: MembershipResource[];
   try {
-    const [seatAllowancesResult, creditUsageConfig, membershipsResult] =
-      await Promise.all([
-        getSeatAllowancesByNormalizedSeatType(workspaceId, contract),
-        CreditUsageConfigurationResource.fetchByWorkspaceModelId(workspace.id),
-        MembershipResource.getActiveMemberships({ workspace }),
-      ]);
-    seatAllowances = seatAllowancesResult;
-    defaultPoolCapAwuCredits = creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
+    const membershipsResult = await MembershipResource.getActiveMemberships({
+      workspace,
+    });
     memberships = membershipsResult.memberships;
   } catch (err) {
     logger.error(
       { workspaceId, err: normalizeError(err) },
-      "[ReconcileCreditState] Failed to load cap thresholds or memberships"
+      "[ReconcileCreditState] Failed to load memberships"
     );
     return;
   }
 
-  // Per-user usage and seat balances are both scoped to the active members'
-  // user ids (an unfiltered seatBalances query silently omits most seats on
-  // contracts with a few hundred+ seats), so load memberships first.
-  const memberUserIds = memberships
-    .map((m) => m.user?.sId)
-    .filter((sId): sId is string => sId !== undefined);
   // Only pro/max (and their _yearly variants) carry an individual Metronome
   // seat balance — querying free/none/workspace members too would just
   // waste calls on ids Metronome will report as not found.
@@ -370,16 +332,10 @@ export async function reconcileWorkspaceUserCreditStates({
     m.user?.sId && hasMetronomeSeatBalance(m.seatType) ? [m.user.sId] : []
   );
 
-  // These four reads are all independent (each scoped to the member list
-  // resolved above, none depends on another's result), so they run
-  // concurrently. Results return our `Result` type: handled with early
-  // returns below rather than throw + catch (ERR1).
-  const [
-    seatBalancesResult,
-    perUserCreditBalancesResult,
-    usageResult,
-    groupCapByUserModelId,
-  ] = await Promise.all([
+  // These two reads are independent (each scoped to the member list resolved
+  // above), so they run concurrently. Results return our `Result` type: handled
+  // with early returns below rather than throw + catch (ERR1).
+  const [seatBalancesResult, perUserCreditBalancesResult] = await Promise.all([
     listMetronomeSeatBalances({
       metronomeCustomerId,
       metronomeContractId,
@@ -388,24 +344,11 @@ export async function reconcileWorkspaceUserCreditStates({
     // Free seats hold a per-user contract credit, not a seat balance, so
     // they're absent from `listMetronomeSeatBalances`. Read their balances
     // separately so a free user with credit remaining lands on `user_seat`
-    // (not `on_pool`) and is moved to `capped` once exhausted. A read
-    // failure leaves the map empty — free users then fall back to the
-    // seat-balance path (null) as before.
+    // (not `on_pool`). A read failure leaves the map empty — free users then
+    // fall back to the seat-balance path (null) as before.
     listCustomerPerUserCreditBalances({
       metronomeCustomerId,
       contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
-    }),
-    fetchPerUserAwuUsage({
-      workspaceId,
-      metronomeCustomerId,
-      userIds: memberUserIds,
-    }),
-    // Max group cap (pool-only) per member, fetched once to avoid an N+1.
-    // Users with no capped group are absent (they fall back to the
-    // workspace default).
-    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: memberships.map((m) => m.userId),
     }),
   ]);
   if (seatBalancesResult.isErr()) {
@@ -427,15 +370,6 @@ export async function reconcileWorkspaceUserCreditStates({
     ? perUserCreditBalancesResult.value
     : new Map<string, { balanceAwu: number; startingBalanceAwu: number }>();
 
-  if (usageResult.isErr()) {
-    logger.error(
-      { workspaceId, err: usageResult.error },
-      "[ReconcileCreditState] Failed to load per-user usage"
-    );
-    return;
-  }
-  const usageByUser = usageResult.value;
-
   // One UPDATE per drifting membership. Bounded by the workspace's seat count
   // and gated on the `continue` above, so steady-state writes are ~zero; even
   // the worst case (every seat drifting) is a small, infrequent loop on a
@@ -448,61 +382,31 @@ export async function reconcileWorkspaceUserCreditStates({
     }
     const seatType = membership.seatType;
 
-    const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
-    // Cap + usage only apply to pool-limit seat types (pro/max/workspace),
-    // matching fetchLiveUserCreditInputs. Free/none seats have no pool access —
-    // their effective cap is null and near-limit uses the seat-balance path.
-    // Priority: per-user override > max group cap > workspace default (shared
-    // ladder).
-    const groupCapAwuCredits =
-      groupCapByUserModelId.get(membership.userId) ?? null;
-    const poolCapAwuCredits = resolveEffectiveSpendLimitAwuCredits({
-      overrideAwuCredits: membership.poolCapOverrideAwuCredits,
-      groupCapAwuCredits,
-      defaultAwuCredits: defaultPoolCapAwuCredits,
-    });
-    const effectiveCapAwuCredits = normalizedSeatType
-      ? poolCapAwuCredits + (seatAllowances[normalizedSeatType] ?? 0)
-      : null;
     // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
     // seats read their per-user credit balance instead (not a seat balance).
-    // Pro/max read their seat balance. `expectedUserCreditState` decides routing
-    // from the seat type — a free seat is never `on_pool`, and a null (unknown)
-    // balance leaves it on the seat rather than mis-capping it.
+    // `expectedUserCreditState` decides routing from the seat type — a free seat
+    // is never `on_pool`, and a null (unknown) balance leaves it on the seat
+    // rather than mis-routing it to the pool.
     const seat =
       awuSeatBalanceForUser(seatBalances, userId) ??
       perUserCreditBalances.get(userId) ??
       null;
     const seatBalanceAwu = seat?.balanceAwu ?? null;
-    const seatStartingBalanceAwu = seat?.startingBalanceAwu ?? null;
-    const consumedAwuCredits =
-      effectiveCapAwuCredits !== null ? (usageByUser.get(userId) ?? 0) : null;
 
     const expectedState = expectedUserCreditState({
       seatType,
       seatBalanceAwu,
-      seatStartingBalanceAwu,
-      perUserCapAwuCredits: effectiveCapAwuCredits,
-      consumedAwuCredits,
-    });
-    const nearLimit = computeUserNearLimit({
-      seatType,
-      seatBalanceAwu,
-      seatStartingBalanceAwu,
-      effectiveCapAwuCredits,
-      consumedAwuCredits,
     });
 
     try {
       // Always call setUserCreditStateReconciled even when DB state already
       // matches: it skips the DB write but always refreshes the Redis cache,
-      // fixing stale "capped" entries that survive after the DB is corrected.
+      // fixing stale entries that survive after the DB is corrected.
       await setUserCreditStateReconciled(membership, expectedState, {
         workspaceId,
         userId,
         seatType,
       });
-      void setUserNearLimit(workspaceId, userId, nearLimit);
     } catch (err) {
       logger.error(
         { workspaceId, userId, err: normalizeError(err) },

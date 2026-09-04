@@ -1,7 +1,5 @@
 import {
   dispatchPaygCapReached,
-  dispatchPerUserCapReached,
-  dispatchPerUserCapResolved,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
@@ -20,7 +18,6 @@ import {
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
-import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -71,8 +68,6 @@ vi.mock("@app/lib/api/metronome/credit_state_dispatcher", async () => {
   >("@app/lib/api/metronome/credit_state_dispatcher");
   return {
     ...actual,
-    dispatchPerUserCapReached: vi.fn(),
-    dispatchPerUserCapResolved: vi.fn(),
     dispatchPaygCapReached: vi.fn(),
     syncPoolCreditStateFromBalance: vi.fn(),
   };
@@ -90,17 +85,7 @@ vi.mock("@app/lib/metronome/seat_types", async () => {
   };
 });
 
-vi.mock("@app/lib/metronome/user_block", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/user_block")
-  >("@app/lib/metronome/user_block");
-  return {
-    ...actual,
-    setUserNearLimit: vi.fn().mockResolvedValue(undefined),
-  };
-});
-
-// Mock UserResource.fetchById and MembershipResource for handlePerUserSpendThresholdEvent.
+// Mock UserResource.fetchById and MembershipResource for spend-threshold handling.
 // The default mock returns a user with a "pro" seat and a pool cap override.
 vi.mock("@app/lib/resources/user_resource", async () => {
   const actual = await vi.importActual<
@@ -216,10 +201,7 @@ beforeEach(() => {
     new Ok({} as never)
   );
   vi.mocked(restoreWorkspaceAfterSubscription).mockResolvedValue(undefined);
-  vi.mocked(dispatchPerUserCapReached).mockResolvedValue(new Ok(undefined));
-  vi.mocked(dispatchPerUserCapResolved).mockResolvedValue(new Ok(undefined));
   vi.mocked(dispatchPaygCapReached).mockResolvedValue(undefined);
-  vi.mocked(setUserNearLimit).mockResolvedValue(undefined);
 });
 
 describe("processMetronomeWebhook — contract.start", () => {
@@ -739,120 +721,6 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
   });
 });
 
-// effectiveCap = poolCapOverrideAwuCredits (50_000) + seatAllowance (0, no contract in tests)
-const CAP = 50_000;
-const WARNING = Math.floor(0.8 * CAP); // 40_000
-
-describe("processMetronomeWebhook — per-user spend threshold", () => {
-  it("dispatches reached when cap threshold fires (reached event)", async () => {
-    const workspace = await setupMetronomeWorkspaceResource();
-
-    const result = await processMetronomeWebhook({
-      event: spendThresholdEvent(
-        "alerts.spend_threshold_reached",
-        [{ key: "user_id", value: USER_ID }],
-        CAP
-      ),
-      workspace,
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(dispatchPerUserCapReached).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: USER_ID })
-    );
-    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
-  });
-
-  it("dispatches resolved when cap threshold fires (resolved event)", async () => {
-    const workspace = await setupMetronomeWorkspaceResource();
-
-    const result = await processMetronomeWebhook({
-      event: spendThresholdEvent(
-        "alerts.spend_threshold_resolved",
-        [{ key: "user_id", value: USER_ID }],
-        CAP
-      ),
-      workspace,
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(dispatchPerUserCapResolved).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: USER_ID })
-    );
-    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
-  });
-
-  it("sets near-limit flag when warning threshold fires", async () => {
-    const workspace = await setupMetronomeWorkspaceResource();
-
-    const result = await processMetronomeWebhook({
-      event: spendThresholdEvent(
-        "alerts.spend_threshold_reached",
-        [{ key: "user_id", value: USER_ID }],
-        WARNING
-      ),
-      workspace,
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(setUserNearLimit).toHaveBeenCalledWith(workspace.sId, USER_ID, true);
-    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
-  });
-
-  it("clears near-limit flag when warning threshold resolves", async () => {
-    const workspace = await setupMetronomeWorkspaceResource();
-
-    const result = await processMetronomeWebhook({
-      event: spendThresholdEvent(
-        "alerts.spend_threshold_resolved",
-        [{ key: "user_id", value: USER_ID }],
-        WARNING
-      ),
-      workspace,
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(setUserNearLimit).toHaveBeenCalledWith(
-      workspace.sId,
-      USER_ID,
-      false
-    );
-    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
-  });
-
-  it("ignores event with unrecognized threshold", async () => {
-    const workspace = await setupMetronomeWorkspaceResource();
-
-    const result = await processMetronomeWebhook({
-      event: spendThresholdEvent(
-        "alerts.spend_threshold_reached",
-        [{ key: "user_id", value: USER_ID }],
-        99_999
-      ),
-      workspace,
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
-    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
-  });
-
-  it("skips per-user events with no user_id value", async () => {
-    const workspace = await setupMetronomeWorkspaceResource();
-
-    const result = await processMetronomeWebhook({
-      event: spendThresholdEvent("alerts.spend_threshold_reached", [
-        { key: "user_id" },
-      ]),
-      workspace,
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
-    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
-  });
-});
-
 describe("processMetronomeWebhook — workspace-level spend threshold", () => {
   it("dispatches PAYG cap reached when group_values has no user_id key", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
@@ -864,7 +732,22 @@ describe("processMetronomeWebhook — workspace-level spend threshold", () => {
 
     expect(result.isOk()).toBe(true);
     expect(dispatchPaygCapReached).toHaveBeenCalled();
-    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
+  });
+
+  it("ignores a stale per-user spend threshold reached alert (no PAYG dispatch)", async () => {
+    // Per-user enforcement moved to the Redis rate limiter; a per-user-scoped
+    // alert (group_values carries a user_id) is now ignored.
+    const workspace = await setupMetronomeWorkspaceResource();
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPaygCapReached).not.toHaveBeenCalled();
   });
 
   it("logs and no-ops on workspace-level resolved", async () => {
@@ -877,7 +760,6 @@ describe("processMetronomeWebhook — workspace-level spend threshold", () => {
 
     expect(result.isOk()).toBe(true);
     expect(dispatchPaygCapReached).not.toHaveBeenCalled();
-    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
   });
 });
 

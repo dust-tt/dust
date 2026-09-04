@@ -154,8 +154,7 @@ function memberFromUpgradeRequest(
     spendLimitWarningAlertId: null,
     freeCreditLowAlert: null,
     freeCreditEmptyAlert: null,
-    creditState: "capped",
-    nearLimit: false,
+    creditState: "on_pool",
     rateLimiterState: null,
     // Synthesized from a capped user's upgrade request.
     isSpendCapped: true,
