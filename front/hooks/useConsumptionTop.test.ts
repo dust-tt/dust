@@ -41,7 +41,7 @@ describe("toConsumptionTopRows", () => {
     ]);
   });
 
-  it("keeps group active-member counts for cohort comparisons", () => {
+  it("uses the active-member count as the minimum group total", () => {
     const response: GetConsumptionTopGroupsResponse = {
       period: {
         startDate: "2026-07-01T00:00:00.000Z",
@@ -56,7 +56,7 @@ describe("toConsumptionTopRows", () => {
           groupId: "engineering",
           name: "Engineering",
           credits: 300,
-          activeMembers: 2,
+          activeMembers: 6,
           totalMembers: 5,
           previousCredits: 250,
           messageCount: 3,
@@ -76,8 +76,8 @@ describe("toConsumptionTopRows", () => {
         modelDisplayName: null,
         credits: 300,
         avgCredits: 100,
-        activeMembers: 2,
-        totalMembers: 5,
+        activeMembers: 6,
+        totalMembers: 6,
         previousCredits: 250,
       },
     ]);
