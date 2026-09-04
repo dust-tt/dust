@@ -524,7 +524,8 @@ function WorkspaceConsumptionDailyChart({
   disabled,
 }: ConsumptionChartProps) {
   const showActiveUsers =
-    analyticsScope?.kind !== "personal" && filter?.users?.length !== 1;
+    (analyticsScope === undefined || analyticsScope.kind === "workspace") &&
+    filter?.users?.length !== 1;
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
       workspaceId,

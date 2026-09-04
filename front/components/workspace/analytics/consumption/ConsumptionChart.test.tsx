@@ -290,6 +290,34 @@ describe("consumption active users overlay", () => {
     ).toBe(false);
   });
 
+  it("hides the active-user overlay for agent analytics", () => {
+    mockUseConsumptionTimeseries.mockReturnValue({
+      timeseries: timeseries("period"),
+      isTimeseriesLoading: false,
+      isTimeseriesError: undefined,
+      isTimeseriesValidating: false,
+    });
+
+    const { container } = render(
+      <ConsumptionChart
+        workspaceId="workspace-id"
+        period={{ kind: "days", days: 30 }}
+        dimension="user"
+        analyticsScope={{ kind: "agent", agentId: "agent-id" }}
+      />
+    );
+
+    expect(container.querySelectorAll(".recharts-yAxis")).toHaveLength(1);
+    expect(
+      container.querySelector(".recharts-line.text-golden-500")
+    ).toBeNull();
+    expect(
+      Array.from(
+        container.querySelectorAll("span.text-sm.text-muted-foreground")
+      ).some((label) => label.textContent === "Active users")
+    ).toBe(false);
+  });
+
   it("hides the active-user overlay in cumulative mode", () => {
     const { container } = render(
       <ConsumptionBurnUpChart
