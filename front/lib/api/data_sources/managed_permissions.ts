@@ -11,9 +11,8 @@ export type ManagedPermissionsResponse = {
 };
 
 type ManagedPermissionsError =
-  | { type: "connector_rate_limit" }
-  | { type: "connector_authorization_error" }
-  | { type: "connector_oauth_user_missing_rights"; message: string }
+  | { type: "connector_rate_limit"; message: string }
+  | { type: "connector_authorization_error"; message: string }
   | { type: "internal_error" };
 
 export async function getManagedDataSourcePermissions(
@@ -33,14 +32,14 @@ export async function getManagedDataSourcePermissions(
 
   if (permissionsRes.isErr()) {
     if (permissionsRes.error.type === "connector_rate_limit_error") {
-      return new Err({ type: "connector_rate_limit" });
+      return new Err({
+        type: "connector_rate_limit",
+        message: permissionsRes.error.message,
+      });
     }
     if (permissionsRes.error.type === "connector_authorization_error") {
-      return new Err({ type: "connector_authorization_error" });
-    }
-    if (permissionsRes.error.type === "connector_oauth_user_missing_rights") {
       return new Err({
-        type: "connector_oauth_user_missing_rights",
+        type: "connector_authorization_error",
         message: permissionsRes.error.message,
       });
     }

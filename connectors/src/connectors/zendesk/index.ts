@@ -373,7 +373,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       ) {
         return new Err(
           new ConnectorManagerError(
-            "CONNECTOR_OAUTH_USER_MISSING_RIGHTS",
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
             "Dust cannot list Zendesk brands because the connected user lacks the required permissions. Re-authorize Zendesk with an admin account."
           )
         );

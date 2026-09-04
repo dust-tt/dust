@@ -147,15 +147,6 @@ function ContentNodeTreeInfiniteScroll({
   );
 }
 
-const PERMISSIONS_ERROR_MESSAGES: Record<string, string> = {
-  rate_limit_error:
-    "Connected service's API limit reached. Please retry shortly.",
-  data_source_auth_error:
-    "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.",
-  connector_oauth_user_missing_rights:
-    "Dust cannot list Zendesk brands because the connected user lacks the required permissions. Re-authorize Zendesk with an admin account.",
-};
-
 interface ContentNodeTreeChildrenProps {
   depth: number;
   isRoundedBackground?: boolean;
@@ -242,8 +233,7 @@ function ContentNodeTreeChildren({
 
   if (isResourcesError) {
     const errorMessage =
-      (resourcesError?.type &&
-        PERMISSIONS_ERROR_MESSAGES[resourcesError.type]) ||
+      resourcesError?.message ||
       "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.";
 
     return <div className="text-sm text-warning">{errorMessage}</div>;
