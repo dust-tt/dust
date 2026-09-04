@@ -1,7 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AllowSlackWorkflowDialog } from "@app/components/workspace/analytics/automations/AllowSlackWorkflowDialog";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
-import { useDebounce } from "@app/hooks/useDebounce";
 import { useSlackWorkflowsOverview } from "@app/hooks/useSlackWorkflowsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -26,7 +25,6 @@ import {
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
 
-const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const WORKFLOWS_PAGE_SIZE = 25;
 
 interface SlackWorkflowRowData {
@@ -124,9 +122,7 @@ function SlackWorkflowsCard({
   const { doRevokeSlackWorkflow, isRevoking } = useRevokeSlackWorkflow({
     owner,
   });
-  const { inputValue, debouncedValue, setValue } = useDebounce("", {
-    delay: SEARCH_DEBOUNCE_DELAY_MS,
-  });
+  const [search, setSearch] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: WORKFLOWS_PAGE_SIZE,
@@ -229,8 +225,8 @@ function SlackWorkflowsCard({
         <SearchInput
           name="slack-workflows-search"
           placeholder="Search…"
-          value={inputValue}
-          onChange={setValue}
+          value={search}
+          onChange={setSearch}
           className="flex-1"
         />
         <Button
@@ -244,7 +240,7 @@ function SlackWorkflowsCard({
       <SlackWorkflowsTableBody
         columns={columns}
         rows={rows}
-        search={debouncedValue}
+        search={search}
         isSlackBotConnected={isSlackBotConnected}
         isLoading={isLoading}
         pagination={pagination}
