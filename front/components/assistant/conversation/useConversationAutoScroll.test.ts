@@ -331,7 +331,7 @@ describe("useConversationAutoScroll", () => {
       harness.dispatchScroll({
         scrollTop: 600,
         scrollHeight: 1100,
-        location: { bottomOffset: 0, isAtBottom: true },
+        location: { bottomOffset: 200, isAtBottom: false },
       });
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
@@ -371,7 +371,7 @@ describe("useConversationAutoScroll", () => {
 
       harness.dispatchScroll({
         scrollTop: 450,
-        location: { bottomOffset: 80, isAtBottom: false },
+        location: { bottomOffset: 200, isAtBottom: false },
       });
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(true);
@@ -399,23 +399,6 @@ describe("useConversationAutoScroll", () => {
       harness.dispatchScroll({
         scrollTop: 419,
         location: { bottomOffset: 81, isAtBottom: false },
-      });
-
-      expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
-      expect(harness.methods.scrollToItem).not.toHaveBeenCalled();
-    });
-
-    it("uses Virtuoso's bottom offset instead of the document geometry", () => {
-      const harness = setupAutoScroll();
-      detach(harness);
-
-      harness.dispatchWheel(100);
-      harness.dispatchScroll({
-        // The raw DOM geometry says this is the bottom (1100 - 600 - 500),
-        // while Virtuoso still has 200px of list content below the viewport.
-        scrollTop: 600,
-        scrollHeight: 1100,
-        location: { bottomOffset: 200, isAtBottom: false },
       });
 
       expect(harness.result.current.isAutoScrollEnabledRef.current).toBe(false);
@@ -495,6 +478,41 @@ describe("useConversationAutoScroll", () => {
   });
 
   describe("tracking user scroll activity", () => {
+    it("ignores scrollend before a wheel gesture produces a scroll event", () => {
+      const harness = setupAutoScroll();
+
+      harness.dispatchWheel(-100);
+      harness.dispatchScrollEnd();
+
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
+
+      harness.dispatchScroll({
+        scrollTop: 400,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+      harness.dispatchScrollEnd();
+
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
+    });
+
+    it("ignores scrollend while a touch gesture is still active", () => {
+      const harness = setupAutoScroll({ isMobile: true });
+
+      harness.dispatchTouch(100, 120);
+      harness.dispatchScroll({
+        scrollTop: 400,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
+      harness.dispatchScrollEnd();
+
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(true);
+
+      harness.dispatchTouchEnd();
+      harness.dispatchScrollEnd();
+
+      expect(harness.result.current.userScrollActivity.isActive()).toBe(false);
+    });
+
     it("ends a wheel gesture on native scrollend", () => {
       const harness = setupAutoScroll();
 
@@ -548,12 +566,20 @@ describe("useConversationAutoScroll", () => {
         harness.result.current.userScrollActivity.subscribeToEnd(onScrollEnd);
 
       harness.dispatchWheel(-100);
+      harness.dispatchScroll({
+        scrollTop: 400,
+        location: { bottomOffset: 500, isAtBottom: false },
+      });
       harness.dispatchScrollEnd();
 
       expect(onScrollEnd).toHaveBeenCalledOnce();
 
       unsubscribe();
       harness.dispatchWheel(-100);
+      harness.dispatchScroll({
+        scrollTop: 300,
+        location: { bottomOffset: 600, isAtBottom: false },
+      });
       harness.dispatchScrollEnd();
       expect(onScrollEnd).toHaveBeenCalledOnce();
     });

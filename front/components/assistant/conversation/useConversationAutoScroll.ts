@@ -85,6 +85,7 @@ export function useConversationAutoScroll({
     let isTouchActive = false;
     let scrollEventVersion = 0;
     let touchStartScrollEventVersion = 0;
+    let isWaitingForWheelScroll = false;
     let fallbackAnimationFrame: number | null = null;
 
     const startUserScroll = () => {
@@ -133,6 +134,7 @@ export function useConversationAutoScroll({
 
         if (stableFrameCount >= 2) {
           fallbackAnimationFrame = null;
+          isWaitingForWheelScroll = false;
           finishUserScroll();
           return;
         }
@@ -172,6 +174,9 @@ export function useConversationAutoScroll({
       const location = methods.getScrollLocation();
 
       if (userScrollDirectionRef.current !== null) {
+        if (scrollTopDelta !== 0) {
+          isWaitingForWheelScroll = false;
+        }
         startUserScroll();
         if (!supportsNativeScrollEnd) {
           observeScrollEndFallback();
@@ -199,8 +204,12 @@ export function useConversationAutoScroll({
         0,
         viewportHeight - location.visibleListHeight
       );
+      const bottomOffset = Math.max(
+        0,
+        scrollHeight - scrollTop - viewportHeight
+      );
       const isNearBottom =
-        location.isAtBottom || location.bottomOffset <= stickyFooterHeight;
+        location.isAtBottom || bottomOffset <= stickyFooterHeight;
       const isUserScrollingDown =
         userScrollDirectionRef.current === "down" ||
         (userScrollDirectionRef.current === null &&
@@ -233,6 +242,7 @@ export function useConversationAutoScroll({
       }
 
       userScrollDirectionRef.current = event.deltaY < 0 ? "up" : "down";
+      isWaitingForWheelScroll = true;
       startUserScroll();
       observeScrollEndFallback();
       if (userScrollDirectionRef.current === "up") {
@@ -278,6 +288,13 @@ export function useConversationAutoScroll({
     };
 
     const onScrollEnd = () => {
+      // Cancelling Virtuoso's smooth scroll may emit scrollend before the
+      // wheel event has produced its own scroll. Touch scrolling can likewise
+      // receive scrollend while the finger is still moving.
+      if (isTouchActive || isWaitingForWheelScroll) {
+        return;
+      }
+
       cancelScrollEndFallback();
       finishUserScroll();
     };
