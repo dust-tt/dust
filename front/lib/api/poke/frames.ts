@@ -54,8 +54,7 @@ export type PokeFrameListItem = {
 
 export type PokeListFrames = {
   items: PokeFrameListItem[];
-  hasMore: boolean;
-  lastValue: string | null;
+  totalCount: number;
 };
 
 // Shared by `listWorkspaceFrames` (batched across a page) and `getFrameDetails` (a single frame)
@@ -97,19 +96,19 @@ export async function listWorkspaceFrames(
     ...pagination
   }: {
     limit: number;
-    lastValue?: string;
+    offset: number;
     orderDirection: "asc" | "desc";
     hasSandbox: boolean;
   }
 ): Promise<PokeListFrames> {
-  const { frames, hasMore, lastValue } =
+  const { frames, totalCount } =
     await FileResource.listFrameV2ForWorkspacePaginated(auth, {
       ...pagination,
       hasSandbox,
     });
 
   if (frames.length === 0) {
-    return { items: [], hasMore, lastValue };
+    return { items: [], totalCount };
   }
 
   const frameModelIds = frames.map((frame) => frame.id);
@@ -141,8 +140,7 @@ export async function listWorkspaceFrames(
         author: frame.userId ? authorsByModelId.get(frame.userId) : undefined,
       })
     ),
-    hasMore,
-    lastValue,
+    totalCount,
   };
 }
 

@@ -15,25 +15,26 @@ interface UsePokeFramesProps {
   disabled?: boolean;
   hasSandbox: boolean;
   limit: number;
+  offset: number;
   owner: LightWorkspaceType;
-}
-
-export interface PokeFramesData {
-  items: PokeFrameListItem[];
-  hasMore: boolean;
-  isLoadingMore: boolean;
 }
 
 export function usePokeFrames({
   disabled,
   hasSandbox,
   limit,
+  offset,
   owner,
 }: UsePokeFramesProps) {
   const { fetcher } = useFetcher();
   const framesFetcher: Fetcher<PokeListFrames> = fetcher;
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+    hasSandbox: hasSandbox.toString(),
+  });
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/frames?limit=${limit}&hasSandbox=${hasSandbox}`,
+    `/api/poke/workspaces/${owner.sId}/frames?${params.toString()}`,
     framesFetcher,
     { disabled, keepPreviousData: true }
   );
@@ -41,8 +42,8 @@ export function usePokeFrames({
   return {
     data: {
       items: data?.items ?? emptyArray<PokeFrameListItem>(),
-      hasMore: data?.hasMore ?? false,
-      isLoadingMore: isValidating && !!data,
+      totalCount: data?.totalCount ?? 0,
+      isValidating,
     },
     isLoading: !error && !data && !disabled,
     isError: error,

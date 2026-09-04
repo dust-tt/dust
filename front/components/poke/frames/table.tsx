@@ -4,7 +4,8 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFrames } from "@app/poke/swr/frames";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, CheckboxWithText } from "@dust-tt/sparkle";
+import { CheckboxWithText } from "@dust-tt/sparkle";
+import type { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
 
 const PAGE_SIZE = 20;
@@ -15,46 +16,46 @@ interface FramesDataTableProps {
 }
 
 export function FramesDataTable({ loadOnInit, owner }: FramesDataTableProps) {
-  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: PAGE_SIZE,
+  });
   const [hasSandbox, setHasSandbox] = useState(false);
-  const useFramesWithLimit = (props: PokeConditionalFetchProps) =>
-    usePokeFrames({ ...props, limit, hasSandbox });
+  const useFramesPage = (props: PokeConditionalFetchProps) =>
+    usePokeFrames({
+      ...props,
+      limit: pagination.pageSize,
+      offset: pagination.pageIndex * pagination.pageSize,
+      hasSandbox,
+    });
 
   return (
     <PokeDataTableConditionalFetch
       header="Frames"
       loadOnInit={loadOnInit}
       owner={owner}
-      useSWRHook={useFramesWithLimit}
+      useSWRHook={useFramesPage}
       globalActions={
         <CheckboxWithText
           text="Only with a sandbox"
           checked={hasSandbox}
           onCheckedChange={(checked) => {
             setHasSandbox(checked === true);
-            setLimit(PAGE_SIZE);
+            // A different filter makes the current page number meaningless.
+            setPagination((current) => ({ ...current, pageIndex: 0 }));
           }}
         />
       }
     >
-      {({ items, hasMore, isLoadingMore }) => (
-        <div className="flex flex-col gap-3">
-          <PokeDataTable
-            columns={makeColumnsForFrames({ owner })}
-            data={items}
-            pageSize={PAGE_SIZE}
-          />
-          {hasMore && (
-            <div className="flex justify-center">
-              <Button
-                variant="outline"
-                label="Load more"
-                isLoading={isLoadingMore}
-                onClick={() => setLimit((current) => current + PAGE_SIZE)}
-              />
-            </div>
-          )}
-        </div>
+      {({ items, totalCount, isValidating }) => (
+        <PokeDataTable
+          columns={makeColumnsForFrames({ owner })}
+          data={items}
+          isValidating={isValidating}
+          serverSideRowCount={totalCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+        />
       )}
     </PokeDataTableConditionalFetch>
   );
