@@ -1,4 +1,3 @@
-import { reconcileApiKey } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import {
   isProgrammaticUsage,
@@ -29,13 +28,11 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
-import { launchReconcileApiKeyCreditStateWorkflow } from "@app/temporal/usage_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -388,8 +385,6 @@ export async function emitMetronomeUsageEventsActivity(
   // implementation detail, not a meaningful billing attribution. In those cases we
   // leave the API key name unset (it surfaces as "unknown" in the event).
   let apiKeyName: string | null = null;
-  // Retained for the post-ingest per-key cap reconcile below.
-  let apiKey: KeyResource | null = null;
   if (userMessage?.userContextApiKeyId) {
     const key = await KeyResource.fetchByWorkspaceAndId({
       workspace,
@@ -397,7 +392,6 @@ export async function emitMetronomeUsageEventsActivity(
     });
     if (key && !key.isSystem) {
       apiKeyName = key.name;
-      apiKey = key;
     }
   }
 
@@ -459,30 +453,6 @@ export async function emitMetronomeUsageEventsActivity(
   });
 
   await ingestMetronomeEvents(usageEvents);
-
-  // Per-key cap enforcement is pull-based: Metronome spend alerts can't
-  // attribute spend by `api_key_name` (it's not the products' presentation
-  // group key), so we reconcile the key's credit state from live usage instead
-  // (the usage API does attribute by `api_key_name`). Launch a debounced
-  // reconcile so it runs after Metronome has ingested the usage emitted above
-  // and coalesces bursts on the same key. Only for keys that carry a cap; the
-  // reconcile activity re-checks plan/contract/state at run time.
-  if (apiKey && apiKey.monthlyCapAwuCredits !== null) {
-    const launchResult = await launchReconcileApiKeyCreditStateWorkflow({
-      workspaceId: workspace.sId,
-      keyId: apiKey.id,
-    });
-    if (launchResult.isErr()) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          keyName: apiKey.name,
-          err: launchResult.error,
-        },
-        "[Metronome ApiKeyCap] failed to launch debounced reconcile"
-      );
-    }
-  }
 }
 
 /**
@@ -520,46 +490,12 @@ export async function syncMetronomeSeatCountActivity(
 }
 
 /**
- * Reconcile a single API key's credit state from live Metronome usage. Launched
- * (debounced) after a message that used a capped key emits its usage, so the
- * key gets flipped to `capped` / `on_pool` without relying on Metronome spend
- * alerts (which can't attribute by `api_key_name`). Best-effort: re-checks the
- * workspace / contract / key state at run time and logs on failure.
+ * Deprecated no-op. Per-API-key credit state (`keys.creditState`) has been
+ * removed; per-key spend caps are enforced by the Redis rate limiter. The
+ * workflow/signal/activity shell is kept only to drain any in-flight Temporal
+ * executions and will be removed once none remain.
  */
 export async function reconcileApiKeyCreditStateActivity(
-  workspaceId: string,
-  keyId: number
-): Promise<void> {
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace?.metronomeCustomerId) {
-    return;
-  }
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  const metronomeContractId = subscription?.metronomeContractId ?? null;
-  if (!metronomeContractId) {
-    return;
-  }
-  const key = await KeyResource.fetchByWorkspaceAndId({
-    workspace: renderLightWorkspaceType({ workspace }),
-    id: keyId,
-  });
-  if (!key || key.monthlyCapAwuCredits === null) {
-    return;
-  }
-
-  const result = await reconcileApiKey({
-    workspaceId: workspace.sId,
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    metronomeContractId,
-    key,
-    execute: true,
-  });
-  if (result.isErr()) {
-    logger.warn(
-      { workspaceId: workspace.sId, keyName: key.name, err: result.error },
-      "[Metronome ApiKeyCap] debounced reconcile failed"
-    );
-  }
-}
+  _workspaceId: string,
+  _keyId: number
+): Promise<void> {}
