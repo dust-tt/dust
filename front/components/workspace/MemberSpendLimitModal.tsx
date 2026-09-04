@@ -492,13 +492,18 @@ export function MemberSpendLimitModal({
   }, [member]);
   const displayedMember = member ?? lastMemberRef.current;
 
+  const memberGroupsResolved = (displayedMember?.groups ?? []).every(
+    (groupName) => groups.some((g) => g.name === groupName)
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md" className="font-sans">
         <MemberSpendLimitForm
-          // Remounts with fresh draft state on every open and whenever the
-          // targeted member changes, instead of syncing state from props.
-          key={`${displayedMember?.sId ?? "none"}:${isOpen}`}
+          // Remounts with fresh draft state on every open, whenever the
+          // targeted member changes, or once the member's groups resolve,
+          // instead of syncing state from props.
+          key={`${displayedMember?.sId ?? "none"}:${isOpen}:${memberGroupsResolved}`}
           member={displayedMember}
           owner={owner}
           groups={groups}
