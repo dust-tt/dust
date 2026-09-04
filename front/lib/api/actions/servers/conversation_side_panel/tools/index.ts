@@ -78,20 +78,10 @@ const handlers: ToolHandlers<typeof CONVERSATION_SIDE_PANEL_TOOLS_METADATA> = {
         );
       }
 
-      const fsResult = await DustFileSystem.forAgentLoop(auth, {
-        conversation: runContext.conversation,
-        scopedPaths: [scopedPath],
-      });
+      const fsResult = await DustFileSystem.fromScopedPath(auth, scopedPath);
       if (fsResult.isErr()) {
         return new Err(
           new MCPError(fsResult.error.message, { tracked: false })
-        );
-      }
-
-      const sandboxPathResult = fsResult.value.toSandboxPath(scopedPath);
-      if (sandboxPathResult.isErr()) {
-        return new Err(
-          new MCPError(sandboxPathResult.error.message, { tracked: false })
         );
       }
 
