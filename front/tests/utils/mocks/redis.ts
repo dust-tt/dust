@@ -4,9 +4,10 @@ import { vi } from "vitest";
  * Mock for @app/lib/api/redis. Globally registered in vite.setup.ts.
  *
  * Strings and hashes are held in memory so round-trips work within a test: `set`/`get`/`del`/`ttl`
- * for the OTP challenge flows, `hSet`/`hSetNX`/`hmGet`/`hGetAll`/`hDel`/`type` for the caches that
- * key a hash per workspace. `getRedisCacheClient` and `runOnRedisCache` hand back the same client,
- * as they do in production. Call `reset()` between tests to clear both stores.
+ * for the OTP challenge flows, `hSet`/`hSetNX`/`hmGet`/`hGetAll`/`hIncrBy`/`hDel`/`expire`/`type`
+ * for the caches and counters that key a hash per workspace. `getRedisCacheClient` and
+ * `runOnRedisCache` hand back the same client, as they do in production. Call `reset()` between
+ * tests to clear both stores.
  *
  * Usage in tests:
  *   import { redisMock } from "@app/tests/utils/mocks/redis";
@@ -30,7 +31,7 @@ class RedisMock {
   }
 
   // Clients that never need to observe their own writes get an isolated hash store.
-  createStatelessClient(): Record<string, unknown> {
+  createStatelessClient() {
     const client: Record<string, unknown> = {
       get: vi.fn(),
       set: vi.fn(),
@@ -52,9 +53,7 @@ class RedisMock {
       ping: vi.fn().mockResolvedValue("PONG"),
       eval: vi.fn().mockResolvedValue(1),
     };
-    this.attachHashCommands(client, new Map());
-
-    return client;
+    return Object.assign(client, this.hashCommands(new Map()));
   }
 
   mock() {
@@ -81,9 +80,7 @@ class RedisMock {
     };
   }
 
-  private createStatefulClient(
-    hashStore: Map<string, Map<string, string>>
-  ): Record<string, unknown> {
+  private createStatefulClient(hashStore: Map<string, Map<string, string>>) {
     const client: Record<string, unknown> = {
       get: vi.fn(async (key: string) => {
         const entry = this.stringStore.get(key);
@@ -183,15 +180,12 @@ class RedisMock {
         return 1;
       }),
     };
-    this.attachHashCommands(client, hashStore);
-
-    return client;
+    return Object.assign(client, this.hashCommands(hashStore));
   }
 
-  private attachHashCommands(
-    client: Record<string, unknown>,
-    hashStore: Map<string, Map<string, string>>
-  ): void {
+  // Returned rather than assigned in place so the client type carries them:
+  // tests can call `redisMock.cacheClient.hGetAll(key)` without a cast.
+  private hashCommands(hashStore: Map<string, Map<string, string>>) {
     const hashFor = (key: string) => {
       let hash = hashStore.get(key);
       if (!hash) {
@@ -247,6 +241,21 @@ class RedisMock {
       return toDelete.filter((field) => hash.delete(field)).length;
     });
     const pExpire = vi.fn(async (_key: string, _ms: number) => true);
+    const hIncrBy = vi.fn(
+      async (key: string, field: string, increment: number) => {
+        const hash = hashFor(key);
+        const next = Number(hash.get(field) ?? "0") + increment;
+        hash.set(field, String(next));
+        return next;
+      }
+    );
+
+    // Hash TTLs are not enforced; the call is recorded on the spy so tests can
+    // assert that counter keys were given one.
+    const expire = vi.fn(async (key: string, _seconds: number) =>
+      hashStore.has(key) || this.stringStore.has(key) ? 1 : 0
+    );
+
     const type = vi.fn(async (key: string) => {
       if (hashStore.has(key)) {
         return "hash";
@@ -284,6 +293,14 @@ class RedisMock {
           ops.push(() => hGetAll(key));
           return multiClient;
         },
+        hIncrBy: (key: string, field: string, increment: number) => {
+          ops.push(() => hIncrBy(key, field, increment));
+          return multiClient;
+        },
+        expire: (key: string, seconds: number) => {
+          ops.push(() => expire(key, seconds));
+          return multiClient;
+        },
         pExpire: (key: string, ms: number) => {
           ops.push(() => pExpire(key, ms));
           return multiClient;
@@ -299,16 +316,18 @@ class RedisMock {
       return multiClient;
     });
 
-    Object.assign(client, {
+    return {
       hSet,
       hSetNX,
       hGetAll,
+      hIncrBy,
       hmGet,
       hDel,
+      expire,
       pExpire,
       type,
       multi,
-    });
+    };
   }
 }
 

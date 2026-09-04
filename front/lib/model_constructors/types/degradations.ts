@@ -4,6 +4,7 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 
+// if logging, rename host->modelHost (reserved keyword)
 export type DegradedModelEndpointType = {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
