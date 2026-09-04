@@ -2,8 +2,13 @@ import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
+import {
+  useAwuPoolCurrentCycle,
+  useAwuPoolCycleHistory,
+} from "@app/lib/swr/credits";
 import type { AwuPoolCycleBreakdown } from "@app/types/api/credits/awu_pool_summary";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
   ContentMessage,
@@ -266,5 +271,78 @@ export function WorkspaceCreditPoolSection({
         </>
       )}
     </Page.Vertical>
+  );
+}
+
+interface CompactCreditPoolCardsProps {
+  owner: LightWorkspaceType;
+  disabled: boolean;
+}
+
+// Credit consumption cards for the compact usage page, mirroring Poke's
+// read-only pool view (front/components/poke/pages/PoolUsagePage.tsx) but
+// backed by the customer-facing awu-pool-current-cycle/cycle-history routes.
+export function CompactCreditPoolCards({
+  owner,
+  disabled,
+}: CompactCreditPoolCardsProps) {
+  const {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+  } = useAwuPoolCurrentCycle({ workspaceId: owner.sId, disabled });
+  const {
+    cycleBreakdown: poolCycleBreakdown,
+    excessCycleBreakdown,
+    isAwuPoolCycleHistoryLoading,
+    isAwuPoolCycleHistoryError,
+  } = useAwuPoolCycleHistory({ workspaceId: owner.sId, disabled });
+
+  const {
+    totalRemainingCredits,
+    totalActiveCredits,
+    currentCycleConsumedCredits,
+    currentCycleStartMs,
+    currentCycleEndMs,
+    excessConsumedCredits,
+    programmaticConsumedCredits,
+    otherConsumedCredits,
+  } = awuPoolCurrentCycle ?? {
+    totalRemainingCredits: 0,
+    totalActiveCredits: 0,
+    currentCycleConsumedCredits: null,
+    currentCycleStartMs: null,
+    currentCycleEndMs: null,
+    excessConsumedCredits: null,
+    programmaticConsumedCredits: null,
+    otherConsumedCredits: null,
+  };
+
+  const hasPool = totalActiveCredits > 0;
+  const hasExcessData =
+    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
+
+  return (
+    <WorkspaceCreditPoolSection
+      cardsStatus={toCreditPoolFetchStatus(
+        isAwuPoolCurrentCycleLoading,
+        !!isAwuPoolCurrentCycleError
+      )}
+      tableStatus={toCreditPoolFetchStatus(
+        isAwuPoolCycleHistoryLoading,
+        !!isAwuPoolCycleHistoryError
+      )}
+      showPoolCard={hasPool}
+      isVisible={hasPool || hasExcessData}
+      totalRemainingCredits={totalRemainingCredits}
+      consumedCredits={
+        hasPool ? currentCycleConsumedCredits : excessConsumedCredits
+      }
+      currentCycleStartMs={currentCycleStartMs}
+      currentCycleEndMs={currentCycleEndMs}
+      cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
+      programmaticConsumedCredits={programmaticConsumedCredits}
+      otherConsumedCredits={otherConsumedCredits}
+    />
   );
 }
