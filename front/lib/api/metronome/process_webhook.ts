@@ -10,8 +10,6 @@ import {
   dispatchCreditsAdded,
   dispatchLowBalance,
   dispatchPaygCapReached,
-  dispatchPerUserCapReached,
-  dispatchPerUserCapResolved,
   dispatchPoolExhausted,
   dispatchSeatBalanceExhausted,
   dispatchSeatBalanceResolved,
@@ -27,7 +25,6 @@ import {
   markAwuPurchaseAttemptSucceeded,
 } from "@app/lib/credits/awu_purchase_status";
 import { resolvePerUserCreditAlertUserId } from "@app/lib/metronome/alerts/per_user_credit_balance";
-import { USER_AWU_WARNING_PERCENTAGE } from "@app/lib/metronome/alerts/spend_limits";
 import { emitSubscriptionChangedAuditEvent } from "@app/lib/metronome/audit";
 import {
   getMetronomeCommit,
@@ -54,26 +51,14 @@ import {
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
-import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
-import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
-import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
-import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import {
-  resolveEffectiveSpendLimitAwuCredits,
-  resolveEffectiveSpendLimitSource,
-} from "@app/lib/spend_limits/effective";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchReconcileWorkspaceUserCreditStatesWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
-import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -243,233 +228,6 @@ async function reconcilePoolStateFromSegmentEvent({
     workspace,
     metronomeCustomerId,
   });
-}
-
-type SpendThresholdEvent = Extract<
-  MetronomeWebhookEvent,
-  {
-    type: "alerts.spend_threshold_reached" | "alerts.spend_threshold_resolved";
-  }
->;
-
-/**
- * Handle a per-user spend threshold event by computing the effective cap from
- * DB data and comparing the webhook `threshold` against it — no Metronome
- * alert lookup needed.
- *
- *   cap alert fires at:     effectiveCap = seatAllowance + poolCap
- *   warning alert fires at: floor(0.8 × effectiveCap)
- *
- * An unmatched threshold (stale alert, previous cap value, different seat
- * type) is logged and silently ignored.
- */
-async function handlePerUserSpendThresholdEvent({
-  workspace,
-  userId,
-  event,
-}: {
-  workspace: WorkspaceResource;
-  userId: string;
-  event: SpendThresholdEvent;
-}): Promise<Result<undefined, ProcessMetronomeWebhookError>> {
-  if (!workspace.metronomeCustomerId) {
-    logger.warn(
-      { eventId: event.id, eventType: event.type, workspaceId: workspace.sId },
-      "[Metronome Webhook] per-user spend threshold event for workspace without metronomeCustomerId, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  const threshold = event.properties.threshold;
-  if (threshold === null || threshold === undefined) {
-    return new Ok(undefined);
-  }
-
-  const isReached = event.type === "alerts.spend_threshold_reached";
-
-  // Load membership to determine seat type and per-user cap override.
-  const user = await UserResource.fetchById(userId);
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
-  const membership = user
-    ? await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user,
-        workspace: lightWorkspace,
-      })
-    : null;
-
-  if (!membership) {
-    logger.warn(
-      { eventId: event.id, workspaceId: workspace.sId, userId },
-      "[Metronome Webhook] per-user spend threshold: no active membership, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
-  if (!normalizedSeatType) {
-    // Free / none seats have no pool cap alerts.
-    logger.info(
-      {
-        eventId: event.id,
-        workspaceId: workspace.sId,
-        userId,
-        seatType: membership.seatType,
-      },
-      "[Metronome Webhook] per-user spend threshold: seat type has no pool cap, ignoring"
-    );
-    return new Ok(undefined);
-  }
-
-  // Compute effective cap from DB — mirrors the logic used when the alert was
-  // created: poolCap (override or workspace default) + seat allowance.
-  const creditUsageConfig =
-    await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
-      workspace.id
-    );
-  // Max group cap (pool-only) across the user's groups; null when none carry a
-  // cap. Priority: per-user override > max group cap > workspace default (shared
-  // ladder).
-  const groupCapAwuCredits =
-    (
-      await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
-        workspace: lightWorkspace,
-        userModelIds: [membership.userId],
-      })
-    ).get(membership.userId) ?? null;
-  const defaultPoolCapAwuCredits =
-    creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
-  const poolCap = resolveEffectiveSpendLimitAwuCredits({
-    overrideAwuCredits: membership.poolCapOverrideAwuCredits,
-    groupCapAwuCredits,
-    defaultAwuCredits: defaultPoolCapAwuCredits,
-  });
-  const capSource = resolveEffectiveSpendLimitSource({
-    overrideAwuCredits: membership.poolCapOverrideAwuCredits,
-    groupCapAwuCredits,
-    defaultAwuCredits: defaultPoolCapAwuCredits,
-  });
-
-  let seatAllowance = 0;
-  try {
-    const allowances = await getSeatAllowancesByNormalizedSeatType(
-      workspace.sId
-    );
-    seatAllowance = allowances[normalizedSeatType] ?? 0;
-  } catch (err) {
-    logger.warn(
-      { eventId: event.id, workspaceId: workspace.sId, userId, err },
-      "[Metronome Webhook] per-user spend threshold: failed to resolve seat allowance, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  const effectiveCap = poolCap + seatAllowance;
-  const warningThreshold = Math.floor(
-    USER_AWU_WARNING_PERCENTAGE * effectiveCap
-  );
-
-  if (threshold === effectiveCap) {
-    // Cap alert fired for this user.
-    if (isReached) {
-      const dispatchResult = await dispatchPerUserCapReached({
-        workspace,
-        userId,
-      });
-      if (dispatchResult.isErr()) {
-        logger.error(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            userId,
-            capSource,
-            effectiveCap,
-            err: dispatchResult.error,
-          },
-          "[Metronome Webhook] per-user spend threshold: dispatchPerUserCapReached failed"
-        );
-        return new Err(
-          new ProcessMetronomeWebhookError(
-            "processing_failed",
-            `Error dispatching per-user cap reached: ${dispatchResult.error.message}`
-          )
-        );
-      }
-      // Notify the user (email + in-app) that they are now hard-blocked.
-      if (user) {
-        notifyUserAwuCapReached({
-          userSId: user.sId,
-          userEmail: user.email,
-          userFirstName: user.firstName,
-          userLastName: user.lastName,
-          workspaceId: workspace.sId,
-          workspaceName: lightWorkspace.name,
-          capAwuCredits: effectiveCap,
-          isBlocked: true,
-        });
-      }
-    } else {
-      const dispatchResult = await dispatchPerUserCapResolved({
-        workspace,
-        userId,
-      });
-      if (dispatchResult.isErr()) {
-        logger.error(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            userId,
-            capSource,
-            effectiveCap,
-            err: dispatchResult.error,
-          },
-          "[Metronome Webhook] per-user spend threshold: dispatchPerUserCapResolved failed"
-        );
-        return new Err(
-          new ProcessMetronomeWebhookError(
-            "processing_failed",
-            `Error dispatching per-user cap resolved: ${dispatchResult.error.message}`
-          )
-        );
-      }
-    }
-  } else if (threshold === warningThreshold) {
-    // Warning alert (80%) fired — set near-limit flag and notify, don't block.
-    if (isReached) {
-      void setUserNearLimit(workspace.sId, userId, true);
-      if (user) {
-        notifyUserAwuCapReached({
-          userSId: user.sId,
-          userEmail: user.email,
-          userFirstName: user.firstName,
-          userLastName: user.lastName,
-          workspaceId: workspace.sId,
-          workspaceName: lightWorkspace.name,
-          capAwuCredits: effectiveCap,
-          isBlocked: false,
-        });
-      }
-    } else {
-      // Warning resolved (cap raised/removed) — clear near-limit flag.
-      void setUserNearLimit(workspace.sId, userId, false);
-    }
-  } else {
-    // Threshold doesn't match this user's current cap or warning — unrelated
-    // alert (stale from previous cap value, different seat type, etc.).
-    logger.info(
-      {
-        eventId: event.id,
-        workspaceId: workspace.sId,
-        userId,
-        threshold,
-        effectiveCap,
-        warningThreshold,
-        capSource,
-      },
-      "[Metronome Webhook] per-user spend threshold: threshold does not match computed cap, ignoring"
-    );
-  }
-
-  return new Ok(undefined);
 }
 
 // Perform the subscription-affecting side effects of a Metronome
@@ -815,86 +573,39 @@ export async function processMetronomeWebhook({
 }): Promise<Result<undefined, ProcessMetronomeWebhookError>> {
   switch (event.type) {
     case "alerts.spend_threshold_reached": {
-      // Two flavours land on this event type:
-      //   - Per-user cap: scoped via `presentation_group_key = user_id`,
-      //   so `group_values` includes a `{ key: "user_id" }` entry
-      //   (with or without a populated `value`).
-      //   - Workspace-level PAYG cap: no `user_id` key in group_values.
-      // The presence of the user_id key, not its value, decides the routing.
-      // A missing value still means "this is a per-user alert",
-      // it's just one we cannot act on.
-      const userIdGroup = event.properties.group_values?.find(
+      // Only the workspace-level PAYG cap is acted on here. Per-user cap alerts
+      // are no longer used (per-user enforcement moved to the Redis rate
+      // limiter); a stale per-user alert is scoped via a `user_id` group and is
+      // ignored.
+      const isPerUser = event.properties.group_values?.some(
         (g) => g.key === "user_id"
       );
-      const isPerUser = userIdGroup !== undefined;
-      const userId = userIdGroup?.value;
-
       if (isPerUser) {
-        if (!userId) {
-          logger.warn(
-            { eventId: event.id, workspaceId: workspace.sId },
-            "[Metronome Webhook] spend_threshold_reached: per-user alert with no user_id value, skipping"
-          );
-          break;
-        }
-        const handleResult = await handlePerUserSpendThresholdEvent({
-          workspace,
-          userId,
-          event,
-        });
-        if (handleResult.isErr()) {
-          return handleResult;
-        }
-      } else {
-        await dispatchPaygCapReached({ workspace });
         logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            currentSpend: event.properties.current_spend,
-          },
-          "[Metronome Webhook] spend_threshold_reached: payg cap dispatched"
+          { eventId: event.id, workspaceId: workspace.sId },
+          "[Metronome Webhook] spend_threshold_reached: stale per-user alert, ignoring"
         );
+        break;
       }
+      await dispatchPaygCapReached({ workspace });
+      logger.info(
+        {
+          eventId: event.id,
+          workspaceId: workspace.sId,
+          currentSpend: event.properties.current_spend,
+        },
+        "[Metronome Webhook] spend_threshold_reached: payg cap dispatched"
+      );
       break;
     }
     case "alerts.spend_threshold_resolved": {
-      // Per-user: at billing-cycle renewal current_spend resets to 0, so
-      // Metronome fires this for every previously-capped user — we re-derive
-      // the effective state (override > default > uncapped) and dispatch.
-      //
-      // Workspace-level: a `payg_cap_resolved` event means spend dropped
-      // back below the PAYG threshold. We do not transition on this signal:
-      // once the workspace is `depleted`, only a real pool replenishment
-      // (commit.segment.start) brings it back.
-      const userIdGroup = event.properties.group_values?.find(
-        (g) => g.key === "user_id"
+      // Workspace-level PAYG resolve is a no-op: once a workspace is `depleted`,
+      // only a real pool replenishment (commit.segment.start) brings it back.
+      // Stale per-user alerts are likewise ignored.
+      logger.info(
+        { eventId: event.id, workspaceId: workspace.sId },
+        "[Metronome Webhook] spend_threshold_resolved: no transition"
       );
-      const isPerUser = userIdGroup !== undefined;
-      const userId = userIdGroup?.value;
-
-      if (isPerUser) {
-        if (!userId) {
-          logger.warn(
-            { eventId: event.id, workspaceId: workspace.sId },
-            "[Metronome Webhook] spend_threshold_resolved: per-user alert with no user_id value, skipping"
-          );
-          break;
-        }
-        const handleResult = await handlePerUserSpendThresholdEvent({
-          workspace,
-          userId,
-          event,
-        });
-        if (handleResult.isErr()) {
-          return handleResult;
-        }
-      } else {
-        logger.info(
-          { eventId: event.id, workspaceId: workspace.sId },
-          "[Metronome Webhook] spend_threshold_resolved: workspace-level, no transition"
-        );
-      }
       break;
     }
     case "alerts.low_remaining_contract_credit_and_commit_balance_reached": {
@@ -1026,16 +737,6 @@ export async function processMetronomeWebhook({
           { eventId: event.id, workspaceId: workspace.sId, userId },
           "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit exhausted dispatched"
         );
-      } else {
-        void setUserNearLimit(workspace.sId, userId, true);
-        logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            userId,
-          },
-          "[Metronome Webhook] low_remaining_contract_credit_balance_reached: free seat near-limit flag set"
-        );
       }
       break;
     }
@@ -1051,7 +752,6 @@ export async function processMetronomeWebhook({
       // prefix to recover the raw sId used everywhere else.
       const userId =
         fromFreeMetronomeUserId(metronomeUserId) ?? metronomeUserId;
-      void setUserNearLimit(workspace.sId, userId, false);
       await dispatchSeatBalanceResolved({ workspace, userId });
       logger.info(
         { eventId: event.id, workspaceId: workspace.sId, userId },

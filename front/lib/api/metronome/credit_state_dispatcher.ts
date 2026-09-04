@@ -1,28 +1,20 @@
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
-import { fetchRemainingCapCreditsPercentageForUser } from "@app/lib/api/credits/members_usage";
 import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
-import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
-import { setUserCreditState } from "@app/lib/metronome/user_block";
-import type { LiveUserSeatBalance } from "@app/lib/metronome/user_credit_state_machine";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { MembershipSeatType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -139,17 +131,10 @@ export async function dispatchSeatBalanceExhausted({
     groupCapAwuCredits,
     defaultPoolCapAwuCredits,
   });
-  const remainingCapCreditsPercentage =
-    await fetchRemainingCapCreditsPercentageForUser({
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      workspaceId: workspace.sId,
-      userId,
-      seatType: membership.seatType,
-      poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
-      groupCapAwuCredits,
-      defaultPoolCapAwuCredits,
-    });
 
+  // Seats with pool access fall back to `on_pool`; free seats (no pool) have no
+  // matching transition and stay `user_seat` — their blocking is the
+  // rate-limiter lifetime cap, not this state.
   const result = await transitionUserCreditState(
     membership,
     { type: "seat_balance_exhausted" },
@@ -157,31 +142,25 @@ export async function dispatchSeatBalanceExhausted({
       workspaceId: workspace.sId,
       userId,
       seatType: membership.seatType,
-      remainingCapCreditsPercentage,
       poolLimitAwuCredits,
     }
   );
   if (result.isErr()) {
-    logger.warn(
+    logger.info(
       {
         workspaceId: workspace.sId,
         userId,
         seatType: membership.seatType,
-        creditState: membership.creditState,
         poolLimitAwuCredits,
       },
-      "[CreditStateDispatcher] dispatchSeatBalanceExhausted: transition skipped"
+      "[CreditStateDispatcher] dispatchSeatBalanceExhausted: no seat→pool transition (free seat stays user_seat)"
     );
-    return;
   }
 
-  // Free seats have no pool fallback, so an exhausted balance lands them in
-  // `capped`. If the workspace opted into auto-upgrades, bump their seat one
-  // tier (free → pro) so they stay unblocked. Pro/max seats fall back to the
-  // pool (`on_pool`) instead and are left alone here.
-  if (result.value === "capped") {
-    void maybeAutoUpgradeSeat({ workspaceId: workspace.sId, userId });
-  }
+  // The personal seat balance is exhausted: auto-upgrade one tier (free→pro,
+  // pro→max) if the workspace opted in and a higher tier exists (no-op
+  // otherwise, and for pool-based seats).
+  void maybeAutoUpgradeSeat({ workspaceId: workspace.sId, userId });
 }
 
 export async function dispatchSeatBalanceResolved({
@@ -224,20 +203,7 @@ export async function dispatchSeatBalanceResolved({
     userId,
   });
 
-  // The seat balance came back; the band the user lands in depends on how much
-  // is left. Read the live balance so the state machine can route to
-  // `user_seat` vs `user_seat_low_balance` (or the pool for non-seat users).
-  const liveBalance = await resolveLiveUserBalance({
-    workspace,
-    userId,
-    seatType: membership.seatType,
-    poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
-    groupCapAwuCredits: await fetchMaxGroupPoolCapForUser({
-      workspace: lightWorkspace,
-      userModelId: membership.userId,
-    }),
-  });
-
+  // The seat balance came back: a seat-based user returns to `user_seat`.
   const result = await transitionUserCreditState(
     membership,
     { type: "seat_balance_resolved" },
@@ -245,7 +211,6 @@ export async function dispatchSeatBalanceResolved({
       workspaceId: workspace.sId,
       userId,
       seatType: membership.seatType,
-      liveBalance,
     }
   );
   if (result.isErr()) {
@@ -259,179 +224,6 @@ export async function dispatchSeatBalanceResolved({
       "[CreditStateDispatcher] dispatchSeatBalanceResolved: transition skipped"
     );
   }
-}
-
-export async function dispatchPerUserCapReached({
-  workspace,
-  userId,
-}: {
-  workspace: WorkspaceResource;
-  userId: string;
-}): Promise<Result<void, Error>> {
-  const user = await UserResource.fetchById(userId);
-  if (!user) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_reached: user not found, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace: lightWorkspace,
-    });
-  if (!membership) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_reached: no active membership, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  const result = await transitionUserCreditState(
-    membership,
-    { type: "per_user_cap_reached" },
-    { workspaceId: workspace.sId, userId }
-  );
-  if (result.isErr()) {
-    return result;
-  }
-
-  // The member just hit their per-user cap. If the workspace opted into
-  // auto-upgrades, bump their seat one tier so they stay unblocked.
-  if (result.value === "capped") {
-    void maybeAutoUpgradeSeat({ workspaceId: workspace.sId, userId });
-  }
-
-  return new Ok(undefined);
-}
-
-export async function dispatchPerUserCapResolved({
-  workspace,
-  userId,
-}: {
-  workspace: WorkspaceResource;
-  userId: string;
-}): Promise<Result<void, Error>> {
-  const user = await UserResource.fetchById(userId);
-  if (!user) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_resolved: user not found, resetting credit state"
-    );
-    await setUserCreditState(workspace.sId, userId, "on_pool");
-    return new Ok(undefined);
-  }
-
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace: lightWorkspace,
-    });
-
-  if (!membership) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_resolved: no active membership, resetting credit state"
-    );
-    await setUserCreditState(workspace.sId, userId, "on_pool");
-    return new Ok(undefined);
-  }
-
-  // Resolving the per-user cap only clears the cap dimension; the seat↔pool band
-  // the user lands in depends on their live balance. Read it from Metronome and
-  // pass it into the transition context so the state machine picks the correct
-  // band (a seat-based user with personal balance left → `user_seat` /
-  // `user_seat_low_balance`; otherwise the pool). When the live read isn't
-  // available the transition defaults to `on_pool` and the reconcile / billing
-  // webhooks correct it later.
-  const liveBalance = await resolveLiveUserBalance({
-    workspace,
-    userId,
-    seatType: membership.seatType,
-    poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
-    groupCapAwuCredits: await fetchMaxGroupPoolCapForUser({
-      workspace: lightWorkspace,
-      userModelId: membership.userId,
-    }),
-  });
-
-  const result = await transitionUserCreditState(
-    membership,
-    { type: "per_user_cap_resolved" },
-    {
-      workspaceId: workspace.sId,
-      userId,
-      seatType: membership.seatType,
-      liveBalance,
-    }
-  );
-  if (result.isErr()) {
-    return result;
-  }
-  return new Ok(undefined);
-}
-
-// Read the live per-user balance snapshot used to recompute the seat↔pool band
-// when a per-user cap resolves or a seat balance is replenished. Returns
-// `undefined` when there's no Metronome customer or the live read fails — the
-// transition then falls back to its unguarded default.
-async function resolveLiveUserBalance({
-  workspace,
-  userId,
-  seatType,
-  poolCapOverrideAwuCredits,
-  groupCapAwuCredits,
-}: {
-  workspace: WorkspaceResource;
-  userId: string;
-  seatType: MembershipSeatType | null;
-  poolCapOverrideAwuCredits: number | null;
-  groupCapAwuCredits: number | null;
-}): Promise<LiveUserSeatBalance | undefined> {
-  const { metronomeCustomerId } = workspace;
-  if (!metronomeCustomerId) {
-    return undefined;
-  }
-
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  const metronomeContractId = subscription?.metronomeContractId ?? null;
-
-  const creditUsageConfig =
-    await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
-      workspace.id
-    );
-
-  const liveResult = await fetchLiveUserCreditInputs({
-    workspaceId: workspace.sId,
-    userId,
-    seatType,
-    poolCapOverrideAwuCredits,
-    groupCapAwuCredits,
-    defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
-    metronomeCustomerId,
-    metronomeContractId,
-  });
-  if (liveResult.isErr()) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId, seatType, err: liveResult.error },
-      "[CreditStateDispatcher] live balance read failed; transition uses default band"
-    );
-    return undefined;
-  }
-
-  return {
-    seatBalanceAwu: liveResult.value.seatBalanceAwu,
-    seatStartingBalanceAwu: liveResult.value.seatStartingBalanceAwu,
-    perUserCapAwuCredits: liveResult.value.effectiveCapAwuCredits,
-    consumedAwuCredits: liveResult.value.consumedAwuCredits,
-  };
 }
 
 export async function dispatchPoolExhausted({
