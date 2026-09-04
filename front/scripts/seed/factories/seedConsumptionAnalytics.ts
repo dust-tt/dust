@@ -62,6 +62,7 @@ const ORIGIN_WEIGHTS: { origin: UserMessageOrigin; weight: number }[] = [
   { origin: "web", weight: 40 },
   { origin: "triggered", weight: 22 },
   { origin: "slack", weight: 12 },
+  { origin: "slack_workflow", weight: 5 },
   { origin: "triggered_programmatic", weight: 8 },
   { origin: "api", weight: 7 },
   { origin: "extension", weight: 5 },
