@@ -1,6 +1,68 @@
+import { assertNever } from "@sparkle/lib/utils";
 import React, { useCallback, useState } from "react";
+import { Button, type ButtonProps } from "./Button";
 
-import { Button } from "./Button";
+export const FILTER_CHIP_VARIANTS = ["primary", "secondary"] as const;
+export type FilterChipVariant = (typeof FILTER_CHIP_VARIANTS)[number];
+
+// `bg-selected` is the NavTabPill active token; hover/active are pinned so the chip stays put.
+function selectedButtonProps(
+  variant: FilterChipVariant
+): Pick<ButtonProps, "variant" | "className"> {
+  switch (variant) {
+    case "primary":
+      return { variant: "primary" };
+    case "secondary":
+      return {
+        variant: "ghost",
+        className: "bg-selected hover:bg-selected active:bg-selected",
+      };
+    default:
+      return assertNever(variant);
+  }
+}
+
+export interface FilterChipProps {
+  /** Chip text; omit it (with an `icon`) for an icon-only chip. */
+  label?: string;
+  /** Leading icon. */
+  icon?: ButtonProps["icon"];
+  /** Whether this chip is selected. */
+  isSelected?: boolean;
+  /** Selected look: `primary` fills the chip, `secondary` uses the lighter selected background. */
+  variant?: FilterChipVariant;
+  /** Tooltip label; required for icon-only chips. */
+  tooltip?: string;
+  /** Called on click; the caller owns the selection and toggles it. For a non-interactive badge use Chip. */
+  onClick: () => void;
+}
+
+/**
+ * A single filter chip whose selection is controlled by the caller. Selected
+ * chips are `primary` (filled) or `secondary` (lighter background); unselected
+ * chips are ghost. Sets `aria-pressed`.
+ * @summary Controlled single filter chip.
+ */
+export function FilterChip({
+  label,
+  icon,
+  isSelected = false,
+  variant = "primary",
+  tooltip,
+  onClick,
+}: FilterChipProps) {
+  return (
+    <Button
+      size="xs"
+      label={label}
+      icon={icon}
+      tooltip={tooltip}
+      aria-pressed={isSelected}
+      onClick={onClick}
+      {...(isSelected ? selectedButtonProps(variant) : { variant: "ghost" })}
+    />
+  );
+}
 
 interface FilterChipsProps<T extends string> {
   /** Filter names, each rendered as a chip. */
@@ -9,6 +71,8 @@ interface FilterChipsProps<T extends string> {
   onFilterClick: (filterName: T) => void;
   /** Filter preselected on mount (must be one of filters). */
   defaultFilter?: T;
+  /** Selected look for every chip; see FilterChip. */
+  variant?: FilterChipVariant;
 }
 
 /**
@@ -22,6 +86,7 @@ export function FilterChips<T extends string>({
   filters,
   onFilterClick,
   defaultFilter,
+  variant = "primary",
 }: FilterChipsProps<T>) {
   const [selectedFilter, setSelectedFilter] = useState<T | null>(
     defaultFilter && filters.includes(defaultFilter) ? defaultFilter : null
@@ -41,11 +106,11 @@ export function FilterChips<T extends string>({
   return (
     <div className="flex flex-row flex-wrap gap-2">
       {filters.map((filterName) => (
-        <Button
-          label={filterName}
-          variant={selectedFilter === filterName ? "primary" : "ghost"}
+        <FilterChip
           key={filterName}
-          size="xs"
+          label={filterName}
+          isSelected={selectedFilter === filterName}
+          variant={variant}
           onClick={() => handleFilterClick(filterName)}
         />
       ))}

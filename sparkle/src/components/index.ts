@@ -150,7 +150,13 @@ export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FaviconIcon } from "./FaviconIcon";
-export { FilterChips } from "./FilterChips";
+export {
+  FILTER_CHIP_VARIANTS,
+  FilterChip,
+  type FilterChipProps,
+  FilterChips,
+  type FilterChipVariant,
+} from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
