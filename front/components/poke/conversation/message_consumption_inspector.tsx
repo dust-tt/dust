@@ -389,7 +389,8 @@ export function PokeMessageConsumptionInspector({
                                   <dd className="mt-1 text-sm font-semibold tabular-nums text-foreground">
                                     {formatCreditValue(
                                       details.agentWorkCredits
-                                    )}{" "}
+                                    )}
+                                    &nbsp;
                                     <span className="font-normal text-muted-foreground">
                                       {formatShare(
                                         details.agentWorkCredits,
@@ -404,7 +405,7 @@ export function PokeMessageConsumptionInspector({
                                     Tools
                                   </dt>
                                   <dd className="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                                    {formatCreditValue(toolCredits)}{" "}
+                                    {formatCreditValue(toolCredits)}&nbsp;
                                     <span className="font-normal text-muted-foreground">
                                       {formatShare(toolCredits, totalCredits)}
                                     </span>
@@ -415,7 +416,7 @@ export function PokeMessageConsumptionInspector({
                                 attributionDeltaCredits !== null && (
                                   <p className="mt-3 text-xs text-warning">
                                     Attribution differs from the authoritative
-                                    bill by{" "}
+                                    bill by&nbsp;
                                     {formatCreditValue(attributionDeltaCredits)}
                                     .
                                   </p>
@@ -440,7 +441,7 @@ export function PokeMessageConsumptionInspector({
                               </div>
                               <p className="text-xs text-muted-foreground">
                                 {rankedTools.length} tool
-                                {pluralize(rankedTools.length)} ·{" "}
+                                {pluralize(rankedTools.length)}&nbsp;·&nbsp;
                                 {toolUsageLabel(
                                   rankedTools.reduce(
                                     (total, tool) => total + tool.callCount,
