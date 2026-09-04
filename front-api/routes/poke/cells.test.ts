@@ -60,6 +60,11 @@ describe("GET /api/poke/cells", () => {
         region: "europe-west1",
         url: "http://localhost:3000",
       },
+      {
+        name: "cell-00002",
+        region: "europe-west1",
+        url: "http://localhost:3000",
+      },
     ]);
     expect(cellsConfig.getCurrentCell).toHaveBeenCalled();
     expect(cellsConfig.getCellInfo).toHaveBeenCalled();
