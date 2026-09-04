@@ -5,8 +5,10 @@ import {
   Brackets,
   Breadcrumbs,
   Button,
+  CheckCircle,
   CheckDone01,
   ChevronDown,
+  ContactsRobot,
   Cube01,
   CubeOutline,
   Dialog,
@@ -19,6 +21,7 @@ import {
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -30,16 +33,17 @@ import {
   FolderOpen,
   Heart,
   Icon,
+  Inbox01,
   IntersectDust,
   Lightbulb04,
   Link01,
   LogOut01,
   MagicWand02,
+  MessageChatSquare,
   MessageCircle01,
   MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
-  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   NavTabPill,
@@ -87,7 +91,9 @@ import {
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
+import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import { PersonAgentView } from "../components/PersonAgentView";
 import {
   type AgentSort,
   type AgentType,
@@ -113,9 +119,11 @@ import {
   getRandomSpaces,
   getRandomUsers,
   getUserById,
+  isTriggeredConversation,
   mockAgents,
   mockConversations,
   mockUsers,
+  MY_POD_SPACE,
   type Space,
   type User,
 } from "../data";
@@ -173,23 +181,83 @@ function getRandomParticipants(conversation: Conversation) {
   );
 }
 
-function isPlaygroundInboxTriggered(conversation: Conversation): boolean {
-  let h = 0;
-  for (let i = 0; i < conversation.id.length; i++) {
-    h = (h + conversation.id.charCodeAt(i)) % 997;
-  }
-  return h % 4 === 0;
-}
-
 function getSpaceActivity(space: Space) {
   const c = space.id.charCodeAt(space.id.length - 1);
   const count = c % 3 === 0 ? (c % 9) + 1 : undefined;
   return { count, hasActivity: count ? true : c % 2 !== 0 };
 }
 
+function collaboratorName(collaborator: Collaborator) {
+  return collaborator.type === "agent"
+    ? collaborator.data.name
+    : collaborator.data.fullName;
+}
+
+function collaboratorAvatarProps(collaborator: Collaborator) {
+  if (collaborator.type === "agent") {
+    return {
+      name: collaborator.data.name,
+      emoji: collaborator.data.emoji,
+      backgroundColor: collaborator.data.backgroundColor,
+      isRounded: false,
+    };
+  }
+  return {
+    name: collaborator.data.fullName,
+    visual: collaborator.data.portrait,
+    isRounded: true,
+  };
+}
+
+function getCollaboratorConversations(
+  allConversations: Conversation[],
+  userId: string,
+  collaborator: Collaborator
+): Conversation[] {
+  const id = collaborator.data.id;
+  const existing = allConversations.filter((conv) => {
+    if (!conv.userParticipants.includes(userId)) {
+      return false;
+    }
+    if (collaborator.type === "agent") {
+      return conv.agentParticipants.includes(id);
+    }
+    return conv.userParticipants.includes(id);
+  });
+  if (existing.length > 0) {
+    return existing;
+  }
+
+  const titles = [
+    "Quick question",
+    "Follow-up discussion",
+    "Project update",
+    "Weekly sync",
+    "Planning session",
+  ];
+  const seed = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const count = (seed % 4) + 3;
+  const now = Date.now();
+  return Array.from({ length: count }, (_, i) => {
+    const daysAgo = ((seed + i * 7) % 35) + 1;
+    const updatedAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
+    const title = titles[(seed + i) % titles.length];
+    return {
+      id: `generated-conv-${id}-${i}`,
+      title,
+      createdAt: new Date(updatedAt.getTime() - 2 * 24 * 60 * 60 * 1000),
+      updatedAt,
+      userParticipants:
+        collaborator.type === "person" ? [userId, id] : [userId],
+      agentParticipants: collaborator.type === "agent" ? [id] : [],
+      description: `Conversation about ${title.toLowerCase()}`,
+    };
+  });
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-function Pods() {
+function PeopleAgent() {
   // ── Bootstrap state ───────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
   const [greeting, setGreeting] = useState<string>("");
@@ -214,10 +282,13 @@ function Pods() {
         type: "agent" as const,
         data: d,
       })),
-      ...getRandomUsers(peopleCount).map((d) => ({
-        type: "person" as const,
-        data: d,
-      })),
+      ...getRandomUsers(peopleCount + 1)
+        .filter((person) => person.id !== u.id)
+        .slice(0, peopleCount)
+        .map((d) => ({
+          type: "person" as const,
+          data: d,
+        })),
     ]);
     const randomSpaces = getRandomSpaces(Math.floor(Math.random() * 7) + 3);
     setSpaces(randomSpaces);
@@ -231,12 +302,17 @@ function Pods() {
   // P2 selection: what's shown in the "level 1" panel
   type P2View =
     | { kind: "welcome" }
+    | { kind: "inbox" }
+    | { kind: "conversations" }
+    | { kind: "automations" }
     | { kind: "conversation"; conversationId: string }
     | { kind: "space"; spaceId: string }
+    | { kind: "agent"; agentId: string }
+    | { kind: "person"; personId: string }
     | { kind: "profile" }
     | { kind: "templates" };
 
-  const [p2View, setP2View] = useState<P2View>({ kind: "welcome" });
+  const [p2View, setP2View] = useState<P2View>({ kind: "inbox" });
 
   // P3: conversation from a space (level 2), or a side panel opened from the
   // level-1 conversation (citation preview, file, files, credit usage).
@@ -251,6 +327,9 @@ function Pods() {
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
+  const [inboxActiveTab, setInboxActiveTab] = useState<
+    "conversations" | "tasks"
+  >("conversations");
   const [podTabsBySpaceId, setPodTabsBySpaceId] = useState<
     Map<string, PodTabsState>
   >(new Map());
@@ -271,6 +350,9 @@ function Pods() {
     "chat"
   );
   const [searchText, setSearchText] = useState("");
+  const [agentSearchText, setAgentSearchText] = useState("");
+  const [peopleSearchText, setPeopleSearchText] = useState("");
+  const [isCollaboratorAboutOpen, setIsCollaboratorAboutOpen] = useState(false);
   const [welcomeAgentTab, setWelcomeAgentTab] =
     useState<WelcomeAgentTab>("favorites");
   const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
@@ -279,7 +361,6 @@ function Pods() {
     string | null
   >(null);
   const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
-  const [inboxHideTriggered] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, SpaceNotificationPreference>>(new Map());
   const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
@@ -334,6 +415,14 @@ function Pods() {
     [conversationsWithMessages]
   );
 
+  const unreadCount = useMemo(() => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    return allConversations.filter((conv) => {
+      if (!conv.spaceId) return false;
+      return conv.updatedAt >= twoDaysAgo;
+    }).length;
+  }, [allConversations]);
+
   const filteredConversations = useMemo(() => {
     if (!searchText.trim()) return allConversations;
     const lower = searchText.toLowerCase();
@@ -342,47 +431,11 @@ function Pods() {
     );
   }, [searchText, allConversations]);
 
-  const groupedConversations = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const lastWeek = new Date(today);
-    lastWeek.setDate(today.getDate() - 7);
-    const lastMonth = new Date(today);
-    lastMonth.setDate(today.getDate() - 30);
-    const groups = {
-      today: [] as Conversation[],
-      yesterday: [] as Conversation[],
-      lastWeek: [] as Conversation[],
-      lastMonth: [] as Conversation[],
-    };
-    filteredConversations.forEach((c) => {
-      if (c.updatedAt >= today) groups.today.push(c);
-      else if (c.updatedAt >= yesterday) groups.yesterday.push(c);
-      else if (c.updatedAt >= lastWeek) groups.lastWeek.push(c);
-      else if (c.updatedAt >= lastMonth) groups.lastMonth.push(c);
-    });
-    return groups;
+  const recentConversations = useMemo(() => {
+    return [...filteredConversations]
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, 30);
   }, [filteredConversations]);
-
-  const inboxConversations = useMemo(() => {
-    const pool = inboxHideTriggered
-      ? filteredConversations.filter((c) => !isPlaygroundInboxTriggered(c))
-      : filteredConversations;
-    if (pool.length === 0) return [];
-    const count = Math.floor(Math.random() * 4) + 2;
-    return [...pool]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, Math.min(count, pool.length))
-      .map((c) => ({
-        conversation: c,
-        status: (Math.random() < 0.25 ? "blocked" : "idle") as
-          | "idle"
-          | "blocked",
-      }));
-  }, [filteredConversations, inboxHideTriggered]);
 
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
@@ -445,6 +498,91 @@ function Pods() {
         : null,
     [p3View, allConversations]
   );
+
+  const sortedCollaborators = useMemo(() => {
+    return [...collaborators].sort((a, b) =>
+      collaboratorName(a).localeCompare(collaboratorName(b))
+    );
+  }, [collaborators]);
+
+  const filteredCollaborators = useMemo(() => {
+    if (!searchText.trim()) {
+      return sortedCollaborators;
+    }
+    const lower = searchText.toLowerCase();
+    return sortedCollaborators.filter((collaborator) => {
+      if (collaborator.type === "agent") {
+        return (
+          collaborator.data.name.toLowerCase().includes(lower) ||
+          collaborator.data.description.toLowerCase().includes(lower)
+        );
+      }
+      return (
+        collaborator.data.fullName.toLowerCase().includes(lower) ||
+        collaborator.data.email.toLowerCase().includes(lower)
+      );
+    });
+  }, [searchText, sortedCollaborators]);
+
+  const filteredAgents = useMemo(() => {
+    if (!agentSearchText.trim()) {
+      return mockAgents;
+    }
+    const lower = agentSearchText.toLowerCase();
+    return mockAgents.filter((agent) =>
+      agent.name.toLowerCase().includes(lower)
+    );
+  }, [agentSearchText]);
+
+  const filteredPeople = useMemo(() => {
+    const candidates = user
+      ? mockUsers.filter((person) => person.id !== user.id)
+      : mockUsers;
+    if (!peopleSearchText.trim()) {
+      return candidates;
+    }
+    const lower = peopleSearchText.toLowerCase();
+    return candidates.filter(
+      (person) =>
+        person.fullName.toLowerCase().includes(lower) ||
+        person.email.toLowerCase().includes(lower)
+    );
+  }, [peopleSearchText, user]);
+
+  const selectedCollaborator = useMemo((): Collaborator | null => {
+    if (p2View.kind === "agent") {
+      const fromList = collaborators.find(
+        (c) => c.type === "agent" && c.data.id === p2View.agentId
+      );
+      if (fromList) {
+        return fromList;
+      }
+      const agent = getAgentById(p2View.agentId);
+      return agent ? { type: "agent", data: agent } : null;
+    }
+    if (p2View.kind === "person") {
+      const fromList = collaborators.find(
+        (c) => c.type === "person" && c.data.id === p2View.personId
+      );
+      if (fromList) {
+        return fromList;
+      }
+      const person = getUserById(p2View.personId);
+      return person ? { type: "person", data: person } : null;
+    }
+    return null;
+  }, [p2View, collaborators]);
+
+  const collaboratorConversations = useMemo(() => {
+    if (!selectedCollaborator || !user) {
+      return [];
+    }
+    return getCollaboratorConversations(
+      allConversations,
+      user.id,
+      selectedCollaborator
+    );
+  }, [selectedCollaborator, user, allConversations]);
 
   // ── Pod context & tab state ───────────────────────────────────────────────
   const podContext = useMemo(
@@ -756,6 +894,48 @@ function Pods() {
     : undefined;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  const openCreateAgent = () => {
+    setP2View({ kind: "templates" });
+    setP3View(null);
+    setP4View(null);
+  };
+
+  const selectCollaborator = (type: Collaborator["type"], id: string) => {
+    setP2View(
+      type === "agent"
+        ? { kind: "agent", agentId: id }
+        : { kind: "person", personId: id }
+    );
+    setP3View(null);
+    setP4View(null);
+    setIsCollaboratorAboutOpen(false);
+  };
+
+  const addCollaborator = (next: Collaborator) => {
+    setCollaborators((prev) => {
+      if (
+        prev.some((c) => c.type === next.type && c.data.id === next.data.id)
+      ) {
+        return prev;
+      }
+      return [...prev, next];
+    });
+  };
+
+  const removeCollaborator = (type: Collaborator["type"], id: string) => {
+    setCollaborators((prev) =>
+      prev.filter((c) => !(c.type === type && c.data.id === id))
+    );
+    if (
+      (p2View.kind === "agent" && type === "agent" && p2View.agentId === id) ||
+      (p2View.kind === "person" && type === "person" && p2View.personId === id)
+    ) {
+      setP2View({ kind: "inbox" });
+      setP3View(null);
+      setP4View(null);
+    }
+  };
+
   const handleRoomNameNext = (name: string, isPublic: boolean) => {
     const newSpace = createSpace(name, undefined, isPublic);
     setSpaces((prev) => [...prev, newSpace]);
@@ -1038,9 +1218,16 @@ function Pods() {
 
   // ── P2 content ────────────────────────────────────────────────────────────
   const p2Label = (() => {
+    if (p2View.kind === "inbox") return "Inbox";
+    if (p2View.kind === "conversations") return "Conversations";
+    if (p2View.kind === "automations") return "Automations";
     if (podContext) return podContext.space.name;
     if (p2View.kind === "conversation")
       return selectedConversation?.title ?? "Conversation";
+    if (p2View.kind === "agent" || p2View.kind === "person")
+      return selectedCollaborator
+        ? collaboratorName(selectedCollaborator)
+        : "People & Agents";
     if (p2View.kind === "profile") return "Profile";
     if (p2View.kind === "templates") return "Templates";
     return "Home";
@@ -1048,6 +1235,43 @@ function Pods() {
 
   const p2Content = (() => {
     if (p2View.kind === "profile" && user) return <ProfilePanel user={user} />;
+    if (p2View.kind === "inbox")
+      return (
+        <InboxView
+          spaces={spaces}
+          conversations={allConversations}
+          users={mockUsers}
+          agents={mockAgents}
+          currentUserId={user.id}
+          activeTab={inboxActiveTab}
+          personalSectionLabel="Conversations"
+          selectedConversationId={
+            p3View?.kind === "conversation" ? p3View.conversationId : null
+          }
+          onConversationClick={(conversation) => {
+            setP3View({
+              kind: "conversation",
+              conversationId: conversation.id,
+            });
+            setP4View(null);
+          }}
+          onSpaceClick={(space) => {
+            setP2View({ kind: "space", spaceId: space.id });
+            setP3View(null);
+            setP4View(null);
+          }}
+          onMyPodClick={() => {
+            setP2View({ kind: "conversations" });
+            setP3View(null);
+            setP4View(null);
+          }}
+          onAutomationsClick={() => {
+            setP2View({ kind: "automations" });
+            setP3View(null);
+            setP4View(null);
+          }}
+        />
+      );
     if (p2View.kind === "templates")
       return (
         <div className="h-full overflow-auto">
@@ -1070,6 +1294,57 @@ function Pods() {
           }}
         />
       );
+    if (
+      (p2View.kind === "agent" || p2View.kind === "person") &&
+      selectedCollaborator
+    )
+      return (
+        <PersonAgentView
+          collaborator={selectedCollaborator}
+          user={user}
+          conversations={collaboratorConversations}
+          users={mockUsers}
+          agents={mockAgents}
+          aboutOpen={isCollaboratorAboutOpen}
+          onAboutOpenChange={setIsCollaboratorAboutOpen}
+          onConversationClick={(conversation) => {
+            setConversationsWithMessages((prev) =>
+              prev.some((c) => c.id === conversation.id)
+                ? prev
+                : [...prev, conversation]
+            );
+            setP3View({
+              kind: "conversation",
+              conversationId: conversation.id,
+            });
+            setP4View(null);
+          }}
+        />
+      );
+    if (p2View.kind === "automations")
+      return (
+        <GroupConversationView
+          space={MY_POD_SPACE}
+          conversations={allConversations.filter(isTriggeredConversation)}
+          users={mockUsers}
+          agents={mockAgents}
+          onConversationClick={(conversation) => {
+            setP3View({
+              kind: "conversation",
+              conversationId: conversation.id,
+            });
+            setP4View(null);
+          }}
+          activeTab="conversations"
+          podVariant="personal"
+          showComposer={false}
+          hideConversationFilters
+          currentUserId={user.id}
+          selectedConversationId={
+            p3View?.kind === "conversation" ? p3View.conversationId : null
+          }
+        />
+      );
     if (podContext)
       return (
         <GroupConversationView
@@ -1078,10 +1353,16 @@ function Pods() {
           users={mockUsers}
           agents={mockAgents}
           spaceMemberIds={
-            spaceMembers.get(podContext.spaceId) ??
-            getMembersBySpaceId(podContext.spaceId)
+            podContext.variant === "shared"
+              ? (spaceMembers.get(podContext.spaceId) ??
+                getMembersBySpaceId(podContext.spaceId))
+              : undefined
           }
-          editorUserIds={spaceEditors.get(podContext.spaceId) ?? []}
+          editorUserIds={
+            podContext.variant === "shared"
+              ? (spaceEditors.get(podContext.spaceId) ?? [])
+              : undefined
+          }
           onConversationClick={(conversation) => {
             setP3View({
               kind: "conversation",
@@ -1089,12 +1370,26 @@ function Pods() {
             });
             setP4View(null);
           }}
-          onInviteMembers={() => handleInviteMembers(podContext.spaceId)}
-          onUpdateSpaceName={handleUpdateSpaceName}
-          onUpdateSpacePublic={handleUpdateSpacePublic}
+          onInviteMembers={
+            podContext.variant === "shared"
+              ? () => handleInviteMembers(podContext.spaceId)
+              : undefined
+          }
+          onUpdateSpaceName={
+            podContext.variant === "shared" ? handleUpdateSpaceName : undefined
+          }
+          onUpdateSpacePublic={
+            podContext.variant === "shared"
+              ? handleUpdateSpacePublic
+              : undefined
+          }
           spacePublicSettings={spacePublicSettings}
-          activeTab={activePodTab}
-          onTabChange={setActivePodTab}
+          activeTab={
+            podContext.variant === "personal" ? "conversations" : activePodTab
+          }
+          onTabChange={
+            podContext.variant === "personal" ? undefined : setActivePodTab
+          }
           dynamicFileTabIds={dynamicFileTabIds}
           onAddFileToTopbar={handlePodFileDrop}
           // Pod files open in a panel (frames take focus, others share).
@@ -1108,15 +1403,21 @@ function Pods() {
             setFileToRevealInKnowledge(null)
           }
           podVariant={podContext.variant}
+          showComposer
           currentUserId={user.id}
-          podTabCustomization={{
-            tabs: podTabCustomizationTabs,
-            addableFiles: addablePodFiles,
-            onReorder: handlePodFileReorder,
-            onChangeIcon: handlePodTabIconChange,
-            onRemove: handlePodRemoveTab,
-            onAdd: (file) => handlePodFileDrop(file.id, { activateTab: false }),
-          }}
+          podTabCustomization={
+            podContext.variant === "shared"
+              ? {
+                  tabs: podTabCustomizationTabs,
+                  addableFiles: addablePodFiles,
+                  onReorder: handlePodFileReorder,
+                  onChangeIcon: handlePodTabIconChange,
+                  onRemove: handlePodRemoveTab,
+                  onAdd: (file) =>
+                    handlePodFileDrop(file.id, { activateTab: false }),
+                }
+              : undefined
+          }
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
@@ -1214,98 +1515,99 @@ function Pods() {
     />
   );
 
-  const podTopBarLeft = podContext ? (
-    <div
-      className={
-        "flex min-w-0 flex-1 items-center gap-0.5 rounded-lg " +
-        (draggingPodFileId ? "bg-highlight-50" : "")
-      }
-      onDragOver={(event) => {
-        if (draggingPodFileId) {
+  const podTopBarLeft =
+    podContext?.variant === "shared" ? (
+      <div
+        className={
+          "flex min-w-0 flex-1 items-center gap-0.5 rounded-lg " +
+          (draggingPodFileId ? "bg-highlight-50" : "")
+        }
+        onDragOver={(event) => {
+          if (draggingPodFileId) {
+            event.preventDefault();
+          }
+        }}
+        onDrop={(event) => {
           event.preventDefault();
-        }
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        if (draggingPodFileId) {
-          handlePodFileDrop(draggingPodFileId);
-        }
-      }}
-    >
-      <NavTabPill
-        value={activePodTab}
-        onValueChange={setActivePodTab}
-        className="min-w-0 overflow-hidden"
+          if (draggingPodFileId) {
+            handlePodFileDrop(draggingPodFileId);
+          }
+        }}
       >
-        <NavTabPillList>
-          {podTabOptions.map((option) => {
-            if (!option.icon) {
-              return null;
-            }
+        <NavTabPill
+          value={activePodTab}
+          onValueChange={setActivePodTab}
+          className="min-w-0 overflow-hidden"
+        >
+          <NavTabPillList>
+            {podTabOptions.map((option) => {
+              if (!option.icon) {
+                return null;
+              }
 
-            return (
-              <NavTabPillTrigger
-                key={option.value}
-                value={option.value}
-                icon={option.icon}
-                aria-label={option.tooltip ?? option.label}
-                onContextMenu={(event) => {
-                  if (!option.contextMenuItems?.length) {
-                    return;
-                  }
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setTabContextMenu({
-                    value: option.value,
-                    x: event.clientX,
-                    y: event.clientY,
-                  });
+              return (
+                <NavTabPillTrigger
+                  key={option.value}
+                  value={option.value}
+                  icon={option.icon}
+                  aria-label={option.tooltip ?? option.label}
+                  onContextMenu={(event) => {
+                    if (!option.contextMenuItems?.length) {
+                      return;
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setTabContextMenu({
+                      value: option.value,
+                      x: event.clientX,
+                      y: event.clientY,
+                    });
+                  }}
+                >
+                  {option.label}
+                </NavTabPillTrigger>
+              );
+            })}
+          </NavTabPillList>
+        </NavTabPill>
+        {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
+          <DropdownMenu
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                setTabContextMenu(null);
+              }
+            }}
+            modal
+          >
+            <DropdownMenuPortal>
+              <DropdownMenuContent
+                align="start"
+                className="whitespace-nowrap"
+                style={{
+                  position: "fixed",
+                  left: tabContextMenu.x,
+                  top: tabContextMenu.y,
                 }}
               >
-                {option.label}
-              </NavTabPillTrigger>
-            );
-          })}
-        </NavTabPillList>
-      </NavTabPill>
-      {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
-        <DropdownMenu
-          open
-          onOpenChange={(open) => {
-            if (!open) {
-              setTabContextMenu(null);
-            }
-          }}
-          modal
-        >
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              align="start"
-              className="whitespace-nowrap"
-              style={{
-                position: "fixed",
-                left: tabContextMenu.x,
-                top: tabContextMenu.y,
-              }}
-            >
-              {tabContextMenuOption.contextMenuItems.map((item) => (
-                <DropdownMenuItem
-                  key={item.label}
-                  label={item.label}
-                  icon={item.icon}
-                  variant={item.variant}
-                  onClick={() => {
-                    item.onClick?.();
-                    setTabContextMenu(null);
-                  }}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenu>
-      )}
-    </div>
-  ) : null;
+                {tabContextMenuOption.contextMenuItems.map((item) => (
+                  <DropdownMenuItem
+                    key={item.label}
+                    label={item.label}
+                    icon={item.icon}
+                    variant={item.variant}
+                    onClick={() => {
+                      item.onClick?.();
+                      setTabContextMenu(null);
+                    }}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenu>
+        )}
+      </div>
+    ) : null;
 
   const podTopBarRight = (() => {
     if (!podContext || !shouldShowMemberChrome(podContext.variant)) return null;
@@ -1376,6 +1678,63 @@ function Pods() {
           hasLighterFont
         />
       );
+    if (
+      (p2View.kind === "agent" || p2View.kind === "person") &&
+      selectedCollaborator
+    )
+      return (
+        <div className="label-sm inline-flex h-9 min-w-0 items-center gap-2 border border-transparent px-2">
+          <Avatar
+            size="xs"
+            {...collaboratorAvatarProps(selectedCollaborator)}
+          />
+          <span className="truncate text-sm text-foreground">
+            {collaboratorName(selectedCollaborator)}
+          </span>
+        </div>
+      );
+    if (p2View.kind === "inbox")
+      return (
+        <NavTabPill
+          value={inboxActiveTab}
+          onValueChange={(value) =>
+            setInboxActiveTab(value as "conversations" | "tasks")
+          }
+        >
+          <NavTabPillList>
+            <NavTabPillTrigger
+              value="conversations"
+              icon={MessageChatSquare}
+              aria-label="Conversations"
+            >
+              Conversations
+            </NavTabPillTrigger>
+            <NavTabPillTrigger
+              value="tasks"
+              icon={CheckCircle}
+              aria-label="Tasks"
+            >
+              Tasks
+            </NavTabPillTrigger>
+          </NavTabPillList>
+        </NavTabPill>
+      );
+    if (p2View.kind === "conversations")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Conversations", icon: MessageChatSquare }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
+    if (p2View.kind === "automations")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Automations", icon: Zap }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
     if (podContext) return podTopBarLeft;
     if (p2View.kind === "profile")
       return (
@@ -1417,6 +1776,19 @@ function Pods() {
 
   const p2TopBarRight = (() => {
     if (p2View.kind === "conversation") return conversationActionsFor("p3");
+    if (
+      (p2View.kind === "agent" || p2View.kind === "person") &&
+      selectedCollaborator
+    ) {
+      return (
+        <Button
+          label="About"
+          size="sm"
+          variant="outline"
+          onClick={() => setIsCollaboratorAboutOpen(true)}
+        />
+      );
+    }
     if (podContext) return podTopBarRight;
     return null;
   })();
@@ -1591,49 +1963,38 @@ function Pods() {
                   </div>
                 }
               />
-            </NavigationList>
-
-            {inboxConversations.length > 0 && (
-              <NavigationListCollapsibleSection
+              <NavigationListItem
                 label="Inbox"
-                count={inboxConversations.length}
-                className="bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing"
-                actionOnHover={false}
-                action={
-                  <Button
-                    size="xmini"
-                    variant="ghost-secondary"
-                    label="Mark all as read"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    hasLighterFont
-                  />
-                }
-              >
-                {inboxConversations.map(({ conversation, status }) => (
-                  <NavigationListItem
-                    key={conversation.id}
-                    label={conversation.title}
-                    selected={
-                      p2View.kind === "conversation" &&
-                      p2View.conversationId === conversation.id
-                    }
-                    status={status}
-                    moreMenu={getConversationMoreMenu(conversation)}
-                    onClick={() => {
-                      setP2View({
-                        kind: "conversation",
-                        conversationId: conversation.id,
-                      });
-                      setP3View(null);
-                      setP4View(null);
-                    }}
-                  />
-                ))}
-              </NavigationListCollapsibleSection>
-            )}
+                icon={Inbox01}
+                selected={p2View.kind === "inbox"}
+                count={unreadCount > 0 ? unreadCount : undefined}
+                onClick={() => {
+                  setP2View({ kind: "inbox" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Conversations"
+                icon={MessageChatSquare}
+                selected={p2View.kind === "conversations"}
+                onClick={() => {
+                  setP2View({ kind: "conversations" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Automations"
+                icon={Zap}
+                selected={p2View.kind === "automations"}
+                onClick={() => {
+                  setP2View({ kind: "automations" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+            </NavigationList>
 
             {starredSpaces.length > 0 && (
               <NavigationList className="mx-sidebar-side-spacing">
@@ -1749,10 +2110,293 @@ function Pods() {
               </NavigationListCollapsibleSection>
             </NavigationList>
 
-            <NavigationList className="mx-sidebar-side-spacing">
-              {(filteredConversations.length > 0 || !searchText.trim()) && (
+            {(filteredCollaborators.length > 0 || !searchText.trim()) && (
+              <NavigationList className="mx-sidebar-side-spacing">
                 <NavigationListCollapsibleSection
-                  label="Conversations"
+                  label="People & Agents"
+                  type="collapse"
+                  defaultOpen={true}
+                  action={
+                    <>
+                      <Button
+                        size="xs"
+                        icon={Plus}
+                        label="New"
+                        variant="ghost-secondary"
+                        tooltip="Create an Agent"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openCreateAgent();
+                        }}
+                      />
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="xs"
+                            icon={DotsHorizontal}
+                            variant="ghost"
+                            aria-label="People and Agents options"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel label="Agents" />
+                          <DropdownMenuItem
+                            label="Create agent"
+                            icon={Plus}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openCreateAgent();
+                            }}
+                          />
+                          <DropdownMenuItem
+                            icon={ContactsRobot}
+                            label="Manage"
+                          />
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger
+                              icon={Edit04}
+                              label="Edit"
+                            />
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent
+                                dropdownHeaders={
+                                  <DropdownMenuSearchbar
+                                    autoFocus
+                                    value={agentSearchText}
+                                    onChange={setAgentSearchText}
+                                    name="agent-search"
+                                    placeholder="Search agents"
+                                  />
+                                }
+                              >
+                                {filteredAgents.length > 0 ? (
+                                  [...filteredAgents]
+                                    .sort((a, b) =>
+                                      a.name.localeCompare(b.name)
+                                    )
+                                    .map((agent) => (
+                                      <DropdownMenuItem
+                                        key={agent.id}
+                                        label={agent.name}
+                                        icon={
+                                          <Avatar
+                                            size="xxs"
+                                            name={agent.name}
+                                            emoji={agent.emoji}
+                                            backgroundColor={
+                                              agent.backgroundColor
+                                            }
+                                          />
+                                        }
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          addCollaborator({
+                                            type: "agent",
+                                            data: agent,
+                                          });
+                                          selectCollaborator("agent", agent.id);
+                                        }}
+                                      />
+                                    ))
+                                ) : (
+                                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                                    No agents found
+                                  </div>
+                                )}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                          <DropdownMenuLabel label="People" />
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger
+                              icon={UserSquare}
+                              label="Browse"
+                            />
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent
+                                dropdownHeaders={
+                                  <DropdownMenuSearchbar
+                                    autoFocus
+                                    value={peopleSearchText}
+                                    onChange={setPeopleSearchText}
+                                    name="people-search"
+                                    placeholder="Search people"
+                                  />
+                                }
+                              >
+                                {filteredPeople.length > 0 ? (
+                                  [...filteredPeople]
+                                    .sort((a, b) =>
+                                      a.fullName.localeCompare(b.fullName)
+                                    )
+                                    .map((person) => (
+                                      <DropdownMenuItem
+                                        key={person.id}
+                                        label={person.fullName}
+                                        icon={
+                                          <Avatar
+                                            size="xxs"
+                                            name={person.fullName}
+                                            visual={person.portrait}
+                                            isRounded
+                                          />
+                                        }
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          addCollaborator({
+                                            type: "person",
+                                            data: person,
+                                          });
+                                          selectCollaborator(
+                                            "person",
+                                            person.id
+                                          );
+                                        }}
+                                      />
+                                    ))
+                                ) : (
+                                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                                    No people found
+                                  </div>
+                                )}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </>
+                  }
+                >
+                  {filteredCollaborators.map((collaborator) => {
+                    if (collaborator.type === "agent") {
+                      const agent = collaborator.data;
+                      return (
+                        <NavigationListItem
+                          key={`agent-${agent.id}`}
+                          label={agent.name}
+                          selected={
+                            p2View.kind === "agent" &&
+                            p2View.agentId === agent.id
+                          }
+                          avatar={
+                            <Avatar
+                              size="xxs"
+                              name={agent.name}
+                              emoji={agent.emoji}
+                              backgroundColor={agent.backgroundColor}
+                              isRounded={false}
+                            />
+                          }
+                          moreMenu={
+                            <DropdownMenu modal={false}>
+                              <DropdownMenuTrigger asChild>
+                                <NavigationListItemAction />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem
+                                  label="Edit"
+                                  icon={Edit04}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    selectCollaborator("agent", agent.id);
+                                  }}
+                                />
+                                <DropdownMenuItem
+                                  label="Remove from favorites"
+                                  icon={Star01}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeCollaborator("agent", agent.id);
+                                  }}
+                                />
+                                <DropdownMenuItem
+                                  label="Delete"
+                                  icon={Trash01}
+                                  variant="warning"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeCollaborator("agent", agent.id);
+                                  }}
+                                />
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          }
+                          onClick={() => {
+                            selectCollaborator("agent", agent.id);
+                          }}
+                        />
+                      );
+                    }
+                    const person = collaborator.data;
+                    return (
+                      <NavigationListItem
+                        key={`person-${person.id}`}
+                        label={person.fullName}
+                        selected={
+                          p2View.kind === "person" &&
+                          p2View.personId === person.id
+                        }
+                        avatar={
+                          <Avatar
+                            size="xxs"
+                            name={person.fullName}
+                            visual={person.portrait}
+                            isRounded
+                          />
+                        }
+                        moreMenu={
+                          <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                              <NavigationListItemAction />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem
+                                label="View profile"
+                                icon={User03}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  selectCollaborator("person", person.id);
+                                }}
+                              />
+                              <DropdownMenuItem
+                                label="Remove from favorites"
+                                icon={Trash01}
+                                variant="warning"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  removeCollaborator("person", person.id);
+                                }}
+                              />
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        }
+                        onClick={() => {
+                          selectCollaborator("person", person.id);
+                        }}
+                      />
+                    );
+                  })}
+                </NavigationListCollapsibleSection>
+              </NavigationList>
+            )}
+
+            <NavigationList className="mx-sidebar-side-spacing">
+              {(recentConversations.length > 0 || !searchText.trim()) && (
+                <NavigationListCollapsibleSection
+                  label="Recent"
                   type="collapse"
                   defaultOpen={true}
                   action={
@@ -1762,7 +2406,7 @@ function Pods() {
                           size="xmini"
                           icon={DotsHorizontal}
                           variant="ghost"
-                          aria-label="Conversations options"
+                          aria-label="Recent options"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -1770,7 +2414,7 @@ function Pods() {
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuLabel label="Conversations" />
+                        <DropdownMenuLabel label="Recent" />
                         <DropdownMenuItem
                           label={
                             hideTriggeredConversations
@@ -1797,7 +2441,7 @@ function Pods() {
                     </DropdownMenu>
                   }
                 >
-                  {groupedConversations.today.map((c) => (
+                  {recentConversations.map((c) => (
                     <NavigationListItem
                       key={c.id}
                       label={c.title}
@@ -1816,78 +2460,6 @@ function Pods() {
                       }}
                     />
                   ))}
-                  {groupedConversations.yesterday.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Yesterday" isSticky />
-                      {groupedConversations.yesterday.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {groupedConversations.lastWeek.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Last week" isSticky />
-                      {groupedConversations.lastWeek.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {groupedConversations.lastMonth.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Last month" />
-                      {groupedConversations.lastMonth.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
                 </NavigationListCollapsibleSection>
               )}
             </NavigationList>
@@ -2099,4 +2671,4 @@ function Pods() {
   );
 }
 
-export default Pods;
+export default PeopleAgent;
