@@ -186,16 +186,8 @@ function growthPercent(
     : null;
 }
 
-function VsPrevCell({
-  credits,
-  previousCredits,
-}: {
-  credits: number;
-  previousCredits: number | null;
-}) {
-  const growth = growthPercent(credits, previousCredits);
-
-  if (growth === null) {
+function PercentageChangeCell({ percentage }: { percentage: number | null }) {
+  if (percentage === null) {
     return (
       <DataTable.CellContent className="w-full justify-end text-right">
         <Tooltip
@@ -211,19 +203,33 @@ function VsPrevCell({
     <div
       className={cn(
         "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
-        growth > 100 ? "text-highlight-600" : "text-muted-foreground"
+        percentage > 100 ? "text-highlight-600" : "text-muted-foreground"
       )}
     >
       <Icon
-        visual={growth >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
+        visual={percentage >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
         size="xs"
       />
-      <span>{Math.round(Math.abs(growth))}%</span>
+      <span>{Math.round(Math.abs(percentage))}%</span>
     </div>
   );
 }
 
-function usageVsWorkspaceAverage({
+function VsPrevCell({
+  credits,
+  previousCredits,
+}: {
+  credits: number;
+  previousCredits: number | null;
+}) {
+  return (
+    <PercentageChangeCell
+      percentage={growthPercent(credits, previousCredits)}
+    />
+  );
+}
+
+function usageVsAveragePercent({
   credits,
   activeMembers,
   totalCredits,
@@ -239,9 +245,12 @@ function usageVsWorkspaceAverage({
   }
 
   const groupAverageCredits = credits / activeMembers;
-  const workspaceAverageCredits = totalCredits / totalActiveMembers;
+  const overallAverageCredits = totalCredits / totalActiveMembers;
 
-  return groupAverageCredits / workspaceAverageCredits;
+  return (
+    ((groupAverageCredits - overallAverageCredits) / overallAverageCredits) *
+    100
+  );
 }
 
 function buildColumns({
@@ -389,30 +398,19 @@ function buildColumns({
             ),
           },
           {
-            id: "usageVsWorkspaceAverage",
-            header: "Usage vs workspace avg",
+            id: "usageVsAverage",
+            header: "Per-member usage vs avg",
             enableSorting: false,
             meta: { sizeRatio: 22, headerAlign: "right" },
             cell: (info) => {
-              const usageRatio = usageVsWorkspaceAverage({
+              const usagePercent = usageVsAveragePercent({
                 credits: info.row.original.credits,
                 activeMembers: info.row.original.activeMembers,
                 totalCredits,
                 totalActiveMembers,
               });
 
-              return (
-                <DataTable.BasicCellContent
-                  className="justify-end text-right tabular-nums"
-                  label={
-                    usageRatio === null
-                      ? "--"
-                      : `${usageRatio.toLocaleString("en-US", {
-                          maximumFractionDigits: 1,
-                        })}×`
-                  }
-                />
-              );
+              return <PercentageChangeCell percentage={usagePercent} />;
             },
           },
         ] satisfies ColumnDef<AttributionRowData>[])

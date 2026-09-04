@@ -294,7 +294,7 @@ describe("ConsumptionAttributionTable", () => {
           icon: null,
           modelId: null,
           modelDisplayName: null,
-          credits: 300,
+          credits: 500,
           avgCredits: 100,
           activeMembers: 2,
           totalMembers: 5,
@@ -326,13 +326,15 @@ describe("ConsumptionAttributionTable", () => {
       screen.getByRole("columnheader", { name: "Active / total members" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("columnheader", { name: "Usage vs workspace avg" })
+      screen.getByRole("columnheader", { name: "Per-member usage vs avg" })
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("columnheader", { name: "Consumption share" })
     ).not.toBeInTheDocument();
     expect(screen.getByText("2 / 5")).toBeInTheDocument();
-    expect(screen.getByText("1.5×")).toBeInTheDocument();
+    expect(screen.getByText("150%").parentElement).toHaveClass(
+      "text-highlight-600"
+    );
   });
 
   it("caps the available pages and fetches the selected fixed-size page", async () => {
