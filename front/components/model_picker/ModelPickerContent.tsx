@@ -19,6 +19,7 @@ import type {
 } from "@app/types/api/assistant/models";
 import type {
   ModelConfigurationType,
+  ModelMakerIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
@@ -45,6 +46,8 @@ interface ModelPickerContentProps {
   streams: ModelStreamResolutionsType | null;
   isMakersExpanded: boolean;
   onToggleMakers: () => void;
+  expandedMakerId: ModelMakerIdType | null;
+  onToggleMaker: (makerId: ModelMakerIdType) => void;
   onSelectTier: (tierId: ModelTierId) => void;
   onSelectModel: (model: ModelConfigurationType) => void;
   onChangeEffort?: (
@@ -72,6 +75,8 @@ export function ModelPickerContent({
   streams,
   isMakersExpanded,
   onToggleMakers,
+  expandedMakerId,
+  onToggleMaker,
   onSelectTier,
   onSelectModel,
   onChangeEffort,
@@ -158,6 +163,8 @@ export function ModelPickerContent({
           ignoreTierRestrictions={ignoreTierRestrictions}
           lockPremiumEfforts={lockPremiumEfforts}
           degradedModelIds={degradedModelIds}
+          expandedMakerId={expandedMakerId}
+          onToggleMaker={onToggleMaker}
           onSelectModel={onSelectModel}
           onChangeEffort={onChangeEffort}
         />
