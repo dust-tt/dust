@@ -45,6 +45,12 @@ export function SkillDetailsButtonBar({
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
 
+  // The API redacts the private fields of the skills an admin cannot read (built on spaces they
+  // are not a member of) and flags it with `canRead: false`; only admins ever get such a skill.
+  // Trying or favoriting it would fail, so those entry points are hidden (the edit and archive
+  // ones already are, since the redaction drops `canAdministrate`).
+  const isRedactedForAdmin = !skill.canRead;
+
   return (
     <>
       <ArchiveSkillDialog
@@ -57,7 +63,7 @@ export function SkillDetailsButtonBar({
         }}
       />
       <div className="flex flex-row items-center gap-2 px-1.5">
-        {onFavoriteChange && (
+        {onFavoriteChange && !isRedactedForAdmin && (
           <SkillFavoriteButton
             isFavorite={skill.isFavorite ?? false}
             variant="outline"
@@ -66,13 +72,15 @@ export function SkillDetailsButtonBar({
             }
           />
         )}
-        <Button
-          size="sm"
-          tooltip="Try skill"
-          href={getConversationRoute(owner.sId, "new", `skill=${skill.sId}`)}
-          variant="outline"
-          icon={MessagePlusCircle}
-        />
+        {!isRedactedForAdmin && (
+          <Button
+            size="sm"
+            tooltip="Try skill"
+            href={getConversationRoute(owner.sId, "new", `skill=${skill.sId}`)}
+            variant="outline"
+            icon={MessagePlusCircle}
+          />
+        )}
         {skill.canAdministrate && (
           <Button
             size="sm"

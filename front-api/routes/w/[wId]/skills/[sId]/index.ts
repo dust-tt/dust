@@ -117,12 +117,21 @@ app.get(
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkill(ctx, sId);
-    if (loaded instanceof Response) {
-      return loaded;
+    // Admins get the skills built on spaces they are not a member of too, redacted (`canRead`
+    // false); see `SkillResource.fetchById`.
+    const skill = await SkillResource.fetchById(auth, sId, {
+      // biome-ignore lint/plugin/noDirectRoleCheck: the mode is admin-only, everyone else gets the regular fetch
+      permissionFiltering: auth.isAdmin() ? "redact_unreadable" : "strict",
+    });
+    if (!skill) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "skill_not_found",
+          message: "The skill you're trying to access was not found.",
+        },
+      });
     }
-    const { skill } = loaded;
-
     const withRelations = ctx.req.query("withRelations");
 
     const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
