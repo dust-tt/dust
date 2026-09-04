@@ -8,7 +8,7 @@ import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { PLAN_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
-import { Button, ListSelect } from "@dust-tt/sparkle";
+import { FilterChip, ListSelect } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 interface PlanPanelButtonProps {
@@ -75,15 +75,13 @@ export function PlanPanelButton({
   const label =
     progress.total > 0 ? `Plan ${progress.done}/${progress.total}` : "Plan";
 
-  // Filter chip look, like the other side panel toggles in the title bar.
   return (
-    <Button
-      size="xs"
-      variant={isChipSelected ? "primary" : "ghost"}
-      icon={ListSelect}
+    <FilterChip
       label={isMobile ? undefined : label}
       tooltip={isMobile ? label : undefined}
-      aria-pressed={isChipSelected}
+      icon={ListSelect}
+      variant="secondary"
+      isSelected={isChipSelected}
       onClick={() => togglePanel({ type: PLAN_SIDE_PANEL_TYPE })}
     />
   );

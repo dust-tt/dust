@@ -33,6 +33,7 @@ import {
   Chip,
   CoinsStacked01,
   DotsHorizontal,
+  FilterChip,
   Folder,
   GitBranch01,
   Tooltip,
@@ -75,7 +76,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const currentTitle = conversation
     ? getConversationDisplayTitle(conversation)
     : "";
-  // Side panel toggles read as filter chips: primary while their panel is open.
+  // Side panel toggles are filter chips, selected while their panel is open.
   const isPanelSelected = (type: ConversationSidePanelType) =>
     currentPanel === type && !isPanelClosing;
 
@@ -188,24 +189,20 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
-          <Button
-            size="xs"
+          <FilterChip
             label={isMobile ? undefined : "Credit usage"}
+            tooltip={isMobile ? "Credit usage" : undefined}
             icon={CoinsStacked01}
-            variant={
-              isPanelSelected(CREDITS_SIDE_PANEL_TYPE) ? "primary" : "ghost"
-            }
-            aria-pressed={isPanelSelected(CREDITS_SIDE_PANEL_TYPE)}
+            variant="secondary"
+            isSelected={isPanelSelected(CREDITS_SIDE_PANEL_TYPE)}
             onClick={() => togglePanel({ type: CREDITS_SIDE_PANEL_TYPE })}
           />
-          <Button
-            size="xs"
+          <FilterChip
             label={isMobile ? undefined : "Files"}
+            tooltip={isMobile ? "Files" : undefined}
             icon={Folder}
-            variant={
-              isPanelSelected(FILES_SIDE_PANEL_TYPE) ? "primary" : "ghost"
-            }
-            aria-pressed={isPanelSelected(FILES_SIDE_PANEL_TYPE)}
+            variant="secondary"
+            isSelected={isPanelSelected(FILES_SIDE_PANEL_TYPE)}
             onClick={() => togglePanel({ type: FILES_SIDE_PANEL_TYPE })}
           />
           <PlanPanelButton
