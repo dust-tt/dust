@@ -80,6 +80,7 @@ import type {
   FileTypeWithUploadUrl,
   FileUseCase,
   FileUseCaseMetadata,
+  FrameFileContentType,
   SharingGrantType,
 } from "@app/types/files";
 import {
@@ -1938,6 +1939,34 @@ export class FileResource extends BaseResource<FileModel> {
       mountFilePath: destMountFilePath,
       useCase: destUseCase,
       useCaseMetadata: destUseCaseMetadata ?? null,
+    });
+  }
+
+  /** Rebind a stable Frame identity to another source entry without changing its sharing rows. */
+  updateFrameSourceBinding({
+    contentType,
+    fileName,
+    fileSize,
+    mountFilePath,
+    useCase,
+    useCaseMetadata,
+  }: {
+    contentType: FrameFileContentType;
+    fileName: string;
+    fileSize: number;
+    mountFilePath: string;
+    useCase: FileUseCase;
+    useCaseMetadata: FileUseCaseMetadata;
+  }) {
+    assert(this.isShareableFrame, "Only a Frame source binding can be updated");
+
+    return this.update({
+      contentType,
+      fileName: sanitizeFileSystemName(fileName),
+      fileSize,
+      mountFilePath,
+      useCase,
+      useCaseMetadata,
     });
   }
 
