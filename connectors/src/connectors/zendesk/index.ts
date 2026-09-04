@@ -363,6 +363,10 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       nodes.sort((a, b) => a.title.localeCompare(b.title));
       return new Ok(nodes);
     } catch (e) {
+      // Listing all Zendesk brands requires an admin or an agent with the
+      // `assign_tickets_to_any_brand` permission. Dust requires an admin
+      // connection, so a root-level 403 must be re-authorized with an admin.
+      // https://developer.zendesk.com/api-reference/ticketing/account-configuration/brands/#list-brands
       if (
         parentInternalId === null &&
         e instanceof ZendeskApiError &&
