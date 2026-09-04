@@ -3,6 +3,7 @@ import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
 import { useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { GroupType } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -105,6 +106,137 @@ function groupRowsForMember(
   }));
 }
 
+interface GroupLimitTableProps {
+  rows: GroupRow[];
+  readOnly: boolean;
+  groupLimitInputs: Record<string, string>;
+  groupValidationMessages: Record<string, string | null>;
+  onChange: (groupId: string, cleaned: string) => void;
+}
+
+function GroupLimitTable({
+  rows,
+  readOnly,
+  groupLimitInputs,
+  groupValidationMessages,
+  onChange,
+}: GroupLimitTableProps) {
+  const groupColumns: ColumnDef<GroupRow, string>[] = useMemo(
+    () => [
+      {
+        id: "name",
+        header: "Group",
+        accessorFn: (row) => row.name,
+        cell: ({ row }) => (
+          <DataTable.CellContent>
+            <span
+              className={
+                row.original.isHighest
+                  ? "font-semibold text-highlight-500"
+                  : undefined
+              }
+            >
+              {row.original.name}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        id: "poolCapAwuCredits",
+        header: "Limit",
+        accessorFn: (row) => String(row.poolCapAwuCredits ?? ""),
+        meta: { className: "w-48" },
+        cell: ({ row }) => {
+          const groupId = row.original.groupId;
+          const draft = groupLimitInputs[groupId] ?? "";
+          const message = groupValidationMessages[groupId] ?? null;
+          return (
+            <Input
+              size="sm"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="No limit"
+              disabled={readOnly}
+              value={draft !== "" ? Number(draft).toLocaleString() : ""}
+              onChange={(e) => {
+                onChange(groupId, e.target.value.replace(/[^\d]/g, ""));
+              }}
+              isError={message !== null}
+              message={message ?? undefined}
+              messageStatus={message !== null ? "error" : undefined}
+              suffix="credits/month"
+              isUnit
+            />
+          );
+        },
+      },
+      {
+        id: "memberCount",
+        header: "Members",
+        accessorFn: (row) => row.memberCount.toString(),
+        meta: { headerAlign: "right" },
+        cell: ({ row }) => (
+          <span className="block text-right text-sm text-muted-foreground">
+            {row.original.memberCount.toLocaleString()}
+          </span>
+        ),
+      },
+    ],
+    [readOnly, groupLimitInputs, groupValidationMessages, onChange]
+  );
+
+  return (
+    <div className="overflow-x-auto">
+      <DataTable data={rows} columns={groupColumns} />
+    </div>
+  );
+}
+
+interface PersonalLimitInputProps {
+  value: string;
+  readOnly: boolean;
+  isHighest: boolean;
+  validationMessage: string | null;
+  onChange: (cleaned: string) => void;
+}
+
+function PersonalLimitInput({
+  value,
+  readOnly,
+  isHighest,
+  validationMessage,
+  onChange,
+}: PersonalLimitInputProps) {
+  return (
+    <Page.Vertical gap="xs" align="stretch">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-foreground">
+          Personal limit
+        </span>
+        {isHighest && <Chip size="mini" color="highlight" label="Highest" />}
+      </div>
+      <Input
+        size="sm"
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        placeholder="0"
+        disabled={readOnly}
+        value={value !== "" ? Number(value).toLocaleString() : ""}
+        onChange={(e) => {
+          onChange(e.target.value.replace(/[^\d]/g, ""));
+        }}
+        isError={validationMessage !== null}
+        message={validationMessage ?? undefined}
+        messageStatus={validationMessage !== null ? "error" : undefined}
+        suffix="credits/month"
+        isUnit
+      />
+    </Page.Vertical>
+  );
+}
+
 interface MemberSpendLimitFormProps {
   member: MemberUsageType | null;
   owner: LightWorkspaceType;
@@ -174,78 +306,16 @@ function MemberSpendLimitForm({
     Record<string, string | null>
   >({});
 
-  const groupColumns: ColumnDef<GroupRow, string>[] = useMemo(
-    () => [
-      {
-        id: "name",
-        header: "Group",
-        accessorFn: (row) => row.name,
-        cell: ({ row }) => (
-          <DataTable.CellContent>
-            <span
-              className={
-                row.original.isHighest
-                  ? "font-semibold text-highlight-500"
-                  : undefined
-              }
-            >
-              {row.original.name}
-            </span>
-          </DataTable.CellContent>
-        ),
-      },
-      {
-        id: "poolCapAwuCredits",
-        header: "Limit",
-        accessorFn: (row) => String(row.poolCapAwuCredits ?? ""),
-        meta: { className: "w-48" },
-        cell: ({ row }) => {
-          const groupId = row.original.groupId;
-          const draft = groupLimitInputs[groupId] ?? "";
-          const message = groupValidationMessages[groupId] ?? null;
-          return (
-            <Input
-              size="sm"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="No limit"
-              disabled={readOnly}
-              value={draft !== "" ? Number(draft).toLocaleString() : ""}
-              onChange={(e) => {
-                const cleaned = e.target.value.replace(/[^\d]/g, "");
-                setGroupLimitInputs((prev) => ({
-                  ...prev,
-                  [groupId]: cleaned,
-                }));
-                setGroupValidationMessages((prev) => ({
-                  ...prev,
-                  [groupId]: null,
-                }));
-              }}
-              isError={message !== null}
-              message={message ?? undefined}
-              messageStatus={message !== null ? "error" : undefined}
-              suffix="credits/month"
-              isUnit
-            />
-          );
-        },
-      },
-      {
-        id: "memberCount",
-        header: "Members",
-        accessorFn: (row) => row.memberCount.toString(),
-        meta: { headerAlign: "right" },
-        cell: ({ row }) => (
-          <span className="block text-right text-sm text-muted-foreground">
-            {row.original.memberCount.toLocaleString()}
-          </span>
-        ),
-      },
-    ],
-    [readOnly, groupLimitInputs, groupValidationMessages]
-  );
+  function handleGroupLimitChange(groupId: string, cleaned: string) {
+    setGroupLimitInputs((prev) => ({
+      ...prev,
+      [groupId]: cleaned,
+    }));
+    setGroupValidationMessages((prev) => ({
+      ...prev,
+      [groupId]: null,
+    }));
+  }
 
   async function handleValidate() {
     if (readOnly) {
@@ -291,7 +361,7 @@ function MemberSpendLimitForm({
     setIsSaving(true);
     onSavingChange?.(member.sId, true);
     try {
-      const tasks: Promise<unknown>[] = [];
+      const tasks: Array<() => Promise<unknown>> = [];
       if (personalChanged) {
         const limit =
           personalResult.awuCredits === null
@@ -300,7 +370,7 @@ function MemberSpendLimitForm({
                 kind: "limited",
                 awuCredits: personalResult.awuCredits,
               } as const);
-        tasks.push(
+        tasks.push(() =>
           doUpdateSpendLimit({
             memberId: member.sId,
             memberName: member.name,
@@ -316,7 +386,7 @@ function MemberSpendLimitForm({
           result.awuCredits === null
             ? ({ kind: "unlimited" } as const)
             : ({ kind: "limited", awuCredits: result.awuCredits } as const);
-        tasks.push(
+        tasks.push(() =>
           doUpdateGroupSpendLimit({
             groupId: row.groupId,
             groupName: row.name,
@@ -325,7 +395,9 @@ function MemberSpendLimitForm({
         );
       }
 
-      const results = await Promise.all(tasks);
+      const results = await concurrentExecutor(tasks, (task) => task(), {
+        concurrency: 8,
+      });
       if (results.every((result) => result !== null)) {
         onSaved?.();
         onClose();
@@ -358,48 +430,29 @@ function MemberSpendLimitForm({
       </DialogHeader>
       <DialogContainer>
         <div className="flex flex-col gap-5">
-          <Page.Vertical gap="xs" align="stretch">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
-                Personal limit
-              </span>
-              {hasPersonalOverride && (
-                <Chip size="mini" color="highlight" label="Highest" />
-              )}
-            </div>
-            <Input
-              size="sm"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="0"
-              disabled={readOnly}
-              value={
-                personalLimitInput !== ""
-                  ? Number(personalLimitInput).toLocaleString()
-                  : ""
-              }
-              onChange={(e) => {
-                const cleaned = e.target.value.replace(/[^\d]/g, "");
-                setPersonalLimitInput(cleaned);
-                setValidationMessage(null);
-              }}
-              isError={validationMessage !== null}
-              message={validationMessage ?? undefined}
-              messageStatus={validationMessage !== null ? "error" : undefined}
-              suffix="credits/month"
-              isUnit
-            />
-          </Page.Vertical>
+          <PersonalLimitInput
+            value={personalLimitInput}
+            readOnly={readOnly}
+            isHighest={hasPersonalOverride}
+            validationMessage={validationMessage}
+            onChange={(cleaned) => {
+              setPersonalLimitInput(cleaned);
+              setValidationMessage(null);
+            }}
+          />
 
           {memberGroupRows.length > 0 && (
             <Page.Vertical gap="xs" align="stretch">
               <span className="flex items-center gap-1 text-sm font-medium text-foreground">
                 Group limit
               </span>
-              <div className="overflow-x-auto">
-                <DataTable data={memberGroupRows} columns={groupColumns} />
-              </div>
+              <GroupLimitTable
+                rows={memberGroupRows}
+                readOnly={readOnly}
+                groupLimitInputs={groupLimitInputs}
+                groupValidationMessages={groupValidationMessages}
+                onChange={handleGroupLimitChange}
+              />
             </Page.Vertical>
           )}
         </div>
