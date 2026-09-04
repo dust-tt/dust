@@ -1,6 +1,5 @@
+import { lookupShareTokenInOtherCells } from "@app/lib/api/cells/lookup";
 import config from "@app/lib/api/config";
-import { config as regionConfig } from "@app/lib/api/regions/config";
-import { lookupShareToken } from "@app/lib/api/regions/lookup";
 import { getWorkspaceBrandingPublicUrls } from "@app/lib/api/workspace_branding";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -28,8 +27,8 @@ app.get(
     const result = await FileResource.fetchByShareToken(token);
     if (result.isErr()) {
       if (result.error.code === "file_not_found") {
-        // Not found locally — check other region.
-        const lookupResult = await lookupShareToken(token);
+        // Not found locally — check other cells.
+        const lookupResult = await lookupShareTokenInOtherCells(token);
         if (lookupResult.isErr()) {
           logger.error(
             { err: lookupResult.error },
@@ -37,16 +36,12 @@ app.get(
           );
         }
         if (lookupResult.isOk() && lookupResult.value) {
-          const region = lookupResult.value;
           return ctx.json(
             {
               error: {
-                type: "workspace_in_different_region",
-                message: "File is located in a different region",
-                redirect: {
-                  region,
-                  url: regionConfig.getRegionUrl(region),
-                },
+                type: "workspace_in_different_cell",
+                message: "File is located in a different cell",
+                redirect: lookupResult.value,
               },
             },
             400
