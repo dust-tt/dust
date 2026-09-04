@@ -1,5 +1,10 @@
 import { detectEnvironmentFromCwd, getEnvironment } from "../lib/environment";
-import { getForwarderStatus, startForwarder, stopForwarder } from "../lib/forward";
+import {
+  formatForwarderMapping,
+  getForwarderStatus,
+  startForwarder,
+  stopForwarder,
+} from "../lib/forward";
 import { FORWARDER_MAPPINGS } from "../lib/forwarderConfig";
 import { logger } from "../lib/logger";
 import { FORWARDER_LOG_PATH } from "../lib/paths";
@@ -22,9 +27,7 @@ export async function forwardStatusCommand(): Promise<Result<void>> {
     console.log(`Updated:    ${status.state.updatedAt}`);
     console.log("Listening:");
     for (const m of FORWARDER_MAPPINGS) {
-      console.log(
-        `            ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → ${status.state.basePort + m.targetOffset}`
-      );
+      console.log(`            ${formatForwarderMapping(m, status.state.basePort)}`);
     }
 
     // Check if target is still warm
