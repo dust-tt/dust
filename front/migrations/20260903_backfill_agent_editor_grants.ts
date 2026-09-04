@@ -1,12 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import {
-  AgentResource,
-  fetchAllAgentsForWorkspace,
-} from "@app/lib/resources/agent_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -17,7 +13,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
-import { Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 const AGENT_CONCURRENCY = 8;
 const WORKSPACE_CONCURRENCY = 4;
@@ -28,7 +24,11 @@ const AgentConfigModel: ModelStaticWorkspaceAware<AgentConfigurationModel> =
 type EditorState = {
   legacyEditors: UserResource[];
   grantEditors: UserResource[];
-  authors: UserResource[];
+};
+
+type EditorChanges = {
+  toAdd: UserResource[];
+  toRemove: UserResource[];
 };
 
 type BackfillSpec = {
@@ -40,8 +40,8 @@ type BackfillSpec = {
 export type AgentEditorGrantStats = {
   agentCount: number;
   editorGrantsToAdd: number;
+  editorGrantsToRemove: number;
   mismatchedAgentCount: number;
-  authorsWithoutGrantCount: number;
 };
 
 function userDifference(
@@ -82,56 +82,37 @@ async function fetchGrantEditors(
   return group ? group.getActiveMembers(auth) : [];
 }
 
-async function fetchActiveAuthors(
-  auth: Authenticator,
-  configuration: AgentConfigurationModel
-): Promise<UserResource[]> {
-  const versions = await AgentConfigurationModel.findAll({
-    attributes: ["authorId"],
-    where: {
-      agentId: configuration.agentId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-  const authorIds = [...new Set(versions.map(({ authorId }) => authorId))];
-  const authors = await UserResource.fetchByModelIds(authorIds);
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users: authors,
-    workspace: auth.getNonNullableWorkspace(),
-  });
-  const activeAuthorIds = new Set(memberships.map(({ userId }) => userId));
-
-  return authors.filter(({ id }) => activeAuthorIds.has(id));
-}
-
 async function fetchEditorState(
   auth: Authenticator,
   agent: AgentResource,
   configuration: AgentConfigurationModel
 ): Promise<EditorState> {
-  const [legacyEditors, grantEditors, authors] = await Promise.all([
+  const [legacyEditors, grantEditors] = await Promise.all([
     fetchLegacyEditors(auth, configuration),
     fetchGrantEditors(auth, agent),
-    fetchActiveAuthors(auth, configuration),
   ]);
 
-  return { legacyEditors, grantEditors, authors };
+  return { legacyEditors, grantEditors };
 }
 
-async function writeEditorGrants(
+async function syncEditorGrants(
   auth: Authenticator,
   agent: AgentResource,
   configuration: AgentConfigurationModel,
-  editors: UserResource[],
+  { toAdd, toRemove }: EditorChanges,
   { execute, logger, workspace }: BackfillSpec
 ): Promise<void> {
-  if (!execute || editors.length === 0) {
+  if (!execute || (toAdd.length === 0 && toRemove.length === 0)) {
     return;
   }
 
   await withTransaction(async (transaction) => {
     await agent.grantEditors(auth, {
-      editors: editors.map((editor) => editor.toJSON()),
+      editors: toAdd.map((editor) => editor.toJSON()),
+      transaction,
+    });
+    await agent.revokeEditors(auth, {
+      editors: toRemove.map((editor) => editor.toJSON()),
       transaction,
     });
   });
@@ -140,9 +121,10 @@ async function writeEditorGrants(
       workspaceId: workspace.sId,
       agentId: configuration.sId,
       agentStatus: configuration.status,
-      editorIds: editors.map(({ sId }) => sId).sort(),
+      addedEditorIds: toAdd.map(({ sId }) => sId).sort(),
+      removedEditorIds: toRemove.map(({ sId }) => sId).sort(),
     },
-    "Backfilled agent editor grants"
+    "Synchronized agent editor grants"
   );
 }
 
@@ -172,28 +154,6 @@ function reportEditorMismatch(
   return 1;
 }
 
-function reportMissingAuthors(
-  configuration: AgentConfigurationModel,
-  state: EditorState,
-  { logger, workspace }: BackfillSpec
-): number {
-  const authorsWithoutGrant = userDifference(state.authors, state.grantEditors);
-  if (authorsWithoutGrant.length === 0) {
-    return 0;
-  }
-
-  logger.warn(
-    {
-      workspaceId: workspace.sId,
-      agentId: configuration.sId,
-      agentStatus: configuration.status,
-      authorIds: authorsWithoutGrant.map(({ sId }) => sId).sort(),
-    },
-    "Agent authors are not explicit editors"
-  );
-  return authorsWithoutGrant.length;
-}
-
 async function backfillAgentGrants(
   auth: Authenticator,
   configuration: AgentConfigurationModel,
@@ -201,25 +161,29 @@ async function backfillAgentGrants(
 ): Promise<AgentEditorGrantStats> {
   const agent = AgentResource.fromAgentConfigurationModel(configuration);
   const initialState = await fetchEditorState(auth, agent, configuration);
-  const missingEditors = userDifference(
-    initialState.legacyEditors,
-    initialState.grantEditors
-  );
+  const changes = {
+    toAdd: userDifference(
+      initialState.legacyEditors,
+      initialState.grantEditors
+    ),
+    toRemove: userDifference(
+      initialState.grantEditors,
+      initialState.legacyEditors
+    ),
+  };
 
-  await writeEditorGrants(auth, agent, configuration, missingEditors, spec);
-  const finalState = spec.execute
-    ? await fetchEditorState(auth, agent, configuration)
-    : initialState;
+  await syncEditorGrants(auth, agent, configuration, changes, spec);
+  const hasChanges = changes.toAdd.length > 0 || changes.toRemove.length > 0;
+  const finalState =
+    spec.execute && hasChanges
+      ? await fetchEditorState(auth, agent, configuration)
+      : initialState;
 
   return {
     agentCount: 1,
-    editorGrantsToAdd: missingEditors.length,
+    editorGrantsToAdd: changes.toAdd.length,
+    editorGrantsToRemove: changes.toRemove.length,
     mismatchedAgentCount: reportEditorMismatch(configuration, finalState, spec),
-    authorsWithoutGrantCount: reportMissingAuthors(
-      configuration,
-      finalState,
-      spec
-    ),
   };
 }
 
@@ -228,18 +192,43 @@ function sumStats(agentStats: AgentEditorGrantStats[]): AgentEditorGrantStats {
     (total, current) => ({
       agentCount: total.agentCount + current.agentCount,
       editorGrantsToAdd: total.editorGrantsToAdd + current.editorGrantsToAdd,
+      editorGrantsToRemove:
+        total.editorGrantsToRemove + current.editorGrantsToRemove,
       mismatchedAgentCount:
         total.mismatchedAgentCount + current.mismatchedAgentCount,
-      authorsWithoutGrantCount:
-        total.authorsWithoutGrantCount + current.authorsWithoutGrantCount,
     }),
     {
       agentCount: 0,
       editorGrantsToAdd: 0,
+      editorGrantsToRemove: 0,
       mismatchedAgentCount: 0,
-      authorsWithoutGrantCount: 0,
     }
   );
+}
+
+async function fetchAgentHeads(
+  auth: Authenticator
+): Promise<AgentConfigurationModel[]> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const latestVersions = await AgentConfigurationModel.findAll({
+    attributes: ["agentId", [fn("MAX", col("version")), "version"]],
+    where: { workspaceId, status: { [Op.ne]: "draft" } },
+    group: ["agentId"],
+  });
+  if (latestVersions.length === 0) {
+    return [];
+  }
+
+  // The largest workspace has about 17k agents, which keeps this lookup bounded.
+  return AgentConfigurationModel.findAll({
+    where: {
+      workspaceId,
+      [Op.or]: latestVersions.map(({ agentId, version }) => ({
+        agentId,
+        version,
+      })),
+    },
+  });
 }
 
 async function fetchAgentWorkspaceIds(): Promise<ModelId[]> {
@@ -263,14 +252,17 @@ export async function backfillAgentEditorGrants({
   workspace,
 }: BackfillSpec): Promise<AgentEditorGrantStats> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const agents = await fetchAllAgentsForWorkspace(auth);
+  const configurations = await fetchAgentHeads(auth);
 
-  // Each task owns one stable agent ID. grantEditors locks its grant tuple against concurrent live
-  // writes.
+  // Each task owns one stable agent ID. Grant mutations lock their tuple against concurrent writes.
   const agentStats = await concurrentExecutor(
-    agents,
-    async (agent) =>
-      backfillAgentGrants(auth, agent, { execute, logger, workspace }),
+    configurations,
+    async (configuration) =>
+      backfillAgentGrants(auth, configuration, {
+        execute,
+        logger,
+        workspace,
+      }),
     { concurrency: AGENT_CONCURRENCY }
   );
   const stats = sumStats(agentStats);

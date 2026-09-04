@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 const logger = baseLogger.child({}, { level: "silent" });
 
 describe("backfillAgentEditorGrants", () => {
-  it("backfills archived agents idempotently and reports remaining differences", async () => {
+  it("syncs archived agents from their latest legacy group", async () => {
     const {
       authenticator,
       user: author,
@@ -57,14 +57,6 @@ describe("backfillAgentEditorGrants", () => {
     if (addLegacyEditor.isErr()) {
       throw addLegacyEditor.error;
     }
-    const removeLegacyAuthor = await legacyGroup.dangerouslyRemoveMember(
-      authenticator,
-      { user: author.toJSON() }
-    );
-    if (removeLegacyAuthor.isErr()) {
-      throw removeLegacyAuthor.error;
-    }
-
     const firstVersionModel = await AgentConfigurationModel.findOne({
       where: { id: firstVersion.id, workspaceId: workspace.id },
     });
@@ -104,21 +96,21 @@ describe("backfillAgentEditorGrants", () => {
     if (addGrantEditor.isErr()) {
       throw addGrantEditor.error;
     }
-    const revokeAuthor = await GroupPermissionResource.revokeFromUser(
-      authenticator,
-      {
-        user: author.toJSON(),
-        grantType: "editor",
-        resourceType: "agent",
-        resourceId,
-      }
-    );
-    if (revokeAuthor.isErr()) {
-      throw revokeAuthor.error;
-    }
     expect(await archiveAgentConfiguration(authenticator, agent.sId)).toBe(
       true
     );
+
+    const dryRun = await backfillAgentEditorGrants({
+      execute: false,
+      logger,
+      workspace,
+    });
+    expect(dryRun).toEqual({
+      agentCount: 1,
+      editorGrantsToAdd: 1,
+      editorGrantsToRemove: 1,
+      mismatchedAgentCount: 1,
+    });
 
     const firstRun = await backfillAgentEditorGrants({
       execute: true,
@@ -128,8 +120,8 @@ describe("backfillAgentEditorGrants", () => {
     expect(firstRun).toEqual({
       agentCount: 1,
       editorGrantsToAdd: 1,
-      mismatchedAgentCount: 1,
-      authorsWithoutGrantCount: 1,
+      editorGrantsToRemove: 1,
+      mismatchedAgentCount: 0,
     });
 
     const grantGroup =
@@ -142,14 +134,14 @@ describe("backfillAgentEditorGrants", () => {
       (await grantGroup.getActiveMembers(authenticator))
         .map(({ sId }) => sId)
         .sort()
-    ).toEqual([legacyOnlyEditor.sId, grantOnlyEditor.sId].sort());
+    ).toEqual([author.sId, legacyOnlyEditor.sId].sort());
 
     await expect(
       backfillAgentEditorGrants({ execute: true, logger, workspace })
     ).resolves.toMatchObject({
       editorGrantsToAdd: 0,
-      mismatchedAgentCount: 1,
-      authorsWithoutGrantCount: 1,
+      editorGrantsToRemove: 0,
+      mismatchedAgentCount: 0,
     });
   });
 });
