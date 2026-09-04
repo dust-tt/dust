@@ -66,9 +66,9 @@ beforeAll(() => {
   const outDir = path.join(workDir, "out");
   const manifest = buildFrameRuntimeTypes({ vizRoot: VIZ_ROOT, outDir });
 
-  expect(manifest.path).toBe(`/frame-runtime/${manifest.id}.tgz`);
+  expect(manifest.path).toBe(`/frame-runtime/${manifest.tarballSha256}.tgz`);
   expect(fs.readdirSync(outDir).sort()).toEqual([
-    `${manifest.id}.tgz`,
+    `${manifest.tarballSha256}.tgz`,
     "manifest.json",
   ]);
   expect(
@@ -78,7 +78,7 @@ beforeAll(() => {
   fs.mkdirSync(runtimeDir);
   execFileSync("tar", [
     "-xzf",
-    path.join(outDir, `${manifest.id}.tgz`),
+    path.join(outDir, `${manifest.tarballSha256}.tgz`),
     "-C",
     runtimeDir,
   ]);

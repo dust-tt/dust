@@ -57,9 +57,10 @@ export const FRAME_RUNTIME_TYPES_MANIFEST_VERSION = 1;
 
 export interface FrameRuntimeTypesManifest {
   version: typeof FRAME_RUNTIME_TYPES_MANIFEST_VERSION;
-  // Content hash of the extracted tree; consumers key their install directory on it.
+  // Content hash of the extracted tree; consumers key their install directory on it, so a
+  // rebuild of identical sources never re-installs.
   id: string;
-  // URL path of the tarball, relative to the Viz origin.
+  // URL path of the tarball, relative to the Viz origin. Named after `tarballSha256`.
   path: string;
   tarballSha256: string;
   sizeBytes: number;
@@ -370,17 +371,21 @@ export function buildFrameRuntimeTypes({
         fs.rmSync(path.join(outDir, entry));
       }
     }
-    const tarballName = `${id}.tgz`;
-    const tarballPath = path.join(outDir, tarballName);
-    execFileSync("tar", ["-czf", tarballPath, "-C", stageRoot, "."], {
+    // tar and gzip embed timestamps, so two builds of the same tree produce different bytes. The
+    // file is named after the bytes it holds so a URL can never serve two different tarballs.
+    const stagedTarballPath = path.join(outDir, ".frame-runtime.tgz");
+    execFileSync("tar", ["-czf", stagedTarballPath, "-C", stageRoot, "."], {
       stdio: "pipe",
     });
-    const tarball = fs.readFileSync(tarballPath);
+    const tarball = fs.readFileSync(stagedTarballPath);
+    const tarballSha256 = sha256(tarball);
+    const tarballName = `${tarballSha256}.tgz`;
+    fs.renameSync(stagedTarballPath, path.join(outDir, tarballName));
     const manifest: FrameRuntimeTypesManifest = {
       version: FRAME_RUNTIME_TYPES_MANIFEST_VERSION,
       id,
       path: `/frame-runtime/${tarballName}`,
-      tarballSha256: sha256(tarball),
+      tarballSha256,
       sizeBytes: tarball.byteLength,
     };
     fs.writeFileSync(
