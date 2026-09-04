@@ -1,4 +1,6 @@
 import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
+import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
+import { useConversationInspectorPanels } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -49,7 +51,7 @@ import {
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { ComponentProps, ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
@@ -577,14 +579,24 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 };
 
 interface AgentMessageViewProps {
+  conversationId: string;
+  isConsumptionOpen: boolean;
   message: PokeAgentMessageType;
+  onConsumptionOpenChange: (open: boolean) => void;
+  onConsumptionPanelExitComplete: () => void;
+  onConsumptionPanelRefChange: (element: HTMLDivElement | null) => void;
   useMarkdown: boolean;
   owner: LightWorkspaceType;
   langfuseUiBaseUrl: string | null;
 }
 
 const AgentMessageView = ({
+  conversationId,
+  isConsumptionOpen,
   message,
+  onConsumptionOpenChange,
+  onConsumptionPanelExitComplete,
+  onConsumptionPanelRefChange,
   useMarkdown,
   owner,
   langfuseUiBaseUrl,
@@ -696,6 +708,17 @@ const AgentMessageView = ({
             )}
           </div>
         </div>
+        <PokeMessageConsumptionInspector
+          billedCredits={message.costCredits}
+          conversationId={conversationId}
+          isOpen={isConsumptionOpen}
+          messageId={message.sId}
+          onOpenChange={onConsumptionOpenChange}
+          onPanelExitComplete={onConsumptionPanelExitComplete}
+          onPanelRefChange={onConsumptionPanelRefChange}
+          subAgentBilledCredits={message.subAgentCostCredits}
+          workspaceId={owner.sId}
+        />
         {providerPassthroughEntries.map((entry) => (
           <ProviderPassthroughView
             key={entry.key}
@@ -859,6 +882,38 @@ export function ConversationPage() {
   const [showRenderControls, setShowRenderControls] = useState(false);
   const [isCopiedJSON, copyJSON] = useCopyToClipboard();
   const [isCopiedSandboxCommand, copySandboxCommand] = useCopyToClipboard();
+  const activeMessagePanelRef = useRef<HTMLDivElement | null>(null);
+  const stickyInspectorsRef = useRef<HTMLElement | null>(null);
+  const {
+    activeMessageId,
+    completeMessagePanelExit,
+    isConversationOpen,
+    isMessageRailTakeover,
+    isWakeUpsOpen,
+    setConversationOpen,
+    setMessageOpen,
+    setWakeUpsOpen,
+  } = useConversationInspectorPanels({
+    activeMessagePanelRef,
+    stickyInspectorsRef,
+  });
+  function handleMessagePanelRefChange(
+    messageId: string,
+    element: HTMLDivElement | null
+  ) {
+    if (element && messageId === activeMessageId) {
+      activeMessagePanelRef.current = element;
+      return;
+    }
+
+    if (
+      !element &&
+      activeMessagePanelRef.current?.dataset.messageConsumptionPanelId ===
+        messageId
+    ) {
+      activeMessagePanelRef.current = null;
+    }
+  }
 
   const { copyTestCase, isLoading: isTestCaseLoading } =
     useCopyReinforcementTestCase({ owner, conversationId });
@@ -1229,16 +1284,40 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          <div className="grid w-full grid-cols-1 gap-6 py-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start">
-              <PokeConversationConsumptionInspector
-                conversationId={conversationId}
-                workspaceId={owner.sId}
-              />
-              <PokeConversationWakeUpsInspector
-                conversationId={conversationId}
-                owner={owner}
-              />
+          <div
+            className={cn(
+              "grid w-full grid-cols-1 gap-6 py-4",
+              "[--poke-inspector-width:28rem]",
+              "xl:grid-cols-[minmax(0,1fr)_var(--poke-inspector-width)]"
+            )}
+          >
+            <aside
+              ref={stickyInspectorsRef}
+              className="z-20 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start"
+            >
+              <div
+                aria-hidden={isMessageRailTakeover}
+                className={cn(
+                  "flex flex-col gap-4",
+                  "transition-[opacity,visibility] duration-150 ease-out motion-reduce:transition-none",
+                  isMessageRailTakeover
+                    ? "invisible opacity-0"
+                    : "visible opacity-100"
+                )}
+              >
+                <PokeConversationConsumptionInspector
+                  conversationId={conversationId}
+                  isOpen={isConversationOpen}
+                  onOpenChange={setConversationOpen}
+                  workspaceId={owner.sId}
+                />
+                <PokeConversationWakeUpsInspector
+                  conversationId={conversationId}
+                  isOpen={isWakeUpsOpen}
+                  onOpenChange={setWakeUpsOpen}
+                  owner={owner}
+                />
+              </div>
             </aside>
             <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
               {conversation.content.map((messages, i) => {
@@ -1250,7 +1329,18 @@ export function ConversationPage() {
                           return (
                             <AgentMessageView
                               key={`message-${i}-${j}`}
+                              conversationId={conversationId}
+                              isConsumptionOpen={activeMessageId === m.sId}
                               message={m}
+                              onConsumptionOpenChange={(open) =>
+                                setMessageOpen(m.sId, open)
+                              }
+                              onConsumptionPanelExitComplete={() =>
+                                completeMessagePanelExit(m.sId)
+                              }
+                              onConsumptionPanelRefChange={(element) =>
+                                handleMessagePanelRefChange(m.sId, element)
+                              }
                               useMarkdown={useMarkdown}
                               owner={owner}
                               langfuseUiBaseUrl={langfuseUiBaseUrl}

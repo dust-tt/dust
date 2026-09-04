@@ -8,20 +8,23 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
+import type {
+  AgentMessageConsumptionResponse,
+  AgentMessageConsumptionWithModelsResponse,
+} from "@app/types/assistant/agent_message_consumption";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import partition from "lodash/partition";
 
 /**
- * Builds the end-user explanation for one agent message. Provider and token facts stay behind this
- * interface. It uses the newest complete attribution version stored for the message, assigns each
- * visible sub-agent subtree to its originating run-agent tool, and folds hidden helper sub-agents
- * into the parent agent's work. If no version covers the message's current runs and tools, the
- * exact bill remains available while details are withheld.
+ * Builds the full explanation for one agent message, including the model split used by internal
+ * inspection surfaces. It uses the newest complete attribution version stored for the message and
+ * assigns each visible sub-agent subtree to its originating run-agent tool while folding hidden
+ * helper sub-agents into the parent agent's work. If no version covers the message's current runs
+ * and tools, the exact bill remains available while details are withheld.
  */
-export async function getAgentMessageConsumption(
+export async function getAgentMessageConsumptionWithModels(
   auth: Authenticator,
   {
     conversation,
@@ -30,7 +33,7 @@ export async function getAgentMessageConsumption(
     conversation: ConversationResource;
     agentMessageId: string;
   }
-): Promise<AgentMessageConsumptionResponse | null> {
+): Promise<AgentMessageConsumptionWithModelsResponse | null> {
   const facts = await ConsumptionItemResource.fetchMessageConsumptionFacts(
     auth,
     {
@@ -126,7 +129,7 @@ export async function getAgentMessageConsumption(
   );
   const totalBilledCredits = (facts.billedCredits ?? 0) + subAgentBilledCredits;
 
-  const unavailableResponse: AgentMessageConsumptionResponse = {
+  const unavailableResponse: AgentMessageConsumptionWithModelsResponse = {
     billedCredits: facts.billedCredits,
     totalBilledCredits,
     details: null,
@@ -194,11 +197,30 @@ export async function getAgentMessageConsumption(
     return unavailableResponse;
   }
 
-  const { models: _models, ...messageDetails } = details;
-
   return {
     billedCredits: facts.billedCredits,
     totalBilledCredits,
-    details: messageDetails,
+    details,
+  };
+}
+
+/** Keeps provider and model facts out of the end-user message breakdown. */
+export async function getAgentMessageConsumption(
+  auth: Authenticator,
+  args: {
+    conversation: ConversationResource;
+    agentMessageId: string;
+  }
+): Promise<AgentMessageConsumptionResponse | null> {
+  const consumption = await getAgentMessageConsumptionWithModels(auth, args);
+  if (!consumption?.details) {
+    return consumption;
+  }
+
+  const { models: _models, ...details } = consumption.details;
+
+  return {
+    ...consumption,
+    details,
   };
 }
