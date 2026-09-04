@@ -53,6 +53,7 @@ import {
   ShareableFileModel,
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
+import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -124,7 +125,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, Sequelize, UniqueConstraintError } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
@@ -258,21 +259,10 @@ export class FileResource extends BaseResource<FileModel> {
     hasMore: boolean;
     lastValue: string | null;
   }> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
     const where: WhereOptions<InferAttributes<FileModel>> = {
-      workspaceId: workspaceModelId,
+      workspaceId: auth.getNonNullableWorkspace().id,
       contentType: frameV2ContentType,
     };
-
-    if (hasSandbox) {
-      assert(typeof workspaceModelId === "number");
-      where.id = {
-        [Op.in]: Sequelize.literal(
-          // `workspaceModelId` cannot be user provided + assert above.
-          `(SELECT "frameFileModelId" FROM sandbox_owners WHERE "workspaceId" = '${workspaceModelId}' AND "frameFileModelId" IS NOT NULL)`
-        ),
-      };
-    }
 
     if (lastValue) {
       const timestampMs = parseInt(lastValue, 10);
@@ -285,6 +275,19 @@ export class FileResource extends BaseResource<FileModel> {
 
     const rows = await this.model.findAll({
       where,
+      // A Frame has at most one sandbox owner link (unique index), so the inner join never
+      // duplicates rows. `subQuery: false` keeps the join out of the LIMIT subquery.
+      include: hasSandbox
+        ? [
+            {
+              model: SandboxOwnerModel,
+              as: "sandboxOwnerLinks",
+              required: true,
+              attributes: [],
+            },
+          ]
+        : [],
+      subQuery: false,
       order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
       limit: limit + 1,
     });
