@@ -16,10 +16,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Icon,
   Input,
   Page,
-  Users01,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -397,7 +395,6 @@ function MemberSpendLimitForm({
           {memberGroupRows.length > 0 && (
             <Page.Vertical gap="xs" align="stretch">
               <span className="flex items-center gap-1 text-sm font-medium text-foreground">
-                <Icon visual={Users01} size="xs" />
                 Group limit
               </span>
               <div className="overflow-x-auto">
