@@ -813,10 +813,11 @@ export function UsagePage() {
   const canUpgradeSeat = useCallback(
     (member: MemberUsageType) =>
       isSeatBased &&
+      !isSubscriptionCancelled &&
       !!member.seatType &&
       member.seatType !== "none" &&
       toBaseSeatType(member.seatType) !== "workspace",
-    [isSeatBased]
+    [isSeatBased, isSubscriptionCancelled]
   );
 
   // Seat-type filter options derived from the seats available to this
@@ -1046,6 +1047,7 @@ export function UsagePage() {
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
       variant={isCompactUsagePage ? "compact" : undefined}
+      hasPool={hasPool}
     />
   );
 
@@ -1247,7 +1249,9 @@ export function UsagePage() {
         {isCompactUsagePage && isCreditPriced ? (
           <div className="flex flex-col items-stretch gap-4">
             <CompactCreditPoolCards owner={owner} disabled={!isCreditPriced} />
-            <div className="flex justify-end">{topUpButton}</div>
+            {usageSettings.topUpEnabled && (
+              <div className="flex justify-end">{topUpButton}</div>
+            )}
           </div>
         ) : null}
 
