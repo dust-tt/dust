@@ -160,7 +160,8 @@ export async function getApiKeysUsage(
       consumedAwuCredits: consumedByName.get(key.name) ?? 0,
       rateLimiterSpendAwuCredits,
       rateLimiterState,
-      metronomeConsumedAwuCredits: metronomeConsumedByName.get(key.name) ?? null,
+      metronomeConsumedAwuCredits:
+        metronomeConsumedByName.get(key.name) ?? null,
       monthlyCapAwuCredits: key.monthlyCapAwuCredits,
     };
   });
