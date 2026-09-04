@@ -2,6 +2,8 @@ import { PokeConversationConsumptionInspector } from "@app/components/poke/conve
 import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
 import { useConversationInspectorPanels } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
+import type { ProviderPassthroughEntry } from "@app/components/poke/pages/conversation_tool_execution_timeline";
+import { getToolExecutionTimelineEntries } from "@app/components/poke/pages/conversation_tool_execution_timeline";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -22,7 +24,10 @@ import type {
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
 import type { PokeAgentMessageType } from "@app/types/poke";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -95,34 +100,8 @@ function formatDurationMs(durationMs: number) {
     : `${durationMs}ms`;
 }
 
-interface ProviderPassthroughEntry {
-  block: unknown;
-  key: string;
-  provider: string;
-  step: number;
-}
-
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getProviderPassthroughEntries(
-  contents: PokeAgentMessageType["contents"]
-): ProviderPassthroughEntry[] {
-  return contents.flatMap(({ content, step }, contentIndex) => {
-    if (content.type !== "provider_passthrough") {
-      return [];
-    }
-
-    return [
-      {
-        block: content.value.block,
-        key: `${step}-${contentIndex}`,
-        provider: content.value.provider,
-        step,
-      },
-    ];
-  });
 }
 
 function getToolSearchResultSummary(content: unknown): string | null {
@@ -632,8 +611,9 @@ const AgentMessageView = ({
     });
   };
 
-  const providerPassthroughEntries = getProviderPassthroughEntries(
-    message.contents
+  const toolExecutionTimelineEntries = getToolExecutionTimelineEntries(
+    message.contents,
+    message.actions
   );
 
   return (
@@ -719,24 +699,33 @@ const AgentMessageView = ({
           subAgentBilledCredits={message.subAgentCostCredits}
           workspaceId={owner.sId}
         />
-        {providerPassthroughEntries.map((entry) => (
-          <ProviderPassthroughView
-            key={entry.key}
-            entry={entry}
-            isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
-            onToggle={() => toggleProviderPassthroughEntry(entry.key)}
-          />
-        ))}
-        {message.actions.map((a) => {
-          const isExpanded = expandedActions.has(a.sId);
-          return (
-            <ToolActionView
-              key={a.sId}
-              action={a}
-              isExpanded={isExpanded}
-              onToggle={() => toggleAction(a.sId)}
-            />
-          );
+        {toolExecutionTimelineEntries.map((timelineEntry) => {
+          switch (timelineEntry.type) {
+            case "provider_passthrough": {
+              const { entry } = timelineEntry;
+              return (
+                <ProviderPassthroughView
+                  key={timelineEntry.key}
+                  entry={entry}
+                  isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
+                  onToggle={() => toggleProviderPassthroughEntry(entry.key)}
+                />
+              );
+            }
+            case "action": {
+              const { action } = timelineEntry;
+              return (
+                <ToolActionView
+                  key={timelineEntry.key}
+                  action={action}
+                  isExpanded={expandedActions.has(action.sId)}
+                  onToggle={() => toggleAction(action.sId)}
+                />
+              );
+            }
+            default:
+              return assertNever(timelineEntry);
+          }
         })}
       </ConversationMessage>
     </div>
