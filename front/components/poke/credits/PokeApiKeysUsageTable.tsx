@@ -1,6 +1,7 @@
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { ApiKeyUsageType } from "@app/lib/api/credits/api_keys_usage";
+import type { RateLimiterState } from "@app/lib/api/credits/members_usage";
 import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
 import { usePokeApiKeysUsage } from "@app/poke/swr/credits";
 import type { ApiKeyCreditState } from "@app/types/key";
@@ -22,6 +23,17 @@ const API_KEY_CREDIT_STATE_CHIP_COLOR: Record<
 > = {
   on_pool: "success",
   capped: "warning",
+};
+
+// The rate-limiter's verdict, rendered as a chip. Labels distinguish capped vs
+// near-limit (both warning-toned). Mirrors PokeMembersUsageTable.
+const RATE_LIMITER_STATE_CHIP: Record<
+  RateLimiterState,
+  { color: "success" | "warning"; label: string }
+> = {
+  capped: { color: "warning", label: "capped" },
+  near_limit: { color: "warning", label: "near limit" },
+  ok: { color: "success", label: "ok" },
 };
 
 interface PokeApiKeysUsageTableProps {
@@ -107,6 +119,19 @@ function makeColumns({
             label={creditState}
           />
         );
+      },
+    },
+    {
+      accessorKey: "rateLimiterState",
+      header: "Rate limiter state",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const { rateLimiterState } = row.original;
+        if (rateLimiterState === null) {
+          return <span>—</span>;
+        }
+        const { color, label } = RATE_LIMITER_STATE_CHIP[rateLimiterState];
+        return <Chip size="xs" color={color} label={label} />;
       },
     },
     {

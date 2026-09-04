@@ -1,7 +1,9 @@
 import { makeApiKeySpendLimitAwuCreditsRateLimitKey } from "@app/lib/api/assistant/rate_limits";
+import type { RateLimiterState } from "@app/lib/api/credits/members_usage";
 import { fetchConsumedAwuCreditsByApiKeyName } from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import { USER_AWU_WARNING_PERCENTAGE } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerApiKeyAwuUsage } from "@app/lib/metronome/per_api_key_usage";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
@@ -24,6 +26,12 @@ export type ApiKeyUsageType = {
   // figures this one is per key, not per name. Null when the billing period
   // can't be resolved.
   rateLimiterSpendAwuCredits: number | null;
+  // The rate-limiter's verdict for this key's cap: "capped" (counter ≥ cap),
+  // "near_limit" (≥ 80%), or "ok", from `rateLimiterSpendAwuCredits` vs
+  // `monthlyCapAwuCredits`. Null when the key has no cap or the counter couldn't
+  // be read. Independent of the enforcement flag (surfaced beside the Metronome
+  // "Credit state" column to spot divergence).
+  rateLimiterState: RateLimiterState | null;
   // Metronome-side per-API-key AWU consumption for the current billing cycle
   // (the value reconcile and the cap alert read). Null when Metronome isn't
   // configured or the read failed.
@@ -132,15 +140,30 @@ export async function getApiKeysUsage(
       fetchRateLimiterSpendByKeyId({ workspace, keys }),
     ]);
 
-  const apiKeys = keys.map((key) => ({
-    name: key.name,
-    isActive: key.isActive,
-    creditState: key.creditState,
-    consumedAwuCredits: consumedByName.get(key.name) ?? 0,
-    rateLimiterSpendAwuCredits: rateLimiterSpendByKeyId.get(key.id) ?? null,
-    metronomeConsumedAwuCredits: metronomeConsumedByName.get(key.name) ?? null,
-    monthlyCapAwuCredits: key.monthlyCapAwuCredits,
-  }));
+  const apiKeys = keys.map((key) => {
+    const rateLimiterSpendAwuCredits =
+      rateLimiterSpendByKeyId.get(key.id) ?? null;
+    const cap = key.monthlyCapAwuCredits;
+    let rateLimiterState: RateLimiterState | null = null;
+    if (cap !== null && cap > 0 && rateLimiterSpendAwuCredits !== null) {
+      rateLimiterState =
+        rateLimiterSpendAwuCredits >= cap
+          ? "capped"
+          : rateLimiterSpendAwuCredits >= USER_AWU_WARNING_PERCENTAGE * cap
+            ? "near_limit"
+            : "ok";
+    }
+    return {
+      name: key.name,
+      isActive: key.isActive,
+      creditState: key.creditState,
+      consumedAwuCredits: consumedByName.get(key.name) ?? 0,
+      rateLimiterSpendAwuCredits,
+      rateLimiterState,
+      metronomeConsumedAwuCredits: metronomeConsumedByName.get(key.name) ?? null,
+      monthlyCapAwuCredits: key.monthlyCapAwuCredits,
+    };
+  });
 
   // Biggest spenders first — the reason to open this table — then by name for a
   // stable order among the keys with no usage this cycle.

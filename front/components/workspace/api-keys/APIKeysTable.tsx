@@ -99,7 +99,7 @@ function getKeyStatus(key: KeyType): APIKeyStatus {
   if (key.status !== "active") {
     return "revoked";
   }
-  return key.creditState === "capped" ? "capped" : "active";
+  return key.isSpendCapped ? "capped" : "active";
 }
 
 function formatMonthlyCap({
