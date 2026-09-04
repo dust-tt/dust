@@ -7,6 +7,7 @@ import {
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { PLAN_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import { Button, ListSelect } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -31,7 +32,7 @@ export function PlanPanelButton({
   const { currentPanel, openPanel, togglePanel, closePanel } =
     useConversationSidePanelContext();
   const isMobile = useIsMobile();
-  const isPlanPanelOpen = currentPanel === "plan";
+  const isPlanPanelOpen = currentPanel === PLAN_SIDE_PANEL_TYPE;
 
   // Single owner of the plan panel: open when the plan appears, close when it goes away. Driving
   // this off `content` (not a specific event) keeps it correct however the change arrived (live
@@ -48,11 +49,18 @@ export function PlanPanelButton({
     });
     planPresenceRef.current = next;
     if (action === "open") {
-      openPanel({ type: "plan" });
+      openPanel({ type: PLAN_SIDE_PANEL_TYPE });
     } else if (action === "close") {
       closePanel();
     }
-  }, [content, isMobile, isPlanLoading, isPlanPanelOpen, openPanel, closePanel]);
+  }, [
+    content,
+    isMobile,
+    isPlanLoading,
+    isPlanPanelOpen,
+    openPanel,
+    closePanel,
+  ]);
 
   const progress = useMemo(() => countProgress(content), [content]);
 
@@ -64,16 +72,16 @@ export function PlanPanelButton({
   const label =
     progress.total > 0 ? `Plan ${progress.done}/${progress.total}` : "Plan";
 
+  // Filter chip look, like the other side panel toggles in the title bar.
   return (
     <Button
-      size="sm"
-      variant="ghost"
+      size="xs"
+      variant={isPlanPanelOpen ? "primary" : "ghost"}
       icon={ListSelect}
       label={isMobile ? undefined : label}
       tooltip={isMobile ? label : undefined}
       aria-pressed={isPlanPanelOpen}
-      className={isPlanPanelOpen ? "bg-foreground/[0.06]" : undefined}
-      onClick={() => togglePanel({ type: "plan" })}
+      onClick={() => togglePanel({ type: PLAN_SIDE_PANEL_TYPE })}
     />
   );
 }
