@@ -999,6 +999,85 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   // Permissions.
 
+  // Resolves and validates everything in an `updatePermissions` request that can reject it, before
+  // it mutates anything. `updatePermissions` runs in a transaction that only rolls back on a throw
+  // — an `Err` return commits — so a request that fails validation halfway through would leave the
+  // space's mode switched and its manual memberships ended.
+  //
+  // Returns the groups the request selected (empty in manual mode).
+  private async resolveAndValidatePermissionsUpdateGroups(
+    auth: Authenticator,
+    params:
+      | { memberIds: string[]; managementMode: "manual"; editorIds: string[] }
+      | {
+          groupIds: string[];
+          managementMode: "group";
+          editorGroupIds: string[];
+        }
+  ): Promise<
+    Result<
+      { selectedGroups: GroupResource[]; selectedEditorGroups: GroupResource[] },
+      DustError<"unauthorized" | "group_not_found" | "invalid_group_kind" | "invalid_id">
+    >
+  > {
+    if (params.managementMode === "manual") {
+      // Admin-controlled Pods have an empty editor group; workspace admins administrate via role.
+      if (
+        this.isProject() &&
+        params.editorIds.length > 0 &&
+        (await this.fetchIsAdminControlled())
+      ) {
+        return new Err(
+          new DustError(
+            "unauthorized",
+            "Editors cannot be set while this Pod is admin-controlled."
+          )
+        );
+      }
+
+      return new Ok({ selectedGroups: [], selectedEditorGroups: [] });
+    }
+
+    const selectedGroupsRes = await GroupResource.fetchByIds(
+      auth,
+      params.groupIds
+    );
+    if (selectedGroupsRes.isErr()) {
+      return selectedGroupsRes;
+    }
+    const selectedGroups = selectedGroupsRes.value;
+
+    let selectedEditorGroups: GroupResource[] = [];
+    if (this.isProject()) {
+      const selectedEditorGroupsRes = await GroupResource.fetchByIds(
+        auth,
+        params.editorGroupIds
+      );
+      if (selectedEditorGroupsRes.isErr()) {
+        return selectedEditorGroupsRes;
+      }
+      selectedEditorGroups = selectedEditorGroupsRes.value;
+    }
+
+    // `fetchByIds` only checks that the caller can read the groups, not what they are. Without
+    // this, any readable group could be attached: the global group (which would silently make the
+    // space open), another space's regular_auto group (two of those on one space breaks
+    // `fetchManualMemberGroup`), or an agent/skill editors group.
+    const unsupportedGroups = [...selectedGroups, ...selectedEditorGroups].filter(
+      (group) => !isManageableGroupKind(group.kind)
+    );
+    if (unsupportedGroups.length > 0) {
+      return new Err(
+        new DustError(
+          "invalid_group_kind",
+          "Only provisioned and manual groups can be given access to a space."
+        )
+      );
+    }
+
+    return new Ok({ selectedGroups, selectedEditorGroups });
+  }
+
   async updatePermissions(
     auth: Authenticator,
     params: {
@@ -1059,6 +1138,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // Update managementMode if provided
       const { managementMode } = params;
 
+      // Everything that can reject the request is resolved before anything is mutated: an `Err`
+      // returned from this callback does not roll back the transaction (`withTransaction` only
+      // rolls back on a throw), so validating later would leave a rejected request having already
+      // switched the mode and ended the space's manual memberships.
+      const requestedGroupsRes =
+        await this.resolveAndValidatePermissionsUpdateGroups(auth, params);
+      if (requestedGroupsRes.isErr()) {
+        return requestedGroupsRes;
+      }
+      const { selectedGroups, selectedEditorGroups } = requestedGroupsRes.value;
+
       // The space is open (unrestricted) exactly when the workspace global group is one of its
       // groups. There is no separate group_vaults add/remove: the global group is simply included in
       // `members` iff the space is (becoming) open.
@@ -1070,13 +1160,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // Handle member status updates based on management mode changes
       if (previousManagementMode !== managementMode) {
         if (managementMode === "group") {
-          // When switching to group mode, suspend all active members of the default group
-          await this.suspendManualGroupMembers(auth, t);
+          // When switching to group mode, end the memberships of the space's own groups
+          await this.endManualGroupMembers(auth, t);
         } else if (
           managementMode === "manual" &&
           previousManagementMode === "group"
         ) {
-          // When switching from group to manual mode, restore suspended members
+          // When switching from group to manual mode, restore the memberships left suspended by
+          // the previous behaviour (a no-op once the backfill has run).
           await this.restoreManualGroupMembers(auth, t);
         }
       }
@@ -1098,20 +1189,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           "A user cannot be both a member and an editor of the same space."
         );
 
+        // Admin-controlled Pods have an empty editor group; workspace admins administrate via
+        // role. `resolveAndValidatePermissionsUpdate` already rejected any attempt to set editors.
         const isAdminControlled = await this.fetchIsAdminControlled();
-
-        // Admin-controlled Pods have an empty editor group; workspace admins
-        // administrate via role. Reject any attempt to set editors.
-        if (isAdminControlled && this.isProject()) {
-          if (editorIds.length > 0) {
-            return new Err(
-              new DustError(
-                "unauthorized",
-                "Editors cannot be set while this Pod is admin-controlled."
-              )
-            );
-          }
-        }
 
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
@@ -1165,10 +1245,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           }
         }
       } else if (managementMode === "group") {
-        // Handle group-based management
-        const groupIds = params.groupIds;
-        const editorGroupIds = params.editorGroupIds;
-
         // The space's regular_auto member group (and, for projects, its regular_auto editor group)
         // are kept alongside the selected provisioned groups — group mode adds provisioned grants on
         // top of the manual groups rather than replacing them. Deselecting a group removes its
@@ -1180,32 +1256,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           members.push(globalGroup);
         }
 
-        // Add the new groups
-        const selectedGroupsResult = await GroupResource.fetchByIds(
-          auth,
-          groupIds
-        );
-        if (selectedGroupsResult.isErr()) {
-          await syncGroupPermissions();
-          return selectedGroupsResult;
-        }
-        const selectedGroups = selectedGroupsResult.value;
-        // `fetchByIds` only checks that the caller can read the groups, not what they are. Without
-        // this, any readable group could be attached: the global group (which would silently make
-        // the space open), another space's regular_auto group (two of those on one space breaks
-        // `fetchManualMemberGroup`), or an agent/skill editors group.
-        const unsupportedGroups = selectedGroups.filter(
-          (group) => !isManageableGroupKind(group.kind)
-        );
-        if (unsupportedGroups.length > 0) {
-          await syncGroupPermissions();
-          return new Err(
-            new DustError(
-              "invalid_group_kind",
-              "Only provisioned and manual groups can be given access to a space."
-            )
-          );
-        }
+        // Add the selected groups, resolved and kind-checked before any mutation.
         members.push(...selectedGroups);
 
         if (this.isProject()) {
@@ -1215,36 +1266,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           }
 
           assert(
-            editorGroupIds.length > 0,
-            "Pods must have at least one editor group."
-          );
-          // Add the new editor groups
-          const editorGroupsResult = await GroupResource.fetchByIds(
-            auth,
-            editorGroupIds
-          );
-          if (editorGroupsResult.isErr()) {
-            await syncGroupPermissions();
-            return editorGroupsResult;
-          }
-          const selectedEditorGroups = editorGroupsResult.value;
-          assert(
             selectedEditorGroups.length > 0,
             "Pods must have at least one editor group."
           );
-          // Same as above: an unsupported editor group kind must be a rejected request, not a 500.
-          const unsupportedEditorGroups = selectedEditorGroups.filter(
-            (group) => !isManageableGroupKind(group.kind)
-          );
-          if (unsupportedEditorGroups.length > 0) {
-            await syncGroupPermissions();
-            return new Err(
-              new DustError(
-                "invalid_group_kind",
-                "Only provisioned and manual groups can be given access to a space."
-              )
-            );
-          }
           editors.push(...selectedEditorGroups);
         }
       }
@@ -2394,21 +2418,26 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   // Serialization.
 
   /**
-   * Suspends all active members of the default group when switching to group management mode
+   * Ends all active memberships of the space's own groups when switching to group management
+   * mode. The manual member list is dropped rather than kept suspended, so switching back to
+   * manual mode starts from an empty list instead of silently restoring access.
    */
-  private async suspendManualGroupMembers(
+  private async endManualGroupMembers(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
     const groups = await this.fetchRegularAutoGroups(auth, transaction);
 
     for (const group of groups) {
-      await group.dangerouslySuspendMembers(auth, { transaction });
+      await group.dangerouslyEndAllMemberships(auth, { transaction });
     }
   }
 
   /**
-   * Restores all suspended members of the default group when switching to manual management mode
+   * Restores all suspended members of the default group when switching to manual management mode.
+   *
+   * Transitional: only memberships suspended by the previous behaviour are left to restore (see
+   * `GroupResource.dangerouslyRestoreMembers`); the switch to group mode now ends memberships.
    */
   private async restoreManualGroupMembers(
     auth: Authenticator,
