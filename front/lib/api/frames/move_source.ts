@@ -7,6 +7,7 @@ import {
 import {
   withFramePublishLock,
   withFrameSourceLock,
+  withFrameWorkspaceSourceLock,
 } from "@app/lib/api/frames/operation_lock";
 import {
   copyFrameSourceStorage,
@@ -62,6 +63,7 @@ export async function moveFrameV2Source(
     return pathsResult;
   }
   const paths = pathsResult.value;
+  const owner = auth.getNonNullableWorkspace();
 
   const fsResult = await DustFileSystem.forAgentLoop(auth, {
     conversation,
@@ -199,8 +201,10 @@ export async function moveFrameV2Source(
   }
 
   const locked = await withFrameSourceLock(frame.sId, () =>
-    withFramePublishLock(frame.sId, () =>
-      moveWithLocksHeld(sourceMountPath, destinationMountPath)
+    withFrameWorkspaceSourceLock(owner.sId, () =>
+      withFramePublishLock(frame.sId, () =>
+        moveWithLocksHeld(sourceMountPath, destinationMountPath)
+      )
     )
   );
 

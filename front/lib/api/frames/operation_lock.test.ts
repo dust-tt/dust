@@ -1,7 +1,9 @@
 import {
   getFramePublishLockName,
   getFrameSourceLockName,
+  getFrameWorkspaceSourceLockName,
   withFrameSourceLock,
+  withFrameWorkspaceSourceLock,
 } from "@app/lib/api/frames/operation_lock";
 import type { RedisClientType } from "@app/lib/api/redis";
 import { Ok } from "@app/types/shared/result";
@@ -50,6 +52,26 @@ describe("Frame operation locks", () => {
     );
     expect(redis.set).toHaveBeenCalledWith(
       "lock:frame:source:frame-123",
+      expect.any(String),
+      expect.objectContaining({ PX: 10 * 60_000 })
+    );
+  });
+
+  it("serializes source path mutations within a workspace", async () => {
+    const redis = makeRedisClient();
+    getRedisStreamClientMock.mockResolvedValue(redis);
+
+    const result = await withFrameWorkspaceSourceLock(
+      "workspace-123",
+      async () => new Ok("moved")
+    );
+
+    expect(result.isOk() && result.value).toBe("moved");
+    expect(getFrameWorkspaceSourceLockName("workspace-123")).toBe(
+      "frame:source-workspace:workspace-123"
+    );
+    expect(redis.set).toHaveBeenCalledWith(
+      "lock:frame:source-workspace:workspace-123",
       expect.any(String),
       expect.objectContaining({ PX: 10 * 60_000 })
     );

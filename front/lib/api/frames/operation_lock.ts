@@ -13,6 +13,10 @@ export function getFrameSourceLockName(frameId: string): string {
   return `frame:source:${frameId}`;
 }
 
+export function getFrameWorkspaceSourceLockName(workspaceId: string): string {
+  return `frame:source-workspace:${workspaceId}`;
+}
+
 export function withFramePublishLock<T, E>(
   frameId: string,
   callback: () => Promise<Result<T, E>>
@@ -31,6 +35,18 @@ export function withFrameSourceLock<T, E>(
 ): Promise<Result<T, E | LockAcquisitionTimeoutError>> {
   return executeWithLockResult(
     getFrameSourceLockName(frameId),
+    callback,
+    FRAME_OPERATION_LOCK_ACQUISITION_TIMEOUT_MS,
+    { lockTtlMs: FRAME_OPERATION_LOCK_TTL_MS }
+  );
+}
+
+export function withFrameWorkspaceSourceLock<T, E>(
+  workspaceId: string,
+  callback: () => Promise<Result<T, E>>
+): Promise<Result<T, E | LockAcquisitionTimeoutError>> {
+  return executeWithLockResult(
+    getFrameWorkspaceSourceLockName(workspaceId),
     callback,
     FRAME_OPERATION_LOCK_ACQUISITION_TIMEOUT_MS,
     { lockTtlMs: FRAME_OPERATION_LOCK_TTL_MS }

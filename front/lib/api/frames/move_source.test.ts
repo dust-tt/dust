@@ -26,6 +26,7 @@ import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import {
   getFramePublishLockName,
   getFrameSourceLockName,
+  getFrameWorkspaceSourceLockName,
 } from "@app/lib/api/frames/operation_lock";
 import {
   frameManifest,
@@ -91,8 +92,10 @@ describe("moveFrameV2Source", () => {
     expect(emitMovedAuditLog).toHaveBeenCalledOnce();
     expect(lockEvents).toEqual([
       `acquire:${getFrameSourceLockName(c.frame.sId)}`,
+      `acquire:${getFrameWorkspaceSourceLockName(c.workspace.sId)}`,
       `acquire:${getFramePublishLockName(c.frame.sId)}`,
       `release:${getFramePublishLockName(c.frame.sId)}`,
+      `release:${getFrameWorkspaceSourceLockName(c.workspace.sId)}`,
       `release:${getFrameSourceLockName(c.frame.sId)}`,
     ]);
   });
