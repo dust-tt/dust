@@ -242,38 +242,22 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     {
       limit,
-      // Poke's own Frames table re-fetches from offset 0 with a growing `limit` instead (see
-      // `usePokeFrames`); `lastValue` stays wired for other API consumers that want true keyset
-      // pagination.
-      lastValue,
+      offset,
       orderDirection,
       hasSandbox = false,
     }: {
       limit: number;
-      lastValue?: string;
+      offset: number;
       orderDirection: "asc" | "desc";
       hasSandbox?: boolean;
     }
-  ): Promise<{
-    frames: FileResource[];
-    hasMore: boolean;
-    lastValue: string | null;
-  }> {
+  ): Promise<{ frames: FileResource[]; totalCount: number }> {
     const where: WhereOptions<InferAttributes<FileModel>> = {
       workspaceId: auth.getNonNullableWorkspace().id,
       contentType: frameV2ContentType,
     };
 
-    if (lastValue) {
-      const timestampMs = parseInt(lastValue, 10);
-      if (!Number.isNaN(timestampMs)) {
-        where.updatedAt = {
-          [orderDirection === "desc" ? Op.lt : Op.gt]: new Date(timestampMs),
-        };
-      }
-    }
-
-    const rows = await this.model.findAll({
+    const { rows, count } = await this.model.findAndCountAll({
       where,
       // A Frame has at most one sandbox owner link (unique index), so the inner join never
       // duplicates rows. `subQuery: false` keeps the join out of the LIMIT subquery.
@@ -288,18 +272,18 @@ export class FileResource extends BaseResource<FileModel> {
           ]
         : [],
       subQuery: false,
-      order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
-      limit: limit + 1,
+      // `id` breaks ties so a row cannot drift between pages as the offset moves.
+      order: [
+        ["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"],
+        ["id", "DESC"],
+      ],
+      limit,
+      offset,
     });
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-    const last = page.at(-1);
-
     return {
-      frames: page.map((row) => new this(this.model, row.get())),
-      hasMore,
-      lastValue: last ? `${last.updatedAt.getTime()}` : null,
+      frames: rows.map((row) => new this(this.model, row.get())),
+      totalCount: count,
     };
   }
 

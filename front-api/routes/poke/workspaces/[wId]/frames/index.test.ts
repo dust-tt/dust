@@ -31,7 +31,7 @@ describe("GET /api/poke/workspaces/:wId/frames", () => {
       functionCount: 1,
       sandboxStatus: null,
     });
-    expect(data.hasMore).toBe(false);
+    expect(data.totalCount).toBe(1);
   });
 
   it("counts only the active publication's functions", async () => {
@@ -108,7 +108,7 @@ describe("GET /api/poke/workspaces/:wId/frames", () => {
     expect(data.items[0].fileName).toBe("manifest.json");
   });
 
-  it("orders by updatedAt desc and reports hasMore under a limit", async () => {
+  it("orders by updatedAt desc and pages with limit/offset over the total count", async () => {
     const { workspace, adminAuth } = await makeTestFrameFunction({
       isSuperUser: true,
     });
@@ -125,24 +125,38 @@ describe("GET /api/poke/workspaces/:wId/frames", () => {
     // Assert the ordering over the whole page rather than naming which row comes first: two rows
     // created in the same millisecond would make a positional assertion flaky.
     const ordered = await honoApp.request(
-      `${framesUrl(workspace.sId)}?limit=10&orderColumn=updatedAt&orderDirection=desc`
+      `${framesUrl(workspace.sId)}?limit=10&orderDirection=desc`
     );
     expect(ordered.status).toBe(200);
     const orderedData = await ordered.json();
     expect(orderedData.items).toHaveLength(2);
+    expect(orderedData.totalCount).toBe(2);
     const timestamps = orderedData.items.map((item: { updatedAt: string }) =>
       new Date(item.updatedAt).getTime()
     );
     expect(timestamps[0]).toBeGreaterThanOrEqual(timestamps[1]);
 
     const firstPage = await honoApp.request(
-      `${framesUrl(workspace.sId)}?limit=1&orderColumn=updatedAt&orderDirection=desc`
+      `${framesUrl(workspace.sId)}?limit=1&offset=0&orderDirection=desc`
     );
     expect(firstPage.status).toBe(200);
     const firstPageData = await firstPage.json();
     expect(firstPageData.items).toHaveLength(1);
-    expect(firstPageData.hasMore).toBe(true);
-    expect(firstPageData.lastValue).not.toBeNull();
+    expect(firstPageData.totalCount).toBe(2);
+
+    const secondPage = await honoApp.request(
+      `${framesUrl(workspace.sId)}?limit=1&offset=1&orderDirection=desc`
+    );
+    expect(secondPage.status).toBe(200);
+    const secondPageData = await secondPage.json();
+    expect(secondPageData.items).toHaveLength(1);
+    expect(secondPageData.totalCount).toBe(2);
+    expect(secondPageData.items[0].sId).not.toBe(firstPageData.items[0].sId);
+    expect(
+      new Set(orderedData.items.map((item: { sId: string }) => item.sId))
+    ).toEqual(
+      new Set([firstPageData.items[0].sId, secondPageData.items[0].sId])
+    );
   });
 
   it("does not leak frames from another workspace", async () => {

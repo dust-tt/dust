@@ -1,10 +1,18 @@
-import { getPaginationParams } from "@app/lib/api/pagination";
 import type { PokeListFrames } from "@app/lib/api/poke/frames";
 import { listWorkspaceFrames } from "@app/lib/api/poke/frames";
 import { pokeApp } from "@front-api/middlewares/ctx";
-import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import frameId from "./[frameId]";
+
+const ListFramesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  offset: z.coerce.number().int().nonnegative().optional().default(0),
+  orderDirection: z.enum(["asc", "desc"]).optional().default("desc"),
+  hasSandbox: z.enum(["true", "false"]).optional().default("false"),
+});
 
 // Mounted at /api/poke/workspaces/:wId/frames.
 const app = pokeApp();
@@ -12,36 +20,23 @@ const app = pokeApp();
 app.route("/:frameId", frameId);
 
 /** @ignoreswagger */
-app.get("/", async (ctx): HandlerResult<PokeListFrames> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  validate("query", ListFramesQuerySchema),
+  async (ctx): HandlerResult<PokeListFrames> => {
+    const auth = ctx.get("auth");
+    const { limit, offset, orderDirection, hasSandbox } =
+      ctx.req.valid("query");
 
-  const paginationRes = getPaginationParams(ctx.req.query(), {
-    defaultLimit: 20,
-    defaultOrderColumn: "updatedAt",
-    defaultOrderDirection: "desc",
-    supportedOrderColumn: ["updatedAt"],
-  });
-  if (paginationRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: paginationRes.error.reason,
-      },
+    const frames = await listWorkspaceFrames(auth, {
+      limit,
+      offset,
+      orderDirection,
+      hasSandbox: hasSandbox === "true",
     });
+
+    return ctx.json(frames);
   }
-
-  const { limit, lastValue, orderDirection } = paginationRes.value;
-  const { hasSandbox } = ctx.req.query();
-
-  const frames = await listWorkspaceFrames(auth, {
-    limit,
-    lastValue,
-    orderDirection,
-    hasSandbox: hasSandbox === "true",
-  });
-
-  return ctx.json(frames);
-});
+);
 
 export default app;
