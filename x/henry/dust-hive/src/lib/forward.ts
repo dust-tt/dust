@@ -252,6 +252,8 @@ function mappingUrl(m: ForwarderMapping, port: number): string {
   return `http://localhost:${port}${FORWARDER_URL_PATHS[m.name] ?? ""}`;
 }
 
+const NAME_COLUMN_WIDTH = 16;
+
 // Width of the longest listen URL, so the arrows line up across rows.
 const LISTEN_URL_WIDTH = Math.max(
   ...FORWARDER_MAPPINGS.map((m) => mappingUrl(m, m.listenPort).length)
@@ -261,7 +263,7 @@ export function formatForwarderMapping(m: ForwarderMapping, basePort: number): s
   const listenUrl = mappingUrl(m, m.listenPort);
   const targetUrl = mappingUrl(m, basePort + m.targetOffset);
   const padding = " ".repeat(LISTEN_URL_WIDTH - listenUrl.length);
-  return `${m.name.padEnd(16)} ${hyperlink(listenUrl)}${padding} → ${hyperlink(targetUrl)}`;
+  return `${m.name.padEnd(NAME_COLUMN_WIDTH)} ${hyperlink(listenUrl)}${padding} → ${hyperlink(targetUrl)}`;
 }
 
 // Get forwarder status info
