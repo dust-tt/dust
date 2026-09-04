@@ -105,7 +105,6 @@ export class KeyResource extends BaseResource<KeyModel> {
       role: key.role,
       monthlyCapMicroUsd: key.monthlyCapMicroUsd,
       monthlyCapAwuCredits: key.monthlyCapAwuCredits,
-      creditState: key.creditState,
       workspaceId: key.workspaceId,
       groupIds: key.groupIds,
       userId: key.userId,
