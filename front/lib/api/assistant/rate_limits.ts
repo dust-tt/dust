@@ -110,6 +110,10 @@ export type PremiumModelMessageUsage = {
   nextRefill?: { availableAt: string; messages: number } | null;
   // Optional for compatibility with clients deployed before the daily breakdown was added.
   dailyUsage?: { date: string; usedMessages: number }[];
+  // Upcoming refills grouped by the day each message ages out of the rolling
+  // window, chronologically ordered. Optional for compatibility with clients
+  // deployed before this was added.
+  refillSchedule?: { date: string; messages: number }[];
 };
 
 function getNextPremiumModelRefill({
@@ -134,6 +138,24 @@ function getNextPremiumModelRefill({
     availableAt: new Date(oldestTimestampMs + windowMs).toISOString(),
     messages,
   };
+}
+
+function getPremiumModelRefillSchedule({
+  timestampsMs,
+  windowMs,
+}: {
+  timestampsMs: number[];
+  windowMs: number;
+}): { date: string; messages: number }[] {
+  const messagesByRefillDay = new Map<string, number>();
+  for (const timestampMs of timestampsMs) {
+    const date = new Date(timestampMs + windowMs).toISOString().slice(0, 10);
+    messagesByRefillDay.set(date, (messagesByRefillDay.get(date) ?? 0) + 1);
+  }
+
+  return Array.from(messagesByRefillDay.entries())
+    .map(([date, messages]) => ({ date, messages }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function getUtcDayStartMs(timestampMs: number): number {
@@ -203,6 +225,7 @@ export async function getPremiumModelMessageUsage({
       windowStartMs,
       windowEndMs,
     }),
+    refillSchedule: getPremiumModelRefillSchedule({ timestampsMs, windowMs }),
   };
 }
 

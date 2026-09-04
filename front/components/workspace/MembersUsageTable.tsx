@@ -57,6 +57,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  InfoCircle,
   LoadingBlock,
   ProgressBar,
   Spinner,
@@ -755,6 +756,10 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
     <span className="flex items-center gap-1">
       <Icon visual={CoinsStacked03} size="xs" />
       Premium messages
+      <Tooltip
+        trigger={<Icon visual={InfoCircle} size="xs" />}
+        label="Usage is capped over a rolling 7-day window: each message frees up its slot 7 days after it was sent, not all at once."
+      />
     </span>
   ),
   accessorFn: (row) => (row.premiumMessageUsage?.usedMessages ?? 0).toString(),
@@ -767,7 +772,7 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
         </DataTable.CellContent>
       );
     }
-    const { usedMessages, limitMessages, nextRefill } = usage;
+    const { usedMessages, limitMessages, nextRefill, refillSchedule } = usage;
     const percentage =
       limitMessages > 0
         ? Math.min(100, (usedMessages / limitMessages) * 100)
@@ -802,14 +807,33 @@ const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
           />
         </div>
         {nextRefill && (
-          <span className="text-xs font-normal text-muted-foreground">
-            +{nextRefill.messages} on{" "}
-            {new Date(nextRefill.availableAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC",
-            })}
-          </span>
+          <Tooltip
+            tooltipTriggerAsChild
+            trigger={
+              <span className="w-fit cursor-help text-xs font-normal text-muted-foreground">
+                +{nextRefill.messages} on{" "}
+                {new Date(nextRefill.availableAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  timeZone: "UTC",
+                })}
+              </span>
+            }
+            label={
+              <div className="flex flex-col gap-0.5">
+                {(refillSchedule ?? []).map(({ date, messages }) => (
+                  <span key={date}>
+                    {new Date(date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                    : +{messages}
+                  </span>
+                ))}
+              </div>
+            }
+          />
         )}
       </div>
     );
