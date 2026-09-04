@@ -1,10 +1,10 @@
 import { PokeChangeSeatModal } from "@app/components/poke/credits/PokeChangeSeatModal";
-import { PokeMemberSpendLimitModal } from "@app/components/poke/credits/PokeMemberSpendLimitModal";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
 import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import { MemberSpendLimitModal } from "@app/components/workspace/MemberSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import {
@@ -471,10 +471,12 @@ export function PoolUsagePage() {
         onClose={() => setChangeSeatRecapMember(null)}
       />
 
-      <PokeMemberSpendLimitModal
+      <MemberSpendLimitModal
         isOpen={!!spendLimitRecapMember}
         member={spendLimitRecapMember}
+        owner={owner}
         groups={groups}
+        readOnly
         onClose={() => setSpendLimitRecapMember(null)}
       />
     </main>

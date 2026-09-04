@@ -14,6 +14,7 @@ import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
+import { MemberSpendLimitModal } from "@app/components/workspace/MemberSpendLimitModal";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
@@ -311,6 +312,8 @@ export function UsagePage() {
     []
   );
   const [editSpendLimitMember, setEditSpendLimitMember] =
+    useState<MemberUsageType | null>(null);
+  const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
   const [
     totalAllowedUsagePendingMemberIds,
@@ -807,6 +810,15 @@ export function UsagePage() {
 
   const isSeatBased = Object.keys(seatPlans).length > 1;
 
+  const canUpgradeSeat = useCallback(
+    (member: MemberUsageType) =>
+      isSeatBased &&
+      !!member.seatType &&
+      member.seatType !== "none" &&
+      toBaseSeatType(member.seatType) !== "workspace",
+    [isSeatBased]
+  );
+
   // Seat-type filter options derived from the seats available to this
   // workspace, collapsed to base tiers (monthly/yearly share one entry) and
   // ordered by tier.
@@ -1020,6 +1032,9 @@ export function UsagePage() {
       onChangeSeat={handleChangeSeatFromTable}
       onRemoveSeat={onRemoveSeat}
       onEditSpendLimit={handleEditSpendLimitFromTable}
+      onOpenChangeSeatRecap={handleChangeSeatFromTable}
+      onOpenSpendLimitRecap={setSpendLimitRecapMember}
+      canUpgradeSeat={canUpgradeSeat}
       onSetUserModelTier={handleSetUserModelTier}
       pagination={pagination}
       setPagination={setPagination}
@@ -1451,6 +1466,15 @@ export function UsagePage() {
         owner={owner}
         onSavingChange={handleUsagePendingChange}
         onSaved={handleApproveOnModalSaved}
+      />
+
+      <MemberSpendLimitModal
+        isOpen={spendLimitRecapMember !== null}
+        onClose={() => setSpendLimitRecapMember(null)}
+        member={spendLimitRecapMember}
+        owner={owner}
+        groups={groups}
+        onSavingChange={handleUsagePendingChange}
       />
 
       <BulkEditSpendLimitModal
