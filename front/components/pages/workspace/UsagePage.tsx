@@ -15,6 +15,7 @@ import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
+import { MemberSpendLimitModal } from "@app/components/workspace/MemberSpendLimitModal";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
@@ -25,6 +26,7 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
+import { CompactCreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -33,7 +35,11 @@ import {
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
@@ -212,6 +218,8 @@ const DEFAULT_PAGE_SIZE = 25;
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const isCompactUsagePage = hasFeature("enable_new_usage_page");
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Workspaces off a credit plan see this page without the credit pool, seat
   // and credits columns, spend limits and upgrade requests. Credit actions (top
@@ -305,6 +313,8 @@ export function UsagePage() {
     []
   );
   const [editSpendLimitMember, setEditSpendLimitMember] =
+    useState<MemberUsageType | null>(null);
+  const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
   const [
     totalAllowedUsagePendingMemberIds,
@@ -801,6 +811,15 @@ export function UsagePage() {
 
   const isSeatBased = Object.keys(seatPlans).length > 1;
 
+  const canUpgradeSeat = useCallback(
+    (member: MemberUsageType) =>
+      isSeatBased &&
+      !!member.seatType &&
+      member.seatType !== "none" &&
+      toBaseSeatType(member.seatType) !== "workspace",
+    [isSeatBased]
+  );
+
   // Seat-type filter options derived from the seats available to this
   // workspace, collapsed to base tiers (monthly/yearly share one entry) and
   // ordered by tier.
@@ -1014,6 +1033,9 @@ export function UsagePage() {
       onChangeSeat={handleChangeSeatFromTable}
       onRemoveSeat={onRemoveSeat}
       onEditSpendLimit={handleEditSpendLimitFromTable}
+      onOpenChangeSeatRecap={handleChangeSeatFromTable}
+      onOpenSpendLimitRecap={setSpendLimitRecapMember}
+      canUpgradeSeat={canUpgradeSeat}
       onSetUserModelTier={handleSetUserModelTier}
       pagination={pagination}
       setPagination={setPagination}
@@ -1024,6 +1046,7 @@ export function UsagePage() {
       enableSelection={isCreditPriced}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
+      variant={isCompactUsagePage ? "compact" : undefined}
     />
   );
 
@@ -1086,7 +1109,8 @@ export function UsagePage() {
           ) : (
             <div className="flex items-center justify-between">
               <Page.Header title="Usage" />
-              {isCreditPriced &&
+              {!isCompactUsagePage &&
+                isCreditPriced &&
                 usageSettings.topUpEnabled &&
                 isWorkspaceAdmin && (
                   <Button
@@ -1222,7 +1246,18 @@ export function UsagePage() {
             </Page.Vertical>
           ) : null}
 
-          {isCreditPriced &&
+          {isCompactUsagePage && isCreditPriced ? (
+            <div className="flex flex-col items-stretch gap-4">
+              <CompactCreditPoolCards
+                owner={owner}
+                disabled={!isCreditPriced}
+              />
+              <div className="flex justify-end">{topUpButton}</div>
+            </div>
+          ) : null}
+
+          {!isCompactUsagePage &&
+          isCreditPriced &&
           !showConsumptionAnalytics &&
           !isAwuPoolSummaryLoading &&
           (isAwuPoolSummaryError || hasPool) ? (
@@ -1438,6 +1473,15 @@ export function UsagePage() {
           owner={owner}
           onSavingChange={handleUsagePendingChange}
           onSaved={handleApproveOnModalSaved}
+        />
+
+        <MemberSpendLimitModal
+          isOpen={spendLimitRecapMember !== null}
+          onClose={() => setSpendLimitRecapMember(null)}
+          member={spendLimitRecapMember}
+          owner={owner}
+          groups={groups}
+          onSavingChange={handleUsagePendingChange}
         />
 
         <BulkEditSpendLimitModal

@@ -435,6 +435,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "sylvain",
   },
+  enable_new_usage_page: {
+    description:
+      "Show the compact credit-pool usage page (credit pool cards + compact members table) on the front usage page instead of the legacy usage page.",
+    stage: "dust_only",
+    owner: "avervaet",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";
