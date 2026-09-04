@@ -59,7 +59,7 @@ async function setupTest({
   });
 
   if (enableSandboxFunctions) {
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
+    await FeatureFlagFactory.basic(auth, "frames_v2");
   }
 
   const podA = await SpaceFactory.project(workspace, user.id);
@@ -155,7 +155,7 @@ describe("GET /api/w/:wId/sandbox/egress-policy/bulk", () => {
     });
   });
 
-  it("returns 403 when sandbox_functions is disabled", async () => {
+  it("returns 403 when frames_v2 is disabled", async () => {
     const { workspace, podA } = await setupTest({
       enableSandboxFunctions: false,
     });
@@ -254,7 +254,7 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     });
   });
 
-  it("returns 403 when sandbox_functions is disabled", async () => {
+  it("returns 403 when frames_v2 is disabled", async () => {
     const { workspace, podA } = await setupTest({
       enableSandboxFunctions: false,
     });

@@ -31,7 +31,7 @@ async function setupTest({
     role,
   });
 
-  await FeatureFlagFactory.basic(auth, "sandbox_functions");
+  await FeatureFlagFactory.basic(auth, "frames_v2");
 
   const pod = await SpaceFactory.project(workspace, user.id);
 

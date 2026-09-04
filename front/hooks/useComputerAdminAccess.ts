@@ -10,11 +10,10 @@ export function useComputerAdminAccess() {
   const { featureFlags } = useFeatureFlags();
   const isComputerEnabled = isComputerFeatureEnabled(featureFlags);
   const canAdministrateComputer = isAdmin && isComputerEnabled;
-  const hasSandboxFunctions = featureFlags.includes("sandbox_functions");
-  // The multi-Pod scope selector and Pod network editing ride the Pod Functions
-  // flag (sandbox_functions), on top of Computer admin access.
-  const canAdministratePodNetwork =
-    canAdministrateComputer && hasSandboxFunctions;
+  const hasFramesV2 = featureFlags.includes("frames_v2");
+  // The multi-Pod scope selector and Pod network editing ride the Frames v2
+  // flag (frames_v2), on top of Computer admin access.
+  const canAdministratePodNetwork = canAdministrateComputer && hasFramesV2;
 
   return {
     isAdmin,

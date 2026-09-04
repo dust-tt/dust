@@ -304,7 +304,7 @@ export async function createSandboxTools(
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
   // Both require Computer. add_egress_domain is also gated on the self-serve
-  // toggle; request_egress_domain on sandbox_functions instead — so it only
+  // toggle; request_egress_domain on frames_v2 instead — so it only
   // appears where its Pod/workspace review settings exist, never the toggle.
   const flags = await getFeatureFlags(auth);
   const computerEnabled = isComputerFeatureEnabled(flags);
@@ -312,7 +312,7 @@ export async function createSandboxTools(
   if (!computerEnabled || !isSandboxAgentEgressRequestsAllowed(auth)) {
     excluded.add(ADD_EGRESS_DOMAIN_TOOL_NAME);
   }
-  if (!computerEnabled || !flags.includes("sandbox_functions")) {
+  if (!computerEnabled || !flags.includes("frames_v2")) {
     excluded.add(REQUEST_EGRESS_DOMAIN_TOOL_NAME);
   }
 

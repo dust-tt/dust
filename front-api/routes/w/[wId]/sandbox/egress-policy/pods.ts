@@ -11,7 +11,7 @@ import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 // baseline. Same gates as the bulk read.
 const app = workspaceApp();
 
-app.use("*", withFeatureFlag("sandbox_functions"));
+app.use("*", withFeatureFlag("frames_v2"));
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetEgressPolicyPodsResponseBody> => {
