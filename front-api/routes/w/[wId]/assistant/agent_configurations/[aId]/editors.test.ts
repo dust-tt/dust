@@ -2,6 +2,8 @@ import {
   archiveAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import type * as workosAudit from "@app/lib/api/audit/workos_audit";
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -18,6 +20,16 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
 }));
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
 
 async function setupTest(
   options: {
@@ -72,6 +84,43 @@ function patchEditors(workspace: { sId: string }, aId: string, body: unknown) {
     }
   );
 }
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors - audit log", () => {
+  it("emits an audit event flagging an admin adding themselves as editor", async () => {
+    const { workspace, user: admin } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const agentOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
+    const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      agentOwner.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+    vi.mocked(emitAuditLogEvent).mockClear();
+
+    const response = await patchEditors(workspace, agent.sId, {
+      addEditorIds: [admin.sId],
+    });
+    expect(response.status).toBe(200);
+
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.editors_updated",
+        metadata: {
+          agent_name: agent.name,
+          scope: "hidden",
+          added_editor_ids: admin.sId,
+          removed_editor_ids: "",
+          actor_added_self: "true",
+        },
+      })
+    );
+  });
+});
 
 describe("GET /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
   it("should return the editors of an agent built on a space the admin cannot read", async () => {

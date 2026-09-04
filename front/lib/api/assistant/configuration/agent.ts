@@ -1685,6 +1685,30 @@ export async function updateAgentPermissions(
       return transactionResult;
     }
 
+    // Editors get access to the agent's private data (prompt, skills, knowledge), so editor changes
+    // are audited as soon as they are committed, whatever happens to the triggers below.
+    // `actor_added_self` flags an admin granting themselves that access.
+    const actorUserId = auth.user()?.sId;
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.editors_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", agent),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agent_name: agent.name,
+        scope: agent.scope,
+        added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
+        removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
+        actor_added_self: String(
+          actorUserId !== undefined &&
+            usersToAdd.some((u) => u.sId === actorUserId)
+        ),
+      },
+    });
+
     // If the agent is hidden and editors were removed, disable their triggers.
     // Removed editors can no longer access the hidden agent, so their triggers would fail.
     if (usersToRemove.length > 0 && agent.scope === "hidden") {

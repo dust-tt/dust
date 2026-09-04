@@ -35,11 +35,24 @@ export function RedactedAgentMessage({
     agentConfigurationId: agentConfiguration.sId,
   });
   const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
+  const confirm = useContext(ConfirmContext);
 
   // Same flow as the agent builder's "Become an editor": the editors update refetches the agent,
   // which comes back unredacted once the caller is an editor.
   const handleAddSelfAsEditor = async () => {
     if (isAddingSelfAsEditor) {
+      return;
+    }
+    const confirmed = await confirm({
+      title: "Security notice",
+      message:
+        "By becoming an editor you will have access to this agent's private data " +
+        "(instructions, skills, knowledge). This action will be logged for security " +
+        "purposes. Do you want to proceed?",
+      validateLabel: "Proceed",
+      validateVariant: "warning",
+    });
+    if (!confirmed) {
       return;
     }
     setIsAddingSelfAsEditor(true);
@@ -59,7 +72,6 @@ export function RedactedAgentMessage({
     (sId) => spaceById.get(sId)?.name ?? sId
   );
 
-  const confirm = useContext(ConfirmContext);
   const addSpaceMembers = useAddSpaceMembers({ owner });
   const { mutateAgentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
