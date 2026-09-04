@@ -9,8 +9,15 @@ import { fireEvent, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseConsumptionTimeseries } = vi.hoisted(() => ({
-  mockUseConsumptionTimeseries: vi.fn(),
+const { mockUseConsumptionOverview, mockUseConsumptionTimeseries } = vi.hoisted(
+  () => ({
+    mockUseConsumptionOverview: vi.fn(),
+    mockUseConsumptionTimeseries: vi.fn(),
+  })
+);
+
+vi.mock("@app/hooks/useConsumptionOverview", () => ({
+  useConsumptionOverview: mockUseConsumptionOverview,
 }));
 
 vi.mock("@app/hooks/useConsumptionTimeseries", () => ({
@@ -145,6 +152,12 @@ function expectActiveUsersOverlay(container: HTMLElement) {
 
 describe("consumption active users overlay", () => {
   beforeEach(() => {
+    mockUseConsumptionOverview.mockReset().mockReturnValue({
+      overview: null,
+      isOverviewLoading: false,
+      isOverviewError: undefined,
+      isOverviewValidating: false,
+    });
     mockUseConsumptionTimeseries.mockReset().mockReturnValue({
       timeseries: null,
       isTimeseriesLoading: true,
@@ -184,15 +197,17 @@ describe("consumption active users overlay", () => {
         isTimeseriesError={false}
         emptyMessage="No consumption."
         showActiveUsers
+        totalUsers={20}
       />
     );
 
     expect(container.querySelector(".recharts-bar")).not.toBeNull();
     expectActiveUsersOverlay(container);
 
-    const activeUsersDot = container.querySelector(
+    const activeUsersDots = container.querySelectorAll(
       ".recharts-line.text-golden-500 circle"
     );
+    const activeUsersDot = activeUsersDots[1];
     const chart = container.querySelector<HTMLElement>(".recharts-wrapper");
     expect(chart).not.toBeNull();
     Object.defineProperties(chart!, {
@@ -218,7 +233,7 @@ describe("consumption active users overlay", () => {
     const activeUsersRow = Array.from(
       container.querySelectorAll('[role="tooltip"] li')
     ).find((row) => row.textContent?.includes("Active users"));
-    expect(activeUsersRow).toHaveTextContent("0");
+    expect(activeUsersRow).toHaveTextContent(/8\s*\(40%\)/);
 
     const activeDot = container.querySelector(".recharts-active-dot circle");
     expect(activeDot).toHaveClass("text-golden-500");

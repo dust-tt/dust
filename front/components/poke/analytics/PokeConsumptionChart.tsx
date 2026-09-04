@@ -25,6 +25,7 @@ function PokeConsumptionDailyChart({
   filter,
   additionalControls,
 }: PokeConsumptionDailyChartProps) {
+  const showActiveUsers = filter?.users?.length !== 1;
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     usePokeConsumptionTimeseries({
       workspaceId,
@@ -34,6 +35,12 @@ function PokeConsumptionDailyChart({
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
     });
+  const { overview } = usePokeConsumptionOverview({
+    workspaceId,
+    period,
+    filter,
+    disabled: !showActiveUsers,
+  });
   const isFiltered = Object.values(filter ?? {}).some(
     (values) => values.length > 0
   );
@@ -49,7 +56,8 @@ function PokeConsumptionDailyChart({
           : "No consumption over this period."
       }
       additionalControls={additionalControls}
-      showActiveUsers={filter?.users?.length !== 1}
+      showActiveUsers={showActiveUsers}
+      totalUsers={overview?.members.total ?? null}
     />
   );
 }
