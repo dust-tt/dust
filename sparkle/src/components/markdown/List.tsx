@@ -7,6 +7,7 @@ import {
 } from "@sparkle/components/markdown/utils";
 import { Check } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib";
+import { assertNever } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { createContext, memo, useContext } from "react";
 
@@ -31,20 +32,25 @@ interface UlBlockProps {
   node?: MarkdownNode;
 }
 
+// remark-gfm marks lists holding task items with the `contains-task-list` class. react-markdown
+// gives list items a `checked` prop, but the list element itself only carries this class.
+function isTaskList(className?: string) {
+  return className?.includes("contains-task-list") ?? false;
+}
+
 /**
- * Renders unordered lists inside Markdown output; GFM task lists (detected via
- * the `contains-task-list` class) drop the disc bullets.
+ * Renders unordered lists inside Markdown output; GitHub Flavored Markdown
+ * task lists drop the disc bullets.
  * @summary Unordered-list renderer for Markdown.
  */
 export const UlBlock = memo(
   ({ children, className }: UlBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
-    const isTaskList = className?.includes("contains-task-list");
     return (
       <ul
         className={cn(
-          ulBlockVariants({ taskList: isTaskList }),
+          ulBlockVariants({ taskList: isTaskList(className) }),
           textColor,
           textSize,
           className
@@ -80,21 +86,20 @@ interface OlBlockProps {
 
 /**
  * Renders ordered lists inside Markdown output, honoring the `start` number
- * from the source Markdown; GFM task lists (detected via the `contains-task-list`
- * class) drop the decimal markers and indent, like UlBlock does for bullets.
+ * from the source Markdown; task lists drop the decimal markers and indent,
+ * like UlBlock does for bullets.
  * @summary Ordered-list renderer for Markdown.
  */
 export const OlBlock = memo(
   ({ children, className, start }: OlBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
-    const isTaskList = className?.includes("contains-task-list");
     return (
       <OlStartContext.Provider value={start ?? 1}>
         <ol
           start={start}
           className={cn(
-            olBlockVariants({ taskList: isTaskList }),
+            olBlockVariants({ taskList: isTaskList(className) }),
             textColor,
             textSize,
             className
@@ -175,9 +180,9 @@ interface LiBlockProps {
 }
 
 /**
- * Renders list items inside Markdown output; task-list items (detected via the
- * `task-list-item` class) suppress their list marker. In the "step" task-list
- * variant they get a read-only circle badge instead of a checkbox.
+ * Renders list items inside Markdown output; task-list items (react-markdown
+ * passes them a boolean `checked`) suppress their list marker. In the "step"
+ * task-list variant they get a read-only circle badge instead of a checkbox.
  * @summary List-item renderer for Markdown.
  */
 export const LiBlock = memo(
@@ -185,34 +190,42 @@ export const LiBlock = memo(
     const { textColor, forcedTextSize, taskListVariant } = useMarkdownStyle();
     const start = useContext(OlStartContext);
     const textSize = forcedTextSize ?? markdownParagraphSize;
-    const isTaskListItem = className?.includes("task-list-item");
+    const isTaskListItem = typeof checked === "boolean";
 
-    if (isTaskListItem && taskListVariant === "step") {
-      const isChecked = checked === true;
-      return (
-        <li
-          className={cn(
-            liBlockVariants(),
-            "flex list-none items-start gap-2",
-            textColor,
-            textSize,
-            className
-          )}
-        >
-          <TaskStepBadge
-            checked={isChecked}
-            number={ordered && index !== undefined ? start + index : undefined}
-          />
-          <div
-            className={cn(
-              "min-w-0 flex-1 transition-colors duration-300 motion-reduce:transition-none",
-              isChecked && "text-faint line-through"
-            )}
-          >
-            {children}
-          </div>
-        </li>
-      );
+    if (isTaskListItem) {
+      switch (taskListVariant) {
+        case "step":
+          return (
+            <li
+              className={cn(
+                liBlockVariants(),
+                "flex list-none items-start gap-2",
+                textColor,
+                textSize,
+                className
+              )}
+            >
+              <TaskStepBadge
+                checked={checked}
+                number={
+                  ordered && index !== undefined ? start + index : undefined
+                }
+              />
+              <div
+                className={cn(
+                  "min-w-0 flex-1 transition-colors duration-300 motion-reduce:transition-none",
+                  checked && "text-faint line-through"
+                )}
+              >
+                {children}
+              </div>
+            </li>
+          );
+        case "checkbox":
+          break;
+        default:
+          assertNever(taskListVariant);
+      }
     }
 
     return (
