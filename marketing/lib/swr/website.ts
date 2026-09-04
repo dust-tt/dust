@@ -1,8 +1,10 @@
 import {
   AUTH_CONTEXT_URL,
   type MarketingAuthContext,
+  resolveAuthContext,
 } from "@marketing/lib/api/authContext";
 import { useSWRWithDefaults } from "@marketing/lib/swr/swr";
+import { assertNever } from "@marketing/types/shared/utils/assert_never";
 
 type GetNoWorkspaceAuthContextResponseType = MarketingAuthContext;
 
@@ -14,12 +16,22 @@ type GetNoWorkspaceAuthContextResponseType = MarketingAuthContext;
 async function landingFetcher(
   url: string
 ): Promise<GetNoWorkspaceAuthContextResponseType> {
-  // eslint-disable-next-line no-restricted-globals
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}: ${res.status}`);
+  const resolution = await resolveAuthContext(url, (target) =>
+    fetch(target, { credentials: "include" })
+  );
+
+  switch (resolution.type) {
+    case "success":
+      return resolution.authContext;
+    case "failure":
+      throw new Error(`Failed to fetch ${url}: ${resolution.status}`);
+    case "regional_failure":
+      throw new Error(
+        `Failed to fetch auth context from region ${resolution.region}: ${resolution.status}`
+      );
+    default:
+      assertNever(resolution);
   }
-  return res.json();
 }
 
 export function useLandingAuthContext({
