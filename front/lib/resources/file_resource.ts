@@ -124,7 +124,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, UniqueConstraintError } from "sequelize";
+import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
@@ -246,20 +246,33 @@ export class FileResource extends BaseResource<FileModel> {
       // pagination.
       lastValue,
       orderDirection,
+      hasSandbox = false,
     }: {
       limit: number;
       lastValue?: string;
       orderDirection: "asc" | "desc";
+      hasSandbox?: boolean;
     }
   ): Promise<{
     frames: FileResource[];
     hasMore: boolean;
     lastValue: string | null;
   }> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
     const where: WhereOptions<InferAttributes<FileModel>> = {
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: workspaceModelId,
       contentType: frameV2ContentType,
     };
+
+    if (hasSandbox) {
+      assert(typeof workspaceModelId === "number");
+      where.id = {
+        [Op.in]: Sequelize.literal(
+          // `workspaceModelId` cannot be user provided + assert above.
+          `(SELECT "frameFileModelId" FROM sandbox_owners WHERE "workspaceId" = '${workspaceModelId}' AND "frameFileModelId" IS NOT NULL)`
+        ),
+      };
+    }
 
     if (lastValue) {
       const timestampMs = parseInt(lastValue, 10);
