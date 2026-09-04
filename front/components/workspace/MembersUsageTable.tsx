@@ -859,7 +859,7 @@ function buildFairUseCreditsColumn(
       <div className="flex flex-col">
         <span className="flex items-center gap-1">
           <Icon visual={CoinsStacked03} size="xs" />
-          Credits
+          Fair Usage Credits
         </span>
         <span className="text-xs font-normal text-muted-foreground">
           Resets on a rolling {windowDays}-day basis
@@ -930,7 +930,7 @@ function buildFairUseCreditsColumn(
     // local-only, which would misbehave across pages, so it's disabled here.
     enableSorting: false,
     meta: {
-      className: "w-40",
+      className: "w-56",
     },
   };
 }
