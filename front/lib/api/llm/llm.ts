@@ -3,6 +3,7 @@ import {
   contributeFreeUsageCostForUser,
   isFreeUsageContext,
 } from "@app/lib/api/llm/free_usage";
+import { recordLLMAttempt } from "@app/lib/api/llm/health/counters";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import type {
   LLMAttemptOutcome,
@@ -46,6 +47,7 @@ import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_st
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
+import type { Host } from "@app/lib/model_constructors/types/hosts";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { statsDMetrics } from "@app/lib/utils/statsd";
@@ -82,6 +84,9 @@ export abstract class LLM<
   protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
+  // Kept alongside modelId/providerId because model health is tracked per
+  // endpoint, see `DegradedModelEndpointType`.
+  protected host: Host;
   // Temporary during the router migration; "new" is set by BaseTransition.
   protected readonly router: "legacy" | "new" = "legacy";
 
@@ -104,6 +109,7 @@ export abstract class LLM<
   ) {
     const modelConfig = modelInfo.endpoint.modelConfig;
     this.modelId = modelConfig.modelId;
+    this.host = modelInfo.endpoint.host;
     this.modelConfig = modelConfig;
     this.temperature =
       modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
@@ -195,6 +201,19 @@ export abstract class LLM<
   } & LLMAttemptOutcomeTelemetry): void {
     const baseTags = this.getTelemetryTags({ surface: "stream" });
     const latencyTags = this.getLatencyTelemetryTags({ surface: "stream" });
+
+    // Feeds the model health circuit breaker. Fired and forgotten: nothing here
+    // waits on Redis or fails with it. The endpoint is always concrete at this
+    // point -- `auto`, `auto_fast` and `auto_complex` are collapsed to a real
+    // model before the LLM is built.
+    void recordLLMAttempt({
+      endpoint: {
+        modelId: this.modelId,
+        providerId: this.modelConfig.providerId,
+        host: this.host,
+      },
+      outcome: outcomeTelemetry,
+    });
 
     switch (outcomeTelemetry.outcome) {
       case "error":
@@ -807,6 +826,11 @@ export abstract class LLM<
         statsDMetrics.increment("llm_success.count", 1, metricTags);
       }
       statsDMetrics.increment("llm_interaction.count", 1, metricTags);
+
+      // TODO(detect_outage): batch attempts deliberately do not feed the model
+      // health counters. A batch job is submitted then polled over hours, so its
+      // error surfaces at a timestamp unrelated to when the provider was
+      // unhealthy, and folding that into a five-minute window would smear it.
 
       const { tokenUsage, ...rest } = buffer.currentOutput;
 
