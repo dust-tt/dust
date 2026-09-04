@@ -1,6 +1,10 @@
 import { EnvironmentConfig } from "@connectors/types";
 
-export const SUPPORTED_CELLS = ["cell-00000", "cell-00001"] as const;
+export const SUPPORTED_CELLS = [
+  "cell-00000",
+  "cell-00001",
+  "cell-00002",
+] as const;
 export type CellType = (typeof SUPPORTED_CELLS)[number];
 
 export const connectorsConfig = {
