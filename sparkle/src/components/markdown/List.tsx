@@ -113,14 +113,18 @@ export const OlBlock = memo(
 );
 OlBlock.displayName = "OlBlock";
 
-// mt-[3px] centers the 20px badge on the 26px leading-relaxed text line.
+// mt-[3px] centers the 20px badge on the 26px leading-relaxed text line. The border stays on
+// both states so ticking a task only transitions colors.
 const taskStepBadgeVariants = cva(
-  "mt-[3px] flex size-5 shrink-0 items-center justify-center rounded-full",
+  cn(
+    "mt-[3px] flex size-5 shrink-0 items-center justify-center rounded-full border",
+    "transition-colors duration-300 motion-reduce:transition-none"
+  ),
   {
     variants: {
       checked: {
-        true: "bg-highlight-50 text-highlight-500",
-        false: "border border-faint text-faint",
+        true: "border-highlight-50 bg-highlight-50 text-highlight-500",
+        false: "border-faint text-faint",
       },
     },
   }
@@ -146,7 +150,11 @@ function TaskStepBadge({ checked, number }: TaskStepBadgeProps) {
       className={taskStepBadgeVariants({ checked })}
     >
       {checked ? (
-        <Icon visual={Check} size="2xs" />
+        <Icon
+          visual={Check}
+          size="2xs"
+          className="animate-in fade-in zoom-in-50 duration-300 motion-reduce:animate-none"
+        />
       ) : (
         number !== undefined && (
           <span className="text-xs font-medium leading-none">{number}</span>
@@ -198,7 +206,7 @@ export const LiBlock = memo(
           />
           <div
             className={cn(
-              "min-w-0 flex-1",
+              "min-w-0 flex-1 transition-colors duration-300 motion-reduce:transition-none",
               isChecked && "text-faint line-through"
             )}
           >
