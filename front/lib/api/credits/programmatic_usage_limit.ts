@@ -7,12 +7,16 @@ import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/member
 import { reconcileProgrammatic } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import {
   clearMetronomeProgrammaticCapAlerts,
   upsertMetronomeProgrammaticCapAlerts,
   WARNING_BALANCE_RATIO,
 } from "@app/lib/metronome/alerts/programmatic_cap";
+import { expectedProgrammaticCreditStateFromUsage } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
@@ -22,6 +26,7 @@ import {
   readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type { WorkspaceProgrammaticCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -250,6 +255,46 @@ async function isProgrammaticSpendLimitRateThresholdReached(
   // The counter stores microCredits; scale the credit threshold up so the
   // comparison stays integer-on-integer.
   return count >= roundCreditsToMicroCredits(cap * ratio);
+}
+
+/**
+ * The workspace's programmatic credit-state band derived from the Redis
+ * rate-limiter counter (cycle-to-date programmatic spend) vs the monthly cap —
+ * the rate-limiter equivalent of the Metronome-driven programmatic credit state.
+ * Used to throttle programmatic request concurrency without reading
+ * `workspaces.programmaticCreditState`. Thresholds mirror
+ * `expectedProgrammaticCreditStateFromUsage` so the bands match enforcement.
+ *
+ * Returns `"active"` (no throttle) when there is no billing period or on a Redis
+ * read error (fail-open), so a transient hiccup never over-throttles.
+ */
+export async function getProgrammaticRateLimiterCreditState(
+  auth: Authenticator
+): Promise<WorkspaceProgrammaticCreditState> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const cap = config?.programmaticMonthlyCapAwuCredits ?? 0;
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return "active";
+  }
+
+  const count = await readProgrammaticSpendLimitCountWithLazySeed(auth, {
+    redisKey:
+      makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(workspace),
+    bounds,
+  });
+  if (count === null) {
+    return "active";
+  }
+
+  return expectedProgrammaticCreditStateFromUsage({
+    spentAwuCredits: microCreditsToCredits(count),
+    monthlyCapCredits: cap,
+  });
 }
 
 /**

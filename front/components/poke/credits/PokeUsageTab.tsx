@@ -173,7 +173,9 @@ function PokeCreditStatesCard({
                 color={
                   RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].color
                 }
-                label={RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].label}
+                label={
+                  RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].label
+                }
               />
             ) : (
               <span className="text-xs text-muted-foreground">—</span>

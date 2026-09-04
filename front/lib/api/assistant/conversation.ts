@@ -72,6 +72,7 @@ import {
   isUserBlocked,
 } from "@app/lib/api/credits/access_control";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
+import { getProgrammaticRateLimiterCreditState } from "@app/lib/api/credits/programmatic_usage_limit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
@@ -203,11 +204,11 @@ const POOL_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
 };
 
 // Concurrency limits for programmatic API calls based on the workspace
-// programmatic monthly cap state. Same shape and intent as the pool limits:
+// programmatic monthly cap band, derived from the Redis rate-limiter counter
+// (cycle-to-date spend vs the cap). Same shape and intent as the pool limits:
 // once the workspace is close to its monthly cap, tighten in-flight
-// programmatic requests so concurrent calls can't overshoot before
-// Metronome debits settle. `depleted` is handled upstream by
-// `isProgrammaticApiBlocked`.
+// programmatic requests so concurrent calls can't overshoot before the spend
+// counter settles. `depleted` is handled upstream by `isProgrammaticApiBlocked`.
 const PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
   active: 1000,
   active_low_balance: 5,
@@ -2820,7 +2821,13 @@ async function checkProgrammaticCreditConcurrencyLimit(
   auth: Authenticator
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
-  const status = await getWorkspaceProgrammaticCreditStatus(owner.sId);
+  // With the rate-cap flag on, the concurrency band comes from the Redis
+  // rate-limiter counter; with it off, from the Metronome programmatic credit
+  // state. Matches the flag-aware enforcement in access_control.
+  const featureFlags = await getFeatureFlags(auth);
+  const status = featureFlags.includes("enforce_user_spend_limit_rate_cap")
+    ? await getProgrammaticRateLimiterCreditState(auth)
+    : await getWorkspaceProgrammaticCreditStatus(owner.sId);
 
   const maxConcurrent = PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
