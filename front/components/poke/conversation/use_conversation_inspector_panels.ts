@@ -1,7 +1,6 @@
 import type { RefObject } from "react";
 import { useCallback, useLayoutEffect, useReducer, useRef } from "react";
 
-const DESKTOP_INSPECTOR_MEDIA_QUERY = "(min-width: 1280px)";
 const INSPECTOR_PANEL_GAP_PX = 16;
 const MESSAGE_PANEL_VIEWPORT_GUTTER_PX = 16;
 
@@ -137,7 +136,7 @@ export function useConversationInspectorPanels({
 
     const desktopInspectorMedia =
       typeof window.matchMedia === "function"
-        ? window.matchMedia(DESKTOP_INSPECTOR_MEDIA_QUERY)
+        ? window.matchMedia("(min-width: 1280px)")
         : null;
     let animationFrameId: number | null = null;
     let currentMessagePanelOffsetPx = 0;
