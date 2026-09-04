@@ -33,7 +33,10 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import { isCreditPricedPlan } from "@app/types/plan";
+import {
+  isCreditPricedPlan,
+  isSubscriptionMetronomeBilled,
+} from "@app/types/plan";
 import {
   AlertCircle,
   Button,
@@ -152,9 +155,7 @@ export function PoolUsagePage() {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "consumedFromPoolAwuCredits", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   // Debounce the search input, and reset to the first page on a new query.
   useEffect(() => {
@@ -183,29 +184,39 @@ export function PoolUsagePage() {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
-  const sort = sorting[0];
+  const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
+  const activeSubscription = workspaceInfo?.activeSubscription;
+  const hasMetronomeContract =
+    !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
+  const isLegacyPremiumMessagePlan =
+    !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
+  const isLegacyWithoutPoolOrMetronome =
+    isLegacyPremiumMessagePlan && !hasMetronomeContract;
+  const showPoolSection =
+    !!activeSubscription && !isLegacyWithoutPoolOrMetronome;
+
+  const { awuPoolCurrentCycle } = usePokeAwuPoolCurrentCycle({
+    owner,
+    disabled: !showPoolSection,
+  });
+  const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
+
+  // Sort by premium message usage for legacy no-pool workspaces, by pool
+  // credits otherwise, until the user picks a column explicitly.
+  const defaultSortId = isLegacyWithoutPoolOrMetronome
+    ? "premiumMessageUsage"
+    : "consumedFromPoolAwuCredits";
+  const effectiveSorting: SortingState =
+    sorting.length > 0 ? sorting : [{ id: defaultSortId, desc: true }];
+  const sort = effectiveSorting[0];
   const orderColumn =
     sort?.id === "email" ||
     sort?.id === "consumedFromPoolAwuCredits" ||
-    sort?.id === "seatUsage"
+    sort?.id === "seatUsage" ||
+    sort?.id === "premiumMessageUsage"
       ? sort.id
       : "name";
   const orderDirection = sort?.desc ? "desc" : "asc";
-
-  const { awuPoolCurrentCycle } = usePokeAwuPoolCurrentCycle({ owner });
-  const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
-
-  const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
-  const activeSubscription = workspaceInfo?.activeSubscription;
-  const hasMetronomeContract = activeSubscription?.metronomeContractId != null;
-  const isLegacyPremiumMessagePlan =
-    !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
-  // Users with no pool and no Metronome contract on a legacy plan only have
-  // a premium-message rate limit — no pool/Metronome usage to show. The pool
-  // cards and previous-cycles table would just render empty for them.
-  const isLegacyWithoutPoolOrMetronome =
-    isLegacyPremiumMessagePlan && !hasPool && !hasMetronomeContract;
-  const showPoolSection = !isLegacyWithoutPoolOrMetronome;
 
   const {
     members,
@@ -417,6 +428,7 @@ export function PoolUsagePage() {
                   isSeatBased
                   showSpendLimit
                   hasPool={hasPool}
+                  showPremiumMessageUsage={isLegacyWithoutPoolOrMetronome}
                   readOnly
                   onChangeSeat={noopOnMember}
                   onOpenChangeSeatRecap={setChangeSeatRecapMember}
@@ -427,7 +439,7 @@ export function PoolUsagePage() {
                   pagination={pagination}
                   setPagination={setPagination}
                   totalRowCount={totalMembers}
-                  sorting={sorting}
+                  sorting={effectiveSorting}
                   setSorting={handleSetSorting}
                   variant="compact"
                   showGroupsColumn={false}

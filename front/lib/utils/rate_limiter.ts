@@ -10,6 +10,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import chunk from "lodash/chunk";
 import { v4 as uuidv4 } from "uuid";
 
 export class RateLimitError extends Error {}
@@ -20,6 +21,8 @@ export const RATE_LIMITER_PREFIX = "rate_limiter";
 // a read straddling the boundary still sees a just-closed window rather than a
 // premature miss.
 const FIXED_WINDOW_EXPIRE_GRACE_MS = 60_000;
+
+const RATE_LIMITER_COUNTS_BATCH_SIZE = 300;
 
 // A resolved fixed window: a stable label identifying the current window and
 // the absolute UTC end of that window. The label is appended to the Redis key
@@ -244,6 +247,50 @@ export async function getRateLimiterCount({
     const count = await redis.zCount(redisKey, trimBeforeMs, "+inf");
 
     return new Ok(count);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+export async function getRateLimiterCounts({
+  keys,
+  timeframeSeconds,
+}: {
+  keys: string[];
+  timeframeSeconds: number;
+}): Promise<Result<Map<string, number>, Error>> {
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    return new Err(new Error("timeframeSeconds must be a positive integer."));
+  }
+  if (keys.length === 0) {
+    return new Ok(new Map());
+  }
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const windowMs = timeframeSeconds * 1000;
+    const trimBeforeMs = Date.now() - windowMs;
+
+    const uniqueKeys = Array.from(new Set(keys));
+    const countByKey = new Map<string, number>();
+    for (const batchKeys of chunk(uniqueKeys, RATE_LIMITER_COUNTS_BATCH_SIZE)) {
+      const pipeline = redis.multi();
+      for (const key of batchKeys) {
+        pipeline.zCount(makeRateLimiterKey(key), trimBeforeMs, "+inf");
+      }
+      const replies = await pipeline.exec();
+      for (const [index, key] of batchKeys.entries()) {
+        const reply = replies[index];
+        if (typeof reply !== "number") {
+          return new Err(
+            new Error(`Non-numeric rate-limiter count reply for key ${key}.`)
+          );
+        }
+        countByKey.set(key, reply);
+      }
+    }
+
+    return new Ok(countByKey);
   } catch (err) {
     return new Err(normalizeError(err));
   }

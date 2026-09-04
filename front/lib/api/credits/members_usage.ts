@@ -1,6 +1,7 @@
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import {
   getPremiumModelMessageUsage,
+  getPremiumModelMessageUsedCountsByUser,
   makeApiKeySpendLimitAwuCreditsRateLimitKey,
   makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
@@ -184,6 +185,7 @@ export type MemberUsageType = {
   // (free/trial) where a fair-use limit is set. Null when the plan carries no
   // fair-use limit (limit === -1) or when not requested. Poke-only.
   fairUse?: MemberFairUseUsage | null;
+  premiumMessageUsage?: PremiumModelMessageUsage | null;
 };
 
 export type MemberFairUseUsage = {
@@ -247,6 +249,7 @@ export const MembersUsagePaginationSchema = z.object({
       "seatType",
       "creditState",
       "seatUsage",
+      "premiumMessageUsage",
     ])
     .catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
@@ -1817,7 +1820,15 @@ async function resolveMembersUsagePageUsers({
   workspace: LightWorkspaceType;
   paginationParams: MembersUsagePaginationInput;
   restrictToUserIds: string[] | undefined;
-}): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+}): Promise<
+  Result<
+    {
+      users: UserResource[];
+      total: number;
+    },
+    Error
+  >
+> {
   const { orderColumn, orderDirection, offset, limit } = paginationParams;
   const searchTerm = paginationParams.search ?? "";
 
@@ -2037,6 +2048,17 @@ async function resolveMembersUsagePageUsers({
       }
       break;
     }
+    case "premiumMessageUsage": {
+      // Count-only and pipelined into a single Redis round-trip
+      const usedCountByUserId = await getPremiumModelMessageUsedCountsByUser({
+        workspace,
+        users: allUsers.map((u) => ({ id: u.id, sId: u.sId })),
+      });
+      for (const u of allUsers) {
+        sortKeyByUserId.set(u.sId, usedCountByUserId.get(u.sId) ?? 0);
+      }
+      break;
+    }
     default:
       assertNever(orderColumn);
   }
@@ -2067,7 +2089,10 @@ async function resolveMembersUsagePageUsers({
     return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
   });
 
-  return new Ok({ users: sortedUsers.slice(offset, offset + limit), total });
+  return new Ok({
+    users: sortedUsers.slice(offset, offset + limit),
+    total,
+  });
 }
 
 export async function getMembersUsage({
@@ -2357,6 +2382,32 @@ export async function getMembersUsage({
     }
   }
 
+  const premiumMessageUsageByUserId = new Map<
+    string,
+    PremiumModelMessageUsage | null
+  >();
+  if (includeAlertLinks) {
+    const plan = auth.plan();
+    if (plan && !isCreditPricedPlan(plan)) {
+      // Bounded to the current page size
+      const entries = await concurrentExecutor(
+        users,
+        async (u) =>
+          [
+            u.sId,
+            await getPremiumModelMessageUsage({
+              workspace,
+              user: u.toJSON(),
+            }),
+          ] as const,
+        { concurrency: 8 }
+      );
+      for (const [sId, usage] of entries) {
+        premiumMessageUsageByUserId.set(sId, usage);
+      }
+    }
+  }
+
   const membersUsage: MemberUsageType[] = users.flatMap((u) => {
     const membership = membershipByUserId.get(u.id);
     if (!membership) {
@@ -2570,6 +2621,7 @@ export async function getMembersUsage({
         creditState: membership.creditState,
         nearLimit,
         fairUse: fairUseByUserId.get(userId) ?? null,
+        premiumMessageUsage: premiumMessageUsageByUserId.get(userId) ?? null,
         seatUsageTarget,
         overallUsageTarget,
       },

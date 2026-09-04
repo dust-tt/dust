@@ -5,6 +5,7 @@ import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   expireRateLimiterKey,
   getRateLimiterCount,
+  getRateLimiterCounts,
   getRateLimiterTimestamps,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
@@ -110,6 +111,7 @@ export type PremiumModelMessageUsage = {
   nextRefill?: { availableAt: string; messages: number } | null;
   // Optional for compatibility with clients deployed before the daily breakdown was added.
   dailyUsage?: { date: string; usedMessages: number }[];
+  refillSchedule?: { date: string; messages: number }[];
 };
 
 function getNextPremiumModelRefill({
@@ -134,6 +136,24 @@ function getNextPremiumModelRefill({
     availableAt: new Date(oldestTimestampMs + windowMs).toISOString(),
     messages,
   };
+}
+
+function getPremiumModelRefillSchedule({
+  timestampsMs,
+  windowMs,
+}: {
+  timestampsMs: number[];
+  windowMs: number;
+}): { date: string; messages: number }[] {
+  const messagesByRefillDay = new Map<string, number>();
+  for (const timestampMs of timestampsMs) {
+    const date = new Date(timestampMs + windowMs).toISOString().slice(0, 10);
+    messagesByRefillDay.set(date, (messagesByRefillDay.get(date) ?? 0) + 1);
+  }
+
+  return Array.from(messagesByRefillDay.entries())
+    .map(([date, messages]) => ({ date, messages }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function getUtcDayStartMs(timestampMs: number): number {
@@ -203,7 +223,33 @@ export async function getPremiumModelMessageUsage({
       windowStartMs,
       windowEndMs,
     }),
+    refillSchedule: getPremiumModelRefillSchedule({ timestampsMs, windowMs }),
   };
+}
+
+export async function getPremiumModelMessageUsedCountsByUser({
+  workspace,
+  users,
+}: {
+  workspace: Pick<LightWorkspaceType, "id">;
+  users: Pick<UserType, "id" | "sId">[];
+}): Promise<Map<string, number>> {
+  const keyByUserId = new Map(
+    users.map((user) => [
+      user.sId,
+      makePremiumModelMessageRateLimitKeyForUser(workspace, user),
+    ])
+  );
+
+  const result = await getRateLimiterCounts({
+    keys: Array.from(keyByUserId.values()),
+    timeframeSeconds: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+  });
+  const countByKey = result.isOk() ? result.value : new Map<string, number>();
+
+  return new Map(
+    Array.from(keyByUserId, ([sId, key]) => [sId, countByKey.get(key) ?? 0])
+  );
 }
 
 // Fixed-window counter backing the admin-configured per-user spend cap. Always
