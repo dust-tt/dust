@@ -66,6 +66,7 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getFixedWindowCount,
+  getTimeframeSecondsFromLiteral,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -92,6 +93,7 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
@@ -192,6 +194,8 @@ export type MemberFairUseUsage = {
   usedCredits: number;
   limitCredits: number;
   timeframe: MaxAwuCreditsTimeframeType;
+  windowDays: number;
+  nextResetAt: string | null;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -2377,6 +2381,10 @@ export async function getMembersUsage({
               usedCredits: status.count,
               limitCredits: status.limit,
               timeframe: status.timeframe,
+              windowDays:
+                getTimeframeSecondsFromLiteral(status.timeframe) /
+                (ONE_DAY_MS / 1000),
+              nextResetAt: status.nextResetAt ?? null,
             }
       );
     }
