@@ -133,7 +133,7 @@ function ToolRow({ tool, totalCredits }: ToolRowProps) {
   return (
     <li className="flex flex-col gap-3 rounded-xl border border-border bg-background p-3">
       <div className="flex min-w-0 items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted-background">
             <Icon
               visual={getActionStepIcon(tool)}
@@ -155,7 +155,7 @@ function ToolRow({ tool, totalCredits }: ToolRowProps) {
       </div>
       <dl className="grid grid-cols-2 gap-2 border-t border-border pt-3">
         <div>
-          <dt className="text-xs text-muted-foreground">Tokens</dt>
+          <dt className="text-xs text-muted-foreground">Input/output</dt>
           <dd className="text-sm font-semibold tabular-nums text-foreground">
             {formatCreditValue(tool.attributedCredits)}
           </dd>
