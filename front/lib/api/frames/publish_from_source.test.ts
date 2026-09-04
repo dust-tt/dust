@@ -27,6 +27,7 @@ import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
 } from "@app/types/mount_path";
+import { SANDBOX_POLICY_MAX_REQUESTED_DOMAINS } from "@app/types/sandbox/egress_policy";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -320,10 +321,10 @@ describe("publishFrameFromSource", () => {
     assert(result.isOk());
     assert(result.value.kind === "v2");
     expect(result.value.egressDomains).toEqual({
+      kind: "filed",
       scope: "workspace",
       requested: ["api.stripe.com", "*.stripe.com"],
       alreadyAllowed: [],
-      failed: [],
     });
     expect(
       requestedDomainsAt(`w/${workspace.sId}/sandbox-egress-policy.json`)
@@ -361,7 +362,10 @@ describe("publishFrameFromSource", () => {
 
     assert(result.isOk());
     assert(result.value.kind === "v2");
-    expect(result.value.egressDomains?.scope).toBe("pod");
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "filed",
+      scope: "pod",
+    });
     expect(
       requestedDomainsAt(`w/${workspace.sId}/sandboxes/${projectId}.json`)
     ).toEqual(["api.stripe.com", "*.stripe.com"]);

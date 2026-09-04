@@ -5,7 +5,6 @@ import {
   getFrameV2NameFromManifestPath,
   isSafeFrameRelativePath,
   MAX_FRAME_DATABASE_COUNT,
-  MAX_FRAME_DOMAIN_COUNT,
   MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH,
   MAX_FRAME_NAME_LENGTH,
   parseFrameManifest,
@@ -15,6 +14,7 @@ import {
   DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
   DEFAULT_SANDBOX_FUNCTION_STAKE,
 } from "@app/types/api/sandbox_functions";
+import { SANDBOX_POLICY_MAX_REQUESTED_DOMAINS } from "@app/types/sandbox/egress_policy";
 import { describe, expect, it } from "vitest";
 
 const MANIFEST = {
@@ -299,7 +299,7 @@ describe("FrameManifestSchema domains", () => {
 
   it("bounds the number of declared domains", () => {
     const domains = Array.from(
-      { length: MAX_FRAME_DOMAIN_COUNT + 1 },
+      { length: SANDBOX_POLICY_MAX_REQUESTED_DOMAINS + 1 },
       (_, index) => `host-${index}.example.com`
     );
     expect(
