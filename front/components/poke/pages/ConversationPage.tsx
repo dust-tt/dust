@@ -2,8 +2,6 @@ import { PokeConversationConsumptionInspector } from "@app/components/poke/conve
 import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
 import { useConversationInspectorPanels } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
-import type { ProviderPassthroughEntry } from "@app/components/poke/pages/conversation_tool_execution_timeline";
-import { getToolExecutionTimelineEntries } from "@app/components/poke/pages/conversation_tool_execution_timeline";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -28,6 +26,7 @@ import {
   assertNever,
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -100,8 +99,34 @@ function formatDurationMs(durationMs: number) {
     : `${durationMs}ms`;
 }
 
+interface ProviderPassthroughEntry {
+  block: unknown;
+  key: string;
+  provider: string;
+  step: number;
+}
+
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getProviderPassthroughEntries(
+  contents: PokeAgentMessageType["contents"]
+): ProviderPassthroughEntry[] {
+  return removeNulls(
+    contents.map(({ content, step }, contentIndex) => {
+      if (content.type !== "provider_passthrough") {
+        return null;
+      }
+
+      return {
+        block: content.value.block,
+        key: `${step}-${contentIndex}`,
+        provider: content.value.provider,
+        step,
+      };
+    })
+  );
 }
 
 function getToolSearchResultSummary(content: unknown): string | null {
@@ -611,10 +636,21 @@ const AgentMessageView = ({
     });
   };
 
-  const toolExecutionTimelineEntries = getToolExecutionTimelineEntries(
-    message.contents,
-    message.actions
+  const providerPassthroughEntries = getProviderPassthroughEntries(
+    message.contents
   );
+  const toolExecutionTimelineEntries = [
+    ...providerPassthroughEntries.map((entry) => ({
+      type: "provider_passthrough" as const,
+      entry,
+      step: entry.step,
+    })),
+    ...message.actions.map((action) => ({
+      type: "action" as const,
+      action,
+      step: action.step,
+    })),
+  ].sort((a, b) => a.step - b.step);
 
   return (
     <div className="w-full">
@@ -705,7 +741,7 @@ const AgentMessageView = ({
               const { entry } = timelineEntry;
               return (
                 <ProviderPassthroughView
-                  key={timelineEntry.key}
+                  key={`provider-passthrough-${entry.key}`}
                   entry={entry}
                   isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
                   onToggle={() => toggleProviderPassthroughEntry(entry.key)}
@@ -716,7 +752,7 @@ const AgentMessageView = ({
               const { action } = timelineEntry;
               return (
                 <ToolActionView
-                  key={timelineEntry.key}
+                  key={`action-${action.sId}`}
                   action={action}
                   isExpanded={expandedActions.has(action.sId)}
                   onToggle={() => toggleAction(action.sId)}
