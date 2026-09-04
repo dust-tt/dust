@@ -2,11 +2,16 @@ import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
+import {
+  useAwuPoolCurrentCycle,
+  useAwuPoolCycleHistory,
+} from "@app/lib/swr/credits";
 import type {
   AwuPoolCurrentCycleResponseBody,
   AwuPoolCycleBreakdown,
 } from "@app/types/api/credits/awu_pool_summary";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
   ContentMessage,
@@ -325,6 +330,47 @@ export function CreditPoolCardsFromCycleData({
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
       otherConsumedCredits={otherConsumedCredits}
+    />
+  );
+}
+
+interface CompactCreditPoolCardsProps {
+  owner: LightWorkspaceType;
+  disabled: boolean;
+}
+
+// Credit consumption cards for the compact usage page, mirroring Poke's
+// read-only pool view (front/components/poke/pages/PoolUsagePage.tsx) but
+// backed by the customer-facing awu-pool-current-cycle/cycle-history routes.
+export function CompactCreditPoolCards({
+  owner,
+  disabled,
+}: CompactCreditPoolCardsProps) {
+  const {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+  } = useAwuPoolCurrentCycle({ workspaceId: owner.sId, disabled });
+  const {
+    cycleBreakdown: poolCycleBreakdown,
+    excessCycleBreakdown,
+    isAwuPoolCycleHistoryLoading,
+    isAwuPoolCycleHistoryError,
+  } = useAwuPoolCycleHistory({ workspaceId: owner.sId, disabled });
+
+  return (
+    <CreditPoolCardsFromCycleData
+      awuPoolCurrentCycle={awuPoolCurrentCycle}
+      cardsStatus={toCreditPoolFetchStatus(
+        isAwuPoolCurrentCycleLoading,
+        !!isAwuPoolCurrentCycleError
+      )}
+      poolCycleBreakdown={poolCycleBreakdown}
+      excessCycleBreakdown={excessCycleBreakdown}
+      tableStatus={toCreditPoolFetchStatus(
+        isAwuPoolCycleHistoryLoading,
+        !!isAwuPoolCycleHistoryError
+      )}
     />
   );
 }
