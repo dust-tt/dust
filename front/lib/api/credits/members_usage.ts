@@ -2052,7 +2052,7 @@ async function resolveMembersUsagePageUsers({
       // Count-only and pipelined into a single Redis round-trip
       const usedCountByUserId = await getPremiumModelMessageUsedCountsByUser({
         workspace,
-        users: allUsers.map((u) => u.toJSON()),
+        users: allUsers.map((u) => ({ id: u.id, sId: u.sId })),
       });
       for (const u of allUsers) {
         sortKeyByUserId.set(u.sId, usedCountByUserId.get(u.sId) ?? 0);

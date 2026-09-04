@@ -190,9 +190,6 @@ export function PoolUsagePage() {
     !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
   const isLegacyPremiumMessagePlan =
     !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
-  // Users with no pool and no Metronome contract on a legacy plan only have
-  // a premium-message rate limit — no pool/Metronome usage to show. The pool
-  // cards and previous-cycles table would just render empty for them.
   const isLegacyWithoutPoolOrMetronome =
     isLegacyPremiumMessagePlan && !hasMetronomeContract;
   const showPoolSection =

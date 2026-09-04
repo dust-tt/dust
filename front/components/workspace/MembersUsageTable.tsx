@@ -91,6 +91,8 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
 const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
 const ALWAYS_CAN_UPGRADE_SEAT = (_member: MemberUsageType) => true;
 
+const DEFAULT_PREMIUM_MESSAGE_WINDOW_DAYS = 7;
+
 type RowData = {
   sId: string;
   name: string;
@@ -750,91 +752,96 @@ function buildPoolCreditUsageColumn(
   };
 }
 
-const premiumMessageUsageColumn: ColumnDef<RowData, string> = {
-  id: "premiumMessageUsage" as const,
-  header: () => (
-    <span className="flex items-center gap-1">
-      <Icon visual={CoinsStacked03} size="xs" />
-      Premium messages
-      <Tooltip
-        trigger={<Icon visual={InfoCircle} size="xs" />}
-        label="Usage is capped over a rolling 7-day window: each message frees up its slot 7 days after it was sent, not all at once."
-      />
-    </span>
-  ),
-  accessorFn: (row) => (row.premiumMessageUsage?.usedMessages ?? 0).toString(),
-  cell: (info: Info) => {
-    const usage = info.row.original.premiumMessageUsage;
-    if (!usage) {
-      return (
-        <DataTable.CellContent className="justify-center">
-          <span className="text-sm text-muted-foreground">--</span>
-        </DataTable.CellContent>
+function buildPremiumMessageUsageColumn(
+  windowDays: number
+): ColumnDef<RowData, string> {
+  return {
+    id: "premiumMessageUsage" as const,
+    header: () => (
+      <span className="flex items-center gap-1">
+        <Icon visual={CoinsStacked03} size="xs" />
+        Premium messages
+        <Tooltip
+          trigger={<Icon visual={InfoCircle} size="xs" />}
+          label={`Usage is capped over a rolling ${windowDays}-day window: each message frees up its slot ${windowDays} days after it was sent, not all at once.`}
+        />
+      </span>
+    ),
+    accessorFn: (row) =>
+      (row.premiumMessageUsage?.usedMessages ?? 0).toString(),
+    cell: (info: Info) => {
+      const usage = info.row.original.premiumMessageUsage;
+      if (!usage) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <span className="text-sm text-muted-foreground">--</span>
+          </DataTable.CellContent>
+        );
+      }
+      const { usedMessages, limitMessages, windowDays, refillSchedule } = usage;
+      const percentage =
+        limitMessages > 0
+          ? Math.min(100, (usedMessages / limitMessages) * 100)
+          : usedMessages > 0
+            ? 100
+            : 0;
+      const isAtLimit = limitMessages > 0 && usedMessages === limitMessages;
+      const bar = (
+        <ProgressBar
+          aria-label="Premium message usage"
+          aria-valuenow={percentage}
+          aria-valuetext={`${usedMessages} of ${limitMessages} premium messages used over the last ${windowDays} days`}
+          className="h-1 w-full gap-px bg-transparent"
+          values={[
+            {
+              value: percentage,
+              className: isAtLimit
+                ? AT_POOL_LIMIT_BAR_CLASSES.fill
+                : MUTED_BAR_CLASSES.fill,
+            },
+            { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
+          ]}
+        />
       );
-    }
-    const { usedMessages, limitMessages, refillSchedule } = usage;
-    const percentage =
-      limitMessages > 0
-        ? Math.min(100, (usedMessages / limitMessages) * 100)
-        : usedMessages > 0
-          ? 100
-          : 0;
-    const isAtLimit = limitMessages > 0 && usedMessages === limitMessages;
-    const bar = (
-      <ProgressBar
-        aria-label="Premium message usage"
-        aria-valuenow={percentage}
-        aria-valuetext={`${usedMessages} of ${limitMessages} premium messages used this week`}
-        className="h-1 w-full gap-px bg-transparent"
-        values={[
-          {
-            value: percentage,
-            className: isAtLimit
-              ? AT_POOL_LIMIT_BAR_CLASSES.fill
-              : MUTED_BAR_CLASSES.fill,
-          },
-          { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
-        ]}
-      />
-    );
-    return (
-      <div className="flex w-full flex-col gap-1 pr-3">
-        <div className="flex justify-between text-xs tabular-nums text-foreground">
-          <span>{usedMessages}</span>
-          <span>{limitMessages}</span>
+      return (
+        <div className="flex w-full flex-col gap-1 pr-3">
+          <div className="flex justify-between text-xs tabular-nums text-foreground">
+            <span>{usedMessages}</span>
+            <span>{limitMessages}</span>
+          </div>
+          {refillSchedule && refillSchedule.length > 0 ? (
+            <Tooltip
+              tooltipTriggerAsChild
+              trigger={
+                <div className="flex h-3 w-full cursor-help items-center">
+                  {bar}
+                </div>
+              }
+              label={
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium">Reset schedule:</span>
+                  {refillSchedule.map(({ date, messages }) => (
+                    <span key={date}>
+                      {new Date(date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        timeZone: "UTC",
+                      })}
+                      : +{messages}
+                    </span>
+                  ))}
+                </div>
+              }
+            />
+          ) : (
+            <div className="flex h-3 w-full items-center">{bar}</div>
+          )}
         </div>
-        {refillSchedule && refillSchedule.length > 0 ? (
-          <Tooltip
-            tooltipTriggerAsChild
-            trigger={
-              <div className="flex h-3 w-full cursor-help items-center">
-                {bar}
-              </div>
-            }
-            label={
-              <div className="flex flex-col gap-0.5">
-                <span className="font-medium">Reset schedule:</span>
-                {refillSchedule.map(({ date, messages }) => (
-                  <span key={date}>
-                    {new Date(date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      timeZone: "UTC",
-                    })}
-                    : +{messages}
-                  </span>
-                ))}
-              </div>
-            }
-          />
-        ) : (
-          <div className="flex h-3 w-full items-center">{bar}</div>
-        )}
-      </div>
-    );
-  },
-  enableSorting: true,
-};
+      );
+    },
+    enableSorting: true,
+  };
+}
 
 const offPaceColumn: ColumnDef<RowData, string> = {
   id: "overallUsageTarget" as const,
@@ -1001,11 +1008,13 @@ function buildCreditPlanColumns({
   variant,
   hasPool,
   showPremiumMessageUsage,
+  premiumMessageWindowDays,
 }: {
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
   hasPool: boolean;
   showPremiumMessageUsage: boolean;
+  premiumMessageWindowDays: number;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(() => {
@@ -1021,7 +1030,7 @@ function buildCreditPlanColumns({
     })(),
     {
       ...(showPremiumMessageUsage
-        ? premiumMessageUsageColumn
+        ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
         : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool)),
       meta: { className: "w-56" },
     },
@@ -1040,6 +1049,7 @@ function buildColumns({
   variant,
   hasPool,
   showPremiumMessageUsage,
+  premiumMessageWindowDays,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
@@ -1049,6 +1059,7 @@ function buildColumns({
   variant: MembersUsageTableVariant;
   hasPool: boolean;
   showPremiumMessageUsage: boolean;
+  premiumMessageWindowDays: number;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -1061,6 +1072,7 @@ function buildColumns({
           variant,
           hasPool,
           showPremiumMessageUsage,
+          premiumMessageWindowDays,
         })
       : []),
     // Every row action belongs to one of these two groups.
@@ -1333,6 +1345,12 @@ export function MembersUsageTable({
     ]
   );
 
+  // All members share the same rolling-window configuration, so the first
+  // loaded usage payload's `windowDays` is representative of the whole table.
+  const premiumMessageWindowDays =
+    members.find((m) => m.premiumMessageUsage)?.premiumMessageUsage
+      ?.windowDays ?? DEFAULT_PREMIUM_MESSAGE_WINDOW_DAYS;
+
   const columns = useMemo(
     () =>
       buildColumns({
@@ -1344,6 +1362,7 @@ export function MembersUsageTable({
         variant,
         hasPool,
         showPremiumMessageUsage,
+        premiumMessageWindowDays,
       }),
     [
       enableSelection,
@@ -1353,6 +1372,7 @@ export function MembersUsageTable({
       creditsResetAt,
       variant,
       hasPool,
+      premiumMessageWindowDays,
       showPremiumMessageUsage,
     ]
   );
