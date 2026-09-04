@@ -37,14 +37,17 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  AlertCircle,
   Avatar,
   Chip,
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
@@ -77,6 +80,8 @@ interface ChangeSeatModalProps {
   member: MemberUsageType | null;
   owner: WorkspaceType;
   seatPlans: SeatPlanResponseBody;
+  isSeatPlanLoading?: boolean;
+  isSeatPlanError?: boolean;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
   // Fired once the seat change has been persisted successfully (not on cancel
   // or a no-op close). Used to resolve a linked upgrade request as approved.
@@ -89,6 +94,8 @@ export function ChangeSeatModal({
   member,
   owner,
   seatPlans,
+  isSeatPlanLoading = false,
+  isSeatPlanError = false,
   onSavingChange,
   onSaved,
 }: ChangeSeatModalProps) {
@@ -102,20 +109,32 @@ export function ChangeSeatModal({
   const isSubscriptionCancelled =
     isSubscriptionCancellationScheduled(subscription);
   // Keep the last non-null member so the dialog can render its content through
-  // the exit animation after the parent has cleared `member`.
+  // the exit animation after the parent has cleared `member`. Set in an
+  // effect, not during render: React can replay or discard a render, so a
+  // write during render could leak a member from an abandoned render into
+  // the exit-animation snapshot.
   const lastMemberRef = useRef<MemberUsageType | null>(null);
-  if (member) {
-    lastMemberRef.current = member;
-  }
+  useEffect(() => {
+    if (member) {
+      lastMemberRef.current = member;
+    }
+  }, [member]);
   const displayedMember = member ?? lastMemberRef.current;
 
   // "free" seats are not user-selectable — a member can never be switched to
   // a Free seat from this modal. Filter the API response so the option never
   // appears in the picker even if it's returned by the seat plans endpoint.
+  // Also restrict to monthly/annual plans: BillingPeriodSwitch only offers
+  // those two cadences, so a weekly/quarterly-only seat plan would either
+  // show under the wrong tab label or leave a tab with no cards.
   const seatTypes = sortSeatTypes(
     Object.keys(seatPlans)
       .filter(isMembershipSeatType)
       .filter((s) => s !== "free")
+      .filter((s) => {
+        const frequency = seatPlans[s]?.billingFrequency;
+        return frequency === "monthly" || frequency === "annual";
+      })
   );
   const firstSeatType = seatTypes[0] ?? null;
   const displayedMemberId = displayedMember?.sId ?? null;
@@ -390,85 +409,99 @@ export function ChangeSeatModal({
           </div>
         </DialogHeader>
         <DialogContainer>
-          <div className="flex flex-col gap-3">
-            {availableFrequencies.length > 1 && (
-              <div className="mb-1 self-start">
-                {/* Remount per member so the uncontrolled switch picks up the
+          {isSeatPlanLoading ? (
+            <div className="flex justify-center py-6">
+              <Spinner />
+            </div>
+          ) : isSeatPlanError || seatTypes.length === 0 ? (
+            <ContentMessage
+              title="No seat plans available"
+              icon={AlertCircle}
+              variant="warning"
+            >
+              <p>We couldn&apos;t load the seat plans for this workspace.</p>
+            </ContentMessage>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {availableFrequencies.length > 1 && (
+                <div className="mb-1 self-start">
+                  {/* Remount per member so the uncontrolled switch picks up the
                     member's current billing frequency as its default. */}
-                <BillingPeriodSwitch
-                  key={displayedMemberId ?? "none"}
-                  defaultValue={
-                    currentFrequency === "annual" ? "yearly" : "monthly"
-                  }
-                  onValueChange={(period) =>
-                    setActiveFrequency(
-                      period === "yearly" ? "annual" : "monthly"
-                    )
-                  }
-                />
-              </div>
-            )}
+                  <BillingPeriodSwitch
+                    key={displayedMemberId ?? "none"}
+                    defaultValue={
+                      currentFrequency === "annual" ? "yearly" : "monthly"
+                    }
+                    onValueChange={(period) =>
+                      setActiveFrequency(
+                        period === "yearly" ? "annual" : "monthly"
+                      )
+                    }
+                  />
+                </div>
+              )}
 
-            {seatTypesByFrequency[activeFrequency].map((seatType) => {
-              const info = seatPlans[seatType];
-              if (!info) {
-                return null;
-              }
-              return (
-                <SeatCard
-                  key={seatType}
-                  seatType={seatType}
-                  info={info}
-                  isSelected={selectedSeat === seatType}
-                  badge={getBadge(seatType, info)}
-                  onClick={() => setSelectedSeat(seatType)}
-                />
-              );
-            })}
+              {seatTypesByFrequency[activeFrequency].map((seatType) => {
+                const info = seatPlans[seatType];
+                if (!info) {
+                  return null;
+                }
+                return (
+                  <SeatCard
+                    key={seatType}
+                    seatType={seatType}
+                    info={info}
+                    isSelected={selectedSeat === seatType}
+                    badge={getBadge(seatType, info)}
+                    onClick={() => setSelectedSeat(seatType)}
+                  />
+                );
+              })}
 
-            {isSubscriptionCancelled ? (
-              <p className="mt-1 text-xs text-warning-600">
-                Your subscription is scheduled to end and seats can&apos;t be
-                changed until it&apos;s reactivated.
-              </p>
-            ) : (
-              isDeferredChange && (
-                <p className="mt-1 text-xs text-info-600">
-                  The change will take effect at the next credit refresh.
-                </p>
-              )
-            )}
-            {isCancellingScheduledChange && (
-              <p className="mt-1 text-xs text-info-600">
-                Scheduled change to{" "}
-                <span className="capitalize">
-                  {displayedMember?.scheduledSeatType}
-                </span>{" "}
-                will be cancelled.
-              </p>
-            )}
-            {!isSubscriptionCancelled &&
-              selectedSeat &&
-              selectedSeat !== currentSeatType &&
-              (isInvoicePreviewLoading ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Estimating invoice impact…
+              {isSubscriptionCancelled ? (
+                <p className="mt-1 text-xs text-warning-600">
+                  Your subscription is scheduled to end and seats can&apos;t be
+                  changed until it&apos;s reactivated.
                 </p>
               ) : (
-                invoicePreview && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {getInvoiceImpactMessage({
-                      deltaCents: invoiceDeltaCents,
-                      currency: invoicePreview.currency,
-                      targetSeatInfo: selectedSeatInfo ?? null,
-                      moveCount: 1,
-                      isDeferred: isInvoiceDeltaDeferred,
-                      hasAnnualOrigin: currentFrequency === "annual",
-                    })}
+                isDeferredChange && (
+                  <p className="mt-1 text-xs text-info-600">
+                    The change will take effect at the next credit refresh.
                   </p>
                 )
-              ))}
-          </div>
+              )}
+              {isCancellingScheduledChange && (
+                <p className="mt-1 text-xs text-info-600">
+                  Scheduled change to{" "}
+                  <span className="capitalize">
+                    {displayedMember?.scheduledSeatType}
+                  </span>{" "}
+                  will be cancelled.
+                </p>
+              )}
+              {!isSubscriptionCancelled &&
+                selectedSeat &&
+                selectedSeat !== currentSeatType &&
+                (isInvoicePreviewLoading ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Estimating invoice impact…
+                  </p>
+                ) : (
+                  invoicePreview && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {getInvoiceImpactMessage({
+                        deltaCents: invoiceDeltaCents,
+                        currency: invoicePreview.currency,
+                        targetSeatInfo: selectedSeatInfo ?? null,
+                        moveCount: 1,
+                        isDeferred: isInvoiceDeltaDeferred,
+                        hasAnnualOrigin: currentFrequency === "annual",
+                      })}
+                    </p>
+                  )
+                ))}
+            </div>
+          )}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
@@ -479,13 +512,16 @@ export function ChangeSeatModal({
           rightButtonProps={{
             label: useCheckoutPath ? "Continue to checkout" : "Validate",
             variant: "primary",
-            disabled: useCheckoutPath
-              ? !selectedSeat || !toCheckoutParams(selectedSeat)
-              : isSaving ||
-                !selectedSeat ||
-                isSubscriptionCancelled ||
-                (selectedSeat === currentSeatType &&
-                  !isCancellingScheduledChange),
+            disabled:
+              isSeatPlanLoading ||
+              isSeatPlanError ||
+              (useCheckoutPath
+                ? !selectedSeat || !toCheckoutParams(selectedSeat)
+                : isSaving ||
+                  !selectedSeat ||
+                  isSubscriptionCancelled ||
+                  (selectedSeat === currentSeatType &&
+                    !isCancellingScheduledChange)),
             onClick: handleValidate,
           }}
         />

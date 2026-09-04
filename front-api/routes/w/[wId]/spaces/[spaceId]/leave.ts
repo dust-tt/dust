@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -18,56 +19,38 @@ app.post(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    if (!space.isProject()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "You can only leave Pods, not regular spaces.",
-        },
-      });
-    }
-
-    if (!space.isMember(auth)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "You are not a member of this Pod.",
-        },
-      });
-    }
-
-    const user = auth.getNonNullableUser();
-
-    const groupsToLeave = await space.fetchRegularAutoGroups(auth);
-    const editorGroup = await space.fetchManualEditorGroup(auth);
-
-    if (editorGroup) {
-      const activeEditors = await editorGroup.getActiveMembers(auth);
-      const isUserEditor = activeEditors.some((m) => m.sId === user.sId);
-      if (isUserEditor && activeEditors.length === 1) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "You cannot leave this Pod as you are the last editor. Please add another editor first.",
-          },
-        });
-      }
-    }
-
-    for (const group of groupsToLeave) {
-      const result = await group.leaveGroup(auth);
-      if (result.isErr() && result.error.code !== "user_not_member") {
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: result.error.message,
-          },
-        });
+    const result = await space.leavePod(auth);
+    if (result.isErr()) {
+      switch (result.error.code) {
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: result.error.message,
+            },
+          });
+        case "user_not_member":
+        case "group_requirements_not_met":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: result.error.message,
+            },
+          });
+        case "unauthorized":
+        case "user_not_found":
+        case "system_or_global_group":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: result.error.message,
+            },
+          });
+        default:
+          assertNever(result.error.code);
       }
     }
 

@@ -550,7 +550,6 @@ async function handleCallback(ctx: Context) {
     const loginSession: SessionWithUser = {
       type: "workos",
       sessionId: decodedPayload.sid ?? "",
-      region: sessionCookie.region,
       user: {
         email: user.email,
         email_verified: user.emailVerified,

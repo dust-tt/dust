@@ -313,7 +313,18 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error.message).toContain(candidateName);
-    expect(body.nameConflict).toEqual({ name: candidateName });
+    // Cropped tool-name collision: the response names the existing connection
+    // and the shared model-facing tool name.
+    expect(body.nameConflict.name).toBe(candidateName);
+    expect(body.nameConflict.conflictDetails.conflictingServerName).toBe(
+      existingName
+    );
+    expect(body.nameConflict.conflictDetails.conflictingToolName).toContain(
+      "test_tool"
+    );
+    expect(body.error.message).toContain(
+      body.nameConflict.conflictDetails.conflictingToolName
+    );
 
     vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
       new Ok({
@@ -401,7 +412,11 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error.message).toContain(existingName);
-    expect(body.nameConflict).toEqual({ name: existingName });
+    // Same-name collision: no cropped tool name, just the conflicting server.
+    expect(body.nameConflict.name).toBe(existingName);
+    expect(body.nameConflict.conflictDetails).toEqual({
+      conflictingServerName: existingName,
+    });
   });
 
   it("rejects custom view names longer than the database column", async () => {

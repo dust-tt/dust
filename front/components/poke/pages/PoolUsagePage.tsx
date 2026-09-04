@@ -1,3 +1,5 @@
+import { PokeChangeSeatModal } from "@app/components/poke/credits/PokeChangeSeatModal";
+import { PokeMemberSpendLimitModal } from "@app/components/poke/credits/PokeMemberSpendLimitModal";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
 import {
   SEAT_TYPE_ICONS,
@@ -17,10 +19,12 @@ import {
   usePokeAwuPoolCurrentCycle,
   usePokeAwuPoolCycleHistory,
   usePokeMembersUsage,
+  usePokeSeatPlan,
 } from "@app/poke/swr/credits";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeGroups } from "@app/poke/swr/groups";
 import { usePokeAllowedModelTiers } from "@app/poke/swr/model_tiers";
+import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { isCapEligibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -29,6 +33,7 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   AlertCircle,
   Button,
@@ -139,6 +144,10 @@ export function PoolUsagePage() {
   const [seatTypeFilter, setSeatTypeFilter] =
     useState<MembershipSeatType | null>(null);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [changeSeatRecapMember, setChangeSeatRecapMember] =
+    useState<MemberUsageType | null>(null);
+  const [spendLimitRecapMember, setSpendLimitRecapMember] =
+    useState<MemberUsageType | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -186,6 +195,18 @@ export function PoolUsagePage() {
   const { awuPoolCurrentCycle } = usePokeAwuPoolCurrentCycle({ owner });
   const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
 
+  const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
+  const activeSubscription = workspaceInfo?.activeSubscription;
+  const hasMetronomeContract = activeSubscription?.metronomeContractId != null;
+  const isLegacyPremiumMessagePlan =
+    !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
+  // Users with no pool and no Metronome contract on a legacy plan only have
+  // a premium-message rate limit — no pool/Metronome usage to show. The pool
+  // cards and previous-cycles table would just render empty for them.
+  const isLegacyWithoutPoolOrMetronome =
+    isLegacyPremiumMessagePlan && !hasPool && !hasMetronomeContract;
+  const showPoolSection = !isLegacyWithoutPoolOrMetronome;
+
   const {
     members,
     totalMembers,
@@ -203,6 +224,19 @@ export function PoolUsagePage() {
     seatType: seatTypeFilter ?? undefined,
     groupId: groupFilter ?? undefined,
   });
+
+  const { seatPlans, isSeatPlanLoading, isSeatPlanError } = usePokeSeatPlan({
+    owner,
+  });
+  const isSeatBased = Object.keys(seatPlans).length > 1;
+  const canUpgradeSeat = useCallback(
+    (member: MemberUsageType) =>
+      isSeatBased &&
+      !!member.seatType &&
+      member.seatType !== "none" &&
+      toBaseSeatType(member.seatType) !== "workspace",
+    [isSeatBased]
+  );
 
   const { data: allGroups } = usePokeGroups({ owner });
   const groups = useMemo(
@@ -341,7 +375,7 @@ export function PoolUsagePage() {
       />
 
       <div className="flex flex-col items-stretch gap-10 py-6 pb-20">
-        <PoolCreditCard owner={owner} />
+        {showPoolSection && <PoolCreditCard owner={owner} />}
 
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
@@ -385,6 +419,9 @@ export function PoolUsagePage() {
                   hasPool={hasPool}
                   readOnly
                   onChangeSeat={noopOnMember}
+                  onOpenChangeSeatRecap={setChangeSeatRecapMember}
+                  onOpenSpendLimitRecap={setSpendLimitRecapMember}
+                  canUpgradeSeat={canUpgradeSeat}
                   onRemoveSeat={noopOnMember}
                   onEditSpendLimit={noopOnMember}
                   pagination={pagination}
@@ -409,6 +446,22 @@ export function PoolUsagePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <PokeChangeSeatModal
+        isOpen={!!changeSeatRecapMember}
+        member={changeSeatRecapMember}
+        seatPlans={seatPlans}
+        isSeatPlanLoading={isSeatPlanLoading}
+        isSeatPlanError={!!isSeatPlanError}
+        onClose={() => setChangeSeatRecapMember(null)}
+      />
+
+      <PokeMemberSpendLimitModal
+        isOpen={!!spendLimitRecapMember}
+        member={spendLimitRecapMember}
+        groups={groups}
+        onClose={() => setSpendLimitRecapMember(null)}
+      />
     </main>
   );
 }

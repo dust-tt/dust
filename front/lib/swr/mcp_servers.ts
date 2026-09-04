@@ -433,7 +433,12 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         if (body.nameConflict?.name) {
-          return new Err({ nameConflict: body.nameConflict.name });
+          return new Err({
+            nameConflict: body.nameConflict.name,
+            ...(body.nameConflict.conflictDetails
+              ? { conflictDetails: body.nameConflict.conflictDetails }
+              : {}),
+          });
         }
         return new Err(
           new MCPCreateServerError(

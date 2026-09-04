@@ -4,7 +4,7 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFrames } from "@app/poke/swr/frames";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button } from "@dust-tt/sparkle";
+import { Button, CheckboxWithText } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const PAGE_SIZE = 20;
@@ -16,8 +16,9 @@ interface FramesDataTableProps {
 
 export function FramesDataTable({ loadOnInit, owner }: FramesDataTableProps) {
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [hasSandbox, setHasSandbox] = useState(false);
   const useFramesWithLimit = (props: PokeConditionalFetchProps) =>
-    usePokeFrames({ ...props, limit });
+    usePokeFrames({ ...props, limit, hasSandbox });
 
   return (
     <PokeDataTableConditionalFetch
@@ -25,6 +26,16 @@ export function FramesDataTable({ loadOnInit, owner }: FramesDataTableProps) {
       loadOnInit={loadOnInit}
       owner={owner}
       useSWRHook={useFramesWithLimit}
+      globalActions={
+        <CheckboxWithText
+          text="Only with a sandbox"
+          checked={hasSandbox}
+          onCheckedChange={(checked) => {
+            setHasSandbox(checked === true);
+            setLimit(PAGE_SIZE);
+          }}
+        />
+      }
     >
       {({ items, hasMore, isLoadingMore }) => (
         <div className="flex flex-col gap-3">

@@ -16,11 +16,7 @@ import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { UserResource } from "@app/lib/resources/user_resource";
-import {
-  getFrameBasePath,
-  getFrameDatabaseReplicasBasePath,
-  getFramePublicationsBasePath,
-} from "@app/types/api/frame_storage";
+import { getFrameBasePath } from "@app/types/api/frame_storage";
 import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionStake,
@@ -96,14 +92,21 @@ function toPokeFrameListItem(
 
 export async function listWorkspaceFrames(
   auth: Authenticator,
-  pagination: {
+  {
+    hasSandbox,
+    ...pagination
+  }: {
     limit: number;
     lastValue?: string;
     orderDirection: "asc" | "desc";
+    hasSandbox: boolean;
   }
 ): Promise<PokeListFrames> {
   const { frames, hasMore, lastValue } =
-    await FileResource.listFrameV2ForWorkspacePaginated(auth, pagination);
+    await FileResource.listFrameV2ForWorkspacePaginated(auth, {
+      ...pagination,
+      hasSandbox,
+    });
 
   if (frames.length === 0) {
     return { items: [], hasMore, lastValue };
@@ -197,20 +200,6 @@ function makeStorageLocations(
     {
       label: "Frame root",
       prefix: getFrameBasePath({ workspaceId, frameId: frame.sId }),
-    },
-    {
-      label: "Publications",
-      prefix: getFramePublicationsBasePath({
-        workspaceId,
-        frameId: frame.sId,
-      }),
-    },
-    {
-      label: "Database replicas",
-      prefix: getFrameDatabaseReplicasBasePath({
-        workspaceId,
-        frameId: frame.sId,
-      }),
     },
   ];
 

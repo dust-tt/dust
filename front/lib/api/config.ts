@@ -229,8 +229,8 @@ const config = {
   getPersonaApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("PERSONA_API_KEY");
   },
-  getServiceAccount: (): string => {
-    return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
+  getServiceAccount: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("SERVICE_ACCOUNT");
   },
   getPostHogApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("NEXT_PUBLIC_POSTHOG_KEY");
@@ -410,9 +410,6 @@ const config = {
   getOAuthFreshserviceClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_CLIENT_ID");
   },
-  getOAuthFreshserviceDomain: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_DOMAIN");
-  },
   getOAuthJiraClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");
   },
@@ -471,12 +468,6 @@ const config = {
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");
   },
-  getMultiActionsAgentAnthropicBetaFlags: (): string[] | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "MULTI_ACTIONS_AGENT_ANTHROPIC_BETA_FLAGS"
-    )?.split(",");
-  },
-
   // WorkOS
   getWorkOSApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_API_KEY");
@@ -537,14 +528,6 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ENVIRONMENT") ??
       "master"
     );
-  },
-  getContentfulPreviewSecret: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "CONTENTFUL_PREVIEW_SECRET"
-    );
-  },
-  getContentfulPreviewToken: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_PREVIEW_TOKEN");
   },
   // Untrusted egress proxy.
   getUntrustedEgressProxyHost: (): string | undefined => {
@@ -629,18 +612,9 @@ const config = {
       "SENDGRID_PARSE_WEBHOOK_PUBLIC_KEY"
     );
   },
-  getProductionDustWorkspaceId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "PRODUCTION_DUST_WORKSPACE_ID"
-    );
-  },
   // Email validation secret for HMAC signing of action approval tokens.
   getEmailValidationSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_VALIDATION_SECRET");
-  },
-  // Secret for signing gated asset download tokens (ebooks, whitepapers, etc.).
-  getGatedAssetsTokenSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
   },
   // Secrets for secure storage of keys and bearer tokens.
   getDeveloperSecretsSecret: (): string => {

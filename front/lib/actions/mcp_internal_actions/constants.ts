@@ -100,7 +100,10 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
-import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
+import {
+  WORKSPACE_ANALYTICS_SERVER,
+  WORKSPACE_ANALYTICS_SERVER_NAME,
+} from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { WORKSPACE_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
@@ -241,7 +244,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "ask_user_question",
   "wakeups",
   "plan_mode",
-  "workspace_analytics",
+  WORKSPACE_ANALYTICS_SERVER_NAME,
   "workspace_management",
   "activation_recommendations",
 ] as const;

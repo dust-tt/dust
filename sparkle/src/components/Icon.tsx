@@ -5,14 +5,17 @@ import React, { type ComponentType } from "react";
 export interface IconProps {
   /** The SVG icon component to render; nothing is rendered when omitted. */
   visual?: ComponentType<{ className?: string }>;
-  size?: "2xs" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+  size?: "2xs" | "badge" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   /** Color is inherited from text color, so set it with a `text-*` class here. */
   className?: string;
 }
 
 const IconSizes = {
   // Badge scale: too small for a standalone glyph, use it inside DoubleIcon.
+  // `badge` (14px) sits between the two steps, for a status disc that has to
+  // read on a 16px main icon without matching it.
   "2xs": "h-3 w-3",
+  badge: "h-3.5 w-3.5",
   xs: "h-4 w-4",
   sm: "h-5 w-5",
   md: "h-6 w-6",
@@ -80,7 +83,34 @@ const fillVariants = cva("absolute inset-px rounded-full", {
   },
 });
 
+// A filled badge knocks its glyph out in the color of the surface behind the
+// icon: the status glyphs draw their own ring, which then reads as a halo
+// separating the badge from the main icon. Plain white only works on a light
+// surface, hence a token per surface.
+const knockoutVariants = cva("relative", {
+  variants: {
+    surface: {
+      background: "text-background",
+      "app-background": "text-app-background",
+      "panel-background": "text-panel-background",
+      "overlay-background": "text-overlay-background",
+      "modal-background": "text-modal-background",
+      "muted-background": "text-muted-background",
+      // For surfaces that paint their own color instead of a token: the caller
+      // sets that color as a `text-*` class on the DoubleIcon itself.
+      current: "text-current",
+    },
+  },
+  defaultVariants: {
+    surface: "background",
+  },
+});
+
 type DoubleIconSize = "xs" | "sm" | "md" | "lg" | "xl";
+
+type DoubleIconSurface = NonNullable<
+  VariantProps<typeof knockoutVariants>["surface"]
+>;
 
 const MAIN_ICON_SIZE: Record<DoubleIconSize, IconProps["size"]> = {
   xs: "xs",
@@ -100,7 +130,8 @@ const SECONDARY_ICON_SIZE: Record<DoubleIconSize, IconProps["size"]> = {
 
 export interface DoubleIconProps
   extends VariantProps<typeof sizeVariants>,
-    VariantProps<typeof positionVariants> {
+    VariantProps<typeof positionVariants>,
+    VariantProps<typeof knockoutVariants> {
   /** The primary icon, rendered at the full size. */
   mainIcon: React.ComponentType;
   /** The smaller badge icon, overlaid on a corner of the main icon. */
@@ -108,8 +139,14 @@ export interface DoubleIconProps
   size?: DoubleIconSize;
   /** Corner the badge sits in; defaults to the bottom-right. */
   position?: "bottom-right" | "top-right";
-  /** Fills the badge with a semantic color and knocks the glyph out in white. */
+  /** Fills the badge with a semantic color and knocks the glyph out. */
   secondaryColor?: "info" | "warning" | "success" | "highlight";
+  /** Badge size, when the badge needs more presence than `size` gives it. */
+  secondarySize?: IconProps["size"];
+  /** Surface behind the icon; a filled badge is knocked out in its color so it
+   * reads the same in both themes. Defaults to the page background; pass
+   * `current` to knock it out in this icon's own text color instead. */
+  surface?: DoubleIconSurface;
   className?: string;
 }
 
@@ -117,7 +154,8 @@ export interface DoubleIconProps
  * Renders a main icon with a smaller secondary icon overlaid on one of its
  * corners, e.g. a tool icon badged with its provider logo, or a model icon
  * badged with an `info` status. Pass `secondaryColor` to turn the badge into a
- * filled status disc. For a plain glyph use Icon.
+ * filled status disc, along with the `surface` it sits on so its glyph is
+ * knocked out in that surface's color. For a plain glyph use Icon.
  *
  * @summary Icon with an overlaid badge icon.
  */
@@ -128,7 +166,11 @@ export const DoubleIcon = ({
   size = "lg",
   position = "bottom-right",
   secondaryColor,
+  secondarySize,
+  surface = "background",
 }: DoubleIconProps) => {
+  const badgeSize = secondarySize ?? SECONDARY_ICON_SIZE[size];
+
   return (
     <div className={cn(sizeVariants({ size }), className)}>
       <Icon
@@ -140,14 +182,14 @@ export const DoubleIcon = ({
         <span className={cn(positionVariants({ position }), "flex")}>
           <span className={fillVariants({ color: secondaryColor })} />
           <Icon
-            size={SECONDARY_ICON_SIZE[size]}
+            size={badgeSize}
             visual={secondaryIcon}
-            className="relative text-white"
+            className={knockoutVariants({ surface })}
           />
         </span>
       ) : (
         <Icon
-          size={SECONDARY_ICON_SIZE[size]}
+          size={badgeSize}
           visual={secondaryIcon}
           className={positionVariants({ position })}
         />

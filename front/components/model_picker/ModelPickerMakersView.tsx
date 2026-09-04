@@ -77,7 +77,7 @@ export function ModelPickerMakersView({
       degradedModelIds.has(model.modelId)
     );
     return hasDegradedModel ? (
-      <DegradedModelIcon icon={makerLogo} surface="overlay-background" />
+      <DegradedModelIcon icon={makerLogo} surface="menu" />
     ) : (
       makerLogo
     );

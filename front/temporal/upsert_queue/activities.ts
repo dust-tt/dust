@@ -51,10 +51,6 @@ export async function upsertDocumentActivity(
   if (!DUST_UPSERT_QUEUE_BUCKET) {
     throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
   }
-  if (!SERVICE_ACCOUNT) {
-    throw new Error("SERVICE_ACCOUNT is not set");
-  }
-
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
   // GCS bucket.file().download() returns a `DownloadResponse = [Buffer]` — it's defined as a tuple with exactly one element.

@@ -134,6 +134,7 @@ interface UserMessageProps {
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
+  disableReactions?: boolean;
   isProjectArchived?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
@@ -147,6 +148,7 @@ export function UserMessage({
   message,
   owner,
   onReactionToggle,
+  disableReactions = false,
   isProjectArchived = false,
   setLimitReachedCode,
 }: UserMessageProps) {
@@ -441,6 +443,7 @@ export function UserMessage({
                   isUserMessageHovered={isUserMessageHovered}
                   message={message}
                   onReactionToggle={onReactionToggle}
+                  disableReactions={disableReactions}
                   handleEditMessage={handleEditMessage}
                   handleDeleteMessage={handleDeleteMessage}
                   canDelete={canDelete}
@@ -459,6 +462,7 @@ export function UserMessage({
                 isUserMessageHovered={isUserMessageHovered}
                 message={message}
                 onReactionToggle={onReactionToggle}
+                disableReactions={disableReactions}
                 handleEditMessage={handleEditMessage}
                 handleDeleteMessage={handleDeleteMessage}
                 canDelete={canDelete}
@@ -567,6 +571,7 @@ interface ActionMenuProps {
   handleDeleteMessage: () => void;
   message: UserMessageTypeWithContentFragments;
   onReactionToggle: (emoji: string) => void;
+  disableReactions: boolean;
   isUserMessageHovered: boolean;
   conversationId: string;
   owner: WorkspaceType;
@@ -583,6 +588,7 @@ function ActionMenu({
   handleDeleteMessage,
   message,
   onReactionToggle,
+  disableReactions,
   isUserMessageHovered,
   conversationId,
   owner,
@@ -663,11 +669,13 @@ function ActionMenu({
       )}
       {!isDeleted && (
         <div className={cn("flex items-center gap-1", sideItemVisibilityClass)}>
-          <MessageEmojiPicker
-            key="emoji-picker"
-            onEmojiSelect={onReactionToggle}
-            onOpenChange={setIsEmojiPickerOpen}
-          />
+          {!disableReactions && (
+            <MessageEmojiPicker
+              key="emoji-picker"
+              onEmojiSelect={onReactionToggle}
+              onOpenChange={setIsEmojiPickerOpen}
+            />
+          )}
           {actions.length > 0 && (
             <DropdownMenu
               open={isMenuOpen}

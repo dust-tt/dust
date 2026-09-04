@@ -189,7 +189,7 @@ function warnDocumentationAck(documentationAckLabel: string) {
 function checkAppsRegistry() {
   warn(
     `File \`front/lib/registry.ts\` has been modified.
-    Please check [Runbook: Update Assistant dust-apps](https://www.notion.so/dust-tt/Runbook-Update-Assistant-dust-apps-18c28599d94180d78dabe92f445157a8)
+    Please check [Runbook: Update Assistant dust-apps](https://app.notion.com/p/dust-tt/Runbook-Update-Assistant-dust-apps-18c28599d94180d78dabe92f445157a8)
     `
   );
 }

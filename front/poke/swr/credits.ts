@@ -8,6 +8,7 @@ import type {
 } from "@app/lib/api/analytics/programmatic_cost";
 import type { GetApiKeysUsageResponseBody } from "@app/lib/api/credits/api_keys_usage";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
+import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type {
@@ -333,5 +334,27 @@ export function usePokeApiKeysUsage({
     isApiKeysUsageLoading: !error && !data && !disabled,
     isApiKeysUsageError: error,
     mutateApiKeysUsage: mutate,
+  };
+}
+
+const EMPTY_SEAT_PLANS: SeatPlanResponseBody = {};
+
+export function usePokeSeatPlan({
+  disabled,
+  owner,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const seatPlanFetcher: Fetcher<SeatPlanResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/credits/seats-plan`,
+    seatPlanFetcher,
+    { disabled }
+  );
+
+  return {
+    seatPlans: data ?? EMPTY_SEAT_PLANS,
+    isSeatPlanLoading: !error && !data && !disabled,
+    isSeatPlanError: error,
   };
 }

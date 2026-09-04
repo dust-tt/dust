@@ -3,7 +3,10 @@ import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
-import type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
+import type {
+  PatchSpaceMembersRequestBodyType,
+  PostSpaceMembersRequestBodyType,
+} from "@app/lib/api/spaces/members";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
@@ -751,6 +754,62 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     return spaceResponse.space;
   };
   return doUpdate;
+}
+
+// Adds members to a manually managed space without replacing its member list.
+export function useAddSpaceMembers({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+  const { mutate: mutateSpaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: "all",
+    disabled: true, // Needed just to mutate
+  });
+  const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: true, // Needed just to mutate
+  });
+
+  const doAdd = async (
+    space: SpaceType,
+    memberIds: string[],
+    notification?: { title: string; description: string }
+  ): Promise<boolean> => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/spaces/${space.sId}/members`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          memberIds,
+        } satisfies PostSpaceMembersRequestBodyType),
+      }
+    );
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: `Failed to add members to ${getSpaceName(space)}`,
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+
+    void mutateSpaces();
+    void mutateSpacesAsAdmin();
+
+    sendNotification({
+      type: "success",
+      title: notification?.title ?? "Successfully added members",
+      description:
+        notification?.description ??
+        `Members were added to ${getSpaceName(space)}.`,
+    });
+    return true;
+  };
+  return doAdd;
 }
 
 export function useDeleteSpace({

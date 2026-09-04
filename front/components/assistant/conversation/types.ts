@@ -133,6 +133,7 @@ export type VirtuosoMessageListContext = {
     // Locks the conversation to its current agent: no `@` agent suggestions
     // and no agent switch on paste (used by the sidekick).
     disableAgentMentions?: boolean;
+    disableReactions?: boolean;
     resetConversation: () => void;
     clientSideMCPServerIds?: string[];
     skipToolsValidation?: boolean;

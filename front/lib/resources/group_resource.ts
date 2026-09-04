@@ -1313,8 +1313,12 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Users with no matching membership are absent from the map. Restricting the
    * query to the caller's group ids keeps this to a single row-bounded query
    * regardless of how many groups the workspace has.
+   *
+   * Dangerous: deliberately skips the `canRead` check on the groups — a space's
+   * grants mix regular_auto and non-regular_auto groups and the caller needs
+   * membership for both, so it authorizes the owning space instead.
    */
-  static async listGroupModelIdsByUserModelIdInWorkspace({
+  static async dangerouslyListGroupModelIdsByUserModelIdInWorkspace({
     workspace,
     userModelIds,
     groupModelIds,
@@ -1913,67 +1917,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Allows the authenticated user to leave the group.
-   *
-   * Unlike removeMembers(), this method does not require admin/editor permissions.
-   * Users can always remove themselves from groups they are members of.
-   *
-   * Only works for "regular_auto" groups.
-   * TODO(remy): Replace this with dangerouslyRemoveMembers once available
-   */
-  async leaveGroup(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<
-    Result<undefined, DustError<"user_not_member" | "system_or_global_group">>
-  > {
-    const user = auth.getNonNullableUser();
-    const workspace = auth.getNonNullableWorkspace();
-
-    if (!this.isRegularAuto()) {
-      return new Err(
-        new DustError(
-          "system_or_global_group",
-          "Users can only leave regular groups."
-        )
-      );
-    }
-
-    const now = new Date();
-
-    const [updatedCount] = await GroupMembershipModel.update(
-      { endAt: now },
-      {
-        where: {
-          groupId: this.id,
-          userId: user.id,
-          workspaceId: workspace.id,
-          startAt: { [Op.lte]: now },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-        },
-        transaction,
-      }
-    );
-
-    if (updatedCount === 0) {
-      return new Err(
-        new DustError("user_not_member", "User is not a member of this group.")
-      );
-    }
-
-    const userId = user.id;
-    const workspaceId = workspace.id;
-    invalidateCacheAfterCommit(transaction, async () => {
-      await GroupResource.invalidateGroupIdsCacheForUser({
-        user: { id: userId },
-        workspace: { id: workspaceId },
-      });
-    });
-
-    return new Ok(undefined);
-  }
-
-  /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
   async dangerouslySetMembers(
@@ -2036,11 +1979,21 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Suspends all active members of this group.
    * Returns array of affected user ModelIds.
+   *
+   * Only regular_auto group members can be suspended: it is how a space keeps its
+   * manual members on record while it runs in group management mode.
+   *
+   * Dangerous: no permission check — the owning space authorizes the
+   * management-mode switch.
    */
-  async suspendMembers(
+  async dangerouslySuspendMembers(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ModelId[]> {
+    assert(
+      this.isRegularAuto(),
+      `You can't suspend members of ${this.kind} groups.`
+    );
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const affectedMemberships = await GroupMembershipModel.findAll({
@@ -2097,8 +2050,12 @@ export class GroupResource extends BaseResource<GroupModel> {
    * user already has an active membership.
    *
    * Returns the number of group memberships restored.
+   *
+   * Dangerous: deliberately skips the `canRead` check on the groups — it
+   * restores regular_auto memberships together with provisioned and manual
+   * ones, so no per-group check applies.
    */
-  static async restoreGroupMembershipsRevokedWith({
+  static async dangerouslyRestoreGroupMembershipsRevokedWith({
     user,
     workspace,
     revokedAt,
@@ -2199,11 +2156,19 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Restores all suspended members of this group.
    * Returns array of affected user ModelIds.
+   *
+   * Counterpart of `dangerouslySuspendMembers`, so regular_auto only, and
+   * dangerous for the same reason: no permission check, the owning space
+   * authorizes the switch.
    */
-  async restoreMembers(
+  async dangerouslyRestoreMembers(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ModelId[]> {
+    assert(
+      this.isRegularAuto(),
+      `You can't restore members of ${this.kind} groups.`
+    );
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const affectedMemberships = await GroupMembershipModel.findAll({
@@ -2595,6 +2560,35 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
+    // TODO(2026-09-03 regular-auto-acl): temporary probe, remove once regular_auto stops
+    // granting permissions. These groups are only reachable through the resource that owns
+    // them, so no caller should be permission-checking one; the stack tells us where to look
+    // if any does.
+    if (this.isRegularAuto()) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          groupId: this.sId,
+          authRole: auth.role(),
+          isKey: auth.isKey(),
+          stack_trace: new Error().stack,
+        },
+        "[GroupResource.getAccessControlLists] Permission checked on a regular_auto group"
+      );
+
+      return [
+        {
+          roles: [
+            { role: "admin", permissions: ["read"] },
+            { role: "manager", permissions: ["read"] },
+            { role: "user", permissions: ["read"] },
+            { role: "builder", permissions: ["read"] },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
     // regular_manual: admins and managers manage the group; everyone can read.
     if (this.isRegularManual()) {
       return [
@@ -2610,9 +2604,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    // global, provisioned, regular_auto: read-only for every workspace member.
-    // Write/admin are gated through the associated resource (space/agent).
-    if (this.isGlobal() || this.isProvisioned() || this.isRegularAuto()) {
+    if (this.isGlobal() || this.isProvisioned()) {
       return [
         {
           roles: [
@@ -2691,7 +2683,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    return provisionedGroups;
+    const readableGroups = provisionedGroups.filter((group) =>
+      group.canRead(auth)
+    );
+
+    return readableGroups;
   }
 
   /**

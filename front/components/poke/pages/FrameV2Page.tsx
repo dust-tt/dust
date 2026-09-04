@@ -40,14 +40,11 @@ export function FrameV2Page({ frameId }: FrameV2PageProps) {
   return (
     <div className="mx-auto max-w-6xl">
       <h3 className="text-xl font-bold">
-        Frame {details.frame.fileName} within workspace{" "}
+        Frame {details.frame.name ?? details.frame.fileName} within workspace{" "}
         <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </LinkWrapper>
       </h3>
-      <div className="text-sm text-muted-foreground">
-        Frame ID: <code className="text-xs">{details.frame.sId}</code>
-      </div>
 
       <ViewFrameTable details={details} owner={owner} />
       <FrameSharingSection

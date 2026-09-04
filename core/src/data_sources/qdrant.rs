@@ -24,7 +24,7 @@ pub enum QdrantCluster {
     Cluster0,
 }
 
-// See: https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
+// See: https://app.notion.com/p/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
 pub const SHARD_KEY_COUNT: u64 = 24;
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[QdrantCluster::Cluster0];

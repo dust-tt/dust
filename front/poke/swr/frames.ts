@@ -13,6 +13,7 @@ import type { Fetcher } from "swr";
 
 interface UsePokeFramesProps {
   disabled?: boolean;
+  hasSandbox: boolean;
   limit: number;
   owner: LightWorkspaceType;
 }
@@ -23,11 +24,16 @@ export interface PokeFramesData {
   isLoadingMore: boolean;
 }
 
-export function usePokeFrames({ disabled, limit, owner }: UsePokeFramesProps) {
+export function usePokeFrames({
+  disabled,
+  hasSandbox,
+  limit,
+  owner,
+}: UsePokeFramesProps) {
   const { fetcher } = useFetcher();
   const framesFetcher: Fetcher<PokeListFrames> = fetcher;
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/frames?limit=${limit}`,
+    `/api/poke/workspaces/${owner.sId}/frames?limit=${limit}&hasSandbox=${hasSandbox}`,
     framesFetcher,
     { disabled, keepPreviousData: true }
   );
