@@ -37,8 +37,6 @@ function PokeConsumptionDailyChart({
     });
   const { overview } = usePokeConsumptionOverview({
     workspaceId,
-    period,
-    filter,
     disabled: !showActiveUsers,
   });
   const isFiltered = Object.values(filter ?? {}).some(

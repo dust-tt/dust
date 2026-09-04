@@ -360,4 +360,21 @@ describe("consumption active users overlay", () => {
       })
     );
   });
+
+  it("uses the workspace-wide member count for active-user percentages", () => {
+    render(
+      <ConsumptionChart
+        workspaceId="workspace-id"
+        period={{ kind: "days", days: 90 }}
+        dimension="agent"
+        filter={{ agents: ["agent-id"] }}
+        analyticsScope={{ kind: "agent", agentId: "agent-id" }}
+      />
+    );
+
+    expect(mockUseConsumptionOverview).toHaveBeenLastCalledWith({
+      workspaceId: "workspace-id",
+      disabled: false,
+    });
+  });
 });

@@ -12,6 +12,7 @@ import type {
 } from "@app/hooks/useConsumptionTop";
 import { toConsumptionTopRows } from "@app/hooks/useConsumptionTop";
 import {
+  DEFAULT_CONSUMPTION_PERIOD,
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
@@ -84,7 +85,7 @@ type ConsumptionTimeseriesBody = ConsumptionBody & {
 
 export function usePokeConsumptionOverview({
   workspaceId,
-  period,
+  period = DEFAULT_CONSUMPTION_PERIOD,
   filter,
   disabled,
 }: UseConsumptionOverviewParams) {

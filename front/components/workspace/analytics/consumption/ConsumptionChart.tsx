@@ -540,9 +540,6 @@ function WorkspaceConsumptionDailyChart({
     });
   const { overview } = useConsumptionOverview({
     workspaceId,
-    period,
-    filter,
-    analyticsScope,
     disabled: disabled || !showActiveUsers,
   });
 
