@@ -369,7 +369,7 @@ export const subNavigationAdmin = ({
     menus: [
       {
         id: "api_keys",
-        label: "API Keys",
+        label: "Dust API Keys",
         icon: Lock01,
         href: `/w/${owner.sId}/developers/api-keys`,
         current: isCurrent("api_keys"),

@@ -270,7 +270,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
       <Page.Vertical align="stretch" gap="xl">
         <Page.Horizontal align="right">
           <Button
-            label="API reference"
+            label="API Reference"
             size="sm"
             variant="outline"
             icon={BookOpen01}
@@ -345,10 +345,10 @@ export function APIKeysPage() {
           title={
             <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
               <div className="flex max-w-2xl flex-col gap-1">
-                <Page.H variant="h3">API Keys</Page.H>
+                <Page.H variant="h3">Dust API Keys</Page.H>
                 <Page.P variant="secondary">
-                  Create and manage API keys, track what they consume, and
-                  control their monthly spend.
+                  Create and manage keys to access the Dust API, track their
+                  usage, and control their monthly spend.
                 </Page.P>
               </div>
               <ConsumptionPeriodSelector
