@@ -6,14 +6,10 @@ import {
   Card,
   Chip,
   Code02,
-  Cube01,
-  CubeOutline,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   File01,
@@ -543,7 +539,6 @@ interface NewConversationProps {
 
 export function NewConversation({
   greeting,
-  spaces,
   agentTab,
   onAgentTabChange,
   agentSort,
@@ -554,10 +549,6 @@ export function NewConversation({
   onAgentCategoryChange,
   onToolbarPinnedChange,
 }: NewConversationProps) {
-  // Pod targeted by the new conversation (null = My Pod).
-  const [newConversationPodId, setNewConversationPodId] = useState<
-    string | null
-  >(null);
   const [agentSearch, setAgentSearch] = useState("");
   // The tab whose content is currently rendered. It lags behind `agentTab`
   // while we smooth-scroll the (taller) current content to the top, so the
@@ -612,37 +603,6 @@ export function NewConversation({
       onAgentSortChange(getDefaultSortForTab(agentTab));
     }
   }, [agentTab, agentSort, onAgentSortChange]);
-
-  const selectedNewPod =
-    newConversationPodId != null
-      ? spaces.find((s) => s.id === newConversationPodId)
-      : undefined;
-  const newPodLabel = selectedNewPod ? selectedNewPod.name : "My Pod";
-  const newPodIcon = selectedNewPod
-    ? selectedNewPod.id.charCodeAt(selectedNewPod.id.length - 1) % 2 === 0
-      ? Cube01
-      : CubeOutline
-    : User03;
-
-  const podRadioGroup = (
-    <DropdownMenuRadioGroup
-      value={newConversationPodId ?? "my-pod"}
-      onValueChange={(v) => setNewConversationPodId(v === "my-pod" ? null : v)}
-    >
-      <DropdownMenuRadioItem value="my-pod" label="My Pod" icon={User03} />
-      {spaces.map((space) => {
-        const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-        return (
-          <DropdownMenuRadioItem
-            key={space.id}
-            value={space.id}
-            label={space.name}
-            icon={isRestricted ? Cube01 : CubeOutline}
-          />
-        );
-      })}
-    </DropdownMenuRadioGroup>
-  );
 
   const itemHash = (id: string) =>
     id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -929,25 +889,7 @@ export function NewConversation({
         <InputBar
           placeholder="What are we working on?"
           className="w-full max-w-4xl"
-          beforeSendButton={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost-secondary"
-                  size="xs"
-                  icon={newPodIcon}
-                  label={`in ${newPodLabel}`}
-                  tooltip={`Create conversation in ${newPodLabel}`}
-                  className="max-w-[180px]"
-                  isSelect
-                  isRounded
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {podRadioGroup}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
+          isFloating={false}
         />
       </ConversationTopSection>
       {/* Bottom portion: grows with its content; the page scrolls as a whole. */}

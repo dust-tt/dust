@@ -1,5 +1,6 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
 import { batchHardDeletePendingAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
@@ -143,6 +144,7 @@ export async function purgeExpiredPendingAgentsActivity(
   const deletedCounts = await concurrentExecutor(
     workspaces,
     async (workspace) => {
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       let deleted = 0;
       let hasMore = true;
 
@@ -160,7 +162,7 @@ export async function purgeExpiredPendingAgentsActivity(
         hasMore = batch.length === batchSize;
 
         if (batch.length > 0) {
-          await batchHardDeletePendingAgentConfigurations(batch, workspace.id);
+          await batchHardDeletePendingAgentConfigurations(auth, batch);
           deleted += batch.length;
         }
 

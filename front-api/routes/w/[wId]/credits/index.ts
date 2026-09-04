@@ -10,6 +10,8 @@ import type {
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 
+import awuPoolCurrentCycle from "./awu-pool-current-cycle";
+import awuPoolCycleHistory from "./awu-pool-cycle-history";
 import awuPoolSummary from "./awu-pool-summary";
 import membersSeats from "./members-seats";
 import membersUsage from "./members-usage";
@@ -25,6 +27,8 @@ import usageConfiguration from "./usage-configuration";
 const app = workspaceApp();
 
 app.route("/awu-pool-summary", awuPoolSummary);
+app.route("/awu-pool-current-cycle", awuPoolCurrentCycle);
+app.route("/awu-pool-cycle-history", awuPoolCycleHistory);
 app.route("/members-seats", membersSeats);
 app.route("/members-usage", membersUsage);
 app.route("/my-top-conversations", myTopConversations);

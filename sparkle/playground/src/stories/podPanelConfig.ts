@@ -93,7 +93,7 @@ export function resolvePodContext(
   spaces: Space[],
   allConversations: Conversation[]
 ): PodContext | null {
-  if (p2View.kind === "myPod") {
+  if (p2View.kind === "myPod" || p2View.kind === "conversations") {
     return {
       variant: "personal",
       space: MY_POD_SPACE,
@@ -121,7 +121,7 @@ export function getBasePodTabOptions(_variant: PodVariant): PodTabOption[] {
   return [
     {
       value: "conversations",
-      label: "Chat",
+      label: "Conversations",
       icon: MessageChatSquare,
     },
     { value: "todos", label: "Tasks", icon: CheckCircle },

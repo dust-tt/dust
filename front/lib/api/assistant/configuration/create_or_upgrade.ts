@@ -107,7 +107,11 @@ export async function createOrUpgradeAgentConfiguration({
     skills = await SkillResource.fetchByIds(
       auth,
       assistant.skills.map((s) => s.sId),
-      { dangerouslySkipPermissionFiltering }
+      {
+        permissionFiltering: dangerouslySkipPermissionFiltering
+          ? "dangerously_skip"
+          : "strict",
+      }
     );
   }
 

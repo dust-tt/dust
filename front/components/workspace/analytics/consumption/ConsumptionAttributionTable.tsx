@@ -186,16 +186,8 @@ function growthPercent(
     : null;
 }
 
-function VsPrevCell({
-  credits,
-  previousCredits,
-}: {
-  credits: number;
-  previousCredits: number | null;
-}) {
-  const growth = growthPercent(credits, previousCredits);
-
-  if (growth === null) {
+function PercentageChangeCell({ percentage }: { percentage: number | null }) {
+  if (percentage === null) {
     return (
       <DataTable.CellContent className="w-full justify-end text-right">
         <Tooltip
@@ -211,15 +203,84 @@ function VsPrevCell({
     <div
       className={cn(
         "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
-        growth > 100 ? "text-highlight-600" : "text-muted-foreground"
+        percentage > 100 ? "text-highlight-600" : "text-muted-foreground"
       )}
     >
       <Icon
-        visual={growth >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
+        visual={percentage >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
         size="xs"
       />
-      <span>{Math.round(Math.abs(growth))}%</span>
+      <span>{Math.round(Math.abs(percentage))}%</span>
     </div>
+  );
+}
+
+function VsPrevCell({
+  credits,
+  previousCredits,
+}: {
+  credits: number;
+  previousCredits: number | null;
+}) {
+  return (
+    <PercentageChangeCell
+      percentage={growthPercent(credits, previousCredits)}
+    />
+  );
+}
+
+function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
+  if (percentage === null) {
+    return (
+      <DataTable.CellContent className="w-full justify-end text-right">
+        <Tooltip
+          label="Not enough data to compute"
+          tooltipTriggerAsChild
+          trigger={<span className="text-sm text-muted-foreground">--</span>}
+        />
+      </DataTable.CellContent>
+    );
+  }
+
+  const roundedPercentage = Math.round(percentage);
+  const sign = roundedPercentage > 0 ? "+" : "";
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-center justify-end text-right text-sm tabular-nums",
+        percentage > 100 ? "text-highlight-600" : "text-muted-foreground"
+      )}
+    >
+      <span>
+        {sign}
+        {roundedPercentage}%
+      </span>
+    </div>
+  );
+}
+
+function usageDifferenceFromAveragePercent({
+  credits,
+  activeMembers,
+  totalCredits,
+  totalActiveMembers,
+}: {
+  credits: number;
+  activeMembers: number | undefined;
+  totalCredits: number;
+  totalActiveMembers: number;
+}): number | null {
+  if (!activeMembers || totalCredits <= 0 || totalActiveMembers <= 0) {
+    return null;
+  }
+
+  const groupAverageCredits = credits / activeMembers;
+  const overallAverageCredits = totalCredits / totalActiveMembers;
+
+  return (
+    ((groupAverageCredits - overallAverageCredits) / overallAverageCredits) *
+    100
   );
 }
 
@@ -229,6 +290,7 @@ function buildColumns({
   isAvatarRounded,
   avgLabel,
   totalCredits,
+  totalActiveMembers,
   isDark,
   expandedRowId,
   selectedIdSet,
@@ -238,6 +300,7 @@ function buildColumns({
   isAvatarRounded: boolean;
   avgLabel: string;
   totalCredits: number;
+  totalActiveMembers: number;
   isDark: boolean;
   expandedRowId: string | null;
   selectedIdSet: Set<string>;
@@ -342,24 +405,73 @@ function buildColumns({
         );
       },
     },
-    {
-      id: "costShare",
-      // Same denominator (totalCredits) for every row, so ranking by cost
-      // share is the same order as ranking by credits
-      accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
-      header: "Consumption share",
-      enableSorting: true,
-      meta: { className: "w-36", sizeRatio: 20, headerAlign: "left" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
-          <CostShareCell
-            share={
-              totalCredits > 0 ? info.row.original.credits / totalCredits : 0
-            }
-          />
-        </DataTable.CellContent>
-      ),
-    },
+    ...(dimension === "group"
+      ? ([
+          {
+            id: "activeMembers",
+            header: "Active / total members",
+            enableSorting: false,
+            meta: { sizeRatio: 18, headerAlign: "right" },
+            cell: (info) => (
+              <DataTable.BasicCellContent
+                className="justify-end text-right tabular-nums"
+                label={
+                  info.row.original.activeMembers !== undefined &&
+                  info.row.original.totalMembers !== undefined
+                    ? `${info.row.original.activeMembers.toLocaleString(
+                        "en-US"
+                      )} / ${info.row.original.totalMembers.toLocaleString(
+                        "en-US"
+                      )}`
+                    : "--"
+                }
+              />
+            ),
+          },
+          {
+            id: "usageVsAverage",
+            header: "Vs workspace avg",
+            enableSorting: false,
+            meta: { sizeRatio: 22, headerAlign: "right" },
+            cell: (info) => {
+              const usagePercent = usageDifferenceFromAveragePercent({
+                credits: info.row.original.credits,
+                activeMembers: info.row.original.activeMembers,
+                totalCredits,
+                totalActiveMembers,
+              });
+
+              return <UsageVsAverageCell percentage={usagePercent} />;
+            },
+          },
+        ] satisfies ColumnDef<AttributionRowData>[])
+      : ([
+          {
+            id: "costShare",
+            // Same denominator (totalCredits) for every row, so ranking by cost
+            // share is the same order as ranking by credits
+            accessorFn: (row) =>
+              totalCredits > 0 ? row.credits / totalCredits : 0,
+            header: "Consumption share",
+            enableSorting: true,
+            meta: {
+              className: "w-36",
+              sizeRatio: 20,
+              headerAlign: "left",
+            },
+            cell: (info) => (
+              <DataTable.CellContent className="w-full justify-start">
+                <CostShareCell
+                  share={
+                    totalCredits > 0
+                      ? info.row.original.credits / totalCredits
+                      : 0
+                  }
+                />
+              </DataTable.CellContent>
+            ),
+          },
+        ] satisfies ColumnDef<AttributionRowData>[])),
     {
       id: "credits",
       accessorKey: "credits",
@@ -480,6 +592,7 @@ export interface ConsumptionAttributionRowsProps {
 export interface ConsumptionAttributionRowsData {
   rows: ConsumptionTopRow[];
   totalCredits: number;
+  totalActiveMembers: number;
   totalCount: number;
   isTopLoading: boolean;
   isTopError: boolean;
@@ -556,6 +669,7 @@ export function ConsumptionAttributionRowsView({
   data: {
     rows,
     totalCredits,
+    totalActiveMembers,
     totalCount,
     isTopLoading,
     isTopError,
@@ -582,6 +696,7 @@ export function ConsumptionAttributionRowsView({
         isAvatarRounded: dimension === "user",
         avgLabel,
         totalCredits,
+        totalActiveMembers,
         isDark,
         expandedRowId,
         selectedIdSet,
@@ -591,6 +706,7 @@ export function ConsumptionAttributionRowsView({
       dimension,
       avgLabel,
       totalCredits,
+      totalActiveMembers,
       isDark,
       expandedRowId,
       selectedIdSet,
@@ -737,6 +853,7 @@ function WorkspaceConsumptionAttributionRows(
   const {
     rows,
     totalCredits,
+    totalActiveMembers,
     totalCount,
     isTopLoading,
     isTopError,
@@ -760,6 +877,7 @@ function WorkspaceConsumptionAttributionRows(
       data={{
         rows,
         totalCredits,
+        totalActiveMembers,
         totalCount,
         isTopLoading,
         isTopError: Boolean(isTopError),

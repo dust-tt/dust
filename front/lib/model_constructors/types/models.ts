@@ -25,6 +25,7 @@ export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
 export const GEMINI_3_5_FLASH = "gemini-3.5-flash" as const;
 export const GEMINI_3_6_FLASH = "gemini-3.6-flash" as const;
 export const GEMINI_3_7_FLASH = "gemini-3.7-flash" as const;
+export const GEMINI_3_8_FLASH = "gemini-3.8-flash" as const;
 export const GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite" as const;
 export const GEMINI_3_5_FLASH_LITE = "gemini-3.5-flash-lite" as const;
 
@@ -80,6 +81,7 @@ export const MODELS = [
   GEMINI_3_5_FLASH,
   GEMINI_3_6_FLASH,
   GEMINI_3_7_FLASH,
+  GEMINI_3_8_FLASH,
   GEMINI_3_1_FLASH_LITE,
   GEMINI_3_5_FLASH_LITE,
   MISTRAL_LARGE,

@@ -89,6 +89,7 @@ export type KnownModelLLMId =
   | "gemini-3.5-flash-lite"
   | "gemini-3.6-flash"
   | "gemini-3.7-flash"
+  | "gemini-3.8-flash"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
@@ -789,7 +790,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_billing"
   | "plan_mode"
   | "pod_frame_tabs"
-  | "pod_applications"
   | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"

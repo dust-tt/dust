@@ -746,6 +746,9 @@
  *               fileName:
  *                 type: string
  *                 description: Name of the attached file
+ *         canRead:
+ *           type: boolean
+ *           description: Whether the authenticated actor can read the skill's instructions, tools and files. False when they were redacted for a workspace admin who is not a member of every space the skill requires.
  *         canWrite:
  *           type: boolean
  *           description: Whether the authenticated actor can edit the skill

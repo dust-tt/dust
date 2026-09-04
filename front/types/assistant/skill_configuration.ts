@@ -90,6 +90,9 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
       fileName: z.string(),
     })
   ),
+  // False when the private fields (instructions, tools, files) were redacted: an admin listing a
+  // skill built on a space they are not a member of.
+  canRead: z.boolean(),
   canWrite: z.boolean(),
   canAdministrate: z.boolean(),
   // @deprecated Use availability instead. Kept while old clients still read it.

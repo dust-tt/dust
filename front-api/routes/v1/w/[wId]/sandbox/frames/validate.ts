@@ -3,13 +3,12 @@ import { validateFrameFromSource } from "@app/lib/api/frames/publish_from_source
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { frameSourceErrorStatus } from "@front-api/lib/api/frame_source_errors";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-import { frameSourceErrorStatus } from "./errors";
 
 const FrameValidateRequestSchema = z.object({
   manifestPath: z.string().min(1),

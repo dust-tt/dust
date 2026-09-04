@@ -213,6 +213,8 @@ export function usePokeConsumptionTop({
   return {
     rows,
     totalCredits: data?.totalCredits ?? 0,
+    totalActiveMembers:
+      data && "totalActiveMembers" in data ? data.totalActiveMembers : 0,
     totalCount: data?.totalCount ?? 0,
     hasMore: data?.hasMore ?? false,
     isTopLoading: !error && isLoading,

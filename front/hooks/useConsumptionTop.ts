@@ -52,6 +52,8 @@ export type ConsumptionTopRow = {
   modelDisplayName: string | null;
   credits: number;
   avgCredits: number;
+  activeMembers?: number;
+  totalMembers?: number;
   previousCredits: number | null;
 };
 
@@ -124,6 +126,8 @@ export function toConsumptionTopRows(
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      activeMembers: row.activeMembers,
+      totalMembers: row.totalMembers,
       previousCredits: row.previousCredits,
     }));
   }
@@ -255,9 +259,11 @@ export function useConsumptionTop({
 
   return {
     rows,
-    // Everything in the selected scope consumed over the period, so a row's
-    // share of it is `credits / totalCredits`.
+    // Selected-scope totals back row-relative metrics. Group rows also use the
+    // distinct active-member total to compare per-member usage.
     totalCredits: data?.totalCredits ?? 0,
+    totalActiveMembers:
+      data && "totalActiveMembers" in data ? data.totalActiveMembers : 0,
     totalCount: data?.totalCount ?? 0,
     hasMore: data?.hasMore ?? false,
     isTopLoading: !error && isLoading,

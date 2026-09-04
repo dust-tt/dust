@@ -1,7 +1,10 @@
 import { Chip } from "@sparkle/components/Chip";
 import { createBaseMarkdownComponents } from "@sparkle/components/markdown/createBaseMarkdownComponents";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import { MarkdownStyleContext } from "@sparkle/components/markdown/MarkdownStyleContext";
+import {
+  MarkdownStyleContext,
+  type TaskListVariant,
+} from "@sparkle/components/markdown/MarkdownStyleContext";
 import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
 import {
   type StreamingState,
@@ -57,6 +60,8 @@ export interface MarkdownProps {
   additionalMarkdownPlugins?: PluggableList;
   /** When true (default), blockquotes show a copy button. */
   canCopyQuotes?: boolean;
+  /** "checkbox" (default) renders GFM task items with checkboxes; "step" renders read-only circles, numbered inside ordered lists. */
+  taskListVariant?: TaskListVariant;
   /** When true, streamed text is revealed with a smooth animation (see useAnimatedText). */
   enableAnimation?: boolean;
   /** Duration of each streaming reveal animation. */
@@ -86,6 +91,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   canCopyQuotes = true,
+  taskListVariant = "checkbox",
   enableAnimation = false,
   animationDurationSeconds = DEFAULT_ANIMATION_DURATION_SECONDS,
   delimiter = DEFAULT_DELIMITER,
@@ -118,8 +124,9 @@ export const Markdown: React.FC<MarkdownProps> = ({
       forcedTextSize,
       compactSpacing,
       canCopyQuotes,
+      taskListVariant,
     }),
-    [textColor, forcedTextSize, compactSpacing, canCopyQuotes]
+    [textColor, forcedTextSize, compactSpacing, canCopyQuotes, taskListVariant]
   );
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown

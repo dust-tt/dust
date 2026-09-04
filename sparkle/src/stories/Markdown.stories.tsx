@@ -92,6 +92,72 @@ export const TextFormatting: Story = {
   },
 };
 
+const taskListContent = `
+### Bulleted tasks
+
+- [x] Pull the Q3 deals
+- [x] Read the account notes
+- [ ] Review the support history
+- [ ] Write the briefs
+
+### Numbered tasks
+
+1. [x] Pull the Q3 deals
+2. [x] Read the account notes
+3. [ ] Review the support history
+4. [ ] Write the briefs
+`;
+
+/**
+ * GFM task lists in both variants: the default checkboxes, meant for content
+ * the user can edit, and the read-only "step" circles, numbered inside
+ * ordered lists, meant for progress the agent reports (e.g. a plan).
+ * @summary Checkbox vs step task lists.
+ */
+export const TaskLists: Story = {
+  args: {
+    content: taskListContent,
+  },
+  render: (args) => (
+    <div className="grid grid-cols-2 gap-8">
+      <div>
+        <p className="heading-sm pb-2 text-muted-foreground">
+          taskListVariant="checkbox" (default)
+        </p>
+        <Markdown {...args} taskListVariant="checkbox" />
+      </div>
+      <div>
+        <p className="heading-sm pb-2 text-muted-foreground">
+          taskListVariant="step"
+        </p>
+        <Markdown {...args} taskListVariant="step" />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      // The checkbox variant renders 8 checkboxes, the step variant none.
+      expect(canvasElement.querySelectorAll('[role="checkbox"]')).toHaveLength(
+        8
+      );
+      // Step badges expose their state, numbered only inside ordered lists.
+      const badges = Array.from(
+        canvasElement.querySelectorAll('[role="img"]')
+      ).map((badge) => badge.getAttribute("aria-label"));
+      expect(badges).toEqual([
+        "Done",
+        "Done",
+        "To do",
+        "To do",
+        "Done",
+        "Done",
+        "Step 3",
+        "Step 4",
+      ]);
+    });
+  },
+};
+
 const tablesContent = `
 ### Short Table
 
