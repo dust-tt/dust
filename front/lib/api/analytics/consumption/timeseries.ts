@@ -22,6 +22,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -58,12 +59,18 @@ export type ConsumptionTimeseries = {
   metric: ConsumptionMetric;
   timezone: string;
   breakdownBy: ConsumptionBreakdownDimension | null;
+  workspaceMemberCount: number;
   // In rank order, highest consumption first, with "others" last when present.
   groups: ConsumptionTimeseriesGroup[];
   points: ConsumptionTimeseriesPoint[];
 };
 
 export type GetConsumptionTimeseriesResponse = ConsumptionTimeseries;
+
+type ConsumptionTimeseriesData = Omit<
+  ConsumptionTimeseries,
+  "workspaceMemberCount"
+>;
 
 type ConsumptionTimeseriesScope = {
   period: ConsumptionPeriod;
@@ -127,14 +134,27 @@ export async function fetchConsumptionTimeseries(
     filter,
   });
   const scope = { period, granularity, mode, metric, timezone };
+  const workspace = auth.getNonNullableWorkspace();
+  const workspaceMemberCountPromise =
+    MembershipResource.countActiveMembersForWorkspace({ workspace });
+  const timeseriesPromise = !breakdownBy
+    ? fetchTimeseries(query, scope)
+    : fetchTimeseriesBreakdown(auth, query, scope, {
+        breakdownBy,
+        breakdownCount,
+      });
+  const [timeseriesResult, workspaceMemberCount] = await Promise.all([
+    timeseriesPromise,
+    workspaceMemberCountPromise,
+  ]);
 
-  if (!breakdownBy) {
-    return fetchTimeseries(query, scope);
+  if (timeseriesResult.isErr()) {
+    return timeseriesResult;
   }
 
-  return fetchTimeseriesBreakdown(auth, query, scope, {
-    breakdownBy,
-    breakdownCount,
+  return new Ok({
+    ...timeseriesResult.value,
+    workspaceMemberCount,
   });
 }
 
@@ -142,7 +162,7 @@ async function fetchTimeseries(
   query: estypes.QueryDslQueryContainer,
   scope: ConsumptionTimeseriesScope,
   breakdownBy: ConsumptionBreakdownDimension | null = null
-): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+): Promise<Result<ConsumptionTimeseriesData, ElasticsearchError>> {
   const bucketsResult = await fetchMetricTimeseries(query, {
     period: scope.period,
     granularity: scope.granularity,
@@ -179,7 +199,7 @@ async function fetchTimeseriesBreakdown(
     breakdownBy: ConsumptionBreakdownDimension;
     breakdownCount: number;
   }
-): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+): Promise<Result<ConsumptionTimeseriesData, ElasticsearchError>> {
   const field = CONSUMPTION_DIMENSION_FIELDS[breakdownBy];
 
   const rankingResult = await fetchTopDimensions(query, {

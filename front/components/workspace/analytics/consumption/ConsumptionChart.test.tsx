@@ -9,15 +9,8 @@ import { fireEvent, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseConsumptionOverview, mockUseConsumptionTimeseries } = vi.hoisted(
-  () => ({
-    mockUseConsumptionOverview: vi.fn(),
-    mockUseConsumptionTimeseries: vi.fn(),
-  })
-);
-
-vi.mock("@app/hooks/useConsumptionOverview", () => ({
-  useConsumptionOverview: mockUseConsumptionOverview,
+const { mockUseConsumptionTimeseries } = vi.hoisted(() => ({
+  mockUseConsumptionTimeseries: vi.fn(),
 }));
 
 vi.mock("@app/hooks/useConsumptionTimeseries", () => ({
@@ -57,6 +50,7 @@ function timeseries(
     metric: "credit_micro",
     timezone: "UTC",
     breakdownBy: null,
+    workspaceMemberCount: 20,
     groups: [{ groupKey: "total", name: "Total" }],
     points: [
       {
@@ -152,12 +146,6 @@ function expectActiveUsersOverlay(container: HTMLElement) {
 
 describe("consumption active users overlay", () => {
   beforeEach(() => {
-    mockUseConsumptionOverview.mockReset().mockReturnValue({
-      overview: null,
-      isOverviewLoading: false,
-      isOverviewError: undefined,
-      isOverviewValidating: false,
-    });
     mockUseConsumptionTimeseries.mockReset().mockReturnValue({
       timeseries: null,
       isTimeseriesLoading: true,
@@ -197,7 +185,6 @@ describe("consumption active users overlay", () => {
         isTimeseriesError={false}
         emptyMessage="No consumption."
         showActiveUsers
-        totalUsers={20}
       />
     );
 
@@ -359,22 +346,5 @@ describe("consumption active users overlay", () => {
         mode: "period",
       })
     );
-  });
-
-  it("uses the workspace-wide member count for active-user percentages", () => {
-    render(
-      <ConsumptionChart
-        workspaceId="workspace-id"
-        period={{ kind: "days", days: 90 }}
-        dimension="agent"
-        filter={{ agents: ["agent-id"] }}
-        analyticsScope={{ kind: "agent", agentId: "agent-id" }}
-      />
-    );
-
-    expect(mockUseConsumptionOverview).toHaveBeenLastCalledWith({
-      workspaceId: "workspace-id",
-      disabled: false,
-    });
   });
 });

@@ -35,10 +35,6 @@ function PokeConsumptionDailyChart({
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
     });
-  const { overview } = usePokeConsumptionOverview({
-    workspaceId,
-    disabled: !showActiveUsers,
-  });
   const isFiltered = Object.values(filter ?? {}).some(
     (values) => values.length > 0
   );
@@ -55,7 +51,6 @@ function PokeConsumptionDailyChart({
       }
       additionalControls={additionalControls}
       showActiveUsers={showActiveUsers}
-      totalUsers={overview?.members.total ?? null}
     />
   );
 }

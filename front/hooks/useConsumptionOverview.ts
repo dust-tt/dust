@@ -4,7 +4,6 @@ import {
 } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
-  DEFAULT_CONSUMPTION_PERIOD,
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
@@ -15,7 +14,7 @@ import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumptio
 
 export interface UseConsumptionOverviewParams {
   workspaceId: string;
-  period?: ConsumptionPeriodSelection;
+  period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
@@ -23,7 +22,7 @@ export interface UseConsumptionOverviewParams {
 
 export function useConsumptionOverview({
   workspaceId,
-  period = DEFAULT_CONSUMPTION_PERIOD,
+  period,
   filter,
   analyticsScope,
   disabled,

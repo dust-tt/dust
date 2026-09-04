@@ -24,6 +24,7 @@ const TIMESERIES: GetConsumptionTimeseriesResponse = {
   metric: "credit_micro",
   timezone: "UTC",
   breakdownBy: null,
+  workspaceMemberCount: 10,
   groups: [{ groupKey: "total", name: "Total" }],
   points: [],
 };

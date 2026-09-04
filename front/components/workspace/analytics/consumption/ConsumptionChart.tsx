@@ -260,7 +260,6 @@ interface ConsumptionDailyChartProps {
   isTimeseriesError: boolean;
   emptyMessage: string;
   showActiveUsers: boolean;
-  totalUsers: number | null;
   additionalControls?: ReactNode;
 }
 
@@ -270,10 +269,10 @@ export function ConsumptionDailyChart({
   isTimeseriesError,
   emptyMessage,
   showActiveUsers,
-  totalUsers,
   additionalControls,
 }: ConsumptionDailyChartProps) {
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
+  const totalUsers = timeseries?.workspaceMemberCount ?? null;
   const chartData = useMemo(() => timeseries?.points ?? [], [timeseries]);
 
   const orderedGroups = useMemo(() => {
@@ -538,11 +537,6 @@ function WorkspaceConsumptionDailyChart({
       analyticsScope,
       disabled,
     });
-  const { overview } = useConsumptionOverview({
-    workspaceId,
-    disabled: disabled || !showActiveUsers,
-  });
-
   return (
     <ConsumptionDailyChart
       timeseries={timeseries}
@@ -550,7 +544,6 @@ function WorkspaceConsumptionDailyChart({
       isTimeseriesError={Boolean(isTimeseriesError)}
       emptyMessage="No consumption over this period."
       showActiveUsers={showActiveUsers}
-      totalUsers={overview?.members.total ?? null}
     />
   );
 }
