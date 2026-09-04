@@ -145,7 +145,7 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
 const { checkCreditSpendCheckpointActivity } = proxyActivities<
   typeof creditCheckActivities
 >({
-  startToCloseTimeout: "1 minutes",
+  startToCloseTimeout: "15 seconds",
   retry: {
     maximumAttempts: 1,
   },

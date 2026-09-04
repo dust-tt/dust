@@ -61,12 +61,6 @@ export type CreditSpendCheckpointCheckResult =
 
 const DO_NOT_NOTIFY: CreditSpendCheckpointCheckResult = { crossed: false };
 
-/**
- * `consumedAwuCredits` is the cost of this agent message's own run so far (its
- * accumulated `runIds`), not the user's cumulative cycle spend — this checkpoint is
- * about how expensive the current answer is turning out to be, not the account-wide
- * cap already enforced by `isUserSpendLimitRateCapReached`.
- */
 export async function checkCreditSpendCheckpointGate(
   auth: Authenticator,
   { consumedAwuCredits }: { consumedAwuCredits: number }
