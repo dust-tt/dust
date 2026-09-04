@@ -1,8 +1,11 @@
+import type { PolicyDomainRequestOutcome } from "@app/lib/api/sandbox/egress_policy";
 import {
   requestOwnerPolicyDomains,
   requestWorkspacePolicyDomains,
 } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
+import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Where a publish files the domains it declares: the Pod whose policy the
@@ -29,13 +32,7 @@ export async function requestEgressDomainsForScope(
   auth: Authenticator,
   { scope, domains }: { scope: EgressDomainRequestScope; domains: string[] }
 ): Promise<EgressDomainRequestsSummary> {
-  const result =
-    scope.kind === "pod"
-      ? await requestOwnerPolicyDomains(auth, {
-          ownerId: scope.podId,
-          domains,
-        })
-      : await requestWorkspacePolicyDomains(auth, { domains });
+  const result = await requestPolicyDomainsForScope(auth, { scope, domains });
   if (result.isErr()) {
     return { kind: "failed", domains, message: result.error.message };
   }
@@ -51,6 +48,28 @@ export async function requestEgressDomainsForScope(
       .filter(({ outcome }) => outcome === "already_allowed")
       .map(({ domain }) => domain),
   };
+}
+
+function requestPolicyDomainsForScope(
+  auth: Authenticator,
+  { scope, domains }: { scope: EgressDomainRequestScope; domains: string[] }
+): Promise<
+  Result<
+    { policy: EgressPolicy; outcomes: PolicyDomainRequestOutcome[] },
+    Error
+  >
+> {
+  switch (scope.kind) {
+    case "pod":
+      return requestOwnerPolicyDomains(auth, {
+        ownerId: scope.podId,
+        domains,
+      });
+    case "workspace":
+      return requestWorkspacePolicyDomains(auth, { domains });
+    default:
+      return assertNever(scope);
+  }
 }
 
 export function formatEgressDomainRequestsNote(
