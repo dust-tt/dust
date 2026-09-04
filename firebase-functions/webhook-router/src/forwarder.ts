@@ -38,6 +38,11 @@ export class WebhookForwarder {
         url: CONFIG.EU_CONNECTOR_URL,
         secret: this.secrets.euSecret,
       },
+      {
+        cell: "cell-00002",
+        url: CONFIG.CELL_00002_CONNECTOR_URL,
+        secret: this.secrets.cell00002Secret,
+      },
     ];
 
     const requests = targets
