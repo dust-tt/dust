@@ -10,11 +10,6 @@ import logger from "@app/logger/logger";
 import { launchModelHealthRecovery } from "@app/temporal/model_health/client";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-/**
- * An endpoint is degraded when enough attempts landed in the window and the
- * share attributed to the provider crossed the threshold. The volume floor is
- * what keeps a handful of failures on a low-traffic endpoint from tripping it.
- */
 export function isBreaching(window: ModelHealthWindowType): boolean {
   if (window.attempts < MIN_ATTEMPTS_IN_WINDOW) {
     return false;
@@ -23,19 +18,6 @@ export function isBreaching(window: ModelHealthWindowType): boolean {
   return window.providerErrors / window.attempts >= ERROR_RATIO_THRESHOLD;
 }
 
-/**
- * Reads one endpoint's window and declares it degraded if it is breaching.
- *
- * Runs on the pod that just served the endpoint, right after it wrote its
- * counter, so only the endpoint in hand is ever read -- never a sweep of the
- * catalog. Several pods can reach the same conclusion at the same instant,
- * which is fine: starting the recovery workflow is idempotent, and its
- * deterministic workflow id is what makes it so.
- *
- * There is no state to consult first. In this phase a running recovery workflow
- * *is* the degraded state, so re-declaring an endpoint that is already degraded
- * costs one rejected start and nothing else.
- */
 export async function evaluateEndpoint(
   endpoint: DegradedModelEndpointType,
   now: Date = new Date()
@@ -59,8 +41,6 @@ export async function evaluateEndpoint(
     return;
   }
 
-  // Only a launch that actually created the workflow is a transition: a
-  // rejected duplicate means the endpoint was already degraded.
   if (launchRes.value === "started") {
     logModelHealthTransition({ endpoint, transition: "degraded", window });
   }
