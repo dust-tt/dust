@@ -6,7 +6,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import type { PokeFrameDetails } from "@app/lib/api/poke/frames";
-import { CodeBlock } from "@dust-tt/sparkle";
+import { CodeBlock, File02, Folder, Tree } from "@dust-tt/sparkle";
 
 interface FramePublicationSectionProps {
   publication: PokeFrameDetails["publication"];
@@ -56,18 +56,11 @@ export function FramePublicationSection({
           <h3 className="pt-6 pb-2 font-medium">
             Source files ({publication.sourceFiles.length})
           </h3>
-          <PokeTable>
-            <PokeTableBody>
-              {publication.sourceFiles.map((sourceFile) => (
-                <PokeTableRow key={sourceFile.path}>
-                  <PokeTableHead>{sourceFile.path}</PokeTableHead>
-                  <PokeTableCell className="font-mono text-xs">
-                    {sourceFile.contentSha256}
-                  </PokeTableCell>
-                </PokeTableRow>
-              ))}
-            </PokeTableBody>
-          </PokeTable>
+          <Tree isBoxed>
+            {renderSourceFileTree(
+              publication.sourceFiles.map((sourceFile) => sourceFile.path)
+            )}
+          </Tree>
 
           {publication.databases.length > 0 && (
             <>
@@ -99,4 +92,35 @@ export function FramePublicationSection({
       )}
     </div>
   );
+}
+
+// Directories first, then files, each alphabetically.
+function renderSourceFileTree(paths: string[]): React.ReactNode {
+  const directories = new Map<string, string[]>();
+  const files: string[] = [];
+  for (const path of paths) {
+    const slashIndex = path.indexOf("/");
+    if (slashIndex === -1) {
+      files.push(path);
+    } else {
+      const directory = path.slice(0, slashIndex);
+      const rest = path.slice(slashIndex + 1);
+      directories.set(directory, [...(directories.get(directory) ?? []), rest]);
+    }
+  }
+
+  return [
+    ...[...directories]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, children]) => (
+        <Tree.Item key={name} label={name} visual={Folder} type="node">
+          {renderSourceFileTree(children)}
+        </Tree.Item>
+      )),
+    ...files
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => (
+        <Tree.Item key={name} label={name} visual={File02} type="leaf" />
+      )),
+  ];
 }

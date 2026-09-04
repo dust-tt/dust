@@ -42,20 +42,6 @@ export function ViewFrameTable({ details, owner }: ViewFrameTableProps) {
             <PokeTableCell>{frame.status}</PokeTableCell>
           </PokeTableRow>
           <PokeTableRow>
-            <PokeTableHead>Mount path</PokeTableHead>
-            {frame.mountFilePath ? (
-              <PokeTableCellWithCopy label={frame.mountFilePath} />
-            ) : (
-              <PokeTableCell>—</PokeTableCell>
-            )}
-          </PokeTableRow>
-          <PokeTableRow>
-            <PokeTableHead>Active publication</PokeTableHead>
-            <PokeTableCell>
-              {frame.activePublicationId ?? "unpublished"}
-            </PokeTableCell>
-          </PokeTableRow>
-          <PokeTableRow>
             <PokeTableHead>Origin</PokeTableHead>
             <PokeTableCell>
               {frame.conversationId ? (

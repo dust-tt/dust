@@ -16,11 +16,7 @@ import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { UserResource } from "@app/lib/resources/user_resource";
-import {
-  getFrameBasePath,
-  getFrameDatabaseReplicasBasePath,
-  getFramePublicationsBasePath,
-} from "@app/types/api/frame_storage";
+import { getFrameBasePath } from "@app/types/api/frame_storage";
 import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionStake,
@@ -204,20 +200,6 @@ function makeStorageLocations(
     {
       label: "Frame root",
       prefix: getFrameBasePath({ workspaceId, frameId: frame.sId }),
-    },
-    {
-      label: "Publications",
-      prefix: getFramePublicationsBasePath({
-        workspaceId,
-        frameId: frame.sId,
-      }),
-    },
-    {
-      label: "Database replicas",
-      prefix: getFrameDatabaseReplicasBasePath({
-        workspaceId,
-        frameId: frame.sId,
-      }),
     },
   ];
 
