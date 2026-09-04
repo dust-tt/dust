@@ -32,8 +32,10 @@ export function PlanPanelButton({
   const { currentPanel, isPanelClosing, openPanel, togglePanel, closePanel } =
     useConversationSidePanelContext();
   const isMobile = useIsMobile();
-  const isPlanPanelOpen =
-    currentPanel === PLAN_SIDE_PANEL_TYPE && !isPanelClosing;
+  const isPlanPanelOpen = currentPanel === PLAN_SIDE_PANEL_TYPE;
+  // The chip unselects as soon as the panel starts closing; the decision below keeps seeing the
+  // panel as open until it is gone.
+  const isChipSelected = isPlanPanelOpen && !isPanelClosing;
 
   // Single owner of the plan panel: open when the plan appears, close when it goes away. Driving
   // this off `content` (not a specific event) keeps it correct however the change arrived (live
@@ -77,11 +79,11 @@ export function PlanPanelButton({
   return (
     <Button
       size="xs"
-      variant={isPlanPanelOpen ? "primary" : "ghost"}
+      variant={isChipSelected ? "primary" : "ghost"}
       icon={ListSelect}
       label={isMobile ? undefined : label}
       tooltip={isMobile ? label : undefined}
-      aria-pressed={isPlanPanelOpen}
+      aria-pressed={isChipSelected}
       onClick={() => togglePanel({ type: PLAN_SIDE_PANEL_TYPE })}
     />
   );
