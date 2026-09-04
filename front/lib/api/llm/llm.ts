@@ -84,8 +84,6 @@ export abstract class LLM<
   protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
-  // Kept alongside modelId/providerId because model health is tracked per
-  // endpoint, see `DegradedModelEndpointType`.
   protected host: Host;
   // Temporary during the router migration; "new" is set by BaseTransition.
   protected readonly router: "legacy" | "new" = "legacy";
@@ -202,10 +200,6 @@ export abstract class LLM<
     const baseTags = this.getTelemetryTags({ surface: "stream" });
     const latencyTags = this.getLatencyTelemetryTags({ surface: "stream" });
 
-    // Feeds the model health circuit breaker. Fired and forgotten: nothing here
-    // waits on Redis or fails with it. The endpoint is always concrete at this
-    // point -- `auto`, `auto_fast` and `auto_complex` are collapsed to a real
-    // model before the LLM is built.
     void recordLLMAttempt({
       endpoint: {
         modelId: this.modelId,
