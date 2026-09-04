@@ -122,8 +122,8 @@ describe("countProgress", () => {
   });
 
   it("ignores plain list items and prose", () => {
-    expect(countProgress("1. plain item\n- [link](x)\n[ ] not a list\n")).toEqual(
-      { done: 0, total: 0 }
-    );
+    expect(
+      countProgress("1. plain item\n- [link](x)\n[ ] not a list\n")
+    ).toEqual({ done: 0, total: 0 });
   });
 });
