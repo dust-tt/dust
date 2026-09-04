@@ -72,6 +72,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/mentions_count_queue");
     case "mentions_queue":
       return path.join(baseDir, "temporal/mentions_queue");
+    case "model_health":
+      return path.join(baseDir, "temporal/model_health");
     case "notifications_queue":
       return path.join(baseDir, "temporal/notifications_queue");
     case "poke":
