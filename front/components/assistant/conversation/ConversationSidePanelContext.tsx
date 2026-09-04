@@ -155,9 +155,11 @@ export function ConversationSidePanelProvider({
     }
   }, [panelRef, onPanelClosed]);
 
-  // Shared selection; `toggle` decides whether re-selecting the shown panel closes it.
+  // Shared selection; `toggle` decides whether re-selecting the shown panel closes it. A panel
+  // that is already closing reads as unselected, so re-selecting it reopens instead.
   const applyPanel = useCallback(
     (params: OpenPanelParams, { toggle }: { toggle: boolean }) => {
+      const closeOnReselect = toggle && !isPanelClosing;
       setIsPanelClosing(false);
       setCurrentPanel(params.type);
 
@@ -168,7 +170,7 @@ export function ConversationSidePanelProvider({
             : params.messageId;
 
           // A different message/action switches content; only the same data toggles closed.
-          if (toggle && newData === data) {
+          if (closeOnReselect && newData === data) {
             closePanel();
             return;
           }
@@ -189,7 +191,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case FILES_SIDE_PANEL_TYPE:
-          if (toggle && currentPanel === FILES_SIDE_PANEL_TYPE) {
+          if (closeOnReselect && currentPanel === FILES_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
@@ -197,7 +199,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case CREDITS_SIDE_PANEL_TYPE:
-          if (toggle && currentPanel === CREDITS_SIDE_PANEL_TYPE) {
+          if (closeOnReselect && currentPanel === CREDITS_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
@@ -205,7 +207,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case PLAN_SIDE_PANEL_TYPE:
-          if (toggle && currentPanel === PLAN_SIDE_PANEL_TYPE) {
+          if (closeOnReselect && currentPanel === PLAN_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
@@ -214,7 +216,7 @@ export function ConversationSidePanelProvider({
 
         case SKILL_SIDE_PANEL_TYPE:
           // A different skill switches content; only the same skill toggles closed.
-          if (toggle && params.skillId === data) {
+          if (closeOnReselect && params.skillId === data) {
             closePanel();
             return;
           }
@@ -229,7 +231,7 @@ export function ConversationSidePanelProvider({
       // changes, so a close→reopen race (same value) wouldn't re-run it. No-op on mobile.
       panelRef.current?.expand(getDefaultRightPanelSize(params.type));
     },
-    [setCurrentPanel, setData, data, closePanel, currentPanel]
+    [setCurrentPanel, setData, data, closePanel, currentPanel, isPanelClosing]
   );
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
