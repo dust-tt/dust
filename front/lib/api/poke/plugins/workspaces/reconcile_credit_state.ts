@@ -21,10 +21,8 @@ export const reconcileCreditStatePlugin = createPlugin({
       "workspace *should* be in from the live source of truth and compares " +
       "it with the persisted state. Pick the target: 'pool' (live Metronome " +
       "AWU balance + PAYG), 'programmatic' (programmatic cap alert evaluation " +
-      "states), 'user' (effective per-user cap vs. usage — requires a User " +
-      "sId; only the capped/uncapped dimension is recomputed), or 'api_key' " +
-      "(per-key cap vs. usage — requires a key name; reconciles every active " +
-      "key with that name). 'check' reports " +
+      "states), or 'user' (effective per-user cap vs. usage — requires a User " +
+      "sId; only the capped/uncapped dimension is recomputed). 'check' reports " +
       "drift without writing; 'execute' reconciles through the same machinery " +
       "the webhooks use, then reports the before/after states.",
     resourceTypes: ["workspaces"],
@@ -56,12 +54,6 @@ export const reconcileCreditStatePlugin = createPlugin({
         description: "The user sId to reconcile.",
         dependsOn: { field: "target", value: "user" },
       },
-      keyName: {
-        type: "string",
-        label: "API key name",
-        description: "The API key name to reconcile.",
-        dependsOn: { field: "target", value: "api_key" },
-      },
     },
     requiredRoles: ["billing"],
   },
@@ -85,14 +77,6 @@ export const reconcileCreditStatePlugin = createPlugin({
       );
     }
 
-    const trimmedKeyName = args.keyName.trim();
-    const keyName = trimmedKeyName === "" ? null : trimmedKeyName;
-    if (targetArg === "api_key" && !keyName) {
-      return new Err(
-        new Error("A key name is required when the target is 'api_key'.")
-      );
-    }
-
     const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
     if (!workspaceResource) {
       return new Err(new Error(`Workspace not found: wId='${workspace.sId}'`));
@@ -113,7 +97,6 @@ export const reconcileCreditStatePlugin = createPlugin({
       metronomeCustomerId,
       target: targetArg,
       userId,
-      keyName,
       execute,
     });
     if (result.isErr()) {
