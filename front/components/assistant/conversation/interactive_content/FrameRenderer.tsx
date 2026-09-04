@@ -23,7 +23,6 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
-import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -164,22 +163,13 @@ export function FrameRenderer({
     owner,
     fileId,
     conversationId: conversation?.sId,
-    renderMode,
   });
   const isEditable =
     renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
 
   const handleEditText = useCallback(
     async (params: Parameters<typeof editFrameText>[0]) => {
-      let result: Awaited<ReturnType<typeof editFrameText>>;
-      try {
-        result = await editFrameText(params);
-      } catch (error) {
-        return {
-          success: false,
-          error: normalizeAsInternalDustError(error).message,
-        };
-      }
+      const result = await editFrameText(params);
 
       if (result.success) {
         try {

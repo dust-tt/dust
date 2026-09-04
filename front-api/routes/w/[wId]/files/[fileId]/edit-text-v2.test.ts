@@ -28,24 +28,21 @@ const uiSource = "export default function Status() { return <p>Ready</p>; }";
 
 function postEdit(
   workspace: LightWorkspaceType,
-  frameId: string,
+  fileId: string,
   body: unknown
 ) {
-  return honoApp.request(
-    `/api/w/${workspace.sId}/frames/${frameId}/edit-text`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
+  return honoApp.request(`/api/w/${workspace.sId}/files/${fileId}/edit-text`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 beforeEach(() => {
   fileStorageMock.reset();
 });
 
-describe("POST /api/w/:wId/frames/:frameId/edit-text", () => {
+describe("POST /api/w/:wId/files/:fileId/edit-text for Frames v2", () => {
   it("updates Frame v2 source and its active publication atomically", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -112,21 +109,20 @@ describe("POST /api/w/:wId/frames/:frameId/edit-text", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body).toMatchObject({ success: true });
-    expect(body.publicationId).not.toBe(firstPublication.value.publicationId);
+    expect(body).toEqual({ success: true });
     expect(fileStorageMock.getObject(sourcePath)).toContain("<p>Done</p>");
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     assert(reloaded?.isFrameV2);
-    expect(reloaded.useCaseMetadata?.activePublicationId).toBe(
-      body.publicationId
-    );
+    const activePublicationId = reloaded.useCaseMetadata?.activePublicationId;
+    assert(activePublicationId);
+    expect(activePublicationId).not.toBe(firstPublication.value.publicationId);
 
     const uiBundle = fileStorageMock.getObject(
       getFramePublicationUiBundlePath({
         workspaceId: workspace.sId,
         frameId: frame.sId,
-        publicationId: body.publicationId,
+        publicationId: activePublicationId,
       })
     );
     expect(uiBundle).toContain("Done");
@@ -144,7 +140,7 @@ describe("POST /api/w/:wId/frames/:frameId/edit-text", () => {
     );
     const reloadedAfterFailure = await FileResource.fetchById(auth, frame.sId);
     expect(reloadedAfterFailure?.useCaseMetadata?.activePublicationId).toBe(
-      body.publicationId
+      activePublicationId
     );
 
     fileStorageMock.setFileSaveFails((filePath) =>
@@ -172,7 +168,7 @@ describe("POST /api/w/:wId/frames/:frameId/edit-text", () => {
     );
     expect(
       reloadedAfterStorageFailure?.useCaseMetadata?.activePublicationId
-    ).toBe(body.publicationId);
+    ).toBe(activePublicationId);
   });
 
   it("rejects malformed source locations without changing source", async () => {

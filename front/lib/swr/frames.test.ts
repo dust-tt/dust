@@ -26,13 +26,12 @@ beforeEach(() => {
 });
 
 describe("useEditFrameText", () => {
-  it("sends Frame v2 edits to the stable Frame endpoint", async () => {
+  it("sends source edits to the file endpoint with conversation context", async () => {
     const { result } = renderHook(() =>
       useEditFrameText({
         conversationId: "conversation_1",
         fileId: "frame_1",
         owner,
-        renderMode: "v2",
       })
     );
 
@@ -47,7 +46,7 @@ describe("useEditFrameText", () => {
     });
 
     expect(clientFetch).toHaveBeenCalledWith(
-      "/api/w/workspace_1/frames/frame_1/edit-text",
+      "/api/w/workspace_1/files/frame_1/edit-text",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
@@ -66,7 +65,6 @@ describe("useEditFrameText", () => {
         conversationId: "conversation_1",
         fileId: "frame_1",
         owner,
-        renderMode: "legacy",
       })
     );
 
