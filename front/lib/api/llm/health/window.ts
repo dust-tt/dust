@@ -26,7 +26,9 @@ function emptyWindow(): ModelHealthWindowType {
 function addHashToWindow(
   window: ModelHealthWindowType,
   hash: Record<string, string>
-): void {
+): ModelHealthWindowType {
+  let { attempts, providerErrors } = window;
+
   for (const [field, rawValue] of Object.entries(hash)) {
     const value = Number(rawValue);
     if (!Number.isFinite(value)) {
@@ -34,11 +36,13 @@ function addHashToWindow(
     }
 
     if (field === ATTEMPTS_FIELD) {
-      window.attempts += value;
+      attempts += value;
     } else if (field === PROVIDER_ERRORS_FIELD) {
-      window.providerErrors += value;
+      providerErrors += value;
     }
   }
+
+  return { attempts, providerErrors };
 }
 
 /**
@@ -60,10 +64,10 @@ export async function readEndpointWindow(
       pipeline.hGetAll(modelHealthKey(endpoint, bucket));
     }
 
-    const window = emptyWindow();
+    let window = emptyWindow();
     for (const reply of await pipeline.exec()) {
       if (isStringRecord(reply)) {
-        addHashToWindow(window, reply);
+        window = addHashToWindow(window, reply);
       }
     }
 
