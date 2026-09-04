@@ -1,4 +1,5 @@
 import { editClientExecutableFile } from "@app/lib/api/files/client_executable";
+import { editFrameV2TextAtSource } from "@app/lib/api/frames/publish_from_source";
 import { editFrameTextAtSource } from "@app/lib/api/viz/edit_frame_text";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -7,12 +8,14 @@ import {
   isConversationFileUseCase,
   isInteractiveContentType,
 } from "@app/types/files";
+import { frameSourceErrorStatus } from "@front-api/lib/api/frame_source_errors";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const EditTextRequestBodySchema = z.object({
+  conversationId: z.string().optional(),
   newText: z.string(),
   oldText: z.string().min(1, "oldText must be a non-empty string"),
   // When set ("<relPath>:<line>:<col>"), edit the Frame's source by location and rebuild the
@@ -35,6 +38,7 @@ app.post(
   async (ctx) => {
     const auth = ctx.get("auth");
     const { fileId } = ctx.req.valid("param");
+    const { conversationId, oldText, newText, source } = ctx.req.valid("json");
 
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {
@@ -42,6 +46,53 @@ app.post(
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
       });
+    }
+
+    if (file.isFrameV2) {
+      if (!conversationId || !source) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Frame v2 editing requires a conversation and source location.",
+          },
+        });
+      }
+
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      if (!conversation) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: { type: "file_not_found", message: "File not found." },
+        });
+      }
+
+      const editResult = await editFrameV2TextAtSource(auth, {
+        conversation: conversation.toJSON(),
+        frame: file,
+        source,
+        oldText,
+        newText,
+      });
+      if (editResult.isErr()) {
+        const status = frameSourceErrorStatus(editResult.error);
+        return apiError(ctx, {
+          status_code: status,
+          api_error: {
+            type:
+              status === 500
+                ? "internal_server_error"
+                : "invalid_request_error",
+            message: editResult.error.message,
+          },
+        });
+      }
+
+      return ctx.json({ success: true });
     }
 
     if (!isInteractiveContentType(file.contentType)) {
@@ -85,8 +136,6 @@ app.post(
         api_error: { type: "file_not_found", message: "File not found." },
       });
     }
-
-    const { oldText, newText, source } = ctx.req.valid("json");
 
     // Location-based edit (published frames): route the edit to the source file by location and
     // rebuild the bundle.
