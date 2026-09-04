@@ -57,7 +57,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
-  InfoCircle,
   LoadingBlock,
   ProgressBar,
   Spinner,
@@ -758,14 +757,15 @@ function buildPremiumMessageUsageColumn(
   return {
     id: "premiumMessageUsage" as const,
     header: () => (
-      <span className="flex items-center gap-1">
-        <Icon visual={CoinsStacked03} size="xs" />
-        Premium messages
-        <Tooltip
-          trigger={<Icon visual={InfoCircle} size="xs" />}
-          label={`Usage is capped over a rolling ${windowDays}-day window: each message frees up its slot ${windowDays} days after it was sent, not all at once.`}
-        />
-      </span>
+      <div className="flex flex-col">
+        <span className="flex items-center gap-1">
+          <Icon visual={CoinsStacked03} size="xs" />
+          Premium messages
+        </span>
+        <span className="text-xs font-normal text-muted-foreground">
+          Resets on a rolling {windowDays}-day basis
+        </span>
+      </div>
     ),
     accessorFn: (row) =>
       (row.premiumMessageUsage?.usedMessages ?? 0).toString(),
