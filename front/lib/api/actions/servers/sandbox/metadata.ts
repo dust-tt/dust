@@ -102,7 +102,9 @@ export const SANDBOX_TOOLS_METADATA = [
       "allowlist surface as denied entries in `<network_proxy_logs>` in " +
       "the bash tool output. Allowlist entries added through this tool " +
       "persist for the lifetime of the conversation (across sandbox " +
-      "restarts) and are scoped to this conversation only.",
+      "restarts) and are scoped to this conversation only. They do not " +
+      "apply to Frame function sandboxes: declare those domains in the " +
+      "Frame manifest instead.",
     schema: {
       domain: z
         .string()
