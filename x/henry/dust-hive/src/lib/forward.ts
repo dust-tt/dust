@@ -11,6 +11,7 @@ import { logger } from "./logger";
 import { FORWARDER_LOG_PATH, FORWARDER_PID_PATH, FORWARDER_STATE_PATH } from "./paths";
 import { getPortProcessInfo, isPortInUse } from "./ports";
 import { isProcessRunning, killProcess } from "./process";
+import { WORKSPACE_ID } from "./seed";
 
 const ForwarderStateFields = z.object({
   targetEnv: z.string(),
@@ -230,10 +231,37 @@ export async function startForwarder(basePort: number, envName: string): Promise
 
   logger.success(`Forwarding ports → ${envName} (base ${basePort})`);
   for (const m of FORWARDER_MAPPINGS) {
-    console.log(
-      `  ${m.name.padEnd(16)} ${String(m.listenPort).padStart(4)} → ${basePort + m.targetOffset}`
-    );
+    console.log(`  ${formatForwarderMapping(m, basePort)}`);
   }
+}
+
+type ForwarderMapping = (typeof FORWARDER_MAPPINGS)[number];
+
+// Deep links for the SPAs, pointing at the seeded dev workspace.
+const FORWARDER_URL_PATHS: Partial<Record<ForwarderMapping["name"], string>> = {
+  "front-spa-app": `/w/${WORKSPACE_ID}`,
+  "front-spa-poke": `/${WORKSPACE_ID}`,
+};
+
+// OSC 8 hyperlink: clickable in most terminals, plain text elsewhere.
+function hyperlink(url: string): string {
+  return `\x1b]8;;${url}\x1b\\${url}\x1b]8;;\x1b\\`;
+}
+
+function mappingUrl(m: ForwarderMapping, port: number): string {
+  return `http://localhost:${port}${FORWARDER_URL_PATHS[m.name] ?? ""}`;
+}
+
+// Width of the longest listen URL, so the arrows line up across rows.
+const LISTEN_URL_WIDTH = Math.max(
+  ...FORWARDER_MAPPINGS.map((m) => mappingUrl(m, m.listenPort).length)
+);
+
+export function formatForwarderMapping(m: ForwarderMapping, basePort: number): string {
+  const listenUrl = mappingUrl(m, m.listenPort);
+  const targetUrl = mappingUrl(m, basePort + m.targetOffset);
+  const padding = " ".repeat(LISTEN_URL_WIDTH - listenUrl.length);
+  return `${m.name.padEnd(16)} ${hyperlink(listenUrl)}${padding} → ${hyperlink(targetUrl)}`;
 }
 
 // Get forwarder status info
