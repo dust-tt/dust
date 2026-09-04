@@ -127,10 +127,8 @@ export async function allowSlackWorkflow(
   }
   const { dataSource, connectorId } = dataSourceRes.value;
 
-  const [spaces, globalSpace] = await Promise.all([
-    listSelectableSpaces(auth),
-    SpaceResource.fetchWorkspaceGlobalSpace(auth),
-  ]);
+  const spaces = await listSelectableSpaces(auth);
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   const selectableSpaceIds = new Set(spaces.map((space) => space.sId));
 
