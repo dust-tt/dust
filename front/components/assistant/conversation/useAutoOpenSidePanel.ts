@@ -13,6 +13,7 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { FILES_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import { isFrameContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
+import uniqBy from "lodash/uniqBy";
 import React from "react";
 
 interface UseAutoOpenSidePanelProps {
@@ -122,8 +123,11 @@ export function useAutoOpenSidePanel({
 
   const completedInteractiveFiles = React.useMemo(
     () =>
-      agentMessage.generatedFiles.filter((file) =>
-        isFrameContentType(file.contentType)
+      uniqBy(
+        agentMessage.generatedFiles.filter((file) =>
+          isFrameContentType(file.contentType)
+        ),
+        (file) => file.fileId ?? file.filePath
       ),
     [agentMessage.generatedFiles]
   );
