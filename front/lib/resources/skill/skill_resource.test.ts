@@ -2211,8 +2211,8 @@ describe("SkillResource", () => {
 
       expect(fetched).not.toBeNull();
       expect(fetched!.canRead(testContext.authenticator)).toBe(false);
-      expect(fetched!.canWrite(testContext.authenticator)).toBe(false);
-      expect(fetched!.canAdministrate(testContext.authenticator)).toBe(false);
+      // Administration is a role matter, unrelated to reading the spaces.
+      expect(fetched!.canAdministrate(testContext.authenticator)).toBe(true);
       const json = fetched!.toJSON(testContext.authenticator);
       expect(json.name).toBe("Restricted Space Skill");
       expect(json.canRead).toBe(false);

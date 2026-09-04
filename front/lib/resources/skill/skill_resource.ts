@@ -300,8 +300,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   // serialized to the front-end. Custom skills always expose their own.
   private readonly exposeInstructions: boolean;
   // Set on the skills an admin fetched without being able to read them (built on spaces they are
-  // not a member of): the permission methods answer false and `toJSON` drops the private fields.
-  // See the "redact_unreadable" permission filtering mode of the fetchers.
+  // not a member of): `canRead` answers false and `toJSON` drops the private fields. The other
+  // permissions are left as they are, so an admin can still administrate such a skill (archive,
+  // availability). See the "redact_unreadable" permission filtering mode of the fetchers.
   private redactedForCaller = false;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
@@ -2267,10 +2268,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canWrite(auth: Authenticator): boolean {
-    if (this.redactedForCaller) {
-      return false;
-    }
-
     // TODO(governance): cleanup once we'll be able to grant API keys editorship on a skill.
     // TODO(@jd): Revisit this shortcircuit with our current ACLs stack.
     // API keys cannot hold a skill's `editor` grant (no such assignment mechanism exists),
@@ -2284,10 +2281,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canAdministrate(auth: Authenticator): boolean {
-    if (this.redactedForCaller) {
-      return false;
-    }
-
     // See canWrite: API keys have no editor-group assignment mechanism, so any key can
     // administrate any skill.
     if (auth.isKey()) {
