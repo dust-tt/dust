@@ -15,9 +15,8 @@ import type {
 } from "@google/genai";
 import { GoogleGenAI } from "@google/genai";
 
-// Agent Platform `location` targeted by the endpoint. Gemini 3.8 Flash is
-// available on both the global endpoint and the `eu` multi-region; older model
-// registrations still use global where their regional rollout is not enabled.
+// Agent Platform `location` targeted by an endpoint. Each registered endpoint
+// selects a location where its model is available.
 export type GoogleAgentPlatformLocation = "global" | "eu";
 
 // Gemini-on-Vertex transport. Same @google/genai SDK and converters as the AI
