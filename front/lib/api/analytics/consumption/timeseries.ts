@@ -148,9 +148,10 @@ export async function fetchConsumptionTimeseries(
     return timeseriesResult;
   }
 
-  const workspace = auth.getNonNullableWorkspace();
   const workspaceMemberCount =
-    await MembershipResource.countActiveMembersForWorkspace({ workspace });
+    await MembershipResource.countActiveMembersForWorkspace({
+      workspace: auth.getNonNullableWorkspace(),
+    });
 
   return new Ok({
     ...timeseriesResult.value,
