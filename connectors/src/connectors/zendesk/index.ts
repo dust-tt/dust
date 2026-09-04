@@ -373,7 +373,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       ) {
         return new Err(
           new ConnectorManagerError(
-            "CONNECTOR_OAUTH_USER_MISSING_RIGHTS",
+            "CONNECTOR_OAUTH_USER_MUST_BE_ADMIN",
             "The connected account does not have sufficient permissions. Please re-authorize the connection with an administrator account."
           )
         );
