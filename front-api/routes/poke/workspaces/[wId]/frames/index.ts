@@ -32,11 +32,13 @@ app.get("/", async (ctx): HandlerResult<PokeListFrames> => {
   }
 
   const { limit, lastValue, orderDirection } = paginationRes.value;
+  const { hasSandbox } = ctx.req.query();
 
   const frames = await listWorkspaceFrames(auth, {
     limit,
     lastValue,
     orderDirection,
+    hasSandbox: hasSandbox === "true",
   });
 
   return ctx.json(frames);

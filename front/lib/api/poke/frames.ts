@@ -96,14 +96,21 @@ function toPokeFrameListItem(
 
 export async function listWorkspaceFrames(
   auth: Authenticator,
-  pagination: {
+  {
+    hasSandbox,
+    ...pagination
+  }: {
     limit: number;
     lastValue?: string;
     orderDirection: "asc" | "desc";
+    hasSandbox: boolean;
   }
 ): Promise<PokeListFrames> {
   const { frames, hasMore, lastValue } =
-    await FileResource.listFrameV2ForWorkspacePaginated(auth, pagination);
+    await FileResource.listFrameV2ForWorkspacePaginated(auth, {
+      ...pagination,
+      hasSandbox,
+    });
 
   if (frames.length === 0) {
     return { items: [], hasMore, lastValue };
