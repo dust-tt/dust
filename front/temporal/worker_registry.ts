@@ -18,6 +18,7 @@ import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker"
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
 import { runMetronomeEventsWorker } from "@app/temporal/metronome_events_queue/worker";
+import { runModelHealthWorker } from "@app/temporal/model_health/worker";
 import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runReinforcementWorker } from "@app/temporal/reinforcement/worker";
@@ -53,6 +54,7 @@ export type WorkerName =
   | "mentions_count"
   | "mentions_queue"
   | "metronome_events_queue"
+  | "model_health"
   | "notifications_queue"
   | "poke"
   | "production_checks"
@@ -86,6 +88,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   mentions_count: runMentionsCountWorker,
   mentions_queue: runMentionsQueueWorker,
   metronome_events_queue: runMetronomeEventsWorker,
+  model_health: runModelHealthWorker,
   notifications_queue: runNotificationsQueueWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
