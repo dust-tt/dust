@@ -10,7 +10,7 @@ import {
   PokeCommandItem,
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokeCells } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
@@ -114,7 +114,7 @@ function PokeSearchCommand() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { regionInfo, setRegionInfo } = useRegionContext();
+  const { cellInfo, setCellInfo } = useCellContext();
   const { cells } = usePokeCells();
 
   const { isError, isLoading, results } = usePokeSearchAllCells({
@@ -126,12 +126,12 @@ function PokeSearchCommand() {
   const handleItemClick = useCallback(
     (item: PokeItemBase) => {
       const targetCell = cells?.find((cell) => cell.name === item.cell);
-      if (targetCell && targetCell.url !== regionInfo.url) {
-        setRegionInfo({ name: targetCell.region, url: targetCell.url });
+      if (targetCell && targetCell.name !== cellInfo.name) {
+        setCellInfo(targetCell);
       }
       setOpen(false);
     },
-    [regionInfo, setRegionInfo, cells]
+    [cellInfo, setCellInfo, cells]
   );
 
   return (

@@ -1,5 +1,4 @@
 import { RootLayout } from "@app/components/app/RootLayout";
-import { RegionProvider } from "@app/lib/auth/RegionContext";
 import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { SparkleContext } from "@dust-tt/sparkle";
 import { ChromeExtensionWrapper } from "@extension/platforms/chrome/ChromeExtensionWrapper";
@@ -7,6 +6,7 @@ import { PortProvider } from "@extension/platforms/chrome/context/PortContext";
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import { AuthenticatedImage } from "@extension/shared/AuthenticatedImage";
 import { PlatformProvider } from "@extension/shared/context/PlatformContext";
+import { RegionProvider } from "@extension/shared/context/RegionContext";
 import { useCaptureActions } from "@extension/shared/hooks/useCaptureActions";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
 import { ReactRouterLinkWrapper } from "@extension/shared/ReactRouterLinkWrapper";

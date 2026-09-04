@@ -1,7 +1,7 @@
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { OAuthFinalizePage } from "@dust-tt/front/components/pages/oauth/OAuthFinalizePage";
 import { OAuthSetupRedirectPage } from "@dust-tt/front/components/pages/oauth/OAuthSetupRedirectPage";
-import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { CellProvider } from "@dust-tt/front/lib/auth/CellContext";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
@@ -34,12 +34,12 @@ const router = createBrowserRouter(
 
 export default function OAuthApp() {
   return (
-    <RegionProvider>
+    <CellProvider>
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
         <ErrorBoundary fallback={<GlobalErrorFallback />}>
           <RouterProvider router={router} />
         </ErrorBoundary>
       </FetcherProvider>
-    </RegionProvider>
+    </CellProvider>
   );
 }

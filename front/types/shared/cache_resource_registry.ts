@@ -129,6 +129,21 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     resolverKeyPattern: "workspace-region:*",
   },
   {
+    id: "workspace_cell",
+    label: "Workspace cell",
+    fnName: "_lookupWorkspaceUncached",
+    params: [
+      {
+        key: "wId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `workspace-cell:${p.wId}`,
+    resolverKeyPattern: "workspace-cell:*",
+  },
+  {
     id: "provider_status",
     label: "Provider status",
     fnName: "getProvidersStatus",

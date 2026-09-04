@@ -1,4 +1,4 @@
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { getCellDisplay } from "@app/lib/poke/cells";
 import type { CellInfo } from "@app/types/cell";
 import {
@@ -14,18 +14,14 @@ interface PokeCellDropdownProps {
 }
 
 export function PokeCellDropdown({ cells }: PokeCellDropdownProps) {
-  const { regionInfo, setRegionInfo } = useRegionContext();
-
-  const currentCell =
-    cells?.find((cell) => cell.url === regionInfo.url) ??
-    cells?.find((cell) => cell.region === regionInfo.name);
+  const { cellInfo, setCellInfo } = useCellContext();
 
   const handleCellChange = (cell: CellInfo) => {
-    if (!currentCell || cell.name === currentCell.name) {
+    if (!cellInfo || cell.name === cellInfo.name) {
       return;
     }
 
-    setRegionInfo({ name: cell.region, url: cell.url });
+    setCellInfo(cell);
   };
 
   return (
@@ -35,7 +31,7 @@ export function PokeCellDropdown({ cells }: PokeCellDropdownProps) {
           variant="outline"
           size="sm"
           isSelect
-          label={currentCell ? getCellDisplay(currentCell) : regionInfo.name}
+          label={getCellDisplay(cellInfo)}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
@@ -43,7 +39,7 @@ export function PokeCellDropdown({ cells }: PokeCellDropdownProps) {
           <DropdownMenuItem
             key={cell.name}
             onClick={() => handleCellChange(cell)}
-            disabled={cell.name === currentCell?.name}
+            disabled={cell.name === cellInfo?.name}
           >
             {getCellDisplay(cell)}
           </DropdownMenuItem>

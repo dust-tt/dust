@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
-import { getRegionUrl } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useUser } from "@app/lib/swr/user";
 import { usePendingInvitations } from "@app/lib/swr/workspaces";
-import type { RegionType } from "@app/types/region";
+import type { CellType } from "@app/types/cell";
 import {
   BarHeader,
   Button,
@@ -15,18 +15,21 @@ import {
 import { useCallback } from "react";
 
 export function InviteChoosePage() {
+  const { cells } = useCellContext();
   const { user } = useUser();
   const { pendingInvitations, isPendingInvitationsLoading } =
     usePendingInvitations();
 
   const handleInvitationSelection = useCallback(
-    (token: string, region?: RegionType) => {
-      const baseUrl = region ? getRegionUrl(region) : config.getApiBaseUrl();
+    (token: string, cell?: CellType) => {
+      const baseUrl = cell
+        ? cells.find((c) => c.name === cell)?.url
+        : config.getApiBaseUrl();
       window.location.assign(
         `${baseUrl}/api/login?inviteToken=${encodeURIComponent(token)}`
       );
     },
-    []
+    [cells]
   );
 
   if (isPendingInvitationsLoading) {
@@ -86,7 +89,10 @@ export function InviteChoosePage() {
                       onClick={() =>
                         handleInvitationSelection(
                           invitation.token,
-                          invitation.region
+                          // TODO(single-tenant): fix so that invations are using cell, not region.
+                          // Fallback to first cell with a matching region.
+                          cells.find((c) => c.region === invitation.region)
+                            ?.name
                         )
                       }
                     />

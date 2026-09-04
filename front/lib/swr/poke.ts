@@ -4,7 +4,7 @@ import type {
   GetPokeWorkspaceAuthContextResponseType,
 } from "@app/lib/api/poke/auth_context";
 import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/metronome";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
@@ -314,7 +314,7 @@ export function usePokeAuthContext(
 ) {
   const { fetcher } = useFetcher();
   const { workspaceId, disabled } = options;
-  const regionContext = useRegionContext();
+  const { setCellInfo, cells } = useCellContext();
 
   const url = workspaceId
     ? `/api/poke/workspaces/${workspaceId}/auth-context`
@@ -336,13 +336,13 @@ export function usePokeAuthContext(
   // Handle region redirect.
   useEffect(() => {
     if (regionRedirect) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+      setCellInfo(
+        // TODO(single-tenant): fix so that regionRedirect becomes cellRedirect.
+        cells.find((c) => c.region === regionRedirect.region) ?? cells[0]
+      );
       void mutate();
     }
-  }, [regionRedirect, mutate, regionContext]);
+  }, [regionRedirect, mutate, setCellInfo, cells]);
 
   return {
     authContext: isRegionRedirectResponse ? undefined : data,

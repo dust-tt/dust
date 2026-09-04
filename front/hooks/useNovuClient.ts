@@ -1,4 +1,4 @@
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useUser } from "@app/lib/swr/user";
 import { Novu } from "@novu/js";
 import { useEffect, useMemo, useState } from "react";
@@ -41,19 +41,19 @@ const getNovuEnvForRegion = ({
 
 export const useNovuClient = () => {
   const { user } = useUser();
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
   const [novuClient, setNovuClient] = useState<Novu | null>(null);
 
   const novuConfig = useMemo(() => {
-    const regionName = regionContext?.regionInfo.name;
-    const regionUrl = regionContext?.regionInfo.url;
+    const regionName = cellContext?.cellInfo.region;
+    const regionUrl = cellContext?.cellInfo.url;
 
     const isEuRegion =
       regionName?.startsWith("europe-") ||
       (regionUrl ? regionUrl.includes("://eu.") : false);
 
     return getNovuEnvForRegion({ isEuRegion: Boolean(isEuRegion) });
-  }, [regionContext?.regionInfo.name, regionContext?.regionInfo.url]);
+  }, [cellContext?.cellInfo.region, cellContext?.cellInfo.url]);
 
   useEffect(() => {
     if (user?.subscriberHash && user?.sId) {

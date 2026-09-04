@@ -1,9 +1,8 @@
-import { RegionProvider } from "@app/lib/auth/RegionContext";
+import { CellProvider } from "@app/lib/auth/CellContext";
 import { render, waitFor } from "@testing-library/react";
 import type React from "react";
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { ValidationPage } from "./ValidationPage";
 
 vi.mock("@app/lib/platform", () => ({
@@ -28,9 +27,9 @@ vi.mock("@dust-tt/sparkle", () => ({
 
 function renderValidationPage() {
   render(
-    <RegionProvider>
+    <CellProvider>
       <ValidationPage />
-    </RegionProvider>
+    </CellProvider>
   );
 }
 

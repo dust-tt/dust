@@ -2,10 +2,9 @@ import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
+import { config as cellsConfig } from "@app/lib/api/cells/config";
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
-import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
-import { lookupWorkspace } from "@app/lib/api/regions/lookup";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -25,6 +24,7 @@ import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { ONBOARDING_PROFILE_PENDING_METADATA_KEY } from "@app/types/onboarding";
 import type { LightWorkspaceType } from "@app/types/user";
+import { lookupWorkspaceCell } from "./cells/lookup";
 
 interface PerformLoginOptions {
   inviteToken: string | null;
@@ -166,18 +166,18 @@ export async function performLogin(
     );
     if (flow === "unauthorized") {
       // Workspace not found on this region: redirect to the other region's /api/login (cookie is shared).
-      const workspaceRegionRes = await lookupWorkspace(workspaceId);
-      const currentRegion = multiRegionsConfig.getCurrentRegion();
+      const lookupWorkspaceCellRes = await lookupWorkspaceCell(workspaceId);
+      const currentCell = cellsConfig.getCurrentCell();
       if (
-        workspaceRegionRes.isOk() &&
-        workspaceRegionRes.value &&
-        workspaceRegionRes.value !== currentRegion
+        lookupWorkspaceCellRes.isOk() &&
+        lookupWorkspaceCellRes.value &&
+        lookupWorkspaceCellRes.value !== currentCell.name
       ) {
         logger.info(
           {
             userId: user.sId,
             workspaceId,
-            targetRegion: workspaceRegionRes.value,
+            targetCell: lookupWorkspaceCellRes.value,
             sessionIsSSO: session.isSSO,
             sessionWorkspaceId: session.workspaceId,
             sessionOrganizationId: session.organizationId,
@@ -185,9 +185,7 @@ export async function performLogin(
           },
           "Enterprise connection: redirecting to other region"
         );
-        const targetUrl = multiRegionsConfig.getRegionUrl(
-          workspaceRegionRes.value
-        );
+        const targetUrl = cellsConfig.getCellUrl(lookupWorkspaceCellRes.value);
         return { kind: "redirect", url: `${targetUrl}/api/login` };
       }
 
@@ -412,8 +410,8 @@ const buildPostLoginUrl = (
     }
   }
 
-  const currentRegion = multiRegionsConfig.getCurrentRegion();
-  searchParams.set("region", currentRegion);
+  const currentCell = cellsConfig.getCurrentCell();
+  searchParams.set("cell", currentCell.name);
 
   const queryString = searchParams.toString();
   return queryString ? `${path}?${queryString}` : path;
