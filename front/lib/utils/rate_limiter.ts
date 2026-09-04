@@ -400,6 +400,85 @@ export async function getWeightedRateLimiterUsage({
   }
 }
 
+// Same computation as `getWeightedRateLimiterUsage`, batched over multiple
+// keys in a single round trip (looped server-side in Lua, chunked to a safe
+// KEYS array size), so a full-table sort doesn't issue one round trip per
+// member.
+export async function getWeightedRateLimiterUsageForKeys({
+  keys,
+  timeframeSeconds,
+}: {
+  keys: string[];
+  timeframeSeconds: number;
+}): Promise<Result<Map<string, WeightedRateLimiterUsage>, Error>> {
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    return new Err(new Error("timeframeSeconds must be a positive integer."));
+  }
+  if (keys.length === 0) {
+    return new Ok(new Map());
+  }
+
+  const windowMs = timeframeSeconds * 1000;
+  const luaScript = `
+    local window_ms = tonumber(ARGV[1])
+
+    -- Use Redis server time to avoid client clock skew (matches the writer).
+    local t = redis.call('TIME') -- { seconds, microseconds }
+    local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
+    local trim_before = now_ms - window_ms
+
+    local results = {}
+    for i, key in ipairs(KEYS) do
+      -- Sum the '<microCredits>:<uuid>' amount prefixes of the entries still
+      -- inside the window, server-side, so only the totals cross the wire.
+      local entries = redis.call('ZRANGEBYSCORE', key, trim_before, '+inf', 'WITHSCORES')
+      local total = 0
+      local oldest_timestamp_ms = -1
+      for j = 1, #entries, 2 do
+        local member = entries[j]
+        local score = tonumber(entries[j + 1])
+        local sep = string.find(member, ':', 1, true)
+        if sep then
+          local amount = tonumber(string.sub(member, 1, sep - 1))
+          if amount then
+            if oldest_timestamp_ms == -1 and score then
+              oldest_timestamp_ms = score
+            end
+            total = total + amount
+          end
+        end
+      end
+      results[i] = { total, oldest_timestamp_ms }
+    end
+    return results
+  `;
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const uniqueKeys = Array.from(new Set(keys));
+    const usageByKey = new Map<string, WeightedRateLimiterUsage>();
+    for (const batchKeys of chunk(uniqueKeys, RATE_LIMITER_COUNTS_BATCH_SIZE)) {
+      const redisKeys = batchKeys.map((key) => makeRateLimiterKey(key));
+      const replies = (await redis.eval(luaScript, {
+        keys: redisKeys,
+        arguments: [windowMs.toString()],
+      })) as [number, number][];
+      for (const [index, key] of batchKeys.entries()) {
+        const [count, oldestTimestampMs] = replies[index];
+        usageByKey.set(key, {
+          count,
+          oldestTimestampMs:
+            oldestTimestampMs === -1 ? null : oldestTimestampMs,
+        });
+      }
+    }
+
+    return new Ok(usageByKey);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 export async function getWeightedRateLimiterCount({
   key,
   timeframeSeconds,

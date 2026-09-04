@@ -201,10 +201,10 @@ export function PoolUsagePage() {
   });
   const hasPool = (awuPoolCurrentCycle?.totalActiveCredits ?? 0) > 0;
 
-  // Sort by premium message usage for legacy no-pool workspaces, by pool
-  // credits otherwise, until the user picks a column explicitly.
+  // Sort by fair-use credits for legacy no-pool workspaces, by pool credits
+  // otherwise, until the user picks a column explicitly.
   const defaultSortId = isLegacyWithoutPoolOrMetronome
-    ? "premiumMessageUsage"
+    ? "fairUse"
     : "consumedFromPoolAwuCredits";
   const effectiveSorting: SortingState =
     sorting.length > 0 ? sorting : [{ id: defaultSortId, desc: true }];
@@ -213,7 +213,8 @@ export function PoolUsagePage() {
     sort?.id === "email" ||
     sort?.id === "consumedFromPoolAwuCredits" ||
     sort?.id === "seatUsage" ||
-    sort?.id === "premiumMessageUsage"
+    sort?.id === "premiumMessageUsage" ||
+    sort?.id === "fairUse"
       ? sort.id
       : "name";
   const orderDirection = sort?.desc ? "desc" : "asc";

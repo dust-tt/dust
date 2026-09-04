@@ -927,9 +927,8 @@ function buildFairUseCreditsColumn(
         </div>
       );
     },
-    // Not part of the backend `orderColumn` union yet: sorting stays
-    // local-only, which would misbehave across pages, so it's disabled here.
-    enableSorting: false,
+    enableSorting: true,
+    sortDescFirst: true,
     meta: {
       className: "w-56",
     },

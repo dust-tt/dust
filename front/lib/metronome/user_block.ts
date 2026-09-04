@@ -36,6 +36,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   getTimeframeSecondsFromLiteral,
   getWeightedRateLimiterUsage,
+  getWeightedRateLimiterUsageForKeys,
 } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -301,6 +302,47 @@ export async function getFairUseAwuCreditsStatus({
             result.value.oldestTimestampMs + timeframeSeconds * 1000
           ).toISOString(),
   };
+}
+
+// Bulk variant of `getFairUseAwuCreditsStatus`, batched into a single Redis
+// round trip (per chunk). Used to sort the full matching set of members by
+// fair-use credit consumption without one round trip per member.
+export async function getFairUseAwuCreditsUsedCountsByUser({
+  workspace,
+  users,
+  plan,
+}: {
+  workspace: Pick<LightWorkspaceType, "id">;
+  users: Pick<UserType, "id" | "sId">[];
+  plan: PlanType | null;
+}): Promise<Map<string, number>> {
+  if (!plan || plan.limits.assistant.maxAwuCredits === -1) {
+    return new Map();
+  }
+
+  const { maxAwuCredits: limit, maxAwuCreditsTimeframe: timeframe } =
+    plan.limits.assistant;
+  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
+
+  const keyByUserId = new Map(
+    users.map((user) => [
+      user.sId,
+      makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
+    ])
+  );
+
+  const result = await getWeightedRateLimiterUsageForKeys({
+    keys: Array.from(keyByUserId.values()),
+    timeframeSeconds,
+  });
+  const usageByKey = result.isOk() ? result.value : new Map();
+
+  return new Map(
+    Array.from(keyByUserId, ([sId, key]) => [
+      sId,
+      Math.min(microCreditsToCredits(usageByKey.get(key)?.count ?? 0), limit),
+    ])
+  );
 }
 
 // Unified read
