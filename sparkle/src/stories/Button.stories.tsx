@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { expect, waitFor } from "storybook/test";
 
 import {
   BUTTON_SIZES,
@@ -206,6 +207,7 @@ export const Playground: Story = {
     size: "md",
     isLoading: false,
     isSelect: false,
+    isPressed: false,
     isPulsing: false,
     disabled: false,
     isCounter: false,
@@ -275,4 +277,54 @@ export const SpecialStates: Story = {
       </div>
     </div>
   ),
+};
+
+const PRESSED_VARIANTS = [
+  "ghost",
+  "ghost-secondary",
+  "highlight-ghost",
+  "warning-ghost",
+] as const;
+
+function PressedRow() {
+  return (
+    <div className="flex items-center gap-4">
+      {PRESSED_VARIANTS.map((variant) => (
+        <div key={variant} className="flex items-center gap-2">
+          <Button variant={variant} label="Plan" icon={Robot} />
+          <Button variant={variant} label="Plan" icon={Robot} isPressed />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Toggle buttons (`isPressed`) that open or close something, such as a side
+ * panel: each pair shows the resting state next to the pressed one. Ghost
+ * variants keep a background while pressed; every variant exposes `aria-pressed`.
+ * @summary Pressed toggle state.
+ */
+export const Pressed: Story = {
+  render: () => (
+    <div className="flex flex-col gap-6">
+      <Surface title="Light">
+        <PressedRow />
+      </Surface>
+      <Surface dark title="Dark">
+        <PressedRow />
+      </Surface>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const pressed = canvasElement.querySelectorAll('[aria-pressed="true"]');
+      const resting = canvasElement.querySelectorAll(
+        'button:not([aria-pressed])'
+      );
+      // 4 variants x 2 surfaces, pressed and resting alternate.
+      expect(pressed).toHaveLength(8);
+      expect(resting).toHaveLength(8);
+    });
+  },
 };

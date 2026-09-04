@@ -151,8 +151,30 @@ const buttonVariants = cva(
         true: "active:scale-[0.985] motion-reduce:active:scale-100",
         false: "",
       },
+      pressed: {
+        true: "",
+        false: "",
+      },
     },
     compoundVariants: [
+      // Pressed (toggle on): ghost variants keep a persistent background, a step above hover.
+      // Raised variants already have one, so `isPressed` only sets aria-pressed there.
+      {
+        variant: ["ghost", "ghost-secondary"],
+        pressed: true,
+        className:
+          "bg-black/[0.06] hover:bg-black/[0.06] dark:bg-white/[0.12] dark:hover:bg-white/[0.12]",
+      },
+      {
+        variant: "highlight-ghost",
+        pressed: true,
+        className: "bg-highlight-50",
+      },
+      {
+        variant: "warning-ghost",
+        pressed: true,
+        className: "bg-warning-50",
+      },
       { size: "xs", isIconOnly: true, className: "w-6 px-0" },
       { size: "sm", isIconOnly: true, className: "w-8 px-0" },
       { size: "md", isIconOnly: true, className: "w-10 px-0" },
@@ -181,6 +203,7 @@ const buttonVariants = cva(
       size: "sm",
       isIconOnly: false,
       press: true,
+      pressed: false,
     },
   }
 );
@@ -290,6 +313,8 @@ export interface ButtonProps
   iconRight?: ButtonIconType;
   /** Append a dropdown chevron, marking the button as a menu trigger. */
   isSelect?: boolean;
+  /** Toggle state for buttons that open or close something: sets `aria-pressed` and, on ghost variants, keeps the background on. */
+  isPressed?: boolean;
   /** Show a centered spinner and block interaction while keeping the resting size. */
   isLoading?: boolean;
   /** Show an inline Counter (requires `counterValue`). */
@@ -307,8 +332,8 @@ export interface ButtonProps
 /**
  * Lets users trigger an action or event — submitting a form, opening a dialog, or
  * confirming a choice — in several visual variants and three sizes (xs / sm / md),
- * with leading/trailing icons, loading and disabled states, an inline counter, and
- * a dropdown-chevron affordance (`isSelect`). Use a single `highlight` button per
+ * with leading/trailing icons, loading, disabled and pressed (`isPressed`) states,
+ * an inline counter, and a dropdown-chevron affordance (`isSelect`). Use a single `highlight` button per
  * view with `outline` or ghost variants for secondary actions; give icon-only
  * buttons a `tooltip` and set `isLoading` during async work.
  * @summary Action button.
@@ -323,6 +348,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       variant = "primary",
       size = "sm",
       isSelect = false,
+      isPressed,
       isLoading = false,
       isCounter = false,
       counterValue,
@@ -440,6 +466,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             size: normalizedSize,
             isIconOnly,
             press: !isMenuTrigger && !isLoading,
+            pressed: isPressed === true,
           }),
           isPulsing && "animate-ring-pulse-soft",
           isRounded && "rounded-full",
@@ -447,6 +474,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className
         )}
         aria-label={ariaLabel || tooltip || label}
+        aria-pressed={isPressed}
         {...props}
         // Loading blocks interaction (disabled attr) but keeps the active look:
         // the muted `data-[disabled]:` styles are gated on this attribute, which
