@@ -55,9 +55,12 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
+    // Admins can see and manage the editors of every agent of the workspace, including the ones
+    // built on spaces they are not a member of.
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "light",
+      dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
     if (!agent) {
       return apiError(ctx, {
@@ -140,9 +143,12 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
+    // Admins can see and manage the editors of every agent of the workspace, including the ones
+    // built on spaces they are not a member of.
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "light",
+      dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
     if (!agent) {
       return apiError(ctx, {

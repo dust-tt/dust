@@ -1,6 +1,7 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
+import { RedactedAgentMessage } from "@app/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -8,6 +9,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
@@ -32,6 +34,10 @@ export function AgentInfoTab({
   const instructionsHtml = agentConfiguration.instructionsHtml ?? null;
   const displayInstructions =
     !isGlobalAgent && (instructionsHtml !== null || instructions.length > 0);
+
+  // The API redacts the private fields (instructions, skills, knowledge) of the agents an admin
+  // cannot read, and flags it by returning `canRead: false`. Only admins ever get such a response.
+  const isRedactedForAdmin = isAdmin(owner) && !agentConfiguration.canRead;
 
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -58,6 +64,13 @@ export function AgentInfoTab({
         </div>
       )}
 
+      {isRedactedForAdmin && (
+        <RedactedAgentMessage
+          agentConfiguration={agentConfiguration}
+          owner={owner}
+        />
+      )}
+
       {displayInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <div className="heading-lg text-foreground">Instructions</div>
@@ -74,13 +87,15 @@ export function AgentInfoTab({
         </div>
       )}
 
-      <AssistantSkillsToolsSection
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-        isDustAgent={isDustAgent}
-      />
+      {!isRedactedForAdmin && (
+        <AssistantSkillsToolsSection
+          agentConfiguration={agentConfiguration}
+          owner={owner}
+          isDustAgent={isDustAgent}
+        />
+      )}
 
-      {displayKnowledge && (
+      {displayKnowledge && !isRedactedForAdmin && (
         <>
           <Page.Separator />
           <AssistantKnowledgeSection

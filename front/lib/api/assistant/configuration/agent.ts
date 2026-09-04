@@ -2,6 +2,7 @@ import {
   enrichAgentConfigurations,
   getModelForAgentConfiguration,
   isSelfHostedImageWithValidContentType,
+  redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
@@ -430,6 +431,45 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
         : AgentConfigurationType) || null
     );
   });
+}
+
+/**
+ * Retrieves the latest version of an agent for the caller's details view. Callers only get agents
+ * they can read, except admins: they can list every agent of the workspace (see the
+ * `manage_unrestricted` view), so they get the ones they cannot read too, with the private fields
+ * redacted (see `redactPrivateAgentConfigurationFields`). Returns null when the agent does not
+ * exist or is not readable by a non-admin caller.
+ */
+export async function getAgentConfigurationForDetails(
+  auth: Authenticator,
+  { agentId }: { agentId: string }
+): Promise<AgentConfigurationType | null> {
+  const agent = await getAgentConfiguration(auth, {
+    agentId,
+    variant: "full",
+  });
+  if (agent?.canRead) {
+    return agent;
+  }
+
+  if (!auth.isAdmin()) {
+    return null;
+  }
+
+  // Either not readable (unpublished, not an editor) or filtered out by a space the admin is not a
+  // member of: refetch without the space filtering to redact it. The light variant is enough, the
+  // full one only adds fields the redaction drops.
+  const restrictedAgent =
+    agent ??
+    (await getAgentConfiguration(auth, {
+      agentId,
+      variant: "light",
+      dangerouslySkipPermissionFiltering: true,
+    }));
+
+  return restrictedAgent
+    ? redactPrivateAgentConfigurationFields(restrictedAgent)
+    : null;
 }
 
 type AgentLabel = {

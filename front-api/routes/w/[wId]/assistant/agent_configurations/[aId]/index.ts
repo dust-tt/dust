@@ -1,6 +1,7 @@
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
+  getAgentConfigurationForDetails,
 } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
@@ -57,11 +58,10 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfiguration(auth, {
+    const agent = await getAgentConfigurationForDetails(auth, {
       agentId: aId,
-      variant: "full",
     });
-    if (!agent || (!agent.canRead && !auth.isAdmin())) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

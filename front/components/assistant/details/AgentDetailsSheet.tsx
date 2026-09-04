@@ -202,8 +202,12 @@ export function AgentDetailsSheet({
     agentId != null &&
     !isGlobalAgent &&
     agentConfiguration?.status === "active";
+  // The triggers tab only lists the caller's own triggers, which is pointless on an agent whose
+  // private fields were redacted for an admin (flagged by `canRead: false`).
   const showTriggersTabs =
-    agentId != null && agentConfiguration?.status === "active";
+    agentId != null &&
+    agentConfiguration?.status === "active" &&
+    agentConfiguration.canRead;
   const showAgentMemory = !!agentConfiguration?.actions.find((arg) =>
     isServerSideMCPServerConfigurationWithName(arg, AGENT_MEMORY_SERVER_NAME)
   );
@@ -390,14 +394,16 @@ export function AgentDetailsSheet({
                           />
                         </TabsContent>
                       )}
-                      <TabsContent value="triggers">
-                        <AgentTriggersTab
-                          agentConfiguration={agentConfiguration}
-                          owner={owner}
-                          onEditTrigger={handleEditTrigger}
-                          onAddTrigger={handleAddTrigger}
-                        />
-                      </TabsContent>
+                      {showTriggersTabs && (
+                        <TabsContent value="triggers">
+                          <AgentTriggersTab
+                            agentConfiguration={agentConfiguration}
+                            owner={owner}
+                            onEditTrigger={handleEditTrigger}
+                            onAddTrigger={handleAddTrigger}
+                          />
+                        </TabsContent>
+                      )}
                       <TabsContent value="editors">
                         <AgentEditorsTab
                           key={agentConfiguration.sId}

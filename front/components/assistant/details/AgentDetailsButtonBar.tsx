@@ -63,7 +63,12 @@ export function AgentDetailsButtonBar({
     return null;
   }
 
-  const canEditAgent = agentConfiguration.canEdit || isAdmin(owner);
+  // The API redacts the private fields of the agents an admin cannot read, and flags it by
+  // returning `canRead: false`.
+  // When that's the case they cannnot edit/duplcate/export the agent.
+  const isRedactedForAdmin = isAdmin(owner) && !agentConfiguration.canRead;
+  const canEditAgent =
+    (agentConfiguration.canEdit || isAdmin(owner)) && !isRedactedForAdmin;
 
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
@@ -88,15 +93,16 @@ export function AgentDetailsButtonBar({
         onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
       />
 
-      {canShowAgentConversationActions(agentConfiguration.sId) && (
-        <Button
-          icon={MessagePlusCircle}
-          size="sm"
-          variant="outline"
-          tooltip="New conversation"
-          onClick={handleNewConversation}
-        />
-      )}
+      {canShowAgentConversationActions(agentConfiguration.sId) &&
+        !isRedactedForAdmin && (
+          <Button
+            icon={MessagePlusCircle}
+            size="sm"
+            variant="outline"
+            tooltip="New conversation"
+            onClick={handleNewConversation}
+          />
+        )}
 
       {agentConfiguration.scope !== "global" && (
         <Button
@@ -154,8 +160,10 @@ export function AgentDetailsDropdownMenu({
     return false;
   }
 
-  const allowDeletion = agentConfiguration?.canEdit || isAdmin(owner);
-  const canEditAgent = agentConfiguration?.canEdit || isAdmin(owner);
+  const isRedactedForAdmin = isAdmin(owner) && !agentConfiguration.canRead;
+  const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
+  const canEditAgent =
+    (agentConfiguration.canEdit || isAdmin(owner)) && !isRedactedForAdmin;
 
   const handleExportToYAML = async () => {
     setIsExporting(true);
@@ -237,36 +245,40 @@ export function AgentDetailsDropdownMenu({
         }}
         icon={Brackets}
       />
-      <DropdownMenuItem
-        label={isExporting ? "Exporting..." : "Export to YAML"}
-        onClick={(e) => {
-          e.stopPropagation();
-          void handleExportToYAML();
-          onClose?.();
-        }}
-        icon={isExporting ? <Spinner size="xs" /> : File02}
-        disabled={isExporting}
-      />
+      {!isRedactedForAdmin && (
+        <DropdownMenuItem
+          label={isExporting ? "Exporting…" : "Export to YAML"}
+          onClick={(e) => {
+            e.stopPropagation();
+            void handleExportToYAML();
+            onClose?.();
+          }}
+          icon={isExporting ? <Spinner size="xs" /> : File02}
+          disabled={isExporting}
+        />
+      )}
       {agentConfiguration.scope !== "global" && (
         <>
-          <DropdownMenuItem
-            label="Duplicate (New)"
-            disabled={noHealthyProviders}
-            data-gtm-label="agentDuplicationButton"
-            data-gtm-location="agentDetails"
-            icon={Clipboard}
-            onClick={async (e) => {
-              e.stopPropagation();
-              onClose?.();
-              await router.push(
-                getAgentBuilderRoute(
-                  owner.sId,
-                  "new",
-                  `duplicate=${agentConfiguration.sId}`
-                )
-              );
-            }}
-          />
+          {!isRedactedForAdmin && (
+            <DropdownMenuItem
+              label="Duplicate (New)"
+              disabled={noHealthyProviders}
+              data-gtm-label="agentDuplicationButton"
+              data-gtm-location="agentDetails"
+              icon={Clipboard}
+              onClick={async (e) => {
+                e.stopPropagation();
+                onClose?.();
+                await router.push(
+                  getAgentBuilderRoute(
+                    owner.sId,
+                    "new",
+                    `duplicate=${agentConfiguration.sId}`
+                  )
+                );
+              }}
+            />
+          )}
           {allowDeletion && (
             <DropdownMenuItem
               label="Archive"
