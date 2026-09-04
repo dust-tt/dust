@@ -1,5 +1,5 @@
 import {
-  Chip,
+  AttachmentChip,
   Citation,
   CitationClose,
   CitationDescription,
@@ -13,9 +13,14 @@ import type { ComponentType } from "react";
 import { isValidElement } from "react";
 
 export type FileCitationCardSize = "md" | "sm" | "xs";
-export type FileCitationCardIcon = ComponentType | React.ReactNode;
+// Either an icon component or an already rendered visual (e.g. a DoubleIcon).
+export type FileCitationCardIcon =
+  | ComponentType<{ className?: string }>
+  | React.ReactElement;
 
 interface FileCitationCardPropsBase {
+  // Secondary line of the card body. Chips (`xs`) have no body: compose it into
+  // `tooltipLabel` instead (see FileCitationTooltipLabel).
   description?: React.ReactNode;
   icon: FileCitationCardIcon;
   isLoading?: boolean;
@@ -29,10 +34,28 @@ interface FileCitationCardPropsBase {
 // Card is either interactive (onClick or href) or static, never both at once.
 type FileCitationCardProps = FileCitationCardPropsBase &
   (
-    | { onClick: (e: React.MouseEvent<HTMLDivElement>) => void; href?: never }
+    | { onClick: () => void; href?: never }
     | { href: string; onClick?: never }
     | { onClick?: never; href?: never }
   );
+
+interface FileCitationTooltipLabelProps {
+  title: React.ReactNode;
+  description: React.ReactNode;
+}
+
+/** Two-line tooltip content shared by file citations and chips. */
+export function FileCitationTooltipLabel({
+  title,
+  description,
+}: FileCitationTooltipLabelProps) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div>{title}</div>
+      <div className="text-sm text-muted-foreground">{description}</div>
+    </div>
+  );
+}
 
 function getFileCitationCardLayout(size: Exclude<FileCitationCardSize, "xs">) {
   switch (size) {
@@ -52,53 +75,14 @@ function getFileCitationCardLayout(size: Exclude<FileCitationCardSize, "xs">) {
   }
 }
 
-function getFileCitationCardTooltipLabel({
-  description,
-  size,
-  tooltipLabel,
-}: {
-  description?: React.ReactNode;
-  size: FileCitationCardSize;
-  tooltipLabel: React.ReactNode;
-}) {
-  if (size !== "xs" || !description) {
-    return tooltipLabel;
-  }
-
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div>{tooltipLabel}</div>
-      <div className="text-sm text-muted-foreground">{description}</div>
-    </div>
-  );
+function isIconComponent(
+  icon: FileCitationCardIcon
+): icon is ComponentType<{ className?: string }> {
+  return !isValidElement(icon);
 }
 
-function getIconSizeForCitationCard(size: FileCitationCardSize): "xs" | "sm" {
-  return size === "xs" ? "xs" : "sm";
-}
-
-function renderFileCitationIcon(
-  icon: FileCitationCardIcon,
-  size: FileCitationCardSize
-): React.ReactNode {
-  if (isValidElement(icon)) {
-    return icon;
-  }
-
-  if (typeof icon === "function") {
-    return <Icon visual={icon} size={getIconSizeForCitationCard(size)} />;
-  }
-
-  if (typeof icon === "object" && icon !== null) {
-    return (
-      <Icon
-        visual={icon as unknown as ComponentType}
-        size={getIconSizeForCitationCard(size)}
-      />
-    );
-  }
-
-  return icon;
+function renderFileCitationIcon(icon: FileCitationCardIcon): React.ReactNode {
+  return isIconComponent(icon) ? <Icon visual={icon} size="sm" /> : icon;
 }
 
 export function FileCitationCard(props: FileCitationCardProps) {
@@ -113,54 +97,58 @@ export function FileCitationCard(props: FileCitationCardProps) {
     tooltipLabel,
   } = props;
 
-  const renderedIcon = renderFileCitationIcon(icon, size);
-
   if (size === "xs") {
-    const chipContent = (
-      <span className="flex min-w-0 items-center gap-1">
-        {renderedIcon}
-        <span className="truncate">{title}</span>
-      </span>
-    );
+    // Same AttachmentChip as the composer's inline knowledge and pasted-content
+    // chips. It takes an icon component, so a rendered visual is wrapped in one
+    // (as KnowledgeChip does). The wrapper ignores the chip's className, so the
+    // visual keeps its own size, and being a new component type on each render
+    // it remounts the (stateless) icon every time, which is fine.
+    const iconVisual: ComponentType<{ className?: string }> = isIconComponent(
+      icon
+    )
+      ? icon
+      : () => <>{icon}</>;
 
     const chipProps = {
-      children: chipContent,
-      className: "inline-flex max-w-48 align-middle",
       color: "primary" as const,
+      icon: { visual: iconVisual },
       isBusy: isLoading,
+      label: title,
       onRemove,
       size: "xs" as const,
     };
 
     const chip =
       "href" in props && props.href ? (
-        <Chip {...chipProps} href={props.href} />
+        <AttachmentChip {...chipProps} href={props.href} target="_blank" />
       ) : (
-        <Chip
+        <AttachmentChip
           {...chipProps}
-          onClick={
-            "onClick" in props && props.onClick
-              ? () =>
-                  props.onClick({
-                    stopPropagation: () => {},
-                  } as React.MouseEvent<HTMLDivElement>)
-              : undefined
-          }
+          onClick={"onClick" in props ? props.onClick : undefined}
         />
+      );
+
+    // A chip has no room for the loading label (e.g. transcription progress).
+    const chipTooltipLabel =
+      isLoading && loadingLabel ? (
+        <FileCitationTooltipLabel
+          title={tooltipLabel}
+          description={loadingLabel}
+        />
+      ) : (
+        tooltipLabel
       );
 
     return (
       <Tooltip
-        trigger={chip}
-        label={getFileCitationCardTooltipLabel({
-          description,
-          size: "xs",
-          tooltipLabel,
-        })}
+        tooltipTriggerAsChild
+        trigger={<span className="inline-flex align-middle">{chip}</span>}
+        label={chipTooltipLabel}
       />
     );
   }
 
+  const renderedIcon = renderFileCitationIcon(icon);
   const href = "href" in props ? props.href : undefined;
   const onClick = "onClick" in props ? props.onClick : undefined;
 
@@ -210,14 +198,5 @@ export function FileCitationCard(props: FileCitationCardProps) {
     </Citation>
   );
 
-  return (
-    <Tooltip
-      trigger={citation}
-      label={getFileCitationCardTooltipLabel({
-        description,
-        size,
-        tooltipLabel,
-      })}
-    />
-  );
+  return <Tooltip trigger={citation} label={tooltipLabel} />;
 }

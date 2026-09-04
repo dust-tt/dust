@@ -1,6 +1,9 @@
 import { Button } from "@sparkle/components/Button";
 import { Card, type CardProps } from "@sparkle/components/Card";
-import { ImagePreview } from "@sparkle/components/ImagePreview";
+import {
+  ImagePreview,
+  type ImagePreviewTitlePositionType,
+} from "@sparkle/components/ImagePreview";
 import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { XClose } from "@sparkle/icons/v2-stroke";
@@ -229,12 +232,24 @@ interface CitationImageProps {
   onClose?: () => void;
   onClick?: (e: React.MouseEvent) => void;
   className?: string;
+  /** Where the hover title sits; `hidden` for thumbnails too small to show it. */
+  titlePosition?: ImagePreviewTitlePositionType;
 }
 
 /** Image preview filling a Citation, for image sources. */
 const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
   (
-    { imgSrc, alt, title, downloadUrl, isLoading, onClose, onClick, className },
+    {
+      imgSrc,
+      alt,
+      title,
+      downloadUrl,
+      isLoading,
+      onClose,
+      onClick,
+      className,
+      titlePosition = "bottom",
+    },
     ref
   ) => {
     return (
@@ -249,7 +264,7 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
         onClick={onClick}
         className={className}
         variant="embedded"
-        titlePosition="bottom"
+        titlePosition={titlePosition}
       />
     );
   }

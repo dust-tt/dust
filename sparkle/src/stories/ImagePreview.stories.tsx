@@ -18,7 +18,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `Displays a single image from a conversation with hover affordances. Supports a **variant** (\`standalone\` / \`embedded\`), a hover \`title\` whose **titlePosition** can be \`bottom\` or \`center\`, an \`isLoading\` skeleton state, an optional \`onClose\` (remove) or \`downloadUrl\` (download) button, and \`manageZoomDialog\` to open a zoom view on click.
+        component: `Displays a single image from a conversation with hover affordances. Supports a **variant** (\`standalone\` / \`embedded\`), a hover \`title\` whose **titlePosition** can be \`bottom\`, \`center\`, or \`hidden\` (dim only, for small thumbnails), an \`isLoading\` skeleton state, an optional \`onClose\` (remove) or \`downloadUrl\` (download) button, and \`manageZoomDialog\` to open a zoom view on click.
 
 **When to use**
 - To render an image attachment or an agent-generated image inline in a message.
@@ -104,6 +104,21 @@ export const TitleCentered: Story = {
     alt: "A sample droid avatar",
     variant: "standalone",
     titlePosition: "center",
+  },
+};
+
+/**
+ * No hover title: the overlay only dims the image. Use for thumbnails too small
+ * to show a legible label, where a tooltip carries the name instead.
+ * @summary Hover overlay without a title.
+ */
+export const TitleHidden: Story = {
+  args: {
+    imgSrc: SAMPLE_IMAGE,
+    title: "Sample image",
+    alt: "A sample droid avatar",
+    variant: "standalone",
+    titlePosition: "hidden",
   },
 };
 
