@@ -15,7 +15,6 @@ import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import {
   connectSlackBot,
-  createSpaceWithMemberGroup,
   mockAllowSlackWorkflow,
   mockRevokeSlackWorkflow,
   mockSummoningWhitelist,
@@ -23,6 +22,7 @@ import {
   SLACK_WORKFLOW_BOT_NAME,
   SLACK_WORKFLOW_CREATED_AT_MS,
 } from "@app/tests/utils/slack_workflows";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -96,13 +96,12 @@ describe("GET /api/w/:wId/slack-workflows", () => {
   });
 
   it("resolves the spaces of the allowed workflows", async () => {
-    const { workspace, globalGroup } = await setupTest();
-    const { space, memberGroupId } =
-      await createSpaceWithMemberGroup(workspace);
+    const { workspace, globalSpace } = await setupTest();
+    const space = await SpaceFactory.regular(workspace);
     mockSummoningWhitelist([
       {
         botName: SLACK_WORKFLOW_BOT_NAME,
-        groupIds: [globalGroup.sId, memberGroupId],
+        spaceIds: [globalSpace.sId, space.sId],
       },
     ]);
 
@@ -139,8 +138,8 @@ describe("GET /api/w/:wId/slack-workflows", () => {
 });
 
 describe("POST /api/w/:wId/slack-workflows", () => {
-  it("always allows the workflow on the workspace group", async () => {
-    const { workspace, globalGroup } = await setupTest();
+  it("always allows the workflow on the Company Space", async () => {
+    const { workspace, globalSpace } = await setupTest();
     const allow = mockAllowSlackWorkflow();
 
     const response = await slackWorkflowsRequest(workspace.sId, {
@@ -152,7 +151,7 @@ describe("POST /api/w/:wId/slack-workflows", () => {
     expect(allow).toHaveBeenCalledWith({
       connectorId: SLACK_BOT_CONNECTOR_ID,
       botName: SLACK_WORKFLOW_BOT_NAME,
-      groupIds: [globalGroup.sId],
+      spaceIds: [globalSpace.sId],
     });
     expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -165,10 +164,9 @@ describe("POST /api/w/:wId/slack-workflows", () => {
     );
   });
 
-  it("allows the workflow on the member groups of the selected spaces", async () => {
-    const { workspace, globalGroup } = await setupTest();
-    const { space, memberGroupId } =
-      await createSpaceWithMemberGroup(workspace);
+  it("allows the workflow on the selected spaces", async () => {
+    const { workspace, globalSpace } = await setupTest();
+    const space = await SpaceFactory.regular(workspace);
     const allow = mockAllowSlackWorkflow();
 
     const response = await slackWorkflowsRequest(workspace.sId, {
@@ -180,7 +178,7 @@ describe("POST /api/w/:wId/slack-workflows", () => {
     expect(allow).toHaveBeenCalledWith({
       connectorId: SLACK_BOT_CONNECTOR_ID,
       botName: SLACK_WORKFLOW_BOT_NAME,
-      groupIds: [globalGroup.sId, memberGroupId],
+      spaceIds: [globalSpace.sId, space.sId],
     });
   });
 
