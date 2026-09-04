@@ -3,10 +3,10 @@ import {
   emitAuditLogEvent,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
+import { checkUserCellAffinity } from "@app/lib/api/cells/lookup";
 import config from "@app/lib/api/config";
 import { performLogin } from "@app/lib/api/login";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
-import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { authenticateWithWorkOSCode } from "@app/lib/api/workos/authenticate";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionCookie } from "@app/lib/api/workos/user";
@@ -458,20 +458,21 @@ async function handleCallback(ctx: Context) {
       }
     }
 
+    // TODO(single-tenant) Move this whole file to cell.
     if (invite) {
       targetRegion = currentRegion;
     } else if (userSessionRegion) {
       targetRegion = userSessionRegion;
     } else {
-      const regionWithAffinityRes = await checkUserRegionAffinity({
+      const cellWithAffinityRes = await checkUserCellAffinity({
         email: user.email,
         email_verified: true,
       });
-      if (regionWithAffinityRes.isErr()) {
-        throw regionWithAffinityRes.error;
+      if (cellWithAffinityRes.isErr()) {
+        throw cellWithAffinityRes.error;
       }
-      if (regionWithAffinityRes.value.hasAffinity) {
-        targetRegion = regionWithAffinityRes.value.region;
+      if (cellWithAffinityRes.value) {
+        targetRegion = cellWithAffinityRes.value.region;
       } else {
         targetRegion = multiRegionsConfig.getCurrentRegion();
       }

@@ -9,7 +9,6 @@ import {
   pauseAllLabsWorkflows,
   unpauseAllLabsWorkflows,
 } from "@app/lib/api/labs";
-import { invalidateWorkspaceRegionCache } from "@app/lib/api/regions/lookup";
 import {
   deleteWorkspace,
   isWorkspaceRelocationDone,
@@ -47,7 +46,6 @@ function assertCurrentCell(cell: CellType) {
 }
 
 async function invalidateLookupCache(workspaceId: string) {
-  await invalidateWorkspaceRegionCache(workspaceId);
   await invalidateWorkspaceCellCache(workspaceId);
 }
 

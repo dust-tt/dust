@@ -1,5 +1,5 @@
+import { getWorkspaceCellRedirect } from "@app/lib/api/cells/lookup";
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/lib/api/poke/auth_context";
-import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";
 import { allWorkspacePermissions } from "@app/lib/resources/group_permission_registry";
 import { pokeApp } from "@front-api/middlewares/ctx";
@@ -38,7 +38,7 @@ app.get(
 
     // If workspace not found locally, look it up in other regions.
     if (!workspace || !subscription) {
-      const redirect = await getWorkspaceRegionRedirect(wId);
+      const redirect = await getWorkspaceCellRedirect(wId);
 
       // Cross-region is a routing signal, not an error worth logging — match
       // the /api/w/:wId/auth-context precedent and the original Next handler
@@ -47,8 +47,8 @@ app.get(
         return ctx.json(
           {
             error: {
-              type: "workspace_in_different_region",
-              message: "Workspace is located in a different region",
+              type: "workspace_in_different_cell",
+              message: "Workspace is located in a different cell",
               redirect,
             },
           },

@@ -1,4 +1,4 @@
-import { fetchInvitationsFromOtherRegion } from "@app/lib/api/regions/lookup";
+import { fetchInvitationsInOtherCells } from "@app/lib/api/cells/lookup";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
@@ -8,7 +8,6 @@ import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
 import { sessionAuth } from "../middlewares/session_auth";
 
 export const invitationsApp = sessionApp();
@@ -46,14 +45,14 @@ invitationsApp.get(
       }
     );
 
-    const crossRegionRes = await fetchInvitationsFromOtherRegion(user.email);
+    const crossRegionRes = await fetchInvitationsInOtherCells(user.email);
     let pendingInvitations = localInvitations;
     if (crossRegionRes.isOk()) {
       pendingInvitations = [...localInvitations, ...crossRegionRes.value];
     } else {
       logger.error(
         { err: crossRegionRes.error },
-        "Failed to fetch cross-region invitations, returning local only"
+        "Failed to fetch invitations in other cells, returning local only"
       );
     }
 
