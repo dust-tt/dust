@@ -1,3 +1,4 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { ModelProvidersPageContent } from "@app/components/pages/workspace/model_providers/ModelProvidersPageContent";
 import { useProvidersSelection } from "@app/hooks/useProvidersSelection";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -13,27 +14,31 @@ export function ModelProvidersPage() {
 
   if (!workspace) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
+      <AdminPageContainer>
+        <div className="flex h-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      </AdminPageContainer>
     );
   }
 
   return (
-    <Page.Vertical align="stretch" gap="xl">
-      <Page.Header
-        title="Model Providers"
-        description="Choose which AI providers and models are available to your workspace."
-      />
-      <Page.Vertical align="stretch" gap="md">
-        <ModelProvidersPageContent
-          workspace={workspace}
-          providersSelection={providersSelection}
-          isWorkspaceValidating={isWorkspaceValidating}
-          onToggleProvider={toggleProvider}
-          onSelectAllProviders={selectAllProviders}
+    <AdminPageContainer>
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Header
+          title="Model Providers"
+          description="Choose which AI providers and models are available to your workspace."
         />
+        <Page.Vertical align="stretch" gap="md">
+          <ModelProvidersPageContent
+            workspace={workspace}
+            providersSelection={providersSelection}
+            isWorkspaceValidating={isWorkspaceValidating}
+            onToggleProvider={toggleProvider}
+            onSelectAllProviders={selectAllProviders}
+          />
+        </Page.Vertical>
       </Page.Vertical>
-    </Page.Vertical>
+    </AdminPageContainer>
   );
 }

@@ -1,3 +1,4 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import type { PaidPlanTier } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
   BillingPeriodSwitch,
@@ -612,301 +613,309 @@ export function SubscriptionPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
+      <AdminPageContainer>
+        <div className="flex h-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      </AdminPageContainer>
     );
   }
 
   return (
-    <>
-      {(isCancellingMigration || isResumingMigration) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/60">
-          <Spinner size="lg" />
-        </div>
-      )}
-      {perSeatPricing && (
-        <>
-          <CancelFreeTrialDialog
-            show={showCancelFreeTrialDialog}
-            onClose={() => setShowCancelFreeTrialDialog(false)}
-            onValidate={cancelFreeTrial}
-            isSaving={cancelFreeTrialSubmitting}
-          />
-
-          <CancelMigrationDialog
-            show={showCancelMigrationDialog}
-            onClose={() => setShowCancelMigrationDialog(false)}
-            onValidate={handleCancelMigration}
-            isSaving={isCancellingMigration}
-            billingPeriod={perSeatPricing.billingPeriod}
-          />
-
-          <SkipFreeTrialDialog
-            plan={subscription.plan}
-            show={showSkipFreeTrialDialog}
-            onClose={() => {
-              setShowSkipFreeTrialDialog(false);
-            }}
-            onValidate={skipFreeTrial}
-            workspaceSeats={workspaceSeats}
-            perSeatPricing={perSeatPricing}
-            isSaving={skipFreeTrialIsSubmitting}
-          />
-        </>
-      )}
-
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header title="Subscription" description="Manage your plan." />
-        <Page.Vertical align="stretch" gap="md">
-          <Page.H variant="h5">Your plan </Page.H>
-
-          {isCancelledNotMigrating && endDate && (
-            <ContentMessage
-              title={`Your subscription ends on ${endDate}.`}
-              variant="warning"
-            >
-              {isEnterprisePlanPrefix(plan.code) ? (
-                <>
-                  Please reach out to your account manager to ensure continuity.
-                </>
-              ) : (
-                <>
-                  Connections will be deleted and members will be revoked.
-                  Details{" "}
-                  <LinkWrapper
-                    href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-                    target="_blank"
-                    className="underline"
-                  >
-                    here
-                  </LinkWrapper>
-                  .
-                  {willBeRefundedOnEnd && (
-                    <>
-                      {" "}
-                      You'll be refunded for the remaining days of your current
-                      period.
-                    </>
-                  )}
-                </>
-              )}
-            </ContentMessage>
-          )}
-          {scheduledMigrationLabel ||
-          (migrationDate && !isCancelledNotMigrating) ? (
-            <ContentMessage
-              title="Your plan is scheduled to migrate to the new credit-based pricing."
-              variant="blue"
-            >
-              On{" "}
-              <span className="font-semibold">
-                {scheduledMigrationLabel ?? migrationDate}
-              </span>{" "}
-              your plan will move to the new credit-based pricing.
-              {perSeatPricing?.billingPeriod === "yearly" ? (
-                <>
-                  {" "}
-                  You'll be refunded for the remaining days of your current
-                  annual period. To opt out, cancel your subscription below — it
-                  will then end on that date without moving to the new pricing.
-                </>
-              ) : (
-                <>
-                  {" "}
-                  To opt out, cancel your subscription below — it will then end
-                  at the end of your current billing period instead.
-                </>
-              )}
-            </ContentMessage>
-          ) : null}
+    <AdminPageContainer>
+      <>
+        {(isCancellingMigration || isResumingMigration) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/60">
+            <Spinner size="lg" />
+          </div>
+        )}
+        {perSeatPricing && (
           <>
-            <div>
-              {isWebhookProcessing ? (
-                <Spinner />
-              ) : (
-                <>
-                  <Page.Horizontal gap="sm">
-                    <Chip size="sm" color={chipColor} label={planLabel} />
-                    {canCancelSubscription && (
-                      <Button
-                        label="Cancel subscription"
-                        variant="outline"
-                        disabled={isCancellingMigration}
-                        onClick={() => {
-                          setShowCancelMigrationDialog(true);
-                        }}
-                      />
-                    )}
-                    {canResumeMigration && (
-                      <Button
-                        label="Resume subscription"
-                        variant="primary"
-                        disabled={isResumingMigration}
-                        onClick={() => {
-                          void handleResumeMigration();
-                        }}
-                      />
-                    )}
-                  </Page.Horizontal>
-                </>
-              )}
-            </div>
-            {perSeatPricing && subscription.trialing && (
-              <Page.Vertical>
-                <Page.Horizontal gap="sm">
-                  <Button
-                    onClick={withTracking(
-                      TRACKING_AREAS.AUTH,
-                      "subscription_skip_trial",
-                      () => {
-                        setShowSkipFreeTrialDialog(true);
-                      }
-                    )}
-                    label="End trial & get full access"
-                  />
-                  <Button
-                    label="Cancel subscription"
-                    variant="ghost"
-                    onClick={withTracking(
-                      TRACKING_AREAS.AUTH,
-                      "subscription_cancel_trial",
-                      () => {
-                        setShowCancelFreeTrialDialog(true);
-                      }
-                    )}
-                  />
-                </Page.Horizontal>
-              </Page.Vertical>
-            )}
-            {subscription.stripeSubscriptionId && (
-              <Page.Vertical gap="sm">
-                <Page.H variant="h5">Billing</Page.H>
-                {perSeatPricing !== null && (
+            <CancelFreeTrialDialog
+              show={showCancelFreeTrialDialog}
+              onClose={() => setShowCancelFreeTrialDialog(false)}
+              onValidate={cancelFreeTrial}
+              isSaving={cancelFreeTrialSubmitting}
+            />
+
+            <CancelMigrationDialog
+              show={showCancelMigrationDialog}
+              onClose={() => setShowCancelMigrationDialog(false)}
+              onValidate={handleCancelMigration}
+              isSaving={isCancellingMigration}
+              billingPeriod={perSeatPricing.billingPeriod}
+            />
+
+            <SkipFreeTrialDialog
+              plan={subscription.plan}
+              show={showSkipFreeTrialDialog}
+              onClose={() => {
+                setShowSkipFreeTrialDialog(false);
+              }}
+              onValidate={skipFreeTrial}
+              workspaceSeats={workspaceSeats}
+              perSeatPricing={perSeatPricing}
+              isSaving={skipFreeTrialIsSubmitting}
+            />
+          </>
+        )}
+
+        <Page.Vertical gap="xl" align="stretch">
+          <Page.Header title="Subscription" description="Manage your plan." />
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h5">Your plan </Page.H>
+
+            {isCancelledNotMigrating && endDate && (
+              <ContentMessage
+                title={`Your subscription ends on ${endDate}.`}
+                variant="warning"
+              >
+                {isEnterprisePlanPrefix(plan.code) ? (
                   <>
-                    <Page.P>
-                      Estimated {perSeatPricing.billingPeriod} billing:{" "}
-                      <span className="font-bold">
-                        {getPriceAsString({
-                          currency: perSeatPricing.seatCurrency,
-                          priceInCents:
-                            perSeatPricing.seatPrice * workspaceSeats,
-                        })}
-                      </span>{" "}
-                      (excluding taxes).
-                    </Page.P>
-                    <Page.P>
-                      {workspaceSeats === 1 ? (
-                        <>
-                          {workspaceSeats} member,{" "}
-                          {getPriceAsString({
-                            currency: perSeatPricing.seatCurrency,
-                            priceInCents: perSeatPricing.seatPrice,
-                          })}{" "}
-                          per member.
-                        </>
-                      ) : (
-                        <>
-                          {workspaceSeats} members,{" "}
-                          {getPriceAsString({
-                            currency: perSeatPricing.seatCurrency,
-                            priceInCents: perSeatPricing.seatPrice,
-                          })}{" "}
-                          per member.
-                        </>
-                      )}
-                    </Page.P>
-                  </>
-                )}
-                <div className="my-5">
-                  <Button
-                    icon={CreditCard01}
-                    label="Your billing dashboard on Stripe"
-                    variant="ghost"
-                    onClick={withTracking(
-                      TRACKING_AREAS.AUTH,
-                      "subscription_stripe_portal",
-                      () => {
-                        void handleGoToStripePortal();
-                      }
-                    )}
-                  />
-                </div>
-              </Page.Vertical>
-            )}
-            {canUpsellToBusinessPlan && (
-              <Page.Vertical gap="sm">
-                <Page.H variant="h5">Upgrade your plan</Page.H>
-                <Page.P>
-                  You are eligible to upgrade to the Enteprise seat-based plan
-                  with additional features.
-                </Page.P>
-                <div>
-                  <Button
-                    label="Upgrade to Enterprise seat-based plan"
-                    variant="primary"
-                    disabled={isProcessing}
-                    onClick={withTracking(
-                      TRACKING_AREAS.AUTH,
-                      "subscription_upgrade_to_business",
-                      () => {
-                        void handleUpgradeToBusiness();
-                      }
-                    )}
-                  />
-                </div>
-              </Page.Vertical>
-            )}
-            {displayPricingTable && (
-              <div className="pt-2">
-                {isMetronomeCheckout ? (
-                  <>
-                    <div className="flex items-start justify-between gap-4">
-                      <Page.H variant="h5">Choose a plan</Page.H>
-                      <BillingPeriodSwitch
-                        defaultValue={billingPeriod}
-                        onValueChange={setBillingPeriod}
-                      />
-                    </div>
-                    <div className="flex w-full flex-col gap-4 pt-4 sm:flex-row">
-                      <PaidPlanCards
-                        billingPeriod={billingPeriod}
-                        onSubscribe={(seatType) =>
-                          void handleSubscribeMetronome(seatType)
-                        }
-                      />
-                    </div>
+                    Please reach out to your account manager to ensure
+                    continuity.
                   </>
                 ) : (
                   <>
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
+                    Connections will be deleted and members will be revoked.
+                    Details{" "}
+                    <LinkWrapper
+                      href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+                      target="_blank"
+                      className="underline"
+                    >
+                      here
+                    </LinkWrapper>
+                    .
+                    {willBeRefundedOnEnd && (
+                      <>
+                        {" "}
+                        You'll be refunded for the remaining days of your
+                        current period.
+                      </>
+                    )}
+                  </>
+                )}
+              </ContentMessage>
+            )}
+            {scheduledMigrationLabel ||
+            (migrationDate && !isCancelledNotMigrating) ? (
+              <ContentMessage
+                title="Your plan is scheduled to migrate to the new credit-based pricing."
+                variant="blue"
+              >
+                On{" "}
+                <span className="font-semibold">
+                  {scheduledMigrationLabel ?? migrationDate}
+                </span>{" "}
+                your plan will move to the new credit-based pricing.
+                {perSeatPricing?.billingPeriod === "yearly" ? (
+                  <>
+                    {" "}
+                    You'll be refunded for the remaining days of your current
+                    annual period. To opt out, cancel your subscription below —
+                    it will then end on that date without moving to the new
+                    pricing.
+                  </>
+                ) : (
+                  <>
+                    {" "}
+                    To opt out, cancel your subscription below — it will then
+                    end at the end of your current billing period instead.
+                  </>
+                )}
+              </ContentMessage>
+            ) : null}
+            <>
+              <div>
+                {isWebhookProcessing ? (
+                  <Spinner />
+                ) : (
+                  <>
+                    <Page.Horizontal gap="sm">
+                      <Chip size="sm" color={chipColor} label={planLabel} />
+                      {canCancelSubscription && (
+                        <Button
+                          label="Cancel subscription"
+                          variant="outline"
+                          disabled={isCancellingMigration}
+                          onClick={() => {
+                            setShowCancelMigrationDialog(true);
+                          }}
+                        />
+                      )}
+                      {canResumeMigration && (
+                        <Button
+                          label="Resume subscription"
+                          variant="primary"
+                          disabled={isResumingMigration}
+                          onClick={() => {
+                            void handleResumeMigration();
+                          }}
+                        />
+                      )}
+                    </Page.Horizontal>
+                  </>
+                )}
+              </div>
+              {perSeatPricing && subscription.trialing && (
+                <Page.Vertical>
+                  <Page.Horizontal gap="sm">
+                    <Button
+                      onClick={withTracking(
+                        TRACKING_AREAS.AUTH,
+                        "subscription_skip_trial",
+                        () => {
+                          setShowSkipFreeTrialDialog(true);
+                        }
+                      )}
+                      label="End trial & get full access"
+                    />
+                    <Button
+                      label="Cancel subscription"
+                      variant="ghost"
+                      onClick={withTracking(
+                        TRACKING_AREAS.AUTH,
+                        "subscription_cancel_trial",
+                        () => {
+                          setShowCancelFreeTrialDialog(true);
+                        }
+                      )}
+                    />
+                  </Page.Horizontal>
+                </Page.Vertical>
+              )}
+              {subscription.stripeSubscriptionId && (
+                <Page.Vertical gap="sm">
+                  <Page.H variant="h5">Billing</Page.H>
+                  {perSeatPricing !== null && (
+                    <>
+                      <Page.P>
+                        Estimated {perSeatPricing.billingPeriod} billing:{" "}
+                        <span className="font-bold">
+                          {getPriceAsString({
+                            currency: perSeatPricing.seatCurrency,
+                            priceInCents:
+                              perSeatPricing.seatPrice * workspaceSeats,
+                          })}
+                        </span>{" "}
+                        (excluding taxes).
+                      </Page.P>
+                      <Page.P>
+                        {workspaceSeats === 1 ? (
+                          <>
+                            {workspaceSeats} member,{" "}
+                            {getPriceAsString({
+                              currency: perSeatPricing.seatCurrency,
+                              priceInCents: perSeatPricing.seatPrice,
+                            })}{" "}
+                            per member.
+                          </>
+                        ) : (
+                          <>
+                            {workspaceSeats} members,{" "}
+                            {getPriceAsString({
+                              currency: perSeatPricing.seatCurrency,
+                              priceInCents: perSeatPricing.seatPrice,
+                            })}{" "}
+                            per member.
+                          </>
+                        )}
+                      </Page.P>
+                    </>
+                  )}
+                  <div className="my-5">
+                    <Button
+                      icon={CreditCard01}
+                      label="Your billing dashboard on Stripe"
+                      variant="ghost"
+                      onClick={withTracking(
+                        TRACKING_AREAS.AUTH,
+                        "subscription_stripe_portal",
+                        () => {
+                          void handleGoToStripePortal();
+                        }
+                      )}
+                    />
+                  </div>
+                </Page.Vertical>
+              )}
+              {canUpsellToBusinessPlan && (
+                <Page.Vertical gap="sm">
+                  <Page.H variant="h5">Upgrade your plan</Page.H>
+                  <Page.P>
+                    You are eligible to upgrade to the Enteprise seat-based plan
+                    with additional features.
+                  </Page.P>
+                  <div>
+                    <Button
+                      label="Upgrade to Enterprise seat-based plan"
+                      variant="primary"
+                      disabled={isProcessing}
+                      onClick={withTracking(
+                        TRACKING_AREAS.AUTH,
+                        "subscription_upgrade_to_business",
+                        () => {
+                          void handleUpgradeToBusiness();
+                        }
+                      )}
+                    />
+                  </div>
+                </Page.Vertical>
+              )}
+              {displayPricingTable && (
+                <div className="pt-2">
+                  {isMetronomeCheckout ? (
+                    <>
+                      <div className="flex items-start justify-between gap-4">
                         <Page.H variant="h5">Choose a plan</Page.H>
-                        <Page.P>Pick a plan that best suits your team.</Page.P>
-                      </div>
-                      {!isWorkspaceWhitelistedBusinessPlan && (
                         <BillingPeriodSwitch
                           defaultValue={billingPeriod}
                           onValueChange={setBillingPeriod}
                         />
-                      )}
-                    </div>
-                    <div className="pt-4">
-                      <SubscriptionPlanCards
-                        billingPeriod={billingPeriod}
-                        onSubscribe={handleSubscribePlan}
-                        isProcessing={isProcessing}
-                        owner={owner}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </>
+                      </div>
+                      <div className="flex w-full flex-col gap-4 pt-4 sm:flex-row">
+                        <PaidPlanCards
+                          billingPeriod={billingPeriod}
+                          onSubscribe={(seatType) =>
+                            void handleSubscribeMetronome(seatType)
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <Page.H variant="h5">Choose a plan</Page.H>
+                          <Page.P>
+                            Pick a plan that best suits your team.
+                          </Page.P>
+                        </div>
+                        {!isWorkspaceWhitelistedBusinessPlan && (
+                          <BillingPeriodSwitch
+                            defaultValue={billingPeriod}
+                            onValueChange={setBillingPeriod}
+                          />
+                        )}
+                      </div>
+                      <div className="pt-4">
+                        <SubscriptionPlanCards
+                          billingPeriod={billingPeriod}
+                          onSubscribe={handleSubscribePlan}
+                          isProcessing={isProcessing}
+                          owner={owner}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          </Page.Vertical>
         </Page.Vertical>
-      </Page.Vertical>
-      <div className="h-12" />
-    </>
+        <div className="h-12" />
+      </>
+    </AdminPageContainer>
   );
 }

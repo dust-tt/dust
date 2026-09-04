@@ -1,3 +1,4 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import {
   MODEL_PROVIDER_CONFIGS,
   ProviderSetup,
@@ -194,14 +195,16 @@ export function ProvidersPage() {
   const owner = useWorkspace();
 
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <Page.Header
-        title="App Credentials"
-        description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust agents at all, but are required for running your own custom Dust Apps."
-      />
-      <Page.Vertical align="stretch" gap="md">
-        <Providers owner={owner} />
+    <AdminPageContainer>
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="App Credentials"
+          description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust agents at all, but are required for running your own custom Dust Apps."
+        />
+        <Page.Vertical align="stretch" gap="md">
+          <Providers owner={owner} />
+        </Page.Vertical>
       </Page.Vertical>
-    </Page.Vertical>
+    </AdminPageContainer>
   );
 }
