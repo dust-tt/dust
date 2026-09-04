@@ -10,7 +10,7 @@ describe("forwarder process ownership", () => {
     expect(
       canAutoStopForwarderPortProcess(
         6006,
-        "node /Users/aubin/projects/dust/node_modules/.bin/storybook dev -p 6006"
+        "node /repo/node_modules/.bin/storybook dev -p 6006"
       )
     ).toBe(true);
   });
