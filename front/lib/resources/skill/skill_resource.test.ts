@@ -2154,6 +2154,130 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("permission filtering modes", () => {
+    // A skill owned by another member and built on a restricted space the test admin is not a
+    // member of.
+    async function createRestrictedSkill() {
+      const owner = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, owner, {
+        role: "user",
+      });
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        testContext.workspace.sId
+      );
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      await restrictedSpace.addMembers(testContext.authenticator, {
+        userIds: [owner.sId],
+      });
+      const skill = await SkillFactory.create(ownerAuth, {
+        name: "Restricted Space Skill",
+        instructions: "Secret guidelines",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      return { skill, ownerAuth };
+    }
+
+    it("returns a readable skill as is", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Readable Skill",
+        instructions: "Public guidelines",
+      });
+
+      const fetched = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { permissionFiltering: "redact_unreadable" }
+      );
+
+      expect(fetched).not.toBeNull();
+      expect(fetched!.canRead(testContext.authenticator)).toBe(true);
+      expect(fetched!.toJSON(testContext.authenticator).instructions).toBe(
+        "Public guidelines"
+      );
+    });
+
+    it("returns a redacted skill to an admin who cannot read it", async () => {
+      const { skill } = await createRestrictedSkill();
+      expect(
+        await SkillResource.fetchById(testContext.authenticator, skill.sId)
+      ).toBeNull();
+
+      const fetched = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { permissionFiltering: "redact_unreadable" }
+      );
+
+      expect(fetched).not.toBeNull();
+      expect(fetched!.canRead(testContext.authenticator)).toBe(false);
+      // Administration is a role matter, unrelated to reading the spaces.
+      expect(fetched!.canAdministrate(testContext.authenticator)).toBe(true);
+      const json = fetched!.toJSON(testContext.authenticator);
+      expect(json.name).toBe("Restricted Space Skill");
+      expect(json.canRead).toBe(false);
+      expect(json.instructions).toBeNull();
+      expect(json.instructionsHtml).toBeNull();
+      expect(json.tools).toEqual([]);
+      expect(json.fileAttachments).toEqual([]);
+    });
+
+    it("refuses the option to a non-admin, who gets null without it", async () => {
+      const { skill } = await createRestrictedSkill();
+      const builder = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, builder, {
+        role: "builder",
+      });
+      const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        builder.sId,
+        testContext.workspace.sId
+      );
+
+      await expect(
+        SkillResource.fetchById(builderAuth, skill.sId, {
+          permissionFiltering: "redact_unreadable",
+        })
+      ).rejects.toThrow("Only admins");
+      await expect(
+        SkillResource.listByWorkspace(builderAuth, {
+          permissionFiltering: "redact_unreadable",
+        })
+      ).rejects.toThrow("Only admins");
+      expect(await SkillResource.fetchById(builderAuth, skill.sId)).toBeNull();
+    });
+
+    it("returns null for an unknown skill", async () => {
+      expect(
+        await SkillResource.fetchById(
+          testContext.authenticator,
+          "skl_does_not_exist",
+          { permissionFiltering: "redact_unreadable" }
+        )
+      ).toBeNull();
+    });
+
+    it("listByWorkspace with redact_unreadable only redacts the skills the caller cannot read", async () => {
+      const { skill: restrictedSkill } = await createRestrictedSkill();
+      const readableSkill = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Readable Skill" }
+      );
+
+      const skills = await SkillResource.listByWorkspace(
+        testContext.authenticator,
+        { onlyCustom: true, permissionFiltering: "redact_unreadable" }
+      );
+
+      const bySId = new Map(skills.map((s) => [s.sId, s]));
+      expect(
+        bySId.get(restrictedSkill.sId)!.canRead(testContext.authenticator)
+      ).toBe(false);
+      expect(
+        bySId.get(readableSkill.sId)!.canRead(testContext.authenticator)
+      ).toBe(true);
+    });
+  });
+
   describe("fetchByIds", () => {
     it("skips heavy hydration when it is not requested", async () => {
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
