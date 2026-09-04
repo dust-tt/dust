@@ -92,10 +92,6 @@ export {
   ConversationMessageContent,
   ConversationMessageTitle,
 } from "./ConversationMessages";
-export {
-  ConversationPanel,
-  type ConversationPanelProps,
-} from "./ConversationPanel";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {

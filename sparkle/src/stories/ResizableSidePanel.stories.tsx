@@ -1,11 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import {
-  Button,
-  ConversationPanel,
-  ResizableSidePanel,
-} from "../index_with_tw_base";
+import { Button, ResizableSidePanel } from "../index_with_tw_base";
 
 const meta = {
   title: "Layout/ResizableSidePanel",
@@ -46,16 +42,13 @@ const MainContent = () => (
 );
 
 const PanelBody = () => (
-  <ConversationPanel
-    header={
-      <div className="flex w-full items-center justify-between px-4 py-3">
-        <span className="text-sm font-semibold text-foreground">
-          Ask @analyst
-        </span>
-      </div>
-    }
-  >
-    <div className="flex h-full flex-col justify-between">
+  <div className="flex h-full w-full flex-col overflow-hidden">
+    <div className="flex items-center border-b border-border px-4 py-3">
+      <span className="text-sm font-semibold text-foreground">
+        Ask @analyst
+      </span>
+    </div>
+    <div className="flex min-h-0 flex-1 flex-col justify-between">
       <div className="p-4 text-sm text-muted-foreground">
         Panel content goes here.
       </div>
@@ -63,7 +56,7 @@ const PanelBody = () => (
         <div className="h-12 rounded-2xl border border-border bg-muted-background" />
       </div>
     </div>
-  </ConversationPanel>
+  </div>
 );
 
 /**

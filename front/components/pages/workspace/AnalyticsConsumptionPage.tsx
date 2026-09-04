@@ -204,12 +204,13 @@ export function AnalyticsConsumptionPage() {
     }
   }, [isNavigationBarOpen, setIsNavigationBarOpen]);
 
-  useEffect(() => {
-    if (!isOpen && didFoldNavigationForPanelRef.current) {
+  const closePanel = () => {
+    setIsOpen(false);
+    if (didFoldNavigationForPanelRef.current) {
       didFoldNavigationForPanelRef.current = false;
       setIsNavigationBarOpen(true);
     }
-  }, [isOpen, setIsNavigationBarOpen]);
+  };
 
   useEffect(() => {
     if (isNavigationBarOpen) {
@@ -220,14 +221,13 @@ export function AnalyticsConsumptionPage() {
   const content = (
     <AdminPageContainer className="relative">
       {analyticsAssistantEnabled && !isOpen && (
-        <div className="absolute right-4 top-4 z-10 sm:right-10 sm:top-8">
-          <Button
-            variant="outline"
-            icon={Robot}
-            label="Ask @analyst"
-            onClick={() => setIsOpen(true)}
-          />
-        </div>
+        <Button
+          variant="outline"
+          icon={Robot}
+          label="Ask @analyst"
+          className="absolute right-4 top-4 z-10 sm:right-10 sm:top-8"
+          onClick={() => setIsOpen(true)}
+        />
       )}
       <AnalyticsConsumptionContent
         owner={owner}
@@ -255,7 +255,7 @@ export function AnalyticsConsumptionPage() {
       {analyticsAssistantEnabled ? (
         <ResizableSidePanel
           isOpen={isOpen}
-          onCollapse={() => setIsOpen(false)}
+          onCollapse={closePanel}
           minContentWidthPx={MIN_CONTENT_WIDTH_WITH_PANEL_PX}
           onContentSqueezed={foldNavigationForPanel}
           className="min-h-0 flex-1"
@@ -263,7 +263,7 @@ export function AnalyticsConsumptionPage() {
             <AnalyticsConversationPanel
               owner={owner}
               user={user}
-              onClose={() => setIsOpen(false)}
+              onClose={closePanel}
               disabled={!isOpen}
             />
           }

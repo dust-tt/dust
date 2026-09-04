@@ -23,7 +23,6 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  ConversationPanel,
   Icon,
   Robot,
   Spinner,
@@ -219,28 +218,31 @@ export function AnalyticsConversationPanel({
     useAnalyticsConversation({ owner, user });
 
   return (
-    <ConversationPanel
-      header={<AnalyticsConversationPanelHeader onClose={onClose} />}
-    >
-      <FilePreviewProvider owner={owner}>
-        <ConversationSidePanelProvider>
-          <BlockedActionsProvider
-            owner={owner}
-            conversation={conversation ?? undefined}
-          >
-            <GenerationContextProvider>
-              <AnalyticsConversationPanelBody
-                owner={owner}
-                user={user}
-                conversation={conversation}
-                createConversation={createConversation}
-                resetConversation={resetConversation}
-                disabled={disabled}
-              />
-            </GenerationContextProvider>
-          </BlockedActionsProvider>
-        </ConversationSidePanelProvider>
-      </FilePreviewProvider>
-    </ConversationPanel>
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <div className="sticky top-0 z-10 flex items-center border-b border-border bg-panel-background/80 backdrop-blur-sm">
+        <AnalyticsConversationPanelHeader onClose={onClose} />
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <FilePreviewProvider owner={owner}>
+          <ConversationSidePanelProvider>
+            <BlockedActionsProvider
+              owner={owner}
+              conversation={conversation ?? undefined}
+            >
+              <GenerationContextProvider>
+                <AnalyticsConversationPanelBody
+                  owner={owner}
+                  user={user}
+                  conversation={conversation}
+                  createConversation={createConversation}
+                  resetConversation={resetConversation}
+                  disabled={disabled}
+                />
+              </GenerationContextProvider>
+            </BlockedActionsProvider>
+          </ConversationSidePanelProvider>
+        </FilePreviewProvider>
+      </div>
+    </div>
   );
 }
