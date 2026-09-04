@@ -96,6 +96,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   isNumber,
@@ -135,11 +136,20 @@ type ReplaceSkillReferenceTagsOptions = {
   html?: boolean;
 };
 
+// How the fetch path treats the custom skills the caller cannot read (row ACL, or a requested
+// space they are not a member of):
+// - "strict" (default): drop them.
+// - "redact_unreadable": keep them, redacted (see `redactedForCaller`). Admins only.
+// - "dangerously_skip": keep them as is. Only for callers that must operate on a skill without
+//   gaining access to what its spaces protect, e.g. an admin re-saving an agent they do not edit:
+//   dropping the skill would silently strip it from the new version.
+export type SkillPermissionFilteringMode =
+  | "strict"
+  | "redact_unreadable"
+  | "dangerously_skip";
+
 type SkillFetchContext = {
-  // Returns skills requesting spaces the caller cannot read. Only for callers that must operate
-  // on a skill without gaining access to what its spaces protect, e.g. an admin re-saving an
-  // agent they do not edit: dropping the skill would silently strip it from the new version.
-  dangerouslySkipPermissionFiltering?: boolean;
+  permissionFiltering?: SkillPermissionFilteringMode;
 } & (
   | {
       agentLoopData?: AgentLoopExecutionData;
@@ -289,6 +299,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   // Only meaningful for global skills: whether their instructions may be
   // serialized to the front-end. Custom skills always expose their own.
   private readonly exposeInstructions: boolean;
+  // Set on the skills an admin fetched without being able to read them (built on spaces they are
+  // not a member of): the permission methods answer false and `toJSON` drops the private fields.
+  // See the "redact_unreadable" permission filtering mode of the fetchers.
+  private redactedForCaller = false;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
@@ -632,13 +646,49 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   }
 
+  /**
+   * The skills of `skills` the caller can read. Two checks, both required: the caller must be able
+   * to read the skill itself (see `canRead`) and every space it requests. A missing/deleted
+   * requested space is treated as not readable (see `canReadRequestedSpaces`), so skills
+   * referencing one are dropped too. This is what the fetch path applies (see
+   * `SkillPermissionFilteringMode`).
+   */
+  static async filterReadable<
+    T extends {
+      id: ModelId;
+      workspaceId: ModelId;
+      requestedSpaceIds: ModelId[];
+    },
+  >(
+    auth: Authenticator,
+    skills: T[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<T[]> {
+    const uniqueRequestedSpaceIds = uniq(
+      skills.flatMap((skill) => skill.requestedSpaceIds)
+    );
+    const spaces =
+      uniqueRequestedSpaceIds.length > 0
+        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds, {
+            transaction,
+          })
+        : [];
+    const spaceById = new Map(spaces.map((s) => [s.id, s]));
+
+    return skills.filter(
+      (skill) =>
+        this.canReadRow(auth, skill) &&
+        canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
+    );
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options: SkillConfigurationFindOptions = {},
     context: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds?: string[];
-      dangerouslySkipPermissionFiltering?: boolean;
+      permissionFiltering?: SkillPermissionFilteringMode;
       transaction?: Transaction;
     } = {}
   ): Promise<SkillResource[]> {
@@ -646,7 +696,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const {
       agentLoopData,
       effectiveSpaceIds: providedEffectiveSpaceIds,
-      dangerouslySkipPermissionFiltering,
+      permissionFiltering = "strict",
       transaction,
     } = context;
 
@@ -676,28 +726,37 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
-    // Check if the user has access to skill requested spaces.
-    const uniqueRequestedSpaceIds = uniq(
-      customSkills.flatMap((c) => c.requestedSpaceIds)
-    );
-    const spaces =
-      uniqueRequestedSpaceIds.length > 0
-        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds, {
-            transaction,
-          })
-        : [];
-    const spaceById = new Map(spaces.map((s) => [s.id, s]));
-
-    // Two checks, both required: the caller must be able to read the skill itself (see `canRead`)
-    // and every space it requests. A missing/deleted requested space is treated as not readable
-    // (see `canReadRequestedSpaces`), so skills referencing one are dropped here too.
-    const allowedCustomSkills = dangerouslySkipPermissionFiltering
-      ? customSkills
-      : customSkills.filter(
-          (skill) =>
-            this.canReadRow(auth, skill) &&
-            canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
+    let allowedCustomSkills: SkillConfigurationModel[];
+    const redactedCustomSkillIds = new Set<ModelId>();
+    switch (permissionFiltering) {
+      case "strict":
+        allowedCustomSkills = await this.filterReadable(auth, customSkills, {
+          transaction,
+        });
+        break;
+      case "redact_unreadable": {
+        if (!auth.isAdmin()) {
+          throw new Error("Only admins can fetch the skills they cannot read.");
+        }
+        const readableIds = new Set(
+          (await this.filterReadable(auth, customSkills, { transaction })).map(
+            (skill) => skill.id
+          )
         );
+        for (const skill of customSkills) {
+          if (!readableIds.has(skill.id)) {
+            redactedCustomSkillIds.add(skill.id);
+          }
+        }
+        allowedCustomSkills = customSkills;
+        break;
+      }
+      case "dangerously_skip":
+        allowedCustomSkills = customSkills;
+        break;
+      default:
+        assertNever(permissionFiltering);
+    }
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
 
     let allowedCustomSkillsRes: SkillResource[] = [];
@@ -804,7 +863,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           )
         );
 
-        return new this(this.model, customSkillAttributes, {
+        const resource = new this(this.model, customSkillAttributes, {
           mcpServerConfigurations: skillMCPServerViews.map((view) => ({
             view,
           })),
@@ -815,6 +874,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             )
           ),
         });
+        if (redactedCustomSkillIds.has(customSkill.id)) {
+          resource.redactedForCaller = true;
+        }
+        return resource;
       });
     }
 
@@ -915,11 +978,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     ids: ModelId[],
     {
-      dangerouslySkipPermissionFiltering,
+      permissionFiltering,
       status,
       withTools = true,
     }: {
-      dangerouslySkipPermissionFiltering?: boolean;
+      permissionFiltering?: SkillPermissionFilteringMode;
       // `baseFetch` returns active skills only unless a status is given.
       status?: SkillStatus | SkillStatus[];
       withTools?: boolean;
@@ -937,7 +1000,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         onlyCustom: true,
         withTools,
       },
-      { dangerouslySkipPermissionFiltering }
+      { permissionFiltering }
     );
   }
 
@@ -982,11 +1045,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async fetchById(
     auth: Authenticator,
-    sId: string
+    sId: string,
+    {
+      permissionFiltering,
+    }: { permissionFiltering?: SkillPermissionFilteringMode } = {}
   ): Promise<SkillResource | null> {
-    const result = await this.fetchByIds(auth, [sId]);
+    const [skill] = await this.fetchByIds(auth, [sId], { permissionFiltering });
 
-    return result.at(0) ?? null;
+    return skill ?? null;
   }
 
   static async fetchByIds(
@@ -995,7 +1061,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentLoopData,
       effectiveSpaceIds,
-      dangerouslySkipPermissionFiltering,
+      permissionFiltering,
       onlyActive = false,
       withInstructions = true,
       withTools = true,
@@ -1041,7 +1107,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         withTools,
         withFileAttachments,
       },
-      { agentLoopData, effectiveSpaceIds, dangerouslySkipPermissionFiltering }
+      { agentLoopData, effectiveSpaceIds, permissionFiltering }
     );
   }
 
@@ -1184,7 +1250,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentLoopData,
       effectiveSpaceIds,
-      dangerouslySkipPermissionFiltering,
+      permissionFiltering,
       status,
       transaction,
       withInstructions,
@@ -1194,7 +1260,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds?: string[];
-      dangerouslySkipPermissionFiltering?: boolean;
+      permissionFiltering?: SkillPermissionFilteringMode;
       status?: SkillStatus | SkillStatus[];
       transaction?: Transaction;
       withInstructions?: boolean;
@@ -1222,7 +1288,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         agentLoopData,
         effectiveSpaceIds,
-        dangerouslySkipPermissionFiltering,
+        permissionFiltering,
         transaction,
       }
     );
@@ -1346,7 +1412,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentLoopData,
       effectiveSpaceIds,
-      dangerouslySkipPermissionFiltering,
+      permissionFiltering,
     }: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
@@ -1361,7 +1427,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.fetchBySkillReferences(auth, refs, {
       agentLoopData,
       effectiveSpaceIds,
-      dangerouslySkipPermissionFiltering,
+      permissionFiltering,
     });
   }
 
@@ -1507,6 +1573,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withInstructions = true,
       withTools = true,
       withFileAttachments = true,
+      permissionFiltering,
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
@@ -1518,21 +1585,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withInstructions?: boolean;
       withTools?: boolean;
       withFileAttachments?: boolean;
+      permissionFiltering?: SkillPermissionFilteringMode;
     } = {}
   ): Promise<SkillResource[]> {
-    const skills = await this.baseFetch(auth, {
-      where: {
-        status,
-        ...(availability !== undefined ? { availability } : {}),
-        ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
-        ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
+    const skills = await this.baseFetch(
+      auth,
+      {
+        where: {
+          status,
+          ...(availability !== undefined ? { availability } : {}),
+          ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
+          ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
+        },
+        ...(limit ? { limit } : {}),
+        onlyCustom,
+        withInstructions,
+        withTools,
+        withFileAttachments,
       },
-      ...(limit ? { limit } : {}),
-      onlyCustom,
-      withInstructions,
-      withTools,
-      withFileAttachments,
-    });
+      { permissionFiltering }
+    );
 
     if (globalSpaceOnly) {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
@@ -2179,6 +2251,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canRead(auth: Authenticator): boolean {
+    if (this.redactedForCaller) {
+      return false;
+    }
+
     // See canWrite: API keys hold no skill grant, so any key reads any skill.
     if (auth.isKey()) {
       return true;
@@ -2191,6 +2267,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canWrite(auth: Authenticator): boolean {
+    if (this.redactedForCaller) {
+      return false;
+    }
+
     // TODO(governance): cleanup once we'll be able to grant API keys editorship on a skill.
     // TODO(@jd): Revisit this shortcircuit with our current ACLs stack.
     // API keys cannot hold a skill's `editor` grant (no such assignment mechanism exists),
@@ -2204,6 +2284,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canAdministrate(auth: Authenticator): boolean {
+    if (this.redactedForCaller) {
+      return false;
+    }
+
     // See canWrite: API keys have no editor-group assignment mechanism, so any key can
     // administrate any skill.
     if (auth.isKey()) {
@@ -2253,7 +2337,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   // skill the caller cannot read is never hydrated.
   private static canReadRow(
     auth: Authenticator,
-    skill: SkillConfigurationModel
+    skill: { id: ModelId; workspaceId: ModelId }
   ): boolean {
     // See canWrite: API keys hold no skill grant, so any key reads any skill.
     if (auth.isKey()) {
@@ -4459,7 +4543,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // the public v1 API only returns custom skills, so this only surfaces on the
     // single-skill detail fetch.
     const hideInstructions =
-      this.globalSId !== null && !this.exposeInstructions;
+      (this.globalSId !== null && !this.exposeInstructions) ||
+      this.redactedForCaller;
 
     return {
       id: this.id,
@@ -4484,7 +4569,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       selfImprovementCostsCapAwuCredits: this.selfImprovementCostsCapAwuCredits,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
-      tools: this.mcpServerViews.map((view) => {
+      tools: (this.redactedForCaller ? [] : this.mcpServerViews).map((view) => {
         const serializedView = view.toJSON();
         const server = serializedView.server;
         return {
@@ -4501,10 +4586,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           },
         };
       }),
-      fileAttachments: this.fileAttachments.map((file) => ({
-        fileId: file.sId,
-        fileName: file.fileName,
-      })),
+      fileAttachments: (this.redactedForCaller ? [] : this.fileAttachments).map(
+        (file) => ({
+          fileId: file.sId,
+          fileName: file.fileName,
+        })
+      ),
+      canRead: this.canRead(auth),
       canWrite: this.canWrite(auth),
       canAdministrate: this.canAdministrate(auth),
       isDefault: isDefaultFromAvailability(this.availability),

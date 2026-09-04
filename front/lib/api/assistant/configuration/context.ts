@@ -107,7 +107,11 @@ export async function getAgentConfigurationContext(
   const skills = await SkillResource.listByAgentConfiguration(
     auth,
     agentConfiguration,
-    { dangerouslySkipPermissionFiltering }
+    {
+      permissionFiltering: dangerouslySkipPermissionFiltering
+        ? "dangerously_skip"
+        : "strict",
+    }
   );
   const editorsResult = await GroupResource.findEditorGroupForAgent(
     auth,
