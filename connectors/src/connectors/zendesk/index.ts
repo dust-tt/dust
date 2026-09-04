@@ -11,6 +11,7 @@ import {
   allowSyncZendeskBrand,
   forbidSyncZendeskBrand,
 } from "@connectors/connectors/zendesk/lib/brand_permissions";
+import { isZendeskForbiddenError } from "@connectors/connectors/zendesk/lib/errors";
 import {
   allowSyncZendeskCategory,
   allowSyncZendeskHelpCenter,
@@ -362,7 +363,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       nodes.sort((a, b) => a.title.localeCompare(b.title));
       return new Ok(nodes);
     } catch (e) {
-      if (e instanceof ExternalOAuthTokenError) {
+      if (e instanceof ExternalOAuthTokenError || isZendeskForbiddenError(e)) {
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
