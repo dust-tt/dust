@@ -5,6 +5,7 @@ import {
   getFrameV2NameFromManifestPath,
   isSafeFrameRelativePath,
   MAX_FRAME_DATABASE_COUNT,
+  MAX_FRAME_DOMAIN_COUNT,
   MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH,
   MAX_FRAME_NAME_LENGTH,
   parseFrameManifest,
@@ -261,5 +262,48 @@ describe("validateFrameV2Name", () => {
     expect(
       validateFrameV2Name("a".repeat(MAX_FRAME_NAME_LENGTH + 1)).isErr()
     ).toBe(true);
+  });
+});
+
+describe("FrameManifestSchema domains", () => {
+  it("defaults to no domains", () => {
+    const parsed = FrameManifestSchema.safeParse(MANIFEST);
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.domains).toEqual([]);
+    }
+  });
+
+  it("normalizes and deduplicates declared domains", () => {
+    const parsed = FrameManifestSchema.safeParse({
+      ...MANIFEST,
+      domains: ["API.Stripe.COM", "api.stripe.com", "*.stripe.com"],
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.domains).toEqual(["api.stripe.com", "*.stripe.com"]);
+    }
+  });
+
+  it("rejects malformed domains", () => {
+    expect(
+      FrameManifestSchema.safeParse({ ...MANIFEST, domains: ["api.*.com"] })
+        .success
+    ).toBe(false);
+    expect(
+      FrameManifestSchema.safeParse({ ...MANIFEST, domains: [""] }).success
+    ).toBe(false);
+  });
+
+  it("bounds the number of declared domains", () => {
+    const domains = Array.from(
+      { length: MAX_FRAME_DOMAIN_COUNT + 1 },
+      (_, index) => `host-${index}.example.com`
+    );
+    expect(
+      FrameManifestSchema.safeParse({ ...MANIFEST, domains }).success
+    ).toBe(false);
   });
 });

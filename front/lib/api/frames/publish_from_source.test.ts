@@ -10,6 +10,7 @@ import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { setupProjectConversation } from "@app/tests/utils/conversation_test_factories";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -80,6 +81,35 @@ async function setup({
     mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
   });
 
+  stageFrameSource({
+    gcsSourceDirectoryPath,
+    manifestContent,
+    uiContentType,
+    extraSources,
+  });
+
+  return {
+    auth,
+    conversation,
+    frame,
+    gcsSourceDirectoryPath,
+    manifestPath,
+    workspace,
+  };
+}
+
+// Serves a Frame folder (manifest + index.tsx) from the mocked source bucket.
+function stageFrameSource({
+  gcsSourceDirectoryPath,
+  manifestContent,
+  uiContentType = "text/typescript",
+  extraSources = {},
+}: {
+  gcsSourceDirectoryPath: string;
+  manifestContent: string;
+  uiContentType?: string;
+  extraSources?: Record<string, string>;
+}) {
   const sourceByPath = new Map([
     [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifestContent],
     [`${gcsSourceDirectoryPath}/index.tsx`, uiSource],
@@ -106,15 +136,27 @@ async function setup({
   fileStorageMock.setFileContent(
     (filePath) => sourceByPath.get(filePath) ?? null
   );
+  // Egress policy files are absent until written, so domain requests start
+  // from an empty policy instead of the mock's placeholder content.
+  fileStorageMock.setFetchFileContentNotFound(
+    (filePath) =>
+      filePath.endsWith("/sandbox-egress-policy.json") ||
+      /\/sandboxes\/[^/]+\.json$/.test(filePath)
+  );
+}
 
-  return {
-    auth,
-    conversation,
-    frame,
-    gcsSourceDirectoryPath,
-    manifestPath,
-    workspace,
-  };
+const manifestWithDomains = JSON.stringify({
+  version: 1,
+  name: "Status",
+  description: "Show the current status.",
+  domains: ["API.Stripe.COM", "*.stripe.com"],
+});
+
+function requestedDomainsAt(policyPath: string): string[] {
+  const policy = JSON.parse(fileStorageMock.getObject(policyPath) ?? "{}");
+  return (policy.requestedDomains ?? []).map(
+    (request: { domain: string }) => request.domain
+  );
 }
 
 beforeEach(() => {
@@ -262,6 +304,84 @@ describe("publishFrameFromSource", () => {
     });
     expect(fileStorageMock.readStreamCalls).toHaveLength(0);
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("files declared domains as workspace requests for a Frame outside a Pod", async () => {
+    const { auth, conversation, manifestPath, workspace } = await setup({
+      manifestContent: manifestWithDomains,
+    });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toEqual({
+      scope: "workspace",
+      requested: ["api.stripe.com", "*.stripe.com"],
+      alreadyAllowed: [],
+      failed: [],
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+  });
+
+  it("files declared domains as Pod requests for a Frame in a Pod", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const workspace = auth.getNonNullableWorkspace();
+    const sourceDirectoryPath = `pod-${projectId}/Status`;
+    const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const gcsSourceDirectoryPath = `${getPodFilesBasePath({
+      workspaceId: workspace.sId,
+      podId: projectId,
+    })}Status`;
+    await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifestWithDomains),
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: projectId },
+      mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    });
+    stageFrameSource({
+      gcsSourceDirectoryPath,
+      manifestContent: manifestWithDomains,
+    });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation: conversation.toJSON(),
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains?.scope).toBe("pod");
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandboxes/${projectId}.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+    expect(
+      fileStorageMock.getObject(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toBeUndefined();
+  });
+
+  it("reports no domain requests when the manifest declares none", async () => {
+    const { auth, conversation, manifestPath } = await setup();
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toBeNull();
   });
 });
 
