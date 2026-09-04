@@ -22,7 +22,11 @@ import type {
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
 import type { PokeAgentMessageType } from "@app/types/poke";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -109,20 +113,20 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 function getProviderPassthroughEntries(
   contents: PokeAgentMessageType["contents"]
 ): ProviderPassthroughEntry[] {
-  return contents.flatMap(({ content, step }, contentIndex) => {
-    if (content.type !== "provider_passthrough") {
-      return [];
-    }
+  return removeNulls(
+    contents.map(({ content, step }, contentIndex) => {
+      if (content.type !== "provider_passthrough") {
+        return null;
+      }
 
-    return [
-      {
+      return {
         block: content.value.block,
         key: `${step}-${contentIndex}`,
         provider: content.value.provider,
         step,
-      },
-    ];
-  });
+      };
+    })
+  );
 }
 
 function getToolSearchResultSummary(content: unknown): string | null {
@@ -635,6 +639,18 @@ const AgentMessageView = ({
   const providerPassthroughEntries = getProviderPassthroughEntries(
     message.contents
   );
+  const toolExecutionTimelineEntries = [
+    ...providerPassthroughEntries.map((entry) => ({
+      type: "provider_passthrough" as const,
+      entry,
+      step: entry.step,
+    })),
+    ...message.actions.map((action) => ({
+      type: "action" as const,
+      action,
+      step: action.step,
+    })),
+  ].sort((a, b) => a.step - b.step);
 
   return (
     <div className="w-full">
@@ -719,24 +735,33 @@ const AgentMessageView = ({
           subAgentBilledCredits={message.subAgentCostCredits}
           workspaceId={owner.sId}
         />
-        {providerPassthroughEntries.map((entry) => (
-          <ProviderPassthroughView
-            key={entry.key}
-            entry={entry}
-            isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
-            onToggle={() => toggleProviderPassthroughEntry(entry.key)}
-          />
-        ))}
-        {message.actions.map((a) => {
-          const isExpanded = expandedActions.has(a.sId);
-          return (
-            <ToolActionView
-              key={a.sId}
-              action={a}
-              isExpanded={isExpanded}
-              onToggle={() => toggleAction(a.sId)}
-            />
-          );
+        {toolExecutionTimelineEntries.map((timelineEntry) => {
+          switch (timelineEntry.type) {
+            case "provider_passthrough": {
+              const { entry } = timelineEntry;
+              return (
+                <ProviderPassthroughView
+                  key={`provider-passthrough-${entry.key}`}
+                  entry={entry}
+                  isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
+                  onToggle={() => toggleProviderPassthroughEntry(entry.key)}
+                />
+              );
+            }
+            case "action": {
+              const { action } = timelineEntry;
+              return (
+                <ToolActionView
+                  key={`action-${action.sId}`}
+                  action={action}
+                  isExpanded={expandedActions.has(action.sId)}
+                  onToggle={() => toggleAction(action.sId)}
+                />
+              );
+            }
+            default:
+              return assertNever(timelineEntry);
+          }
         })}
       </ConversationMessage>
     </div>
