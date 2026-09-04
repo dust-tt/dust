@@ -12,7 +12,6 @@ export const POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS = [
   "conversations",
   "tasks",
   "files",
-  "apps",
   "connected_data",
 ] as const;
 
@@ -97,30 +96,25 @@ export function normalizeTabsOrder(
 
 /**
  * Which conditional system tabs this Pod currently shows. Connected Data depends on the Pod being
- * admin-controlled, Apps on a workspace feature flag. Both must be honoured everywhere tab order is
- * computed, so neighbour-swapping never moves a file tab past a tab the user cannot see.
+ * admin-controlled. This must be honoured everywhere tab order is computed, so neighbour-swapping
+ * never moves a file tab past a tab the user cannot see.
  */
 export type PodNavVisibility = {
   includeConnectedData: boolean;
-  includeApps: boolean;
 };
 
-/** Neither conditional tab shown — the safe default for callers that do not know yet. */
+/** Connected Data not shown — the safe default for callers that do not know yet. */
 export const DEFAULT_POD_NAV_VISIBILITY: PodNavVisibility = {
   includeConnectedData: false,
-  includeApps: false,
 };
 
 export function visibleTabsOrder(
   tabsOrder: string[],
-  { includeConnectedData, includeApps }: PodNavVisibility
+  { includeConnectedData }: PodNavVisibility
 ): string[] {
   return tabsOrder.filter((id) => {
     if (id === "connected_data") {
       return includeConnectedData;
-    }
-    if (id === "apps") {
-      return includeApps;
     }
     return true;
   });

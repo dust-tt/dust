@@ -369,12 +369,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "Fraggle",
   },
-  pod_applications: {
-    description:
-      "Enable the Pod Apps UI: browse, import, clone, export and delete the apps published on a Pod.",
-    stage: "dust_only",
-    owner: "davidebbo",
-  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",

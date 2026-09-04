@@ -789,7 +789,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_billing"
   | "plan_mode"
   | "pod_frame_tabs"
-  | "pod_applications"
   | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"

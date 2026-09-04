@@ -35,7 +35,6 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  PuzzlePiece01,
   Settings01,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -54,10 +53,6 @@ const SYSTEM_TAB_TRIGGERS = {
     label: "Files",
     icon: Folder,
   },
-  apps: {
-    label: "Apps",
-    icon: PuzzlePiece01,
-  },
   connected_data: {
     label: "Connected Data",
     icon: CloudArrowLeftRight,
@@ -72,9 +67,6 @@ export function PodPage() {
   const { podKind } = useActivationPod({ workspaceId: owner.sId, podId });
   const isGoalPod = podKind === "goal";
   const hasFileTabs = hasFeature("pod_frame_tabs");
-  // Pod Apps sit on top of Pod Functions, so both flags are required.
-  const hasApps =
-    hasFeature("sandbox_functions") && hasFeature("pod_applications");
   const [editingFileTab, setEditingFileTab] = useState<PodFileTab | null>(null);
 
   const {
@@ -122,22 +114,14 @@ export function PodPage() {
   const navVisibility = useMemo(
     () => ({
       includeConnectedData: !!podInfo?.isAdminControlled,
-      includeApps: hasApps,
     }),
-    [podInfo?.isAdminControlled, hasApps]
+    [podInfo?.isAdminControlled]
   );
 
   const navItemsBeforeSettings = useMemo(
     () => buildPodNavItemsBeforeSettings(fileTabs, tabsOrder, navVisibility),
     [fileTabs, tabsOrder, navVisibility]
   );
-
-  // Drop an Apps selection (persisted preference or deep link) when the flag is off.
-  useEffect(() => {
-    if (currentTab === "apps" && !hasApps) {
-      handleTabChange("conversations");
-    }
-  }, [currentTab, handleTabChange, hasApps]);
 
   // Drop file-tab selection when the flag is off or the tab was removed
   // (including restored preference pointing at a deleted tab).
@@ -257,7 +241,6 @@ export function PodPage() {
           setPodUiPreferences={setPodUiPreferences}
           mutatePodInfo={mutatePodInfo}
           fileTabs={fileTabs}
-          hasApps={hasApps}
         />
       </NavTabPill>
 
