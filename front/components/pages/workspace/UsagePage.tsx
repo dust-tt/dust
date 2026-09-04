@@ -34,11 +34,7 @@ import {
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
@@ -49,7 +45,6 @@ import {
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   isCreditPricedFreePlan,
-  isEnterprisePlanPrefix,
   isFreePlan,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
@@ -120,7 +115,6 @@ import {
   Page,
   ProgressBar,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -217,8 +211,6 @@ const DEFAULT_PAGE_SIZE = 25;
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const isCompactUsagePage = hasFeature("compact_usage_page");
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Workspaces off a credit plan see this page without the credit pool, seat
   // and credits columns, spend limits and upgrade requests. Credit actions (top
@@ -272,18 +264,10 @@ export function UsagePage() {
   }, []);
 
   const sort = sorting[0];
-  // The legacy table's pool-usage cell displays total consumption
-  // (consumedAwuCredits), not the pool-only amount, so its "column" of the
-  // same id must sort by the total. Only the compact/Poke variant, which
-  // shows pool-only usage, sorts by consumedFromPoolAwuCredits.
-  // TODO(avervaet, 2026-09-02): remove once the app page and Poke page usage
-  // tables are uniformized.
   const membersOrderColumn =
-    sort?.id === "email"
+    sort?.id === "email" || sort?.id === "consumedFromPoolAwuCredits"
       ? sort.id
-      : sort?.id === "consumedFromPoolAwuCredits"
-        ? "consumedAwuCredits"
-        : "name";
+      : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
   const { myUsage } = useMyUsage({
@@ -475,7 +459,6 @@ export function UsagePage() {
     totalActiveCredits,
     overageCredits,
     isAwuPoolSummaryLoading,
-    isAwuPoolSummaryError,
     mutateAwuPoolSummary,
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
@@ -840,7 +823,6 @@ export function UsagePage() {
   });
 
   const plan = subscription.plan;
-  const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
 
   const isManualInvitationsEnabled =
@@ -1013,7 +995,6 @@ export function UsagePage() {
   const membersTable = (
     <MembersUsageTable
       members={membersUsage}
-      creditsResetAt={creditsResetAt}
       isLoading={isMembersUsageLoading}
       isRefreshing={isMembersUsageRefreshing}
       showSeatAndCredits={isCreditPriced}
@@ -1045,7 +1026,6 @@ export function UsagePage() {
       enableSelection={isCreditPriced}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
-      variant={isCompactUsagePage ? "compact" : undefined}
     />
   );
 
@@ -1107,18 +1087,6 @@ export function UsagePage() {
         ) : (
           <div className="flex items-center justify-between">
             <Page.Header title="Usage" />
-            {!isCompactUsagePage &&
-              isCreditPriced &&
-              usageSettings.topUpEnabled &&
-              isWorkspaceAdmin && (
-                <Button
-                  label="Top up"
-                  icon={ArrowUp}
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowBuyCreditDialog(true)}
-                />
-              )}
           </div>
         )}
 
@@ -1244,70 +1212,11 @@ export function UsagePage() {
           </Page.Vertical>
         ) : null}
 
-        {isCompactUsagePage && isCreditPriced ? (
+        {isCreditPriced ? (
           <div className="flex flex-col items-stretch gap-4">
             <CompactCreditPoolCards owner={owner} disabled={!isCreditPriced} />
             <div className="flex justify-end">{topUpButton}</div>
           </div>
-        ) : null}
-
-        {!isCompactUsagePage &&
-        isCreditPriced &&
-        !showConsumptionAnalytics &&
-        !isAwuPoolSummaryLoading &&
-        (isAwuPoolSummaryError || hasPool) ? (
-          <Page.Vertical gap="xs" align="stretch">
-            <Page.H variant="h4">Workspace credit pool</Page.H>
-
-            {isAwuPoolSummaryError ? (
-              <ContentMessage
-                title="Failed to load Workspace Credits Pool"
-                icon={AlertCircle}
-                variant="warning"
-              >
-                An error occurred while loading your Workspace Credits Pool
-                data. Please refresh the page or contact support if the issue
-                persists.
-              </ContentMessage>
-            ) : isAwuPoolSummaryLoading ? (
-              <div className="flex justify-center py-8">
-                <Spinner />
-              </div>
-            ) : (
-              <>
-                <div className="flex items-baseline gap-1">
-                  <span className="heading-mono-4xl text-foreground">
-                    {formatCredits(totalConsumedCredits)}
-                  </span>
-                  <span className="copy-sm text-muted-foreground">
-                    /{formatCredits(initialTotalCredits)}
-                  </span>
-                </div>
-                {hasPool && (
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
-                    <div
-                      className="h-full rounded-full bg-foreground/80 transition-all"
-                      style={{
-                        width: `${Math.min(100, initialTotalCredits > 0 ? (totalConsumedCredits / initialTotalCredits) * 100 : 0)}%`,
-                      }}
-                    />
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  {overageCredits !== null && overageCredits > 0 && (
-                    <span className="copy-sm text-muted-foreground">
-                      {formatCredits(overageCredits)} overage credits
-                    </span>
-                  )}
-                  {isEnterprise && (
-                    <span className="copy-sm text-muted-foreground">
-                      Contact your Dust sales representative to buy credits
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-          </Page.Vertical>
         ) : null}
 
         <Tabs
