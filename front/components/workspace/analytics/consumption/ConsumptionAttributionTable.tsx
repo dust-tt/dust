@@ -229,7 +229,32 @@ function VsPrevCell({
   );
 }
 
-function usageVsAveragePercent({
+function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
+  if (percentage === null) {
+    return (
+      <DataTable.CellContent className="w-full justify-end text-right">
+        <Tooltip
+          label="Not enough data to compute"
+          tooltipTriggerAsChild
+          trigger={<span className="text-sm text-muted-foreground">--</span>}
+        />
+      </DataTable.CellContent>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-center justify-end text-right text-sm tabular-nums",
+        percentage > 100 ? "text-highlight-600" : "text-muted-foreground"
+      )}
+    >
+      <span>{Math.round(percentage)}%</span>
+    </div>
+  );
+}
+
+function usagePercentOfAverage({
   credits,
   activeMembers,
   totalCredits,
@@ -247,10 +272,7 @@ function usageVsAveragePercent({
   const groupAverageCredits = credits / activeMembers;
   const overallAverageCredits = totalCredits / totalActiveMembers;
 
-  return (
-    ((groupAverageCredits - overallAverageCredits) / overallAverageCredits) *
-    100
-  );
+  return (groupAverageCredits / overallAverageCredits) * 100;
 }
 
 function buildColumns({
@@ -403,14 +425,14 @@ function buildColumns({
             enableSorting: false,
             meta: { sizeRatio: 22, headerAlign: "right" },
             cell: (info) => {
-              const usagePercent = usageVsAveragePercent({
+              const usagePercent = usagePercentOfAverage({
                 credits: info.row.original.credits,
                 activeMembers: info.row.original.activeMembers,
                 totalCredits,
                 totalActiveMembers,
               });
 
-              return <PercentageChangeCell percentage={usagePercent} />;
+              return <UsageVsAverageCell percentage={usagePercent} />;
             },
           },
         ] satisfies ColumnDef<AttributionRowData>[])

@@ -332,9 +332,9 @@ describe("ConsumptionAttributionTable", () => {
       screen.queryByRole("columnheader", { name: "Consumption share" })
     ).not.toBeInTheDocument();
     expect(screen.getByText("2 / 5")).toBeInTheDocument();
-    expect(screen.getByText("150%").parentElement).toHaveClass(
-      "text-highlight-600"
-    );
+    const usagePercentage = screen.getByText("250%");
+    expect(usagePercentage.parentElement).toHaveClass("text-highlight-600");
+    expect(usagePercentage.parentElement?.querySelector("svg")).toBeNull();
   });
 
   it("caps the available pages and fetches the selected fixed-size page", async () => {
