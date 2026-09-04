@@ -24,6 +24,7 @@ import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { extractToolTags, serializeToolTag } from "@app/lib/tools/format";
 import logger from "@app/logger/logger";
@@ -333,6 +334,11 @@ export async function createSkill(
     }
   );
 
+  await launchSkillSearchIndexation({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    skillId: skill.sId,
+  });
+
   await auth.refresh();
 
   return new Ok(skill);
@@ -638,9 +644,14 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
         userFacingDescription ?? skill.userFacingDescription,
     });
 
+    const owner = auth.getNonNullableWorkspace();
+    await launchSkillSearchIndexation({
+      workspaceId: owner.sId,
+      skillId: skill.sId,
+    });
+
     await pruneOutdatedSkillEditSuggestions(auth, skill);
 
-    const owner = auth.getNonNullableWorkspace();
     const text = `Updated skill "${skill.name}".`;
 
     return new Ok([

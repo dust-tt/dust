@@ -3,6 +3,8 @@ import { createAndTrackMembership } from "@app/lib/api/membership";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -32,6 +34,10 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
   return { ...actual, emitAuditLogEventDirect: vi.fn() };
 });
 
+vi.mock("@app/lib/skill_search/indexation", () => ({
+  launchSkillsSearchIndexationForGroups: vi.fn(),
+}));
+
 vi.mock("@app/temporal/usage_queue/client", async () => {
   const actual = await vi.importActual<
     typeof import("@app/temporal/usage_queue/client")
@@ -43,6 +49,7 @@ vi.mock("@app/temporal/usage_queue/client", async () => {
   };
 });
 
+import { launchSkillsSearchIndexationForGroups } from "@app/lib/skill_search/indexation";
 import {
   launchMetronomeSeatCountSyncWorkflow,
   launchUpdateUsageWorkflow,
@@ -84,9 +91,44 @@ beforeEach(() => {
     new Ok(undefined)
   );
   trackCreateMembershipSpy.mockResolvedValue(undefined);
+  vi.mocked(launchSkillsSearchIndexationForGroups).mockResolvedValue(undefined);
 });
 
 describe("createAndTrackMembership", () => {
+  it("reindexes editor grants restored for a returning member", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    const revokedAt = new Date();
+    const latestMembershipSpy = vi
+      .spyOn(MembershipResource, "getLatestMembershipOfUserInWorkspace")
+      .mockResolvedValue({
+        endAt: revokedAt,
+        isRevoked: () => true,
+      } as MembershipResource);
+    const restoreSpy = vi
+      .spyOn(GroupResource, "dangerouslyRestoreGroupMembershipsRevokedWith")
+      .mockResolvedValue([11, 12]);
+
+    await createAndTrackMembership({
+      user,
+      workspace,
+      role: "user",
+      origin: "invited",
+    });
+
+    expect(restoreSpy).toHaveBeenCalledWith({
+      user,
+      workspace,
+      revokedAt,
+    });
+    expect(launchSkillsSearchIndexationForGroups).toHaveBeenCalledWith({
+      workspace,
+      groupModelIds: [11, 12],
+    });
+    latestMembershipSpy.mockRestore();
+    restoreSpy.mockRestore();
+  });
+
   it("assigns free instead of a committed paid seat on a free plan", async () => {
     setupEntitledSeats(["free", "pro"]);
 

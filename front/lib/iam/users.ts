@@ -17,6 +17,7 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { launchSkillsSearchIndexationForGroups } from "@app/lib/skill_search/indexation";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -269,7 +270,8 @@ export async function mergeUserIdentities({
     );
   }
 
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const workspace = auth.getNonNullableWorkspace();
+  const workspaceId = workspace.id;
 
   // Ensure that primary user has a membership in the workspace.
   const primaryMemberships = await MembershipResource.fetchByUserIds([
@@ -329,10 +331,15 @@ export async function mergeUserIdentities({
   // Migrate authorship of agent memories from the secondary user to the primary user.
   await AgentMemoryModel.update(userIdValues, userIdOptions);
 
-  // Migrate group memberships from secondary user to primary user
-  await GroupResource.migrateUserMemberships(auth, {
-    primaryUser,
-    secondaryUser,
+  // Migrate group memberships from secondary user to primary user.
+  const potentiallyAffectedGroupIds =
+    await GroupResource.migrateUserMemberships(auth, {
+      primaryUser,
+      secondaryUser,
+    });
+  await launchSkillsSearchIndexationForGroups({
+    workspace,
+    groupModelIds: potentiallyAffectedGroupIds,
   });
 
   // Delete all agent-user relations for the secondary user that already have a relation.

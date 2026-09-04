@@ -9,6 +9,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import logger from "@app/logger/logger";
 import type {
   GetSkillsResponseBody,
@@ -550,6 +551,11 @@ app.post(
         fileAttachments: files,
       }
     );
+
+    await launchSkillSearchIndexation({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      skillId: newSkill.sId,
+    });
 
     // Update file useCaseMetadata with the newly created skill's sId.
     if (files) {

@@ -37,6 +37,7 @@ import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { launchWorkspaceSkillSearchDeletion } from "@app/lib/skill_search/indexation";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -293,6 +294,9 @@ async function deleteAgentMemories(auth: Authenticator) {
 
 async function deleteSkills(auth: Authenticator) {
   await SkillResource.deleteAllForWorkspace(auth);
+  await launchWorkspaceSkillSearchDeletion({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+  });
 }
 
 async function deleteOnboardingTasks(auth: Authenticator) {

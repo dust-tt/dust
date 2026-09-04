@@ -1346,6 +1346,49 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
   });
 
   describe("requestedSpaceIds cleanup", () => {
+    it("reindexes skill updates committed before space cleanup fails", async () => {
+      const spaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Space With Failing Cleanup",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(spaceResult.isOk()).toBe(true);
+      const space = spaceResult.isOk() ? spaceResult.value : null;
+      expect(space).not.toBeNull();
+
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Skill Updated Before Cleanup Failure",
+        requestedSpaceIds: [space!.id],
+        manuallyRequestedSpaceIds: [space!.id],
+      });
+      const skillSearchIndexation = await import(
+        "@app/lib/skill_search/indexation"
+      );
+      const launchIndexationSpy = vi
+        .spyOn(skillSearchIndexation, "launchSkillsSearchIndexation")
+        .mockResolvedValue(undefined);
+      vi.spyOn(space!, "delete").mockResolvedValue(
+        new Err(new Error("space delete failed"))
+      );
+
+      await expect(
+        softDeleteSpaceAndLaunchScrubWorkflow(adminAuth, space!, true)
+      ).rejects.toThrow("space delete failed");
+
+      expect(launchIndexationSpy).toHaveBeenCalledWith({
+        workspaceId: workspace.sId,
+        skillIds: [skill.sId],
+      });
+      const skillAfter = await SkillResource.fetchById(adminAuth, skill.sId);
+      expect(skillAfter?.requestedSpaceIds).not.toContain(space!.id);
+    });
+
     it("should remove deleted space from skill requestedSpaceIds", async () => {
       // Create a non-restricted regular space (accessible via global group)
       const spaceResult = await createSpaceAndGroup(

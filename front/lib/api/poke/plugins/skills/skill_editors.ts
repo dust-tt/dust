@@ -1,6 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getMembers } from "@app/lib/api/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -90,8 +91,7 @@ export const updateSkillEditorsPlugin = createPlugin({
       userResources.map((user) => [user.sId, user.toJSON()])
     );
 
-    // Go through the resource rather than the group directly: it keeps the per-user grants in sync
-    // with the editor-group membership (see `SkillResource.writeEditorUserGrants`).
+    // Keep editor permission mutations behind SkillResource.
     const userResourceMap = new Map(
       userResources.map((user) => [user.sId, user])
     );
@@ -102,6 +102,10 @@ export const updateSkillEditorsPlugin = createPlugin({
         removeNulls(usersToAdd.map((id) => userResourceMap.get(id)))
       );
       if (addResult.isErr()) {
+        await launchSkillSearchIndexation({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          skillId: resource.sId,
+        });
         return new Err(
           new Error(`Failed to add editors: ${addResult.error.message}`)
         );
@@ -114,11 +118,20 @@ export const updateSkillEditorsPlugin = createPlugin({
         removeNulls(usersToRemove.map((id) => userResourceMap.get(id)))
       );
       if (removeResult.isErr()) {
+        await launchSkillSearchIndexation({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          skillId: resource.sId,
+        });
         return new Err(
           new Error(`Failed to remove editors: ${removeResult.error.message}`)
         );
       }
     }
+
+    await launchSkillSearchIndexation({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      skillId: resource.sId,
+    });
 
     // Prepare success message.
     const addedNames = removeNulls(usersToAdd.map((id) => userMap.get(id))).map(
