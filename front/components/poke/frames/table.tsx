@@ -20,7 +20,7 @@ export function FramesDataTable({ loadOnInit, owner }: FramesDataTableProps) {
     pageIndex: 0,
     pageSize: PAGE_SIZE,
   });
-  const [hasSandbox, setHasSandbox] = useState(false);
+  const [hasSandbox, setHasSandbox] = useState(true);
   const useFramesPage = (props: PokeConditionalFetchProps) =>
     usePokeFrames({
       ...props,
