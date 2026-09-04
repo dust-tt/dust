@@ -378,15 +378,21 @@ function ToolActionContent({
         <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
           Step {action.step}
         </span>
-        <span
-          className="min-w-0 truncate text-sm font-medium text-foreground"
-          title={
-            actionLabel === action.functionCallName
-              ? action.functionCallName
-              : `${actionLabel} (${action.functionCallName})`
-          }
-        >
-          {actionLabel}
+        <span className="flex min-w-0 flex-col">
+          <span
+            className="truncate text-sm font-medium text-foreground"
+            title={actionLabel}
+          >
+            {actionLabel}
+          </span>
+          {actionLabel !== action.functionCallName && (
+            <span
+              className="truncate font-mono text-xs text-muted-foreground"
+              title={action.functionCallName}
+            >
+              {action.functionCallName}
+            </span>
+          )}
         </span>
         {actionStatus && (
           <Chip
