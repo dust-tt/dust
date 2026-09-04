@@ -85,12 +85,11 @@ makeScript(
     let totalNoops = 0;
     let batchCount = 0;
 
-    let scrollId: string | undefined;
+    let searchAfter: undefined | Array<string | number>;
 
-    try {
-      const initialResponse = await client.search<AnalyticsSourceDoc>({
+    while (true) {
+      const response = await client.search<AnalyticsSourceDoc>({
         index: ANALYTICS_ALIAS_NAME,
-        scroll: "5m",
         size: batchSize,
         query: {
           bool: {
@@ -107,58 +106,51 @@ makeScript(
             ],
           },
         },
+        sort: ["_doc"],
+        ...(searchAfter ? { search_after: searchAfter } : {}),
         _source: ["message_id", "ancestor_message_ids"],
       });
 
-      scrollId = initialResponse._scroll_id;
-      let hits = initialResponse.hits.hits;
+      const hits = response.hits.hits;
+      if (hits.length === 0) {
+        break;
+      }
 
-      while (hits.length > 0) {
-        const mappings: Record<string, string> = {};
-        for (const hit of hits) {
-          const source = hit._source;
-          if (source && source.ancestor_message_ids.length > 0) {
-            mappings[source.message_id] = source.ancestor_message_ids[0];
-            totalSourceDocs++;
-          }
+      const mappings: Record<string, string> = {};
+      for (const hit of hits) {
+        const source = hit._source;
+        if (source && source.ancestor_message_ids.length > 0) {
+          mappings[source.message_id] = source.ancestor_message_ids[0];
+          totalSourceDocs++;
         }
+      }
 
-        if (Object.keys(mappings).length > 0) {
-          if (execute) {
-            const result = await runUpdateBatch(
-              client,
-              mappings,
-              requestsPerSecond
-            );
-            totalDestDocs += result.total;
-            totalUpdated += result.updated;
-            totalNoops += result.noops;
-          }
-          batchCount++;
-          logger.info(
-            {
-              batchCount,
-              totalSourceDocs,
-              totalDestDocs,
-              totalUpdated,
-              totalNoops,
-              batchSize: Object.keys(mappings).length,
-            },
-            "[ParentMessageIdBackfill] Batch complete"
+      if (Object.keys(mappings).length > 0) {
+        if (execute) {
+          const result = await runUpdateBatch(
+            client,
+            mappings,
+            requestsPerSecond
           );
+          totalDestDocs += result.total;
+          totalUpdated += result.updated;
+          totalNoops += result.noops;
         }
+        batchCount++;
+        logger.info(
+          {
+            batchCount,
+            totalSourceDocs,
+            totalDestDocs,
+            totalUpdated,
+            totalNoops,
+            batchSize: Object.keys(mappings).length,
+          },
+          "[ParentMessageIdBackfill] Batch complete"
+        );
+      }
 
-        const scrollResponse = await client.scroll<AnalyticsSourceDoc>({
-          scroll_id: scrollId,
-          scroll: "5m",
-        });
-        scrollId = scrollResponse._scroll_id;
-        hits = scrollResponse.hits.hits;
-      }
-    } finally {
-      if (scrollId) {
-        await client.clearScroll({ scroll_id: scrollId }).catch(() => {});
-      }
+      searchAfter = hits[hits.length - 1].sort as Array<string | number>;
     }
 
     logger.info(
