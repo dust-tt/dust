@@ -1241,6 +1241,26 @@ const InputBarContainer = ({
   const pageShortcut = isMac ? "⇧⌘Y" : "Ctrl+Maj+Y";
   const screenshotShortcut = isMac ? "⇧⌘S" : "Ctrl+Maj+S";
 
+  // Cmd/Ctrl+Shift+O opens the file picker, mirroring the /upload-file slash command.
+  useEffect(() => {
+    if (disableInput) {
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (!isMod || !e.shiftKey || e.altKey || e.key.toLowerCase() !== "o") {
+        return;
+      }
+      e.preventDefault();
+      if (fileUploaderService.isProcessingFiles) {
+        return;
+      }
+      fileInputRef.current?.click();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [disableInput, fileUploaderService.isProcessingFiles]);
+
   useEffect(() => {
     // captureActions is defined only in the extension, so the shortcuts won't work in the web app
     if (!captureActions || disableInput) {

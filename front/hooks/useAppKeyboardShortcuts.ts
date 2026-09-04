@@ -1,5 +1,6 @@
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -8,6 +9,7 @@ import { useEffect } from "react";
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
   const { toggleNavigationBar } = useDesktopNavigation();
   const { open: openCommandPalette } = useCommandPalette();
+  const { isDark, setTheme } = useTheme();
 
   const router = useAppRouter();
 
@@ -21,6 +23,13 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
           case "b":
             event.preventDefault();
             toggleNavigationBar();
+            break;
+          case "u":
+            // Toggle between light and dark. When the theme follows the system, switch to the
+            // opposite of what is currently displayed. Not "l": macOS binds Shift+Cmd+L to the
+            // "Search with Google" service and swallows the key before the page sees it.
+            event.preventDefault();
+            setTheme(isDark ? "light" : "dark");
             break;
         }
       } else if (isModifier) {
@@ -41,5 +50,12 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
 
     window.addEventListener("keydown", handleKeyboardShortcuts);
     return () => window.removeEventListener("keydown", handleKeyboardShortcuts);
-  }, [owner.sId, router, toggleNavigationBar, openCommandPalette]);
+  }, [
+    owner.sId,
+    router,
+    toggleNavigationBar,
+    openCommandPalette,
+    isDark,
+    setTheme,
+  ]);
 }
