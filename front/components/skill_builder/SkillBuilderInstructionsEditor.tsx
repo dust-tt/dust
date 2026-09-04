@@ -303,13 +303,6 @@ export function SkillBuilderInstructionsEditor({
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
-  const hasInstructionReferenceSummary =
-    (attachedKnowledgeField.value?.length ?? 0) > 0 ||
-    tools.length > 0 ||
-    (instructionsField.value?.includes("<knowledge ") ?? false) ||
-    (instructionsField.value?.includes("<tool ") ?? false) ||
-    (instructionsField.value?.includes("<skill ") ?? false) ||
-    (instructionsField.value?.includes("<unavailable_skill ") ?? false);
 
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
@@ -731,7 +724,7 @@ export function SkillBuilderInstructionsEditor({
               disabled: isDiffMode || isReadOnly,
               readOnly: isInstructionsReadOnly,
             }),
-            INSTRUCTIONS_EDITOR_SIZE,
+            INSTRUCTIONS_EDITOR_SIZE
           ),
         },
       },
@@ -742,7 +735,6 @@ export function SkillBuilderInstructionsEditor({
     isDiffMode,
     isInstructionsReadOnly,
     isReadOnly,
-    hasInstructionReferenceSummary,
   ]);
 
   // Sync external changes to the editor content
@@ -834,11 +826,9 @@ export function SkillBuilderInstructionsEditor({
         <div
           className={cn(
             "group relative overflow-hidden rounded-xl",
-            hasInstructionReferenceSummary && !isDiffMode && "resize-y"
           )}
         >
           <SkillInstructionsEditorContent
-            className={hasInstructionReferenceSummary ? "h-full" : undefined}
             editor={editor}
             isReadOnly={isInstructionsReadOnly}
           />
@@ -852,13 +842,13 @@ export function SkillBuilderInstructionsEditor({
       </div>
 
       <SkillBuilderInstructionsReferenceSummary
-            attachedKnowledge={attachedKnowledgeField.value}
-            containerRef={instructionReferenceSummaryRef}
-            hasError={displayError}
-            instructions={instructionsField.value ?? ""}
-            onReferenceClick={handleReferenceClick}
-            tools={tools}
-        />
+        attachedKnowledge={attachedKnowledgeField.value}
+        containerRef={instructionReferenceSummaryRef}
+        hasError={displayError}
+        instructions={instructionsField.value ?? ""}
+        onReferenceClick={handleReferenceClick}
+        tools={tools}
+      />
 
       <CapabilityDetailsSheets
         owner={owner}
