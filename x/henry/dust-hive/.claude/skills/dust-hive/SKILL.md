@@ -1,145 +1,165 @@
 ---
 name: dust-hive
-description: Use whenever the working directory is in a registered dust-hive worktree, or when managing dust-hive environments, services, ports, dependency links, or local tests.
+description: Information about dust-hive, a CLI tool for running multiple isolated Dust development environments. ALWAYS enable this skill when the working directory is in a registered dust-hive worktree. Use for understanding port allocation, running tests, and working with the environment.
 ---
 
 # dust-hive
 
-dust-hive runs multiple isolated Dust development environments. Each registered environment has
-its own Git worktree, port range, Docker containers, databases, and service processes.
+## What is dust-hive?
 
-## Find the environment
+dust-hive is a CLI tool for running multiple isolated Dust development environments simultaneously. Each environment gets its own:
+- Git worktree (separate branch)
+- Port range (no conflicts between environments)
+- Docker containers (isolated volumes)
+- Database instances (Postgres, Qdrant, Elasticsearch)
 
-Hive-owned worktrees normally live at `<repo>/.hives/<name>`. Worktrees registered with
-`dust-hive adopt` may live elsewhere under the main repository root, and older environments may
-still use `~/dust-hive/<name>`. Do not identify a Hive environment from its path alone.
+## Detecting a dust-hive Environment
 
-Use the CLI and registered metadata instead:
+To check if you're currently running in a dust-hive environment:
+
+1. **Check registered environments**: run `dust-hive list`
+2. **Check the current environment**: Hive-owned worktrees normally live at
+   `<repo>/.hives/{env-name}/`; adopted worktrees can live elsewhere under the main repository
+   root, and older environments may still use `~/dust-hive/{env-name}/`
 
 ```bash
-dust-hive list
 dust-hive status [ENV_NAME]
 ```
 
-Per-environment metadata, generated environment variables, logs, and process IDs live under
-`~/.dust-hive/envs/<name>/`.
+## Environment States
 
-## Environment states
+Environments can be in one of three states:
 
-| State | What is running | Tests |
-| --- | --- | --- |
-| `stopped` | Nothing | No |
-| `cold` | SDK and Sparkle watchers | Front and front-api tests can use the shared test services |
-| `warm` | Cold services, Docker, and the main application services | Yes |
+| State | What's Running | Can Run Tests? |
+|-------|----------------|----------------|
+| **stopped** | Nothing | No |
+| **cold** | SDK and Sparkle watches | Yes (front tests use shared test DB) |
+| **warm** | SDK/Sparkle, application services except Viz/Storybook, and Docker | Yes |
 
-`viz` and `storybook` are opt-in services; they are not started by `warm`.
-
-Common lifecycle commands:
-
+Check the current state:
 ```bash
-dust-hive start [ENV_NAME]   # Start the cold services
-dust-hive warm [ENV_NAME]    # Start Docker and the main application services
-dust-hive cool [ENV_NAME]    # Return to the cold state
-dust-hive stop [ENV_NAME]    # Stop the environment
-dust-hive open [ENV_NAME]    # Open its terminal session
+dust-hive status [ENV_NAME]
 ```
 
-Use `dust-hive spawn` to create a Hive-owned worktree and `dust-hive adopt` to register an
-existing externally managed worktree. Do not manually create or switch worktrees for Hive-owned
-environments. Run `destroy` or `unregister` only when the user explicitly requests it.
+## Environment Variables (direnv)
 
-## Services and logs
+Each dust-hive worktree contains a `.envrc` file that automatically loads environment variables when you `cd` into the directory. This is powered by [direnv](https://direnv.net/).
 
-Current service names are:
+**What this means:**
+- Environment variables (ports, database URIs, API keys, etc.) are automatically available
+- Variables like `FRONT_DATABASE_URI`, `CORE_API`, `CONNECTORS_API` are pre-configured for the environment's port range
 
-```text
-sdk, sparkle, front-api, marketing, proxy, core, oauth, connectors, front-workers,
-front-spa-poke, front-spa-app, viz, storybook
+**If environment variables are missing**, manually source the environment:
+```bash
+source ~/.dust-hive/envs/{ENV_NAME}/env.sh
 ```
 
-Use a concrete service name with `logs`:
+## Port Allocation
 
+Each environment gets a 1000-port range starting at 10000:
+- 1st env: 10000-10999 (proxy:10000, core:10001, connectors:10002, front-api:10003, oauth:10006)
+- 2nd env: 11000-11999
+- 3rd env: 12000-12999
+
+## Running Linters, Type Checks, and Builds
+
+### For dust-hive itself (in `x/henry/dust-hive/`):
 ```bash
-dust-hive logs [ENV_NAME] front-api
-dust-hive logs [ENV_NAME] front-spa-app -f
+# Run ALL checks before committing (MANDATORY)
+bun run check
+
+# Individual checks
+bun run typecheck    # TypeScript strict checks
+bun run lint         # Biome linting
+bun run lint:fix     # Auto-fix lint issues
+bun run format       # Code formatting
+bun run test         # All tests
 ```
 
-For `restart`, `front` is an alias for `front-api`, `front-workers`, `front-spa-poke`, and
-`front-spa-app`:
-
+### For Dust apps (in worktree or main repo):
 ```bash
-dust-hive restart [ENV_NAME] front
-dust-hive restart [ENV_NAME] storybook
-```
+# TypeScript SDK (watch is running - check logs if issues after SDK changes)
+dust-hive logs [ENV_NAME] sdk
 
-OAuth is a binary in the `core` Rust crate, not a separate `oauth/` workspace.
-
-## Ports and forwarding
-
-Each environment receives a 1000-port range. The first starts at 10000, the second at 11000, and
-so on. Prefer `dust-hive status [ENV_NAME]` and `dust-hive url [ENV_NAME]` over hard-coding its
-allocated ports.
-
-When forwarding is enabled, the standard development ports map to the selected environment:
-
-| Port | Service |
-| --- | --- |
-| 3000 | Public proxy |
-| 3001 | Core |
-| 3002 | Connectors |
-| 3006 | OAuth |
-| 3007 | Viz |
-| 3010 | Poke SPA |
-| 3011 | Main SPA |
-| 6006 | Storybook |
-
-`dust-hive warm` normally starts forwarding unless passed `--no-forward`, but it does not change
-forwarding when the environment is already warm. Use `dust-hive forward [ENV_NAME]` to switch
-explicitly. Before switching, run `dust-hive forward status`. If another environment owns the
-standard ports, ask the user before changing it.
-
-## Checks and tests
-
-Use the applicable workspace `AGENTS.md`, `CODING_RULES.md`, and `package.json` scripts. The web
-application is split across the `front` library, the Hono `front-api` service, and the Vite
-`front-spa` applications. Current focused checks include:
-
-```bash
-npm run format:changed
+# Front library and services
 npm -w front run tsgo -- --noEmit
 npm -w front-api run tsgo -- --noEmit
 npm -w front-spa run tsgo -- --noEmit
-npm -w connectors run build
+
+# Core and OAuth (Rust)
 cd core && cargo check && cargo clippy
+
+# Connectors
+npm -w connectors run build  # Type-check + build
 ```
 
-For dust-hive itself, run `bun run check` from `x/henry/dust-hive`.
-
-The shared test Postgres and Redis services are started by `dust-hive up` and listen on ports 5433
-and 6479. Each Hive gets its own front test database. The generated environment exports
-`TEST_FRONT_DATABASE_URI` and `TEST_REDIS_URI`, and the workspace test scripts apply them:
-
+### Quick health check after warming:
 ```bash
-cd front && npm run test -- path/to/test.test.ts
-cd front-api && npm run test -- path/to/test.test.ts
+curl -sf http://localhost:10000/api/healthz  # front API through proxy
+curl -sf http://localhost:10001/             # core
 ```
 
-Front tests can run in a cold environment; warming the full application is unnecessary.
+## Running Front Tests in Cold Environments
 
-## Dependencies and generated configuration
+The `front` project requires a Postgres database and Redis to run tests. dust-hive provides **shared test containers** that allow running front tests without warming up the full environment.
 
-Do not run `npm install` directly in a Hive worktree. Run `dust-hive sync` from a clean main branch
-in the main repository to pull changes, update root dependencies, rebuild cached Rust binaries, and
-refresh the installed dust-hive command. Then use this command to restore an environment's
-dependency links and copy current local agent configuration:
+### How it works
+
+- A shared Postgres container runs on port **5433** (started by `dust-hive up`)
+- A shared Redis container runs on port **6479** (started by `dust-hive up`)
+- Each environment gets its own test database: `dust_front_test_{env_name}`
+- `TEST_FRONT_DATABASE_URI` and `TEST_REDIS_URI` are already set in each environment's `env.sh`
+
+### Running front tests
 
 ```bash
+# From any cold environment, run front tests directly
+cd front && npm run test
+
+# Run specific test file
+cd front && npm run test -- lib/resources/user_resource.test.ts
+
+# Run with verbose output
+cd front && npm run test -- --reporter verbose path/to/test.test.ts
+```
+
+**No need to warm the environment** - `dust-hive up` starts the shared test Postgres and Redis.
+
+### Troubleshooting front tests
+
+If front tests fail with database connection errors:
+1. Check if test postgres is running: `docker ps | grep dust-hive-test-postgres`
+2. If not running, start the shared services: `dust-hive up`
+3. Verify the database exists: `docker exec dust-hive-test-postgres psql -U test -l`
+
+## Known Issues
+
+### Node modules structure
+
+In dust-hive environments, dependencies are shared with the main repo:
+- Root packages resolve from the main repo's `node_modules`
+- Workspace-level `node_modules` use shallow copies when needed
+- `@dust-tt` packages point to the current worktree
+
+Do not run `npm install` directly in a Hive worktree:
+```bash
+# From a clean main repository
+dust-hive sync
 dust-hive refresh [ENV_NAME]
 ```
 
-After a rebase or another Git operation that changes the SDK without triggering its watcher,
-restart it with `dust-hive restart [ENV_NAME] sdk`.
+### SDK watcher doesn't detect changes after git rebase
 
-When documentation and behavior disagree, use `dust-hive --help` for commands and inspect
-`x/henry/dust-hive/src/lib/services.ts`, `x/henry/dust-hive/src/lib/registry.ts`, and
-`x/henry/dust-hive/src/lib/ports.ts` for the current service and port definitions.
+The SDK watcher relies on filesystem events. When running `git rebase`, `git pull`, or `git checkout`, it may not detect file changes.
+
+**Symptoms**: Type errors in front about missing types that should exist in the SDK.
+
+**Solution**: Restart the SDK watcher after git operations that change SDK files:
+```bash
+dust-hive restart [ENV_NAME] sdk
+```
+
+Or manually trigger a rebuild:
+```bash
+touch sdks/js/src/types.ts
+```
