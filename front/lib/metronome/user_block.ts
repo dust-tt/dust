@@ -42,14 +42,8 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  WorkspacePoolCreditState,
-  WorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
-import {
-  isWorkspacePoolCreditState,
-  isWorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
+import { isWorkspacePoolCreditState } from "@app/types/credits";
 import type { UserCreditState } from "@app/types/memberships";
 import {
   isSpendingFromPersonalSeat,
@@ -112,12 +106,6 @@ function buildWorkspaceCreditPoolStatusKey(workspaceId: string): string {
 
 function buildUserCreditStateKey(workspaceId: string, userId: string): string {
   return `metronome:user_credit_state:${workspaceId}:${userId}`;
-}
-
-function buildWorkspaceProgrammaticCreditStatusKey(
-  workspaceId: string
-): string {
-  return `metronome:programmatic_credit_status:${workspaceId}`;
 }
 
 function buildWorkspaceBalanceThresholdReachedKey(workspaceId: string): string {
@@ -211,36 +199,6 @@ export async function isWorkspaceBalanceThresholdReached(
   const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
     client.get(buildWorkspaceBalanceThresholdReachedKey(workspaceId))
   );
-  return val === "1";
-}
-
-// Workspace programmatic 80% warning — set when the warning alert fires,
-// cleared on cap reset or reconcile. Redis-only; no DB fallback (cold miss
-// reads as false). Drives the banner independently of the throttling states.
-
-function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
-  return `metronome:programmatic_warning:${workspaceId}`;
-}
-
-export async function setWorkspaceProgrammaticWarningReached(
-  workspaceId: string
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "1");
-}
-
-export async function clearWorkspaceProgrammaticWarningReached(
-  workspaceId: string
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "0");
-}
-
-export async function isWorkspaceProgrammaticWarningReachedByMetronome(
-  workspaceId: string
-): Promise<boolean> {
-  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildWorkspaceProgrammaticWarningKey(workspaceId))
-  );
-  // Redis miss (null) returns false: prefer not showing the banner over a false positive on cache wipe.
   return val === "1";
 }
 
@@ -574,56 +532,6 @@ export async function getWorkspaceCreditPoolStatus(
   const status = workspace.poolCreditState;
   await setFlag(buildWorkspaceCreditPoolStatusKey(workspaceId), status);
   return status;
-}
-
-// Workspace programmatic credit state (monthly cap).
-
-export async function setWorkspaceProgrammaticCreditStatus(
-  workspaceId: string,
-  status: WorkspaceProgrammaticCreditState
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
-}
-
-export async function getWorkspaceProgrammaticCreditStatus(
-  workspaceId: string
-): Promise<WorkspaceProgrammaticCreditState> {
-  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildWorkspaceProgrammaticCreditStatusKey(workspaceId))
-  );
-
-  if (cached && isWorkspaceProgrammaticCreditState(cached)) {
-    return cached;
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      workspaceProgrammaticCreditStatusCacheHit: false,
-    },
-    "[MetronomeUserBlock] Cache miss during programmatic credit status check, falling back to DB"
-  );
-
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    logger.warn(
-      { workspaceId },
-      "[MetronomeUserBlock] Workspace not found during programmatic credit status cache read-through fallback"
-    );
-    return "active";
-  }
-
-  const status = workspace.programmaticCreditState;
-  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
-  return status;
-}
-
-export async function isProgrammaticApiBlockedByMetronome(
-  workspaceId: string
-): Promise<boolean> {
-  // getWorkspaceProgrammaticCreditStatus has its own DB fallback and cache repopulation.
-  const status = await getWorkspaceProgrammaticCreditStatus(workspaceId);
-  return status === "depleted";
 }
 
 // Workspace-pool-only read for API calls (no per-user cap).

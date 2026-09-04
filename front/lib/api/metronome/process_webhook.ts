@@ -13,10 +13,6 @@ import {
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
   dispatchPoolExhausted,
-  dispatchProgrammaticCapReached,
-  dispatchProgrammaticCapReset,
-  dispatchProgrammaticLowBalance,
-  dispatchProgrammaticWarning,
   dispatchSeatBalanceExhausted,
   dispatchSeatBalanceResolved,
   syncPoolCreditStateFromBalance,
@@ -31,14 +27,6 @@ import {
   markAwuPurchaseAttemptSucceeded,
 } from "@app/lib/credits/awu_purchase_status";
 import { resolvePerUserCreditAlertUserId } from "@app/lib/metronome/alerts/per_user_credit_balance";
-import {
-  CRITICAL_BALANCE_OFFSET,
-  LOW_BALANCE_OFFSET,
-  PROGRAMMATIC_CAP_ALERT_NAME,
-  PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME,
-  PROGRAMMATIC_LOW_BALANCE_ALERT_NAME,
-  PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME,
-} from "@app/lib/metronome/alerts/programmatic_cap";
 import { USER_AWU_WARNING_PERCENTAGE } from "@app/lib/metronome/alerts/spend_limits";
 import { emitSubscriptionChangedAuditEvent } from "@app/lib/metronome/audit";
 import {
@@ -63,11 +51,8 @@ import {
   PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
-  USAGE_TYPE_GROUP_KEY,
-  USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
-import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { setUserNearLimit } from "@app/lib/metronome/user_block";
@@ -93,54 +78,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Commit, Credit } from "@metronome/sdk/resources";
-
-// Programmatic cap alerts share the AWU credit type with PAYG cap alerts;
-// the `usage_type=programmatic` group filter is what distinguishes them.
-function isProgrammaticMonthlyCap(
-  event: Extract<
-    MetronomeWebhookEvent,
-    {
-      type:
-        | "alerts.spend_threshold_reached"
-        | "alerts.spend_threshold_resolved";
-    }
-  >
-): boolean {
-  if (event.properties.credit_type_id !== getCreditTypeAwuId()) {
-    return false;
-  }
-  return (
-    event.properties.group_values?.some(
-      (g) =>
-        g.key === USAGE_TYPE_GROUP_KEY && g.value === USAGE_TYPE_PROGRAMMATIC
-    ) ?? false
-  );
-}
-
-// Map a programmatic cap alert name to the state-machine event it should
-// dispatch. Returns null when the alert name doesn't match any of the three
-// FSM-driving programmatic alerts (the warning alert is handled separately
-// since it does not drive the state machine).
-function programmaticEventFromAlertName(
-  alertName: string
-): ProgrammaticCreditEvent | null {
-  if (alertName.startsWith(PROGRAMMATIC_CAP_ALERT_NAME)) {
-    return { type: "programmatic_cap_reached" };
-  }
-  if (alertName.startsWith(PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME)) {
-    return {
-      type: "programmatic_low_balance",
-      remainingCredits: CRITICAL_BALANCE_OFFSET,
-    };
-  }
-  if (alertName.startsWith(PROGRAMMATIC_LOW_BALANCE_ALERT_NAME)) {
-    return {
-      type: "programmatic_low_balance",
-      remainingCredits: LOW_BALANCE_OFFSET,
-    };
-  }
-  return null;
-}
 
 class ProcessMetronomeWebhookError extends Error {
   constructor(
@@ -908,50 +845,6 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
-      } else if (isProgrammaticMonthlyCap(event)) {
-        // Programmatic monthly cap alerts. Three alerts exist per workspace
-        // with distinct names; route to the matching dispatcher.
-        //
-        // The warning alert (80% of cap) is informational only — it does not
-        // drive the credit state machine, so it's handled separately from the
-        // three FSM-driving alerts (cap reached / low / critical).
-        const alertName = event.properties.alert_name ?? "";
-        if (alertName.startsWith(PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME)) {
-          await dispatchProgrammaticWarning({ workspace, eventId: event.id });
-        } else {
-          const programmaticEvent = programmaticEventFromAlertName(alertName);
-          if (programmaticEvent) {
-            switch (programmaticEvent.type) {
-              case "programmatic_cap_reached":
-                await dispatchProgrammaticCapReached({
-                  workspace,
-                  eventId: event.id,
-                });
-                break;
-              case "programmatic_low_balance":
-                await dispatchProgrammaticLowBalance({
-                  workspace,
-                  remainingCredits: programmaticEvent.remainingCredits,
-                });
-                break;
-              case "programmatic_cap_reset":
-                // never happens in spend_threshold_reached
-                // dispatch below by spend_threshold_resolved case
-                break;
-              default:
-                assertNever(programmaticEvent);
-            }
-          }
-        }
-        logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            alertName,
-            currentSpend: event.properties.current_spend,
-          },
-          "[Metronome Webhook] spend_threshold_reached: programmatic alert dispatched"
-        );
       } else {
         await dispatchPaygCapReached({ workspace });
         logger.info(
@@ -996,12 +889,6 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
-      } else if (isProgrammaticMonthlyCap(event)) {
-        await dispatchProgrammaticCapReset({ workspace });
-        logger.info(
-          { eventId: event.id, workspaceId: workspace.sId },
-          "[Metronome Webhook] spend_threshold_resolved: programmatic cap reset dispatched"
-        );
       } else {
         logger.info(
           { eventId: event.id, workspaceId: workspace.sId },

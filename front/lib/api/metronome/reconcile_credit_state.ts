@@ -1,6 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
-import { WARNING_BALANCE_RATIO } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
   listCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
@@ -13,17 +12,8 @@ import {
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
-import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
-import {
-  expectedProgrammaticCreditStateFromUsage,
-  setProgrammaticCreditStateReconciled,
-} from "@app/lib/metronome/programmatic_credit_state_machine";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
-import {
-  clearWorkspaceProgrammaticWarningReached,
-  setUserNearLimit,
-  setWorkspaceProgrammaticWarningReached,
-} from "@app/lib/metronome/user_block";
+import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import { setUserCreditStateReconciled } from "@app/lib/metronome/user_credit_state_machine";
 import {
   expectedPoolCreditStateFromBalance,
@@ -39,10 +29,7 @@ import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effe
 import { heartbeat } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  WorkspacePoolCreditState,
-  WorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type {
   MembershipSeatType,
   NormalizedPoolLimitSeatType,
@@ -60,11 +47,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
-export const RECONCILE_CREDIT_STATE_TARGETS = [
-  "pool",
-  "programmatic",
-  "user",
-] as const;
+export const RECONCILE_CREDIT_STATE_TARGETS = ["pool", "user"] as const;
 
 export type ReconcileCreditStateTarget =
   (typeof RECONCILE_CREDIT_STATE_TARGETS)[number];
@@ -79,18 +62,6 @@ type PoolReconcileReport = {
   executed: boolean;
   balanceAwu: number;
   paygEnabled: boolean;
-};
-
-type ProgrammaticReconcileReport = {
-  target: "programmatic";
-  previousState: WorkspaceProgrammaticCreditState;
-  expectedState: WorkspaceProgrammaticCreditState;
-  newState: WorkspaceProgrammaticCreditState;
-  wasInvalid: boolean;
-  corrected: boolean;
-  executed: boolean;
-  monthlyCapCredits: number;
-  spentAwuCredits: number | null;
 };
 
 type UserReconcileReport = {
@@ -115,10 +86,7 @@ type UserReconcileReport = {
   consumedAwuCredits: number | null;
 };
 
-type ReconcileCreditStateReport =
-  | PoolReconcileReport
-  | ProgrammaticReconcileReport
-  | UserReconcileReport;
+type ReconcileCreditStateReport = PoolReconcileReport | UserReconcileReport;
 
 // Treat the legacy "normal" alias as its canonical "on_pool" value when
 // comparing the persisted state with the expected one (see USER_CREDIT_STATES).
@@ -154,13 +122,6 @@ export async function reconcileCreditState({
   switch (target) {
     case "pool":
       return reconcilePool({ auth, workspace, metronomeCustomerId, execute });
-    case "programmatic":
-      return reconcileProgrammatic({
-        workspace,
-        metronomeCustomerId,
-        metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
-        execute,
-      });
     case "user":
       if (!userId) {
         return new Err(
@@ -227,90 +188,6 @@ async function reconcilePool({
     executed: execute,
     balanceAwu,
     paygEnabled,
-  });
-}
-
-export async function reconcileProgrammatic({
-  workspace,
-  metronomeCustomerId,
-  metronomeContractId,
-  execute,
-}: {
-  workspace: WorkspaceResource;
-  metronomeCustomerId: string;
-  metronomeContractId: string | null;
-  execute: boolean;
-}): Promise<Result<ProgrammaticReconcileReport, Error>> {
-  const config = await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
-    workspace.id
-  );
-  // The cap is non-nullable and defaults to 0; a workspace with no config row
-  // reads as 0 (no programmatic access).
-  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? 0;
-
-  const previousState = workspace.programmaticCreditState;
-
-  // Cap of 0 → always depleted (no programmatic access); no spend to read. Same
-  // when there is no contract to meter spend against.
-  if (monthlyCapCredits === 0 || !metronomeContractId) {
-    if (execute) {
-      await setProgrammaticCreditStateReconciled(workspace, "depleted");
-      void clearWorkspaceProgrammaticWarningReached(workspace.sId);
-    }
-    const newState = workspace.programmaticCreditState;
-    return new Ok({
-      target: "programmatic",
-      previousState,
-      expectedState: "depleted",
-      newState,
-      wasInvalid: previousState !== "depleted",
-      corrected: previousState !== newState,
-      executed: execute,
-      monthlyCapCredits,
-      spentAwuCredits: null,
-    });
-  }
-
-  const spendResult = await fetchProgrammaticAwuSpend({
-    workspaceId: workspace.sId,
-    metronomeCustomerId,
-  });
-  if (spendResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to read programmatic spend: ${spendResult.error.message}`
-      )
-    );
-  }
-  const spentAwuCredits = spendResult.value ?? 0;
-  const expectedState = expectedProgrammaticCreditStateFromUsage({
-    spentAwuCredits,
-    monthlyCapCredits,
-  });
-
-  let newState = previousState;
-  if (execute) {
-    await setProgrammaticCreditStateReconciled(workspace, expectedState);
-    newState = workspace.programmaticCreditState;
-    const warningReached =
-      spentAwuCredits >= monthlyCapCredits * WARNING_BALANCE_RATIO;
-    if (warningReached) {
-      void setWorkspaceProgrammaticWarningReached(workspace.sId);
-    } else {
-      void clearWorkspaceProgrammaticWarningReached(workspace.sId);
-    }
-  }
-
-  return new Ok({
-    target: "programmatic",
-    previousState,
-    expectedState,
-    newState,
-    wasInvalid: previousState !== expectedState,
-    corrected: previousState !== newState,
-    executed: execute,
-    monthlyCapCredits,
-    spentAwuCredits,
   });
 }
 

@@ -20,9 +20,9 @@ export const reconcileCreditStatePlugin = createPlugin({
       "Debug a workspace credit state machine. Recomputes the state the " +
       "workspace *should* be in from the live source of truth and compares " +
       "it with the persisted state. Pick the target: 'pool' (live Metronome " +
-      "AWU balance + PAYG), 'programmatic' (programmatic cap alert evaluation " +
-      "states), or 'user' (effective per-user cap vs. usage — requires a User " +
-      "sId; only the capped/uncapped dimension is recomputed). 'check' reports " +
+      "AWU balance + PAYG) or 'user' (effective per-user cap vs. usage — " +
+      "requires a User sId; only the seat/pool dimension is recomputed). " +
+      "'check' reports " +
       "drift without writing; 'execute' reconciles through the same machinery " +
       "the webhooks use, then reports the before/after states.",
     resourceTypes: ["workspaces"],
