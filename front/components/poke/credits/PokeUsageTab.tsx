@@ -5,6 +5,7 @@ import { PokeApiKeysUsageTable } from "@app/components/poke/credits/PokeApiKeysU
 import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
+import { RateLimiterStateChip } from "@app/components/poke/credits/RateLimiterStateChip";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import type { RateLimiterState } from "@app/lib/api/credits/members_usage";
 import type {
@@ -77,18 +78,6 @@ function SpendCountersInline({
     </span>
   );
 }
-
-// The rate-limiter's verdict, rendered as a chip. Labels distinguish capped vs
-// near-limit (both warning-toned). Mirrors PokeMembersUsageTable /
-// PokeApiKeysUsageTable.
-const RATE_LIMITER_STATE_CHIP: Record<
-  RateLimiterState,
-  { color: "success" | "warning"; label: string }
-> = {
-  capped: { color: "warning", label: "capped" },
-  near_limit: { color: "warning", label: "near limit" },
-  ok: { color: "success", label: "ok" },
-};
 
 type CreditStateChipColor = "success" | "warning" | "warning" | "info";
 
@@ -167,19 +156,9 @@ function PokeCreditStatesCard({
             // Flag on: the rate-limiter is authoritative, so show its verdict
             // and do not read the Metronome `programmaticCreditState`. The RL
             // state already encodes near-limit, so no separate warning chip.
-            programmaticRateLimiterState !== null ? (
-              <Chip
-                size="xs"
-                color={
-                  RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].color
-                }
-                label={
-                  RATE_LIMITER_STATE_CHIP[programmaticRateLimiterState].label
-                }
-              />
-            ) : (
-              <span className="text-xs text-muted-foreground">—</span>
-            )
+            <RateLimiterStateChip
+              rateLimiterState={programmaticRateLimiterState}
+            />
           ) : (
             <>
               <Chip

@@ -182,14 +182,11 @@ async function readProgrammaticSpendLimitCountWithLazySeed(
 /**
  * Synchronous, Metronome-independent enforcement of the workspace programmatic
  * spend cap, read at message-send time from the Redis fixed-window counter over
- * the current contract billing cycle. Runs alongside the Metronome-driven
- * `isProgrammaticApiBlocked` as a faster, independent backup.
+ * the current contract billing cycle.
  *
- * Only enforces a *positive* cap: a cap of 0 means "always depleted", which is
- * owned by the programmatic credit-state machine (`isProgrammaticApiBlocked`),
- * not a threshold — so the backup defers to it there. Returns `false` (does not
- * block) with no positive cap, no billing period, or on a Redis read error
- * (fail-open).
+ * A cap of 0 (the default) blocks all programmatic access — the workspace is
+ * always over its cap. For a positive cap, returns `false` (does not block) when
+ * the billing period can't be resolved or on a Redis read error (fail-open).
  */
 export async function isProgrammaticSpendLimitRateCapReached(
   auth: Authenticator
@@ -202,8 +199,9 @@ export async function isProgrammaticSpendLimitRateCapReached(
  * `isProgrammaticSpendLimitRateCapReached`: the same Redis fixed-window counter
  * compared against `WARNING_BALANCE_RATIO` (80%) of the monthly cap instead of
  * the full cap. Rate-limiter counterpart of the Metronome-driven
- * `isWorkspaceProgrammaticWarningReached`. Returns `false` with no positive cap,
- * no billing period, or on a Redis read error (fail-open).
+ * `isWorkspaceProgrammaticWarningReached`. A cap of 0 is fully blocked, not
+ * "near limit", so it reports `false`; also `false` with no billing period or on
+ * a Redis read error (fail-open).
  */
 export async function isProgrammaticSpendLimitRateWarningReached(
   auth: Authenticator
@@ -215,11 +213,10 @@ export async function isProgrammaticSpendLimitRateWarningReached(
 
 /**
  * Reads the workspace programmatic spend-cap counter over the current contract
- * billing cycle and compares it against `ratio × monthly cap`. Only enforces a
- * *positive* cap: a cap of 0 means "always depleted", owned by the programmatic
- * credit-state machine (`isProgrammaticApiBlocked`), so this defers there.
- * Returns `false` with no positive cap, no billing period, or on a Redis read
- * error (fail-open).
+ * billing cycle and compares it against `ratio × monthly cap`. A cap of 0 (the
+ * default) blocks all programmatic access: the cap check (ratio 1) reports
+ * reached, the warning check (ratio < 1) does not. For a positive cap, returns
+ * `false` with no billing period or on a Redis read error (fail-open).
  */
 async function isProgrammaticSpendLimitRateThresholdReached(
   auth: Authenticator,
@@ -230,8 +227,11 @@ async function isProgrammaticSpendLimitRateThresholdReached(
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   const cap = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  // A cap of 0 (the default) blocks all programmatic access — the workspace is
+  // always over its cap. There is no "near limit" band below it, so the cap
+  // check (ratio 1) reports reached while the warning check (ratio < 1) does not.
   if (cap <= 0) {
-    return false;
+    return ratio >= 1;
   }
 
   const bounds = await resolveSpendLimitCycleBounds(workspace);
