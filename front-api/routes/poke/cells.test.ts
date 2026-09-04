@@ -13,18 +13,13 @@ vi.mock("@app/lib/api/cells/config", async (importOriginal) => {
       getCurrentCell: vi.fn().mockReturnValue({
         name: "cell-00000",
         region: "us-central1",
-        url: "https://cell-00000.dust.tt",
+        url: "http://localhost:3000",
       }),
       getCellInfo: vi.fn((cell: "cell-00000" | "cell-00001") => ({
         name: cell,
         region: cell === "cell-00000" ? "us-central1" : "europe-west1",
-        url: `https://${cell}.dust.tt`,
+        url: "http://localhost:3000",
       })),
-      getCellUrl: vi.fn((cell: "cell-00000" | "cell-00001") =>
-        cell === "cell-00000"
-          ? "https://cell-00000.dust.tt"
-          : "https://cell-00001.dust.tt"
-      ),
     },
   };
 });
@@ -52,23 +47,22 @@ describe("GET /api/poke/cells", () => {
     expect(body.currentCell).toEqual({
       name: "cell-00000",
       region: "us-central1",
-      url: "https://cell-00000.dust.tt",
+      url: "http://localhost:3000",
     });
     expect(body.cells).toEqual([
       {
         name: "cell-00000",
         region: "us-central1",
-        url: "https://cell-00000.dust.tt",
+        url: "http://localhost:3000",
       },
       {
         name: "cell-00001",
         region: "europe-west1",
-        url: "https://cell-00001.dust.tt",
+        url: "http://localhost:3000",
       },
     ]);
     expect(cellsConfig.getCurrentCell).toHaveBeenCalled();
     expect(cellsConfig.getCellInfo).toHaveBeenCalled();
-    expect(cellsConfig.getCellUrl).toHaveBeenCalled();
   });
 
   it("returns 401 when the user is not a super user", async () => {

@@ -9,16 +9,9 @@ const app = pokeApp();
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeCellsResponseType> => {
-  const currentCell = cellsConfig.getCurrentCell();
   return ctx.json({
-    currentCell: {
-      ...currentCell,
-      url: cellsConfig.getCellUrl(currentCell.name),
-    },
-    cells: SUPPORTED_CELLS.map((cell) => ({
-      ...cellsConfig.getCellInfo(cell),
-      url: cellsConfig.getCellUrl(cell),
-    })),
+    currentCell: cellsConfig.getCurrentCell(),
+    cells: SUPPORTED_CELLS.map((cell) => cellsConfig.getCellInfo(cell)),
   });
 });
 
