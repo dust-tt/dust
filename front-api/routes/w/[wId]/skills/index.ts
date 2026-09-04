@@ -37,6 +37,7 @@ import detect from "./detect";
 import importRoute from "./import";
 import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
+import search from "./search";
 import similar from "./similar";
 
 const SkillStatusSchema = z
@@ -116,6 +117,7 @@ app.route("/detect", detect);
 app.route("/import", importRoute);
 app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
+app.route("/search", search);
 app.route("/similar", similar);
 
 /** @ignoreswagger */
