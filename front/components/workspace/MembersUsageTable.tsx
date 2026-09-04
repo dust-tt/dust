@@ -18,11 +18,7 @@ import type {
   MemberFairUseUsage,
   MemberUsageType,
 } from "@app/lib/api/credits/members_usage";
-import {
-  formatCreditResetCountdown,
-  formatCredits,
-  formatCreditValue,
-} from "@app/lib/client/credits";
+import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
   getUserModelTierMenuItemsWithSelection,
@@ -877,7 +873,7 @@ function buildFairUseCreditsColumn(
           </DataTable.CellContent>
         );
       }
-      const { usedCredits, limitCredits, nextResetAt } = fairUse;
+      const { usedCredits, limitCredits, refillSchedule } = fairUse;
       const percentage =
         limitCredits > 0
           ? Math.min(100, (usedCredits / limitCredits) * 100)
@@ -885,9 +881,6 @@ function buildFairUseCreditsColumn(
             ? 100
             : 0;
       const isAtLimit = limitCredits > 0 && usedCredits >= limitCredits;
-      const resetLabel = nextResetAt
-        ? formatCreditResetCountdown(nextResetAt)
-        : null;
       const bar = (
         <ProgressBar
           aria-label="Fair-use credits usage"
@@ -911,7 +904,7 @@ function buildFairUseCreditsColumn(
             <span>{formatCredits(usedCredits)}</span>
             <span>{formatCredits(limitCredits)}</span>
           </div>
-          {resetLabel ? (
+          {refillSchedule.length > 0 ? (
             <Tooltip
               tooltipTriggerAsChild
               trigger={
@@ -919,7 +912,21 @@ function buildFairUseCreditsColumn(
                   {bar}
                 </div>
               }
-              label={resetLabel}
+              label={
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium">Reset schedule:</span>
+                  {refillSchedule.map(({ date, credits }) => (
+                    <span key={date}>
+                      {new Date(date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        timeZone: "UTC",
+                      })}
+                      : +{formatCredits(credits)}
+                    </span>
+                  ))}
+                </div>
+              }
             />
           ) : (
             <div className="flex h-3 w-full items-center">{bar}</div>

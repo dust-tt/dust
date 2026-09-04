@@ -333,6 +333,52 @@ export type WeightedRateLimiterUsage = {
   oldestTimestampMs: number | null;
 };
 
+export type WeightedRateLimiterEntry = {
+  timestampMs: number;
+  microCredits: number;
+};
+
+export async function getWeightedRateLimiterEntries({
+  key,
+  timeframeSeconds,
+}: {
+  key: string;
+  timeframeSeconds: number;
+}): Promise<Result<WeightedRateLimiterEntry[], Error>> {
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    return new Err(new Error("timeframeSeconds must be a positive integer."));
+  }
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const redisKey = makeRateLimiterKey(key);
+    const trimBeforeMs = Date.now() - timeframeSeconds * 1000;
+    const entries = await redis.zRangeWithScores(
+      redisKey,
+      trimBeforeMs,
+      "+inf",
+      { BY: "SCORE" }
+    );
+
+    const parsedEntries: WeightedRateLimiterEntry[] = [];
+    for (const { value: member, score: timestampMs } of entries) {
+      const sepIndex = member.indexOf(":");
+      if (sepIndex === -1) {
+        continue;
+      }
+      const microCredits = Number(member.slice(0, sepIndex));
+      if (!Number.isFinite(microCredits)) {
+        continue;
+      }
+      parsedEntries.push({ timestampMs, microCredits });
+    }
+
+    return new Ok(parsedEntries);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 /**
  * Reads the weighted total (in microCredits) and oldest timestamp of the
  * amount-carrying entries written by `addRateLimiterCount`. Each entry is
@@ -476,6 +522,13 @@ export async function getWeightedRateLimiterUsageForKeys({
         );
       }
       const replies = parsedReplies.data;
+      if (replies.length !== batchKeys.length) {
+        return new Err(
+          new Error(
+            `Unexpected reply count from getWeightedRateLimiterUsageForKeys: expected ${batchKeys.length}, got ${replies.length}.`
+          )
+        );
+      }
       for (const [index, key] of batchKeys.entries()) {
         const [count, oldestTimestampMs] = replies[index];
         usageByKey.set(key, {

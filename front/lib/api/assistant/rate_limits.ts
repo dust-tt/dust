@@ -81,8 +81,8 @@ export const makeAgentMentionsRateLimitKeyForWorkspace = (
 };
 
 export const makeFairUseAwuCreditsRateLimitKeyForUser = (
-  owner: Pick<LightWorkspaceType, "id">,
-  user: Pick<UserType, "id">,
+  owner: LightWorkspaceType,
+  user: UserType,
   maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType
 ) => {
   // `:v2_microcredits` marks the switch to weighted amount-carrying entries

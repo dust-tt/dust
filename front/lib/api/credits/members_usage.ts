@@ -197,6 +197,7 @@ export type MemberFairUseUsage = {
   timeframe: MaxAwuCreditsTimeframeType;
   windowDays: number;
   nextResetAt: string | null;
+  refillSchedule: { date: string; credits: number }[];
 };
 
 export type GetMembersUsageResponseBody = {
@@ -2069,7 +2070,7 @@ async function resolveMembersUsagePageUsers({
       // Count-only and pipelined into a single Redis round-trip
       const usedCreditsByUserId = await getFairUseAwuCreditsUsedCountsByUser({
         workspace,
-        users: allUsers.map((u) => ({ id: u.id, sId: u.sId })),
+        users: allUsers.map((u) => u.toJSON()),
         plan: auth.plan(),
       });
       for (const u of allUsers) {
@@ -2399,6 +2400,7 @@ export async function getMembersUsage({
                 getTimeframeSecondsFromLiteral(status.timeframe) /
                 (ONE_DAY_MS / 1000),
               nextResetAt: status.nextResetAt ?? null,
+              refillSchedule: status.refillSchedule ?? [],
             }
       );
     }

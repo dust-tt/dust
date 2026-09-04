@@ -33,8 +33,10 @@ import { microCreditsToCredits } from "@app/lib/credits/units";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { WeightedRateLimiterEntry } from "@app/lib/utils/rate_limiter";
 import {
   getTimeframeSecondsFromLiteral,
+  getWeightedRateLimiterEntries,
   getWeightedRateLimiterUsage,
   getWeightedRateLimiterUsageForKeys,
 } from "@app/lib/utils/rate_limiter";
@@ -68,6 +70,8 @@ export type FairUseAwuCreditsStatus = {
   timeframe: MaxAwuCreditsTimeframeType;
   count: number;
   nextResetAt?: string | null;
+  // Optional for compatibility with clients deployed before the refill schedule was added.
+  refillSchedule?: { date: string; credits: number }[];
 };
 
 const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
@@ -240,6 +244,27 @@ export async function isWorkspaceProgrammaticWarningReachedByMetronome(
   return val === "1";
 }
 
+function getFairUseCreditsRefillSchedule({
+  entries,
+  windowMs,
+}: {
+  entries: WeightedRateLimiterEntry[];
+  windowMs: number;
+}): { date: string; credits: number }[] {
+  const creditsByRefillDay = new Map<string, number>();
+  for (const { timestampMs, microCredits } of entries) {
+    const date = new Date(timestampMs + windowMs).toISOString().slice(0, 10);
+    creditsByRefillDay.set(
+      date,
+      (creditsByRefillDay.get(date) ?? 0) + microCreditsToCredits(microCredits)
+    );
+  }
+
+  return Array.from(creditsByRefillDay.entries())
+    .map(([date, credits]) => ({ date, credits }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export async function getFairUseAwuCreditsStatus({
   workspace,
   user,
@@ -266,17 +291,22 @@ export async function getFairUseAwuCreditsStatus({
   }
 
   const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
-  const result = await getWeightedRateLimiterUsage({
-    key: makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
-    timeframeSeconds,
-  });
+  const key = makeFairUseAwuCreditsRateLimitKeyForUser(
+    workspace,
+    user,
+    timeframe
+  );
+  const [usageResult, entriesResult] = await Promise.all([
+    getWeightedRateLimiterUsage({ key, timeframeSeconds }),
+    getWeightedRateLimiterEntries({ key, timeframeSeconds }),
+  ]);
 
-  if (result.isErr()) {
+  if (usageResult.isErr()) {
     logger.error(
       {
         workspaceId: workspace.sId,
         userId: user.sId,
-        error: result.error,
+        error: usageResult.error,
       },
       "Failed to read fair-use AWU credits usage status."
     );
@@ -289,18 +319,37 @@ export async function getFairUseAwuCreditsStatus({
     };
   }
 
+  if (entriesResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        error: entriesResult.error,
+      },
+      "Failed to read fair-use AWU credits refill schedule."
+    );
+  }
+
+  const windowMs = timeframeSeconds * 1000;
+
   // The counter stores microCredits; the status stays credit-denominated (with
   // decimals), so convert before capping against the credit limit.
   return {
     limit,
     timeframe,
-    count: Math.min(microCreditsToCredits(result.value.count), limit),
+    count: Math.min(microCreditsToCredits(usageResult.value.count), limit),
     nextResetAt:
-      result.value.oldestTimestampMs === null
+      usageResult.value.oldestTimestampMs === null
         ? null
         : new Date(
-            result.value.oldestTimestampMs + timeframeSeconds * 1000
+            usageResult.value.oldestTimestampMs + windowMs
           ).toISOString(),
+    refillSchedule: entriesResult.isOk()
+      ? getFairUseCreditsRefillSchedule({
+          entries: entriesResult.value,
+          windowMs,
+        })
+      : [],
   };
 }
 
@@ -310,8 +359,8 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
   users,
   plan,
 }: {
-  workspace: Pick<LightWorkspaceType, "id">;
-  users: Pick<UserType, "id" | "sId">[];
+  workspace: LightWorkspaceType;
+  users: UserType[];
   plan: PlanType | null;
 }): Promise<Map<string, number>> {
   if (!plan || plan.limits.assistant.maxAwuCredits === -1) {
