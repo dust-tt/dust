@@ -4,6 +4,7 @@ import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import type * as FrameReactHooks from "@viz/app/lib/frame-runtime/react-hooks";
 import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
 import {
@@ -495,7 +496,7 @@ export function VisualizationWrapper({
             usePodFunction,
             usePodFunctionMutation,
             useUserIdentity,
-          },
+          } satisfies typeof FrameReactHooks,
         } satisfies Record<FrameRuntimeImportName, unknown>;
 
         const refs = extractFileRefs(codeToUse);

@@ -51,6 +51,12 @@ interface BundleModuleParams {
    * root-relative path and raw contents, returns the (possibly rewritten) contents.
    */
   transform?: (relPath: string, content: string) => string;
+  /**
+   * Gate for non-relative specifiers, the engine's other consumer-specific seam. Returns an error
+   * message for an import the runtime cannot provide, or null to leave it external. Frames use it
+   * to reject packages missing from the renderer's import map at build time.
+   */
+  unsupportedExternalMessage?: (specifier: string) => string | null;
 }
 
 // Extensions probed, in order, when a relative import omits one (e.g. `./Chart` -> `./Chart.tsx`).
@@ -129,6 +135,7 @@ export async function bundleModule({
   reader,
   esbuild: esbuildOptions,
   transform,
+  unsupportedExternalMessage,
 }: BundleModuleParams): Promise<Result<{ code: string }, BundleError>> {
   const index = new Set(await reader.list());
   if (!index.has(entryRelPath)) {
@@ -201,6 +208,11 @@ export async function bundleModule({
         }
 
         // Non-relative specifiers stay external (resolved by the runtime import scope).
+        const unsupportedMessage = unsupportedExternalMessage?.(args.path);
+        if (unsupportedMessage) {
+          return { errors: [{ text: unsupportedMessage }] };
+        }
+
         return { path: args.path, external: true };
       });
 

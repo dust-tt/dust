@@ -16,6 +16,9 @@
 # production
 /build
 
+# generated frame runtime types artifact (see scripts/build-frame-runtime-types.ts)
+/public/frame-runtime/
+
 # misc
 .DS_Store
 *.pem

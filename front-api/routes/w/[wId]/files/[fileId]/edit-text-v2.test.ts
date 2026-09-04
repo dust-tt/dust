@@ -17,7 +17,19 @@ import { getConversationFilesBasePath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Frame UI type checking needs a sandbox and the Viz runtime types artifact; neither exists here.
+vi.mock("@app/lib/api/viz/frame_runtime_types", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/viz/frame_runtime_types")
+    >();
+  return {
+    ...actual,
+    getFrameRuntimeTypesArtifact: vi.fn().mockResolvedValue(null),
+  };
+});
 
 const manifest = JSON.stringify({
   version: 1,
