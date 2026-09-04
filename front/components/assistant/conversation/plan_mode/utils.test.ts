@@ -114,7 +114,7 @@ describe("countProgress", () => {
     });
   });
 
-  it("counts blocked items in the total but not as done", () => {
+  it("counts legacy [!] items in the total but not as done", () => {
     expect(countProgress("1. [!] one\n2. [x] two\n")).toEqual({
       done: 1,
       total: 2,

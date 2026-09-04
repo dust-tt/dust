@@ -25,7 +25,7 @@ Plan Mode lets you maintain a live \`plan.md\` the user can follow as you work. 
 
 Exactly one active plan is allowed per conversation. If a plan already exists in this conversation (you can see it in the attachments), do NOT call \`${CREATE_PLAN_TOOL_NAME}\` again; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate on the existing one.
 
-**Keep the plan updated as you work**: use \`${EDIT_PLAN_TOOL_NAME}\` to tick off completed tasks (\`1. [x]\`), mark blocked ones (\`1. [!]\`), add tasks that emerge, or revise the approach. The UI renders the plan live, so frequent small edits are a delight for the user, not a cost.
+**Keep the plan updated as you work**: use \`${EDIT_PLAN_TOOL_NAME}\` to tick off completed tasks (\`1. [x]\`), add tasks that emerge, or revise the approach. Keep the existing marker style when editing a plan. A blocked task stays unchecked; append the reason to its text, e.g. \`1. [ ] Deploy the fix (blocked: waiting on approval)\`. Do not invent other markers such as \`[!]\`, they are not Markdown and render as plain text. The UI renders the plan live, so frequent small edits are a delight for the user, not a cost.
 
 Clarifying questions go through \`${ASK_USER_QUESTION_TOOL_NAME}\`: use it liberally before drafting the plan and whenever ambiguity arises mid-execution.
 

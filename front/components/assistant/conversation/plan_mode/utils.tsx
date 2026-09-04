@@ -9,9 +9,9 @@ export function extractPlanTitle(content: string | null): string {
 }
 
 // Task markers: numbered `1. [ ]` items (current template) or bulleted `- [ ]` ones (older plans).
-// Total counts every marker (open, done, blocked); done counts only checked boxes. `[!]` is
-// "blocked" by convention and is intentionally excluded from the "done" set so the progress chip
-// surfaces unfinished work.
+// Total counts every marker, done counts only checked boxes. `[!]` was an older "blocked"
+// convention (not GFM, no longer taught to the agent); it still counts as not done so existing
+// plans keep their progress.
 const TASK_TOTAL_REGEX = /^\s*(?:-|\d+\.)\s*\[[ xX!]\]/gm;
 const TASK_DONE_REGEX = /^\s*(?:-|\d+\.)\s*\[[xX]\]/gm;
 
