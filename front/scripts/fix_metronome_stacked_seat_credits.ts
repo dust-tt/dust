@@ -9,22 +9,23 @@
  * candidate and can no longer self-heal it — see `audit_metronome_seat_state.ts`
  * ("over-allocated seats").
  *
- * Detection is grant-history based (authoritative, ES-free): a per-seat
- * recurring credit grants exactly its allocation to whoever is on its
- * subscription at the credit segment start, so a seat holds a stray grant iff it
- * appears in a tier's grant-time assignment but is now on a different tier.
+ * Detection + correction are one IDEMPOTENT reconcile-to-target pass, keyed on
+ * Metronome's OWN per-user consumption (authoritative, not ES). Each seat on a
+ * credit-bearing tier should hold `max(0, homeAllocation - consumed)`; the fix
+ * posts a negative delta to the stray credit equal to the seat's excess above
+ * that target (`max(0, currentBalance - target)`). A seat already at/below
+ * target — fixed by a prior run, empty-origin, or manually — yields ~0 and is
+ * skipped, so re-runs are safe WITHOUT knowing which seats were already fixed.
+ * The claw-back floors at 0, so a healthy seat (balance ≈ allocation - consumed)
+ * is never touched and credit is never added.
  *
- * The correction is IDEMPOTENT via reconcile-to-target: each affected seat
- * should hold `max(0, homeAllocation - consumed)`; the fix posts a negative
- * delta to the stray credit equal to the seat's excess above that target
- * (`max(0, currentBalance - target)`). A seat already at/below target — fixed by
- * a prior run, empty-origin, or manually — yields ~0 and is skipped, so re-runs
- * are safe WITHOUT knowing which seats were already fixed. `consumed` is the
- * analytics figure; because grant-history alone decides WHO is touched and the
- * claw-back is floored at 0, analytics lag can only under-correct — it can never
- * add credit or touch a healthy seat. All corrections on the same stray credit
- * share that credit's segment start as their entry time, so they apply in ONE
- * batched ledger entry per stray credit (write cost is O(stray credits)).
+ * The over-grant equals the STRAY tier's allocation exactly (totalGranted =
+ * homeAllocation + strayAllocation, independent of consumption), which names the
+ * stray tier. Same-family collisions (pro + pro_yearly both 8000) are broken by
+ * which tier has assigned seats — but only as a tiebreaker, since the stray tier
+ * can itself now have 0 seats (the user moved off it). All corrections on the
+ * same stray credit share its segment start as their entry time, so they apply
+ * in ONE batched ledger entry per stray credit (write cost is O(stray credits)).
  *
  * IMPORTANT — read before running with --execute:
  *
@@ -35,13 +36,17 @@
  *    adjusting the stray credit, which can leave THAT pool negative — harmless
  *    for a seat no longer assigned to it (nothing draws from it; it expires next
  *    recurrence).
- *  - Each credit-bearing tier is checked independently, so same-family stacks
- *    (pro + pro_yearly) and seats carrying several stray grants are caught; such
- *    a seat is reconciled once (its whole aggregate to target) on the first
- *    stray credit.
+ *  - A seat whose over-grant matches no single stray tier (multi-stray, or an
+ *    ambiguous same-family collision that in-use can't break) is reported in
+ *    `skippedAmbiguousStrayTiers` and left untouched — needs manual handling.
  *  - `--excludeSeatIds` still exists for belt-and-suspenders, but is not required
  *    for safety: an already-fixed seat is a no-op. Re-run the audit afterwards to
  *    confirm.
+ *
+ * NOTE: this corrects the CURRENT period only. Recurring credits are materialized
+ * one period ahead, so a mid-period move also leaves a stray grant on the NEXT
+ * segment (fixed at the source by `emptyOriginNextPeriodCredits` in seats.ts).
+ * Re-run after that ships to clear any next-period backlog.
  *
  * Dry-run by default (prints the full plan, including per-seat segment/timestamp
  * resolution). Pass --execute to apply. Use --seatId to restrict to a single
@@ -308,17 +313,13 @@ async function fixWorkspace(
     );
   }
   const creditBearingTiers = [...tierBySeatType.values()];
-  const strayInfoBySeat = new Map<
-    string,
-    {
-      homeSeatType: MembershipSeatType;
-      strayType: MembershipSeatType;
-      creditId: string;
-      segmentId: string;
-      adjustmentTimestamp: Date;
-    }
-  >();
-  const skippedAmbiguousStray = new Set<MembershipSeatType>();
+
+  // Candidate seats: currently on a credit-bearing tier (a free/none home has no
+  // recurring credit of its own; its stray is handled separately).
+  const candidates: Array<{
+    seatId: string;
+    homeSeatType: MembershipSeatType;
+  }> = [];
   for (const [seatId, homeSeatType] of seatTypeBySeatId) {
     if (onlySeatId && seatId !== onlySeatId) {
       continue;
@@ -329,59 +330,42 @@ async function fixWorkspace(
     if (onlyHomeSeatType && homeSeatType !== onlyHomeSeatType) {
       continue;
     }
-    // Only seats currently on a credit-bearing tier are corrected here (a free/
-    // none home has no recurring credit of its own and an ambiguous stray).
     if (!tierBySeatType.has(homeSeatType)) {
       continue;
     }
-    const strayCandidates = creditBearingTiers.filter(
-      (t) =>
-        t.seatType !== homeSeatType &&
-        (assignedCountByTier.get(t.seatType) ?? 0) > 0
-    );
-    if (strayCandidates.length !== 1) {
-      // Still >1 in-use credit-bearing tier other than home: can't infer which
-      // pool holds the stray grant. Reported and skipped.
-      skippedAmbiguousStray.add(homeSeatType);
-      continue;
-    }
-    const stray = await resolveStrayCredit(strayCandidates[0]);
-    if (!stray) {
-      continue;
-    }
-    strayInfoBySeat.set(seatId, {
-      homeSeatType,
-      strayType: strayCandidates[0].seatType,
-      ...stray,
-    });
+    candidates.push({ seatId, homeSeatType });
   }
 
-  // Phase 2 — reconcile-to-target: each seat should hold max(0, homeAllocation -
-  // consumed); the claw-back is its excess above that. Idempotent — a seat
-  // already at/below target (fixed by a prior run, empty-origin, or manually)
-  // yields ~0 and is skipped, so re-running is safe without knowing which seats
-  // were fixed. `consumed` is Metronome's OWN per-user usage (authoritative, not
-  // ES); the claw-back floors at 0, so it can only under-correct, never add
-  // credit or touch a healthy seat (a legit seat has balance ≈ allocation -
-  // consumed, so its excess is ~0).
-  const RECONCILE_TOLERANCE_AWU = 1000;
-  const affectedSeatIds = [...strayInfoBySeat.keys()];
+  // Metronome's OWN per-user usage (authoritative, not ES).
   const consumedByUserId = await fetchConsumedAwuCreditsFromMetronomeByUserId({
     workspaceId,
     metronomeCustomerId,
     metronomeContractId: contractId,
-    users: affectedSeatIds.map((sId) => ({
-      sId,
-      seatType: seatTypeBySeatId.get(sId) ?? null,
+    users: candidates.map(({ seatId, homeSeatType }) => ({
+      sId: seatId,
+      seatType: homeSeatType,
     })),
   });
+
+  // Reconcile-to-target: each seat should hold max(0, homeAllocation - consumed);
+  // the claw-back is its excess above that. Idempotent — a seat at/below target
+  // (fixed by a prior run, empty-origin, or manually) yields ~0 and is skipped,
+  // so re-running is safe without knowing which seats were fixed. The claw-back
+  // floors at 0, so it can only under-correct, never add credit or touch a
+  // healthy seat (a legit seat has balance ≈ allocation - consumed → excess ~0).
+  //
+  // The over-grant equals the STRAY tier's allocation exactly (totalGranted =
+  // homeAllocation + strayAllocation, independent of consumption), so the amount
+  // identifies the stray family. A same-family collision (pro + pro_yearly both
+  // 8000) is broken by which tier actually has assigned seats; note the stray
+  // tier can itself have 0 seats now (the user was the only one and moved off),
+  // so in-use is only a TIEBREAKER, never the primary filter.
+  const RECONCILE_TOLERANCE_AWU = 1000;
+  const ALLOCATION_MATCH_TOLERANCE_AWU = 200;
   const corrections: SeatCorrection[] = [];
-  for (const seatId of affectedSeatIds) {
-    const info = strayInfoBySeat.get(seatId);
-    if (!info) {
-      continue;
-    }
-    const homeAllocation = allocationBySeatType.get(info.homeSeatType) ?? 0;
+  const skippedAmbiguousStray = new Set<MembershipSeatType>();
+  for (const { seatId, homeSeatType } of candidates) {
+    const homeAllocation = allocationBySeatType.get(homeSeatType) ?? 0;
     const consumedAwu = consumedByUserId.get(seatId) ?? 0;
     const currentBalance = awuBalanceBySeatId.get(seatId) ?? 0;
     const targetBalance = Math.max(0, homeAllocation - consumedAwu);
@@ -389,18 +373,39 @@ async function fixWorkspace(
     if (clawBackAwu <= RECONCILE_TOLERANCE_AWU) {
       continue;
     }
+    let strayCandidates = creditBearingTiers.filter(
+      (t) =>
+        t.seatType !== homeSeatType &&
+        Math.abs(t.allocation - clawBackAwu) <= ALLOCATION_MATCH_TOLERANCE_AWU
+    );
+    if (strayCandidates.length > 1) {
+      const inUse = strayCandidates.filter(
+        (t) => (assignedCountByTier.get(t.seatType) ?? 0) > 0
+      );
+      if (inUse.length === 1) {
+        strayCandidates = inUse;
+      }
+    }
+    if (strayCandidates.length !== 1) {
+      skippedAmbiguousStray.add(homeSeatType);
+      continue;
+    }
+    const stray = await resolveStrayCredit(strayCandidates[0]);
+    if (!stray) {
+      continue;
+    }
     corrections.push({
       seatId,
-      homeSeatType: info.homeSeatType,
-      strayType: info.strayType,
+      homeSeatType,
+      strayType: strayCandidates[0].seatType,
       homeAllocation,
       consumedAwu,
       currentBalance,
       targetBalance,
       clawBackAwu,
-      creditId: info.creditId,
-      segmentId: info.segmentId,
-      adjustmentTimestamp: info.adjustmentTimestamp,
+      creditId: stray.creditId,
+      segmentId: stray.segmentId,
+      adjustmentTimestamp: stray.adjustmentTimestamp,
     });
   }
 
@@ -447,7 +452,7 @@ async function fixWorkspace(
       excludedSeatCount: excludeSeatIds.size,
       // Seats on a credit-bearing tier considered, before the reconcile filter
       // keeps only those over target.
-      candidateSeatCount: strayInfoBySeat.size,
+      candidateSeatCount: candidates.length,
       seatsWithConsumption: consumedByUserId.size,
       correctedSeatCount: corrections.length,
       totalClawBackAwu: corrections.reduce((s, c) => s + c.clawBackAwu, 0),
