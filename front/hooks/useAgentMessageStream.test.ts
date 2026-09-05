@@ -13,6 +13,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
+import type { ItemLocation } from "@virtuoso.dev/message-list";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseEventSource = vi.fn();
@@ -21,13 +22,15 @@ const mockUseVirtuosoMethods = vi.fn();
 const mockIsAutoScrollEnabledRef = { current: true };
 
 function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
-  const scroller = document.createElement("div");
   return {
-    scrollerElement: () => scroller,
     getScrollLocation: () => ({ bottomOffset: 0 }),
-    scrollToItem: vi.fn(),
     data: {
-      map,
+      map: vi.fn(
+        (
+          updater: (message: T) => T,
+          _scroll?: { location: () => ItemLocation | null | undefined }
+        ) => map(updater)
+      ),
     },
   };
 }
@@ -307,44 +310,33 @@ describe("useAgentMessageStream", () => {
     {
       scenario: "detachment after scheduling a scroll",
       isInitiallyAttached: true,
-      detachBeforeFrame: true,
+      detachBeforeScroll: true,
       shouldScroll: false,
-    },
-    {
-      scenario: "following while window measurements catch up",
-      isInitiallyAttached: true,
-      afterBottomOffset: -1,
-      shouldScroll: true,
     },
     {
       scenario: "preserving space below a short new turn",
       isInitiallyAttached: true,
-      beforeBottomOffset: -100,
-      afterBottomOffset: -50,
+      bottomOffset: -50,
       shouldScroll: false,
     },
     {
       scenario: "following once a new turn fills the viewport",
       isInitiallyAttached: true,
-      beforeBottomOffset: -100,
-      afterBottomOffset: 20,
+      bottomOffset: 20,
       shouldScroll: true,
     },
   ])("respects scroll intent: $scenario", ({
     classification = "tokens",
     isInitiallyAttached,
-    detachBeforeFrame = false,
-    beforeBottomOffset = 0,
-    afterBottomOffset = 0,
+    detachBeforeScroll = false,
+    bottomOffset = 0,
     shouldScroll,
   }) => {
-    vi.useFakeTimers();
     let currentMessage = makeInitialMessageStreamState(
       makeLightAgentMessage({ content: "", chainOfThought: "" })
     );
     let onEvent = (_event: string) => {};
     mockIsAutoScrollEnabledRef.current = isInitiallyAttached;
-    let bottomOffset = beforeBottomOffset;
     const methods = makeVirtuosoMethodsMock(
       (updater: (message: typeof currentMessage) => typeof currentMessage) => {
         currentMessage = updater(currentMessage);
@@ -383,23 +375,17 @@ describe("useAgentMessageStream", () => {
         })
       );
     });
-    if (detachBeforeFrame) {
+    if (detachBeforeScroll) {
       mockIsAutoScrollEnabledRef.current = false;
     }
-    bottomOffset = afterBottomOffset;
     expect(mockIsAutoScrollEnabledRef.current).toBe(
-      isInitiallyAttached && !detachBeforeFrame
+      isInitiallyAttached && !detachBeforeScroll
     );
-    vi.advanceTimersByTime(48);
-    if (shouldScroll) {
-      expect(methods.scrollToItem).toHaveBeenCalledWith({
-        index: "LAST",
-        align: "end",
-        behavior: "smooth",
-      });
-    } else {
-      expect(methods.scrollToItem).not.toHaveBeenCalled();
-    }
+    const scrollLocation = methods.data.map.mock.calls.at(-1)?.[1]?.location;
+    expect(scrollLocation).toBeDefined();
+    expect(scrollLocation?.()).toEqual(
+      shouldScroll ? { index: "LAST", align: "end", behavior: "smooth" } : null
+    );
     expect(
       classification === "tokens"
         ? currentMessage.content

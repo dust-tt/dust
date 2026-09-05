@@ -36,24 +36,19 @@ function mapMessagesAndScroll(
   isAutoScrollEnabledRef: MutableRefObject<boolean>,
   mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage
 ) {
-  const wasUsingBottomPadding = methods.getScrollLocation().bottomOffset < 0;
-  methods.data.map(mapFn);
-  // Let the updated rows render and Virtuoso measure them before choosing the
-  // target. Check attachment when the scroll actually starts: Virtuoso's batch
-  // callback can queue a scroll that outlives an upward gesture cancelling it.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!isAutoScrollEnabledRef.current || !methods.scrollerElement()) {
-        return;
+  methods.data.map(mapFn, {
+    // Virtuoso calls this after measuring growth. Read the current attachment
+    // so an upward gesture can cancel following even after the update is queued.
+    location: () => {
+      // A negative offset keeps a new turn aligned at the top of the viewport.
+      if (
+        !isAutoScrollEnabledRef.current ||
+        methods.getScrollLocation().bottomOffset < 0
+      ) {
+        return null;
       }
-      const { bottomOffset } = methods.getScrollLocation();
-      // Keep a new turn aligned at the top until it fills the viewport. When
-      // already following, window-scroll measurements can briefly lag growth.
-      if (wasUsingBottomPadding && bottomOffset < 0) {
-        return;
-      }
-      methods.scrollToItem({ index: "LAST", align: "end", behavior: "smooth" });
-    });
+      return { index: "LAST", align: "end", behavior: "smooth" };
+    },
   });
 }
 
