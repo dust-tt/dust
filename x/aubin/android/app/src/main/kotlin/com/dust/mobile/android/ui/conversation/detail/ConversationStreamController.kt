@@ -218,9 +218,9 @@ internal class ConversationStreamController(
 
     fun validateAction(approval: ActionApproval) {
         val info = (_state.value.blockedState as? BlockedState.Approval)?.approval ?: return
-        if (!canRespondToBlockedAction(info.triggeringUserId, currentUserSId)) return
+        if (_state.value.isValidatingAction || !canRespondToBlockedAction(info.triggeringUserId, currentUserSId)) return
+        _state.update { it.copy(isValidatingAction = true, actionError = null) }
         viewModelScope.launch {
-            _state.update { it.copy(isValidatingAction = true, actionError = null) }
             runCatching {
                 graph.conversationRepository.validateAction(
                     workspaceId = workspaceId,
@@ -246,9 +246,9 @@ internal class ConversationStreamController(
 
     fun answerQuestion(answer: UserQuestionAnswer) {
         val info = (_state.value.blockedState as? BlockedState.UserQuestionRequired)?.question ?: return
-        if (!canRespondToBlockedAction(info.triggeringUserId, currentUserSId)) return
+        if (_state.value.isValidatingAction || !canRespondToBlockedAction(info.triggeringUserId, currentUserSId)) return
+        _state.update { it.copy(isValidatingAction = true, actionError = null) }
         viewModelScope.launch {
-            _state.update { it.copy(isValidatingAction = true, actionError = null) }
             runCatching {
                 graph.conversationRepository.answerQuestion(
                     workspaceId = workspaceId,
