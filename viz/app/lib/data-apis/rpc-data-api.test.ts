@@ -204,3 +204,51 @@ describe("sandbox function data APIs", () => {
     });
   });
 });
+
+describe("host liveness", () => {
+  it("pings the host when constructed with a host window", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ ok: true });
+    const api = new RPCDataAPI(sendMessage, { hasHostWindow: true });
+
+    expect(sendMessage).toHaveBeenCalledWith("ping", null);
+    await vi.waitFor(() => expect(api.hostLiveness).toBe("alive"));
+  });
+
+  it("records an unanswered ping without changing call behavior", async () => {
+    const sendMessage = vi.fn().mockImplementation(async (command: string) => {
+      if (command === "ping") {
+        throw new Error("Frame host did not answer the liveness ping.");
+      }
+      return [{ id: 1 }];
+    });
+    const api = new RPCDataAPI(sendMessage, { hasHostWindow: true });
+
+    await vi.waitFor(() => expect(api.hostLiveness).toBe("unresponsive"));
+    // Silent embedded hosts are treated as legacy: calls still go over RPC.
+    await expect(api.callFunction("pod/function")).resolves.toEqual([
+      { id: 1 },
+    ]);
+  });
+
+  it("fails calls fast without a host window instead of hanging", async () => {
+    const sendMessage = vi.fn();
+    const api = new RPCDataAPI(sendMessage, { hasHostWindow: false });
+
+    const promise = api.callFunction("pod/function");
+
+    await expect(promise).rejects.toBeInstanceOf(SandboxFunctionCallError);
+    await expect(promise).rejects.toMatchObject({ code: "not_supported" });
+    // No ping and no call ever leave a hostless window.
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(api.hostLiveness).toBe("unresponsive");
+  });
+
+  it("keeps non-call reads on the RPC channel without a host window", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ code: "<Frame />" });
+    const api = new RPCDataAPI(sendMessage, { hasHostWindow: false });
+
+    // Reads keep their own error handling; only callFunction fails fast.
+    await expect(api.fetchCode()).resolves.toBe("<Frame />");
+    expect(sendMessage).toHaveBeenCalledWith("getCodeToExecute", null);
+  });
+});
