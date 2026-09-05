@@ -54,9 +54,9 @@ internal fun ConversationListContent(
     onDelete: (Conversation) -> Unit,
     onCatchUp: (() -> Unit)?,
     onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
     onLoadMore: () -> Unit = {},
     onRetrySearch: () -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     PullToRefreshBox(
         isRefreshing = if (state.searchText.isBlank()) state.isRefreshing else state.search.isLoading,
