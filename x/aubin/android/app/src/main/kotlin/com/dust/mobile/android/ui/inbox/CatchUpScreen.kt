@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,7 +52,6 @@ import com.dust.mobile.core.model.ContentFragment
 import com.dust.mobile.core.model.Conversation
 import com.dust.mobile.core.model.GeneratedFile
 import com.dust.mobile.core.model.catchUpSwipeAction
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -63,6 +62,7 @@ internal fun CatchUpScreen(
     workspaceId: String,
     currentUserEmail: String,
     conversations: List<Conversation>,
+    sessionId: String,
     onDismiss: (Set<String>) -> Unit,
     onOpenConversation: (Set<String>, Conversation) -> Unit,
     onOpenContentFragment: (ContentFragment) -> Unit,
@@ -70,9 +70,10 @@ internal fun CatchUpScreen(
     onOpenCitation: (CitationReference) -> Unit,
 ) {
     val catchUpViewModel: CatchUpViewModel = viewModel(
-        key = "catch-up-$workspaceId-${conversations.joinToString { it.sId }}",
+        key = "catch-up-$workspaceId",
         factory = factory { CatchUpViewModel(graph, tokenProvider, isLocalPreview, workspaceId, conversations) },
     )
+    LaunchedEffect(sessionId) { catchUpViewModel.startSession(sessionId, conversations) }
     val state by catchUpViewModel.state.collectAsStateWithLifecycle()
     val currentConversation = state.currentConversation
     val isMotionEnabled = motionEnabled()
@@ -122,23 +123,25 @@ internal fun CatchUpScreen(
         }
     }
 
+    fun openCurrentConversation() {
+        val conversation = currentConversation ?: return
+        catchUpViewModel.dismiss { markedIds -> onOpenConversation(markedIds, conversation) }
+    }
+
     fun animateCardAction(action: CatchUpSwipeAction) {
         when (action) {
-            CatchUpSwipeAction.MARK_AS_READ -> animateCardTo(cardExitDistancePx, catchUpViewModel::markAsRead)
+            CatchUpSwipeAction.MARK_AS_READ -> {
+                if (currentConversation?.actionRequired == true) {
+                    animateCardTo(0f, ::openCurrentConversation)
+                } else {
+                    animateCardTo(cardExitDistancePx, catchUpViewModel::markAsRead)
+                }
+            }
             CatchUpSwipeAction.KEEP_FOR_LATER -> animateCardTo(-cardExitDistancePx, catchUpViewModel::keepForLater)
         }
     }
 
-    BackHandler {
-        catchUpViewModel.dismiss(onDismiss)
-    }
-
-    LaunchedEffect(state.isDone) {
-        if (state.isDone) {
-            delay(1500)
-            catchUpViewModel.dismiss(onDismiss)
-        }
-    }
+    BackHandler { catchUpViewModel.dismiss(onDismiss) }
 
     Column(
         modifier = Modifier
@@ -148,13 +151,20 @@ internal fun CatchUpScreen(
         CatchUpHeader(
             progress = state.progressText,
             onClose = { catchUpViewModel.dismiss(onDismiss) },
+            onUndo = (catchUpViewModel::undoLastReview).takeIf { state.currentIndex > 0 },
+            enabled = !state.isFlushing && !isCardAnimating,
         )
 
         Box(modifier = Modifier.weight(1f)) {
             when {
                 state.isDone -> DustFeedbackState(
                     iconRes = R.drawable.ic_check_circle_24,
-                    title = "All caught up!",
+                    title = "Review complete",
+                    message = if (state.keptForLaterCount == 0) {
+                        "You're ready to mark ${state.markedAsReadIds.size} as read."
+                    } else {
+                        "${state.keptForLaterCount} kept for later. They'll stay unread in your inbox."
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
                 currentConversation != null -> CatchUpConversationCard(
@@ -170,11 +180,7 @@ internal fun CatchUpScreen(
                         catchUpSwipeAction(cardOffsetPx, swipeThresholdPx)?.let(::animateCardAction)
                             ?: animateCardTo(0f)
                     },
-                    onOpenConversation = {
-                        catchUpViewModel.dismiss { markedIds ->
-                            onOpenConversation(markedIds, currentConversation)
-                        }
-                    },
+                    onOpenConversation = ::openCurrentConversation,
                     onOpenContentFragment = onOpenContentFragment,
                     onOpenFile = onOpenFile,
                     onOpenCitation = onOpenCitation,
@@ -182,12 +188,18 @@ internal fun CatchUpScreen(
             }
         }
 
-        state.error?.let { error ->
-            Text(
-                error,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
+        CatchUpFeedback(
+            state = state,
+            onRetryMessages = catchUpViewModel::loadCurrentMessages,
+            onRetrySave = { catchUpViewModel.dismiss(onDismiss) },
+            onLeaveWithoutSaving = { onDismiss(emptySet()) },
+        )
+        if (state.isDone) {
+            DustButton(
+                label = if (state.isFlushing) "Saving…" else "Done",
+                loading = state.isFlushing,
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                onClick = { catchUpViewModel.dismiss(onDismiss) },
             )
         }
 
@@ -202,7 +214,7 @@ internal fun CatchUpScreen(
                     label = "Keep for later",
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp),
+                        .heightIn(min = 48.dp),
                     enabled = !state.isFlushing && !isCardAnimating,
                     onClick = { animateCardAction(CatchUpSwipeAction.KEEP_FOR_LATER) },
                     variant = DustButtonVariant.Secondary,
@@ -216,16 +228,10 @@ internal fun CatchUpScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp),
+                        .heightIn(min = 48.dp),
                     enabled = !state.isFlushing && !isCardAnimating,
                     onClick = {
-                        if (currentConversation?.actionRequired == true) {
-                            catchUpViewModel.dismiss { markedIds ->
-                                onOpenConversation(markedIds, currentConversation)
-                            }
-                        } else {
-                            animateCardAction(CatchUpSwipeAction.MARK_AS_READ)
-                        }
+                        animateCardAction(CatchUpSwipeAction.MARK_AS_READ)
                     },
                     iconRes = if (currentConversation?.actionRequired == true) {
                         R.drawable.ic_chevron_right_24

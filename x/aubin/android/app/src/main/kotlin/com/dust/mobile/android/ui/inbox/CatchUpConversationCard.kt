@@ -77,6 +77,7 @@ internal fun CatchUpConversationCard(
             dragOffsetPx = dragOffsetPx,
             hintStartPx = swipeHintPx,
             commitThresholdPx = swipeThresholdPx,
+            actionRequired = conversation.actionRequired,
         )
         Box(
             modifier = Modifier
@@ -107,7 +108,7 @@ internal fun CatchUpConversationCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
-                        .clickable(onClick = onOpenConversation)
+                        .clickable(enabled = isEnabled, onClick = onOpenConversation)
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -199,6 +200,7 @@ private fun CatchUpSwipeHint(
     dragOffsetPx: Float,
     hintStartPx: Float,
     commitThresholdPx: Float,
+    actionRequired: Boolean,
 ) {
     val isMarkAsRead = dragOffsetPx > hintStartPx
     val isKeepForLater = dragOffsetPx < -hintStartPx
@@ -225,14 +227,22 @@ private fun CatchUpSwipeHint(
         ) {
             Icon(
                 painter = painterResource(
-                    if (isMarkAsRead) R.drawable.ic_check_24 else R.drawable.ic_clock_24,
+                    when {
+                        isMarkAsRead && actionRequired -> R.drawable.ic_chevron_right_24
+                        isMarkAsRead -> R.drawable.ic_check_24
+                        else -> R.drawable.ic_clock_24
+                    },
                 ),
                 contentDescription = null,
                 modifier = Modifier.size(26.dp),
                 tint = color,
             )
             Text(
-                if (isMarkAsRead) "Mark as read" else "Keep for later",
+                when {
+                    isMarkAsRead && actionRequired -> "Respond"
+                    isMarkAsRead -> "Mark as read"
+                    else -> "Keep for later"
+                },
                 color = color,
                 style = MaterialTheme.typography.labelSmall,
             )
