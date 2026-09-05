@@ -15,9 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
+        # Shallow on purpose: a full-history checkout of this monorepo costs 35s
+        # on a good day and has been seen taking 8 minutes. Both steps below only
+        # need the head commit and `origin/main`, which the depth-1 fetch below
+        # provides, and DangerJS reads the PR diff from the GitHub API.
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
 
       # Optimize compute resources by verifying changes in SQL models files and API files before running Danger.
       - name: Check for file changes
@@ -70,9 +72,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
+        # Shallow on purpose: a full-history checkout of this monorepo costs 35s
+        # on a good day and has been seen taking 8 minutes. Both steps below only
+        # need the head commit and `origin/main`, which the depth-1 fetch below
+        # provides, and DangerJS reads the PR diff from the GitHub API.
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
 
       - name: Check for activity file changes
         id: file_changes
