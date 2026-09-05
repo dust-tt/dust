@@ -6,6 +6,10 @@ import {
   SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
   SANDBOX_FUNCTION_STAKES,
 } from "@app/types/api/sandbox_functions";
+import {
+  normalizeEgressPolicyDomains,
+  SANDBOX_POLICY_MAX_REQUESTED_DOMAINS,
+} from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -68,6 +72,22 @@ export const FrameDatabaseManifestSchema = z.object({
   schema: FrameRelativePathSchema,
 });
 
+// Exact domains or `*.example.com` wildcards the Frame's functions reach at
+// runtime. Publishing files each one as an egress request for admin review.
+const FrameDomainsSchema = z
+  .array(z.string())
+  .max(SANDBOX_POLICY_MAX_REQUESTED_DOMAINS)
+  .default([])
+  // zod's documented abort-from-transform: addIssue, then return z.NEVER.
+  .transform((domains, context) => {
+    const normalized = normalizeEgressPolicyDomains(domains);
+    if (normalized.isErr()) {
+      context.addIssue({ code: "custom", message: normalized.error.message });
+      return z.NEVER;
+    }
+    return normalized.value;
+  });
+
 export const FrameSourceManifestSchema = z
   .object({
     version: z.literal(FRAME_MANIFEST_VERSION),
@@ -79,6 +99,7 @@ export const FrameSourceManifestSchema = z
       .array(FrameDatabaseManifestSchema)
       .max(MAX_FRAME_DATABASE_COUNT)
       .default([]),
+    domains: FrameDomainsSchema,
   })
   .superRefine((manifest, context) => {
     const functionNames = new Set<string>();

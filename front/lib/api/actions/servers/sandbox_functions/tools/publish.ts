@@ -4,12 +4,13 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getWritablePodContext } from "@app/lib/api/actions/servers/pod_manager/helpers";
-import { requestOwnerPolicyDomain } from "@app/lib/api/sandbox/egress_policy";
+import {
+  formatEgressDomainRequestsNote,
+  requestEgressDomainsForScope,
+} from "@app/lib/api/sandbox/egress_domain_requests";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
-import type { Authenticator } from "@app/lib/auth";
 import { shortSandboxFunctionBundleSha256 } from "@app/lib/resources/sandbox_function_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionStake,
@@ -65,10 +66,15 @@ export async function publishHandler(
 
   // Failures become a note, not a publish failure — the function is already
   // published and its domains can be retried.
-  const domainNote = await routePublishedFunctionDomains(auth, {
-    pod: podResult.value.pod,
-    domains: domains ?? [],
-  });
+  const domainNote =
+    domains && domains.length > 0
+      ? formatEgressDomainRequestsNote(
+          await requestEgressDomainsForScope(auth, {
+            scope: { kind: "pod", podId: podResult.value.pod.sId },
+            domains,
+          })
+        )
+      : null;
 
   const lines = [
     `Published pod function "${publishedSlug}" ` +
@@ -89,52 +95,6 @@ export async function publishHandler(
   }
 
   return new Ok([{ type: "text", text: lines.join("\n") }]);
-}
-
-// Files each declared domain as a Pod request. Bounded to one function's
-// domains, so the sequential per-domain writes are fine.
-async function routePublishedFunctionDomains(
-  auth: Authenticator,
-  { pod, domains }: { pod: SpaceResource; domains: string[] }
-): Promise<string | null> {
-  if (domains.length === 0) {
-    return null;
-  }
-
-  const requested: string[] = [];
-  const alreadyAllowed: string[] = [];
-  const failed: string[] = [];
-
-  for (const domain of domains) {
-    const result = await requestOwnerPolicyDomain(auth, {
-      ownerId: pod.sId,
-      domain,
-    });
-    if (result.isErr()) {
-      failed.push(domain);
-    } else if (result.value.outcome === "already_allowed") {
-      alreadyAllowed.push(domain);
-    } else {
-      // "requested" or "already_requested": pending an admin's review.
-      requested.push(domain);
-    }
-  }
-
-  const parts: string[] = [];
-  if (requested.length > 0) {
-    parts.push(
-      `Requested for the Pod (pending admin approval): ${requested.join(", ")}.`
-    );
-  }
-  if (alreadyAllowed.length > 0) {
-    parts.push(`Already allowed: ${alreadyAllowed.join(", ")}.`);
-  }
-  if (failed.length > 0) {
-    parts.push(
-      `Could not process (retry with request_egress_domain): ${failed.join(", ")}.`
-    );
-  }
-  return parts.join(" ");
 }
 
 function toMCPError(error: SandboxFunctionError): MCPError {
