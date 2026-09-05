@@ -3,6 +3,7 @@ package com.dust.mobile.android.data.persistence
 import com.dust.mobile.core.model.ContentFragmentPayload
 import com.dust.mobile.core.model.CreateConversationRequest
 import com.dust.mobile.core.model.PostMessageRequest
+import com.dust.mobile.core.model.KnowledgeItem
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -48,6 +49,7 @@ internal data class PersistedDraft(
     val text: String = "",
     val selectedAgentId: String? = null,
     val selectedCapabilityIds: List<String> = emptyList(),
+    val selectedKnowledgeItems: List<KnowledgeItem> = emptyList(),
     val attachments: List<PersistedAttachment> = emptyList(),
     val pendingOutboxId: String? = null,
 )

@@ -8,6 +8,7 @@ import com.dust.mobile.android.data.persistence.PersistedOutboxKind
 import com.dust.mobile.android.data.persistence.PersistedOutboxStatus
 import com.dust.mobile.android.data.persistence.composeDraftKey
 import com.dust.mobile.core.auth.TokenProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -31,7 +32,6 @@ internal class ComposeDurabilityController(
 ) {
     private val draftKey = composeDraftKey(workspaceId, spaceId)
     private var outboxObservationJob: Job? = null
-    private var draftCompleted = false
 
     @OptIn(FlowPreview::class)
     fun start() {
@@ -70,10 +70,8 @@ internal class ComposeDurabilityController(
                 .distinctUntilChanged()
                 .debounce(DRAFT_SAVE_DEBOUNCE_MS)
                 .collect { draft ->
-                    if (!draftCompleted) {
-                        graph.persistedStateStore.update { persisted ->
-                            persisted.copy(drafts = persisted.drafts + (draftKey to draft))
-                        }
+                    graph.persistedStateStore.update { persisted ->
+                        persisted.copy(drafts = persisted.drafts + (draftKey to draft))
                     }
                 }
         }
@@ -125,19 +123,16 @@ internal class ComposeDurabilityController(
 
     private suspend fun finishSentConversation(item: PersistedOutboxItem) {
         val conversationId = item.resultConversationId ?: return
-        val conversation = runCatching {
+        val conversation = try {
             graph.conversationRepository.fetchConversation(workspaceId, conversationId, tokenProvider)
-        }.getOrElse { error ->
-            state.update {
-                it.copy(
-                    isSending = false,
-                    error = messageSendError(error, "Message sent, but the conversation could not be opened"),
-                )
-            }
-            return
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            // The send succeeded. Open its destination even if the follow-up read is offline;
+            // the conversation screen owns loading and retrying its content.
+            item.sentConversationDestination() ?: return
         }
         Log.d(MESSAGE_SEND_LOG_TAG, "Conversation accepted")
-        draftCompleted = true
         knowledgeSearch.cancel()
         state.update {
             it.sentSuccessfully().copy(createdConversation = conversation)

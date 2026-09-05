@@ -9,6 +9,7 @@ internal fun ConversationDetailState.toPersistedReplyDraft(): PersistedDraft = P
     text = replyText,
     selectedAgentId = selectedReplyAgent?.sId,
     selectedCapabilityIds = selectedCapabilities.map { it.id },
+    selectedKnowledgeItems = selectedKnowledgeItems,
     attachments = attachments.mapNotNull { attachment ->
         attachment.fileId?.let { fileId ->
             PersistedAttachment(
@@ -25,6 +26,7 @@ internal fun ConversationDetailState.toPersistedReplyDraft(): PersistedDraft = P
 
 internal fun ConversationDetailState.restoreReplyDraftContent(draft: PersistedDraft): ConversationDetailState = copy(
     replyText = draft.text,
+    selectedKnowledgeItems = draft.selectedKnowledgeItems,
     attachments = draft.attachments.map { attachment ->
         AttachmentDraft(
             id = attachment.id,
