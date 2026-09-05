@@ -5,6 +5,7 @@ import {
   CONSUMPTION_METRICS,
   CONSUMPTION_SCOPE_DIMENSIONS,
   CONSUMPTION_SCOPE_FILTER_KEYS,
+  CONSUMPTION_TOP_GROUP_SORT_BY,
   CONSUMPTION_TOP_SORT_ORDER,
   DEFAULT_CONSUMPTION_METRIC,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -83,12 +84,20 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
     .transform((limit) => limit ?? DEFAULT_CONSUMPTION_TOP_LIMIT),
   offset: z.number().int().nonnegative().default(0),
   search: z.string().trim().optional(),
-  // Always ranks by gross credits; see the comment on
-  // CONSUMPTION_TOP_SORT_ORDER for why other metrics aren't supported yet.
+  // Defaults to gross credit ranking; the group schema also supports
+  // ranking by credits per active member.
   sortOrder: z.enum(CONSUMPTION_TOP_SORT_ORDER).optional().default("desc"),
 });
 
 export type ConsumptionTopBody = z.infer<typeof ConsumptionTopBodySchema>;
+
+export const ConsumptionTopGroupsBodySchema = ConsumptionTopBodySchema.extend({
+  sortBy: z.enum(CONSUMPTION_TOP_GROUP_SORT_BY).optional(),
+});
+
+export type ConsumptionTopGroupsBody = z.infer<
+  typeof ConsumptionTopGroupsBodySchema
+>;
 
 // The attribution table's CSV export: same period/filter as the `top-*`
 // endpoints, but always returns the breakdown for every dimension.

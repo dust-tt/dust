@@ -283,7 +283,7 @@ describe("ConsumptionAttributionTable", () => {
     expect(screen.getByRole("tab", { name: "Groups" })).toBeInTheDocument();
   });
 
-  it("shows active members and per-member usage for groups", () => {
+  it("shows active members and sorts groups by per-member usage", async () => {
     mockUseConsumptionTop.mockReturnValue({
       rows: [
         {
@@ -325,9 +325,10 @@ describe("ConsumptionAttributionTable", () => {
     expect(
       screen.getByRole("columnheader", { name: "Active / total members" })
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Vs workspace avg" })
-    ).toBeInTheDocument();
+    const workspaceAverageHeader = screen.getByRole("columnheader", {
+      name: "Vs workspace avg",
+    });
+    expect(workspaceAverageHeader).toBeInTheDocument();
     expect(
       screen.queryByRole("columnheader", { name: "Consumption share" })
     ).not.toBeInTheDocument();
@@ -335,6 +336,28 @@ describe("ConsumptionAttributionTable", () => {
     const usagePercentage = screen.getByText("+150%");
     expect(usagePercentage.parentElement).toHaveClass("text-highlight-600");
     expect(usagePercentage.parentElement?.querySelector("svg")).toBeNull();
+
+    fireEvent.click(workspaceAverageHeader);
+    await waitFor(() => {
+      expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          offset: 0,
+          sortBy: "workspace_average",
+          sortOrder: "desc",
+        })
+      );
+    });
+
+    fireEvent.click(workspaceAverageHeader);
+    await waitFor(() => {
+      expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          offset: 0,
+          sortBy: "workspace_average",
+          sortOrder: "asc",
+        })
+      );
+    });
   });
 
   it("caps the available pages and fetches the selected fixed-size page", async () => {

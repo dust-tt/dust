@@ -19,7 +19,7 @@ import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consum
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type {
   ConsumptionBody,
-  ConsumptionTopBody,
+  ConsumptionTopGroupsBody,
 } from "@app/lib/api/analytics/consumption/schema";
 import type {
   ConsumptionBreakdownDimension,
@@ -182,11 +182,12 @@ export function usePokeConsumptionTop({
   offset = 0,
   search,
   filter,
+  sortBy,
   sortOrder = "desc",
   disabled,
 }: UseConsumptionTopParams) {
   const url = `/api/poke/workspaces/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
-  const body: ConsumptionTopBody = {
+  const body: ConsumptionTopGroupsBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
@@ -194,11 +195,12 @@ export function usePokeConsumptionTop({
     limit,
     offset,
     search: search?.trim(),
+    ...(dimension === "group" && sortBy ? { sortBy } : {}),
     sortOrder,
   };
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<
-    ConsumptionTopBody,
+    ConsumptionTopGroupsBody,
     ConsumptionTopResponse
   >({ url, body, disabled });
 

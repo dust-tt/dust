@@ -642,6 +642,163 @@ describe("consumption top rankings", () => {
     });
   });
 
+  it.each([
+    {
+      sortOrder: "desc" as const,
+      offset: 1,
+      limit: 3,
+      expectedGroupIds: ["group-b", "group-e", "group-a"],
+    },
+    {
+      sortOrder: "asc" as const,
+      offset: 1,
+      limit: 3,
+      expectedGroupIds: ["group-b", "group-e", "group-c"],
+    },
+    {
+      sortOrder: "desc" as const,
+      offset: 0,
+      limit: 5,
+      expectedGroupIds: ["group-c", "group-b", "group-e", "group-a", "group-d"],
+    },
+    {
+      sortOrder: "asc" as const,
+      offset: 0,
+      limit: 5,
+      expectedGroupIds: ["group-a", "group-b", "group-e", "group-c", "group-d"],
+    },
+  ])("sorts groups by workspace-average usage $sortOrder with offset $offset", async ({
+    sortOrder,
+    offset,
+    limit,
+    expectedGroupIds,
+  }) => {
+    const { auth } = await setup();
+    mockLabels({
+      "group-a": "Group A",
+      "group-b": "Group B",
+      "group-c": "Group C",
+    });
+    vi.mocked(searchConsumptionAnalytics).mockImplementation(
+      async (_query, options) => {
+        const composite = options?.aggregations?.by_group?.composite;
+        if (composite) {
+          const isSecondPage = composite.after !== undefined;
+          return esResponse({
+            by_group: {
+              buckets: isSecondPage
+                ? [
+                    {
+                      key: { group: "group-c" },
+                      doc_count: 1,
+                      credit_micro: { value: 40_000_000 },
+                      messages: { value: 1 },
+                      active_members: { value: 1 },
+                    },
+                    {
+                      key: { group: "group-d" },
+                      doc_count: 1,
+                      credit_micro: { value: 20_000_000 },
+                      messages: { value: 1 },
+                      active_members: { value: 0 },
+                    },
+                    {
+                      key: { group: "group-e" },
+                      doc_count: 3,
+                      credit_micro: { value: 90_000_000 },
+                      messages: { value: 3 },
+                      active_members: { value: 3 },
+                    },
+                  ]
+                : [
+                    {
+                      key: { group: "group-a" },
+                      doc_count: 10,
+                      credit_micro: { value: 100_000_000 },
+                      messages: { value: 10 },
+                      active_members: { value: 10 },
+                    },
+                    {
+                      key: { group: "group-b" },
+                      doc_count: 2,
+                      credit_micro: { value: 60_000_000 },
+                      messages: { value: 2 },
+                      active_members: { value: 2 },
+                    },
+                  ],
+              ...(isSecondPage ? {} : { after_key: { group: "group-b" } }),
+            },
+            ...(!isSecondPage
+              ? {
+                  total_credit_micro: { value: 200_000_000 },
+                  active_members: { value: 12 },
+                }
+              : {}),
+          });
+        }
+
+        const terms = options?.aggregations?.by_group?.terms;
+        const includedKeys = Array.isArray(terms?.include)
+          ? terms.include.map(String)
+          : [];
+        return esResponse({
+          by_group: {
+            buckets: includedKeys.map((key) => ({
+              key,
+              doc_count: 1,
+              credit_micro: { value: 1_000_000 },
+            })),
+          },
+        });
+      }
+    );
+
+    const result = await fetchConsumptionTopGroups(auth, {
+      period: PERIOD,
+      limit,
+      offset,
+      sortBy: "workspace_average",
+      sortOrder,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.groups.map((group) => group.groupId)).toEqual(
+      expectedGroupIds
+    );
+    expect(result.value.totalCredits).toBe(200);
+    expect(result.value.totalActiveMembers).toBe(12);
+    expect(result.value.totalCount).toBe(5);
+    expect(result.value.hasMore).toBe(offset + limit < 5);
+    expect(result.value.groups.map((group) => group.previousCredits)).toEqual(
+      expectedGroupIds.map(() => 1)
+    );
+
+    const compositeCalls = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.filter(
+        ([, options]) => options?.aggregations?.by_group?.composite
+      );
+    expect(compositeCalls).toHaveLength(2);
+    expect(
+      compositeCalls[0]?.[1]?.aggregations?.by_group?.composite
+    ).toMatchObject({
+      size: 1_000,
+      sources: [{ group: { terms: { field: "user.group_ids" } } }],
+    });
+    expect(
+      compositeCalls[1]?.[1]?.aggregations?.by_group?.composite?.after
+    ).toEqual({ group: "group-b" });
+    expect(
+      compositeCalls[1]?.[1]?.aggregations?.total_credit_micro
+    ).toBeUndefined();
+    expect(
+      compositeCalls[1]?.[1]?.aggregations?.active_members
+    ).toBeUndefined();
+  });
+
   it("ranks reasoning efforts per message for the selected model", async () => {
     const { auth } = await setup();
     mockAggs({

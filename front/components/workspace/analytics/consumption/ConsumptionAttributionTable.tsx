@@ -29,6 +29,7 @@ import { LinkWrapper } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type {
   ConsumptionScopeFilter,
+  ConsumptionTopGroupSortBy,
   ConsumptionTopSortOrder,
 } from "@app/types/api/analytics/consumption";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/types/api/analytics/consumption";
@@ -98,6 +99,7 @@ const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
 const ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS = new Set([
   "credits",
   "costShare",
+  "usageVsAverage",
 ]);
 
 type AttributionTransitionDirection = -1 | 0 | 1;
@@ -430,19 +432,23 @@ function buildColumns({
           },
           {
             id: "usageVsAverage",
-            header: "Vs workspace avg",
-            enableSorting: false,
-            meta: { sizeRatio: 22, headerAlign: "right" },
-            cell: (info) => {
-              const usagePercent = usageDifferenceFromAveragePercent({
-                credits: info.row.original.credits,
-                activeMembers: info.row.original.activeMembers,
+            accessorFn: (row) =>
+              usageDifferenceFromAveragePercent({
+                credits: row.credits,
+                activeMembers: row.activeMembers,
                 totalCredits,
                 totalActiveMembers,
-              });
-
-              return <UsageVsAverageCell percentage={usagePercent} />;
-            },
+              }) ?? undefined,
+            header: "Vs workspace avg",
+            enableSorting: true,
+            sortDescFirst: true,
+            sortUndefined: "last",
+            meta: { sizeRatio: 22, headerAlign: "right" },
+            cell: (info) => (
+              <UsageVsAverageCell
+                percentage={info.getValue<number | undefined>() ?? null}
+              />
+            ),
           },
         ] satisfies ColumnDef<AttributionRowData>[])
       : ([
@@ -604,6 +610,7 @@ export interface ConsumptionAttributionRowsQueryState {
   setPagination: Dispatch<SetStateAction<PaginationState>>;
   sorting: SortingState;
   onSortingChange: OnChangeFn<SortingState>;
+  sortBy: ConsumptionTopGroupSortBy;
   sortOrder: ConsumptionTopSortOrder;
 }
 
@@ -624,22 +631,23 @@ export function useConsumptionAttributionRowsQueryState(): ConsumptionAttributio
   };
 
   const activeSort = sorting[0];
-  // Ranking is always by credits: only forward asc/desc when the sorted
-  // column actually rides that ranking, so sorting by anything else keeps
-  // fetching pages in the default credits-desc order and reorders them
-  // locally instead.
+  // Only forward asc/desc for columns backed by a server ranking. Other
+  // columns keep fetching pages in the default credits-desc order.
   const sortOrder =
     activeSort?.id &&
     ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS.has(activeSort.id) &&
     !activeSort.desc
       ? "asc"
       : "desc";
+  const sortBy =
+    activeSort?.id === "usageVsAverage" ? "workspace_average" : "credits";
 
   return {
     pagination,
     setPagination,
     sorting,
     onSortingChange,
+    sortBy,
     sortOrder,
   };
 }
@@ -867,6 +875,7 @@ function WorkspaceConsumptionAttributionRows(
     search: props.search,
     filter: props.filter,
     analyticsScope: props.analyticsScope,
+    sortBy: queryState.sortBy,
     sortOrder: queryState.sortOrder,
     disabled: props.disabled,
   });

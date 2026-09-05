@@ -1,6 +1,6 @@
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
-  ConsumptionTopBodySchema,
+  ConsumptionTopGroupsBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
@@ -19,12 +19,12 @@ const app = consumptionAnalyticsApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  validate("json", ConsumptionTopBodySchema),
+  validate("json", ConsumptionTopGroupsBodySchema),
   async (ctx): HandlerResult<GetConsumptionTopGroupsResponse> => {
     const auth = ctx.get("auth");
     const userId = ctx.get("consumptionUserId");
     const agentId = ctx.get("consumptionAgentId");
-    const { limit, offset, search, filter, sortOrder, ...periodQuery } =
+    const { limit, offset, search, filter, sortBy, sortOrder, ...periodQuery } =
       ctx.req.valid("json");
 
     const period = await resolveConsumptionPeriod(
@@ -42,6 +42,7 @@ app.post(
         ...(userId ? { users: [userId] } : {}),
         ...(agentId ? { agents: [agentId] } : {}),
       },
+      ...(sortBy ? { sortBy } : {}),
       sortOrder,
     });
     if (result.isErr()) {

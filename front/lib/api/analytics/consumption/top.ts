@@ -5,6 +5,7 @@ import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/pe
 import type {
   ConsumptionScopeFilter,
   ConsumptionTopDimension,
+  ConsumptionTopGroupSortBy,
   ConsumptionTopRankBy,
   ConsumptionTopSortOrder,
   ConsumptionTopUnit,
@@ -66,6 +67,7 @@ const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
 const ACTIVE_MEMBERS_AGG = "active_members";
 const TOTAL_COUNT_AGG = "total_count";
+const RANKING_COMPOSITE_PAGE_SIZE = 1_000;
 const RANKING_TERMS_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
 const MAX_ES_TERMS_QUERY_VALUES = 65_536;
@@ -76,6 +78,12 @@ type GroupBucket = {
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
   [ACTIVE_MEMBERS_AGG]?: estypes.AggregationsCardinalityAggregate;
+};
+
+type CompositeGroupKey = { group: string };
+
+type CompositeGroupBucket = Omit<GroupBucket, "key"> & {
+  key: CompositeGroupKey;
 };
 
 function subAggs(unit: ConsumptionTopUnit, dimension: ConsumptionTopDimension) {
@@ -108,8 +116,29 @@ type TopAggs = RankingAggs & {
   [ACTIVE_MEMBERS_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
+type CompositeRankingAggs = {
+  by_group?: estypes.AggregationsCompositeAggregate & {
+    buckets: CompositeGroupBucket[];
+    after_key?: CompositeGroupKey;
+  };
+};
+
+type CompositeTopAggs = CompositeRankingAggs & {
+  ranking?: estypes.AggregationsSingleBucketAggregateBase &
+    CompositeRankingAggs;
+  total_credit_micro?: estypes.AggregationsSumAggregate;
+  [ACTIVE_MEMBERS_AGG]?: estypes.AggregationsCardinalityAggregate;
+};
+
+type CurrentConsumptionTopRanking = {
+  groups: Omit<ConsumptionTopGroup, "previousCredits">[];
+  totalCount: number;
+  totalCredits: number;
+  totalActiveMembers: number;
+};
+
 function countFromBucket(
-  bucket: GroupBucket,
+  bucket: Omit<GroupBucket, "key">,
   unit: ConsumptionTopUnit
 ): number {
   switch (unit) {
@@ -289,6 +318,146 @@ function buildConsumptionTopAggregations({
   };
 }
 
+function buildConsumptionTopWorkspaceAverageAggregations({
+  afterKey,
+  searchFilter,
+}: {
+  afterKey?: CompositeGroupKey;
+  searchFilter: estypes.QueryDslQueryContainer | null;
+}): Record<string, estypes.AggregationsAggregationContainer> {
+  const rankingAggregations = {
+    by_group: {
+      composite: {
+        size: RANKING_COMPOSITE_PAGE_SIZE,
+        sources: [
+          {
+            group: {
+              terms: { field: CONSUMPTION_TOP_DIMENSION_FIELDS.group },
+            },
+          },
+        ],
+        ...(afterKey ? { after: afterKey } : {}),
+      },
+      aggs: subAggs("message", "group"),
+    },
+  } satisfies Record<string, estypes.AggregationsAggregationContainer>;
+
+  const rankingRootAggregations = searchFilter
+    ? {
+        ranking: {
+          filter: searchFilter,
+          aggs: rankingAggregations,
+        },
+      }
+    : rankingAggregations;
+
+  return {
+    ...rankingRootAggregations,
+    // Workspace totals are independent of the composite cursor.
+    ...(!afterKey
+      ? {
+          total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+          [ACTIVE_MEMBERS_AGG]: {
+            cardinality: {
+              field: CONSUMPTION_DIMENSION_FIELDS.user,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        }
+      : {}),
+  };
+}
+
+function compareGroupsByWorkspaceAverage(
+  left: Omit<ConsumptionTopGroup, "previousCredits">,
+  right: Omit<ConsumptionTopGroup, "previousCredits">,
+  sortOrder: ConsumptionTopSortOrder
+): number {
+  const leftAverage = left.activeMembers
+    ? left.credits / left.activeMembers
+    : null;
+  const rightAverage = right.activeMembers
+    ? right.credits / right.activeMembers
+    : null;
+
+  if (leftAverage === null || rightAverage === null) {
+    if (leftAverage === rightAverage) {
+      return left.key.localeCompare(right.key);
+    }
+    return leftAverage === null ? 1 : -1;
+  }
+
+  const comparison = leftAverage - rightAverage;
+  if (comparison === 0) {
+    return left.key.localeCompare(right.key);
+  }
+  return sortOrder === "asc" ? comparison : -comparison;
+}
+
+async function fetchConsumptionGroupsRankedByWorkspaceAverage({
+  query,
+  searchFilter,
+  sortOrder,
+}: {
+  query: estypes.QueryDslQueryContainer;
+  searchFilter: estypes.QueryDslQueryContainer | null;
+  sortOrder: ConsumptionTopSortOrder;
+}): Promise<Result<CurrentConsumptionTopRanking, ElasticsearchError>> {
+  const groups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
+  let afterKey: CompositeGroupKey | undefined;
+  let buckets: CompositeGroupBucket[];
+  let totalCredits = 0;
+  let totalActiveMembers = 0;
+
+  // The workspace-average comparison is credits per active member relative to
+  // a workspace-wide constant. Composite pagination retrieves every group
+  // safely, then the server sorts the derived per-member value before paging.
+  do {
+    const aggregations = buildConsumptionTopWorkspaceAverageAggregations({
+      afterKey,
+      searchFilter,
+    });
+    const result = await searchConsumptionAnalytics<never, CompositeTopAggs>(
+      query,
+      { aggregations, size: 0 }
+    );
+    if (result.isErr()) {
+      return result;
+    }
+
+    const ranking = searchFilter
+      ? result.value.aggregations?.ranking
+      : result.value.aggregations;
+    buckets = bucketsToArray<CompositeGroupBucket>(ranking?.by_group?.buckets);
+    groups.push(
+      ...buckets.map((bucket) => ({
+        key: String(bucket.key.group),
+        credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+        count: countFromBucket(bucket, "message"),
+        activeMembers: Math.round(bucket[ACTIVE_MEMBERS_AGG]?.value ?? 0),
+      }))
+    );
+    if (!afterKey) {
+      totalCredits = microCreditsToCredits(
+        result.value.aggregations?.total_credit_micro?.value ?? 0
+      );
+      totalActiveMembers = Math.round(
+        result.value.aggregations?.[ACTIVE_MEMBERS_AGG]?.value ?? 0
+      );
+    }
+    afterKey = ranking?.by_group?.after_key;
+  } while (afterKey !== undefined && buckets.length > 0);
+
+  return new Ok({
+    groups: groups.toSorted((left, right) =>
+      compareGroupsByWorkspaceAverage(left, right, sortOrder)
+    ),
+    totalCount: groups.length,
+    totalCredits,
+    totalActiveMembers,
+  });
+}
+
 type PreviousCreditsAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
 };
@@ -356,9 +525,68 @@ async function fetchConsumptionPreviousCredits(
   );
 }
 
+async function completeConsumptionTopRanking(
+  auth: Authenticator,
+  {
+    dimension,
+    period,
+    filter,
+    limit,
+    offset,
+    includePreviousCredits,
+    ranking,
+  }: {
+    dimension: ConsumptionTopDimension;
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+    limit: number;
+    offset: number;
+    includePreviousCredits: boolean;
+    ranking: CurrentConsumptionTopRanking;
+  }
+): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
+  const pagedGroups = ranking.groups.slice(offset, offset + limit);
+  const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
+    dimension,
+    previousPeriod: previousConsumptionPeriod(period),
+    filter,
+    keys: includePreviousCredits ? pagedGroups.map((group) => group.key) : [],
+  });
+  // The prior-period lookup only feeds the vs-prev display column: a failure
+  // there should not take down the current-period ranking, which already
+  // succeeded. Fall back to unknown growth for every group instead.
+  if (previousCreditsResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dimension,
+        err: previousCreditsResult.error,
+      },
+      "[ConsumptionAnalytics] Failed to fetch previous-period credits, " +
+        "falling back to null vs-prev values."
+    );
+  }
+  const previousCreditsByKey = previousCreditsResult.isOk()
+    ? previousCreditsResult.value
+    : new Map<string, number>();
+
+  return new Ok({
+    groups: pagedGroups.map((group) => ({
+      ...group,
+      previousCredits: previousCreditsByKey.get(group.key) ?? null,
+    })),
+    hasMore: ranking.totalCount > offset + limit,
+    totalCount: ranking.totalCount,
+    totalCredits: ranking.totalCredits,
+    ...(dimension === "group"
+      ? { totalActiveMembers: ranking.totalActiveMembers }
+      : {}),
+  });
+}
+
 /**
- * Top `limit` keys of `dimension` by gross credits over the period, with the
- * count each one's average is denominated in.
+ * Top `limit` keys of `dimension` over the period, with the count each one's
+ * average is denominated in.
  */
 export async function fetchConsumptionTopGroups(
   auth: Authenticator,
@@ -381,7 +609,7 @@ export async function fetchConsumptionTopGroups(
     search?: string;
     filter?: ConsumptionScopeFilter;
     sortOrder?: ConsumptionTopSortOrder;
-    rankBy?: ConsumptionTopRankBy;
+    rankBy?: ConsumptionTopRankBy | ConsumptionTopGroupSortBy;
     includePreviousCredits?: boolean;
     includeTotalCount?: boolean;
   }
@@ -397,6 +625,33 @@ export async function fetchConsumptionTopGroups(
     endDate: period.endDate,
     filter,
   });
+
+  if (rankBy === "workspace_average") {
+    if (dimension !== "group") {
+      throw new Error(
+        "Workspace-average consumption sorting is only supported for " +
+          "group credit rankings."
+      );
+    }
+    const rankingResult = await fetchConsumptionGroupsRankedByWorkspaceAverage({
+      query,
+      searchFilter,
+      sortOrder,
+    });
+    if (rankingResult.isErr()) {
+      return rankingResult;
+    }
+
+    return completeConsumptionTopRanking(auth, {
+      dimension,
+      period,
+      filter,
+      limit,
+      offset,
+      includePreviousCredits,
+      ranking: rankingResult.value,
+    });
+  }
 
   const requestedBucketCount = offset + limit;
   const rankedGroups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
@@ -467,41 +722,19 @@ export async function fetchConsumptionTopGroups(
     buckets.length === batchSize
   );
 
-  const pagedGroups = rankedGroups.slice(offset, offset + limit);
-
-  const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
+  return completeConsumptionTopRanking(auth, {
     dimension,
-    previousPeriod: previousConsumptionPeriod(period),
+    period,
     filter,
-    keys: includePreviousCredits ? pagedGroups.map((group) => group.key) : [],
-  });
-  // The prior-period lookup only feeds the vs-prev display column: a failure
-  // there should not take down the current-period ranking, which already
-  // succeeded. Fall back to unknown growth for every group instead.
-  if (previousCreditsResult.isErr()) {
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dimension,
-        err: previousCreditsResult.error,
-      },
-      "[ConsumptionAnalytics] Failed to fetch previous-period credits, " +
-        "falling back to null vs-prev values."
-    );
-  }
-  const previousCreditsByKey = previousCreditsResult.isOk()
-    ? previousCreditsResult.value
-    : new Map<string, number>();
-
-  return new Ok({
-    groups: pagedGroups.map((group) => ({
-      ...group,
-      previousCredits: previousCreditsByKey.get(group.key) ?? null,
-    })),
-    hasMore: totalCount > offset + limit,
-    totalCount,
-    totalCredits,
-    ...(dimension === "group" ? { totalActiveMembers } : {}),
+    limit,
+    offset,
+    includePreviousCredits,
+    ranking: {
+      groups: rankedGroups,
+      totalCount,
+      totalCredits,
+      totalActiveMembers,
+    },
   });
 }
 

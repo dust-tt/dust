@@ -9,7 +9,7 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
-import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
+import type { ConsumptionTopGroupsBody } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
@@ -22,6 +22,7 @@ import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/cons
 import { emptyArray } from "@app/lib/swr/swr";
 import type {
   ConsumptionScopeFilter,
+  ConsumptionTopGroupSortBy,
   ConsumptionTopSortOrder,
 } from "@app/types/api/analytics/consumption";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -77,6 +78,7 @@ export interface UseConsumptionTopParams {
   search?: string;
   filter?: ConsumptionScopeFilter;
   analyticsScope?: ConsumptionAnalyticsScope;
+  sortBy?: ConsumptionTopGroupSortBy;
   sortOrder?: ConsumptionTopSortOrder;
   disabled?: boolean;
 }
@@ -228,6 +230,7 @@ export function useConsumptionTop({
   search,
   filter,
   analyticsScope,
+  sortBy,
   sortOrder = "desc",
   disabled,
 }: UseConsumptionTopParams) {
@@ -236,7 +239,7 @@ export function useConsumptionTop({
     analyticsScope,
     endpoint: CONSUMPTION_TOP_ENDPOINTS[dimension],
   });
-  const body: ConsumptionTopBody = {
+  const body: ConsumptionTopGroupsBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
@@ -244,11 +247,12 @@ export function useConsumptionTop({
     limit,
     offset,
     search: search?.trim(),
+    ...(dimension === "group" && sortBy ? { sortBy } : {}),
     sortOrder,
   };
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<
-    ConsumptionTopBody,
+    ConsumptionTopGroupsBody,
     ConsumptionTopResponse
   >({ url, body, disabled });
 

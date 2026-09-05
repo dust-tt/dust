@@ -568,6 +568,25 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     );
   });
 
+  it("forwards workspace-average sorting to the group ranking", async () => {
+    vi.mocked(fetchConsumptionTopGroups).mockResolvedValue(new Ok(TOP_GROUPS));
+    const { workspace } = await setupTest();
+
+    const response = await postRankingRequest(workspace.sId, "top-groups", {
+      sortBy: "workspace_average",
+      sortOrder: "asc",
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionTopGroups)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        sortBy: "workspace_average",
+        sortOrder: "asc",
+      })
+    );
+  });
+
   it("normalizes a null limit to the default", async () => {
     vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
     const { workspace } = await setupTest();
