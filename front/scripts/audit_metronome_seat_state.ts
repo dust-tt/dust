@@ -17,6 +17,7 @@
  *   npx tsx scripts/audit_metronome_seat_state.ts --workspaceId <wId>
  */
 import config from "@app/lib/api/config";
+import { fetchConsumedAwuCreditsFromMetronomeByUserId } from "@app/lib/api/credits/members_usage";
 import {
   getMetronomeClient,
   getMetronomeSubscriptionSeatState,
@@ -25,9 +26,11 @@ import {
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
+  getAwuAllocationForSeatType,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
+import { getSeatCreditNameForSeatType } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -345,6 +348,18 @@ async function auditWorkspace(
   );
 
   const allSeatIds = new Set<string>();
+  // Map every assigned seat to its seat type, and each seat type to the AWU
+  // it is entitled to grant, so we can flag seats holding MORE granted AWU
+  // than their allocation (credit stacking left by an un-emptied origin credit
+  // on a prior seat-type change — e.g. a pro 8000 grant stacked on max 40000).
+  const seatTypeBySeatId = new Map<string, MembershipSeatType>();
+  const allocationBySeatType = new Map<MembershipSeatType, number>();
+  for (const { seatType } of seatSubscriptions) {
+    allocationBySeatType.set(
+      seatType,
+      getAwuAllocationForSeatType(contract, seatType, productSeatTypes)
+    );
+  }
 
   // Per seat subscription: compare Metronome assignment vs Dust desired.
   for (const { seatType, subId } of seatSubscriptions) {
@@ -369,7 +384,10 @@ async function auditWorkspace(
     const missingInMetronome = setDiff([...desired], assignedSet);
     const staleInMetronome = setDiff(assignedSeatIds, desired);
 
-    assignedSeatIds.forEach((id) => allSeatIds.add(id));
+    assignedSeatIds.forEach((id) => {
+      allSeatIds.add(id);
+      seatTypeBySeatId.set(id, seatType);
+    });
     desired.forEach((id) => allSeatIds.add(id));
 
     logger.info(
@@ -439,6 +457,135 @@ async function auditWorkspace(
       seatsNonPositiveBalance,
     },
     "[SeatAudit] seat balances summary"
+  );
+
+  // Over-allocation (credit-stacking) detection — consumption-based reconcile.
+  //
+  // A seat should hold max(0, homeAllocation - consumed); anything above that is
+  // a stray grant from a tier it moved off that was never emptied. Detection is
+  // by consumption, NOT grant-time assignment: a seat's stray grant can sit in
+  // an EARLIER credit segment than the current one (it moved tier before the
+  // latest segment started), so grant-history under-detects it. `consumed` is
+  // Metronome's OWN per-user usage (authoritative, not ES). A legit seat has
+  // balance ≈ allocation - consumed, so its over is ~0; only a seat carrying an
+  // extra grant exceeds the threshold, so a healthy seat is never flagged.
+  const currentAwuBalanceForSeat = (seatId: string): number =>
+    (balanceBySeatId.get(seatId) ?? [])
+      .filter((b) => b.credit_type_id === awuCreditTypeId)
+      .reduce((sum, b) => sum + b.balance, 0);
+
+  const creditBearingSeatTypes = seatSubscriptions
+    .map(({ seatType }) => seatType)
+    .filter((seatType) => getSeatCreditNameForSeatType(seatType));
+  // Candidate seats: those currently on a credit-bearing tier (a free/none home
+  // has no recurring credit of its own; its stray is handled separately).
+  const candidateSeatTypeById = new Map<string, MembershipSeatType>();
+  for (const [seatId, seatType] of seatTypeBySeatId) {
+    if (creditBearingSeatTypes.includes(seatType)) {
+      candidateSeatTypeById.set(seatId, seatType);
+    }
+  }
+  // Seats currently assigned per tier — the stray is an actively-used tier, so
+  // dormant tiers (e.g. pro_yearly/max_yearly with 0 seats) are ignored when
+  // labelling the stray.
+  const assignedCountByTier = new Map<MembershipSeatType, number>();
+  for (const seatType of seatTypeBySeatId.values()) {
+    assignedCountByTier.set(
+      seatType,
+      (assignedCountByTier.get(seatType) ?? 0) + 1
+    );
+  }
+  const RECONCILE_TOLERANCE_AWU = 1000;
+  const candidateSeatIds = [...candidateSeatTypeById.keys()];
+  const consumedByUserId = await fetchConsumedAwuCreditsFromMetronomeByUserId({
+    workspaceId,
+    metronomeCustomerId,
+    metronomeContractId: contractId,
+    users: candidateSeatIds.map((sId) => ({
+      sId,
+      seatType: candidateSeatTypeById.get(sId) ?? null,
+    })),
+  });
+  const overAllocatedSeats: Array<{
+    seatId: string;
+    homeSeatType: MembershipSeatType;
+    strayType: MembershipSeatType | "ambiguous";
+    homeAllocation: number;
+    consumedAwu: number;
+    currentBalance: number;
+    targetBalance: number;
+    overGrantedAwu: number;
+  }> = [];
+  for (const [seatId, homeSeatType] of candidateSeatTypeById) {
+    const homeAllocation = allocationBySeatType.get(homeSeatType) ?? 0;
+    if (homeAllocation <= 0) {
+      continue;
+    }
+    const consumedAwu = consumedByUserId.get(seatId) ?? 0;
+    const currentBalance = currentAwuBalanceForSeat(seatId);
+    const targetBalance = Math.max(0, homeAllocation - consumedAwu);
+    const overGrantedAwu = Math.max(0, currentBalance - targetBalance);
+    if (overGrantedAwu <= RECONCILE_TOLERANCE_AWU) {
+      continue;
+    }
+    // Stray tier = the OTHER credit-bearing tier whose allocation equals the
+    // over-grant (which always equals the stray allocation exactly). A
+    // same-family collision (pro + pro_yearly both 8000) is broken by which one
+    // has assigned seats; in-use is only a tiebreaker, since the stray tier can
+    // itself have 0 seats now (the user moved off it).
+    let strayCandidates = creditBearingSeatTypes.filter(
+      (t) =>
+        t !== homeSeatType &&
+        Math.abs((allocationBySeatType.get(t) ?? -1) - overGrantedAwu) <= 200
+    );
+    if (strayCandidates.length > 1) {
+      const inUse = strayCandidates.filter(
+        (t) => (assignedCountByTier.get(t) ?? 0) > 0
+      );
+      if (inUse.length === 1) {
+        strayCandidates = inUse;
+      }
+    }
+    overAllocatedSeats.push({
+      seatId,
+      homeSeatType,
+      strayType:
+        strayCandidates.length === 1 ? strayCandidates[0] : "ambiguous",
+      homeAllocation,
+      consumedAwu,
+      currentBalance,
+      targetBalance,
+      overGrantedAwu,
+    });
+  }
+  overAllocatedSeats.sort((a, b) => b.overGrantedAwu - a.overGrantedAwu);
+  const totalOverGrantedAwu = overAllocatedSeats.reduce(
+    (sum, s) => sum + s.overGrantedAwu,
+    0
+  );
+  const byTransition = new Map<string, { count: number; awu: number }>();
+  for (const s of overAllocatedSeats) {
+    const key = `${s.homeSeatType}<-${s.strayType}`;
+    const agg = byTransition.get(key) ?? { count: 0, awu: 0 };
+    agg.count += 1;
+    agg.awu += s.overGrantedAwu;
+    byTransition.set(key, agg);
+  }
+  logger.info(
+    {
+      workspaceId,
+      contractId,
+      allocationBySeatType: Object.fromEntries(allocationBySeatType),
+      candidateSeatCount: candidateSeatIds.length,
+      // Sanity check: a low count vs candidateSeatCount means Metronome's usage
+      // read degraded and the over-grant sizing is an undercount.
+      seatsWithConsumption: consumedByUserId.size,
+      overAllocatedSeatCount: overAllocatedSeats.length,
+      totalOverGrantedAwu,
+      byTransition: Object.fromEntries(byTransition),
+      overAllocatedSeats,
+    },
+    "[SeatAudit] over-allocated seats (credit stacking)"
   );
 
   if (!probe) {
