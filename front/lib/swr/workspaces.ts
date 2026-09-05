@@ -670,13 +670,12 @@ export function useCheckoutStatus({
   const { fetcher } = useFetcher();
   const checkoutFetcher: Fetcher<GetCheckoutStatusResponseBody> = fetcher;
 
-  const url = disabled
-    ? null
-    : planCode
-      ? `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`
-      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}`;
+  const url = planCode
+    ? `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`
+    : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, checkoutFetcher, {
+    disabled,
     refreshInterval: pollIntervalMs,
   });
 

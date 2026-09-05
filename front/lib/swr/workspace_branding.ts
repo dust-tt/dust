@@ -32,7 +32,7 @@ export function useWorkspaceBranding({
   const brandingFetcher: Fetcher<GetWorkspaceBrandingResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/branding`,
+    `/api/w/${owner.sId}/branding`,
     brandingFetcher,
     { disabled }
   );
