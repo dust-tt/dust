@@ -6,6 +6,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { DEFAULT_POD_FILE_TAB_ICON } from "@app/types/pod_file_tab";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -57,6 +58,79 @@ describe("ProjectMetadataResource", () => {
 
       expect(metadata.description).toBe("Full metadata");
       expect(metadata.sId).toMatch(/^pmd_/);
+    });
+  });
+
+  describe("renameFramePath", () => {
+    it("repoints the pinned Frame, file tabs and tabs order", async () => {
+      const fromPath = "pod-abc/Status/manifest.json";
+      const toPath = "pod-abc/Renamed/manifest.json";
+      const otherPath = "pod-abc/Other/manifest.json";
+      const metadata = await ProjectMetadataResource.makeNew(
+        auth,
+        projectSpace,
+        {
+          pinnedFramePath: fromPath,
+          frameTabs: [
+            {
+              path: fromPath,
+              title: "Status",
+              icon: DEFAULT_POD_FILE_TAB_ICON,
+            },
+            {
+              path: otherPath,
+              title: "Other",
+              icon: DEFAULT_POD_FILE_TAB_ICON,
+            },
+          ],
+          tabsOrder: ["files", fromPath, otherPath],
+        }
+      );
+
+      await metadata.renameFramePath(fromPath, toPath);
+
+      const reloaded = await ProjectMetadataResource.fetchBySpace(
+        auth,
+        projectSpace
+      );
+      expect(reloaded?.pinnedFramePath).toBe(toPath);
+      expect(reloaded?.frameTabs?.map((tab) => tab.path)).toEqual([
+        toPath,
+        otherPath,
+      ]);
+      expect(reloaded?.tabsOrder).toEqual(["files", toPath, otherPath]);
+    });
+
+    it("leaves metadata referencing other Frames untouched", async () => {
+      const otherPath = "pod-abc/Other/manifest.json";
+      const metadata = await ProjectMetadataResource.makeNew(
+        auth,
+        projectSpace,
+        {
+          pinnedFramePath: otherPath,
+          frameTabs: [
+            {
+              path: otherPath,
+              title: "Other",
+              icon: DEFAULT_POD_FILE_TAB_ICON,
+            },
+          ],
+          tabsOrder: ["files", otherPath],
+        }
+      );
+
+      await metadata.renameFramePath(
+        "pod-abc/Status/manifest.json",
+        "pod-abc/Renamed/manifest.json"
+      );
+
+      const reloaded = await ProjectMetadataResource.fetchBySpace(
+        auth,
+        projectSpace
+      );
+      expect(reloaded?.pinnedFramePath).toBe(otherPath);
+      expect(reloaded?.frameTabs?.map((tab) => tab.path)).toEqual([otherPath]);
+      expect(reloaded?.tabsOrder).toEqual(["files", otherPath]);
     });
   });
 

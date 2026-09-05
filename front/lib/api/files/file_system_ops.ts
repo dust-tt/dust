@@ -6,10 +6,13 @@
 
 import type { DustFileSystem } from "@app/lib/api/file_system";
 import { decodeBuffer } from "@app/lib/api/files/utils";
+import { moveFrameV2SourceUsingFileSystem } from "@app/lib/api/frames/move_source";
+import type { FrameSourceMoveError } from "@app/lib/api/frames/move_source_paths";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
@@ -277,8 +280,28 @@ function inferDestMountInfo(
 }
 
 /**
+ * Return the registered Frames v2 manifest when `scopedPath` is the source folder of a Frame.
+ * The explorer surfaces such a folder as a single Frame package entry.
+ */
+async function fetchFrameV2AtSourceDirectory(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPath: string
+): Promise<FileResource | undefined> {
+  const manifest = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    `${scopedPath}/${FRAME_MANIFEST_FILE}`
+  );
+  return manifest?.isFrameV2 ? manifest : undefined;
+}
+
+/**
  * Rename a file at `scopedPath` to `newFileName` (same directory) and sync the
  * linked FileResource record if one exists.
+ *
+ * When `scopedPath` is the source folder of a registered Frame, the rename goes through the
+ * Frame source move so the Frame identity, publication and Pod tabs follow the folder.
  *
  * Returns the same result shape as `DustFileSystem.rename()`.
  */
@@ -288,13 +311,28 @@ export async function renameCanonicalFile(
   scopedPath: string,
   newFileName: string
 ): Promise<
-  Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
+  Result<
+    { dest: string; sourceDeletionFailed: boolean },
+    DustFileSystemError | FrameSourceMoveError
+  >
 > {
   const linkedFileResource = await fetchLinkedFileResource(
     auth,
     dustFs,
     scopedPath
   );
+
+  if (!linkedFileResource) {
+    const frame = await fetchFrameV2AtSourceDirectory(auth, dustFs, scopedPath);
+    if (frame) {
+      return renameFrameV2SourceDirectory(
+        auth,
+        dustFs,
+        scopedPath,
+        newFileName
+      );
+    }
+  }
 
   const renameResult = await dustFs.rename(scopedPath, newFileName);
   if (renameResult.isErr()) {
@@ -317,6 +355,51 @@ export async function renameCanonicalFile(
   }
 
   return renameResult;
+}
+
+async function renameFrameV2SourceDirectory(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  sourceDirectoryPath: string,
+  newFolderName: string
+): Promise<
+  Result<
+    { dest: string; sourceDeletionFailed: boolean },
+    DustFileSystemError | FrameSourceMoveError
+  >
+> {
+  // Mirrors the file name check of `DustFileSystem.rename()`: a separator would nest the folder.
+  if (
+    !newFolderName ||
+    newFolderName.includes("/") ||
+    newFolderName.includes("\\")
+  ) {
+    return new Err(
+      new DustFileSystemError(
+        "invalid_path",
+        "newFileName must be a non-empty string without path separators."
+      )
+    );
+  }
+
+  const dest = `${path.posix.dirname(sourceDirectoryPath)}/${newFolderName}`;
+  if (dest === sourceDirectoryPath) {
+    return new Ok({ dest, sourceDeletionFailed: false });
+  }
+
+  const moveResult = await moveFrameV2SourceUsingFileSystem(auth, {
+    destinationDirectoryPath: dest,
+    dustFs,
+    sourceDirectoryPath,
+  });
+  if (moveResult.isErr()) {
+    return moveResult;
+  }
+
+  return new Ok({
+    dest,
+    sourceDeletionFailed: moveResult.value.sourceDeletionFailed,
+  });
 }
 
 /**

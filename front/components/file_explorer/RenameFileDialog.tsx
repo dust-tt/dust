@@ -1,4 +1,4 @@
-import { useRenamePodFile } from "@app/lib/swr/pods";
+import { useRenameFileByPath } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -32,16 +32,32 @@ function splitFileName(fileName: string): {
   };
 }
 
-type RenameMountItem =
+/**
+ * `path` is the canonical scoped path of the item to rename. For a Frame it is the source folder
+ * of the Frame package; the server moves the whole package along with it.
+ */
+export type RenameMountItem =
   | { kind: "file"; path: string; name: string }
-  | { kind: "folder"; path: string; name: string };
+  | { kind: "folder"; path: string; name: string }
+  | { kind: "frame"; path: string; name: string };
+
+const DIALOG_TITLES: Record<RenameMountItem["kind"], string> = {
+  file: "Rename file",
+  folder: "Rename folder",
+  frame: "Rename Frame",
+};
+
+const INPUT_PLACEHOLDERS: Record<RenameMountItem["kind"], string> = {
+  file: "Enter new file name...",
+  folder: "Enter new folder name...",
+  frame: "Enter new Frame name...",
+};
 
 interface RenameFileDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onRenamed: () => void;
   owner: LightWorkspaceType;
-  podId: string;
   item: RenameMountItem | null;
 }
 
@@ -50,14 +66,13 @@ export function RenameFileDialog({
   onClose,
   onRenamed,
   owner,
-  podId,
   item,
 }: RenameFileDialogProps) {
   const [name, setName] = useState<string>("");
   const [isRenaming, setIsRenaming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const renameFile = useRenamePodFile({ owner, podId });
+  const renameFile = useRenameFileByPath({ owner });
 
   const extension = useMemo(() => {
     if (!item || item.kind !== "file") {
@@ -107,6 +122,8 @@ export function RenameFileDialog({
     }
   }, [item, name, extension, isRenaming, renameFile, onRenamed, onClose]);
 
+  const kind = item?.kind ?? "file";
+
   return (
     <Dialog
       open={isOpen}
@@ -118,15 +135,13 @@ export function RenameFileDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {item?.kind === "folder" ? "Rename folder" : "Rename file"}
-          </DialogTitle>
+          <DialogTitle>{DIALOG_TITLES[kind]}</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          {item?.kind === "folder" ? (
+          <div className="flex items-center gap-1">
             <Input
               ref={inputRef}
-              placeholder="Enter new folder name..."
+              placeholder={INPUT_PLACEHOLDERS[kind]}
               value={name}
               disabled={isRenaming}
               onChange={(e) => setName(e.target.value)}
@@ -137,28 +152,10 @@ export function RenameFileDialog({
                 }
               }}
             />
-          ) : (
-            <div className="flex items-center gap-1">
-              <Input
-                ref={inputRef}
-                placeholder="Enter new file name..."
-                value={name}
-                disabled={isRenaming}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void handleRename();
-                  }
-                }}
-              />
-              {extension && (
-                <span className="text-sm text-muted-foreground">
-                  {extension}
-                </span>
-              )}
-            </div>
-          )}
+            {kind === "file" && extension && (
+              <span className="text-sm text-muted-foreground">{extension}</span>
+            )}
+          </div>
         </DialogContainer>
         <DialogFooter
           rightButtonProps={{

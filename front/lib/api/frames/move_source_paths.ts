@@ -21,6 +21,12 @@ export class FrameSourceMoveError extends Error {
   }
 }
 
+export function isFrameSourceMoveError(
+  err: unknown
+): err is FrameSourceMoveError {
+  return err instanceof FrameSourceMoveError;
+}
+
 export type FrameSourceMovePaths = {
   auditEvent: {
     parentRelativePath: string;
