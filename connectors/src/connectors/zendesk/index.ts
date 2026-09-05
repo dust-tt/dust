@@ -11,6 +11,7 @@ import {
   allowSyncZendeskBrand,
   forbidSyncZendeskBrand,
 } from "@connectors/connectors/zendesk/lib/brand_permissions";
+import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
 import {
   allowSyncZendeskCategory,
   allowSyncZendeskHelpCenter,
@@ -362,6 +363,22 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       nodes.sort((a, b) => a.title.localeCompare(b.title));
       return new Ok(nodes);
     } catch (e) {
+      // Listing all Zendesk brands requires an admin or an agent with the
+      // `assign_tickets_to_any_brand` permission. Dust requires an admin
+      // connection, so a root-level 403 must be re-authorized with an admin.
+      // https://developer.zendesk.com/api-reference/ticketing/account-configuration/brands/#list-brands
+      if (
+        parentInternalId === null &&
+        e instanceof ZendeskApiError &&
+        e.status === 403
+      ) {
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_USER_MUST_BE_ADMIN",
+            "The connected account does not have sufficient permissions. Please re-authorize the connection with an administrator account."
+          )
+        );
+      }
       if (e instanceof ExternalOAuthTokenError) {
         return new Err(
           new ConnectorManagerError(

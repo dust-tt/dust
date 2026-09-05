@@ -57,6 +57,7 @@ const API_ERROR_TYPES = [
   "connector_oauth_connection_not_found",
   "connector_oauth_target_mismatch",
   "connector_oauth_user_missing_rights",
+  "connector_oauth_user_must_be_admin",
   "connector_provider_not_supported",
   "connector_credentials_error",
   "connector_credentials_not_found",
