@@ -259,6 +259,10 @@ export {
   ResizablePanel,
   ResizablePanelGroup,
 } from "./Resizable";
+export {
+  ResizableSidePanel,
+  type ResizableSidePanelProps,
+} from "./ResizableSidePanel";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
