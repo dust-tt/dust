@@ -1,0 +1,1902 @@
+import "@dust-tt/sparkle/styles/allotment.css";
+
+import {
+  ClockRewind,
+  Avatar,
+  Bar,
+  BarChart01,
+  Bold01,
+  Zap,
+  BookOpen01,
+  Button,
+  Checkbox,
+  Check,
+  Chip,
+  CodeSquare01,
+  LayoutAlt02,
+  Sidekick,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Eye,
+  EyeOff,
+  Heading01,
+  Icon,
+  Input,
+  Italic01,
+  Link01,
+  CheckDone01,
+  ListGroup,
+  ListItem,
+  ListItemSection,
+  List,
+  Lock01,
+  DiffBlock,
+  Markdown,
+  Plus,
+  DoubleQuotes,
+  Separator,
+  Server03,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  LogIn01,
+  ArrowNarrowLeft,
+  SpaceClosed as SpaceCloseIcon,
+  SpaceOpen,
+  Folder,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tag01,
+  Beaker02,
+  Tool02,
+  Users01,
+  XClose,
+  Stars02,
+} from "@dust-tt/sparkle";
+import { Allotment } from "allotment";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { Components } from "react-markdown";
+
+import { customColors } from "@dust-tt/sparkle/lib/colors";
+
+import type { DiffChange } from "@dust-tt/sparkle";
+
+import { InputBar } from "./InputBar";
+import { InviteUsersScreen } from "./InviteUsersScreen";
+import {
+  NewConversationAgentMessage,
+  NewConversationContainer,
+  NewConversationMessageGroup,
+  NewConversationUserMessage,
+} from "./NewConversationMessages";
+import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
+import {
+  mockInstructionCases,
+  mockSidekickConversationItems,
+  mockSuggestionChanges,
+} from "../data/agentBuilder";
+import { getRandomAgents } from "../data/agents";
+import { mockSpaces } from "../data/spaces";
+import { mockUsers } from "../data/users";
+import { ActionCardBlock } from "@dust-tt/sparkle";
+import { actionCardDirective } from "./actionCardDirective";
+
+const getRandomSubset = <T,>(items: T[], count: number) => {
+  const shuffled = [...items].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, Math.min(count, items.length));
+};
+
+const pickProjectsWithVisibility = <T,>(
+  openItems: T[],
+  restrictedItems: T[],
+  totalCount: number
+) => {
+  const totalAvailable = openItems.length + restrictedItems.length;
+  const total = Math.min(totalCount, totalAvailable);
+
+  if (!openItems.length || !restrictedItems.length || total < 2) {
+    return getRandomSubset([...openItems, ...restrictedItems], total);
+  }
+
+  const maxOpen = Math.min(openItems.length, total - 1);
+  const openCount = Math.floor(Math.random() * maxOpen) + 1;
+  const restrictedCount = Math.min(restrictedItems.length, total - openCount);
+
+  if (restrictedCount === 0) {
+    const adjustedOpen = Math.max(1, total - 1);
+    return [
+      ...getRandomSubset(openItems, Math.min(openItems.length, adjustedOpen)),
+      ...getRandomSubset(restrictedItems, 1),
+    ];
+  }
+
+  return [
+    ...getRandomSubset(openItems, openCount),
+    ...getRandomSubset(restrictedItems, restrictedCount),
+  ];
+};
+
+function parseDiffString(content: string): DiffChange[] {
+  const lines = content.split("\n").filter((line) => line.trim());
+  const changes: DiffChange[] = [];
+  let currentOld: string | undefined;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("- ")) {
+      if (currentOld) {
+        changes.push({ old: currentOld });
+      }
+      currentOld = trimmed.slice(2);
+    } else if (trimmed.startsWith("+ ")) {
+      const newText = trimmed.slice(2);
+      if (currentOld) {
+        changes.push({ old: currentOld, new: newText });
+        currentOld = undefined;
+      } else {
+        changes.push({ new: newText });
+      }
+    }
+  }
+
+  if (currentOld) {
+    changes.push({ old: currentOld });
+  }
+
+  return changes;
+}
+
+interface MetadataRowProps {
+  label: string;
+  action: React.ReactNode;
+  description?: React.ReactNode;
+  descriptionClassName?: string;
+}
+
+function MetadataRow({
+  label,
+  action,
+  description,
+  descriptionClassName,
+}: MetadataRowProps) {
+  const descriptionClasses = [
+    "text-sm text-muted-foreground dark:text-muted-foreground-night",
+    descriptionClassName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div className="flex items-center gap-2 border-t border-border dark:border-border-night py-2">
+      <div className="w-[80px] text-sm text-muted-foreground dark:text-muted-foreground-night">
+        {label}
+      </div>
+      {action}
+      {description ? (
+        <div className={descriptionClasses}>{description}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function humanizeHandle(handle: string): string {
+  const withSpaces = handle.replace(/([A-Z])/g, " $1").trim();
+  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1).toLowerCase();
+}
+
+interface EditorEditionTab {
+  id: string;
+  name: string;
+  emoji: string;
+  backgroundColor: string;
+}
+
+export interface SidekickBuilderViewTemplate {
+  handle: string;
+  emoji: string;
+  backgroundColor: string;
+}
+
+interface SidekickBuilderViewProps {
+  template?: SidekickBuilderViewTemplate;
+  onClose?: () => void;
+}
+
+interface SectionHeaderProps {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}
+
+function SectionHeader({ title, description, action }: SectionHeaderProps) {
+  return (
+    <div className="flex w-full items-end gap-2">
+      <div className="flex flex-1 flex-col">
+        <div className="heading-base text-foreground dark:text-foreground-night">
+          {title}
+        </div>
+        <div className="text-base text-muted-foreground dark:text-muted-foreground-night">
+          {description}
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+const isRestrictedSpace = (spaceId: string) =>
+  spaceId.charCodeAt(spaceId.length - 1) % 2 === 0;
+
+const isJoinedProject = (spaceId: string) => {
+  const match = spaceId.match(/\d+$/);
+  if (!match) {
+    return false;
+  }
+  return Number(match[0]) % 2 === 0;
+};
+
+const matchesSpacesProjectsSearch = (
+  name: string,
+  description: string | undefined,
+  search: string
+) => {
+  if (!search) {
+    return true;
+  }
+  const normalizedName = name.toLowerCase();
+  const normalizedDescription = (description ?? "").toLowerCase();
+  return (
+    normalizedName.includes(search) || normalizedDescription.includes(search)
+  );
+};
+
+const RIGHT_PANEL_TABS = [
+  { value: "sidekick", label: "Sidekick", icon: Sidekick },
+  { value: "testing", label: "Preview", icon: Beaker02 },
+  { value: "insights", label: "Insights", icon: BarChart01 },
+] as const;
+
+export function SidekickBuilderView({
+  template,
+  onClose,
+}: SidekickBuilderViewProps) {
+  const agent = useMemo(() => getRandomAgents(1)[0], []);
+  const displayName = template
+    ? humanizeHandle(template.handle)
+    : agent?.name || "Agent";
+  const displayEmoji = template?.emoji ?? agent?.emoji;
+  const displayBackgroundColor =
+    template?.backgroundColor ?? agent?.backgroundColor;
+
+  const [editorTabs, setEditorTabs] = useState<EditorEditionTab[]>(() => {
+    if (template) {
+      const name = humanizeHandle(template.handle);
+      return [
+        {
+          id: "edition-primary",
+          name,
+          emoji: template.emoji,
+          backgroundColor: template.backgroundColor,
+        },
+      ];
+    }
+    return getRandomAgents(3).map((a) => ({
+      id: `edition-${a.id}`,
+      name: a.name,
+      emoji: a.emoji,
+      backgroundColor: a.backgroundColor,
+    }));
+  });
+  const [activeEditorTabId, setActiveEditorTabId] = useState<string | null>(
+    () => editorTabs[0]?.id ?? null
+  );
+  const activeEditorTabIdResolved =
+    activeEditorTabId ?? editorTabs[0]?.id ?? "";
+  const activeEditorTab = useMemo(
+    () =>
+      editorTabs.find((t) => t.id === activeEditorTabIdResolved) ??
+      editorTabs[0],
+    [editorTabs, activeEditorTabIdResolved]
+  );
+
+  const [agentName, setAgentName] = useState(
+    () => editorTabs[0]?.name ?? displayName
+  );
+  const [agentDescription, setAgentDescription] = useState(
+    template ? "" : agent?.description || ""
+  );
+  const actionCardComponents: Components = useMemo(
+    () =>
+      ({
+        action_card: ActionCardBlock,
+      }) as Components,
+    []
+  );
+  const actionCardPlugins = useMemo(() => [actionCardDirective], []);
+  const nameSuggestions = useMemo(() => {
+    const count = Math.floor(Math.random() * 3) + 2;
+    return getRandomAgents(count).map((suggestedAgent) => suggestedAgent.name);
+  }, []);
+  const descriptionSuggestions = useMemo(() => {
+    const count = Math.floor(Math.random() * 3) + 2;
+    return getRandomAgents(count).map(
+      (suggestedAgent) => suggestedAgent.description
+    );
+  }, []);
+  const versionHistoryItems = useMemo(() => {
+    const dates = [
+      "Jan 20, 2026 at 2:34 PM",
+      "Jan 19, 2026 at 11:15 AM",
+      "Jan 17, 2026 at 4:52 PM",
+      "Jan 15, 2026 at 9:08 AM",
+      "Jan 12, 2026 at 3:21 PM",
+    ];
+    return dates.map((date, index) => ({
+      id: `version-${index}`,
+      date,
+      author: mockUsers[index].fullName,
+    }));
+  }, []);
+  const initialEditorIds = useMemo(() => {
+    const count = Math.floor(Math.random() * 5) + 1;
+    return mockUsers.slice(0, count).map((user) => user.id);
+  }, []);
+  const tagItems = useMemo(() => mockSpaces.slice(0, 6), []);
+  const selectableSpaces = useMemo(() => mockSpaces.slice(0, 12), []);
+  const [isSpacesSheetOpen, setIsSpacesSheetOpen] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<{
+    id: string;
+    date: string;
+    author: string;
+  } | null>(null);
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [tagSearch, setTagSearch] = useState("");
+  const [selectedEditorIds, setSelectedEditorIds] = useState<Set<string>>(
+    () => new Set(initialEditorIds)
+  );
+  const [isInviteEditorsOpen, setIsInviteEditorsOpen] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [rightPanelRatio, setRightPanelRatio] = useState(0.5);
+  const [activeRightPanelTab, setActiveRightPanelTab] = useState("sidekick");
+  const [accessStatus, setAccessStatus] = useState<"published" | "unpublished">(
+    "unpublished"
+  );
+  const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
+    null
+  );
+  const [hasSuggestionsState, setHasSuggestionsState] = useState(false);
+  const [isInstructionDirty, setIsInstructionDirty] = useState(false);
+  const hasInstructionChangeRef = useRef(false);
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState<Set<string>>(() => {
+    if (template) return new Set();
+    const defaultSpace = mockSpaces[0];
+    return defaultSpace ? new Set([defaultSpace.id]) : new Set();
+  });
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [draftSpaceIds, setDraftSpaceIds] = useState<Set<string>>(
+    () => new Set(selectedSpaceIds)
+  );
+  const [draftProjectIds, setDraftProjectIds] = useState<Set<string>>(
+    () => new Set(selectedProjectIds)
+  );
+  const [spacesProjectsSearch, setSpacesProjectsSearch] = useState("");
+  const [instructionReference, setInstructionReference] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+  const publishedMetadata = useMemo(() => {
+    const daysAgo = Math.floor(Math.random() * 21) + 1;
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    const users = Math.floor(Math.random() * 900) + 100;
+
+    return {
+      dateLabel: date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      usersLabel: new Intl.NumberFormat("en-US").format(users),
+    };
+  }, []);
+  const editorNames = useMemo(() => {
+    return mockUsers
+      .filter((user) => selectedEditorIds.has(user.id))
+      .map((user) => user.fullName || `${user.firstName} ${user.lastName}`);
+  }, [selectedEditorIds]);
+  const selectedSpaces = useMemo(() => {
+    return selectableSpaces.filter((space) => selectedSpaceIds.has(space.id));
+  }, [selectableSpaces, selectedSpaceIds]);
+  const selectedTagNames = useMemo(() => {
+    return tagItems
+      .filter((tag) => selectedTagIds.has(tag.id))
+      .map((tag) => tag.name);
+  }, [tagItems, selectedTagIds]);
+  const normalizedTagSearch = tagSearch.trim().toLowerCase();
+  const filteredTagItems = useMemo(
+    () =>
+      tagItems.filter((tag) =>
+        tag.name.toLowerCase().includes(normalizedTagSearch)
+      ),
+    [tagItems, normalizedTagSearch]
+  );
+  const recommendedTagItems = useMemo(
+    () => filteredTagItems.slice(0, 2),
+    [filteredTagItems]
+  );
+  const recommendedTagIds = useMemo(
+    () => new Set(recommendedTagItems.map((tag) => tag.id)),
+    [recommendedTagItems]
+  );
+  const remainingTagItems = useMemo(
+    () => filteredTagItems.filter((tag) => !recommendedTagIds.has(tag.id)),
+    [filteredTagItems, recommendedTagIds]
+  );
+  const openSpaces = useMemo(
+    () => selectableSpaces.filter((space) => !isRestrictedSpace(space.id)),
+    [selectableSpaces]
+  );
+  const restrictedSpaces = useMemo(
+    () => selectableSpaces.filter((space) => isRestrictedSpace(space.id)),
+    [selectableSpaces]
+  );
+  const selectableSpaceIds = useMemo(
+    () => new Set(selectableSpaces.map((s) => s.id)),
+    [selectableSpaces]
+  );
+  const projectSpaces = useMemo(
+    () => mockSpaces.filter((space) => !selectableSpaceIds.has(space.id)),
+    [selectableSpaceIds]
+  );
+  const myProjects = useMemo(() => {
+    const count = Math.floor(Math.random() * 12) + 12;
+    const joined = projectSpaces.filter((space) => isJoinedProject(space.id));
+    const openJoined = joined.filter((space) => !isRestrictedSpace(space.id));
+    const restrictedJoined = joined.filter((space) =>
+      isRestrictedSpace(space.id)
+    );
+    return pickProjectsWithVisibility(openJoined, restrictedJoined, count);
+  }, [projectSpaces]);
+  const allProjects = useMemo(() => {
+    const count = Math.floor(Math.random() * 27) + 8;
+    const notJoined = projectSpaces.filter(
+      (space) => !isJoinedProject(space.id)
+    );
+    const openNotJoined = notJoined.filter(
+      (space) => !isRestrictedSpace(space.id)
+    );
+    const restrictedNotJoined = notJoined.filter((space) =>
+      isRestrictedSpace(space.id)
+    );
+    return pickProjectsWithVisibility(
+      openNotJoined,
+      restrictedNotJoined,
+      count
+    );
+  }, [projectSpaces]);
+  const normalizedSpacesProjectsSearch = spacesProjectsSearch
+    .trim()
+    .toLowerCase();
+  const filteredOpenSpaces = useMemo(
+    () =>
+      openSpaces.filter((space) =>
+        matchesSpacesProjectsSearch(
+          space.name,
+          space.description,
+          normalizedSpacesProjectsSearch
+        )
+      ),
+    [openSpaces, normalizedSpacesProjectsSearch]
+  );
+  const filteredRestrictedSpaces = useMemo(
+    () =>
+      restrictedSpaces.filter((space) =>
+        matchesSpacesProjectsSearch(
+          space.name,
+          space.description,
+          normalizedSpacesProjectsSearch
+        )
+      ),
+    [restrictedSpaces, normalizedSpacesProjectsSearch]
+  );
+  const filteredMyProjects = useMemo(
+    () =>
+      myProjects.filter((space) =>
+        matchesSpacesProjectsSearch(
+          space.name,
+          space.description,
+          normalizedSpacesProjectsSearch
+        )
+      ),
+    [myProjects, normalizedSpacesProjectsSearch]
+  );
+  const filteredAllProjects = useMemo(
+    () =>
+      allProjects.filter((space) =>
+        matchesSpacesProjectsSearch(
+          space.name,
+          space.description,
+          normalizedSpacesProjectsSearch
+        )
+      ),
+    [allProjects, normalizedSpacesProjectsSearch]
+  );
+  const selectedProjects = useMemo(
+    () => mockSpaces.filter((space) => selectedProjectIds.has(space.id)),
+    [selectedProjectIds]
+  );
+  const selectedEditorIdList = useMemo(
+    () => Array.from(selectedEditorIds),
+    [selectedEditorIds]
+  );
+
+  const allotmentRef = useRef<React.ComponentRef<typeof Allotment>>(null);
+  const wasRightPanelOpen = useRef(isRightPanelOpen);
+
+  const sidekickConversationItems = useMemo(() => {
+    if (template) {
+      return [
+        {
+          id: "making-template",
+          type: "agent" as const,
+          name: "Sidekick",
+          timestamp: "Just now",
+          content: `Making ${displayName}`,
+        },
+      ];
+    }
+    return mockSidekickConversationItems;
+  }, [template, displayName]);
+
+  const initialInstruction = useMemo(() => {
+    if (template) return "";
+    if (!mockInstructionCases.length) {
+      return "";
+    }
+    return mockInstructionCases[
+      Math.floor(Math.random() * mockInstructionCases.length)
+    ];
+  }, [template]);
+
+  const handleInstructionTextChange = useCallback(() => {
+    if (!hasInstructionChangeRef.current) {
+      hasInstructionChangeRef.current = true;
+      return;
+    }
+    setIsInstructionDirty(true);
+  }, []);
+
+  const clearInstructionDirty = useCallback(() => {
+    setIsInstructionDirty(false);
+  }, []);
+
+  useEffect(() => {
+    const tab = editorTabs.find((t) => t.id === activeEditorTabIdResolved);
+    if (tab) {
+      setAgentName(tab.name);
+    }
+    // editorTabs intentionally omitted — only re-sync when the active edition changes.
+  }, [activeEditorTabId, activeEditorTabIdResolved]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (wasRightPanelOpen.current === isRightPanelOpen) {
+      return;
+    }
+    wasRightPanelOpen.current = isRightPanelOpen;
+    if (!isRightPanelOpen || !allotmentRef.current) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      const rightPercent = Math.min(Math.max(rightPanelRatio * 100, 20), 60);
+      allotmentRef.current?.resize([rightPercent, 100 - rightPercent]);
+    });
+  }, [isRightPanelOpen, rightPanelRatio]);
+
+  useEffect(() => {
+    if (!initialInstruction) {
+      return;
+    }
+    hasInstructionChangeRef.current = false;
+    setIsInstructionDirty(false);
+    richTextAreaRef.current?.setContent(initialInstruction);
+  }, [initialInstruction]);
+
+  useEffect(() => {
+    if (!isSpacesSheetOpen) {
+      return;
+    }
+    setDraftSpaceIds(new Set(selectedSpaceIds));
+    setDraftProjectIds(new Set(selectedProjectIds));
+  }, [isSpacesSheetOpen, selectedSpaceIds, selectedProjectIds]);
+
+  // Generate diff content for version history preview
+  const versionDiffContent = useMemo(() => {
+    const baseInstruction =
+      mockInstructionCases[
+        Math.floor(Math.random() * mockInstructionCases.length)
+      ];
+    const lines = baseInstruction.split("\n");
+
+    // Diff styles: success for additions, warning for removals
+    const additionStyle =
+      "rounded bg-success-100 dark:bg-success-100-night px-0.5 text-success-600 dark:text-success-600-night";
+    const removalStyle =
+      "rounded bg-warning-100 dark:bg-warning-100-night px-0.5 text-warning-600 dark:text-warning-600-night line-through";
+
+    // Apply some fake diff changes
+    const modifiedLines = lines.map((line, index) => {
+      // Skip empty lines
+      if (!line.trim()) return line;
+
+      // Add some additions (green/success)
+      if (index === 3) {
+        return `${line} <span data-diff-add class="${additionStyle}">Include response time targets.</span>`;
+      }
+
+      // Add some removals (strikethrough/warning)
+      if (index === 7 && line.length > 20) {
+        const midPoint = Math.floor(line.length / 2);
+        const removedPart = line.substring(midPoint - 10, midPoint + 10);
+        return (
+          line.substring(0, midPoint - 10) +
+          `<span data-diff-remove class="${removalStyle}">${removedPart}</span>` +
+          line.substring(midPoint + 10)
+        );
+      }
+
+      // Add a replaced section
+      if (index === 12) {
+        return `<span data-diff-remove class="${removalStyle}">Old requirement removed.</span> <span data-diff-add class="${additionStyle}">New requirement: prioritize clarity.</span>`;
+      }
+
+      return line;
+    });
+
+    return `<p>${modifiedLines.join("<br>")}</p>`;
+  }, []);
+
+  const toggleSpace = (spaceId: string) => {
+    setSelectedSpaceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(spaceId)) {
+        next.delete(spaceId);
+      } else {
+        next.add(spaceId);
+      }
+      return next;
+    });
+  };
+
+  const removeSpace = (spaceId: string) => {
+    setSelectedSpaceIds((prev) => {
+      const next = new Set(prev);
+      next.delete(spaceId);
+      return next;
+    });
+  };
+
+  const toggleDraftSpace = (spaceId: string) => {
+    setDraftSpaceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(spaceId)) {
+        next.delete(spaceId);
+      } else {
+        next.add(spaceId);
+      }
+      return next;
+    });
+  };
+
+  const toggleDraftProject = (spaceId: string) => {
+    setDraftProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(spaceId)) {
+        next.delete(spaceId);
+      } else {
+        next.add(spaceId);
+      }
+      return next;
+    });
+  };
+
+  const removeProject = (spaceId: string) => {
+    setSelectedProjectIds((prev) => {
+      const next = new Set(prev);
+      next.delete(spaceId);
+      return next;
+    });
+    setDraftProjectIds((prev) => {
+      const next = new Set(prev);
+      next.delete(spaceId);
+      return next;
+    });
+  };
+
+  const handleAskSidekick = (payload: {
+    selectedText: string;
+    start: number;
+    end: number;
+  }) => {
+    setIsRightPanelOpen(true);
+    setActiveRightPanelTab("sidekick");
+    setInstructionReference({
+      start: payload.start,
+      end: payload.end,
+    });
+    // The selected text can be used to pre-fill the sidekick input or as context
+    console.log("Ask Sidekick with selected text:", payload.selectedText);
+  };
+
+  const checkForSuggestions = () => {
+    setHasSuggestionsState(richTextAreaRef.current?.hasSuggestions() ?? false);
+  };
+
+  return (
+    <div className="h-screen w-full bg-background dark:bg-background-night">
+      <style>{`
+        :root {
+          --focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
+          --separator-border: transparent;
+          --sash-size: 8px;
+          --sash-hover-size: 2px;
+        }
+        .dark {
+          --focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]});
+          --separator-border: transparent;
+        }
+        .allotment-module_splitView__L-yRc.allotment-module_separatorBorder__x-rDS
+          > .allotment-module_splitViewContainer__rQnVa
+          > .allotment-module_splitViewView__MGZ6O:not(:first-child)::before {
+          width: 1px;
+          transition: width 200ms, background-color 200ms;
+        }
+      `}</style>
+      <div className="flex h-full w-full">
+        {!isRightPanelOpen && (
+          <div className="flex h-full w-14 flex-col items-center gap-2 py-3">
+            <Button
+              icon={ArrowNarrowLeft}
+              size="sm"
+              variant="ghost-secondary"
+              onClick={() => setIsRightPanelOpen(true)}
+            />
+            {RIGHT_PANEL_TABS.map((tab) => (
+              <Button
+                key={tab.value}
+                icon={tab.icon}
+                size="sm"
+                variant="ghost-secondary"
+                onClick={() => {
+                  setActiveRightPanelTab(tab.value);
+                  setIsRightPanelOpen(true);
+                }}
+              />
+            ))}
+          </div>
+        )}
+        <Allotment
+          ref={allotmentRef}
+          vertical={false}
+          proportionalLayout={true}
+          defaultSizes={[50, 50]}
+          onChange={(sizes) => {
+            const sideSize = sizes[0];
+            if (typeof sideSize !== "number" || sideSize <= 0) {
+              return;
+            }
+            const total = sizes.reduce(
+              (sum, size) => sum + (typeof size === "number" ? size : 0),
+              0
+            );
+            if (total <= 0) {
+              return;
+            }
+            setRightPanelRatio(sideSize / total);
+          }}
+          className="h-full w-full flex-1"
+        >
+          {isRightPanelOpen && (
+            <Allotment.Pane
+              minSize={280}
+              preferredSize={40}
+              className="flex h-full flex-col overflow-hidden border-r border-border dark:border-border-night"
+            >
+              <Tabs
+                value={activeRightPanelTab}
+                onValueChange={setActiveRightPanelTab}
+                className="flex min-h-0 flex-1 flex-col pt-3"
+              >
+                <TabsList className="pl-6 pr-2">
+                  <Button
+                    icon={LogIn01}
+                    variant="ghost-secondary"
+                    size="sm"
+                    onClick={() => setIsRightPanelOpen(false)}
+                  />
+                  {RIGHT_PANEL_TABS.map((tab) => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      tooltip={tab.label}
+                      label={tab.label}
+                      icon={tab.icon}
+                    />
+                  ))}
+                </TabsList>
+                <TabsContent
+                  value="sidekick"
+                  className="flex min-h-0 flex-1 flex-col"
+                >
+                  <div className="flex min-h-0 flex-1 overflow-y-auto p-3">
+                    <NewConversationContainer>
+                      {(() => {
+                        const diffStart = "[[diff]]";
+                        const diffEnd = "[[/diff]]";
+
+                        const renderMessageContent = (item: {
+                          id: string;
+                          type: "agent" | "user";
+                          content: string;
+                        }) => {
+                          const hasDiffBlock =
+                            item.type === "agent" &&
+                            item.content.includes(diffStart) &&
+                            item.content.includes(diffEnd);
+
+                          if (!hasDiffBlock) {
+                            return item.type === "agent" ? (
+                              <Markdown
+                                content={item.content}
+                                additionalMarkdownComponents={
+                                  actionCardComponents
+                                }
+                                additionalMarkdownPlugins={actionCardPlugins}
+                              />
+                            ) : (
+                              item.content
+                            );
+                          }
+
+                          const [before, rest] = item.content.split(diffStart);
+                          const [diffContent, after = ""] = rest.split(diffEnd);
+                          const trimmedBefore = before.trim();
+                          const trimmedAfter = after.trim();
+
+                          return (
+                            <div className="flex flex-col gap-3">
+                              {trimmedBefore ? (
+                                <Markdown
+                                  content={trimmedBefore}
+                                  additionalMarkdownComponents={
+                                    actionCardComponents
+                                  }
+                                  additionalMarkdownPlugins={actionCardPlugins}
+                                />
+                              ) : null}
+                              <DiffBlock
+                                changes={parseDiffString(diffContent)}
+                                actions={
+                                  <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={Eye}
+                                    tooltip="View changes"
+                                    onClick={() => {}}
+                                  />
+                                }
+                              />
+                              {trimmedAfter ? (
+                                <Markdown
+                                  content={trimmedAfter}
+                                  additionalMarkdownComponents={
+                                    actionCardComponents
+                                  }
+                                  additionalMarkdownPlugins={actionCardPlugins}
+                                />
+                              ) : null}
+                            </div>
+                          );
+                        };
+
+                        const lastMessageId =
+                          sidekickConversationItems.length > 0
+                            ? sidekickConversationItems[
+                                sidekickConversationItems.length - 1
+                              ].id
+                            : null;
+
+                        const blocks: React.ReactNode[] = [];
+                        let currentGroupKey: string | null = null;
+                        let currentGroupType: "agent" | "locutor" | null = null;
+                        let currentGroupName: string | undefined;
+                        let currentGroupTimestamp: string | undefined;
+                        let currentGroupMessages: typeof sidekickConversationItems =
+                          [];
+
+                        const flushGroup = () => {
+                          if (
+                            currentGroupKey === null ||
+                            currentGroupMessages.length === 0
+                          ) {
+                            return;
+                          }
+                          const groupType = currentGroupType ?? "agent";
+                          blocks.push(
+                            <NewConversationMessageGroup
+                              key={currentGroupKey}
+                              type={groupType}
+                              name={currentGroupName}
+                              timestamp={currentGroupTimestamp}
+                              renderName={(name) => <span>{name}</span>}
+                            >
+                              {currentGroupMessages.map((item) => {
+                                const isLastMessage = item.id === lastMessageId;
+                                const content = renderMessageContent(item);
+
+                                if (item.type === "agent") {
+                                  return (
+                                    <NewConversationAgentMessage
+                                      key={item.id}
+                                      hideActions={false}
+                                      isLastMessage={isLastMessage}
+                                    >
+                                      {content}
+                                    </NewConversationAgentMessage>
+                                  );
+                                }
+                                return (
+                                  <NewConversationUserMessage
+                                    key={item.id}
+                                    hideActions={false}
+                                    isLastMessage={isLastMessage}
+                                  >
+                                    {content}
+                                  </NewConversationUserMessage>
+                                );
+                              })}
+                            </NewConversationMessageGroup>
+                          );
+                          currentGroupKey = null;
+                          currentGroupType = null;
+                          currentGroupName = undefined;
+                          currentGroupTimestamp = undefined;
+                          currentGroupMessages = [];
+                        };
+
+                        sidekickConversationItems.forEach((item) => {
+                          const groupKey = `${item.type}-${item.name}`;
+                          if (currentGroupKey !== groupKey) {
+                            flushGroup();
+                            currentGroupKey = groupKey;
+                            currentGroupType =
+                              item.type === "user" ? "locutor" : "agent";
+                            currentGroupName = item.name;
+                            currentGroupTimestamp = item.timestamp;
+                          }
+                          currentGroupMessages.push(item);
+                        });
+                        flushGroup();
+
+                        return blocks;
+                      })()}
+                    </NewConversationContainer>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          label="Suggest"
+                          onClick={() => {
+                            richTextAreaRef.current?.applyRandomSuggestions(
+                              mockSuggestionChanges
+                            );
+                            setTimeout(checkForSuggestions, 100);
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          label="Add fake"
+                          onClick={() => {
+                            if (!mockInstructionCases.length) {
+                              return;
+                            }
+                            const index = Math.floor(
+                              Math.random() * mockInstructionCases.length
+                            );
+                            richTextAreaRef.current?.setContent(
+                              mockInstructionCases[index]
+                            );
+                          }}
+                        />
+                      </div>
+                      <InputBar
+                        placeholder="Ask Sidekick to help build your agent"
+                        instructionReference={instructionReference}
+                        onInstructionInserted={() =>
+                          setInstructionReference(null)
+                        }
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent
+                  value="testing"
+                  className="flex flex-1 flex-col overflow-y-auto px-6 py-6"
+                >
+                  <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Testing panel content.
+                  </div>
+                </TabsContent>
+                <TabsContent
+                  value="insights"
+                  className="flex flex-1 flex-col overflow-y-auto px-6 py-6"
+                >
+                  <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Insights panel content.
+                  </div>
+                </TabsContent>
+                <TabsContent
+                  value="feedback"
+                  className="flex flex-1 flex-col overflow-y-auto px-6 py-6"
+                >
+                  <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Feedback panel content.
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </Allotment.Pane>
+          )}
+
+          <Allotment.Pane
+            minSize={360}
+            preferredSize={60}
+            className="flex h-full flex-col overflow-hidden"
+          >
+            <div className="flex h-full flex-col">
+              <div className="relative z-10 flex h-14 min-w-0 shrink-0 flex-row items-center gap-2 border-b border-border bg-background px-3 dark:border-border-night dark:bg-background-night">
+                <div className="flex min-h-0 min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+                  {editorTabs.map((tab) => {
+                    const isActive = tab.id === activeEditorTabIdResolved;
+                    return (
+                      <div
+                        key={tab.id}
+                        role="tab"
+                        aria-selected={isActive}
+                        className={[
+                          "flex shrink-0 items-center gap-0.5 rounded-lg pl-1 pr-0.5",
+                          isActive
+                            ? "bg-primary-100 dark:bg-primary-100-night"
+                            : "bg-transparent hover:bg-muted dark:hover:bg-muted-night",
+                        ].join(" ")}
+                      >
+                        <button
+                          type="button"
+                          className="flex min-w-0 max-w-[200px] items-center gap-1.5 border-none bg-transparent py-2 pl-1 pr-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-muted-foreground/30 dark:focus-visible:ring-muted-foreground-night/30"
+                          onClick={() => setActiveEditorTabId(tab.id)}
+                        >
+                          <Avatar
+                            size="xs"
+                            name={tab.name}
+                            emoji={tab.emoji}
+                            backgroundColor={tab.backgroundColor}
+                            isRounded={false}
+                          />
+                          <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
+                            {tab.name}
+                          </span>
+                        </button>
+                        <Button
+                          icon={XClose}
+                          size="xs"
+                          variant="ghost-secondary"
+                          tooltip="Close edition"
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                            if (editorTabs.length <= 1) {
+                              return;
+                            }
+                            const idx = editorTabs.findIndex(
+                              (t) => t.id === tab.id
+                            );
+                            const next = editorTabs.filter(
+                              (t) => t.id !== tab.id
+                            );
+                            if (tab.id === activeEditorTabIdResolved) {
+                              const fallback =
+                                next[Math.max(0, idx - 1)] ?? next[0];
+                              if (fallback) {
+                                setActiveEditorTabId(fallback.id);
+                              }
+                            }
+                            setEditorTabs(next);
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                  <Button
+                    icon={Plus}
+                    size="sm"
+                    variant="ghost-secondary"
+                    tooltip="Open another edition"
+                    onClick={() => {
+                      const [a] = getRandomAgents(1);
+                      const id = `edition-new-${Date.now()}`;
+                      setEditorTabs((prev) => [
+                        ...prev,
+                        {
+                          id,
+                          name: a.name,
+                          emoji: a.emoji,
+                          backgroundColor: a.backgroundColor,
+                        },
+                      ]);
+                      setActiveEditorTabId(id);
+                    }}
+                  />
+                </div>
+                <div className="flex shrink-0 items-center gap-2 border-l border-border pl-3 dark:border-border-night">
+                  {isInstructionDirty ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Cancel"
+                        onClick={clearInstructionDirty}
+                      />
+                      <Button
+                        size="sm"
+                        variant="highlight"
+                        label="Save"
+                        onClick={clearInstructionDirty}
+                      />
+                    </>
+                  ) : (
+                    <Bar.ButtonBar variant="close" onClose={onClose} />
+                  )}
+                </div>
+              </div>
+              <div
+                ref={setScrollContainer}
+                className="flex w-full flex-1 flex-col overflow-auto px-6"
+              >
+                <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 py-6">
+                  <div className="flex flex-1 flex-col gap-3">
+                    <SectionHeader
+                      title="Instructions"
+                      description="Command or guideline you provide to your agent to direct its responses."
+                      action={
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              label="Advanced"
+                              isSelect
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem label="No advanced options" />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
+                    />
+                    <RichTextArea
+                      ref={richTextAreaRef}
+                      placeholder="Write instructions for your agent..."
+                      onAskSidekick={handleAskSidekick}
+                      onSuggestionsChange={setHasSuggestionsState}
+                      onTextChange={handleInstructionTextChange}
+                      scrollContainer={scrollContainer}
+                      topBar={
+                        <div className="flex flex-1 flex-wrap items-center gap-2 px-3 py-2">
+                          <Button
+                            icon={Heading01}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="Heading"
+                          />
+                          <Button
+                            icon={Bold01}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="Bold"
+                            tooltipShortcut="Cmd+B"
+                          />
+                          <Button
+                            icon={Italic01}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="Italic"
+                            tooltipShortcut="Cmd+I"
+                          />
+                          <Separator orientation="vertical" />
+                          <Button
+                            icon={Link01}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="Insert a link"
+                          />
+                          <Button
+                            icon={CheckDone01}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="Bulleted list"
+                          />
+                          <Button
+                            icon={List}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="Ordered list"
+                          />
+                          <Separator orientation="vertical" />
+                          <Button
+                            icon={DoubleQuotes}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="Quotation block"
+                          />
+                          <Button
+                            icon={CodeSquare01}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="Code Block"
+                          />
+                          <Separator orientation="vertical" />
+                          <Button
+                            icon={LayoutAlt02}
+                            size="icon"
+                            variant="ghost-secondary"
+                            tooltip="XML tag"
+                          />
+                          <Separator orientation="vertical" />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost-secondary"
+                                icon={ClockRewind}
+                                isSelect
+                              />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuLabel label="Version history" />
+                              {versionHistoryItems.map((item) => (
+                                <DropdownMenuItem
+                                  key={item.id}
+                                  label={item.date}
+                                  description={item.author}
+                                  onSelect={() => {
+                                    window.setTimeout(() => {
+                                      setSelectedVersion(item);
+                                    }, 0);
+                                  }}
+                                />
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <div className="flex-1" />
+                          {hasSuggestionsState && (
+                            <div className="ml-auto flex gap-2">
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                icon={XClose}
+                                label="Reject all"
+                                tooltip="Reject all suggestions"
+                                onClick={() => {
+                                  richTextAreaRef.current?.rejectAllSuggestions();
+                                  checkForSuggestions();
+                                }}
+                              />
+                              <Button
+                                size="xs"
+                                icon={Check}
+                                variant="highlight-secondary"
+                                label="Accept all"
+                                tooltip="Accept all suggestions"
+                                onClick={() => {
+                                  richTextAreaRef.current?.acceptAllSuggestions();
+                                  checkForSuggestions();
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <SectionHeader
+                      title="Spaces"
+                      description="Set what knowledge and capabilities the agent can access."
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Manage"
+                        icon={Folder}
+                        onClick={() => setIsSpacesSheetOpen(true)}
+                      />
+                      {[...selectedSpaces]
+                        .sort(
+                          (a, b) =>
+                            Number(isRestrictedSpace(a.id)) -
+                            Number(isRestrictedSpace(b.id))
+                        )
+                        .map((space) => {
+                          const isRestricted = isRestrictedSpace(space.id);
+                          return (
+                            <Chip
+                              key={space.id}
+                              icon={isRestricted ? SpaceCloseIcon : SpaceOpen}
+                              size="sm"
+                              color={isRestricted ? "warning" : "primary"}
+                              label={space.name}
+                              onRemove={() => removeSpace(space.id)}
+                            />
+                          );
+                        })}
+                      {selectedProjects.map((project) => {
+                        const isRestricted = isRestrictedSpace(project.id);
+                        return (
+                          <Chip
+                            key={project.id}
+                            icon={isRestricted ? SpaceCloseIcon : SpaceOpen}
+                            size="sm"
+                            color={isRestricted ? "warning" : "primary"}
+                            label={project.name}
+                            onRemove={() => removeProject(project.id)}
+                          />
+                        );
+                      })}
+                    </div>
+                    {selectedSpaces.length === 0 &&
+                      selectedProjects.length === 0 && (
+                        <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                          No spaces selected.
+                        </div>
+                      )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <SectionHeader
+                      title="Knowledge and capabilities"
+                      description="Add knowledge, tools and skills to enhance your agent's
+                    abilities."
+                      action={<></>}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Capabilities"
+                        icon={Tool02}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Knowledge"
+                        icon={BookOpen01}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <SectionHeader
+                      title="Triggers"
+                      description="Add knowledge, tools and skills to enhance your agent's
+                    abilities."
+                    />
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Triggers"
+                        icon={Zap}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex w-full min-w-0 flex-1 items-end gap-2">
+                      <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        <div className="heading-base text-foreground dark:text-foreground-night">
+                          Settings
+                        </div>
+                        <div className="flex flex-1 items-center gap-2 py-2">
+                          <div className="w-[80px] text-sm text-muted-foreground dark:text-muted-foreground-night">
+                            Handle
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant={"ghost"}
+                                icon={Stars02}
+                                tooltip="Suggest"
+                              />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuLabel label="Suggestion" />
+                              {nameSuggestions.map((suggestion) => (
+                                <DropdownMenuItem
+                                  key={suggestion}
+                                  label={suggestion}
+                                  onSelect={() => {
+                                    setAgentName(suggestion);
+                                    setEditorTabs((prev) =>
+                                      prev.map((t) =>
+                                        t.id === activeEditorTabIdResolved
+                                          ? { ...t, name: suggestion }
+                                          : t
+                                      )
+                                    );
+                                  }}
+                                />
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Input
+                            placeholder="Agent name"
+                            containerClassName="flex-1"
+                            value={agentName}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setAgentName(value);
+                              setEditorTabs((prev) =>
+                                prev.map((t) =>
+                                  t.id === activeEditorTabIdResolved
+                                    ? { ...t, name: value }
+                                    : t
+                                )
+                              );
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <Avatar
+                        size="lg"
+                        name={agentName}
+                        emoji={activeEditorTab?.emoji ?? displayEmoji}
+                        backgroundColor={
+                          activeEditorTab?.backgroundColor ??
+                          displayBackgroundColor
+                        }
+                        isRounded={false}
+                        className="mb-2"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 border-t border-border dark:border-border-night py-2">
+                      <div className="w-[80px] text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        Description
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant={"ghost"}
+                            icon={Stars02}
+                            tooltip="Suggest"
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel label="Suggestion" />
+                          {descriptionSuggestions.map((suggestion) => (
+                            <DropdownMenuItem
+                              key={suggestion}
+                              label={suggestion}
+                              onSelect={() => setAgentDescription(suggestion)}
+                            />
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Input
+                        containerClassName="flex-1"
+                        placeholder="Short description"
+                        value={agentDescription}
+                        onChange={(event) =>
+                          setAgentDescription(event.target.value)
+                        }
+                      />
+                    </div>
+                    <MetadataRow
+                      label="Access"
+                      action={
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              label={
+                                accessStatus === "published"
+                                  ? "Published"
+                                  : "Unpublished"
+                              }
+                              icon={accessStatus === "published" ? Eye : EyeOff}
+                              isSelect
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              label="Unpublished"
+                              icon={EyeOff}
+                              onSelect={() => setAccessStatus("unpublished")}
+                            />
+                            <DropdownMenuItem
+                              label="Published"
+                              icon={Eye}
+                              onSelect={() => setAccessStatus("published")}
+                            />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
+                      description={
+                        accessStatus === "published" ? (
+                          <>
+                            Since {publishedMetadata.dateLabel}
+                            {", "}
+                            {publishedMetadata.usersLabel} users last 30 days
+                          </>
+                        ) : null
+                      }
+                    />
+                    <MetadataRow
+                      label="Edition"
+                      action={
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          label="Manage"
+                          icon={Users01}
+                          onClick={() => setIsInviteEditorsOpen(true)}
+                        />
+                      }
+                      description={editorNames.join(", ")}
+                      descriptionClassName="flex-1 min-w-0 truncate"
+                    />
+                    <MetadataRow
+                      label="Tags"
+                      action={
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              label="Manage"
+                              icon={Tag01}
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuSearchbar
+                              placeholder="Search tags"
+                              name="tag-search"
+                              value={tagSearch}
+                              onChange={(value) => setTagSearch(value)}
+                              autoFocus
+                            />
+                            <DropdownMenuLabel label="Recommended" />
+                            {recommendedTagItems.map((tag) => (
+                              <DropdownMenuCheckboxItem
+                                key={tag.id}
+                                label={tag.name}
+                                checked={selectedTagIds.has(tag.id)}
+                                onCheckedChange={() => {
+                                  setSelectedTagIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(tag.id)) {
+                                      next.delete(tag.id);
+                                    } else {
+                                      next.add(tag.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                              />
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel label="All tags" />
+                            {remainingTagItems.map((tag) => (
+                              <DropdownMenuCheckboxItem
+                                key={tag.id}
+                                label={tag.name}
+                                checked={selectedTagIds.has(tag.id)}
+                                onCheckedChange={() => {
+                                  setSelectedTagIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(tag.id)) {
+                                      next.delete(tag.id);
+                                    } else {
+                                      next.add(tag.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                              />
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
+                      description={selectedTagNames.join(", ")}
+                      descriptionClassName="flex-1 min-w-0 truncate"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Allotment.Pane>
+        </Allotment>
+      </div>
+      <Sheet open={isSpacesSheetOpen} onOpenChange={setIsSpacesSheetOpen}>
+        <SheetContent size="md" side="right">
+          <SheetHeader>
+            <SheetTitle>Select spaces</SheetTitle>
+            <SheetDescription>
+              Choose the spaces you want the agent to have access to.
+            </SheetDescription>
+            <Input
+              placeholder="Search spaces and projects"
+              value={spacesProjectsSearch}
+              onChange={(event) => setSpacesProjectsSearch(event.target.value)}
+              className="mt-4"
+            />
+          </SheetHeader>
+          <SheetContainer isListSelector>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col">
+                <ListItemSection size="sm">Spaces</ListItemSection>
+                <ListGroup>
+                  {[...filteredOpenSpaces, ...filteredRestrictedSpaces].map(
+                    (space) => {
+                      const isSelected = draftSpaceIds.has(space.id);
+                      return (
+                        <ListItem
+                          key={space.id}
+                          itemsAlignment="center"
+                          onClick={() => toggleDraftSpace(space.id)}
+                          className={
+                            isSelected
+                              ? "bg-primary-50 dark:bg-primary-50-night"
+                              : ""
+                          }
+                        >
+                          <Icon
+                            visual={
+                              isRestrictedSpace(space.id) ? Lock01 : Server03
+                            }
+                            size="sm"
+                          />
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className="heading-sm truncate text-foreground dark:text-foreground-night">
+                              {space.name}
+                            </span>
+                            <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+                              {space.description}
+                            </span>
+                          </div>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(
+                              checked: boolean | "indeterminate"
+                            ) => {
+                              if (checked !== "indeterminate") {
+                                toggleDraftSpace(space.id);
+                              }
+                            }}
+                            onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                              e.stopPropagation();
+                            }}
+                          />
+                        </ListItem>
+                      );
+                    }
+                  )}
+                </ListGroup>
+                <ListItemSection size="sm">My projects</ListItemSection>
+                <ListGroup>
+                  {filteredMyProjects.map((space) => {
+                    const isSelected = draftProjectIds.has(space.id);
+                    return (
+                      <ListItem
+                        key={space.id}
+                        itemsAlignment="center"
+                        onClick={() => toggleDraftProject(space.id)}
+                        className={
+                          isSelected
+                            ? "bg-primary-50 dark:bg-primary-50-night"
+                            : ""
+                        }
+                      >
+                        <Icon
+                          visual={
+                            isRestrictedSpace(space.id)
+                              ? SpaceCloseIcon
+                              : SpaceOpen
+                          }
+                          size="sm"
+                        />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
+                            {space.name}
+                          </span>
+                          <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+                            {space.description}
+                          </span>
+                        </div>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(
+                            checked: boolean | "indeterminate"
+                          ) => {
+                            if (checked !== "indeterminate") {
+                              toggleDraftProject(space.id);
+                            }
+                          }}
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                      </ListItem>
+                    );
+                  })}
+                </ListGroup>
+                <ListItemSection size="sm">All projects</ListItemSection>
+                <ListGroup>
+                  {filteredAllProjects.map((space) => {
+                    const isSelected = draftProjectIds.has(space.id);
+                    return (
+                      <ListItem
+                        key={space.id}
+                        itemsAlignment="center"
+                        onClick={() => toggleDraftProject(space.id)}
+                        className={
+                          isSelected
+                            ? "bg-primary-50 dark:bg-primary-50-night"
+                            : ""
+                        }
+                      >
+                        <Icon
+                          visual={
+                            isRestrictedSpace(space.id)
+                              ? SpaceCloseIcon
+                              : SpaceOpen
+                          }
+                          size="sm"
+                        />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
+                            {space.name}
+                          </span>
+                          <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+                            {space.description}
+                          </span>
+                        </div>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(
+                            checked: boolean | "indeterminate"
+                          ) => {
+                            if (checked !== "indeterminate") {
+                              toggleDraftProject(space.id);
+                            }
+                          }}
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                      </ListItem>
+                    );
+                  })}
+                </ListGroup>
+              </div>
+            </div>
+          </SheetContainer>
+          <SheetFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: () => setIsSpacesSheetOpen(false),
+            }}
+            rightButtonProps={{
+              label: "Save",
+              variant: "highlight",
+              onClick: () => {
+                setSelectedSpaceIds(new Set(draftSpaceIds));
+                setSelectedProjectIds(new Set(draftProjectIds));
+                setIsSpacesSheetOpen(false);
+              },
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <InviteUsersScreen
+        isOpen={isInviteEditorsOpen}
+        spaceId={null}
+        title="Select editors"
+        actionLabel="Save"
+        initialSelectedUserIds={selectedEditorIdList}
+        initialEditorUserIds={selectedEditorIdList}
+        hasMultipleSelect={true}
+        onClose={() => setIsInviteEditorsOpen(false)}
+        onInvite={(_selectedUserIds, editorUserIds) => {
+          setSelectedEditorIds(new Set(editorUserIds));
+          setIsInviteEditorsOpen(false);
+        }}
+      />
+
+      <Sheet
+        open={selectedVersion !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedVersion(null);
+          }
+        }}
+      >
+        <SheetContent
+          size="xl"
+          side="right"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            (document.activeElement as HTMLElement)?.blur();
+          }}
+        >
+          <SheetHeader>
+            <SheetTitle>{selectedVersion?.date ?? "Version"}</SheetTitle>
+            <SheetDescription>
+              By:{" "}
+              <span className="heading-ws">
+                {selectedVersion?.author ?? "Unknown"}
+              </span>
+            </SheetDescription>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="tiems-end flex flex-1 flex-col gap-3 overflow-auto">
+              <div className="flex w-full justify-end">
+                <Button
+                  label="Restore this version"
+                  icon={ClockRewind}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedVersion(null)}
+                />
+              </div>
+
+              <RichTextArea
+                readOnly
+                defaultValue={versionDiffContent}
+                className="min-h-[400px]"
+              />
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
