@@ -123,6 +123,29 @@ The same pattern applies for any directory-scoped resource fetch — e.g.
 once and stashes it on `c` so every route below can read it from
 `c.get("skill")`.
 
+**Public or own-auth routes nested under an authed sub-app.** When a route must
+*not* inherit the parent's catch-all — a public endpoint, or one with its own
+auth scheme — but its URL sits under a path owned by an authed sub-app, mount it
+as its own sub-app **registered before** the authed parent. Hono scans in
+registration order ([API1]): the earlier, terminal handler wins and the catch-all
+never runs. Registered after, it would silently inherit the parent's auth.
+
+```ts
+// front-api/app.ts — join is public, so it must precede the workspace app.
+apiApp.route("/w/:wId/join", workspaceJoinApp); // no auth
+apiApp.route("/w/:wId", workspaceApp);          // app.use("*", workspaceAuth())
+```
+
+Lock every such exemption: (a) a posture test proving the route uses its own
+scheme (or no auth), not the parent catch-all, and (b) an entry in the
+`front-api/app.test.ts` tripwire, which fails CI when a top-level mount is added
+or changed without a posture classification.
+
+Reviewer: if a PR mounts a sub-app before an authed parent — or pulls a route out
+to a separate, earlier mount — require both the posture test and the tripwire
+entry before approving. If a PR adds a new top-level mount, require its
+classification in the manifest.
+
 ### [API5] Resource-fetching middleware is applied per-handler when options vary
 
 Resource-loading middlewares like `withSpace` carry permission options
