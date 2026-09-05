@@ -704,7 +704,13 @@ export const isPodConversation = <T extends ConversationListItemType>(
   conversation: T
 ): conversation is T & { spaceId: string } => !!conversation.spaceId;
 
-export type ParticipantActionType = "posted" | "reacted" | "subscribed";
+// "viewed" rows only carry read state (lastReadAt) for users who opened a conversation without
+// joining it; they must never count as participation (listings, access checks, creator detection).
+export type ParticipantActionType =
+  | "posted"
+  | "reacted"
+  | "subscribed"
+  | "viewed";
 
 /**
  * Conversation participants.

@@ -1354,6 +1354,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         conversationId: this.id,
         workspaceId: this.workspaceId,
+        action: { [Op.ne]: "viewed" },
       },
       attributes: ["userId", "actionRequired"],
       include: [{ model: UserModel, attributes: ["sId"] }],
@@ -1378,6 +1379,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const whereClause: WhereOptions<ConversationParticipantModel> = {
       userId: user.id,
       workspaceId: auth.getNonNullableWorkspace().id,
+      action: { [Op.ne]: "viewed" },
     };
 
     if (conversationIds && conversationIds.length > 0) {
@@ -2883,6 +2885,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Update the conversation participant to set actionRequired to true.
     // Skip rows already at the target value to avoid a no-op row lock/write.
+    // "viewed" rows carry read state only and never hold actionRequired.
     const updated = await ConversationParticipantModel.update(
       { actionRequired: true },
       {
@@ -2891,6 +2894,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           userId: user.id,
           actionRequired: { [Op.ne]: true },
+          action: { [Op.ne]: "viewed" },
         },
       }
     );
@@ -3007,15 +3011,43 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     if (!auth.user()) {
       return new Err(new Error("user_not_authenticated"));
     }
+    const readAt = lastReadAt ?? new Date();
+    const userId = auth.getNonNullableUser().id;
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     const updated = await UserConversationReadsModel.upsert(
       {
         conversationId: conversation.id,
-        userId: auth.getNonNullableUser().id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        lastReadAt: lastReadAt ?? new Date(),
+        userId,
+        workspaceId,
+        lastReadAt: readAt,
       },
       { transaction }
     );
+
+    // Mirror onto the participant row; a user reading a conversation they never joined gets a
+    // "viewed" row that only carries read state. `silent` keeps `updatedAt` (the participation
+    // timestamp) untouched.
+    const [participant, created] =
+      await ConversationParticipantModel.findOrCreate({
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          userId,
+        },
+        defaults: {
+          action: "viewed",
+          actionRequired: false,
+          lastReadAt: readAt,
+        },
+        transaction,
+      });
+    if (!created) {
+      await participant.update(
+        { lastReadAt: readAt },
+        { silent: true, transaction }
+      );
+    }
 
     return new Ok(updated);
   }
@@ -3037,11 +3069,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   ): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+    const readAt = lastReadAt ?? new Date();
 
     const participants = await ConversationParticipantModel.findAll({
       where: {
         workspaceId,
         conversationId: conversation.id,
+        action: { [Op.ne]: "viewed" },
       },
       attributes: ["userId"],
     });
@@ -3055,9 +3089,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         userId: p.userId,
         workspaceId,
-        lastReadAt: lastReadAt ?? new Date(),
+        lastReadAt: readAt,
       })),
       { updateOnDuplicate: ["lastReadAt"] }
+    );
+
+    await ConversationParticipantModel.update(
+      { lastReadAt: readAt },
+      {
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          userId: { [Op.in]: participants.map((p) => p.userId) },
+        },
+        silent: true,
+      }
     );
   }
 
@@ -3079,6 +3125,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
+
+    await ConversationParticipantModel.update(
+      { lastReadAt: null },
+      {
+        where: {
+          conversationId: conversation.id,
+          userId: auth.getNonNullableUser().id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        silent: true,
+      }
+    );
 
     return new Ok(undefined);
   }
@@ -3196,6 +3254,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         userId: user.id,
+        action: { [Op.ne]: "viewed" },
       },
       transaction,
     });
@@ -3235,8 +3294,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
 
       if (participant) {
-        // If the action is subscribed, we do not update the participant at all.
-        if (action === "subscribed") {
+        // If the action is subscribed, we do not update the participant at all — unless the
+        // existing row is a "viewed" one, which only carries read state and always upgrades
+        // when the user becomes an actual participant.
+        const wasViewer = participant.action === "viewed";
+        if (action === "subscribed" && !wasViewer) {
           status = "none";
           return;
         }
@@ -3246,10 +3308,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           {
             action,
             updatedAt: new Date(),
+            ...(lastReadAt ? { lastReadAt } : {}),
           },
           { transaction: t }
         );
-        status = "updated";
+        status = wasViewer ? "added" : "updated";
       } else {
         await ConversationParticipantModel.create(
           {
@@ -3258,6 +3321,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             userId: user.id,
             workspaceId: auth.getNonNullableWorkspace().id,
             actionRequired: false,
+            lastReadAt,
           },
           { transaction: t }
         );
@@ -5071,6 +5135,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
+        action: { [Op.ne]: "viewed" },
       },
       order: [["createdAt", "ASC"]],
     });
@@ -5088,6 +5153,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
+        action: { [Op.ne]: "viewed" },
       },
     });
 
@@ -5124,6 +5190,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        action: { [Op.ne]: "viewed" },
       },
       attributes: ["userId", "action"],
       order: [["createdAt", "ASC"]],
@@ -5251,6 +5318,46 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }))
     );
 
+    // Mirror onto participant rows; conversations the user only follows from a space get a
+    // "viewed" row carrying the read state.
+    const now = new Date();
+    await ConversationParticipantModel.update(
+      { lastReadAt: now },
+      {
+        where: {
+          conversationId: { [Op.in]: conversationModelIds },
+          workspaceId: workspaceModelId,
+          userId: userModelId,
+        },
+        silent: true,
+      }
+    );
+
+    const existingParticipants = await ConversationParticipantModel.findAll({
+      where: {
+        conversationId: { [Op.in]: conversationModelIds },
+        workspaceId: workspaceModelId,
+        userId: userModelId,
+      },
+      attributes: ["conversationId"],
+    });
+    const conversationModelIdsWithParticipant = new Set(
+      existingParticipants.map((p) => p.conversationId)
+    );
+    await ConversationParticipantModel.bulkCreate(
+      conversationModelIds
+        .filter((id) => !conversationModelIdsWithParticipant.has(id))
+        .map((conversationId) => ({
+          conversationId,
+          userId: userModelId,
+          workspaceId: workspaceModelId,
+          action: "viewed" as const,
+          actionRequired: false,
+          lastReadAt: now,
+        })),
+      { ignoreDuplicates: true }
+    );
+
     return new Ok(undefined);
   }
 
@@ -5290,12 +5397,43 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           userId: primaryUserId,
           workspaceId,
         },
-        attributes: ["conversationId"],
+        attributes: ["conversationId", "action"],
       });
 
-    const primaryUserConversationIds = primaryUserParticipations.map(
-      (p) => p.conversationId
-    );
+    // A primary "viewed" row must not swallow an actual participation of the secondary user:
+    // drop the viewed row instead so the secondary row carries over below.
+    const primaryViewedConversationIds = primaryUserParticipations
+      .filter((p) => p.action === "viewed")
+      .map((p) => p.conversationId);
+    let droppedPrimaryViewedIds = new Set<ModelId>();
+    if (primaryViewedConversationIds.length > 0) {
+      const secondaryActualParticipations =
+        await ConversationParticipantModel.findAll({
+          where: {
+            userId: secondaryUserId,
+            workspaceId,
+            conversationId: { [Op.in]: primaryViewedConversationIds },
+            action: { [Op.ne]: "viewed" },
+          },
+          attributes: ["conversationId"],
+        });
+      droppedPrimaryViewedIds = new Set(
+        secondaryActualParticipations.map((p) => p.conversationId)
+      );
+      if (droppedPrimaryViewedIds.size > 0) {
+        await ConversationParticipantModel.destroy({
+          where: {
+            userId: primaryUserId,
+            workspaceId,
+            conversationId: [...droppedPrimaryViewedIds],
+          },
+        });
+      }
+    }
+
+    const primaryUserConversationIds = primaryUserParticipations
+      .filter((p) => !droppedPrimaryViewedIds.has(p.conversationId))
+      .map((p) => p.conversationId);
 
     // Delete secondary user's participations in conversations where primary user already participates
     if (primaryUserConversationIds.length > 0) {

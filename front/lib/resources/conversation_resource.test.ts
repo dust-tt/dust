@@ -6425,6 +6425,195 @@ describe("markAsReadForAllParticipants", () => {
   });
 });
 
+describe("participant read state (lastReadAt on conversation_participants)", () => {
+  let workspace: LightWorkspaceType;
+  let auth: Authenticator;
+  let viewerAuth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+
+  const participantRow = (a: Authenticator) =>
+    ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: a.getNonNullableUser().id,
+        workspaceId: a.getNonNullableWorkspace().id,
+      },
+    });
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    const viewer = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, viewer, { role: "user" });
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    viewerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      viewer.sId,
+      workspace.sId
+    );
+    const [agent] = await setupTestAgents(workspace, user);
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+  });
+
+  it("markAsReadForAuthUser stamps the participant row without touching the participation timestamp", async () => {
+    const before = await participantRow(auth);
+    assert(before);
+    expect(before.lastReadAt).toBeNull();
+
+    const explicit = new Date(Date.now() + 60_000);
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation,
+      lastReadAt: explicit,
+    });
+
+    const after = await participantRow(auth);
+    assert(after);
+    expect(after.lastReadAt?.getTime()).toBe(explicit.getTime());
+    expect(after.action).toBe("posted");
+    expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+
+    const read = await UserConversationReadsModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: auth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    assert(read);
+    expect(read.lastReadAt.getTime()).toBe(explicit.getTime());
+  });
+
+  it("markAsReadForAuthUser creates a viewed row for a non-participant that never counts as participation", async () => {
+    await ConversationResource.markAsReadForAuthUser(viewerAuth, {
+      conversation,
+    });
+
+    const row = await participantRow(viewerAuth);
+    assert(row);
+    expect(row.action).toBe("viewed");
+    expect(row.actionRequired).toBe(false);
+    expect(row.lastReadAt).not.toBeNull();
+
+    expect(
+      await ConversationResource.isConversationParticipant(viewerAuth, {
+        conversation,
+        user: viewerAuth.getNonNullableUser().toJSON(),
+      })
+    ).toBe(false);
+
+    const participationMap =
+      await ConversationResource.fetchParticipationMapForUser(viewerAuth, [
+        conversation.id,
+      ]);
+    expect(participationMap.size).toBe(0);
+
+    const { conversations } =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        viewerAuth,
+        { limit: 10 }
+      );
+    expect(conversations.map((c) => c.sId)).not.toContain(conversation.sId);
+
+    const conversationResource = await ConversationResource.fetchById(
+      viewerAuth,
+      conversation.sId
+    );
+    assert(conversationResource);
+    const participants = await conversationResource.listParticipants(auth);
+    expect(participants.map((p) => p.sId)).not.toContain(
+      viewerAuth.getNonNullableUser().sId
+    );
+  });
+
+  it("upsertParticipation upgrades a viewed row, even for subscribed", async () => {
+    await ConversationResource.markAsReadForAuthUser(viewerAuth, {
+      conversation,
+    });
+
+    const status = await ConversationResource.upsertParticipation(viewerAuth, {
+      conversation,
+      action: "subscribed",
+      user: viewerAuth.getNonNullableUser().toJSON(),
+    });
+    expect(status).toBe("added");
+
+    const row = await participantRow(viewerAuth);
+    assert(row);
+    expect(row.action).toBe("subscribed");
+    expect(row.lastReadAt).not.toBeNull();
+
+    const { conversations } =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        viewerAuth,
+        { limit: 10 }
+      );
+    expect(conversations.map((c) => c.sId)).toContain(conversation.sId);
+  });
+
+  it("markAsUnreadForAuthUser clears lastReadAt but keeps the participation", async () => {
+    await ConversationResource.markAsReadForAuthUser(auth, { conversation });
+
+    await ConversationResource.markAsUnreadForAuthUser(auth, { conversation });
+
+    const row = await participantRow(auth);
+    assert(row);
+    expect(row.lastReadAt).toBeNull();
+    expect(row.action).toBe("posted");
+  });
+
+  it("markAsReadForAllParticipants stamps participant rows but not viewed rows", async () => {
+    await ConversationResource.markAsReadForAuthUser(viewerAuth, {
+      conversation,
+      lastReadAt: new Date(Date.now() - 120_000),
+    });
+    const viewedBefore = await participantRow(viewerAuth);
+    assert(viewedBefore?.lastReadAt);
+
+    const lastReadAt = new Date(Date.now() + 60_000);
+    await ConversationResource.markAsReadForAllParticipants(auth, {
+      conversation,
+      lastReadAt,
+    });
+
+    const participant = await participantRow(auth);
+    assert(participant);
+    expect(participant.lastReadAt?.getTime()).toBe(lastReadAt.getTime());
+
+    const viewedAfter = await participantRow(viewerAuth);
+    assert(viewedAfter?.lastReadAt);
+    expect(viewedAfter.lastReadAt.getTime()).toBe(
+      viewedBefore.lastReadAt.getTime()
+    );
+  });
+
+  it("batchMarkAsReadAndClearActionRequired creates viewed rows for non-participant conversations", async () => {
+    await ConversationResource.batchMarkAsReadAndClearActionRequired(
+      viewerAuth,
+      [conversation.sId]
+    );
+
+    const row = await participantRow(viewerAuth);
+    assert(row);
+    expect(row.action).toBe("viewed");
+    expect(row.lastReadAt).not.toBeNull();
+
+    const participant = await participantRow(auth);
+    assert(participant);
+    expect(participant.lastReadAt).toBeNull();
+  });
+});
+
 describe("ConversationResource.isConversationCreator", () => {
   let auth: Authenticator;
   let conversationId: string;
