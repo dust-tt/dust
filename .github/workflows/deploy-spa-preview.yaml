@@ -1,18 +1,60 @@
-name: Deploy SPA preview on PR label
+name: Deploy SPA preview on PR
 
 on:
   pull_request:
     types: [labeled, synchronize]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to deploy and comment the preview URL on"
+        type: string
+        required: true
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
+  dispatch:
+    if: >-
+      github.event_name == 'issue_comment'
+      && github.event.issue.pull_request
+      && startsWith(github.event.comment.body, '/deploy')
+      && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Acknowledge the command
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes',
+            });
+
+      # issue_comment runs on the default branch, so re-dispatch on the PR branch to build its code.
+      - name: Dispatch the deploy on the PR branch
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          HEAD_REF=$(gh pr view "$PR_NUMBER" --json headRefName -q .headRefName)
+          gh workflow run deploy-spa-preview.yaml --ref "$HEAD_REF" -f pr_number="$PR_NUMBER"
+
   deploy-app:
     if: >-
       (github.event.action == 'labeled' && github.event.label.name == 'deploy-app-preview')
       || (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'deploy-app-preview'))
+      || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "app"
@@ -30,14 +72,17 @@ jobs:
     steps:
       - name: Comment preview URL on PR
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
         with:
           script: |
+            const issueNumber = Number(process.env.PR_NUMBER);
             const marker = '<!-- spa-preview-app -->';
             const body = `${marker}\n🚀 **App SPA preview deployed**\n\n${{ needs.deploy-app.outputs.preview_url }}`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: issueNumber,
             });
             const existing = comments.find(c => c.body.includes(marker));
             if (existing) {
@@ -51,7 +96,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: issueNumber,
                 body,
               });
             }
