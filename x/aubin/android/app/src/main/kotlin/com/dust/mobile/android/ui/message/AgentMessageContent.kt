@@ -137,6 +137,9 @@ internal fun AgentMessageContent(
             Spacer(Modifier.height(8.dp))
             ErrorCard(error = errorInfo, onRetry = { onRetryMessage(message.sId) })
         }
+        if (!message.isStreaming && rendered.displayText.isNotBlank()) {
+            MessageResponseActions(content = rendered.displayText)
+        }
     }
 }
 
