@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,6 +49,9 @@ internal fun ConversationListScreen(
     onDelete: (Conversation) -> Unit,
     onCatchUp: (() -> Unit)?,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit = {},
+    onRetrySearch: () -> Unit = {},
+    onDismissActionError: () -> Unit = {},
 ) {
     var conversationToDelete by remember { mutableStateOf<Conversation?>(null) }
     val focusManager = LocalFocusManager.current
@@ -121,7 +125,14 @@ internal fun ConversationListScreen(
             onDelete = ::requestDelete,
             onCatchUp = onCatchUp,
             onRefresh = onRefresh,
+            onLoadMore = onLoadMore,
+            onRetrySearch = onRetrySearch,
         )
+        state.actionError?.let { message ->
+            Snackbar(action = {
+                DustButton(label = "Dismiss", onClick = onDismissActionError, variant = DustButtonVariant.Text)
+            }) { Text(message) }
+        }
         HorizontalDivider(color = MaterialTheme.colorScheme.subtleBorder)
         ConversationListCommandBar(
             searchText = state.searchText,

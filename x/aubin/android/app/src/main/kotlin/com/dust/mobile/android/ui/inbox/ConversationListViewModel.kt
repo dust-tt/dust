@@ -7,13 +7,17 @@ import com.dust.mobile.android.ui.preview.localPreviewConversationListData
 import com.dust.mobile.android.ui.preview.localPreviewDustUser
 import com.dust.mobile.core.auth.TokenProvider
 import com.dust.mobile.core.model.Conversation
+import com.dust.mobile.core.model.ConversationsResponse
+import com.dust.mobile.core.model.filteredByTitleSearch
 import com.dust.mobile.core.model.ConversationListData
 import com.dust.mobile.core.model.DustUser
 import com.dust.mobile.core.model.User
 import com.dust.mobile.core.model.Workspace
 import com.dust.mobile.core.model.loadConversationListData
-import com.dust.mobile.core.model.sortAgentsForPicker
-import com.dust.mobile.core.model.withUpdatedTitle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +33,49 @@ class ConversationListViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(ConversationListState())
     val state: StateFlow<ConversationListState> = _state.asStateFlow()
+    private val platform = ConversationListPlatformController(graph, _state, viewModelScope, isLocalPreview, tokenProvider)
+    private val discovery = ConversationDiscoveryController(
+        state = _state,
+        scope = viewModelScope,
+        fetchPage = { workspaceId, cursor ->
+            graph.conversationRepository.fetchConversations(workspaceId, tokenProvider, lastValue = cursor)
+        },
+        searchConversations = { workspaceId, query, cursor ->
+            if (isLocalPreview) {
+                ConversationsResponse(
+                    localPreviewConversationListData(workspaceId).conversations.filteredByTitleSearch(query),
+                    hasMore = false,
+                )
+            } else {
+                graph.conversationRepository.searchConversations(workspaceId, query, tokenProvider, cursor)
+            }
+        },
+    )
+    private val actions = ConversationListActionsController(
+        state = _state,
+        scope = viewModelScope,
+        setReadStatus = { workspaceId, conversationId, read ->
+            if (!isLocalPreview) {
+                if (read) graph.conversationRepository.markAsRead(workspaceId, conversationId, tokenProvider)
+                else graph.conversationRepository.markAsUnread(workspaceId, conversationId, tokenProvider)
+            }
+        },
+        delete = { workspaceId, conversationId ->
+            if (!isLocalPreview) graph.conversationRepository.deleteConversation(workspaceId, conversationId, tokenProvider)
+        },
+        onChanged = { workspaceId ->
+            platform.syncWidget(workspaceId)
+            cacheCurrentWorkspace(workspaceId)
+        },
+        onDeleted = { workspaceId, conversationId ->
+            if (!isLocalPreview) viewModelScope.launch {
+                graph.offlineCacheRepository.removeConversation(activeUser, workspaceId, conversationId)
+            }
+        },
+    )
     private var sessionUser: User? = null
+    private var workspaceSelectionJob: Job? = null
+    private var refreshJob: Job? = null
     private val activeUser: User
         get() = checkNotNull(sessionUser) { "Authenticated user is required" }
 
@@ -52,7 +98,7 @@ class ConversationListViewModel(
                     pods = data.pods,
                     systemSearchEnabled = false,
                 )
-                persistWorkspace(workspace.sId)
+                platform.persistWorkspace(workspace.sId)
             }
             return
         }
@@ -74,8 +120,10 @@ class ConversationListViewModel(
                     selectedWorkspaceId = persistedState.selectedWorkspaceId,
                     systemSearchEnabled = persistedState.systemSearchEnabled,
                 ) ?: error("No workspace found")
-                prefetchAgents(workspace.sId)
+                platform.prefetchAgents(workspace.sId)
                 refresh()
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
                 _state.update { state ->
                     state.copy(
@@ -101,20 +149,23 @@ class ConversationListViewModel(
             _state.update { it.withRefreshDataForWorkspace(workspaceId, localPreviewConversationListData(workspaceId)) }
             return
         }
-        viewModelScope.launch {
+        if (!showProgress && refreshJob?.isActive == true) return
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             if (showProgress) {
                 _state.update(ConversationListState::refreshStarted)
             }
             runCatching {
                 loadConversationListData(
                     fetchConversations = {
-                        graph.conversationRepository.fetchConversations(workspaceId, tokenProvider).conversations
+                        graph.conversationRepository.fetchConversations(workspaceId, tokenProvider)
                     },
                     fetchPods = {
                         graph.spaceRepository.fetchPods(workspaceId, tokenProvider)
                     },
                 )
             }.onSuccess { data ->
+                currentCoroutineContext().ensureActive()
                 _state.update { it.withRefreshDataForWorkspace(workspaceId, data) }
                 graph.offlineCacheRepository.cacheWorkspace(
                     activeUser = activeUser,
@@ -122,7 +173,7 @@ class ConversationListViewModel(
                     conversations = data.conversations,
                     pods = data.pods,
                 )
-                syncWidget(workspaceId)
+                platform.syncWidget(workspaceId)
                 runCatching {
                     graph.appSearchIndexer.indexWorkspaceContent(
                         workspaceId = workspaceId,
@@ -132,6 +183,7 @@ class ConversationListViewModel(
                     )
                 }
             }.onFailure { error ->
+                currentCoroutineContext().ensureActive()
                 if (showError) {
                     _state.update {
                         it.withRefreshErrorForWorkspace(
@@ -151,21 +203,32 @@ class ConversationListViewModel(
     }
 
     fun switchWorkspace(workspace: Workspace) {
-        persistWorkspace(workspace.sId)
-        prefetchAgents(workspace.sId)
-        viewModelScope.launch {
+        discovery.cancel()
+        workspaceSelectionJob?.cancel()
+        refreshJob?.cancel()
+        _state.update { it.withWorkspaceSelection(workspace, null) }
+        platform.persistWorkspace(workspace.sId)
+        platform.prefetchAgents(workspace.sId)
+        if (isLocalPreview) {
+            refresh()
+            return
+        }
+        workspaceSelectionJob = viewModelScope.launch {
             val cached = graph.offlineCacheRepository.cachedWorkspace(activeUser.id, workspace.sId)
-            val cachedData = cached?.let {
-                ConversationListData(conversations = it.conversations, pods = it.pods)
+            if (cached != null) {
+                val data = ConversationListData(conversations = cached.conversations, pods = cached.pods)
+                _state.update { it.withRefreshDataForWorkspace(workspace.sId, data) }
             }
-            _state.update { it.withWorkspaceSelection(workspace, cachedData) }
+            currentCoroutineContext().ensureActive()
             refresh()
         }
     }
 
-    fun updateSearch(text: String) {
-        _state.update { it.copy(searchText = text) }
-    }
+    fun updateSearch(text: String) = discovery.updateSearch(text)
+
+    fun loadMore() = discovery.loadMore()
+
+    fun retrySearch() = discovery.retrySearch()
 
     fun setSystemSearchEnabled(enabled: Boolean) {
         if (!graph.appSearchIndexer.supportsSystemSurfaces) return
@@ -180,109 +243,16 @@ class ConversationListViewModel(
         _state.update { it.copy(isPodsExpanded = !it.isPodsExpanded) }
     }
 
-    fun toggleReadStatus(conversation: Conversation) {
-        val workspaceId = _state.value.workspace?.sId ?: return
-        val wasUnread = conversation.unread || conversation.actionRequired
-        _state.update { state ->
-            state.copy(
-                conversations = state.conversations.map {
-                    if (it.sId == conversation.sId) {
-                        it.copy(unread = !wasUnread, actionRequired = false)
-                    } else {
-                        it
-                    }
-                },
-            )
-        }
-        syncWidget(workspaceId)
-        viewModelScope.launch {
-            if (isLocalPreview) return@launch
-            runCatching {
-                if (wasUnread) {
-                    graph.conversationRepository.markAsRead(workspaceId, conversation.sId, tokenProvider)
-                } else {
-                    graph.conversationRepository.markAsUnread(workspaceId, conversation.sId, tokenProvider)
-                }
-            }.onSuccess {
-                cacheCurrentWorkspace(workspaceId)
-            }.onFailure {
-                _state.update { state ->
-                    state.copy(
-                        conversations = state.conversations.map {
-                            if (it.sId == conversation.sId) conversation else it
-                        },
-                    )
-                }
-                syncWidget(workspaceId)
-            }
-        }
-    }
+    fun toggleReadStatus(conversation: Conversation) = actions.toggleReadStatus(conversation)
 
-    fun deleteConversation(conversation: Conversation) {
-        val workspaceId = _state.value.workspace?.sId ?: return
-        val snapshot = _state.value.conversations
-        _state.update { it.copy(conversations = it.conversations.filterNot { item -> item.sId == conversation.sId }) }
-        syncWidget(workspaceId)
-        viewModelScope.launch {
-            if (isLocalPreview) return@launch
-            runCatching {
-                graph.conversationRepository.deleteConversation(workspaceId, conversation.sId, tokenProvider)
-            }.onSuccess {
-                graph.offlineCacheRepository.removeConversation(
-                    activeUser,
-                    workspaceId,
-                    conversation.sId,
-                )
-                cacheCurrentWorkspace(workspaceId)
-            }.onFailure {
-                _state.update { state -> state.copy(conversations = snapshot) }
-                syncWidget(workspaceId)
-            }
-        }
-    }
+    fun deleteConversation(conversation: Conversation) = actions.deleteConversation(conversation)
 
-    fun markConversationsAsRead(conversationIds: Set<String>) {
-        if (conversationIds.isEmpty()) return
-        _state.update { state ->
-            state.copy(
-                conversations = state.conversations.map { conversation ->
-                    if (conversation.sId in conversationIds) {
-                        conversation.copy(unread = false, actionRequired = false)
-                    } else {
-                        conversation
-                    }
-                },
-            )
-        }
-        _state.value.workspace?.sId?.let { workspaceId ->
-            syncWidget(workspaceId)
-            cacheCurrentWorkspace(workspaceId)
-        }
-    }
+    fun markConversationsAsRead(conversationIds: Set<String>) = actions.markConversationsAsRead(conversationIds)
 
-    fun updateConversationTitle(conversationId: String, title: String) {
-        _state.update { state ->
-            state.copy(
-                conversations = state.conversations.withUpdatedTitle(conversationId, title),
-            )
-        }
-        _state.value.workspace?.sId?.let { workspaceId ->
-            syncWidget(workspaceId)
-            cacheCurrentWorkspace(workspaceId)
-        }
-    }
+    fun updateConversationTitle(conversationId: String, title: String) = actions.updateTitle(conversationId, title)
 
-    private fun syncWidget(workspaceId: String) {
-        if (isLocalPreview) return
-        val state = _state.value
-        val workspace = state.workspace?.takeIf { it.sId == workspaceId } ?: return
-        graph.catchUpWidgetController.updateFromConversations(workspace, state.conversations)
-    }
-
-    private fun persistWorkspace(workspaceId: String) {
-        viewModelScope.launch {
-            graph.persistedStateStore.update { it.copy(selectedWorkspaceId = workspaceId) }
-        }
+    fun dismissActionError() {
+        _state.update { it.copy(actionError = null) }
     }
 
     private suspend fun showWorkspace(
@@ -302,7 +272,7 @@ class ConversationListViewModel(
         _state.update {
             it.withWorkspaceData(dustUser, workspace, cachedData, systemSearchEnabled)
         }
-        persistWorkspace(workspace.sId)
+        platform.persistWorkspace(workspace.sId)
         return workspace
     }
 
@@ -320,22 +290,4 @@ class ConversationListViewModel(
         }
     }
 
-    private fun prefetchAgents(workspaceId: String) {
-        if (isLocalPreview) return
-        viewModelScope.launch {
-            runCatching {
-                graph.agentRepository.fetchAgents(workspaceId, tokenProvider)
-                    .let(::sortAgentsForPicker)
-            }.onSuccess { agents ->
-                runCatching { graph.agentShortcutPublisher.publish(workspaceId, agents) }
-                runCatching {
-                    graph.appSearchIndexer.indexAgents(
-                        workspaceId = workspaceId,
-                        agents = agents,
-                        displayedBySystem = graph.persistedStateStore.current().systemSearchEnabled,
-                    )
-                }
-            }
-        }
-    }
 }
