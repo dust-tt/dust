@@ -171,7 +171,7 @@ export async function performLogin(
       if (
         lookupWorkspaceCellRes.isOk() &&
         lookupWorkspaceCellRes.value &&
-        lookupWorkspaceCellRes.value !== currentCell.name
+        lookupWorkspaceCellRes.value.name !== currentCell.name
       ) {
         logger.info(
           {
@@ -183,9 +183,9 @@ export async function performLogin(
             sessionOrganizationId: session.organizationId,
             sessionAuthenticationMethod: session.authenticationMethod,
           },
-          "Enterprise connection: redirecting to other region"
+          "Enterprise connection: redirecting to other cell"
         );
-        const targetUrl = cellsConfig.getCellUrl(lookupWorkspaceCellRes.value);
+        const targetUrl = lookupWorkspaceCellRes.value.url;
         return { kind: "redirect", url: `${targetUrl}/api/login` };
       }
 

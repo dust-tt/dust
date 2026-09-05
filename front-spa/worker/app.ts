@@ -44,10 +44,11 @@ const ShareFrameMetadataSchema: z.ZodType<
 
 type ShareFrameMetadata = z.infer<typeof ShareFrameMetadataSchema>;
 
-const RegionRedirectErrorSchema = z.object({
+const CellRedirectErrorSchema = z.object({
   error: z.object({
-    type: z.literal("workspace_in_different_region"),
+    type: z.enum(["workspace_in_different_cell"]),
     redirect: z.object({
+      name: z.string().optional(), // TODO(single-tenant): make it mandatory once we have fully migrated to cell.
       region: z.string(),
       url: z.string(),
     }),
@@ -145,7 +146,7 @@ async function fetchFrameMeta(
 
   // The frame may live in a different region; follow the redirect hint.
   if (res.status === 400) {
-    const parsed = RegionRedirectErrorSchema.safeParse(await res.json());
+    const parsed = CellRedirectErrorSchema.safeParse(await res.json());
     if (parsed.success) {
       const regionRes = await fetch(
         `${parsed.data.error.redirect.url}/api/share/frame/${token}`
