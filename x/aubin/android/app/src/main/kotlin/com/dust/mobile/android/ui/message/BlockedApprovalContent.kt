@@ -11,6 +11,8 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.dust.mobile.android.R
 import com.dust.mobile.android.ui.common.DustButton
@@ -143,7 +146,9 @@ internal fun BlockedApprovalContent(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.contentMuted,
                         )
-                        Text(text = value, style = MaterialTheme.typography.bodySmall, maxLines = 6)
+                        SelectionContainer {
+                            Text(text = value, style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
             }
@@ -179,7 +184,12 @@ private fun ApprovalActions(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = DustDimensions.minimumTouchTarget)
-                    .clickable(enabled = !isLoading) { onAlwaysAllowChange(!alwaysAllow) },
+                    .toggleable(
+                        value = alwaysAllow,
+                        enabled = !isLoading,
+                        role = Role.Checkbox,
+                        onValueChange = onAlwaysAllowChange,
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(DustSpacing.small),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

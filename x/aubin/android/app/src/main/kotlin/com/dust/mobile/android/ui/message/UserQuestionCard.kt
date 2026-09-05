@@ -1,7 +1,8 @@
 package com.dust.mobile.android.ui.message
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,8 +33,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -60,8 +61,8 @@ internal fun UserQuestionCard(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    var selectedOptions by remember(question) { mutableStateOf<Set<Int>>(emptySet()) }
-    var customResponse by remember(question) { mutableStateOf("") }
+    var selectedOptions by rememberSaveable(question) { mutableStateOf<Set<Int>>(emptySet()) }
+    var customResponse by rememberSaveable(question) { mutableStateOf("") }
     val answer = remember(selectedOptions, customResponse) {
         buildUserQuestionAnswer(selectedOptions, customResponse)
     }
@@ -81,20 +82,25 @@ internal fun UserQuestionCard(
         }
         question.options.forEachIndexed { index, option ->
             val isSelected = index in selectedOptions
+            val selectOption = {
+                focusManager.clearFocus(force = true)
+                keyboardController?.hide()
+                selectedOptions = if (question.multiSelect) {
+                    if (isSelected) selectedOptions - index else selectedOptions + index
+                } else {
+                    setOf(index)
+                }
+            }
+            val selectionModifier = if (question.multiSelect) {
+                Modifier.toggleable(isSelected, enabled = !isLoading, role = Role.Checkbox) { selectOption() }
+            } else {
+                Modifier.selectable(isSelected, enabled = !isLoading, role = Role.RadioButton, onClick = selectOption)
+            }
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = DustDimensions.controlHeight)
-                    .semantics { selected = isSelected }
-                    .clickable(enabled = !isLoading) {
-                        focusManager.clearFocus(force = true)
-                        keyboardController?.hide()
-                        selectedOptions = if (question.multiSelect) {
-                            if (isSelected) selectedOptions - index else selectedOptions + index
-                        } else {
-                            setOf(index)
-                        }
-                    },
+                    .then(selectionModifier),
                 shape = RoundedCornerShape(DustRadii.control),
                 color = MaterialTheme.colorScheme.interactiveSurface,
                 border = BorderStroke(

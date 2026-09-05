@@ -76,14 +76,20 @@ class ConversationListViewModel(
     private var sessionUser: User? = null
     private var workspaceSelectionJob: Job? = null
     private var refreshJob: Job? = null
+    private var initialLoadJob: Job? = null
     private val activeUser: User
         get() = checkNotNull(sessionUser) { "Authenticated user is required" }
 
-    fun load(user: User? = null) {
+    fun load(user: User? = sessionUser) {
+        if (initialLoadJob?.isActive == true) return
+        if (_state.value.dustUser != null) {
+            if (_state.value.error != null) refresh()
+            return
+        }
         sessionUser = user
         if (isLocalPreview) {
             val dustUser = localPreviewDustUser()
-            viewModelScope.launch {
+            initialLoadJob = viewModelScope.launch {
                 val persistedState = graph.persistedStateStore.current()
                 val selectedWorkspaceId = persistedState.selectedWorkspaceId
                 val workspace = dustUser.workspaces.find { it.sId == selectedWorkspaceId }
@@ -102,7 +108,7 @@ class ConversationListViewModel(
             }
             return
         }
-        viewModelScope.launch {
+        initialLoadJob = viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             val persistedState = graph.persistedStateStore.current()
             graph.offlineCacheRepository.cachedDustUser(activeUser.id)?.let { cachedUser ->
