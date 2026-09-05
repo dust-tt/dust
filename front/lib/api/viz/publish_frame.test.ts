@@ -389,6 +389,245 @@ export default function Dashboard() {
     }
   });
 
+  it("publishes without warnings when hook-based Pod function references are available in the Frame's Pod", async () => {
+    const { auth, space, user } = await setupPodTestContext();
+    const file = await createFrameFile(auth, { spaceId: space.id });
+    await createPodFunction(auth, {
+      space,
+      user,
+      slug: "list-slide-comments",
+      inputSchema: {
+        type: "object",
+        properties: { slideId: { type: "string" } },
+        required: ["slideId"],
+        additionalProperties: false,
+      },
+    });
+
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+      Readable.from([Buffer.from("self contained", "utf-8")])
+    );
+
+    const result = await publishFrame(auth, {
+      file,
+      reader: inMemoryReader({
+        // The conditional-null reference is the hooks' supported "disabled" pattern.
+        "Dashboard.tsx": `import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks";
+import { POD_ID } from "./constants";
+
+export default function Dashboard() {
+  const ready = Math.random() > 0.5;
+  const { data } = usePodFunction(ready ? \`${"${POD_ID}"}/list-slide-comments\` : null, {
+    slideId: "slide-1",
+  });
+  const { trigger } = usePodFunctionMutation(\`${"${POD_ID}"}/list-slide-comments\`);
+  return <button onClick={() => trigger({ slideId: "slide-1" })}>{String(data)}</button>;
+}
+`,
+        "constants.ts": `export const POD_ID = ${JSON.stringify(space.sId)};`,
+      }),
+      entryRelPath: "Dashboard.tsx",
+      rootScopedPath: ROOT,
+    });
+
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true
+    );
+    if (result.isOk()) {
+      expect(result.value.warnings).toEqual([]);
+    }
+  });
+
+  it("warns without blocking when a usePodFunction reference is unavailable in the Frame's Pod", async () => {
+    const { auth, space } = await setupPodTestContext();
+    const file = await createPodFrameFile(auth, space);
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+      Readable.from([Buffer.from("self contained", "utf-8")])
+    );
+    const uploadBundleSpy = vi.spyOn(FileResource.prototype, "uploadProcessed");
+
+    const result = await publishFrame(auth, {
+      file,
+      reader: inMemoryReader({
+        "Dashboard.tsx": `import { usePodFunction } from "@dust/react-hooks";
+
+const POD_ID = ${JSON.stringify(space.sId)};
+export default function Dashboard() {
+  const { data } = usePodFunction(\`${"${POD_ID}"}/missing-function\`, {});
+  return <div>{String(data)}</div>;
+}
+`,
+      }),
+      entryRelPath: "Dashboard.tsx",
+      rootScopedPath: ROOT,
+    });
+
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true
+    );
+    if (result.isOk()) {
+      expect(result.value.warnings).toHaveLength(1);
+      expect(result.value.warnings[0].type).toBe("pod_function");
+      expect(result.value.warnings[0].message).toContain(
+        "Frame references a Pod function that is not available in its Pod"
+      );
+      expect(result.value.warnings[0].message).toContain("missing-function");
+      expect(result.value.warnings[0].message).toContain(
+        "will start blocking publishing"
+      );
+    }
+    // The publish itself goes through: the frame renders the new bundle.
+    expect(uploadBundleSpy).toHaveBeenCalledTimes(1);
+    expect(file.getRenderableVersion()).toBe("processed");
+  });
+
+  it("warns without blocking when usePodFunction input does not match its JSON Schema", async () => {
+    const { auth, space, user } = await setupPodTestContext();
+    const file = await createPodFrameFile(auth, space);
+    await createPodFunction(auth, {
+      space,
+      user,
+      slug: "list-slide-comments",
+      inputSchema: {
+        type: "object",
+        properties: { slideId: { type: "string" } },
+        required: ["slideId"],
+        additionalProperties: false,
+      },
+    });
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+      Readable.from([Buffer.from("self contained", "utf-8")])
+    );
+
+    const result = await publishFrame(auth, {
+      file,
+      reader: inMemoryReader({
+        "Dashboard.tsx": `import { usePodFunction } from "@dust/react-hooks";
+
+const POD_ID = ${JSON.stringify(space.sId)};
+export default function Dashboard() {
+  const { data } = usePodFunction(\`${"${POD_ID}"}/list-slide-comments\`, {
+    slideId: 42,
+  });
+  return <div>{String(data)}</div>;
+}
+`,
+      }),
+      entryRelPath: "Dashboard.tsx",
+      rootScopedPath: ROOT,
+    });
+
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true
+    );
+    if (result.isOk()) {
+      expect(result.value.warnings).toHaveLength(1);
+      expect(result.value.warnings[0].type).toBe("pod_function");
+      expect(result.value.warnings[0].message).toContain(
+        "Frame passes input that does not match the Pod function contract"
+      );
+    }
+  });
+
+  it("warns without blocking when a usePodFunctionMutation reference is unavailable in the Frame's Pod", async () => {
+    const { auth, space } = await setupPodTestContext();
+    const file = await createPodFrameFile(auth, space);
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+      Readable.from([Buffer.from("self contained", "utf-8")])
+    );
+
+    const result = await publishFrame(auth, {
+      file,
+      reader: inMemoryReader({
+        "Dashboard.tsx": `import { usePodFunctionMutation } from "@dust/react-hooks";
+
+const POD_ID = ${JSON.stringify(space.sId)};
+export default function Dashboard() {
+  const { trigger } = usePodFunctionMutation(\`${"${POD_ID}"}/missing-function\`);
+  return <button onClick={() => trigger({})}>Run</button>;
+}
+`,
+      }),
+      entryRelPath: "Dashboard.tsx",
+      rootScopedPath: ROOT,
+    });
+
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true
+    );
+    if (result.isOk()) {
+      expect(result.value.warnings).toHaveLength(1);
+      expect(result.value.warnings[0].type).toBe("pod_function");
+      expect(result.value.warnings[0].message).toContain(
+        "Frame references a Pod function that is not available in its Pod"
+      );
+    }
+  });
+
+  it("warns without blocking hook-based Pod function references in a Frame without a Pod scope", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const file = await createFrameFile(auth);
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+      Readable.from([Buffer.from("self contained", "utf-8")])
+    );
+
+    const result = await publishFrame(auth, {
+      file,
+      reader: inMemoryReader({
+        "Dashboard.tsx": `import { usePodFunction } from "@dust/react-hooks";
+
+export default function Dashboard() {
+  const { data } = usePodFunction("spc_test/function", {});
+  return <div>{String(data)}</div>;
+}
+`,
+      }),
+      entryRelPath: "Dashboard.tsx",
+      rootScopedPath: ROOT,
+    });
+
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true
+    );
+    if (result.isOk()) {
+      expect(result.value.warnings).toHaveLength(1);
+      expect(result.value.warnings[0].type).toBe("pod_function");
+      expect(result.value.warnings[0].message).toContain("not scoped to a Pod");
+    }
+  });
+
+  it("still blocks a dangling callFunction reference when hooks are used alongside it", async () => {
+    const { auth, space } = await setupPodTestContext();
+    const file = await createPodFrameFile(auth, space);
+    const uploadBundleSpy = vi.spyOn(FileResource.prototype, "uploadProcessed");
+
+    const result = await publishFrame(auth, {
+      file,
+      reader: inMemoryReader({
+        "Dashboard.tsx": `import { callFunction, usePodFunction } from "@dust/react-hooks";
+
+const POD_ID = ${JSON.stringify(space.sId)};
+export default function Dashboard() {
+  const { data } = usePodFunction(\`${"${POD_ID}"}/also-missing\`, {});
+  const run = () => callFunction(\`${"${POD_ID}"}/missing-function\`, {});
+  return <button onClick={run}>{String(data)}</button>;
+}
+`,
+      }),
+      entryRelPath: "Dashboard.tsx",
+      rootScopedPath: ROOT,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("pod_function_not_found");
+      // Only the callFunction failure blocks; the hook failure stays out of the error.
+      expect(result.error.message).toContain("missing-function");
+      expect(result.error.message).not.toContain("also-missing");
+    }
+    expect(uploadBundleSpy).not.toHaveBeenCalled();
+  });
+
   it("reads only the entry's import graph, ignoring unrelated files in the mount", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const file = await createFrameFile(auth);
