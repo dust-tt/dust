@@ -1,0 +1,73 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "skill_id": {
+      "type": "keyword"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "availability": {
+      "type": "keyword"
+    },
+    "name": {
+      "type": "text",
+      "analyzer": "skill_name_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "ignore_above": 256
+        },
+        "subsequence": {
+          "type": "wildcard"
+        }
+      }
+    },
+    "user_facing_description": {
+      "type": "text",
+      "fields": {
+        "subsequence": {
+          "type": "wildcard"
+        }
+      }
+    },
+    "icon": {
+      "type": "keyword",
+      "index": false,
+      "doc_values": false
+    },
+    "edited_by": {
+      "type": "long",
+      "index": false,
+      "doc_values": false
+    },
+    "editor_user_ids": {
+      "type": "long",
+      "doc_values": false
+    },
+    "requested_space_ids": {
+      "type": "keyword",
+      "index": false,
+      "doc_values": false
+    },
+    "non_pod_space_ids": {
+      "type": "keyword"
+    },
+    "non_pod_space_count": {
+      "type": "integer"
+    },
+    "pod_space_id": {
+      "type": "keyword",
+      "index": false,
+      "doc_values": false
+    },
+    "updated_at": {
+      "type": "date",
+      "index": false,
+      "doc_values": false
+    }
+  }
+}
