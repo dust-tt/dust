@@ -48,7 +48,7 @@ internal class OutboxRepository(
             if (state.outbox.any { it.id == item.id }) {
                 state
             } else {
-                state.copy(outbox = (state.outbox + item).takeLast(MAX_RETAINED_ITEMS))
+                state.copy(outbox = (state.outbox + item).retainingUnacknowledgedMessages())
             }
         }
         schedule()
@@ -190,14 +190,13 @@ internal class OutboxRepository(
 
     private suspend fun updateItem(id: String, transform: (PersistedOutboxItem) -> PersistedOutboxItem) {
         stateStore.update { state ->
-            state.copy(outbox = state.outbox.map { if (it.id == id) transform(it) else it })
+            state.copy(outbox = state.outbox.map { if (it.id == id) transform(it) else it }.retainingUnacknowledgedMessages())
         }
     }
 
     private companion object {
         const val WORK_NAME = "dust-durable-outbox"
         const val MIN_BACKOFF_SECONDS = 10L
-        const val MAX_RETAINED_ITEMS = 50
     }
 }
 
