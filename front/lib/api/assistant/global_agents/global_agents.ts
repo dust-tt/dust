@@ -113,11 +113,15 @@ import {
   getDataSourcesAndWorkspaceIdForGlobalAgents,
   getMCPServerViewsForGlobalAgents,
 } from "@app/lib/api/assistant/global_agents/tools";
-import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  isProviderWhitelistedForAuth,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getDefaultStreamConfigForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -147,6 +151,7 @@ function getGlobalAgent({
   autoDefaultModelConfig,
   preferSonnet5DefaultModel,
   featureFlags,
+  whiteListedProviders,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -160,6 +165,7 @@ function getGlobalAgent({
   autoDefaultModelConfig: ModelConfigurationType | null;
   preferSonnet5DefaultModel: boolean;
   featureFlags: WhitelistableFeature[];
+  whiteListedProviders: ModelProviderIdType[] | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -171,6 +177,7 @@ function getGlobalAgent({
       agentConfiguration = _getHelperGlobalAgent({
         auth,
         featureFlags,
+        whiteListedProviders,
         mcpServerViews,
       });
       break;
@@ -252,6 +259,7 @@ function getGlobalAgent({
         settings,
         mcpServerViews,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
@@ -335,6 +343,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
@@ -343,6 +352,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
@@ -351,6 +361,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
@@ -359,6 +370,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
@@ -367,6 +379,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
@@ -376,6 +389,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
         globalAgentContext,
         autoDefaultModelConfig,
         preferSonnet5DefaultModel,
@@ -388,6 +402,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
         globalAgentContext,
       });
       break;
@@ -398,6 +413,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
         globalAgentContext,
       });
       break;
@@ -408,6 +424,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
         globalAgentContext,
       });
       break;
@@ -418,6 +435,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT:
@@ -427,6 +445,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
@@ -436,6 +455,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_HIGH:
@@ -445,6 +465,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED:
@@ -454,6 +475,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED:
@@ -463,6 +485,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE:
@@ -472,6 +495,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE_LIGHT:
@@ -481,6 +505,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_HAIKU:
@@ -490,6 +515,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_LIGHT:
@@ -499,6 +525,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI:
@@ -508,6 +535,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:
@@ -517,6 +545,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI_HIGH:
@@ -526,6 +555,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM:
@@ -535,6 +565,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM:
@@ -544,6 +575,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM_HIGH:
@@ -553,6 +585,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_PISTACHE:
@@ -562,6 +595,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
@@ -571,6 +605,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH:
@@ -580,6 +615,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX:
@@ -589,6 +625,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM:
@@ -598,6 +635,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH:
@@ -607,6 +645,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_DEEPSEEK:
@@ -616,6 +655,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE:
@@ -625,6 +665,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH:
@@ -634,6 +675,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
@@ -643,6 +685,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI:
@@ -652,6 +695,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM:
@@ -661,6 +705,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_HIGH:
@@ -670,6 +715,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_LUNA:
@@ -679,6 +725,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM:
@@ -688,6 +735,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH:
@@ -697,6 +745,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
@@ -706,6 +755,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG:
@@ -715,6 +765,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
@@ -724,6 +775,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_HIGH:
@@ -733,6 +785,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_LITE:
@@ -742,6 +795,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO:
@@ -751,6 +805,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM:
@@ -760,6 +815,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH:
@@ -769,6 +825,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
@@ -778,6 +835,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT:
@@ -787,6 +845,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
@@ -796,6 +855,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
@@ -805,6 +865,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_LIONEL:
@@ -814,6 +875,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
@@ -823,6 +885,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
@@ -832,6 +895,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasDeepDive,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     // Retired custom-model dust-* agents: their eval models were removed from
@@ -858,6 +922,7 @@ function getGlobalAgent({
           mcpServerViews,
           hasDeepDive,
           featureFlags,
+          whiteListedProviders,
         },
         sId
       );
@@ -869,6 +934,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasSandbox,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -877,6 +943,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
@@ -886,6 +953,7 @@ function getGlobalAgent({
       agentConfiguration = _getPlanningAgent(auth, {
         settings,
         featureFlags,
+        whiteListedProviders,
       });
       break;
     case GLOBAL_AGENTS_SID.SIDEKICK:
@@ -1061,6 +1129,7 @@ export async function getGlobalAgents(
       .filter((sId) => sId !== GLOBAL_AGENTS_SID.REINFORCEMENT);
 
   const flags = await getFeatureFlags(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
 
   if (!isWorkspaceAnalyticsEnabled(owner)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
@@ -1195,6 +1264,7 @@ export async function getGlobalAgents(
       autoDefaultModelConfig,
       preferSonnet5DefaultModel: flags.includes("dust_agent_sonnet_5_default"),
       featureFlags: flags,
+      whiteListedProviders,
     })
   );
 
@@ -1204,7 +1274,11 @@ export async function getGlobalAgents(
     if (
       agentFetcherResult &&
       agentFetcherResult.scope === "global" &&
-      isProviderWhitelistedForAuth(auth, agentFetcherResult.model.providerId)
+      isProviderWhitelistedForAuth(
+        auth,
+        agentFetcherResult.model.providerId,
+        whiteListedProviders
+      )
     ) {
       globalAgents.push(agentFetcherResult);
     }

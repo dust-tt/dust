@@ -1,4 +1,7 @@
-import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getWhitelistedProviders,
+} from "@app/lib/api/assistant/models";
 import {
   filterEnabledModels,
   isModelAvailable,
@@ -387,7 +390,10 @@ describe("filterEnabledModels", () => {
       plan: { ...auth.plan()!, hasAdvancedModelAccess: false },
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
-      whitelistedProviders: getWhitelistedProviders(auth),
+      whitelistedProviders: getWhitelistedProviders(
+        auth,
+        await getEffectiveWhiteListedProviders(auth)
+      ),
     });
 
     expect(result).toEqual([]);
@@ -403,7 +409,10 @@ describe("filterEnabledModels", () => {
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
-      whitelistedProviders: getWhitelistedProviders(auth),
+      whitelistedProviders: getWhitelistedProviders(
+        auth,
+        await getEffectiveWhiteListedProviders(auth)
+      ),
     });
     expect(result).toContain(model);
   });
@@ -423,7 +432,10 @@ describe("filterEnabledModels", () => {
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
-      whitelistedProviders: getWhitelistedProviders(auth),
+      whitelistedProviders: getWhitelistedProviders(
+        auth,
+        await getEffectiveWhiteListedProviders(auth)
+      ),
     });
     expect(result).toHaveLength(0);
   });
@@ -442,7 +454,10 @@ describe("filterEnabledModels", () => {
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
-      whitelistedProviders: getWhitelistedProviders(auth),
+      whitelistedProviders: getWhitelistedProviders(
+        auth,
+        await getEffectiveWhiteListedProviders(auth)
+      ),
     });
     expect(result).toHaveLength(0);
   });
@@ -461,7 +476,10 @@ describe("filterEnabledModels", () => {
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
-      whitelistedProviders: getWhitelistedProviders(auth),
+      whitelistedProviders: getWhitelistedProviders(
+        auth,
+        await getEffectiveWhiteListedProviders(auth)
+      ),
     });
     expect(result).toContain(model);
   });
@@ -485,7 +503,10 @@ describe("filterEnabledModels", () => {
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
-      whitelistedProviders: getWhitelistedProviders(auth),
+      whitelistedProviders: getWhitelistedProviders(
+        auth,
+        await getEffectiveWhiteListedProviders(auth)
+      ),
     });
     expect(result).toEqual([openaiModel]);
   });
@@ -503,7 +524,10 @@ describe("filterEnabledModels", () => {
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
-      whitelistedProviders: getWhitelistedProviders(auth),
+      whitelistedProviders: getWhitelistedProviders(
+        auth,
+        await getEffectiveWhiteListedProviders(auth)
+      ),
     });
     expect(result).toContain(model);
   });

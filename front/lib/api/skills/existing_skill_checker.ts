@@ -1,6 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getSmallWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -197,7 +200,10 @@ export async function getSimilarSkills(
     availabilities?: SkillAvailability[];
   }
 ): Promise<Result<{ similar_skills: string[] }, Error>> {
-  const model = await getSmallWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getSmallWhitelistedModel(auth, undefined, {
+    whiteListedProviders,
+  });
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate cron rule")

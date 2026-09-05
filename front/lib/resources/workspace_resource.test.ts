@@ -262,19 +262,20 @@ describe("WorkspaceResource", () => {
         expect(resource?.sId).toBe(workspace.sId);
       });
 
-      it("applies provider kill switches after reading the cached snapshot", async () => {
+      it("keeps the configured whiteListedProviders on cached fetches even when kill switches are enabled", async () => {
         workspace = await WorkspaceFactory.basic({
           whiteListedProviders: ["openai", "anthropic"],
         });
         listEnabledKillSwitches.mockResolvedValue(["global_blacklist_openai"]);
 
         const firstFetch = await WorkspaceResource.fetchById(workspace.sId);
-        expect(firstFetch?.whiteListedProviders).toEqual(["anthropic"]);
-
-        listEnabledKillSwitches.mockResolvedValue([]);
+        expect(firstFetch?.configuredWhiteListedProviders).toEqual([
+          "openai",
+          "anthropic",
+        ]);
 
         const cachedFetch = await WorkspaceResource.fetchById(workspace.sId);
-        expect(cachedFetch?.whiteListedProviders).toEqual([
+        expect(cachedFetch?.configuredWhiteListedProviders).toEqual([
           "openai",
           "anthropic",
         ]);
@@ -316,7 +317,10 @@ describe("WorkspaceResource", () => {
           Object.keys(WorkspaceModel.getAttributes()).sort()
         );
         expect(resource?.name).toBe("fixture-workspace");
-        expect(resource?.whiteListedProviders).toEqual(["openai", "anthropic"]);
+        expect(resource?.configuredWhiteListedProviders).toEqual([
+          "openai",
+          "anthropic",
+        ]);
         expect(resource?.metadata).toEqual({ fixtureKey: "fixtureValue" });
         expect(resource?.createdAt).toEqual(new Date(1755000000000));
         expect(resource?.updatedAt).toEqual(new Date(1755000000000));
@@ -780,7 +784,7 @@ describe("WorkspaceResource", () => {
       expect(result).toContain("mistral");
     });
 
-    it("applies provider kill switches on uncached fetch paths", async () => {
+    it("keeps the configured whiteListedProviders on uncached fetch paths even when kill switches are enabled", async () => {
       workspace = await WorkspaceFactory.basic({
         whiteListedProviders: ["openai", "anthropic"],
       });
@@ -788,7 +792,37 @@ describe("WorkspaceResource", () => {
 
       const [resource] = await WorkspaceResource.fetchByIds([workspace.sId]);
 
-      expect(resource?.whiteListedProviders).toEqual(["anthropic"]);
+      expect(resource?.configuredWhiteListedProviders).toEqual([
+        "openai",
+        "anthropic",
+      ]);
+    });
+  });
+
+  describe("fetchWhiteListedProviders", () => {
+    it("returns the configured value when no kill switches are enabled", async () => {
+      workspace = await WorkspaceFactory.basic({
+        whiteListedProviders: ["openai", "anthropic"],
+      });
+      const resource = await WorkspaceResource.fetchById(workspace.sId);
+
+      await expect(resource?.fetchWhiteListedProviders()).resolves.toEqual([
+        "openai",
+        "anthropic",
+      ]);
+    });
+
+    it("overlays the global provider kill switches", async () => {
+      workspace = await WorkspaceFactory.basic({
+        whiteListedProviders: ["openai", "anthropic"],
+      });
+      listEnabledKillSwitches.mockResolvedValue(["global_blacklist_openai"]);
+
+      const resource = await WorkspaceResource.fetchById(workspace.sId);
+
+      await expect(resource?.fetchWhiteListedProviders()).resolves.toEqual([
+        "anthropic",
+      ]);
     });
   });
 

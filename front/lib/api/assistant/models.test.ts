@@ -1,9 +1,13 @@
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
-import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getWhitelistedProviders,
+} from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { Authenticator } from "@app/lib/auth";
 import { setWorkspaceMaxAllowedTierName } from "@app/lib/model_tiers/allowed_tiers";
 import * as enabledModels from "@app/lib/model_tiers/enabled_models";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -48,12 +52,53 @@ function mockCredentials(
   ).mockResolvedValue(health);
 }
 
+// Workspace fetches and the WorkspaceType served by the Authenticator carry the configured
+// whiteListedProviders untouched. The global provider kill switches are overlaid only here,
+// when the effective value is resolved for gating.
+describe("getEffectiveWhiteListedProviders", () => {
+  afterEach(async () => {
+    await KillSwitchResource.disableKillSwitch("global_blacklist_openai");
+  });
+
+  it("returns the configured providers when no kill switch is enabled", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["openai", "anthropic"],
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await expect(getEffectiveWhiteListedProviders(auth)).resolves.toEqual([
+      "openai",
+      "anthropic",
+    ]);
+  });
+
+  it("overlays global provider kill switches without touching the configured value", async () => {
+    const workspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["openai", "anthropic"],
+    });
+    await KillSwitchResource.enableKillSwitch("global_blacklist_openai");
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await expect(getEffectiveWhiteListedProviders(auth)).resolves.toEqual([
+      "anthropic",
+    ]);
+    expect(auth.getNonNullableWorkspace().whiteListedProviders).toEqual([
+      "openai",
+      "anthropic",
+    ]);
+  });
+});
+
 describe("getWhitelistedProviders", () => {
   it("returns all providers including noop when whiteListedProviders is null", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(
+      auth,
+      await getEffectiveWhiteListedProviders(auth)
+    );
     expect(providers).toEqual(new Set(MODEL_PROVIDER_IDS));
   });
 
@@ -63,7 +108,10 @@ describe("getWhitelistedProviders", () => {
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(
+      auth,
+      await getEffectiveWhiteListedProviders(auth)
+    );
     expect(providers).toEqual(new Set(["anthropic", "noop"]));
   });
 
@@ -75,7 +123,10 @@ describe("getWhitelistedProviders", () => {
     ]);
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(
+      auth,
+      await getEffectiveWhiteListedProviders(auth)
+    );
     expect(providers).toEqual(new Set(["openai", "anthropic", "noop"]));
   });
 
@@ -89,7 +140,10 @@ describe("getWhitelistedProviders", () => {
     ]);
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(
+      auth,
+      await getEffectiveWhiteListedProviders(auth)
+    );
     expect(providers).toEqual(new Set(["anthropic", "noop"]));
   });
 
@@ -98,7 +152,10 @@ describe("getWhitelistedProviders", () => {
     mockCredentials([]);
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const providers = getWhitelistedProviders(auth);
+    const providers = getWhitelistedProviders(
+      auth,
+      await getEffectiveWhiteListedProviders(auth)
+    );
     expect(providers).toEqual(new Set(["noop"]));
   });
 });

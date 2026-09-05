@@ -1,7 +1,10 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
-import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getLargeWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -219,7 +222,10 @@ async function runReinforcedSkillsStep({
     };
   }
 
-  const model = getLargeWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getLargeWhitelistedModel(auth, undefined, {
+    whiteListedProviders,
+  });
 
   if (!model) {
     logger.error(

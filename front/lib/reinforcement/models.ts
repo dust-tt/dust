@@ -1,4 +1,7 @@
-import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getLargeWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -15,5 +18,10 @@ export async function getLargeWhitelistedModelWithBatchMode(
     ? new Set<"anthropic">(["anthropic"])
     : new Set<never>();
 
-  return getLargeWhitelistedModel(auth, excludedProviders, { forBatch: true });
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+
+  return getLargeWhitelistedModel(auth, excludedProviders, {
+    forBatch: true,
+    whiteListedProviders,
+  });
 }

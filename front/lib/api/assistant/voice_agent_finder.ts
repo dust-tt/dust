@@ -1,6 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getSmallWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -127,7 +130,10 @@ export async function findAgentsInMessageGeneration(
   auth: Authenticator,
   inputs: { agentsList: string[]; message: string }
 ): Promise<Result<{ augmentedMessages: AugmentedMessageFromLLM[] }, Error>> {
-  const model = await getSmallWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getSmallWhitelistedModel(auth, undefined, {
+    whiteListedProviders,
+  });
   if (!model) {
     return new Err(
       new Error(

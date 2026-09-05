@@ -1,4 +1,5 @@
 import { getModelConfigForWebSummarization } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
+import { getEffectiveWhiteListedProviders } from "@app/lib/api/assistant/models";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -13,7 +14,11 @@ describe("getModelConfigForWebSummarization", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const featureFlags = await getFeatureFlags(auth);
 
-    expect(getModelConfigForWebSummarization(auth, featureFlags)).toMatchObject(
+    expect(getModelConfigForWebSummarization(
+        auth,
+        featureFlags,
+        await getEffectiveWhiteListedProviders(auth)
+      )).toMatchObject(
       {
         modelConfiguration: {
           providerId: "openai",
@@ -30,12 +35,18 @@ describe("getModelConfigForWebSummarization", () => {
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const featureFlags = await getFeatureFlags(auth);
+    const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
     const smallModel = getSmallWhitelistedModel(auth, new Set(), {
       featureFlags,
+      whiteListedProviders,
     });
 
     expect(smallModel).not.toBeNull();
-    expect(getModelConfigForWebSummarization(auth, featureFlags)).toEqual({
+    expect(getModelConfigForWebSummarization(
+        auth,
+        featureFlags,
+        await getEffectiveWhiteListedProviders(auth)
+      )).toEqual({
       modelConfiguration: smallModel,
       reasoningEffort: smallModel?.defaultReasoningEffort,
     });
