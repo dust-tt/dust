@@ -500,6 +500,11 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
 
+  // "paused": loop stopped after crossing the spend checkpoint, waiting on the user.
+  // Declining sets the message status to "gracefully_stopped"
+  // "acknowledged": user confirmed continuing, kept for the rest of the message's lifetime.
+  declare creditSpendCheckpointStatus: "paused" | "acknowledged" | null;
+
   // The concrete provider/model/effort triplet used by the message when
   // running the agent. Legacy: null when the message runs the agent's configured model.
   declare resolvedProviderId: string | null;
@@ -594,6 +599,11 @@ AgentMessageModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: true,
       defaultValue: false,
+    },
+    creditSpendCheckpointStatus: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
     costCredits: {
       type: DataTypes.INTEGER,
