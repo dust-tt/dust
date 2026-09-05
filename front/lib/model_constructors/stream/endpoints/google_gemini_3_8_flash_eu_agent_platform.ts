@@ -3,9 +3,6 @@ import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/cl
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
 
-// Not registered in STREAM_ENDPOINTS: `@google/genai` maps the `eu` location to
-// `eu-aiplatform.googleapis.com`, which returned "Invalid hostname" in a live
-// test on 2026-09-04. Kept defined for when the native API supports EU.
 export class GoogleGeminiThreeDotEightFlashEuropeAgentPlatformStream extends WithGoogleGeminiThreeDotEightFlashConfig(
   GoogleAgentPlatformStream
 ) {
