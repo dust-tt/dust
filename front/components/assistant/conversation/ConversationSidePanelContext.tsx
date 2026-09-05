@@ -61,6 +61,10 @@ const isSupportedPanelType = (
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
+  // True between closePanel() and the end of the collapse transition. `currentPanel` keeps the
+  // old value meanwhile so the panel content does not flicker; toggles read this to unselect
+  // right away.
+  isPanelClosing: boolean;
   openPanel: (params: OpenPanelParams) => void;
   togglePanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
@@ -117,6 +121,7 @@ export function ConversationSidePanelProvider({
   const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+  const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -130,6 +135,7 @@ export function ConversationSidePanelProvider({
   // This should be called once the closing animation is done (onTransitionEnd)
   // so you won't have content flickering
   const onPanelClosed = useCallback(() => {
+    setIsPanelClosing(false);
     setData(undefined);
     setCurrentPanel(undefined);
   }, [setData, setCurrentPanel]);
@@ -137,6 +143,11 @@ export function ConversationSidePanelProvider({
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const closePanel = useCallback(() => {
     if (panelRef && panelRef.current) {
+      // Only flag a real collapse: on an already collapsed panel no transition runs, so
+      // onPanelClosed would never clear the flag.
+      if (!panelRef.current.isCollapsed()) {
+        setIsPanelClosing(true);
+      }
       panelRef.current.collapse();
     } else {
       // in case there is no ref found (agent builder preview), close the panel directly
@@ -144,9 +155,12 @@ export function ConversationSidePanelProvider({
     }
   }, [panelRef, onPanelClosed]);
 
-  // Shared selection; `toggle` decides whether re-selecting the shown panel closes it.
+  // Shared selection; `toggle` decides whether re-selecting the shown panel closes it. A panel
+  // that is already closing reads as unselected, so re-selecting it reopens instead.
   const applyPanel = useCallback(
     (params: OpenPanelParams, { toggle }: { toggle: boolean }) => {
+      const closeOnReselect = toggle && !isPanelClosing;
+      setIsPanelClosing(false);
       setCurrentPanel(params.type);
 
       switch (params.type) {
@@ -156,7 +170,7 @@ export function ConversationSidePanelProvider({
             : params.messageId;
 
           // A different message/action switches content; only the same data toggles closed.
-          if (toggle && newData === data) {
+          if (closeOnReselect && newData === data) {
             closePanel();
             return;
           }
@@ -177,7 +191,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case FILES_SIDE_PANEL_TYPE:
-          if (toggle && currentPanel === FILES_SIDE_PANEL_TYPE) {
+          if (closeOnReselect && currentPanel === FILES_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
@@ -185,7 +199,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case CREDITS_SIDE_PANEL_TYPE:
-          if (toggle && currentPanel === CREDITS_SIDE_PANEL_TYPE) {
+          if (closeOnReselect && currentPanel === CREDITS_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
@@ -193,7 +207,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case PLAN_SIDE_PANEL_TYPE:
-          if (toggle && currentPanel === PLAN_SIDE_PANEL_TYPE) {
+          if (closeOnReselect && currentPanel === PLAN_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
@@ -202,7 +216,7 @@ export function ConversationSidePanelProvider({
 
         case SKILL_SIDE_PANEL_TYPE:
           // A different skill switches content; only the same skill toggles closed.
-          if (toggle && params.skillId === data) {
+          if (closeOnReselect && params.skillId === data) {
             closePanel();
             return;
           }
@@ -217,7 +231,7 @@ export function ConversationSidePanelProvider({
       // changes, so a close→reopen race (same value) wouldn't re-run it. No-op on mobile.
       panelRef.current?.expand(getDefaultRightPanelSize(params.type));
     },
-    [setCurrentPanel, setData, data, closePanel, currentPanel]
+    [setCurrentPanel, setData, data, closePanel, currentPanel, isPanelClosing]
   );
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
@@ -265,6 +279,7 @@ export function ConversationSidePanelProvider({
       currentPanel: isSupportedPanelType(currentPanel)
         ? currentPanel
         : undefined,
+      isPanelClosing,
       openPanel,
       togglePanel,
       closePanel,
@@ -277,6 +292,7 @@ export function ConversationSidePanelProvider({
     }),
     [
       currentPanel,
+      isPanelClosing,
       openPanel,
       togglePanel,
       closePanel,

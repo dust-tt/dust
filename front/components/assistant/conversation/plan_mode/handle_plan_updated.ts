@@ -10,7 +10,8 @@ export interface PlanUpdatedDeps {
 }
 
 // Reacts to a `plan_updated` event: on close, drop the cache to null; on create/edit, revalidate.
-// Opening and closing the panel is owned by PlanCard, which reacts to the resulting content change.
+// Opening and closing the panel is owned by PlanPanelChip, which reacts to the resulting content
+// change.
 // Pulled out of ConversationViewer to be unit-testable.
 export function handlePlanUpdatedEvent(
   event: PlanUpdatedEvent,
