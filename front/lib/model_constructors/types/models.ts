@@ -1,3 +1,4 @@
+export const GPT_6_ASTRA = "gpt-6-astra" as const;
 export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
 export const GPT_5_6_TERRA_LONG_CONTEXT = "gpt-5.6-terra-long-context" as const;
@@ -56,6 +57,7 @@ export const NOOP_MODEL = "noop" as const;
 
 // Include a few examples for now
 export const MODELS = [
+  GPT_6_ASTRA,
   GPT_5_6_SOL,
   GPT_5_6_TERRA,
   GPT_5_6_TERRA_LONG_CONTEXT,
@@ -119,6 +121,7 @@ export const ORDERED_LARGE_MODELS = [
   CLAUDE_OPUS_4_6,
   CLAUDE_SONNET_5,
   CLAUDE_SONNET_4_6,
+  GPT_6_ASTRA,
   GPT_5_6_SOL,
   GPT_5_5,
   GPT_5_4,
