@@ -31,41 +31,30 @@ type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessageListContext
 >;
 
-function createAutoScrollToBottomBehavior(
-  isAutoScrollEnabledRef: MutableRefObject<boolean>
-) {
-  return ({
-    scrollLocation,
-    scrollInProgress,
-  }: {
-    scrollLocation: { bottomOffset: number };
-    scrollInProgress: boolean;
-  }) => {
-    if (!isAutoScrollEnabledRef.current || scrollInProgress) {
-      return false;
-    }
-
-    if (scrollLocation.bottomOffset < 0) {
-      return false;
-    }
-
-    return {
-      index: "LAST" as const,
-      align: "end" as const,
-      behavior: "smooth" as const,
-    };
-  };
-}
-
-function batchMapMessagesWithAutoScroll(
+function mapMessagesAndScroll(
   methods: VirtuosoMethods,
   isAutoScrollEnabledRef: MutableRefObject<boolean>,
   mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage
 ) {
-  methods.data.batch(
-    () => methods.data.map(mapFn),
-    createAutoScrollToBottomBehavior(isAutoScrollEnabledRef)
-  );
+  const wasUsingBottomPadding = methods.getScrollLocation().bottomOffset < 0;
+  methods.data.map(mapFn);
+  // Let the updated rows render and Virtuoso measure them before choosing the
+  // target. Check attachment when the scroll actually starts: Virtuoso's batch
+  // callback can queue a scroll that outlives an upward gesture cancelling it.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (!isAutoScrollEnabledRef.current || !methods.scrollerElement()) {
+        return;
+      }
+      const { bottomOffset } = methods.getScrollLocation();
+      // Keep a new turn aligned at the top until it fills the viewport. When
+      // already following, window-scroll measurements can briefly lag growth.
+      if (wasUsingBottomPadding && bottomOffset < 0) {
+        return;
+      }
+      methods.scrollToItem({ index: "LAST", align: "end", behavior: "smooth" });
+    });
+  });
 }
 
 function createUpdateMessageThrottled(
@@ -82,15 +71,8 @@ function createUpdateMessageThrottled(
       content: string;
       sId: string;
     }) => {
-      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, (m) => {
+      mapMessagesAndScroll(methods, isAutoScrollEnabledRef, (m) => {
         if (isAgentMessageWithStreaming(m) && m.sId === sId) {
-          // Enable auto scroll if we are starting to receive content or chain of thought.
-          if (
-            (!m.content && content) ||
-            (!m.chainOfThought && chainOfThought)
-          ) {
-            isAutoScrollEnabledRef.current = true;
-          }
           return {
             ...m,
             content,
@@ -341,7 +323,7 @@ export function useAgentMessageStream({
 
   const mapMessagesWithAutoScroll = useCallback(
     (mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage) => {
-      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, mapFn);
+      mapMessagesAndScroll(methods, isAutoScrollEnabledRef, mapFn);
     },
     [methods, isAutoScrollEnabledRef]
   );
