@@ -1,4 +1,8 @@
 import {
+  shadowCanAdminAgent,
+  shadowEditableAgents,
+} from "@app/lib/api/assistant/agent_permissions";
+import {
   enrichAgentConfigurations,
   getModelForAgentConfiguration,
   isSelfHostedImageWithValidContentType,
@@ -1646,6 +1650,14 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
+  const canAdministrate = await shadowCanAdminAgent(
+    auth,
+    agent,
+    auth.isAdmin() ||
+      (await editorGroupRes.value.isMember(auth.getNonNullableUser())),
+    "updateAgentPermissions"
+  );
+
   try {
     const transactionResult = await withTransaction(async (t) => {
       const agentResource = await AgentResource.fetchByAgentConfiguration(
@@ -1655,11 +1667,8 @@ export async function updateAgentPermissions(
       );
 
       if (usersToAdd.length > 0) {
-        // TODO(governance) replace by permission check on agent resource
-        if (
-          !auth.isAdmin() &&
-          !(await editorGroupRes.value.isMember(auth.getNonNullableUser()))
-        ) {
+        // TODO(governance) serve the AgentResource permission after shadow verification.
+        if (!canAdministrate) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1682,11 +1691,8 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        // TODO(governance) replace by permission check on agent resource
-        if (
-          !auth.isAdmin() &&
-          !(await editorGroupRes.value.isMember(auth.getNonNullableUser()))
-        ) {
+        // TODO(governance) serve the AgentResource permission after shadow verification.
+        if (!canAdministrate) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1840,8 +1846,11 @@ export async function updateAgentConfigurationsScope(
     );
   }
 
-  const editableAgents = agentConfigs.filter(
-    (a) => a.canEdit || auth.isAdmin()
+  const editableAgents = await shadowEditableAgents(
+    auth,
+    agentConfigs,
+    agentConfigs.filter((agent) => agent.canEdit || auth.isAdmin()),
+    "updateAgentConfigurationsScope"
   );
   if (editableAgents.length === 0) {
     return new Ok(undefined);

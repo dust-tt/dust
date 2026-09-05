@@ -1,4 +1,5 @@
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { shadowUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -31,7 +32,11 @@ async function getVisibleAgentIds(auth: Authenticator): Promise<ModelId[]> {
     auth,
     auth.groupModelIds()
   );
-  return groups.map((g) => g.agentConfigurationId);
+  return shadowUsageConfigIds(
+    auth,
+    groups.map((group) => group.agentConfigurationId),
+    "getToolsUsage"
+  );
 }
 
 /**

@@ -1,7 +1,9 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -255,6 +257,24 @@ export class AgentResource implements WithAccessControl {
     }
 
     return result;
+  }
+
+  static async listEditorConfigModelIds(
+    auth: Authenticator
+  ): Promise<ModelId[]> {
+    const resources = auth.getResourceIdsWithVerb("agent", "write");
+    const where =
+      resources.kind === "all" ? {} : { agentId: resources.resourceIds };
+    // agentId is indexed for the normal per-user path; workspaceId indexes the rare type-wide path.
+    const configurations = await AgentConfigurationModel.findAll({
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id"],
+    });
+
+    return configurations.map((configuration) => configuration.id);
   }
 
   async grantEditors(

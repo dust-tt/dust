@@ -1,9 +1,11 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -93,6 +95,51 @@ export async function getAgentIdFromName(
   return agent.sId;
 }
 
+async function shadowAgentPermissions(
+  auth: Authenticator,
+  agentModels: AgentConfigurationModel[],
+  legacyAgents: AgentConfigurationType[]
+): Promise<void> {
+  await shadowCompare({
+    auth,
+    legacy: legacyAgents.map((agent) => ({
+      agentId: agent.sId,
+      agentConfigurationModelId: agent.id,
+      read: agent.canRead || auth.isAdmin(),
+      write: agent.canEdit,
+      admin: agent.canEdit || auth.isAdmin(),
+    })),
+    candidate: async () =>
+      agentModels.map((agent) => {
+        const resource = AgentResource.fromAgentConfigurationModel(agent);
+        return {
+          agentId: agent.sId,
+          agentConfigurationModelId: agent.id,
+          read: auth.can("read", resource),
+          write: auth.can("write", resource),
+          admin: auth.can("admin", resource),
+        };
+      }),
+    context: {
+      check: "agent_permissions",
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    },
+    equals: (legacy, candidate) =>
+      legacy.length === candidate.length &&
+      legacy.every((permissions, index) => {
+        const candidatePermissions = candidate[index];
+        return (
+          permissions.agentId === candidatePermissions.agentId &&
+          permissions.agentConfigurationModelId ===
+            candidatePermissions.agentConfigurationModelId &&
+          permissions.read === candidatePermissions.read &&
+          permissions.write === candidatePermissions.write &&
+          permissions.admin === candidatePermissions.admin
+        );
+      }),
+  });
+}
+
 /**
  * Enrich agent configurations with additional data (actions, tags, favorites).
  */
@@ -148,6 +195,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const isAuthor = agent.authorId === auth.user()?.id;
     const isMember = editorIds.includes(agent.id);
 
+    const canRead = isAuthor || isMember || agent.scope === "visible";
+    const canEdit = isAuthor || isMember;
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -181,12 +230,18 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       reinforcement: agent.reinforcement,
       lastReinforcementAnalysisAt:
         agent.lastReinforcementAnalysisAt?.toISOString() ?? null,
-      canRead: isAuthor || isMember || agent.scope === "visible",
-      canEdit: isAuthor || isMember,
+      canRead,
+      canEdit,
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
+
+  await shadowAgentPermissions(
+    auth,
+    agentConfigurations,
+    agentConfigurationTypes
+  );
 
   return agentConfigurationTypes;
 }

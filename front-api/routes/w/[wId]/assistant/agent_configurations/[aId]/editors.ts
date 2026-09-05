@@ -1,3 +1,4 @@
+import { shadowCanAdminAgent } from "@app/lib/api/assistant/agent_permissions";
 import {
   getAgentConfiguration,
   updateAgentPermissions,
@@ -212,11 +213,14 @@ app.patch(
     }
 
     const editorGroup = editorGroupRes.value;
-    // TODO(governance) replace by permission check on agent resource
-    if (
-      !auth.isAdmin() &&
-      !(await editorGroup.isMember(auth.getNonNullableUser()))
-    ) {
+    // TODO(governance) serve the AgentResource permission after shadow verification.
+    const canAdministrate = await shadowCanAdminAgent(
+      auth,
+      agent,
+      auth.isAdmin() || (await editorGroup.isMember(auth.getNonNullableUser())),
+      "patchAgentEditorsRoute"
+    );
+    if (!canAdministrate) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
