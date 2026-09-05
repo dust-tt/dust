@@ -7,12 +7,16 @@ import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/member
 import { reconcileProgrammatic } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import {
   clearMetronomeProgrammaticCapAlerts,
   upsertMetronomeProgrammaticCapAlerts,
   WARNING_BALANCE_RATIO,
 } from "@app/lib/metronome/alerts/programmatic_cap";
+import { expectedProgrammaticCreditStateFromUsage } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
@@ -22,6 +26,7 @@ import {
   readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type { WorkspaceProgrammaticCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -177,14 +182,11 @@ async function readProgrammaticSpendLimitCountWithLazySeed(
 /**
  * Synchronous, Metronome-independent enforcement of the workspace programmatic
  * spend cap, read at message-send time from the Redis fixed-window counter over
- * the current contract billing cycle. Runs alongside the Metronome-driven
- * `isProgrammaticApiBlocked` as a faster, independent backup.
+ * the current contract billing cycle.
  *
- * Only enforces a *positive* cap: a cap of 0 means "always depleted", which is
- * owned by the programmatic credit-state machine (`isProgrammaticApiBlocked`),
- * not a threshold — so the backup defers to it there. Returns `false` (does not
- * block) with no positive cap, no billing period, or on a Redis read error
- * (fail-open).
+ * A cap of 0 (the default) blocks all programmatic access — the workspace is
+ * always over its cap. For a positive cap, returns `false` (does not block) when
+ * the billing period can't be resolved or on a Redis read error (fail-open).
  */
 export async function isProgrammaticSpendLimitRateCapReached(
   auth: Authenticator
@@ -197,8 +199,9 @@ export async function isProgrammaticSpendLimitRateCapReached(
  * `isProgrammaticSpendLimitRateCapReached`: the same Redis fixed-window counter
  * compared against `WARNING_BALANCE_RATIO` (80%) of the monthly cap instead of
  * the full cap. Rate-limiter counterpart of the Metronome-driven
- * `isWorkspaceProgrammaticWarningReached`. Returns `false` with no positive cap,
- * no billing period, or on a Redis read error (fail-open).
+ * `isWorkspaceProgrammaticWarningReached`. A cap of 0 is fully blocked, not
+ * "near limit", so it reports `false`; also `false` with no billing period or on
+ * a Redis read error (fail-open).
  */
 export async function isProgrammaticSpendLimitRateWarningReached(
   auth: Authenticator
@@ -210,11 +213,10 @@ export async function isProgrammaticSpendLimitRateWarningReached(
 
 /**
  * Reads the workspace programmatic spend-cap counter over the current contract
- * billing cycle and compares it against `ratio × monthly cap`. Only enforces a
- * *positive* cap: a cap of 0 means "always depleted", owned by the programmatic
- * credit-state machine (`isProgrammaticApiBlocked`), so this defers there.
- * Returns `false` with no positive cap, no billing period, or on a Redis read
- * error (fail-open).
+ * billing cycle and compares it against `ratio × monthly cap`. A cap of 0 (the
+ * default) blocks all programmatic access: the cap check (ratio 1) reports
+ * reached, the warning check (ratio < 1) does not. For a positive cap, returns
+ * `false` with no billing period or on a Redis read error (fail-open).
  */
 async function isProgrammaticSpendLimitRateThresholdReached(
   auth: Authenticator,
@@ -225,8 +227,11 @@ async function isProgrammaticSpendLimitRateThresholdReached(
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   const cap = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  // A cap of 0 (the default) blocks all programmatic access — the workspace is
+  // always over its cap. There is no "near limit" band below it, so the cap
+  // check (ratio 1) reports reached while the warning check (ratio < 1) does not.
   if (cap <= 0) {
-    return false;
+    return ratio >= 1;
   }
 
   const bounds = await resolveSpendLimitCycleBounds(workspace);
@@ -250,6 +255,46 @@ async function isProgrammaticSpendLimitRateThresholdReached(
   // The counter stores microCredits; scale the credit threshold up so the
   // comparison stays integer-on-integer.
   return count >= roundCreditsToMicroCredits(cap * ratio);
+}
+
+/**
+ * The workspace's programmatic credit-state band derived from the Redis
+ * rate-limiter counter (cycle-to-date programmatic spend) vs the monthly cap —
+ * the rate-limiter equivalent of the Metronome-driven programmatic credit state.
+ * Used to throttle programmatic request concurrency without reading
+ * `workspaces.programmaticCreditState`. Thresholds mirror
+ * `expectedProgrammaticCreditStateFromUsage` so the bands match enforcement.
+ *
+ * Returns `"active"` (no throttle) when there is no billing period or on a Redis
+ * read error (fail-open), so a transient hiccup never over-throttles.
+ */
+export async function getProgrammaticRateLimiterCreditState(
+  auth: Authenticator
+): Promise<WorkspaceProgrammaticCreditState> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const cap = config?.programmaticMonthlyCapAwuCredits ?? 0;
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return "active";
+  }
+
+  const count = await readProgrammaticSpendLimitCountWithLazySeed(auth, {
+    redisKey:
+      makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(workspace),
+    bounds,
+  });
+  if (count === null) {
+    return "active";
+  }
+
+  return expectedProgrammaticCreditStateFromUsage({
+    spentAwuCredits: microCreditsToCredits(count),
+    monthlyCapCredits: cap,
+  });
 }
 
 /**
