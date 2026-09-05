@@ -24,10 +24,12 @@ import {
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { DoubleIcon, Icon } from "@dust-tt/sparkle";
+import partition from "lodash/partition";
 import { useCallback, useMemo } from "react";
 
 interface FileAttachmentsProps {
@@ -44,6 +46,20 @@ interface InputBarAttachmentsProps {
   files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
   disable?: boolean;
+}
+
+// Sparkle's Citation enforces min-w-24: a smaller square would overflow it.
+const IMAGE_ATTACHMENT_CONTAINER_CLASS = "size-24";
+
+// Images keep a thumbnail preview; the preview URL only arrives once the upload
+// completes, so uploading images reserve their slot to avoid a layout shift.
+// Once uploaded, the preview needs both the URL and the file id (to open it).
+function isPreviewableImageAttachment(attachment: FileAttachment): boolean {
+  return (
+    isSupportedImageContentType(attachment.contentType) &&
+    (attachment.isUploading ||
+      (!!attachment.sourceUrl && attachment.fileId !== null))
+  );
 }
 
 export function InputBarAttachments({
@@ -119,13 +135,15 @@ export function InputBarAttachments({
         const { dataSource } = node.dataSourceView;
 
         const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
+        // Rendered visuals keep their own size inside the chip (see
+        // FileCitationCard), so match AttachmentChip's default icon size.
         const visual = isWebsiteOrFolder ? (
-          <Icon visual={logo} size="md" />
+          <Icon visual={logo} size="sm" />
         ) : (
           <DoubleIcon
             mainIcon={getVisualForDataSourceViewContentNode(node)}
             secondaryIcon={logo}
-            size="md"
+            size="sm"
           />
         );
 
@@ -144,23 +162,40 @@ export function InputBarAttachments({
     );
   }, [nodes, spacesMap, disable]);
 
-  const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
+  const [imageAttachments, otherFileAttachments] = partition(
+    fileAttachments,
+    isPreviewableImageAttachment
+  );
+  const chipAttachments: Attachment[] = [
+    ...otherFileAttachments,
+    ...nodeAttachments,
+  ];
 
-  if (allAttachments.length === 0) {
+  if (imageAttachments.length === 0 && chipAttachments.length === 0) {
     return null;
   }
 
+  // One wrapping row, top-aligned: image previews first, then chips alongside.
   return (
-    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
-      {allAttachments.map((attachment, index) => {
-        const attachmentCitation = attachmentToAttachmentCitation(attachment);
-        return (
-          <AttachmentCitation
-            key={index}
-            attachmentCitation={attachmentCitation}
-          />
-        );
-      })}
-    </CitationGrid>
+    <div className="flex flex-wrap items-start gap-2 border-b border-separator px-3 pb-3 pt-3">
+      {imageAttachments.map((attachment) => (
+        <AttachmentCitation
+          key={attachment.id}
+          attachmentCitation={attachmentToAttachmentCitation(attachment)}
+          imageContainerClassName={IMAGE_ATTACHMENT_CONTAINER_CLASS}
+          // Too small for a legible title; the tooltip carries the name.
+          imageTitlePosition="hidden"
+        />
+      ))}
+      {chipAttachments.map((attachment) => (
+        <AttachmentCitation
+          key={attachment.id}
+          attachmentCitation={attachmentToAttachmentCitation(attachment, {
+            iconSize: "sm",
+          })}
+          variant="chip"
+        />
+      ))}
+    </div>
   );
 }
