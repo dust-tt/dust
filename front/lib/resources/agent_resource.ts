@@ -3,6 +3,9 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentModel } from "@app/lib/models/agent/agent";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationScope,
   LightAgentConfigurationType,
@@ -10,6 +13,7 @@ import type {
 import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { GrantVerb } from "@app/types/group_permissions";
+import { grantKey } from "@app/types/group_permissions";
 import type {
   AccessControlList,
   RoleGrant,
@@ -17,6 +21,7 @@ import type {
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
@@ -113,6 +118,143 @@ export class AgentResource implements WithAccessControl {
       scope: configuration.scope,
       workspaceId: agent.workspaceId,
     });
+  }
+
+  static async fetchByAgentConfigurations(
+    auth: Authenticator,
+    configurations: Pick<
+      LightAgentConfigurationType,
+      "sId" | "scope" | "versionAuthorId"
+    >[]
+  ): Promise<AgentResource[]> {
+    if (configurations.length === 0) {
+      return [];
+    }
+
+    // agents.sId is unique, so the batch lookup stays indexed and workspace-scoped.
+    const agents = await AgentModel.findAll({
+      where: {
+        sId: configurations.map((configuration) => configuration.sId),
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id", "sId", "workspaceId"],
+    });
+    const agentById = new Map(agents.map((agent) => [agent.sId, agent]));
+
+    return configurations.map((configuration) => {
+      assert(configuration.scope !== "global");
+      assert(
+        configuration.versionAuthorId !== null,
+        "Unexpected: custom agent author is missing"
+      );
+      const agent = agentById.get(configuration.sId);
+      assert(agent, "Unexpected: agent identity is missing");
+
+      return new AgentResource(
+        agent.id,
+        agent.sId,
+        agent.workspaceId,
+        "custom",
+        configuration.versionAuthorId,
+        configuration.scope
+      );
+    });
+  }
+
+  async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
+    if (this.kind === "global") {
+      return null;
+    }
+    assert(this.id !== null);
+
+    const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
+      auth,
+      {
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: this.id,
+      }
+    );
+
+    return group ? group.getActiveMembers(auth) : [];
+  }
+
+  static async batchListEditors(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<Map<string, UserResource[] | null>> {
+    const result = new Map<string, UserResource[] | null>(
+      agents.map((agent) => [agent.sId, null])
+    );
+    const customAgents = agents.filter((agent) => agent.id !== null);
+    if (customAgents.length === 0) {
+      return result;
+    }
+
+    const editorGrant = (agent: AgentResource) => {
+      assert(agent.id !== null);
+      return {
+        grantType: "editor" as const,
+        resourceType: "agent" as const,
+        resourceId: agent.id,
+      };
+    };
+    const groupByGrant =
+      await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+        grants: customAgents.map(editorGrant),
+      });
+    const groupByAgentModelId = new Map<ModelId, GroupResource>(
+      removeNulls(
+        customAgents.map((agent) => {
+          assert(agent.id !== null);
+          const group = groupByGrant.get(grantKey(editorGrant(agent)));
+          return group ? ([agent.id, group] as const) : null;
+        })
+      )
+    );
+    const membershipsByGroupId =
+      await GroupResource.getActiveMembershipsForGroups(auth, [
+        ...groupByAgentModelId.values(),
+      ]);
+    const userModelIds = [
+      ...new Set(Object.values(membershipsByGroupId).flat()),
+    ];
+    if (userModelIds.length === 0) {
+      for (const agent of customAgents) {
+        result.set(agent.sId, []);
+      }
+      return result;
+    }
+
+    const users = await UserResource.fetchByModelIds(userModelIds);
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users,
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    const activeUserModelIds = new Set(
+      memberships.map((membership) => membership.userId)
+    );
+    const userByModelId = new Map(
+      users
+        .filter((user) => activeUserModelIds.has(user.id))
+        .map((user) => [user.id, user])
+    );
+
+    for (const agent of customAgents) {
+      assert(agent.id !== null);
+      const group = groupByAgentModelId.get(agent.id);
+      const memberModelIds = group
+        ? (membershipsByGroupId[group.id] ?? [])
+        : [];
+      result.set(
+        agent.sId,
+        removeNulls(
+          memberModelIds.map((userModelId) => userByModelId.get(userModelId))
+        )
+      );
+    }
+
+    return result;
   }
 
   async grantEditors(
