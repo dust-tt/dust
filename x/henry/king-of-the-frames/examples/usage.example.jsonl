@@ -1,0 +1,2 @@
+{"packId":"example-pack","agentId":"agent-candidate-a","conversationId":"conversation-a","modelId":"model-a","frameProduced":true,"startedAt":"2026-01-01T10:00:00Z","completedAt":"2026-01-01T10:02:00Z","freshInputTokens":1000,"cacheReadTokens":4000,"cacheWriteTokens":0,"outputTokens":2000}
+{"packId":"example-pack","agentId":"agent-candidate-b","conversationId":"conversation-b","modelId":"model-b","frameProduced":true,"startedAt":"2026-01-01T10:00:00Z","completedAt":"2026-01-01T10:01:30Z","freshInputTokens":1200,"cacheReadTokens":3800,"cacheWriteTokens":0,"outputTokens":1800}

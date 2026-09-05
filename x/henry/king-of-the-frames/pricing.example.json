@@ -1,0 +1,16 @@
+{
+  "models": {
+    "model-a": {
+      "inputUsdPerMillion": 1,
+      "cacheReadUsdPerMillion": 0.1,
+      "cacheWriteUsdPerMillion": 1.25,
+      "outputUsdPerMillion": 5
+    },
+    "model-b": {
+      "inputUsdPerMillion": 2,
+      "cacheReadUsdPerMillion": 0.2,
+      "cacheWriteUsdPerMillion": 2,
+      "outputUsdPerMillion": 8
+    }
+  }
+}

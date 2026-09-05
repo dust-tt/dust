@@ -1,0 +1,19 @@
+{
+  "name": "king-of-the-frames",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate-packs": "node src/validate-packs.mjs",
+    "run": "node src/run-eval.mjs",
+    "build-blind": "node src/build-blind-eval.mjs",
+    "post-slack": "node src/post-slack.mjs",
+    "collect-feedback": "node src/collect-feedback.mjs",
+    "tally": "node src/tally.mjs",
+    "cost-latency": "node src/cost-latency.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
