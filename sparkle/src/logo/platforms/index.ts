@@ -95,6 +95,7 @@ export { default as StripeLogo } from "./Stripe";
 export { default as SupabaseLogo } from "./Supabase";
 export { default as TableLogo } from "./Table";
 export { default as ThinkingMachinesLogo } from "./ThinkingMachines";
+export { default as TogetheraiLogo } from "./Togetherai";
 export { default as UkgLogo } from "./Ukg";
 export { default as ValTownLogo } from "./ValTown";
 export { default as VantaLogo } from "./Vanta";
