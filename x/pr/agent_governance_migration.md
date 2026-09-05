@@ -3,9 +3,9 @@
 This plan migrates workspace-agent editor permissions from the `agent_editors` group kind and
 `group_agents` join table to the `regular_auto` group kind and `group_permissions` table.
 
-Each numbered item is one PR. The 300-line target is a soft bound: combine related changes when an
-intermediate state has no review or operational value. Split at real deploy, backfill, observation,
-or rollback boundaries.
+Each numbered item is one PR, except PR 11's three parts. The 300-line target is a soft bound: combine
+related changes when an intermediate state has no review or operational value. Split at real deploy,
+backfill, observation, or rollback boundaries.
 
 ## Decisions
 
@@ -86,12 +86,26 @@ idempotent and report editor-set differences.
 
 ### PR 11: Shadow all grant-backed reads
 
-Add grant-backed editor-list and batch-list helpers, permission checks, and editable-agent filters.
-Continue serving legacy results while comparing editor sets, effective `read`/`write`/`admin`
-decisions, and list/manage/archive stable-id results under one shadow switch.
+All three parts continue serving legacy results and use the same `group_permissions_shadow` switch.
 
-**Operational gate:** enable shadowing progressively and wait for editor-list, permission, listing,
-backfill, and cache-related mismatches to reach zero.
+#### PR 11a: Shadow editor lists
+
+Add grant-backed single and batch editor-list helpers and the batch resource lookup. Compare editor
+sets in editor endpoints and agent configuration context, with resource and shadow regression tests.
+Base this PR on `main`.
+
+#### PR 11b: Shadow permissions and usage filters
+
+Compare effective `read`/`write`/`admin` decisions, editable-agent filters for scope and tag updates,
+and tool/data-source/webhook usage filters. Stack on PR 11a to reuse its batch resource lookup.
+
+#### PR 11c: Shadow agent views
+
+Compare list/manage/archive results using stable agent identities, preserving archived-editor
+filtering and covering it with regression tests. Base this PR independently on `main`.
+
+**Operational gate:** after all three parts merge, enable shadowing progressively and wait for
+editor-list, permission, listing, backfill, and cache-related mismatches to reach zero before PR 12.
 
 ## 3. Flip and remove the legacy model
 
