@@ -154,6 +154,14 @@
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
     },
     {
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "!front/lib/model_constructors/**",
+        "!front/lib/llms/**"
+      ],
+      "plugins": ["./.grit/patterns/noModelConstructorsImport.grit"]
+    },
+    {
       "includes": ["marketing/pages/**/*.{js,jsx,ts,tsx}"],
       "plugins": [
         "./.grit/patterns/nextjsPageComponentNaming.grit",
