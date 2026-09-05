@@ -20,16 +20,9 @@ import { getNonCreditPricedDefaultUserSpendLimit } from "@app/lib/api/workspace/
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
-import {
-  clearMetronomePerUserCapAlert,
-  clearMetronomePerUserWarningAlert,
-  USER_AWU_WARNING_PERCENTAGE,
-  upsertMetronomePerUserCapAlert,
-  upsertMetronomePerUserWarningAlert,
-} from "@app/lib/metronome/alerts/spend_limits";
+import { USER_AWU_WARNING_PERCENTAGE } from "@app/lib/metronome/alerts/spend_limits";
 import { getCachedCustomerPerUserCreditBalances } from "@app/lib/metronome/client";
 import { CONTRACT_CREDIT_TYPE_FREE_SEAT } from "@app/lib/metronome/constants";
-import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -38,7 +31,6 @@ import {
   lifetimeSpendCycleUtc,
   resolveSpendLimitCycleBounds,
 } from "@app/lib/spend_limits/cycle";
-import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
@@ -50,10 +42,8 @@ import type {
   SetUserSpendLimitResponse,
   UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
-import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const MIN_USER_SPEND_LIMIT_AWU_CREDITS = 0;
 export const MAX_USER_SPEND_LIMIT_AWU_CREDITS = 2_000_000;
@@ -70,41 +60,6 @@ export class UserSpendLimitError extends Error {
   ) {
     super(message);
   }
-}
-
-/**
- * Resolve the seat AWU allowance for a membership based on its seat type and
- * the active contract. Returns 0 when the contract or seat type can't be
- * resolved (e.g. free seats, no contract).
- */
-async function resolveUserSeatAllowance(
-  auth: Authenticator,
-  membership: MembershipResource
-): Promise<number> {
-  const workspace = auth.getNonNullableWorkspace();
-  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
-  if (!normalizedSeatType) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        seatType: membership.seatType,
-      },
-      "[Metronome PerUserCap] seat type does not map to a pool-limit seat type; seat allowance is 0"
-    );
-    return 0;
-  }
-  const allowances = await getSeatAllowancesByNormalizedSeatType(workspace.sId);
-  const seatAllowance = allowances[normalizedSeatType] ?? 0;
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      seatType: membership.seatType,
-      normalizedSeatType,
-      seatAllowance,
-    },
-    "[Metronome PerUserCap] resolved seat AWU allowance for membership"
-  );
-  return seatAllowance;
 }
 
 export async function getUserSpendLimit(
@@ -223,115 +178,12 @@ export async function setUserSpendLimit(
     );
   }
 
-  // Persist the admin's intent first: the membership is the source of truth,
-  // the Metronome alerts below are derived enforcement (a failed sync can be
-  // retried and re-derives from this value).
-  const previousPoolCapOverride = membership.poolCapOverrideSnapshot;
-  const previousAwuCredits = previousPoolCapOverride.poolCapOverrideAwuCredits;
-
+  // The membership is the source of truth for the per-user cap; the Redis
+  // rate-limiter reads this override at enforcement time. Persist it directly.
   await membership.updatePoolCapOverride({
     poolCapOverrideAwuCredits:
       limit.kind === "limited" ? limit.awuCredits : null,
   });
-
-  const revert = () =>
-    membership.revertPoolCapOverride(previousPoolCapOverride);
-
-  switch (limit.kind) {
-    case "unlimited": {
-      const clearResult = await revertOnSyncFailure(
-        await clearMetronomePerUserCapAlert({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          workspaceId: workspace.sId,
-          userId: user.sId,
-        }),
-        {
-          revert,
-          logContext: {
-            scope: "user",
-            operation: "clear_cap_alert",
-            workspaceId: workspace.sId,
-            metronomeCustomerId: workspace.metronomeCustomerId,
-            userId: user.sId,
-            previousAwuCredits,
-          },
-        }
-      );
-      if (clearResult.isErr()) {
-        return new Err(
-          new UserSpendLimitError("metronome_error", clearResult.error.message)
-        );
-      }
-      const clearWarningResult = await clearMetronomePerUserWarningAlert({
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceId: workspace.sId,
-        userId: user.sId,
-      });
-      if (clearWarningResult.isErr()) {
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            err: clearWarningResult.error,
-          },
-          "[Metronome PerUserCap] Failed to clear warning alert; continuing"
-        );
-      }
-      break;
-    }
-    case "limited": {
-      const seatAllowanceAwuCredits = await resolveUserSeatAllowance(
-        auth,
-        membership
-      );
-      const totalAwuCredits = limit.awuCredits + seatAllowanceAwuCredits;
-      const upsertResult = await revertOnSyncFailure(
-        await upsertMetronomePerUserCapAlert({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          workspaceId: workspace.sId,
-          userId: user.sId,
-          awuCredits: totalAwuCredits,
-        }),
-        {
-          revert,
-          logContext: {
-            scope: "user",
-            operation: "upsert_cap_alert",
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            awuCredits: totalAwuCredits,
-            seatAllowance: seatAllowanceAwuCredits,
-            previousAwuCredits,
-          },
-        }
-      );
-      if (upsertResult.isErr()) {
-        return new Err(
-          new UserSpendLimitError("metronome_error", upsertResult.error.message)
-        );
-      }
-      const upsertWarningResult = await upsertMetronomePerUserWarningAlert({
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceId: workspace.sId,
-        userId: user.sId,
-        capAwuCredits: totalAwuCredits,
-      });
-      if (upsertWarningResult.isErr()) {
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            awuCredits: totalAwuCredits,
-            err: upsertWarningResult.error,
-          },
-          "[Metronome PerUserCap] Failed to upsert warning alert; continuing"
-        );
-      }
-      break;
-    }
-    default:
-      assertNever(limit);
-  }
 
   // Reconcile the user's credit state from live usage — same path as the
   // poke reconcile button and the seat-sync reconcile.
@@ -406,66 +258,12 @@ export async function expireUserSpendLimitOverride(
     return new Ok({ reverted: false, previousAwuCredits: null });
   }
 
-  const previousPoolCapOverride = membership.poolCapOverrideSnapshot;
-  const previousAwuCredits = previousPoolCapOverride.poolCapOverrideAwuCredits;
+  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
 
   await membership.updatePoolCapOverride({
     poolCapOverrideAwuCredits: null,
     poolCapOverrideExpiresAt: null,
   });
-
-  // On any Metronome failure below, the DB override is put back rather than
-  // left cleared: keeps DB and Metronome consistent
-  const revert = () =>
-    membership.revertPoolCapOverride(previousPoolCapOverride);
-
-  const clearResult = await revertOnSyncFailure(
-    await clearMetronomePerUserCapAlert({
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      workspaceId: workspace.sId,
-      userId: user.sId,
-    }),
-    {
-      revert,
-      logContext: {
-        scope: "user",
-        operation: "expire_clear_cap_alert",
-        workspaceId: workspace.sId,
-        userId: user.sId,
-        previousAwuCredits,
-      },
-    }
-  );
-  if (clearResult.isErr()) {
-    return new Err(
-      new UserSpendLimitError("metronome_error", clearResult.error.message)
-    );
-  }
-  const clearWarningResult = await revertOnSyncFailure(
-    await clearMetronomePerUserWarningAlert({
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      workspaceId: workspace.sId,
-      userId: user.sId,
-    }),
-    {
-      revert,
-      logContext: {
-        scope: "user",
-        operation: "expire_clear_warning_alert",
-        workspaceId: workspace.sId,
-        userId: user.sId,
-        previousAwuCredits,
-      },
-    }
-  );
-  if (clearWarningResult.isErr()) {
-    return new Err(
-      new UserSpendLimitError(
-        "metronome_error",
-        clearWarningResult.error.message
-      )
-    );
-  }
 
   const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
   if (metronomeContractId) {

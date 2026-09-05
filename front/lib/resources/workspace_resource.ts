@@ -34,10 +34,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type {
-  WorkspacePoolCreditState,
-  WorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -514,13 +511,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     transaction?: Transaction
   ): Promise<void> {
     await this.update({ poolCreditState }, transaction);
-  }
-
-  async updateProgrammaticCreditState(
-    programmaticCreditState: WorkspaceProgrammaticCreditState,
-    transaction?: Transaction
-  ): Promise<void> {
-    await this.update({ programmaticCreditState }, transaction);
   }
 
   async updateWorkspaceSettings(

@@ -3,13 +3,12 @@
 // This is the Metronome-credit-state layer. Access-control callers go through
 // `lib/api/credits/access_control.ts`, which enforces spend caps from the Redis
 // rate-limiter counters; the pool/no_seat/personal-seat logic here still backs
-// `isUserBlockedByMetronome` (via a `userCapBlockedOverride`) and
-// `isApiBlockedByMetronome`.
+// `isUserBlockedByMetronome` (the caller passes the rate-limiter per-user cap
+// verdict in) and `isApiBlockedByMetronome`.
 //
-// Four keys back the credit state machines:
-//   - `metronome:user_credit_state:<ws>:<user>`: fine-grained user credit state
-//     (mirrors `memberships.creditState`). Replaces the legacy boolean cap and
-//     warning flags — "capped" means blocked, "*_low_balance" means warned.
+// Keys back the credit state machines:
+//   - `metronome:user_credit_state:<ws>:<user>`: user seat↔pool credit state
+//     (mirrors `memberships.creditState`: `user_seat` / `on_pool`).
 //   - `metronome:pool_credit_status:<ws>`: fine-grained workspace pool state
 //     (mirrors `workspaces.poolCreditState`).
 //   - `metronome:pool_depleted:<ws>`: boolean shortcut for
@@ -18,8 +17,9 @@
 //   - `metronome:programmatic_credit_status:<ws>` / `metronome:programmatic_depleted:<ws>`:
 //     programmatic (API) cap state.
 //
-// `isUserBlockedByMetronome` is the unified read: a user is blocked iff the pool is
-// depleted or the user's credit state is "capped". It returns the reason
+// `isUserBlockedByMetronome` is the unified read: a user is blocked iff the pool
+// is depleted or the caller-supplied per-user cap verdict is set. It returns the
+// reason
 // ("credits_exhausted" / "user_cap_reached") so callers can surface a tailored
 // message. When both conditions hold, "user_cap_reached" wins: the per-user cap
 // is the user's actionable blocker, whereas refilling the pool would not unblock
@@ -42,18 +42,13 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  WorkspacePoolCreditState,
-  WorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
-import {
-  isWorkspacePoolCreditState,
-  isWorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
+import { isWorkspacePoolCreditState } from "@app/types/credits";
 import type { UserCreditState } from "@app/types/memberships";
 import {
   isSpendingFromPersonalSeat,
   isUserCreditState,
+  normalizeUserCreditState,
 } from "@app/types/memberships";
 import type { MaxAwuCreditsTimeframeType, PlanType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -114,12 +109,6 @@ function buildUserCreditStateKey(workspaceId: string, userId: string): string {
   return `metronome:user_credit_state:${workspaceId}:${userId}`;
 }
 
-function buildWorkspaceProgrammaticCreditStatusKey(
-  workspaceId: string
-): string {
-  return `metronome:programmatic_credit_status:${workspaceId}`;
-}
-
 function buildWorkspaceBalanceThresholdReachedKey(workspaceId: string): string {
   return `metronome:balance_threshold_warning:${workspaceId}`;
 }
@@ -128,62 +117,6 @@ async function setFlag(key: string, value: string): Promise<void> {
   await runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
     await client.set(key, value);
   });
-}
-
-// Per-user "near limit" flag — stored independently of the credit state so
-// the warning signal can be decoupled from the seat↔pool dimension.
-//
-// Set to true by:
-//   - `spend_threshold_reached` (warningAlertId, isPerUser): consumption reached
-//     80% of the per-user cap (seat allowance + pool limit). Pro/max pool users.
-//   - `low_remaining_contract_credit_balance_reached` (threshold > 0): a free
-//     seat's lifetime credit balance crossed the low-balance threshold.
-// Set to false by:
-//   - `spend_threshold_reached` resolved (warningAlertId, isPerUser): cap raised/removed.
-//   - `low_remaining_contract_credit_balance_resolved`: free seat credit recovered.
-//   - Admin removes/raises per-user cap (spend_limit.ts).
-//   - Reconciliation: recomputed from live Metronome balance on each reconcile.
-//
-// Cache-miss fallback: infer from the credit state so that existing
-// `on_pool_low_balance` / `user_seat_low_balance` rows continue to show the
-// banner until they are migrated or reconciled.
-
-function buildUserNearLimitKey(workspaceId: string, userId: string): string {
-  return `metronome:user_near_limit:${workspaceId}:${userId}`;
-}
-
-export async function setUserNearLimit(
-  workspaceId: string,
-  userId: string,
-  nearLimit: boolean
-): Promise<void> {
-  await setFlag(
-    buildUserNearLimitKey(workspaceId, userId),
-    nearLimit ? "1" : "0"
-  );
-}
-
-async function getUserNearLimit(
-  workspaceId: string,
-  userId: string
-): Promise<boolean> {
-  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildUserNearLimitKey(workspaceId, userId))
-  );
-  if (cached !== null) {
-    return cached === "1";
-  }
-  // Cache miss: fall back to credit state for existing rows that haven't been
-  // migrated yet (on_pool_low_balance / user_seat_low_balance).
-  const state = await getUserCreditState(workspaceId, userId);
-  return state === "on_pool_low_balance" || state === "user_seat_low_balance";
-}
-
-export async function isUserAwuWarnedByMetronome(
-  workspaceId: string,
-  userId: string
-): Promise<boolean> {
-  return getUserNearLimit(workspaceId, userId);
 }
 
 // Workspace credit-balance threshold reached (admin-configured early warning).
@@ -211,36 +144,6 @@ export async function isWorkspaceBalanceThresholdReached(
   const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
     client.get(buildWorkspaceBalanceThresholdReachedKey(workspaceId))
   );
-  return val === "1";
-}
-
-// Workspace programmatic 80% warning — set when the warning alert fires,
-// cleared on cap reset or reconcile. Redis-only; no DB fallback (cold miss
-// reads as false). Drives the banner independently of the throttling states.
-
-function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
-  return `metronome:programmatic_warning:${workspaceId}`;
-}
-
-export async function setWorkspaceProgrammaticWarningReached(
-  workspaceId: string
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "1");
-}
-
-export async function clearWorkspaceProgrammaticWarningReached(
-  workspaceId: string
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "0");
-}
-
-export async function isWorkspaceProgrammaticWarningReachedByMetronome(
-  workspaceId: string
-): Promise<boolean> {
-  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildWorkspaceProgrammaticWarningKey(workspaceId))
-  );
-  // Redis miss (null) returns false: prefer not showing the banner over a false positive on cache wipe.
   return val === "1";
 }
 
@@ -417,14 +320,12 @@ function deriveBlockedReason({
 export async function isUserBlockedByMetronome(
   workspace: LightWorkspaceType,
   user: UserResource,
-  // Overrides the Metronome-credit-state user-cap signal
-  // (`userCreditState === "capped"`) when set to a boolean. The flag-aware
-  // wrapper in `lib/api/credits/access_control.ts` passes the Redis rate-limiter
-  // result here so the pool/seat logic (no_seat, pool depletion, personal-seat
-  // carve-out) stays defined in one place. `null`/`undefined` means "no
-  // override" — the Metronome credit state is used (e.g. free/none seats, whose
-  // lifetime balance the rate limiter does not model).
-  opts?: { userCapBlockedOverride?: boolean | null }
+  // Whether the user has hit their per-user spend cap, resolved from the Redis
+  // rate-limiter counter by the wrapper in
+  // `lib/api/credits/access_control.ts`. The pool/seat logic (no_seat, pool
+  // depletion, personal-seat carve-out) stays defined here so it lives in one
+  // place.
+  { userCapBlocked }: { userCapBlocked: boolean }
 ): Promise<UserBlockedReason | null> {
   const workspaceId = workspace.sId;
   const userId = user.sId;
@@ -438,20 +339,13 @@ export async function isUserBlockedByMetronome(
     return "no_seat";
   }
 
-  const [creditStateRaw, poolStatusRaw] = await runOnRedis(
+  const poolStatusRaw = await runOnRedis(
     { origin: REDIS_ORIGIN },
-    async (client) =>
-      Promise.all([
-        client.get(buildUserCreditStateKey(workspaceId, userId)),
-        client.get(buildWorkspaceCreditPoolStatusKey(workspaceId)),
-      ])
+    async (client) => client.get(buildWorkspaceCreditPoolStatusKey(workspaceId))
   );
 
-  // Both getters have their own DB fallback and cache repopulation.
-  const userCreditState =
-    creditStateRaw && isUserCreditState(creditStateRaw)
-      ? creditStateRaw
-      : await getUserCreditState(workspaceId, userId);
+  // The credit-state getter has its own DB fallback and cache repopulation.
+  const userCreditState = await getUserCreditState(workspaceId, userId);
 
   const poolStatus =
     poolStatusRaw && isWorkspacePoolCreditState(poolStatusRaw)
@@ -460,16 +354,15 @@ export async function isUserBlockedByMetronome(
 
   let workspacePoolDepleted = poolStatus === "depleted";
 
-  // A user spending from their personal seat balance (`user_seat` /
-  // `user_seat_low_balance`) still has their own credits, so workspace pool
-  // depletion must not block them — only their per-user cap can.
+  // A user spending from their personal seat balance (`user_seat`) still has
+  // their own credits, so workspace pool depletion must not block them — only
+  // their per-user cap can.
   if (workspacePoolDepleted && isSpendingFromPersonalSeat(userCreditState)) {
     workspacePoolDepleted = false;
   }
 
   return deriveBlockedReason({
-    userCapBlocked:
-      opts?.userCapBlockedOverride ?? userCreditState === "capped",
+    userCapBlocked,
     workspacePoolDepleted,
   });
 }
@@ -525,10 +418,12 @@ async function getUserCreditState(
       workspace: renderLightWorkspaceType({ workspace }),
     });
 
-  const state: UserCreditState =
-    membership && isUserCreditState(membership.creditState)
-      ? membership.creditState
-      : "on_pool";
+  // Normalize so legacy rows (pre-narrowing `*_low_balance` / `capped` / `normal`
+  // values) map onto the canonical `user_seat` / `on_pool` set until the backfill
+  // migration lands.
+  const state: UserCreditState = membership
+    ? normalizeUserCreditState(membership.creditState)
+    : "on_pool";
 
   await setFlag(buildUserCreditStateKey(workspaceId, userId), state);
   return state;
@@ -574,56 +469,6 @@ export async function getWorkspaceCreditPoolStatus(
   const status = workspace.poolCreditState;
   await setFlag(buildWorkspaceCreditPoolStatusKey(workspaceId), status);
   return status;
-}
-
-// Workspace programmatic credit state (monthly cap).
-
-export async function setWorkspaceProgrammaticCreditStatus(
-  workspaceId: string,
-  status: WorkspaceProgrammaticCreditState
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
-}
-
-export async function getWorkspaceProgrammaticCreditStatus(
-  workspaceId: string
-): Promise<WorkspaceProgrammaticCreditState> {
-  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildWorkspaceProgrammaticCreditStatusKey(workspaceId))
-  );
-
-  if (cached && isWorkspaceProgrammaticCreditState(cached)) {
-    return cached;
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      workspaceProgrammaticCreditStatusCacheHit: false,
-    },
-    "[MetronomeUserBlock] Cache miss during programmatic credit status check, falling back to DB"
-  );
-
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    logger.warn(
-      { workspaceId },
-      "[MetronomeUserBlock] Workspace not found during programmatic credit status cache read-through fallback"
-    );
-    return "active";
-  }
-
-  const status = workspace.programmaticCreditState;
-  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
-  return status;
-}
-
-export async function isProgrammaticApiBlockedByMetronome(
-  workspaceId: string
-): Promise<boolean> {
-  // getWorkspaceProgrammaticCreditStatus has its own DB fallback and cache repopulation.
-  const status = await getWorkspaceProgrammaticCreditStatus(workspaceId);
-  return status === "depleted";
 }
 
 // Workspace-pool-only read for API calls (no per-user cap).

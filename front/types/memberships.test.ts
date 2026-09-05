@@ -8,7 +8,6 @@ import { describe, expect, it } from "vitest";
 // A pro seat allocates 8000 AWU/month; max allocates 40000. These tests use
 // round numbers and don't depend on the real constants.
 const PRO_ALLOWANCE = 8000;
-const CAP = 10000; // seat allowance + pool limit
 
 describe("isSeatBased", () => {
   it("pro/max/free seats are seat-based", () => {
@@ -50,36 +49,35 @@ describe("expectedUserCreditState", () => {
       expectedUserCreditState({
         seatType: "pro",
         seatBalanceAwu: PRO_ALLOWANCE,
-        seatStartingBalanceAwu: PRO_ALLOWANCE,
-        perUserCapAwuCredits: CAP,
-        consumedAwuCredits: 0,
       })
     ).toBe("user_seat");
   });
 
-  it("pro seat with ≤20% personal balance remaining → user_seat (no low-balance sub-state)", () => {
+  it("pro seat with a low (but positive) personal balance → user_seat", () => {
     expect(
       expectedUserCreditState({
         seatType: "pro",
         seatBalanceAwu: 0.2 * PRO_ALLOWANCE,
-        seatStartingBalanceAwu: PRO_ALLOWANCE,
-        perUserCapAwuCredits: CAP,
-        consumedAwuCredits: 0.8 * PRO_ALLOWANCE,
       })
     ).toBe("user_seat");
   });
 
-  it("pro seat with exhausted personal balance, below the cap warning → on_pool", () => {
+  it("pro seat with exhausted personal balance → on_pool (pool fallback)", () => {
     expect(
       expectedUserCreditState({
         seatType: "pro",
         seatBalanceAwu: 0,
-        seatStartingBalanceAwu: PRO_ALLOWANCE,
-        // Cap well above consumption so we land on plain on_pool, not the 80% band.
-        perUserCapAwuCredits: 20000,
-        consumedAwuCredits: PRO_ALLOWANCE,
       })
     ).toBe("on_pool");
+  });
+
+  it("pro seat with unknown balance → user_seat (only a known 0 routes to the pool)", () => {
+    expect(
+      expectedUserCreditState({
+        seatType: "pro",
+        seatBalanceAwu: null,
+      })
+    ).toBe("user_seat");
   });
 
   it("free seat with personal balance → user_seat", () => {
@@ -87,35 +85,26 @@ describe("expectedUserCreditState", () => {
       expectedUserCreditState({
         seatType: "free",
         seatBalanceAwu: 300,
-        seatStartingBalanceAwu: 300,
-        perUserCapAwuCredits: null,
-        consumedAwuCredits: null,
       })
     ).toBe("user_seat");
   });
 
-  it("free seat with exhausted balance → capped (no pool fallback)", () => {
+  it("free seat with exhausted balance → user_seat (no pool fallback)", () => {
     expect(
       expectedUserCreditState({
         seatType: "free",
         seatBalanceAwu: 0,
-        seatStartingBalanceAwu: 300,
-        perUserCapAwuCredits: null,
-        consumedAwuCredits: null,
       })
-    ).toBe("capped");
+    ).toBe("user_seat");
   });
 
   it("free seat with unknown balance → user_seat (never on_pool)", () => {
     // A free seat has no pool fallback, so an unknown (null) balance must not
-    // route to on_pool — it stays on the seat until the balance is known 0.
+    // route to on_pool — it stays on the seat.
     expect(
       expectedUserCreditState({
         seatType: "free",
         seatBalanceAwu: null,
-        seatStartingBalanceAwu: null,
-        perUserCapAwuCredits: null,
-        consumedAwuCredits: null,
       })
     ).toBe("user_seat");
   });
@@ -125,46 +114,15 @@ describe("expectedUserCreditState", () => {
       expectedUserCreditState({
         seatType: "workspace",
         seatBalanceAwu: null,
-        seatStartingBalanceAwu: null,
-        perUserCapAwuCredits: CAP,
-        consumedAwuCredits: 0,
       })
     ).toBe("on_pool");
   });
 
-  it("consumption ≥ cap → capped (hard block wins over seat balance)", () => {
+  it("unset seat → on_pool", () => {
     expect(
       expectedUserCreditState({
-        seatType: "pro",
-        // Even with a (stale) positive seat balance, hitting the cap blocks.
-        seatBalanceAwu: 10,
-        seatStartingBalanceAwu: PRO_ALLOWANCE,
-        perUserCapAwuCredits: CAP,
-        consumedAwuCredits: CAP,
-      })
-    ).toBe("capped");
-  });
-
-  it("on pool at ≥80% of cap → on_pool (near-limit tracked separately via nearLimit flag)", () => {
-    expect(
-      expectedUserCreditState({
-        seatType: "workspace",
+        seatType: null,
         seatBalanceAwu: null,
-        seatStartingBalanceAwu: null,
-        perUserCapAwuCredits: CAP,
-        consumedAwuCredits: 0.8 * CAP,
-      })
-    ).toBe("on_pool");
-  });
-
-  it("no cap configured → never capped (uncapped pool user)", () => {
-    expect(
-      expectedUserCreditState({
-        seatType: "workspace",
-        seatBalanceAwu: null,
-        seatStartingBalanceAwu: null,
-        perUserCapAwuCredits: null,
-        consumedAwuCredits: null,
       })
     ).toBe("on_pool");
   });

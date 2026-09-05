@@ -4,28 +4,10 @@ import {
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
 import { Authenticator } from "@app/lib/auth";
-import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
-import * as planType from "@app/lib/metronome/plan_type";
-import * as seatTypes from "@app/lib/metronome/seat_types";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS } from "@app/types/credits";
-import type { MembershipSeatType } from "@app/types/memberships";
-import { Err, Ok } from "@app/types/shared/result";
-import type { Subscription } from "@metronome/sdk/resources";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
-  const actual = await vi.importActual<typeof defaultUserCapAlert>(
-    "@app/lib/metronome/alerts/spend_limits"
-  );
-  return {
-    ...actual,
-    getMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
-    upsertMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
-    upsertMetronomeDefaultUserWarningAlertForSeatType: vi.fn(),
-  };
-});
 
 vi.mock("@app/lib/api/audit/workos_audit", async () => {
   const actual = await vi.importActual<typeof workosAudit>(
@@ -37,70 +19,11 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
   };
 });
 
-vi.mock("@app/lib/metronome/plan_type", async () => {
-  const actual = await vi.importActual<typeof planType>(
-    "@app/lib/metronome/plan_type"
-  );
-  return {
-    ...actual,
-    getActiveContract: vi.fn(),
-  };
-});
-
-vi.mock("@app/lib/metronome/seat_types", async () => {
-  const actual = await vi.importActual<typeof seatTypes>(
-    "@app/lib/metronome/seat_types"
-  );
-  return {
-    ...actual,
-    getProductSeatTypes: vi.fn(),
-    getSeatSubscriptionsFromContract: vi.fn(),
-    getAwuAllocationForNormalizedSeatType: vi.fn(),
-  };
-});
-
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const AUDIT_CONTEXT = { location: "127.0.0.1" };
 
-// Minimal fake contract and seat type setup.
-const FAKE_CONTRACT = {
-  id: "contract_xxx",
-  customer_id: METRONOME_CUSTOMER_ID,
-  rate_card_id: "rc_xxx",
-  subscriptions: [],
-} as unknown as planType.CachedContract;
-
-const FAKE_PRODUCT_SEAT_TYPES = new Map([["prod_pro", "pro" as const]]);
-const FAKE_SEAT_SUBSCRIPTIONS = new Map<MembershipSeatType, Subscription>([
-  [
-    "pro",
-    { subscription_rate: { product: { id: "prod_pro" } } } as Subscription,
-  ],
-]);
-
 beforeEach(() => {
-  vi.mocked(
-    defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-  ).mockResolvedValue(new Ok(null));
-  vi.mocked(
-    defaultUserCapAlert.upsertMetronomeDefaultUserCapAlertForSeatType
-  ).mockResolvedValue(new Ok({ alertId: "alert_default_xxx" }));
-  vi.mocked(
-    defaultUserCapAlert.upsertMetronomeDefaultUserWarningAlertForSeatType
-  ).mockResolvedValue(new Ok({ alertId: "alert_warning_xxx" }));
   vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
-
-  // Contract + seat type mocks for setDefaultUserSpendLimit.
-  vi.mocked(planType.getActiveContract).mockResolvedValue(FAKE_CONTRACT);
-  vi.mocked(seatTypes.getProductSeatTypes).mockResolvedValue(
-    FAKE_PRODUCT_SEAT_TYPES
-  );
-  vi.mocked(seatTypes.getSeatSubscriptionsFromContract).mockReturnValue(
-    FAKE_SEAT_SUBSCRIPTIONS
-  );
-  vi.mocked(seatTypes.getAwuAllocationForNormalizedSeatType).mockReturnValue(
-    8000
-  );
 });
 
 describe("getDefaultUserSpendLimit", () => {
@@ -152,7 +75,7 @@ describe("getDefaultUserSpendLimit", () => {
 });
 
 describe("setDefaultUserSpendLimit", () => {
-  it("upserts per-seat-type alert with seat allowance added to pool limit", async () => {
+  it("persists the pool cap to the configuration as the source of truth", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -167,15 +90,9 @@ describe("setDefaultUserSpendLimit", () => {
     if (result.isOk()) {
       expect(result.value).toEqual({ awuCredits: 25_000 });
     }
-    // Metronome threshold = 8_000 (seat) + 25_000 (pool) = 33_000
-    expect(
-      defaultUserCapAlert.upsertMetronomeDefaultUserCapAlertForSeatType
-    ).toHaveBeenCalledWith({
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-      workspaceId: workspace.sId,
-      seatType: "pro",
-      awuCredits: 33_000,
-    });
+    const config =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+    expect(config?.defaultPoolCapAwuCredits).toBe(25_000);
   });
 
   it("emits an audit event with previous and new pool limits", async () => {
@@ -246,9 +163,6 @@ describe("setDefaultUserSpendLimit", () => {
         expect(result.error.type).toBe("invalid_threshold");
       }
     }
-    expect(
-      defaultUserCapAlert.upsertMetronomeDefaultUserCapAlertForSeatType
-    ).not.toHaveBeenCalled();
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
   });
 
@@ -265,79 +179,6 @@ describe("setDefaultUserSpendLimit", () => {
     if (result.isErr()) {
       expect(result.error.type).toBe("workspace_not_metronome_billed");
     }
-    expect(
-      defaultUserCapAlert.upsertMetronomeDefaultUserCapAlertForSeatType
-    ).not.toHaveBeenCalled();
-  });
-
-  it("returns contract_not_found when no active contract exists", async () => {
-    const workspace = await WorkspaceFactory.metronome({
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-    });
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(planType.getActiveContract).mockResolvedValue(null);
-
-    const result = await setDefaultUserSpendLimit(auth, {
-      awuCredits: 1000,
-      auditContext: AUDIT_CONTEXT,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe("contract_not_found");
-    }
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
-  });
-
-  it("surfaces upsert failures as metronome_error, skips audit, and deletes the newly created config row", async () => {
-    const workspace = await WorkspaceFactory.metronome({
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-    });
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(
-      defaultUserCapAlert.upsertMetronomeDefaultUserCapAlertForSeatType
-    ).mockResolvedValue(new Err(new Error("metronome down")));
-
-    const result = await setDefaultUserSpendLimit(auth, {
-      awuCredits: 1000,
-      auditContext: AUDIT_CONTEXT,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe("metronome_error");
-    }
-    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
-    // No config existed before the call, so the failed sync must not leave
-    // a stale row behind.
-    expect(
-      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth)
-    ).toBeNull();
-  });
-
-  it("reverts an existing config row back to its previous value when the upsert fails", async () => {
-    const workspace = await WorkspaceFactory.metronome({
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-    });
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await CreditUsageConfigurationResource.makeNew(auth, {
-      defaultDiscountPercent: 0,
-      usageCapCredits: null,
-      defaultPoolCapAwuCredits: 10_000,
-    });
-    vi.mocked(
-      defaultUserCapAlert.upsertMetronomeDefaultUserCapAlertForSeatType
-    ).mockResolvedValue(new Err(new Error("metronome down")));
-
-    const result = await setDefaultUserSpendLimit(auth, {
-      awuCredits: 25_000,
-      auditContext: AUDIT_CONTEXT,
-    });
-
-    expect(result.isErr()).toBe(true);
-    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
-    const reloaded =
-      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-    expect(reloaded?.defaultPoolCapAwuCredits).toBe(10_000);
   });
 });

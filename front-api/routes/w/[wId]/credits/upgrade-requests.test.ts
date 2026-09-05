@@ -210,7 +210,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       const firstSId = (await first.json()).request.sId;
 
       // Same authenticated member requests again.
-      await membership.updateCreditState("capped");
+      await membership.updateCreditState("on_pool");
       const second = await honoApp.request(upgradeRequestsUrl(workspace.sId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },

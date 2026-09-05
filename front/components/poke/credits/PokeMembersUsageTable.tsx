@@ -125,14 +125,10 @@ const DEFAULT_PAGE_SIZE = 25;
 
 const USER_CREDIT_STATE_CHIP_COLOR: Record<
   UserCreditState,
-  "success" | "warning" | "warning" | "info"
+  "success" | "info"
 > = {
   user_seat: "info",
-  user_seat_low_balance: "warning",
-  normal: "success",
   on_pool: "success",
-  on_pool_low_balance: "warning",
-  capped: "warning",
 };
 
 // Free seats hold a per-user credit with two balance alerts: "low" (≤20%) and
@@ -379,7 +375,7 @@ function makeColumns({
       ),
       enableSorting: false,
       cell: ({ row }) => {
-        const { creditState, nearLimit, sId } = row.original;
+        const { creditState, sId } = row.original;
         return (
           <span className="inline-flex items-center gap-2">
             <Chip
@@ -387,7 +383,6 @@ function makeColumns({
               color={USER_CREDIT_STATE_CHIP_COLOR[creditState] ?? "info"}
               label={creditState}
             />
-            {nearLimit && <Chip size="xs" color="warning" label="near limit" />}
             <CreditStateLogsLink
               machine="user"
               workspaceId={owner.sId}

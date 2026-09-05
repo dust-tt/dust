@@ -1,14 +1,14 @@
-import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
+import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  dispatchPerUserCapReached,
-  dispatchPerUserCapResolved,
+  dispatchSeatBalanceExhausted,
+  dispatchSeatBalanceResolved,
 } from "./credit_state_dispatcher";
 
 vi.mock("@app/lib/metronome/user_credit_state_machine", async () => {
@@ -21,34 +21,22 @@ vi.mock("@app/lib/metronome/user_credit_state_machine", async () => {
   };
 });
 
-vi.mock("@app/lib/metronome/live_user_credit_inputs", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/live_user_credit_inputs")
-  >("@app/lib/metronome/live_user_credit_inputs");
-  return {
-    ...actual,
-    fetchLiveUserCreditInputs: vi.fn(),
-  };
-});
+vi.mock("@app/lib/api/credits/auto_seat_upgrade", () => ({
+  maybeAutoUpgradeSeat: vi.fn(),
+}));
 
 const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(transitionUserCreditState).mockResolvedValue(new Ok("user_seat"));
-  vi.mocked(fetchLiveUserCreditInputs).mockResolvedValue(
-    new Ok({
-      seatBalanceAwu: 40000,
-      seatStartingBalanceAwu: 40000,
-      effectiveCapAwuCredits: null,
-      capSource: "none",
-      consumedAwuCredits: null,
-    })
+  vi.mocked(transitionUserCreditState).mockResolvedValue(new Ok("on_pool"));
+  vi.mocked(maybeAutoUpgradeSeat).mockResolvedValue(
+    new Ok({ upgraded: false })
   );
 });
 
-describe("credit_state_dispatcher per-user caps", () => {
-  it("dispatchPerUserCapReached transitions any seat type", async () => {
+describe("credit_state_dispatcher seat balance", () => {
+  it("dispatchSeatBalanceExhausted transitions the seat and always attempts an auto-upgrade", async () => {
     const workspaceType = await WorkspaceFactory.metronome({
       metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
     });
@@ -63,7 +51,7 @@ describe("credit_state_dispatcher per-user caps", () => {
       seatType: "pro",
     });
 
-    await dispatchPerUserCapReached({
+    await dispatchSeatBalanceExhausted({
       workspace,
       userId: user.sId,
     });
@@ -71,69 +59,22 @@ describe("credit_state_dispatcher per-user caps", () => {
     expect(transitionUserCreditState).toHaveBeenCalledWith(
       // createMembership seeds pro/max seats at user_seat (their initial state).
       expect.objectContaining({ seatType: "pro", creditState: "user_seat" }),
-      { type: "per_user_cap_reached" },
-      { workspaceId: workspaceType.sId, userId: user.sId }
-    );
-  });
-
-  it("dispatchPerUserCapResolved passes the live balance into the transition context", async () => {
-    const workspaceType = await WorkspaceFactory.metronome({
-      metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
-    });
-    const workspace = await WorkspaceResource.fetchById(workspaceType.sId);
-    expect(workspace).not.toBeNull();
-    if (!workspace) {
-      throw new Error("Workspace not found");
-    }
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspaceType, user, {
-      role: "user",
-      seatType: "max",
-    });
-
-    // A max seat that still has personal balance — the state machine resolves
-    // the band from this snapshot (verified in the state machine tests).
-    vi.mocked(fetchLiveUserCreditInputs).mockResolvedValue(
-      new Ok({
-        seatBalanceAwu: 40000,
-        seatStartingBalanceAwu: 40000,
-        effectiveCapAwuCredits: 50000,
-        capSource: "override",
-        consumedAwuCredits: 10000,
-      })
-    );
-
-    await dispatchPerUserCapResolved({
-      workspace,
-      userId: user.sId,
-    });
-
-    expect(fetchLiveUserCreditInputs).toHaveBeenCalledWith(
+      { type: "seat_balance_exhausted" },
       expect.objectContaining({
         workspaceId: workspaceType.sId,
         userId: user.sId,
-        seatType: "max",
-        metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
+        seatType: "pro",
       })
     );
-    expect(transitionUserCreditState).toHaveBeenCalledWith(
-      expect.objectContaining({ seatType: "max", creditState: "user_seat" }),
-      { type: "per_user_cap_resolved" },
-      {
-        workspaceId: workspaceType.sId,
-        userId: user.sId,
-        seatType: "max",
-        liveBalance: {
-          seatBalanceAwu: 40000,
-          seatStartingBalanceAwu: 40000,
-          perUserCapAwuCredits: 50000,
-          consumedAwuCredits: 10000,
-        },
-      }
-    );
+    // Auto-upgrade is fire-and-forget and runs regardless of the transition
+    // outcome.
+    expect(maybeAutoUpgradeSeat).toHaveBeenCalledWith({
+      workspaceId: workspaceType.sId,
+      userId: user.sId,
+    });
   });
 
-  it("dispatchPerUserCapResolved dispatches without a live balance when the read fails", async () => {
+  it("dispatchSeatBalanceResolved transitions the seat back", async () => {
     const workspaceType = await WorkspaceFactory.metronome({
       metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
     });
@@ -148,24 +89,18 @@ describe("credit_state_dispatcher per-user caps", () => {
       seatType: "max",
     });
 
-    vi.mocked(fetchLiveUserCreditInputs).mockResolvedValue(
-      new Err(new Error("metronome unavailable"))
-    );
-
-    await dispatchPerUserCapResolved({
+    await dispatchSeatBalanceResolved({
       workspace,
       userId: user.sId,
     });
 
-    // No snapshot → the transition defaults to on_pool (resolved by the machine).
     expect(transitionUserCreditState).toHaveBeenCalledWith(
       expect.objectContaining({ seatType: "max", creditState: "user_seat" }),
-      { type: "per_user_cap_resolved" },
+      { type: "seat_balance_resolved" },
       {
         workspaceId: workspaceType.sId,
         userId: user.sId,
         seatType: "max",
-        liveBalance: undefined,
       }
     );
   });
