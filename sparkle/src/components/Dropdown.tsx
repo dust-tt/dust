@@ -22,7 +22,7 @@ import {
 } from "@sparkle/components/SearchInput";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
-import { Check, ChevronRight } from "@sparkle/icons/v2-stroke";
+import { Check, ChevronLeft, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -50,7 +50,7 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "relative flex gap-2 cursor-pointer select-none items-center outline-hidden rounded-lg heading-sm transition-colors duration-150 motion-reduce:transition-none data-[disabled]:pointer-events-none",
+      "relative flex gap-2 cursor-pointer select-none items-center outline-hidden rounded-lg heading-sm transition-colors duration-75 motion-reduce:transition-none data-[disabled]:pointer-events-none",
       "data-[disabled]:text-primary-400"
     ),
     {
@@ -1191,6 +1191,88 @@ const DropdownMenuStaticItem = React.forwardRef<
 ));
 DropdownMenuStaticItem.displayName = "DropdownMenuStaticItem";
 
+interface DropdownMenuPanelRootProps {
+  children: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+/**
+ * Stands in for DropdownMenu when a picker renders as a page of an enclosing
+ * menu rather than opening its own: it renders its children and ignores the
+ * open state, so a component can switch between the two compositions without
+ * restructuring its markup. Pair it with DropdownMenuPanel.
+ * @summary Passthrough root for a picker rendered as a menu page.
+ */
+const DropdownMenuPanelRoot = ({ children }: DropdownMenuPanelRootProps) => (
+  <>{children}</>
+);
+
+interface DropdownMenuPanelProps {
+  children: React.ReactNode;
+  className?: string;
+  /** Sticky header content (e.g. a DropdownMenuSearchbar) placed under the back row. */
+  dropdownHeaders?: React.ReactNode;
+  /** Called when the back row is activated. Omit, with `title`, to drop the back row. */
+  onBack?: () => void;
+  /** Back row label, normally the page's own name. Omit, with `onBack`, to drop the back row. */
+  title?: string;
+}
+
+/**
+ * One page of a drill-down DropdownMenu: renders inside an enclosing
+ * DropdownMenuContent instead of opening a second surface, with a back row and
+ * a scrollable body. Use it to drill into a sub-view in place; for a sub-menu
+ * that opens beside its parent, use DropdownMenuSub instead.
+ * @summary One page of a drill-down DropdownMenu.
+ */
+const DropdownMenuPanel = ({
+  children,
+  className,
+  dropdownHeaders,
+  onBack,
+  title,
+}: DropdownMenuPanelProps) => (
+  <div
+    className={cn(
+      "flex flex-col p-1",
+      "max-h-[var(--radix-dropdown-menu-content-available-height)]",
+      className
+    )}
+  >
+    <div className="flex shrink-0 flex-col">
+      {title !== undefined && (
+        <>
+          <DropdownMenuItem
+            label={title}
+            icon={
+              <Icon
+                size="xs"
+                visual={ChevronLeft}
+                className="text-muted-foreground"
+              />
+            }
+            onSelect={(event) => {
+              event.preventDefault();
+              onBack?.();
+            }}
+          />
+          <DropdownMenuSeparator />
+        </>
+      )}
+      {dropdownHeaders}
+    </div>
+    <ScrollArea
+      className="w-full flex-1"
+      hideScrollBar={false}
+      orientation="vertical"
+      viewportClassName="flex-1 overscroll-contain"
+    >
+      {children}
+    </ScrollArea>
+  </div>
+);
+
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -1199,6 +1281,8 @@ export {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPanel,
+  DropdownMenuPanelRoot,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,

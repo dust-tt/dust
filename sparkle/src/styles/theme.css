@@ -117,6 +117,8 @@
      Semantic values are also exported for JS from ../lib/motion.ts. */
   --transition-duration-enter: 200ms;
   --transition-duration-exit: 160ms;
+  --transition-duration-quick-enter: 140ms;
+  --transition-duration-quick-exit: 100ms;
   --transition-duration-modal-enter: 300ms;
   --transition-duration-modal-exit: 240ms;
 

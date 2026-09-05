@@ -135,22 +135,25 @@ function PlusMenuHarness() {
   const [serverToSetup, setServerToSetup] = useState<MCPServerType | null>(
     null
   );
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button label="More" />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <CapabilitiesPicker
-            type="subdropdown"
+            type="panel"
             owner={owner}
             user={null}
             selectedMCPServerViews={[]}
             onSelect={vi.fn()}
             onSkillSelect={vi.fn()}
             onSetupServer={setServerToSetup}
+            onBack={vi.fn()}
+            onClose={() => setIsOpen(false)}
           />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -199,7 +202,6 @@ describe("CapabilitiesPicker", () => {
     render(<PlusMenuHarness />);
 
     await user.click(screen.getByRole("button", { name: "More" }));
-    await user.click(await screen.findByText("Capabilities"));
 
     fireEvent.click(await screen.findByText("Notion"));
 

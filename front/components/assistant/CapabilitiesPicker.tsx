@@ -1,5 +1,4 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
 import type { CapabilitySearchIndexItem } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { searchCapabilityIndex } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
@@ -39,6 +38,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPanel,
+  DropdownMenuPanelRoot,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -173,10 +174,11 @@ interface CapabilitiesPickerProps {
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
-  type?: "dropdown" | "subdropdown";
-  externalOpen?: boolean;
-  onExternalOpenChange?: (open: boolean) => void;
-  anchorRef?: React.RefObject<HTMLElement | null>;
+  type?: "dropdown" | "subdropdown" | "panel";
+  onBack?: () => void;
+  onClose?: () => void;
+  onShowSkillDetails?: (skillId: string) => void;
+  onShowToolDetails?: (serverView: MCPServerViewLightType) => void;
 }
 
 export function CapabilitiesPicker({
@@ -191,18 +193,16 @@ export function CapabilitiesPicker({
   buttonSize = "xs",
   onOpenChange,
   type = "dropdown",
-  externalOpen,
-  onExternalOpenChange,
-  anchorRef,
+  onBack,
+  onClose,
+  onShowSkillDetails,
+  onShowToolDetails,
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isExternallyControlled = externalOpen !== undefined;
-  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
-  const setIsOpen = isExternallyControlled
-    ? (open: boolean) => onExternalOpenChange?.(open)
-    : setInternalOpen;
+  const [isOpen, setIsOpen] = useState(false);
+  const isPanel = type === "panel";
+  const isSubdropdown = type === "subdropdown";
 
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
@@ -245,9 +245,17 @@ export function CapabilitiesPicker({
   const isToolsDataReady =
     !isServerViewsLoading && (!isAdmin || !isAvailableMCPServersLoading);
 
+  const closePicker = () => {
+    if (isPanel) {
+      onClose?.();
+      return;
+    }
+    setIsOpen(false);
+  };
+
   const closeDropdown = () => {
     setSearchText("");
-    setIsOpen(false);
+    closePicker();
   };
 
   const selectSkill = (skill: SkillWithoutInstructionsAndToolsType) => {
@@ -280,7 +288,7 @@ export function CapabilitiesPicker({
 
   const setupServer = (server: MCPServerType) => {
     onSetupServer(server);
-    setIsOpen(false);
+    closePicker();
   };
 
   const selectCapabilityPickerItem = (item: CapabilityPickerItem) => {
@@ -414,9 +422,16 @@ export function CapabilitiesPicker({
   const shouldShowCapabilityDropdownList =
     capabilityPickerItems.length > 0 || hasNoVisibleItems;
 
-  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
-  const ContentWrapper =
-    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+  const Wrapper = isPanel
+    ? DropdownMenuPanelRoot
+    : isSubdropdown
+      ? DropdownMenuSub
+      : DropdownMenu;
+  const ContentWrapper = isPanel
+    ? DropdownMenuPanel
+    : isSubdropdown
+      ? DropdownMenuSubContent
+      : DropdownMenuContent;
 
   return (
     <>
@@ -435,19 +450,7 @@ export function CapabilitiesPicker({
           }
         }}
       >
-        {type === "dropdown" && isExternallyControlled ? (
-          <DropdownAnchorTrigger anchorRef={anchorRef} />
-        ) : type === "dropdown" ? (
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={ShapesPlus}
-              variant="ghost-secondary"
-              size={buttonSize}
-              tooltip="Capabilities"
-              disabled={disabled || isLoading}
-            />
-          </DropdownMenuTrigger>
-        ) : (
+        {isPanel ? null : isSubdropdown ? (
           <DropdownMenuSubTrigger
             label="Capabilities"
             icon={
@@ -464,18 +467,30 @@ export function CapabilitiesPicker({
               setIsOpen(true);
             }}
           />
+        ) : (
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={ShapesPlus}
+              variant="ghost-secondary"
+              size={buttonSize}
+              tooltip="Capabilities"
+              disabled={disabled || isLoading}
+            />
+          </DropdownMenuTrigger>
         )}
         <ContentWrapper
-          className="w-80 max-w-[calc(100vw-1rem)]"
-          collisionPadding={8}
-          {...(type === "dropdown"
-            ? {
-                align: isExternallyControlled
-                  ? ("end" as const)
-                  : ("start" as const),
-                onInteractOutside: () => setIsOpen(false),
-              }
-            : {})}
+          className={
+            isPanel ? "h-80 w-full xs:h-96" : "w-80 max-w-[calc(100vw-1rem)]"
+          }
+          {...(isPanel
+            ? { title: "Capabilities", onBack: () => onBack?.() }
+            : isSubdropdown
+              ? { collisionPadding: 8 }
+              : {
+                  collisionPadding: 8,
+                  align: "start" as const,
+                  onInteractOutside: () => setIsOpen(false),
+                })}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
@@ -503,26 +518,30 @@ export function CapabilitiesPicker({
               items={capabilityPickerItems}
               onItemSelect={selectCapabilityPickerItem}
               onSkillDetails={(skillId) => {
-                setSelectedSkillIdForDetails(skillId);
-                setIsOpen(false);
+                (onShowSkillDetails ?? setSelectedSkillIdForDetails)(skillId);
+                closePicker();
               }}
               onToolDetails={(serverView) => {
-                setSelectedServerViewForDetails(serverView);
-                setIsOpen(false);
+                (onShowToolDetails ?? setSelectedServerViewForDetails)(
+                  serverView
+                );
+                closePicker();
               }}
             />
           )}
         </ContentWrapper>
       </Wrapper>
 
-      <CapabilityDetailsSheets
-        owner={owner}
-        user={user}
-        selectedSkillId={selectedSkillIdForDetails}
-        selectedMCPServerView={selectedServerViewForDetails}
-        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
-        onCloseTool={() => setSelectedServerViewForDetails(null)}
-      />
+      {!isPanel && (
+        <CapabilityDetailsSheets
+          owner={owner}
+          user={user}
+          selectedSkillId={selectedSkillIdForDetails}
+          selectedMCPServerView={selectedServerViewForDetails}
+          onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+          onCloseTool={() => setSelectedServerViewForDetails(null)}
+        />
+      )}
     </>
   );
 }

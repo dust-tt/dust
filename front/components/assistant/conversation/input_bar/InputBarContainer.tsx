@@ -941,12 +941,6 @@ const InputBarContainer = ({
     },
     [setOverlayOpen]
   );
-  const handleAttachmentsPickerOpenChange = useCallback(
-    (open: boolean) => {
-      setOverlayOpen("attachments-picker", open);
-    },
-    [setOverlayOpen]
-  );
   const handlePlusMenuOpenChange = useCallback(
     (open: boolean) => {
       setOverlayOpen("plus-menu", open);
@@ -1805,9 +1799,6 @@ const InputBarContainer = ({
                       onAgentPickerOpenChange={handleAgentPickerOpenChange}
                       onCapabilitiesPickerOpenChange={
                         handleCapabilitiesPickerOpenChange
-                      }
-                      onAttachmentsPickerOpenChange={
-                        handleAttachmentsPickerOpenChange
                       }
                       onPlusMenuOpenChange={handlePlusMenuOpenChange}
                     />

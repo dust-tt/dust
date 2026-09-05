@@ -89,7 +89,6 @@ interface InputBarButtonsProps {
   user: UserType | null;
   onAgentPickerOpenChange?: (open: boolean) => void;
   onCapabilitiesPickerOpenChange?: (open: boolean) => void;
-  onAttachmentsPickerOpenChange?: (open: boolean) => void;
   onPlusMenuOpenChange?: (open: boolean) => void;
 }
 
@@ -128,7 +127,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   user,
   onAgentPickerOpenChange,
   onCapabilitiesPickerOpenChange,
-  onAttachmentsPickerOpenChange,
   onPlusMenuOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
@@ -321,8 +319,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             isSpacesLoading={isSpacesLoading}
             canDeselectSelectedSpaces={canDeselectSelectedSpaces}
             onOpenChange={onPlusMenuOpenChange}
-            onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
-            onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
           />
         </>
       )}

@@ -37,11 +37,14 @@ import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
   Attachment01,
   Button,
+  cn,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuFilters,
+  DropdownMenuPanel,
+  DropdownMenuPanelRoot,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -91,7 +94,7 @@ interface InputBarAttachmentsPickerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
-  type: "dropdown" | "subdropdown";
+  type: "dropdown" | "subdropdown" | "panel";
   isLoading?: boolean;
   buttonLabel?: string;
   buttonVariant?: ButtonVariantType;
@@ -106,9 +109,10 @@ interface InputBarAttachmentsPickerProps {
   onFileChange?: () => void;
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
-  onOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
-  prefetch?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onBack?: () => void;
+  onClose?: () => void;
 }
 
 const PAGE_SIZE = 25;
@@ -277,20 +281,34 @@ export const InputBarAttachmentsPicker = ({
   onFileChange,
   externalOpen,
   onExternalOpenChange,
-  onOpenChange,
   anchorRef,
-  prefetch = false,
+  onOpenChange,
+  onBack,
+  onClose,
 }: InputBarAttachmentsPickerProps) => {
   const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [internalOpen, setInternalOpen] = useState(false);
 
+  const isPanel = type === "panel";
+  const isSubdropdown = type === "subdropdown";
   const isExternallyControlled = externalOpen !== undefined;
-  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
-  const setIsOpen = isExternallyControlled
-    ? (open: boolean) => onExternalOpenChange?.(open)
-    : setInternalOpen;
+  const isOpen =
+    isPanel || (isExternallyControlled ? externalOpen : internalOpen);
+  const setIsOpen = (open: boolean) => {
+    if (isPanel) {
+      if (!open) {
+        onClose?.();
+      }
+      return;
+    }
+    if (isExternallyControlled) {
+      onExternalOpenChange?.(open);
+      return;
+    }
+    setInternalOpen(open);
+  };
   const [selectedDataSourcesAndTools, setSelectedDataSourcesAndTools] =
     useState<Record<string, boolean>>({});
   const {
@@ -306,7 +324,7 @@ export const InputBarAttachmentsPicker = ({
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global", "regular", "project"],
-    disabled: !isOpen && !prefetch,
+    disabled: !isOpen,
   });
 
   const spacesMap = useMemo(
@@ -546,9 +564,16 @@ export const InputBarAttachmentsPicker = ({
 
   const allUnselected = selectedFilterKeys.length === 0;
 
-  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
-  const ContentWrapper =
-    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+  const Wrapper = isPanel
+    ? DropdownMenuPanelRoot
+    : isSubdropdown
+      ? DropdownMenuSub
+      : DropdownMenu;
+  const ContentWrapper = isPanel
+    ? DropdownMenuPanel
+    : isSubdropdown
+      ? DropdownMenuSubContent
+      : DropdownMenuContent;
 
   return (
     <Wrapper
@@ -561,21 +586,7 @@ export const InputBarAttachmentsPicker = ({
         }
       }}
     >
-      {type === "dropdown" && !isExternallyControlled ? (
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant={buttonVariant}
-            icon={Attachment01}
-            size={buttonSize}
-            disabled={disabled || isLoading || isAnyToolFileUploading}
-            isLoading={isLoading || isAnyToolFileUploading}
-            label={buttonLabel}
-            onClick={() => setIsOpen(!isOpen)}
-          />
-        </DropdownMenuTrigger>
-      ) : type === "dropdown" && isExternallyControlled ? (
-        <DropdownAnchorTrigger anchorRef={anchorRef} />
-      ) : (
+      {isPanel ? null : isSubdropdown ? (
         <DropdownMenuSubTrigger
           label="Attach knowledge"
           icon={
@@ -592,21 +603,44 @@ export const InputBarAttachmentsPicker = ({
             setIsOpen(true);
           }}
         />
+      ) : isExternallyControlled ? (
+        <DropdownAnchorTrigger anchorRef={anchorRef} />
+      ) : (
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant={buttonVariant}
+            icon={Attachment01}
+            size={buttonSize}
+            disabled={disabled || isLoading || isAnyToolFileUploading}
+            isLoading={isLoading || isAnyToolFileUploading}
+            label={buttonLabel}
+            onClick={() => setIsOpen(!isOpen)}
+          />
+        </DropdownMenuTrigger>
       )}
       <ContentWrapper
         // Radix ScrollArea wraps content in a content-height `display:table` div. Force it to fill
         // the viewport so the empty-state's `h-full` centering resolves against the full height.
-        className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
-        collisionPadding={15}
-        onEscapeKeyDown={() => setIsOpen(false)}
-        {...(type === "subdropdown"
-          ? {
-              onClick: (e) => e.stopPropagation(),
-            }
-          : {
-              align: isExternallyControlled ? "end" : "start",
-              onInteractOutside: () => setIsOpen(false),
-            })}
+        className={cn(
+          "h-80 xs:h-96 [&_[data-radix-scroll-area-viewport]>div]:h-full",
+          isPanel ? "w-full" : "w-80 xs:w-96"
+        )}
+        {...(isPanel
+          ? { title: "Attach knowledge", onBack: () => onBack?.() }
+          : isSubdropdown
+            ? {
+                collisionPadding: 15,
+                onEscapeKeyDown: () => setIsOpen(false),
+                onClick: (e: React.MouseEvent) => e.stopPropagation(),
+              }
+            : {
+                collisionPadding: 15,
+                onEscapeKeyDown: () => setIsOpen(false),
+                align: isExternallyControlled
+                  ? ("end" as const)
+                  : ("start" as const),
+                onInteractOutside: () => setIsOpen(false),
+              })}
         dropdownHeaders={
           <>
             <Input
@@ -646,7 +680,7 @@ export const InputBarAttachmentsPicker = ({
                   icon={UploadCloud02}
                   label="Upload File"
                   onClick={() => fileInputRef.current?.click()}
-                  className="ml-4"
+                  className="ml-2"
                 />
               }
             />

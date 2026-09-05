@@ -12,6 +12,8 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPanel,
+  DropdownMenuPanelRoot,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -40,6 +42,7 @@ import {
 import {
   ActionCommand1Icon,
   ArrowCircleBrokenDown,
+  ChevronRight,
   Upload01,
   Attachment01,
   Avatar,
@@ -944,4 +947,95 @@ export const WithTooltips: Story = {
       </DropdownMenu>
     );
   },
+};
+
+export const DrillDownPanels: Story = {
+  render: () => {
+    const [open, setOpen] = React.useState(false);
+    const [page, setPage] = React.useState<"root" | "sources" | "tools">(
+      "root"
+    );
+    const [searchText, setSearchText] = React.useState("");
+
+    const items =
+      page === "sources"
+        ? ["Notion", "Google Drive", "Slack"]
+        : ["Search", "Browse", "Run agent"];
+
+    return (
+      <DropdownMenu
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (nextOpen) {
+            setPage("root");
+          }
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button label="More" variant="outline" size="sm" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-80 p-0">
+          {page === "root" ? (
+            <div className="p-1">
+              <DropdownMenuItem
+                label="Sources"
+                endComponent={<Icon size="xs" visual={ChevronRight} />}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setPage("sources");
+                }}
+              />
+              <DropdownMenuItem
+                label="Tools"
+                endComponent={<Icon size="xs" visual={ChevronRight} />}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setPage("tools");
+                }}
+              />
+            </div>
+          ) : (
+            <DropdownMenuPanel
+              className="h-80"
+              title={page === "sources" ? "Sources" : "Tools"}
+              onBack={() => setPage("root")}
+              dropdownHeaders={
+                <DropdownMenuSearchbar
+                  autoFocus
+                  name="search"
+                  placeholder="Search"
+                  value={searchText}
+                  onChange={setSearchText}
+                />
+              }
+            >
+              {items
+                .filter((item) =>
+                  item.toLowerCase().includes(searchText.toLowerCase())
+                )
+                .map((item) => (
+                  <DropdownMenuItem key={item} label={item} />
+                ))}
+            </DropdownMenuPanel>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  },
+};
+
+export const PanelRootPassthrough: Story = {
+  render: () => (
+    <DropdownMenuPanelRoot>
+      <DropdownMenuPanel
+        className="h-64 w-80 rounded-xl border border-border bg-overlay-background"
+        title="Sources"
+        onBack={() => {}}
+      >
+        <DropdownMenuItem label="Notion" />
+        <DropdownMenuItem label="Google Drive" />
+      </DropdownMenuPanel>
+    </DropdownMenuPanelRoot>
+  ),
 };
