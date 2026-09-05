@@ -12,7 +12,7 @@
 //                                                under spillDir that the envelope names)
 
 import { build } from "./build.ts";
-import { errorEnvelope, podDatabaseMaxSizeBytes } from "./db/common.ts";
+import { errorEnvelope, sandboxDatabaseMaxSizeBytes } from "./db/common.ts";
 import { runQuery } from "./db/query.ts";
 import { reconcile } from "./db/reconcile.ts";
 import { generateSchemaFileText } from "./db/schema.ts";
@@ -130,7 +130,7 @@ async function dbQueryHandler(args: string[]): Promise<number> {
       "usage: runner db-query <dbPath> [spillDir] (SQL on stdin)"
     );
   }
-  const maxSizeBytes = podDatabaseMaxSizeBytes();
+  const maxSizeBytes = sandboxDatabaseMaxSizeBytes();
   if (maxSizeBytes.isErr()) {
     emitEnvelopeLine(errorEnvelope(maxSizeBytes.error));
     return 1;

@@ -1,7 +1,7 @@
 // Shared helpers for the `dsbx db` runner subcommands (reconcile/schema/query).
 //
-// The Rust layer resolves database names to file paths (name validation + DUST_POD_DATABASES_DIR
-// resolution) and passes absolute paths here, so these helpers only deal with files.
+// The Rust layer resolves database names under the configured databases directory and passes
+// absolute paths here, so these helpers only deal with files.
 
 import { Database } from "bun:sqlite";
 import { Err, Ok, type Result } from "#result.ts";
@@ -34,7 +34,7 @@ export function errorEnvelope(error: DbCommandError): {
   return { ok: false, error: { kind: error.kind, message: error.message } };
 }
 
-// Tables that live in a pod database but are not part of the data model: the same reserved
+// Tables that live in a sandbox database but are not part of the data model: the same reserved
 // prefixes build rejects for declared tables (SQLite internals, drizzle bookkeeping,
 // litestream sequencing, plus prefixes drizzle-kit's introspection ignores).
 export function isInternalTable(name: string): boolean {
@@ -76,19 +76,28 @@ export function applyWritePragmas(db: Database): void {
   db.exec("PRAGMA synchronous = NORMAL;");
 }
 
-export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
+export const SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV =
+  "DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES";
+export const LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV =
   "DUST_POD_DATABASE_MAX_SIZE_BYTES";
 
-// The per-database size quota, the same env var @dust/pod reads for workload writes.
-export function podDatabaseMaxSizeBytes(): Result<number, DbCommandError> {
-  const raw = process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+// The per-database size quota shared with the workload runtime.
+export function sandboxDatabaseMaxSizeBytes(): Result<number, DbCommandError> {
+  const canonicalValue = process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV];
+  const legacyValue = process.env[LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV];
+  const [envName, raw] =
+    canonicalValue !== undefined
+      ? [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV, canonicalValue]
+      : legacyValue !== undefined
+        ? [LEGACY_POD_DATABASE_MAX_SIZE_BYTES_ENV, legacyValue]
+        : [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV, canonicalValue];
   const parsed =
     raw !== undefined && /^[0-9]+$/.test(raw) ? Number(raw) : Number.NaN;
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     return new Err(
       new DbCommandError(
         "internal",
-        `${POD_DATABASE_MAX_SIZE_BYTES_ENV} must be a positive integer byte count; got ${JSON.stringify(raw)}`
+        `${envName} must be a positive integer byte count; got ${JSON.stringify(raw)}`
       )
     );
   }
