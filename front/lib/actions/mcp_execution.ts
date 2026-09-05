@@ -23,7 +23,6 @@ import type {
   ActionGeneratedFileType,
   ToolContext,
   ToolOutputItemType,
-  ToolRunContext,
 } from "@app/lib/actions/types";
 import {
   isAgentLoopRunContext,
@@ -84,28 +83,19 @@ function getFileName(resource: { uri: string }): string {
 /**
  * Builds the model-visible snippet for a content block whose full text was offloaded to the
  * file system by persistToolOutput. The scoped path pointer is what lets the model read the
- * rest of the content back, so it must always be present. The
- * "[Full content archived at <path>]" sentence is a stable contract — existing function code
- * regexes it — and must stay byte-identical across variants.
+ * rest of the content back, so it must always be present, and the
+ * "[Full content archived at <path>]" sentence stays byte-identical so the model reads the
+ * same wording everywhere.
  *
- * In a sandbox function run context, JSON content gets a parse-safe stub instead of the blind
- * character cut: code that strips the archive sentence and JSON.parses the rest gets an explicit
- * offload pointer object instead of JSON cut mid-string. Conversation (agent loop) snippets are
- * untouched.
+ * One snippet shape for every consumer: the snippet is for humans and models reading the
+ * conversation, never something to parse. Code consumers (function code via `@dust/pod`) read
+ * the full content back through the `_meta` descriptor instead.
  */
 function makeOffloadedSnippet(
   text: string,
-  offload: PersistedToolOutput,
-  runContext: ToolRunContext
+  offload: PersistedToolOutput
 ): string {
   const archiveSentence = `[Full content archived at ${offload.scopedPath}]`;
-
-  if (
-    isSandboxFunctionRunContext(runContext) &&
-    offload.contentType === "application/json"
-  ) {
-    return `${makeParseSafeOffloadStub(text, offload)}\n${archiveSentence}`;
-  }
 
   const head = text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH);
   // The offload threshold is in bytes while the snippet cut is in characters, so multibyte
@@ -113,33 +103,6 @@ function makeOffloadedSnippet(
   // characters were actually dropped.
   const truncatedSuffix = head.length < text.length ? "... (truncated)" : "";
   return `${head}${truncatedSuffix}\n${archiveSentence}`;
-}
-
-/**
- * Serializes the parse-safe stub that replaces the head of offloaded JSON content for sandbox
- * function consumers. The serialized stub is capped at FILE_OFFLOAD_SNIPPET_LENGTH characters
- * (like the plain head cut): JSON escaping can inflate the head, so trim by the measured overage
- * until it fits — every head character serializes to at least one character, so this converges
- * in a few rounds.
- */
-function makeParseSafeOffloadStub(
-  text: string,
-  offload: PersistedToolOutput
-): string {
-  let head = text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH);
-  for (;;) {
-    const serialized = JSON.stringify({
-      __dust_offloaded__: true,
-      fullContentPath: offload.scopedPath,
-      totalBytes: offload.totalBytes,
-      head,
-    });
-    const overageChars = serialized.length - FILE_OFFLOAD_SNIPPET_LENGTH;
-    if (overageChars <= 0 || head.length === 0) {
-      return serialized;
-    }
-    head = head.substring(0, Math.max(0, head.length - overageChars));
-  }
 }
 
 /**
@@ -301,11 +264,7 @@ export async function processToolResults(
           // If persistToolOutput wrote this block to DustFileSystem (too large), return a resource
           // block pointing at the scoped path. The model reads it via the `cat` tool.
           if (res.value !== null) {
-            const snippet = makeOffloadedSnippet(
-              block.text,
-              res.value,
-              runContext
-            );
+            const snippet = makeOffloadedSnippet(block.text, res.value);
             return {
               content: {
                 type: "resource",
@@ -491,9 +450,7 @@ export async function processToolResults(
           // Large resource text was already offloaded by persistToolOutput above.
           if (res.value !== null) {
             const snippet =
-              text !== null
-                ? makeOffloadedSnippet(text, res.value, runContext)
-                : "";
+              text !== null ? makeOffloadedSnippet(text, res.value) : "";
             return {
               content: {
                 type: block.type,
