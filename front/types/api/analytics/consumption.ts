@@ -59,3 +59,11 @@ export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;
 
 export type ConsumptionTopSortOrder =
   (typeof CONSUMPTION_TOP_SORT_ORDER)[number];
+
+export const CONSUMPTION_TOP_GROUP_SORT_BY = [
+  "credits",
+  "workspace_average",
+] as const;
+
+export type ConsumptionTopGroupSortBy =
+  (typeof CONSUMPTION_TOP_GROUP_SORT_BY)[number];

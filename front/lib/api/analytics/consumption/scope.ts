@@ -15,6 +15,7 @@ export type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
   ConsumptionScopeFilterKey,
+  ConsumptionTopGroupSortBy,
   ConsumptionTopSortOrder,
 } from "@app/types/api/analytics/consumption";
 export {
@@ -23,6 +24,7 @@ export {
   CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
   CONSUMPTION_SCOPE_DIMENSIONS,
   CONSUMPTION_SCOPE_FILTER_KEYS,
+  CONSUMPTION_TOP_GROUP_SORT_BY,
   CONSUMPTION_TOP_SORT_ORDER,
 } from "@app/types/api/analytics/consumption";
 

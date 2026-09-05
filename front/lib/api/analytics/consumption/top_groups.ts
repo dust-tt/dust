@@ -1,6 +1,7 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeFilter,
+  ConsumptionTopGroupSortBy,
   ConsumptionTopSortOrder,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
@@ -37,7 +38,7 @@ export type ConsumptionTopGroups = {
   totalActiveMembers: number;
   hasMore: boolean;
   totalCount: number;
-  // Highest credits first.
+  // Ordered by the requested group ranking.
   groups: ConsumptionTopGroupRow[];
 };
 
@@ -51,6 +52,7 @@ export async function fetchConsumptionTopGroups(
     offset = 0,
     search,
     filter,
+    sortBy = "credits",
     sortOrder,
   }: {
     period: ConsumptionPeriod;
@@ -58,6 +60,7 @@ export async function fetchConsumptionTopGroups(
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
+    sortBy?: ConsumptionTopGroupSortBy;
     sortOrder?: ConsumptionTopSortOrder;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
@@ -68,6 +71,7 @@ export async function fetchConsumptionTopGroups(
     offset,
     search,
     filter,
+    sortBy,
     sortOrder,
   });
   if (result.isErr()) {

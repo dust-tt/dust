@@ -95,6 +95,7 @@ function PokeConsumptionAttributionRows(
     offset: queryState.pagination.pageIndex * queryState.pagination.pageSize,
     search: props.search,
     filter: props.filter,
+    sortBy: queryState.sortBy,
     sortOrder: queryState.sortOrder,
   });
 
