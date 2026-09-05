@@ -38,6 +38,16 @@ In a Pod, create it under \`/files/pod-<podId>/...\` instead. The command scaffo
 \`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Edit the generated
 source before publishing it.
 
+Frames use a fixed runtime import map. Import shadcn components directly from \`shadcn\`:
+
+\`\`\`tsx
+import { Avatar, Button, Input, Textarea } from "shadcn";
+\`\`\`
+
+Never use \`@/components/ui/*\` or another project-local package alias. If validation reports an
+unsupported alias, replace only that import with a supported runtime import; do not rewrite or
+remove working UI components.
+
 Always pass canonical \`/files/conversation-<conversationId>/...\` or
 \`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
 \`/files/conversation\` or \`/files/pod\`.

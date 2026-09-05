@@ -7,7 +7,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3007",
-    "build": "next build",
+    "build": "npm run build:frame-runtime-types && next build",
+    "build:frame-runtime-types": "tsx scripts/build-frame-runtime-types.ts",
     "start": "next start",
     "test": "vitest --run",
     "format": "biome format --write .",
@@ -81,6 +82,7 @@
     "@types/react-dom": "^18.3.5",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
     "vitest": "^4.0.16"
   }
 }

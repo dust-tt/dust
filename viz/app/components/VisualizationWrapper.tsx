@@ -4,7 +4,9 @@ import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import type * as FrameReactHooks from "@viz/app/lib/frame-runtime/react-hooks";
 import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
+import { FRAME_RUNTIME_STATIC_MODULES } from "@viz/app/lib/frame-runtime-modules";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
 import {
   PodFunctionHooksProvider,
@@ -30,19 +32,10 @@ import {
   type SupportedMessage,
   validateMessage,
 } from "@viz/app/types/messages";
-import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
-import * as dustSlideshowV2 from "@viz/components/dust/slideshow/v2";
-import * as shadcnAll from "@viz/components/ui";
-import * as utilsAll from "@viz/lib/utils";
 import { toBlob, toSvg } from "html-to-image";
-import * as lucideAll from "lucide-react";
-import * as motionAll from "motion/react";
-import * as papaparseAll from "papaparse";
-import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
-import * as rechartsAll from "recharts";
 
 // Delay before marking the viz as ready in PDF mode, to let Recharts animations complete.
 const PDF_MODE_READY_DELAY_MS = 5000;
@@ -470,18 +463,7 @@ export function VisualizationWrapper({
           : fetchedCode;
 
         const baseImports = {
-          papaparse: papaparseAll,
-          react: reactAll,
-          recharts: rechartsAll,
-          shadcn: shadcnAll,
-          // Legacy support for utils from previous versions.
-          utils: utilsAll,
-          // New location for utils.
-          "@viz/lib/utils": utilsAll,
-          "lucide-react": lucideAll,
-          "motion/react": motionAll,
-          "@dust/slideshow/v1": dustSlideshowV1,
-          "@dust/slideshow/v2": dustSlideshowV2,
+          ...FRAME_RUNTIME_STATIC_MODULES,
           "@dust/react-hooks": {
             SandboxFunctionCallError,
             callFunction: (functionId: string, input?: unknown) =>
@@ -495,7 +477,7 @@ export function VisualizationWrapper({
             usePodFunction,
             usePodFunctionMutation,
             useUserIdentity,
-          },
+          } satisfies typeof FrameReactHooks,
         } satisfies Record<FrameRuntimeImportName, unknown>;
 
         const refs = extractFileRefs(codeToUse);
@@ -531,13 +513,7 @@ export function VisualizationWrapper({
           code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
           scope: {
             import: {
-              react: reactAll,
-              recharts: rechartsAll,
-              shadcn: shadcnAll,
-              utils: utilsAll,
-              "lucide-react": lucideAll,
-              "@dust/slideshow/v1": dustSlideshowV1,
-              "@dust/slideshow/v2": dustSlideshowV2,
+              ...FRAME_RUNTIME_STATIC_MODULES,
               "@dust/generated-code": generatedModule,
             },
           },

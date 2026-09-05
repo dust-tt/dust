@@ -11,12 +11,18 @@ import {
   publishFramePublication,
 } from "@app/lib/api/frames/publication_storage";
 import { withStagedFrameSource } from "@app/lib/api/frames/source_staging";
+import {
+  ensureFrameRuntimeTypesInstalled,
+  typeCheckFrameUiOnSandbox,
+} from "@app/lib/api/frames/ui_type_check";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
+import { getFrameRuntimeTypesArtifact } from "@app/lib/api/viz/frame_runtime_types";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -26,6 +32,7 @@ import { Err, Ok } from "@app/types/shared/result";
 type FramePublicationBuild = {
   functionArtifacts: FramePublicationFunctionArtifact[];
   uiBundleCode: string;
+  warnings: ValidationWarning[];
 };
 
 async function buildFrameUiBundle({
@@ -97,10 +104,19 @@ async function buildFramePublication(
     return uiBundle;
   }
 
-  if (manifest.functions.length === 0) {
+  // Type checking is best-effort: without an artifact the UI still bundles and its imports were
+  // gated by the bundler, so publication proceeds and the gap is only logged.
+  const runtimeTypes = await getFrameRuntimeTypesArtifact();
+  const hasFunctions = manifest.functions.length > 0;
+  if (!hasFunctions && !runtimeTypes) {
+    logger.warn(
+      { conversationId: conversation.sId },
+      "Publishing Frame UI without type checking: Frame runtime types artifact unavailable"
+    );
     return new Ok({
       functionArtifacts: [],
       uiBundleCode: uiBundle.value,
+      warnings: [],
     });
   }
 
@@ -109,18 +125,56 @@ async function buildFramePublication(
     conversation
   );
   if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
+    if (hasFunctions) {
+      return new Err(
+        new SandboxFunctionError(
+          "sandbox_unavailable",
+          ensureResult.error.message
+        )
+      );
+    }
+    logger.warn(
+      { conversationId: conversation.sId, err: ensureResult.error },
+      "Publishing Frame UI without type checking: sandbox unavailable"
     );
+    return new Ok({
+      functionArtifacts: [],
+      uiBundleCode: uiBundle.value,
+      warnings: [],
+    });
   }
   const sandbox = ensureResult.value.sandbox;
-  const functionArtifactResult = await withStagedFrameSource(
+
+  let runtimeDirectory: string | null = null;
+  if (runtimeTypes) {
+    const installResult = await ensureFrameRuntimeTypesInstalled(auth, {
+      sandbox,
+      artifact: runtimeTypes,
+    });
+    if (installResult.isErr()) {
+      return installResult;
+    }
+    runtimeDirectory = installResult.value;
+  }
+
+  const stagedResult = await withStagedFrameSource(
     auth,
     { sandbox, sourceFiles },
     async (stagingDirectory) => {
+      let warnings: ValidationWarning[] = [];
+      if (runtimeDirectory) {
+        const typeCheck = await typeCheckFrameUiOnSandbox(auth, {
+          sandbox,
+          runtimeDirectory,
+          stagingDirectory,
+          entryRelPath: manifest.uiEntryPoint,
+        });
+        if (typeCheck.isErr()) {
+          return typeCheck;
+        }
+        warnings = typeCheck.value.warnings;
+      }
+
       const functionArtifacts: FramePublicationFunctionArtifact[] = [];
       for (const fn of manifest.functions) {
         const buildResult = await buildSandboxFunctionOnReadySandbox(auth, {
@@ -139,16 +193,17 @@ async function buildFramePublication(
         functionArtifacts.push({ name: fn.name, ...buildResult.value });
       }
 
-      return new Ok(functionArtifacts);
+      return new Ok({ functionArtifacts, warnings });
     }
   );
-  if (functionArtifactResult.isErr()) {
-    return functionArtifactResult;
+  if (stagedResult.isErr()) {
+    return stagedResult;
   }
 
   return new Ok({
-    functionArtifacts: functionArtifactResult.value,
+    functionArtifacts: stagedResult.value.functionArtifacts,
     uiBundleCode: uiBundle.value,
+    warnings: stagedResult.value.warnings,
   });
 }
 
@@ -215,13 +270,19 @@ export async function validateFramePublication(
     return contracts;
   }
 
-  return new Ok({ warnings: collectFrameTailwindWarnings(sourceFiles) });
+  return new Ok({
+    warnings: [
+      ...collectFrameTailwindWarnings(sourceFiles),
+      ...buildResult.value.warnings,
+    ],
+  });
 }
 
 /**
  * Build the UI and every declared function from one captured source snapshot, then atomically
- * publish its artifacts. Function builds stage the snapshot in the invoking conversation's DSBX;
- * source stays in its authoring scope. No publication storage is touched until every build succeeds.
+ * publish its artifacts. The snapshot is staged in the invoking conversation's DSBX, where the UI
+ * is type-checked against the Frame runtime types and functions are built; source stays in its
+ * authoring scope. No publication storage is touched until every build succeeds.
  */
 export async function buildAndPublishFramePublication(
   auth: Authenticator,
@@ -238,7 +299,7 @@ export async function buildAndPublishFramePublication(
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; warnings: ValidationWarning[] },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -251,11 +312,19 @@ export async function buildAndPublishFramePublication(
     return buildResult;
   }
 
-  return publishFramePublication(auth, {
+  const publication = await publishFramePublication(auth, {
     frame,
     functionArtifacts: buildResult.value.functionArtifacts,
     manifest,
     sourceFiles,
     uiBundleCode: buildResult.value.uiBundleCode,
+  });
+  if (publication.isErr()) {
+    return publication;
+  }
+
+  return new Ok({
+    publicationId: publication.value.publicationId,
+    warnings: buildResult.value.warnings,
   });
 }

@@ -100,6 +100,15 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(
       "Use the Computer to create and edit their source"
     );
+    expect(instructions).toContain(
+      'import { Avatar, Button, Input, Textarea } from "shadcn";'
+    );
+    expect(instructions).toContain(
+      "Never use `@/components/ui/*` or another project-local package alias"
+    );
+    expect(instructions).toContain(
+      "replace only that import with a supported runtime import"
+    );
     expect(instructions).toContain("Do not pass the convenience aliases");
     expect(instructions).toContain("`/files/conversation` or `/files/pod`");
     expect(instructions).toContain(
