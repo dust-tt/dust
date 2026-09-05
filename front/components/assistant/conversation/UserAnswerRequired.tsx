@@ -320,10 +320,12 @@ export function UserAnswerRequired({
               onFocusCapture={() => activateOption(index)}
               onMouseEnter={() => activateOption(index)}
               className={cn(
+                // Keyboard-active highlight uses the same hover token as the
+                // pointer hover, so both navigation modes read identically.
                 activeOptionIndex === index &&
                   !isCustomResponseActive &&
                   !answerDraft.selectedOptions.includes(index) &&
-                  "bg-primary-100",
+                  "bg-hover",
                 isKeyboardNavigating && "cursor-none"
               )}
               onClick={() => handleOptionClick(index)}
