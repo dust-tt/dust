@@ -244,3 +244,78 @@ export function usePokeWorkspacesAllCells({
     hasMoreWorkspaces: hasMore,
   };
 }
+
+export interface PokeConnectorRedirect {
+  redirectUrl: string;
+  region: RegionType;
+}
+
+/**
+ * Resolve a connector redirect across all regions in parallel. A connector ID
+ * is only known to its own region's connectors service, so we query every
+ * region and keep the first successful match, tagged with its source region.
+ * This lets a `/connectors/:id` link resolve regardless of which region the SPA
+ * currently points at.
+ */
+export function usePokeConnectorRedirectAllRegions({
+  connectorId,
+  regionUrls,
+}: {
+  connectorId: string;
+  regionUrls: Record<RegionType, string> | null;
+}) {
+  const [redirect, setRedirect] = useState<PokeConnectorRedirect | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    if (!regionUrls) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+    setIsError(false);
+    setRedirect(null);
+
+    const run = async () => {
+      const regionPromises = getUniqueRegions(regionUrls).map(
+        async (region) => {
+          const baseUrl = regionUrls[region];
+          const url = `${baseUrl}/api/poke/connectors/${connectorId}/redirect`;
+
+          const response = await clientFetch(url, { credentials: "include" });
+          if (!response.ok) {
+            throw new Error(`Connector not found in ${region}`);
+          }
+
+          const data: { redirectUrl: string } = await response.json();
+          return { redirectUrl: data.redirectUrl, region };
+        }
+      );
+
+      const settledResults = await Promise.allSettled(regionPromises);
+      if (cancelled) {
+        return;
+      }
+
+      const found = settledResults.find(
+        (result) => result.status === "fulfilled"
+      );
+      if (found && found.status === "fulfilled") {
+        setRedirect(found.value);
+      } else {
+        setIsError(true);
+      }
+      setIsLoading(false);
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connectorId, regionUrls]);
+
+  return { redirect, isLoading, isError };
+}
