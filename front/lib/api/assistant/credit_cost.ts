@@ -182,7 +182,7 @@ export async function computeAndStoreAgentMessageCredits(
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;
 
-  // Feature flags gate the fair-use recording and the spend-cap backups below;
+  // The `disable_fair_use_awu_limit` flag gates the fair-use recording below;
   // fetch once when there is a delta to record.
   const featureFlags = recordedCostDelta > 0 ? await getFeatureFlags(auth) : [];
 
@@ -245,51 +245,49 @@ export async function computeAndStoreAgentMessageCredits(
     }
   }
 
-  // Record against the spend-cap backups (Redis fixed-window counters over the
-  // contract billing cycle).
+  // Record against the spend-cap counters (Redis fixed-window, over the contract
+  // billing cycle) that back enforcement in `lib/api/credits/access_control`.
   if (recordedCostDelta > 0) {
-    if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
-      // Per-user cap. Free and paid consumption are kept in separate counters:
-      // free seats accrue only against their lifetime counter, everyone else
-      // only against the per-cycle counter. Recording a free seat's usage into
-      // the per-cycle counter would leak it into their paid cap after a
-      // free→pro switch within the same cycle (mirrors the Metronome
-      // `free-<sId>` user-key split).
-      if (user) {
-        const membership =
-          await MembershipResource.getActiveMembershipOfUserInWorkspace({
-            user,
-            workspace: auth.getNonNullableWorkspace(),
-          });
-        if (membership?.seatType === "free") {
-          await recordFreeSeatLifetimeUsage(auth, {
-            user,
-            incrementBy: recordedCostDelta,
-          });
-        } else {
-          await recordUserSpendLimitUsage(auth, {
-            user,
-            incrementBy: recordedCostDelta,
-            cycle: spendLimitCycleOverrideForAuth(auth),
-          });
-        }
-      }
-
-      // Per-API-key cap, for calls authenticated with an API key.
-      const apiKey = auth.key();
-      if (apiKey) {
-        await recordApiKeySpendLimitUsage(auth, {
-          keyModelId: apiKey.id,
+    // Per-user cap. Free and paid consumption are kept in separate counters:
+    // free seats accrue only against their lifetime counter, everyone else only
+    // against the per-cycle counter. Recording a free seat's usage into the
+    // per-cycle counter would leak it into their paid cap after a free→pro
+    // switch within the same cycle (mirrors the Metronome `free-<sId>` user-key
+    // split).
+    if (user) {
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: auth.getNonNullableWorkspace(),
+        });
+      if (membership?.seatType === "free") {
+        await recordFreeSeatLifetimeUsage(auth, {
+          user,
           incrementBy: recordedCostDelta,
         });
-      }
-
-      // Workspace programmatic cap, for programmatic calls.
-      if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
-        await recordProgrammaticSpendLimitUsage(auth, {
+      } else {
+        await recordUserSpendLimitUsage(auth, {
+          user,
           incrementBy: recordedCostDelta,
+          cycle: spendLimitCycleOverrideForAuth(auth),
         });
       }
+    }
+
+    // Per-API-key cap, for calls authenticated with an API key.
+    const apiKey = auth.key();
+    if (apiKey) {
+      await recordApiKeySpendLimitUsage(auth, {
+        keyModelId: apiKey.id,
+        incrementBy: recordedCostDelta,
+      });
+    }
+
+    // Workspace programmatic cap, for programmatic calls.
+    if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
+      await recordProgrammaticSpendLimitUsage(auth, {
+        incrementBy: recordedCostDelta,
+      });
     }
   }
 

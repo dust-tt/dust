@@ -93,10 +93,7 @@ import {
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { isFreeOrigin } from "@app/lib/metronome/events";
-import {
-  getWorkspaceCreditPoolStatus,
-  getWorkspaceProgrammaticCreditStatus,
-} from "@app/lib/metronome/user_block";
+import { getWorkspaceCreditPoolStatus } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
@@ -2691,13 +2688,8 @@ export async function checkMessagesLimit(
     // counter, bucketed on the UTC calendar month. Admin-set (poke) workspace
     // default, overridable per member. Free origins produce no billable usage,
     // and API keys have no per-user limit (they are gated by the programmatic
-    // caps below). Flag-gated while we validate the counter; usage is recorded
-    // regardless (in credit_cost), so the flag only controls blocking.
-    const featureFlags = await getFeatureFlags(auth);
-    if (
-      featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
-      (await isNonCreditPricedUserSpendLimitReached(auth, { user }))
-    ) {
+    // caps below).
+    if (await isNonCreditPricedUserSpendLimitReached(auth, { user })) {
       return new Err({
         status_code: 403,
         api_error: {
@@ -2821,13 +2813,9 @@ async function checkProgrammaticCreditConcurrencyLimit(
   auth: Authenticator
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
-  // With the rate-cap flag on, the concurrency band comes from the Redis
-  // rate-limiter counter; with it off, from the Metronome programmatic credit
-  // state. Matches the flag-aware enforcement in access_control.
-  const featureFlags = await getFeatureFlags(auth);
-  const status = featureFlags.includes("enforce_user_spend_limit_rate_cap")
-    ? await getProgrammaticRateLimiterCreditState(auth)
-    : await getWorkspaceProgrammaticCreditStatus(owner.sId);
+  // The concurrency band comes from the Redis rate-limiter counter (cycle-to-date
+  // programmatic spend vs the cap). Matches enforcement in access_control.
+  const status = await getProgrammaticRateLimiterCreditState(auth);
 
   const maxConcurrent = PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
