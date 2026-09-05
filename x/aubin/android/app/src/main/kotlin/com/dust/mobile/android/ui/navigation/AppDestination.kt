@@ -2,6 +2,7 @@ package com.dust.mobile.android.ui.navigation
 
 import com.dust.mobile.core.model.Conversation
 import com.dust.mobile.core.model.Space
+import java.util.UUID
 
 internal sealed interface Destination {
     data class Compose(
@@ -9,7 +10,10 @@ internal sealed interface Destination {
         val returnTo: Destination = List,
     ) : Destination
     data object List : Destination
-    data class CatchUp(val conversations: kotlin.collections.List<Conversation>) : Destination
+    data class CatchUp(
+        val conversations: kotlin.collections.List<Conversation>,
+        val sessionId: String = UUID.randomUUID().toString(),
+    ) : Destination
     data class Pod(val space: Space) : Destination
     data class PodCompose(val space: Space) : Destination
     data class ConversationDetail(val conversation: Conversation, val returnTo: Destination = List) : Destination

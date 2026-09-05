@@ -7,7 +7,7 @@ import com.dust.mobile.android.ui.preview.localPreviewMessages
 import com.dust.mobile.core.auth.TokenProvider
 import com.dust.mobile.core.model.Conversation
 import com.dust.mobile.core.model.ConversationMessage
-import kotlin.math.min
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,58 +15,57 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class CatchUpState(
-    val conversations: List<Conversation>,
-    val currentIndex: Int = 0,
-    val messages: List<ConversationMessage> = emptyList(),
-    val markedAsReadIds: Set<String> = emptySet(),
-    val isLoadingMessages: Boolean = false,
-    val isFlushing: Boolean = false,
-    val hasFlushed: Boolean = false,
-    val error: String? = null,
-) {
-    val currentConversation: Conversation?
-        get() = conversations.getOrNull(currentIndex)
-
-    val isDone: Boolean
-        get() = currentIndex >= conversations.size
-
-    val progressText: String
-        get() {
-            if (conversations.isEmpty()) return "0 of 0"
-            return "${min(currentIndex + 1, conversations.size)} of ${conversations.size}"
-    }
-}
-
-internal fun CatchUpState.canStartFlush(): Boolean =
-    !hasFlushed && !isFlushing && markedAsReadIds.isNotEmpty()
-
-internal fun CatchUpState.flushStarted(): CatchUpState =
-    copy(isFlushing = true, hasFlushed = true)
-
-internal fun CatchUpState.flushSucceeded(): CatchUpState =
-    copy(isFlushing = false)
-
-internal fun CatchUpState.flushFailed(error: String): CatchUpState =
-    copy(
-        isFlushing = false,
-        hasFlushed = false,
-        error = error,
-    )
-
-class CatchUpViewModel(
-    private val graph: AppGraph,
-    private val tokenProvider: TokenProvider,
-    private val isLocalPreview: Boolean = false,
-    private val workspaceId: String,
+class CatchUpViewModel internal constructor(
     conversations: List<Conversation>,
+    private val fetchMessages: suspend (Conversation) -> List<ConversationMessage>,
+    private val saveReadStatus: suspend (Set<String>) -> Unit,
 ) : ViewModel() {
+    constructor(
+        graph: AppGraph,
+        tokenProvider: TokenProvider,
+        isLocalPreview: Boolean,
+        workspaceId: String,
+        conversations: List<Conversation>,
+    ) : this(
+        conversations = conversations,
+        fetchMessages = { conversation ->
+            if (isLocalPreview) {
+                localPreviewMessages(conversation.sId)
+            } else {
+                graph.conversationRepository.fetchMessages(
+                    workspaceId = workspaceId,
+                    conversationId = conversation.sId,
+                    tokenProvider = tokenProvider,
+                    limit = 10,
+                ).messages
+            }
+        },
+        saveReadStatus = { ids ->
+            if (!isLocalPreview) {
+                graph.conversationRepository.bulkMarkAsRead(workspaceId, ids.toList(), tokenProvider)
+            }
+        },
+    )
     private val _state = MutableStateFlow(CatchUpState(conversations = conversations))
     val state: StateFlow<CatchUpState> = _state.asStateFlow()
     private var loadJob: Job? = null
+    private var saveJob: Job? = null
+    private var activeSessionId: String? = null
 
     init {
         loadCurrentMessages()
+    }
+
+    fun startSession(sessionId: String, conversations: List<Conversation>) {
+        if (activeSessionId == sessionId) return
+        val isFirstSession = activeSessionId == null
+        activeSessionId = sessionId
+        if (!isFirstSession) {
+            loadJob?.cancel()
+            saveJob?.cancel()
+            _state.value = CatchUpState(conversations = conversations)
+            loadCurrentMessages()
+        }
     }
 
     fun loadCurrentMessages() {
@@ -75,26 +74,9 @@ class CatchUpViewModel(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             _state.update { it.copy(isLoadingMessages = true, messages = emptyList(), error = null) }
-            if (isLocalPreview) {
-                _state.update { state ->
-                    if (state.currentIndex == expectedIndex) {
-                        state.copy(
-                            isLoadingMessages = false,
-                            messages = localPreviewMessages(conversation.sId),
-                        )
-                    } else {
-                        state
-                    }
-                }
-                return@launch
-            }
             runCatching {
-                graph.conversationRepository.fetchMessages(
-                    workspaceId = workspaceId,
-                    conversationId = conversation.sId,
-                    tokenProvider = tokenProvider,
-                    limit = 10,
-                ).messages.sortedWith(compareBy<ConversationMessage> { it.rank }.thenBy { it.created })
+                fetchMessages(conversation)
+                    .sortedWith(compareBy<ConversationMessage> { it.rank }.thenBy { it.created })
             }.onSuccess { messages ->
                 _state.update { state ->
                     if (state.currentIndex == expectedIndex) {
@@ -104,6 +86,7 @@ class CatchUpViewModel(
                     }
                 }
             }.onFailure { error ->
+                if (error is CancellationException) throw error
                 _state.update { state ->
                     if (state.currentIndex == expectedIndex) {
                         state.copy(
@@ -119,19 +102,54 @@ class CatchUpViewModel(
     }
 
     fun markAsRead() {
+        if (_state.value.isFlushing) return
         val conversation = _state.value.currentConversation ?: return
         _state.update { it.copy(markedAsReadIds = it.markedAsReadIds + conversation.sId) }
         advance()
     }
 
     fun keepForLater() {
+        if (_state.value.isFlushing) return
         advance()
     }
 
+    fun undoLastReview() {
+        val state = _state.value
+        if (state.currentIndex == 0 || state.isFlushing || state.hasFlushed) return
+        val previousIndex = state.currentIndex - 1
+        val previousConversation = state.conversations[previousIndex]
+        _state.update {
+            it.copy(
+                currentIndex = previousIndex,
+                markedAsReadIds = it.markedAsReadIds - previousConversation.sId,
+                saveError = null,
+            )
+        }
+        loadCurrentMessages()
+    }
+
     fun dismiss(onDismiss: (Set<String>) -> Unit) {
-        val markedIds = _state.value.markedAsReadIds
-        viewModelScope.launch { flush() }
-        onDismiss(markedIds)
+        val state = _state.value
+        if (state.isFlushing) return
+        if (!state.canStartFlush()) {
+            onDismiss(state.markedAsReadIds)
+            return
+        }
+        _state.update { it.flushStarted() }
+        saveJob = viewModelScope.launch {
+            try {
+                saveReadStatus(state.markedAsReadIds)
+                _state.update { it.flushSucceeded() }
+                onDismiss(state.markedAsReadIds)
+            } catch (error: CancellationException) {
+                _state.update { it.copy(isFlushing = false) }
+                throw error
+            } catch (error: Exception) {
+                _state.update {
+                    it.flushFailed("Couldn't save your read status. Try again or leave without saving.")
+                }
+            }
+        }
     }
 
     private fun advance() {
@@ -144,33 +162,6 @@ class CatchUpViewModel(
                 error = null,
             )
         }
-        if (_state.value.isDone) {
-            viewModelScope.launch { flush() }
-        } else {
-            loadCurrentMessages()
-        }
-    }
-
-    private suspend fun flush() {
-        val state = _state.value
-        if (!state.canStartFlush()) return
-        if (isLocalPreview) {
-            _state.update { it.flushSucceeded().copy(hasFlushed = true) }
-            return
-        }
-        _state.update { it.flushStarted() }
-        runCatching {
-            graph.conversationRepository.bulkMarkAsRead(
-                workspaceId = workspaceId,
-                conversationIds = state.markedAsReadIds.toList(),
-                tokenProvider = tokenProvider,
-            )
-        }.onSuccess {
-            _state.update { it.flushSucceeded() }
-        }.onFailure { error ->
-            _state.update {
-                it.flushFailed(error.message ?: "Failed to mark conversations as read")
-            }
-        }
+        if (!_state.value.isDone) loadCurrentMessages()
     }
 }

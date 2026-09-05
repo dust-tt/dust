@@ -27,6 +27,7 @@ internal fun CatchUpDestinationContent(
         workspaceId = workspace.sId,
         currentUserEmail = user.email,
         conversations = destination.conversations,
+        sessionId = destination.sessionId,
         onDismiss = { markedIds ->
             listViewModel.markConversationsAsRead(markedIds)
             navigateTo(Destination.List)

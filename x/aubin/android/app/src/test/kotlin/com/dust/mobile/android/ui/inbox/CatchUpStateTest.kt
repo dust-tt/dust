@@ -17,7 +17,7 @@ class CatchUpStateTest {
 
         assertTrue(state.canStartFlush())
         assertTrue(flushing.isFlushing)
-        assertTrue(flushing.hasFlushed)
+        assertFalse(flushing.hasFlushed)
         assertFalse(flushing.canStartFlush())
     }
 
@@ -51,7 +51,7 @@ class CatchUpStateTest {
 
         assertFalse(failed.isFlushing)
         assertFalse(failed.hasFlushed)
-        assertEquals("network failed", failed.error)
+        assertEquals("network failed", failed.saveError)
         assertTrue(failed.canStartFlush())
     }
 }

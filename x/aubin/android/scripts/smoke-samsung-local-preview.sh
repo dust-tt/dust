@@ -664,7 +664,8 @@ assert_compact_row_spacing() {
   )"
   first_top_px="$(text_top_px "$first_title" "$xml_path")"
   second_top_px="$(text_top_px "$second_title" "$xml_path")"
-  maximum_gap_px=$(((48 * density + 159) / 160))
+  # Two-line conversation rows are at least 56dp, plus their divider.
+  maximum_gap_px=$(((64 * density + 159) / 160))
 
   if [[ -z "$first_top_px" || -z "$second_top_px" ]]; then
     echo "Could not measure row title spacing in $xml_path." >&2
@@ -673,7 +674,7 @@ assert_compact_row_spacing() {
 
   title_gap_px=$((second_top_px - first_top_px))
   if ((title_gap_px > maximum_gap_px)); then
-    echo "Row titles are ${title_gap_px}px apart, expected no more than ${maximum_gap_px}px (48dp)." >&2
+    echo "Row titles are ${title_gap_px}px apart, expected no more than ${maximum_gap_px}px (64dp)." >&2
     exit 1
   fi
 }
@@ -967,7 +968,20 @@ assert_catch_up_flow() {
   grep -q 'text="Coordinate launch follow-ups"' "$OUT_DIR/local-preview-catch-up-unread.xml"
   grep -q 'text="Keep for later"' "$OUT_DIR/local-preview-catch-up-unread.xml"
 
-  tap_content_desc_from_dump "Close" "$OUT_DIR/local-preview-catch-up-unread.xml"
+  tap_text_from_dump "Keep for later" "$OUT_DIR/local-preview-catch-up-unread.xml"
+  wait_for_text "Review complete" "local-preview-catch-up-complete"
+  grep -q '2 kept for later' "$OUT_DIR/local-preview-catch-up-complete.xml"
+  tap_text_from_dump "Undo" "$OUT_DIR/local-preview-catch-up-complete.xml"
+  wait_for_text "Mark as read" "local-preview-catch-up-unread"
+  grep -q 'text="2 of 2"' "$OUT_DIR/local-preview-catch-up-unread.xml"
+  tap_text_from_dump "Keep for later" "$OUT_DIR/local-preview-catch-up-unread.xml"
+  wait_for_text "Review complete" "local-preview-catch-up-complete"
+  tap_text_from_dump "Done" "$OUT_DIR/local-preview-catch-up-complete.xml"
+  wait_for_text "Search" "local-preview-inbox"
+  tap_text_from_dump "Catch up" "$OUT_DIR/local-preview-inbox.xml"
+  wait_for_text "Respond" "local-preview-catch-up-reopened"
+  grep -q 'text="1 of 2"' "$OUT_DIR/local-preview-catch-up-reopened.xml"
+  tap_content_desc_from_dump "Close" "$OUT_DIR/local-preview-catch-up-reopened.xml"
   wait_for_text "Search" "local-preview-inbox"
 }
 

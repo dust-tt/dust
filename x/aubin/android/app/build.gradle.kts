@@ -133,6 +133,7 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
 }
 
 baselineProfile {
