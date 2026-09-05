@@ -11,6 +11,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getApiKeysSpendCappedByModelId } from "@app/lib/spend_limits/api_key_cap_status";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
@@ -357,11 +358,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   private toJSON(
     requestingUserModelId: ModelId,
     spaces: SpaceType[],
-    // The flag-aware per-key "capped" verdict, resolved by the caller (the
-    // rate-limiter reader lives in `lib/api/keys/spend_limit` to avoid a
-    // resource → `lib/auth` import cycle). Defaults to the persisted Metronome
-    // credit state — the flag-off behavior — when the caller doesn't provide it.
-    isSpendCapped: boolean = this.creditState === "capped"
+    isSpendCapped: boolean
   ): KeyType {
     // We only display the full secret key to the admin who created it, and only
     // for the first 10 minutes after creation. Every other admin (or the
@@ -474,36 +471,30 @@ export class KeyResource extends BaseResource<KeyModel> {
   static async toJSONWithSpaces(
     auth: Authenticator,
     keys: KeyResource[],
-    requestingUserModelId: ModelId,
-    // Flag-aware per-key "capped" verdict, keyed by key model id, computed by the
-    // caller via `getApiKeysSpendCappedByModelId` (the rate-limiter reader lives
-    // in `lib/api/keys/spend_limit` to avoid a resource → `lib/auth` cycle). When
-    // omitted, `toJSON` falls back to the persisted credit state (flag-off
-    // behavior) — used by the single-key mutation responses whose value the
-    // client re-fetches from the flag-aware list anyway.
-    spendCappedByModelId?: ReadonlyMap<ModelId, boolean>
+    requestingUserModelId: ModelId
   ): Promise<KeyType[]> {
-    const spacesByKeyModelId = await this.listSpacesByKeyModelId(auth, keys);
+    const [spacesByKeyModelId, spendCappedByModelId] = await Promise.all([
+      this.listSpacesByKeyModelId(auth, keys),
+      getApiKeysSpendCappedByModelId(auth, keys),
+    ]);
 
     return keys.map((key) =>
       key.toJSON(
         requestingUserModelId,
         spacesByKeyModelId.get(key.id) ?? [],
-        spendCappedByModelId?.get(key.id) ?? key.creditState === "capped"
+        spendCappedByModelId.get(key.id) ?? key.creditState === "capped"
       )
     );
   }
 
   async toJSONWithSpaces(
     auth: Authenticator,
-    requestingUserModelId: ModelId,
-    spendCappedByModelId?: ReadonlyMap<ModelId, boolean>
+    requestingUserModelId: ModelId
   ): Promise<KeyType> {
     const [json] = await KeyResource.toJSONWithSpaces(
       auth,
       [this],
-      requestingUserModelId,
-      spendCappedByModelId
+      requestingUserModelId
     );
 
     return json;

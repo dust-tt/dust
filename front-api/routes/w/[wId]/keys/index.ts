@@ -1,5 +1,4 @@
 import { createApiKey } from "@app/lib/api/keys/create";
-import { getApiKeysSpendCappedByModelId } from "@app/lib/api/keys/spend_limit";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import type {
   GetKeysResponseBody,
@@ -38,18 +37,9 @@ app.get(
     const owner = auth.getNonNullableWorkspace();
 
     const keys = await KeyResource.listNonSystemKeysByWorkspace(owner);
-    const spendCappedByModelId = await getApiKeysSpendCappedByModelId(
-      auth,
-      keys
-    );
 
     return ctx.json({
-      keys: await KeyResource.toJSONWithSpaces(
-        auth,
-        keys,
-        user.id,
-        spendCappedByModelId
-      ),
+      keys: await KeyResource.toJSONWithSpaces(auth, keys, user.id),
     });
   }
 );
