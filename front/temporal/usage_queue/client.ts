@@ -191,19 +191,26 @@ export async function launchEmitMetronomeUsageEventsWorkflow({
 
 export async function launchMetronomeSeatCountSyncWorkflow({
   workspaceId,
+  immediate = false,
 }: {
   workspaceId: string;
+  // Skip the debounce window and sync now. Used when a caller needs the seat
+  // reflected immediately (e.g. right after provisioning a new contract) rather
+  // than after the coalescing delay.
+  immediate?: boolean;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeMetronomeSeatCountSyncWorkflowId({ workspaceId });
 
   try {
+    // `args` seeds a fresh workflow; `signalArgs` carries `immediate` to an
+    // already-running (debouncing) instance so it wakes early.
     await client.workflow.signalWithStart(syncMetronomeSeatCountWorkflow, {
-      args: [workspaceId],
+      args: [workspaceId, { immediate }],
       taskQueue: QUEUE_NAME,
       workflowId,
       signal: syncMetronomeSeatCountSignal,
-      signalArgs: undefined,
+      signalArgs: [{ immediate }],
       memo: {
         workspaceId,
       },
