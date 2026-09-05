@@ -8,6 +8,9 @@ Dust's design system, published as `@dust-tt/sparkle` and documented through Sto
 ./build_icons.sh
 ```
 
+`src/icons/actions/index.ts` is not generated: it aliases the legacy `Action*Icon` names to
+v2-stroke icons, using the map in `src/icons/actionIconAliases.ts`.
+
 ## Storybook
 
 ```

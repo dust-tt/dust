@@ -1,144 +1,153 @@
-export { default as ActionArmchairIcon } from "./Armchair";
-export { default as ActionArrowDownOnSquareIcon } from "./ArrowDownOnSquare";
-export { default as ActionArrowUpOnSquareIcon } from "./ArrowUpOnSquare";
-export { default as ActionAtomIcon } from "./Atom";
-export { default as ActionAttachmentIcon } from "./Attachment";
-export { default as ActionBankIcon } from "./Bank";
-export { default as ActionBarcodeIcon } from "./Barcode";
-export { default as ActionBeerIcon } from "./Beer";
-export { default as ActionBookOpenIcon } from "./BookOpen";
-export { default as ActionBracesIcon } from "./Braces";
-export { default as ActionBrainIcon } from "./Brain";
-export { default as ActionBriefcaseIcon } from "./Briefcase";
-export { default as ActionBuildingIcon } from "./Building";
-export { default as ActionCalculatorIcon } from "./Calculator";
-export { default as ActionCalendarIcon } from "./Calendar";
-export { default as ActionCalendarCheckIcon } from "./CalendarCheck";
-export { default as ActionCameraIcon } from "./Camera";
-export { default as ActionCarIcon } from "./Car";
-export { default as ActionCardIcon } from "./Card";
-export { default as ActionChatBubbleBottomCenterTextIcon } from "./ChatBubbleBottomCenterText";
-export { default as ActionChatBubbleThoughtIcon } from "./ChatBubbleThought";
-export { default as ActionCheckCircleIcon } from "./CheckCircle";
-export { default as ActionClipboardIcon } from "./Clipboard";
-export { default as ActionCloudArrowDownIcon } from "./CloudArrowDown";
-export { default as ActionCloudArrowLeftRightIcon } from "./CloudArrowLeftRight";
-export { default as ActionCloudArrowUpIcon } from "./CloudArrowUp";
-export { default as ActionCodeBlockIcon } from "./CodeBlock";
-export { default as ActionCodeBoxIcon } from "./CodeBox";
-export { default as ActionCommandIcon } from "./Command";
-export { default as ActionCommand1Icon } from "./Command1";
-export { default as ActionCommunityIcon } from "./Community";
-export { default as ActionCompanyIcon } from "./Company";
-export { default as ActionCreditCoinsIcon } from "./CreditCoins";
-export { default as ActionCubeIcon } from "./Cube";
-export { default as ActionCupIcon } from "./Cup";
-export { default as ActionCustomerServiceIcon } from "./CustomerService";
-export { default as ActionDashboardIcon } from "./Dashboard";
-export { default as ActionDatabaseIcon } from "./Database";
-export { default as ActionDocumentIcon } from "./Document";
-export { default as ActionDocumentPileIcon } from "./DocumentPile";
-export { default as ActionDocumentPlusIcon } from "./DocumentPlus";
-export { default as ActionDocumentTextIcon } from "./DocumentText";
-export { default as ActionDoubleQuotesIcon } from "./DoubleQuotes";
-export { default as ActionEmotionLaughIcon } from "./EmotionLaugh";
-export { default as ActionExternalLinkIcon } from "./ExternalLink";
-export { default as ActionEyeIcon } from "./Eye";
-export { default as ActionEyeSlashIcon } from "./EyeSlash";
-export { default as ActionFilmIcon } from "./Film";
-export { default as ActionFilterIcon } from "./Filter";
-export { default as ActionFireIcon } from "./Fire";
-export { default as ActionFlagIcon } from "./Flag";
-export { default as ActionFlightLandIcon } from "./FlightLand";
-export { default as ActionFlightTakeoffIcon } from "./FlightTakeoff";
-export { default as ActionFolderIcon } from "./Folder";
-export { default as ActionFolderAddIcon } from "./FolderAdd";
-export { default as ActionFolderOpenIcon } from "./FolderOpen";
-export { default as ActionFrameIcon } from "./Frame";
-export { default as ActionFullscreenIcon } from "./Fullscreen";
-export { default as ActionFullscreenExitIcon } from "./FullscreenExit";
-export { default as ActionGamepadIcon } from "./Gamepad";
-export { default as ActionGitBranchIcon } from "./GitBranch";
-export { default as ActionGitForkIcon } from "./GitFork";
-export { default as ActionGlobeIcon } from "./Globe";
-export { default as ActionGlobeAltIcon } from "./GlobeAlt";
-export { default as ActionGraduationCapIcon } from "./GraduationCap";
-export { default as ActionHandHeartIcon } from "./HandHeart";
-export { default as ActionHandThumbDownIcon } from "./HandThumbDown";
-export { default as ActionHandThumbUpIcon } from "./HandThumbUp";
-export { default as ActionHashtagIcon } from "./Hashtag";
-export { default as ActionHeartIcon } from "./Heart";
-export { default as ActionHomeIcon } from "./Home";
-export { default as ActionHospitalIcon } from "./Hospital";
-export { default as ActionIdentityIcon } from "./Identity";
-export { default as ActionImageIcon } from "./Image";
-export { default as ActionInboxIcon } from "./Inbox";
-export { default as ActionIncludeIcon } from "./Include";
-export { default as ActionLayoutIcon } from "./Layout";
-export { default as ActionLightbulbIcon } from "./Lightbulb";
-export { default as ActionListIcon } from "./List";
-export { default as ActionListCheckIcon } from "./ListCheck";
-export { default as ActionLockIcon } from "./Lock";
-export { default as ActionLogoutIcon } from "./Logout";
-export { default as ActionMagicIcon } from "./Magic";
-export { default as ActionMagnifyingGlassIcon } from "./MagnifyingGlass";
-export { default as ActionMailIcon } from "./Mail";
-export { default as ActionMailAiIcon } from "./MailAi";
-export { default as ActionMailCloseIcon } from "./MailClose";
-export { default as ActionMapIcon } from "./Map";
-export { default as ActionMapPinIcon } from "./MapPin";
-export { default as ActionMarkPenIcon } from "./MarkPen";
-export { default as ActionMedalIcon } from "./Medal";
-export { default as ActionMegaphoneIcon } from "./Megaphone";
-export { default as ActionMenuIcon } from "./Menu";
-export { default as ActionMicIcon } from "./Mic";
-export { default as ActionMoonIcon } from "./Moon";
-export { default as ActionMovieIcon } from "./Movie";
-export { default as ActionNoiseIcon } from "./Noise";
-export { default as ActionNumbersIcon } from "./Numbers";
-export { default as ActionPaintIcon } from "./Paint";
-export { default as ActionPencilSquareIcon } from "./PencilSquare";
-export { default as ActionPieChartIcon } from "./PieChart";
-export { default as ActionPinDistanceIcon } from "./PinDistance";
-export { default as ActionPingPongIcon } from "./PingPong";
-export { default as ActionPlanetIcon } from "./Planet";
-export { default as ActionPlusIcon } from "./Plus";
-export { default as ActionPlusCircleIcon } from "./PlusCircle";
-export { default as ActionPrinterIcon } from "./Printer";
-export { default as ActionPushpinIcon } from "./Pushpin";
-export { default as ActionRainbowIcon } from "./Rainbow";
-export { default as ActionRobotIcon } from "./Robot";
-export { default as ActionRocketIcon } from "./Rocket";
-export { default as ActionSafeIcon } from "./Safe";
-export { default as ActionSaveIcon } from "./Save";
-export { default as ActionScalesIcon } from "./Scales";
-export { default as ActionScanIcon } from "./Scan";
-export { default as ActionSeedlingIcon } from "./Seedling";
-export { default as ActionServerIcon } from "./Server";
-export { default as ActionShakeHandsIcon } from "./ShakeHands";
-export { default as ActionShipIcon } from "./Ship";
-export { default as ActionShirtIcon } from "./Shirt";
-export { default as ActionShoppingBasketIcon } from "./ShoppingBasket";
-export { default as ActionSlideshowIcon } from "./Slideshow";
-export { default as ActionSparklesIcon } from "./Sparkles";
-export { default as ActionSpeakIcon } from "./Speak";
-export { default as ActionSquare3Stack3DIcon } from "./Square3Stack3D";
-export { default as ActionStopSignIcon } from "./StopSign";
-export { default as ActionStoreIcon } from "./Store";
-export { default as ActionSunIcon } from "./Sun";
-export { default as ActionSwordIcon } from "./Sword";
-export { default as ActionTableIcon } from "./Table";
-export { default as ActionTagIcon } from "./Tag";
-export { default as ActionTestTubeIcon } from "./TestTube";
-export { default as ActionTimeIcon } from "./Time";
-export { default as ActionTrainIcon } from "./Train";
-export { default as ActionTranslateIcon } from "./Translate";
-export { default as ActionTrashIcon } from "./Trash";
-export { default as ActionTrophyIcon } from "./Trophy";
-export { default as ActionTShirtIcon } from "./TShirt";
-export { default as ActionUmbrellaIcon } from "./Umbrella";
-export { default as ActionUserIcon } from "./User";
-export { default as ActionUserGroupIcon } from "./UserGroup";
-export { default as ActionVidiconIcon } from "./Vidicon";
-export { default as ActionVolumeUpIcon } from "./VolumeUp";
-export { default as ActionXCircleIcon } from "./XCircle";
+/**
+ * Compatibility barrel: the legacy `Action*Icon` names now resolve to
+ * v2-stroke glyphs. Targets come from `../actionIconAliases`.
+ *
+ * SVGR no longer generates this file; `build_icons.sh` leaves this directory
+ * alone so the aliases survive an icon rebuild.
+ */
+export {
+  ActionFrame as ActionFrameIcon,
+  ActionStore as ActionStoreIcon,
+  Anchor as ActionShipIcon,
+  Announcement01 as ActionMegaphoneIcon,
+  Armchair as ActionArmchairIcon,
+  ArrowCircleBrokenRight as ActionIncludeIcon,
+  Atom01 as ActionAtomIcon,
+  Attachment01 as ActionAttachmentIcon,
+  Award01 as ActionMedalIcon,
+  Bank as ActionBankIcon,
+  BarChart12 as ActionNumbersIcon,
+  Beaker02 as ActionTestTubeIcon,
+  Beer as ActionBeerIcon,
+  BookOpen01 as ActionBookOpenIcon,
+  Brackets as ActionBracesIcon,
+  Brain as ActionBrainIcon,
+  Briefcase01 as ActionBriefcaseIcon,
+  Building04 as ActionBuildingIcon,
+  Building04 as ActionCompanyIcon,
+  Building06 as ActionCommunityIcon,
+  Calculator as ActionCalculatorIcon,
+  Calendar as ActionCalendarIcon,
+  CalendarCheck01 as ActionCalendarCheckIcon,
+  Camera01 as ActionCameraIcon,
+  Car01 as ActionCarIcon,
+  CheckCircle as ActionCheckCircleIcon,
+  Clapperboard as ActionMovieIcon,
+  Clipboard as ActionClipboardIcon,
+  Clock as ActionTimeIcon,
+  CloudArrowLeftRight as ActionCloudArrowLeftRightIcon,
+  CodeBrowser as ActionCodeBlockIcon,
+  CodeSquare01 as ActionCodeBoxIcon,
+  CoinsStacked01 as ActionCreditCoinsIcon,
+  Columns03 as ActionLayoutIcon,
+  Command as ActionCommand1Icon,
+  CreditCard01 as ActionCardIcon,
+  Cube01 as ActionCubeIcon,
+  Cup as ActionCupIcon,
+  Database01 as ActionDatabaseIcon,
+  Dataflow01 as ActionGitForkIcon,
+  Dataflow02 as ActionGitBranchIcon,
+  DocumentPile as ActionDocumentPileIcon,
+  DoubleQuotes as ActionDoubleQuotesIcon,
+  Download01 as ActionArrowDownOnSquareIcon,
+  DownloadCloud01 as ActionCloudArrowDownIcon,
+  Edit04 as ActionPencilSquareIcon,
+  Eye as ActionEyeIcon,
+  EyeOff as ActionEyeSlashIcon,
+  FaceHappy as ActionEmotionLaughIcon,
+  File04 as ActionDocumentIcon,
+  File06 as ActionDocumentTextIcon,
+  FilePlus03 as ActionDocumentPlusIcon,
+  Film01 as ActionFilmIcon,
+  FilterLines as ActionFilterIcon,
+  Fingerprint03 as ActionIdentityIcon,
+  Fire as ActionFireIcon,
+  Flag01 as ActionFlagIcon,
+  Folder as ActionFolderIcon,
+  Folder as ActionFolderOpenIcon,
+  FolderPlus as ActionFolderAddIcon,
+  GamingPad02 as ActionGamepadIcon,
+  Globe01 as ActionGlobeAltIcon,
+  Globe05 as ActionGlobeIcon,
+  GraduationHat01 as ActionGraduationCapIcon,
+  Hash01 as ActionHashtagIcon,
+  Headphones01 as ActionCustomerServiceIcon,
+  Heart as ActionHeartIcon,
+  HeartHand as ActionHandHeartIcon,
+  Home01 as ActionHomeIcon,
+  Image01 as ActionImageIcon,
+  Inbox01 as ActionInboxIcon,
+  LayersThree01 as ActionSquare3Stack3DIcon,
+  LayoutGrid02 as ActionTableIcon,
+  Lightbulb01 as ActionLightbulbIcon,
+  LinkExternal01 as ActionExternalLinkIcon,
+  List as ActionListIcon,
+  ListSelect as ActionListCheckIcon,
+  Lock01 as ActionLockIcon,
+  LogOut01 as ActionLogoutIcon,
+  MagicWand02 as ActionMagicIcon,
+  Mail01 as ActionMailIcon,
+  MailAi as ActionMailAiIcon,
+  MailClose as ActionMailCloseIcon,
+  Map01 as ActionMapIcon,
+  MarkerPin01 as ActionMapPinIcon,
+  Maximize01 as ActionFullscreenIcon,
+  MedicalCircle as ActionHospitalIcon,
+  Menu01 as ActionMenuIcon,
+  MessageCircle01 as ActionChatBubbleBottomCenterTextIcon,
+  MessageDotsCircle as ActionChatBubbleThoughtIcon,
+  MessageSmileCircle as ActionSpeakIcon,
+  Microphone01 as ActionMicIcon,
+  Minimize01 as ActionFullscreenExitIcon,
+  Moon01 as ActionMoonIcon,
+  Paint as ActionPaintIcon,
+  PencilLine as ActionMarkPenIcon,
+  PieChart01 as ActionPieChartIcon,
+  Pin02 as ActionPushpinIcon,
+  PingPong as ActionPingPongIcon,
+  Plane as ActionFlightLandIcon,
+  Plane as ActionFlightTakeoffIcon,
+  Planet as ActionPlanetIcon,
+  Plus as ActionPlusIcon,
+  PlusCircle as ActionPlusCircleIcon,
+  PresentationChart01 as ActionSlideshowIcon,
+  Printer as ActionPrinterIcon,
+  QrCode01 as ActionBarcodeIcon,
+  Rainbow as ActionRainbowIcon,
+  Robot as ActionRobotIcon,
+  Rocket02 as ActionRocketIcon,
+  Route as ActionPinDistanceIcon,
+  Safe as ActionSafeIcon,
+  Save01 as ActionSaveIcon,
+  Scales01 as ActionScalesIcon,
+  ScanFile as ActionScanIcon,
+  SearchMd as ActionMagnifyingGlassIcon,
+  Seedling as ActionSeedlingIcon,
+  Server03 as ActionServerIcon,
+  ShakeHands as ActionShakeHandsIcon,
+  Shirt as ActionShirtIcon,
+  ShoppingBag01 as ActionShoppingBasketIcon,
+  SlashCircle01 as ActionStopSignIcon,
+  Speedometer03 as ActionDashboardIcon,
+  Stars02 as ActionSparklesIcon,
+  Sun as ActionSunIcon,
+  Sword as ActionSwordIcon,
+  Tag01 as ActionTagIcon,
+  TerminalSquare as ActionCommandIcon,
+  ThumbsDown as ActionHandThumbDownIcon,
+  ThumbsUp as ActionHandThumbUpIcon,
+  Train as ActionTrainIcon,
+  Translate01 as ActionTranslateIcon,
+  Trash01 as ActionTrashIcon,
+  Trophy01 as ActionTrophyIcon,
+  TShirt as ActionTShirtIcon,
+  Umbrella01 as ActionUmbrellaIcon,
+  Upload01 as ActionArrowUpOnSquareIcon,
+  UploadCloud02 as ActionCloudArrowUpIcon,
+  User01 as ActionUserIcon,
+  Users01 as ActionUserGroupIcon,
+  VideoRecorder as ActionVidiconIcon,
+  VolumeMax as ActionNoiseIcon,
+  VolumeMax as ActionVolumeUpIcon,
+  XCircle as ActionXCircleIcon,
+} from "../v2-stroke";
