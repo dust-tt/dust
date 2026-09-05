@@ -1,3 +1,4 @@
+import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
@@ -3363,6 +3364,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentMessageId: agenticOriginMessage.sId,
       conversationModelId: agenticOriginMessage.conversationId,
     };
+  }
+
+  static async findRootAgentMessageId(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<string> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    let rootAgentMessageId = agentMessageId;
+
+    for (let depth = 0; depth <= MAX_CONVERSATION_DEPTH; depth++) {
+      const agentMessage = await MessageModel.findOne({
+        attributes: ["parentId"],
+        where: { workspaceId, sId: rootAgentMessageId },
+        order: [["version", "DESC"]],
+      });
+      if (!agentMessage?.parentId) {
+        return rootAgentMessageId;
+      }
+
+      const triggeringMessage = await MessageModel.findOne({
+        attributes: [],
+        where: { workspaceId, id: agentMessage.parentId },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: true,
+            attributes: ["agenticOriginMessageId"],
+          },
+        ],
+      });
+      const agenticOriginMessageId =
+        triggeringMessage?.userMessage?.agenticOriginMessageId;
+      if (!agenticOriginMessageId) {
+        return rootAgentMessageId;
+      }
+
+      rootAgentMessageId = agenticOriginMessageId;
+    }
+
+    return rootAgentMessageId;
   }
 
   /**

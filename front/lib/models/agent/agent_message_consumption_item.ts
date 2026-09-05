@@ -63,6 +63,15 @@ function validateConsumptionItemShape(
     case "tool":
       break;
 
+    case "rounding":
+      if (this.inputTokensCount !== null || this.outputTokensCount !== null) {
+        throw new Error("Rounding items cannot contain tokens");
+      }
+      if (this.grossAttributedCreditAmountMicro !== 0) {
+        throw new Error("Rounding items cannot contain gross credits");
+      }
+      break;
+
     default:
       assertNever(this.itemType);
   }
@@ -85,6 +94,7 @@ export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentM
   declare agentMCPActionId: ModelId | null;
   declare itemKey: string;
   declare itemType: AgentMessageConsumptionItemType;
+  declare runKey: string | null;
   declare attributionVersion: number;
   declare inputTokensCount: number | null;
   declare outputTokensCount: number | null;
@@ -141,6 +151,10 @@ AgentMessageConsumptionItemModel.init(
         isIn: [AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES],
       },
     },
+    runKey: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+    },
     attributionVersion: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -194,6 +208,11 @@ AgentMessageConsumptionItemModel.init(
       },
       {
         concurrently: true,
+        fields: ["workspaceId", "runKey"],
+        name: "agent_message_consumption_items_workspace_run_key",
+      },
+      {
+        concurrently: true,
         fields: ["conversationId"],
       },
       {
@@ -210,9 +229,14 @@ AgentMessageConsumptionItemModel.init(
       {
         unique: true,
         concurrently: true,
-        fields: ["workspaceId", "attributionVersion", "runUsageId", "itemType"],
-        where: { agentMCPActionId: null },
-        name: "agent_message_consumption_items_unique_run_item_type",
+        fields: [
+          "workspaceId",
+          "agentMessageId",
+          "attributionVersion",
+          "runKey",
+        ],
+        where: { itemType: "rounding" },
+        name: "agent_message_consumption_items_unique_rounding",
       },
     ],
     validate: {

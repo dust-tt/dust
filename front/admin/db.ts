@@ -24,6 +24,7 @@ import {
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
+import { AgentMessageConsumptionEventModel } from "@app/lib/models/agent/agent_message_consumption_event";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
@@ -249,6 +250,7 @@ export function loadAllModels() {
     AgentMCPActionModel,
     AgentMCPActionOutputItemModel,
     AgentMessageConsumptionItemModel,
+    AgentMessageConsumptionEventModel,
     AgentStepContentToolExecutionModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,

@@ -10,6 +10,7 @@ export const AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES = [
   "output",
   "reasoning",
   "tool",
+  "rounding",
 ] as const;
 
 export type AgentMessageConsumptionItemType =
