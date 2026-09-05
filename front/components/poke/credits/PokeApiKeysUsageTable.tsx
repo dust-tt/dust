@@ -1,3 +1,4 @@
+import { RateLimiterStateChip } from "@app/components/poke/credits/RateLimiterStateChip";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { ApiKeyUsageType } from "@app/lib/api/credits/api_keys_usage";
@@ -105,6 +106,18 @@ function makeColumns({
             size="xs"
             color={API_KEY_CREDIT_STATE_CHIP_COLOR[creditState]}
             label={creditState}
+          />
+        );
+      },
+    },
+    {
+      accessorKey: "rateLimiterState",
+      header: "Rate limiter state",
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <RateLimiterStateChip
+            rateLimiterState={row.original.rateLimiterState}
           />
         );
       },

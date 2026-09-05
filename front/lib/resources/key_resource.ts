@@ -11,6 +11,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getApiKeysSpendCappedByModelId } from "@app/lib/spend_limits/api_key_cap_status";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
@@ -354,7 +355,11 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
-  private toJSON(requestingUserModelId: ModelId, spaces: SpaceType[]): KeyType {
+  private toJSON(
+    requestingUserModelId: ModelId,
+    spaces: SpaceType[],
+    isSpendCapped: boolean
+  ): KeyType {
     // We only display the full secret key to the admin who created it, and only
     // for the first 10 minutes after creation. Every other admin (or the
     // creator past the window) sees a redacted value.
@@ -383,6 +388,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
       monthlyCapAwuCredits: this.monthlyCapAwuCredits,
       creditState: this.creditState,
+      isSpendCapped,
     };
   }
 
@@ -467,10 +473,17 @@ export class KeyResource extends BaseResource<KeyModel> {
     keys: KeyResource[],
     requestingUserModelId: ModelId
   ): Promise<KeyType[]> {
-    const spacesByKeyModelId = await this.listSpacesByKeyModelId(auth, keys);
+    const [spacesByKeyModelId, spendCappedByModelId] = await Promise.all([
+      this.listSpacesByKeyModelId(auth, keys),
+      getApiKeysSpendCappedByModelId(auth, keys),
+    ]);
 
     return keys.map((key) =>
-      key.toJSON(requestingUserModelId, spacesByKeyModelId.get(key.id) ?? [])
+      key.toJSON(
+        requestingUserModelId,
+        spacesByKeyModelId.get(key.id) ?? [],
+        spendCappedByModelId.get(key.id) ?? key.creditState === "capped"
+      )
     );
   }
 

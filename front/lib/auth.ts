@@ -1479,6 +1479,14 @@ export class Authenticator {
     return subscription;
   }
 
+  getFeatureFlags(): Promise<WhitelistableFeature[]> {
+    return getFeatureFlagsForWorkspace(this.getNonNullableWorkspace());
+  }
+
+  async hasFeatureFlag(flag: WhitelistableFeature): Promise<boolean> {
+    return (await this.getFeatureFlags()).includes(flag);
+  }
+
   subscriptionResource(): SubscriptionResource | null {
     return this._subscription;
   }
