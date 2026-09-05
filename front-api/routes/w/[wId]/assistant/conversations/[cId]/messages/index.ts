@@ -123,10 +123,6 @@ const app = workspaceApp();
  *               - context
  *               - mentions
  *             properties:
- *               clientRequestId:
- *                 type: string
- *                 format: uuid
- *                 description: Stable identifier used to make retries idempotent.
  *               content:
  *                 type: string
  *               mentions:
@@ -270,14 +266,8 @@ app.post(
     const user = auth.getNonNullableUser();
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const {
-      clientRequestId,
-      content,
-      context,
-      mentions,
-      skipToolsValidation,
-      modelSelection,
-    } = ctx.req.valid("json");
+    const { content, context, mentions, skipToolsValidation, modelSelection } =
+      ctx.req.valid("json");
 
     if (context.clientSideMCPServerIds) {
       const hasServerAccess = await concurrentExecutor(
@@ -409,7 +399,6 @@ app.post(
       },
       skipToolsValidation: skipToolsValidation ?? false,
       modelSelection,
-      clientRequestId,
     });
 
     if (messageRes.isErr()) {

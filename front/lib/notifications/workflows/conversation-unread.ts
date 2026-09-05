@@ -18,10 +18,6 @@ import {
   getConversationDetails,
   getEmailSummary,
 } from "@app/lib/notifications/helpers";
-import {
-  buildFcmDataOnlyProviderOutput,
-  FCM_DATA_ONLY_TRIGGER_OVERRIDES,
-} from "@app/lib/notifications/mobile-push";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
@@ -290,54 +286,6 @@ export const getMessagePreviewText = (
   }
 };
 
-export type ConversationMobilePush = {
-  subject: string;
-  body: string;
-  data: Record<string, string>;
-  priority: "normal" | "high";
-};
-
-export const buildConversationMobilePush = (
-  details: ConversationDetailsType,
-  payload: ConversationUnreadPayloadType
-): ConversationMobilePush => {
-  const preview = getMessagePreviewText(details);
-  const subject = details.isNewProjectConversation
-    ? `New in ${details.projectName ?? "a Pod"}`
-    : details.authorIsAgent
-      ? details.author
-      : details.subject;
-  const body = details.isNewProjectConversation
-    ? preview
-      ? `${details.author}: ${preview}`
-      : `${details.author} started "${details.subject}"`
-    : (preview ??
-      (details.authorIsAgent
-        ? `Replied in "${details.subject}"`
-        : `New message from ${details.author}`));
-
-  return {
-    subject,
-    body,
-    priority: details.hasUnreadMentions ? "high" : "normal",
-    data: {
-      dust_type: "conversation_unread",
-      dust_workspace_id: payload.workspaceId,
-      dust_conversation_id: payload.conversationId,
-      ...(payload.messageId ? { dust_message_id: payload.messageId } : {}),
-      dust_conversation_title: details.subject,
-      dust_author_name: details.author,
-      ...(!details.authorIsAgent && details.authorUserId
-        ? { dust_author_user_id: details.authorUserId }
-        : {}),
-      dust_author_is_agent: String(details.authorIsAgent),
-      dust_is_mention: String(details.hasUnreadMentions),
-      dust_title: subject,
-      dust_body: body,
-    },
-  };
-};
-
 export const getMessagePreviewSlack = (
   details: ConversationDetailsType
 ): string | undefined => {
@@ -427,34 +375,6 @@ export const conversationUnreadWorkflow = workflow(
             triggerShouldSkip: false,
             hasUnreadMessages: details.hasUnreadMessages,
           }),
-      }
-    );
-
-    await step.push(
-      "send-mobile-push",
-      async () => {
-        const push = buildConversationMobilePush(details!, payload);
-        return {
-          subject: push.subject,
-          body: push.body,
-        };
-      },
-      {
-        skip: async () =>
-          !details ||
-          details.isFromTrigger ||
-          shouldSkipConversation({
-            subscriberId: subscriber.subscriberId,
-            payload,
-            triggerShouldSkip: true,
-            hasUnreadMessages: details.hasUnreadMessages,
-          }),
-        providers: {
-          fcm: () => {
-            const push = buildConversationMobilePush(details!, payload);
-            return buildFcmDataOnlyProviderOutput(push);
-          },
-        },
       }
     );
 
@@ -852,7 +772,6 @@ export const triggerConversationUnreadNotifications = async (
             lastName: p.lastName ?? undefined,
           },
           payload,
-          overrides: FCM_DATA_ONLY_TRIGGER_OVERRIDES,
         };
       }),
     });

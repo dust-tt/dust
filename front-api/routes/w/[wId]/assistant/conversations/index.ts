@@ -34,7 +34,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import uniq from "lodash/uniq";
-import { UniqueConstraintError } from "sequelize";
 import { z } from "zod";
 
 import conversation from "./[cId]";
@@ -136,10 +135,6 @@ const app = workspaceApp();
  *               message:
  *                 type: object
  *                 properties:
- *                   clientRequestId:
- *                     type: string
- *                     format: uuid
- *                     description: Stable identifier used to make retries idempotent.
  *                   content:
  *                     type: string
  *                   mentions:
@@ -308,35 +303,12 @@ app.post(
       spaceModelId = space.id;
     }
 
-    const clientRequestId = message?.clientRequestId;
-    let newConversationResource = clientRequestId
-      ? await ConversationResource.fetchByClientRequestId(auth, clientRequestId)
-      : null;
-
-    if (!newConversationResource) {
-      try {
-        newConversationResource = await createConversation(auth, {
-          title,
-          visibility,
-          spaceId: spaceModelId,
-          metadata,
-          clientRequestId,
-        });
-      } catch (error) {
-        if (!(clientRequestId && error instanceof UniqueConstraintError)) {
-          throw error;
-        }
-
-        newConversationResource =
-          await ConversationResource.fetchByClientRequestId(
-            auth,
-            clientRequestId
-          );
-        if (!newConversationResource) {
-          throw error;
-        }
-      }
-    }
+    const newConversationResource = await createConversation(auth, {
+      title,
+      visibility,
+      spaceId: spaceModelId,
+      metadata,
+    });
 
     let newConversation: ConversationType = {
       ...newConversationResource.toJSON(),
@@ -385,21 +357,12 @@ app.post(
 
     if (contentFragments.length > 0) {
       const newContentFragmentsRes = await concurrentExecutor(
-        contentFragments.map((contentFragment, index) => ({
-          contentFragment,
-          index,
-        })),
-        async ({ contentFragment, index }) =>
-          postNewContentFragment(
-            auth,
-            newConversation,
-            contentFragment,
-            {
-              ...baseContext,
-              profilePictureUrl: contentFragment.context.profilePictureUrl,
-            },
-            clientRequestId ? `${clientRequestId}:fragment:${index}` : undefined
-          ),
+        contentFragments,
+        async (contentFragment) =>
+          postNewContentFragment(auth, newConversation, contentFragment, {
+            ...baseContext,
+            profilePictureUrl: contentFragment.context.profilePictureUrl,
+          }),
         { concurrency: 4 }
       );
 
@@ -497,7 +460,6 @@ app.post(
         },
         skipToolsValidation: skipToolsValidation ?? false,
         modelSelection: message.modelSelection,
-        clientRequestId,
       });
       if (messageRes.isErr()) {
         return apiError(ctx, messageRes.error);

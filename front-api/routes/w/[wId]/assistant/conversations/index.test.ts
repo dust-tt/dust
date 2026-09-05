@@ -83,7 +83,6 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
         },
       ],
       message: {
-        clientRequestId: "49b69cc7-a2c1-47a3-9361-f13341f6f027",
         content: "Hello from the route",
         mentions: [{ configurationId: agentConfiguration.sId }],
         context: {
@@ -132,27 +131,5 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
         (item: { type: string }) => item.type === "agent_message"
       )
     ).toBe(true);
-
-    const retryResponse = await honoApp.request(
-      `/api/w/${workspace.sId}/assistant/conversations`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }
-    );
-    expect(retryResponse.status).toBe(200);
-    const retryData = await retryResponse.json();
-    expect(retryData.conversation.sId).toBe(responseData.conversation.sId);
-    expect(retryData.message.sId).toBe(responseData.message.sId);
-    expect(
-      retryData.contentFragments.map(
-        (fragment: { sId: string }) => fragment.sId
-      )
-    ).toEqual(
-      responseData.contentFragments.map(
-        (fragment: { sId: string }) => fragment.sId
-      )
-    );
   });
 });

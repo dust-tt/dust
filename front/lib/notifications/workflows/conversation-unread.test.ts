@@ -8,7 +8,6 @@ import type { ConversationDetailsType } from "@app/lib/notifications/helpers";
 import { getEmailSummary } from "@app/lib/notifications/helpers";
 import type { ConversationUnreadPayloadType } from "@app/lib/notifications/workflows/conversation-unread";
 import {
-  buildConversationMobilePush,
   filterParticipantsByNotifyCondition,
   getMessagePreviewSlack,
   getMessagePreviewText,
@@ -1227,83 +1226,6 @@ describe("getMessagePreviewText", () => {
     const result = getMessagePreviewText(details);
 
     expect(result).toBe("Content with   extra   spaces");
-  });
-});
-
-describe("buildConversationMobilePush", () => {
-  const details: ConversationDetailsType = {
-    author: "Alex",
-    authorIsAgent: false,
-    authorUserId: "u1",
-    hasAgentRetentionPolicies: false,
-    hasConversationRetentionPolicy: false,
-    hasUnreadMentions: false,
-    hasUnreadMessages: true,
-    isFromEmailAgentConversation: false,
-    isFromSlackAgentConversation: false,
-    isFromTrigger: false,
-    mentionedUserIds: [],
-    newMessageContent: "Can you review the launch plan?",
-    subject: "Launch planning",
-    workspaceName: "Dust",
-  };
-  const payload: ConversationUnreadPayloadType = {
-    workspaceId: "w1",
-    conversationId: "c1",
-    messageId: "m1",
-  };
-
-  it("renders a human message for Android MessagingStyle", () => {
-    expect(buildConversationMobilePush(details, payload)).toEqual({
-      subject: "Launch planning",
-      body: "Can you review the launch plan?",
-      priority: "normal",
-      data: {
-        dust_type: "conversation_unread",
-        dust_workspace_id: "w1",
-        dust_conversation_id: "c1",
-        dust_message_id: "m1",
-        dust_conversation_title: "Launch planning",
-        dust_author_name: "Alex",
-        dust_author_user_id: "u1",
-        dust_author_is_agent: "false",
-        dust_is_mention: "false",
-        dust_title: "Launch planning",
-        dust_body: "Can you review the launch plan?",
-      },
-    });
-  });
-
-  it("uses high priority and retention-safe copy for a mention", () => {
-    const push = buildConversationMobilePush(
-      {
-        ...details,
-        hasConversationRetentionPolicy: true,
-        hasUnreadMentions: true,
-      },
-      payload
-    );
-
-    expect(push.priority).toBe("high");
-    expect(push.body).toBe(
-      "Preview not available due to data retention policy on conversations in this workspace."
-    );
-    expect(push.data.dust_is_mention).toBe("true");
-  });
-
-  it("uses the agent as the notification title", () => {
-    const push = buildConversationMobilePush(
-      {
-        ...details,
-        author: "@dust",
-        authorIsAgent: true,
-        newMessageContent: null,
-      },
-      payload
-    );
-
-    expect(push.subject).toBe("@dust");
-    expect(push.body).toBe('Replied in "Launch planning"');
   });
 });
 

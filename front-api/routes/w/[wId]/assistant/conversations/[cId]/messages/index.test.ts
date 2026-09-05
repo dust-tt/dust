@@ -1,4 +1,3 @@
-import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -48,43 +47,6 @@ function getTools(workspace: { sId: string }, conversationId: string) {
 }
 
 describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
-  it("returns the original message when a client request is retried", async () => {
-    const { workspace, conversation, user } = await setupTest("admin");
-    const clientRequestId = "d2f3b6b7-95b0-4c9c-94a9-6100a7d20777";
-    const body = {
-      clientRequestId,
-      content: "A message sent from the durable mobile outbox",
-      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
-      context: {
-        timezone: "Europe/Paris",
-        profilePictureUrl: user.imageUrl ?? null,
-      },
-      skipToolsValidation: true,
-    };
-
-    const firstResponse = await postMessage(workspace, conversation.sId, body);
-    const secondResponse = await postMessage(workspace, conversation.sId, body);
-
-    expect(firstResponse.status).toBe(200);
-    expect(secondResponse.status).toBe(200);
-    const firstBody = await firstResponse.json();
-    const secondBody = await secondResponse.json();
-    expect(secondBody.message.sId).toBe(firstBody.message.sId);
-    expect(
-      secondBody.agentMessages.map((message: { sId: string }) => message.sId)
-    ).toEqual(
-      firstBody.agentMessages.map((message: { sId: string }) => message.sId)
-    );
-    expect(
-      await MessageModel.count({
-        where: {
-          conversationId: conversation.id,
-          clientRequestId,
-        },
-      })
-    ).toBe(1);
-  });
-
   it("enables MCP server views when selectedMCPServerViewIds are provided", async () => {
     const { workspace, conversation, auth, globalSpace, user } =
       await setupTest("admin");

@@ -232,122 +232,6 @@
         }
       }
     },
-    "/api/user/mobile_notification_tokens": {
-      "post": {
-        "summary": "Register a mobile notification token",
-        "description": "Associates an Android FCM token with the authenticated user's notification subscriber.",
-        "tags": [
-          "Private User"
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "token"
-                ],
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "maxLength": 4096
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Token registered",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body"
-          },
-          "404": {
-            "description": "User not found"
-          },
-          "500": {
-            "description": "Notification provider unavailable"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Unregister a mobile notification token",
-        "description": "Removes one Android FCM token while preserving the user's other registered devices.",
-        "tags": [
-          "Private User"
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "token"
-                ],
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "maxLength": 4096
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Token unregistered",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body"
-          },
-          "404": {
-            "description": "User not found"
-          },
-          "500": {
-            "description": "Notification provider unavailable"
-          }
-        }
-      }
-    },
     "/api/v1/w/{wId}/analytics/export": {
       "get": {
         "summary": "Export workspace analytics",
@@ -6947,10 +6831,6 @@
                   "context"
                 ],
                 "properties": {
-                  "clientRequestId": {
-                    "type": "string",
-                    "description": "Stable identifier used to make retries idempotent."
-                  },
                   "title": {
                     "type": "string"
                   },
@@ -8151,11 +8031,6 @@
                   "mentions"
                 ],
                 "properties": {
-                  "clientRequestId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "Stable identifier used to make retries idempotent."
-                  },
                   "content": {
                     "type": "string"
                   },
@@ -8790,11 +8665,6 @@
                   "message": {
                     "type": "object",
                     "properties": {
-                      "clientRequestId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Stable identifier used to make retries idempotent."
-                      },
                       "content": {
                         "type": "string"
                       },

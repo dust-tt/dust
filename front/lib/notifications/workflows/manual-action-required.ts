@@ -1,9 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import {
-  buildFcmDataOnlyProviderOutput,
-  FCM_DATA_ONLY_TRIGGER_OVERRIDES,
-} from "@app/lib/notifications/mobile-push";
 import { getNovuClient } from "@app/lib/notifications/novu-client";
 import logger from "@app/logger/logger";
 import {
@@ -27,24 +23,6 @@ type ManualActionRequiredPayloadType = z.infer<
   typeof ManualActionRequiredPayloadSchema
 >;
 
-export const buildManualActionRequiredMobilePush = (
-  payload: ManualActionRequiredPayloadType
-) => ({
-  subject: "Action required",
-  body: "A manual action requires your approval.",
-  data: {
-    dust_type: "manual_action_required",
-    dust_workspace_id: payload.workspaceId,
-    dust_conversation_id: payload.conversationId,
-    ...(payload.actionId ? { dust_action_id: payload.actionId } : {}),
-    dust_conversation_title: "Action required",
-    dust_author_is_agent: "true",
-    dust_is_mention: "false",
-    dust_title: "Action required",
-    dust_body: "A manual action requires your approval.",
-  },
-});
-
 export const manualActionRequiredWorkflow = workflow(
   MANUAL_ACTION_REQUIRED_TRIGGER_ID,
   async ({ step, payload }) => {
@@ -59,28 +37,6 @@ export const manualActionRequiredWorkflow = workflow(
         },
       };
     });
-
-    await step.push(
-      "manual-action-required-mobile-push",
-      async () => {
-        const push = buildManualActionRequiredMobilePush(payload);
-        return {
-          subject: push.subject,
-          body: push.body,
-        };
-      },
-      {
-        providers: {
-          fcm: () => {
-            const push = buildManualActionRequiredMobilePush(payload);
-            return buildFcmDataOnlyProviderOutput({
-              data: push.data,
-              priority: "high",
-            });
-          },
-        },
-      }
-    );
   },
   {
     payloadSchema: ManualActionRequiredPayloadSchema,
@@ -124,7 +80,6 @@ const triggerManualActionRequiredNotification = async (
             lastName: user.lastName ?? undefined,
           },
           payload: novuPayload,
-          overrides: FCM_DATA_ONLY_TRIGGER_OVERRIDES,
         },
       ],
     });

@@ -19,7 +19,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import metadata from "./metadata";
-import mobileNotificationTokens from "./mobile_notification_tokens";
 import onboarding from "./onboarding";
 
 const PatchUserBodySchema = z.object({
@@ -287,7 +286,6 @@ app.patch(
 );
 
 app.route("/metadata", metadata);
-app.route("/mobile_notification_tokens", mobileNotificationTokens);
 app.route("/onboarding", onboarding);
 
 export default app;

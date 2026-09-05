@@ -21,7 +21,6 @@ const UserMentionSchema = z.object({
 const UserMessageOriginSchema = z.enum(CLIENT_MESSAGE_ORIGINS);
 
 const MessageBaseSchema = z.object({
-  clientRequestId: z.string().uuid().optional(),
   content: z.string(),
   mentions: z.array(z.union([AgentMentionSchema, UserMentionSchema])),
   context: z.object({
@@ -173,7 +172,6 @@ export function isContentFragmentInputWithContentNode(
 
 export const InternalPostContentFragmentRequestBodySchema = z.intersection(
   z.object({
-    clientRequestId: z.string().min(1).max(128).optional(),
     context: z.object({
       profilePictureUrl: z.string().nullable(),
     }),

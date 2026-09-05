@@ -623,26 +623,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return resource;
   }
 
-  static async fetchByClientRequestId(
-    auth: Authenticator,
-    clientRequestId: string
-  ): Promise<ConversationResource | null> {
-    const workspace = auth.getNonNullableWorkspace();
-    const conversation = await this.model.findOne({
-      attributes: ["sId"],
-      where: {
-        workspaceId: workspace.id,
-        clientRequestId,
-      },
-    });
-
-    if (!conversation) {
-      return null;
-    }
-
-    return this.fetchById(auth, conversation.sId);
-  }
-
   static async countForWorkspace(
     auth: Authenticator,
     options?: FetchConversationOptions

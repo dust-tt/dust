@@ -56,9 +56,6 @@ const app = workspaceApp();
  *               - contentType
  *               - context
  *             properties:
- *               clientRequestId:
- *                 type: string
- *                 description: Stable identifier used to make retries idempotent.
  *               title:
  *                 type: string
  *               content:
@@ -124,8 +121,7 @@ app.post(
       {
         ...baseContext,
         profilePictureUrl: contentFragmentPayload.context.profilePictureUrl,
-      },
-      contentFragmentPayload.clientRequestId
+      }
     );
     if (contentFragmentRes.isErr()) {
       return apiError(ctx, {

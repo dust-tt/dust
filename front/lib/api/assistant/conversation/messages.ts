@@ -119,7 +119,6 @@ export async function createUserMessage(
           user: UserType | null;
           rank: number;
           context: UserMessageContext;
-          clientRequestId?: string;
           agenticMessageData?: AgenticMessageData;
           visibility?: MessageVisibility;
           requestedModel: ModelSelectionType | null;
@@ -265,8 +264,6 @@ export async function createUserMessage(
       userMessageId: userMessage.id,
       workspaceId: workspace.id,
       visibility,
-      clientRequestId:
-        metadata.type === "create" ? metadata.clientRequestId : null,
     },
     {
       transaction,
