@@ -139,6 +139,7 @@ private fun UserMessageContent(
             if (isCurrentUser) {
                 DustMarkdownText(
                     message.content,
+                    selectable = true,
                     modifier = Modifier
                         .widthIn(max = 320.dp)
                         .background(
