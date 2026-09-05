@@ -18,11 +18,17 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import logger from "@app/logger/logger";
 import { launchSandboxFunctionToolWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import omit from "lodash/omit";
+
+// How long a client idempotency key is remembered. Keys are scoped to the invocation, which is
+// itself bounded by the exec timeouts, so this only needs to cover a client retrying a POST whose
+// response was lost — 10 minutes matches the dsbx poll cap and is generous for that.
+const SANDBOX_ACTION_IDEMPOTENCY_WINDOW_MS = 10 * 60 * 1000;
 
 class SandboxFunctionMCPActionError extends Error {
   constructor(
@@ -120,6 +126,7 @@ export async function createSandboxFunctionMCPAction(
     serverViewId,
     toolName,
     rawInputs,
+    idempotencyKey,
   }: {
     sandboxFunctionId: string;
     invocationId: string;
@@ -127,6 +134,7 @@ export async function createSandboxFunctionMCPAction(
     serverViewId: string;
     toolName: string;
     rawInputs: Record<string, unknown>;
+    idempotencyKey?: string;
   }
 ): Promise<Result<{ actionId: string }, SandboxFunctionMCPActionError>> {
   const validateInputsResult = validateToolInputs(rawInputs);
@@ -205,6 +213,37 @@ export async function createSandboxFunctionMCPAction(
     );
   }
 
+  // Replay: a retried POST carrying the same idempotency key returns the original action instead
+  // of creating (and executing) a second one. The client polls the action for its actual state,
+  // whatever it is by now — including errored, which is what an honest replay reports.
+  //
+  // Lookup-then-create is deliberately best-effort: two concurrent POSTs with the same key can
+  // both miss and create two actions. The retrying clients replay sequentially, and a unique
+  // index would forbid legitimate key reuse after the window.
+  if (idempotencyKey !== undefined) {
+    const existingAction =
+      await SandboxFunctionMCPActionResource.fetchByIdempotencyKey(auth, {
+        invocation,
+        mcpServerView: view,
+        toolName,
+        idempotencyKey,
+        createdAfter: new Date(
+          Date.now() - SANDBOX_ACTION_IDEMPOTENCY_WINDOW_MS
+        ),
+      });
+    if (existingAction) {
+      logger.info(
+        {
+          actionId: existingAction.sId,
+          invocationId: invocation.sId,
+          toolName,
+        },
+        "Replayed sandbox function MCP action for idempotency key"
+      );
+      return new Ok({ actionId: existingAction.sId });
+    }
+  }
+
   const toolConfiguration = toolConfigurationRes.value;
   const { status: executionStatus } = await getExecutionStatusFromConfig(auth, {
     actionConfiguration: toolConfiguration,
@@ -235,6 +274,7 @@ export async function createSandboxFunctionMCPAction(
       MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
     ),
     status: actionStatus,
+    idempotencyKey,
   });
 
   switch (actionStatus) {

@@ -1,4 +1,6 @@
+import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -414,6 +416,134 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it("replays the existing action when the same idempotency key is resent", async () => {
+    const { auth, token, workspace, invocation, view } = await setupWithView();
+
+    const body = {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+      idempotencyKey: "retry-1",
+    };
+
+    const first = await callSandboxTool(workspace, token, body);
+    expect(first.status).toBe(202);
+    const firstBody = await first.json();
+
+    const second = await callSandboxTool(workspace, token, body);
+    expect(second.status).toBe(202);
+    const secondBody = await second.json();
+
+    expect(secondBody).toEqual({
+      status: "pending",
+      actionId: firstBody.actionId,
+    });
+    const actions = await SandboxFunctionMCPActionResource.listByInvocation(
+      auth,
+      invocation
+    );
+    expect(actions).toHaveLength(1);
+    expect(actions[0]?.idempotencyKey).toBe("retry-1");
+    // The replay must not re-execute the tool.
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalledTimes(
+      1
+    );
+  });
+
+  it("creates one action per distinct idempotency key", async () => {
+    const { auth, token, workspace, invocation, view } = await setupWithView();
+
+    const first = await callSandboxTool(workspace, token, {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+      idempotencyKey: "key-a",
+    });
+    const second = await callSandboxTool(workspace, token, {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+      idempotencyKey: "key-b",
+    });
+
+    const firstBody = await first.json();
+    const secondBody = await second.json();
+    expect(secondBody.actionId).not.toBe(firstBody.actionId);
+    const actions = await SandboxFunctionMCPActionResource.listByInvocation(
+      auth,
+      invocation
+    );
+    expect(actions).toHaveLength(2);
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalledTimes(
+      2
+    );
+  });
+
+  it("scopes idempotency keys to the invocation", async () => {
+    const context = await setupWithView();
+
+    const secondInvocation = await SandboxFunctionInvocationResource.makeNew(
+      context.auth,
+      { sandboxFunction: context.sandboxFunction, input: undefined }
+    );
+    const secondToken = await generateSandboxFunctionInvocationToken(
+      context.auth,
+      {
+        sandbox: context.sandbox,
+        sandboxFunction: {
+          sId: context.sandboxFunction.sId,
+          space: { sId: context.podSpace.sId },
+        },
+        invocationId: secondInvocation.sId,
+        execId: `test-function-exec-2-${context.sandbox.sId}`,
+        noTools: false,
+      }
+    );
+
+    const body = {
+      serverViewId: context.view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+      idempotencyKey: "shared-key",
+    };
+
+    const first = await callSandboxTool(context.workspace, context.token, body);
+    expect(first.status).toBe(202);
+    const firstBody = await first.json();
+
+    const second = await callSandboxTool(context.workspace, secondToken, body);
+    expect(second.status).toBe(202);
+    const secondBody = await second.json();
+
+    // Same key, different invocation: no collision, each invocation gets its own action.
+    expect(secondBody.actionId).not.toBe(firstBody.actionId);
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalledTimes(
+      2
+    );
+  });
+
+  it("creates a new action per call when no idempotency key is sent", async () => {
+    const { auth, token, workspace, invocation, view } = await setupWithView();
+
+    const body = {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+    };
+
+    const first = await callSandboxTool(workspace, token, body);
+    const second = await callSandboxTool(workspace, token, body);
+
+    const firstBody = await first.json();
+    const secondBody = await second.json();
+    expect(secondBody.actionId).not.toBe(firstBody.actionId);
+    const actions = await SandboxFunctionMCPActionResource.listByInvocation(
+      auth,
+      invocation
+    );
+    expect(actions).toHaveLength(2);
   });
 
   it("reports a view outside the pod and global spaces as not found", async () => {

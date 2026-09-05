@@ -3696,6 +3696,9 @@ export const CallMCPToolRequestBodySchema = z.object({
   serverViewId: z.string(),
   toolName: z.string(),
   arguments: z.record(z.unknown()).optional(),
+  // Optional client-chosen key deduplicating replayed calls: a retried POST carrying the same key
+  // returns the already-created action instead of creating (and executing) a new one.
+  idempotencyKey: z.string().min(1).max(255).optional(),
 });
 
 export type CallMCPToolRequestBodyType = z.infer<
