@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { shadowAgentEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -119,6 +120,12 @@ export async function getAgentConfigurationContext(
   );
 
   if (editorsResult.isErr()) {
+    await shadowAgentEditors(
+      auth,
+      agentConfiguration,
+      [],
+      "getAgentConfigurationContext"
+    );
     if (requireEditorGroup) {
       return new Err({
         status_code: 400,
@@ -136,9 +143,12 @@ export async function getAgentConfigurationContext(
     });
   }
 
-  return new Ok({
+  const editorUsers = await shadowAgentEditors(
+    auth,
     agentConfiguration,
-    editorUsers: await editorsResult.value.getActiveMembers(auth),
-    skills,
-  });
+    await editorsResult.value.getActiveMembers(auth),
+    "getAgentConfigurationContext"
+  );
+
+  return new Ok({ agentConfiguration, editorUsers, skills });
 }

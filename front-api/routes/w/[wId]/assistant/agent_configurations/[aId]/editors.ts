@@ -2,6 +2,7 @@ import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import { shadowAgentEditors } from "@app/lib/api/assistant/editors";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -77,6 +78,7 @@ app.get(
       agent
     );
     if (editorGroupRes.isErr()) {
+      await shadowAgentEditors(auth, agent, [], "getAgentEditorsRoute");
       switch (editorGroupRes.error.code) {
         case "unauthorized":
           return apiError(ctx, {
@@ -117,7 +119,12 @@ app.get(
 
     const editorGroup = editorGroupRes.value;
     // Any workspace member can read the editors of an agent.
-    const members = await editorGroup.getActiveMembers(auth);
+    const members = await shadowAgentEditors(
+      auth,
+      agent,
+      await editorGroup.getActiveMembers(auth),
+      "getAgentEditorsRoute"
+    );
     const memberUsers = members.map((m) => m.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
@@ -165,6 +172,7 @@ app.patch(
       agent
     );
     if (editorGroupRes.isErr()) {
+      await shadowAgentEditors(auth, agent, [], "patchAgentEditorsRoute");
       switch (editorGroupRes.error.code) {
         case "unauthorized":
           return apiError(ctx, {
@@ -346,7 +354,12 @@ app.patch(
       }
     }
 
-    const updatedMembers = await editorGroup.getActiveMembers(auth);
+    const updatedMembers = await shadowAgentEditors(
+      auth,
+      agent,
+      await editorGroup.getActiveMembers(auth),
+      "patchAgentEditorsResponse"
+    );
     const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)

@@ -32,6 +32,39 @@ describe("AgentResource", () => {
     expect(resource.workspaceId).toBe(testContext.workspace.id);
   });
 
+  it("lists agent editors from grants individually and in batches", async () => {
+    const firstAgent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "First agent" }
+    );
+    const secondAgent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Second agent" }
+    );
+    const resources = await AgentResource.fetchByAgentConfigurations(
+      testContext.authenticator,
+      [firstAgent, secondAgent]
+    );
+
+    const firstEditors = await resources[0].listEditors(
+      testContext.authenticator
+    );
+    const editorsByAgentId = await AgentResource.batchListEditors(
+      testContext.authenticator,
+      resources
+    );
+
+    expect(firstEditors?.map((editor) => editor.id)).toEqual([
+      testContext.user.id,
+    ]);
+    expect(
+      editorsByAgentId.get(firstAgent.sId)?.map((editor) => editor.id)
+    ).toEqual([testContext.user.id]);
+    expect(
+      editorsByAgentId.get(secondAgent.sId)?.map((editor) => editor.id)
+    ).toEqual([testContext.user.id]);
+  });
+
   it("applies author, admin, and editor permissions to custom agents", async () => {
     const resource = AgentResource.fromAgentConfigurationModel({
       agentId: AGENT_MODEL_ID,
