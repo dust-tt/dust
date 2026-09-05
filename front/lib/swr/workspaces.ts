@@ -1,9 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
-  AnalyticsScopeFilter,
-  AwuUsageAnalyticsResponse,
-} from "@app/lib/api/analytics/awu_usage_analytics";
-import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
@@ -261,62 +257,6 @@ export function useWorkspaceProgrammaticCost({
     isProgrammaticCostLoading: !error && !data && !disabled,
     isProgrammaticCostError: error,
     isProgrammaticCostValidating: isValidating,
-  };
-}
-
-export function useAwuUsageFromAnalytics({
-  workspaceId,
-  groupBy,
-  groupByCount,
-  granularity,
-  days,
-  filter,
-  disabled,
-  urlPrefix,
-}: {
-  workspaceId: string;
-  groupBy?: "usage_type" | "agent" | "user" | "origin" | "api_key" | "model";
-  groupByCount?: number;
-  granularity?: "day" | "week" | "month";
-  days?: number;
-  filter?: AnalyticsScopeFilter;
-  disabled?: boolean;
-  urlPrefix?: string;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<AwuUsageAnalyticsResponse> = fetcher;
-
-  const queryParams = new URLSearchParams();
-  if (groupBy) {
-    queryParams.set("groupBy", groupBy);
-  }
-  if (groupByCount !== undefined) {
-    queryParams.set("groupByCount", groupByCount.toString());
-  }
-  if (granularity) {
-    queryParams.set("granularity", granularity);
-  }
-  if (days !== undefined) {
-    queryParams.set("days", days.toString());
-  }
-  if (filter && Object.keys(filter).length > 0) {
-    queryParams.set("filter", JSON.stringify(filter));
-  }
-  const queryString = queryParams.toString();
-  const prefix =
-    urlPrefix ?? `/api/w/${workspaceId}/analytics/awu-usage-analytics`;
-  const key = `${prefix}?${queryString}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    awuUsageData: data,
-    isAwuUsageLoading: !error && !data && !disabled,
-    isAwuUsageError: error,
-    isAwuUsageValidating: isValidating,
   };
 }
 
