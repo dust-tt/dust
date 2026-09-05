@@ -230,7 +230,7 @@ export const supportedOtherFileFormats = {
   "text/css": [".css"],
   "text/javascript": [".js", ".mjs", ".jsx"],
   "text/typescript": [".ts", ".tsx"],
-  "application/json": [".json"],
+  "application/json": [".json", ".har"],
   "application/xml": [".xml"],
   "application/x-sh": [".sh"],
   "text/x-sh": [".sh"],

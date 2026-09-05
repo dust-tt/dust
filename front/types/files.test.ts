@@ -253,6 +253,18 @@ describe("resolveFileContentType", () => {
       resolveFileContentType("application/octet-stream", "data.xlsx")
     ).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   });
+
+  it("normalizes .eml files reported as octet-stream to message/rfc822", () => {
+    expect(resolveFileContentType("application/octet-stream", "mail.eml")).toBe(
+      "message/rfc822"
+    );
+  });
+
+  it("normalizes .har files reported as octet-stream to application/json", () => {
+    expect(
+      resolveFileContentType("application/octet-stream", "capture.har")
+    ).toBe("application/json");
+  });
 });
 
 describe("sandboxFunctionContentType", () => {
