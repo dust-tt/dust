@@ -84,8 +84,8 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
     .transform((limit) => limit ?? DEFAULT_CONSUMPTION_TOP_LIMIT),
   offset: z.number().int().nonnegative().default(0),
   search: z.string().trim().optional(),
-  // Always ranks by gross credits; see the comment on
-  // CONSUMPTION_TOP_SORT_ORDER for why other metrics aren't supported yet.
+  // Defaults to gross credit ranking; the group schema also supports
+  // ranking by credits per active member.
   sortOrder: z.enum(CONSUMPTION_TOP_SORT_ORDER).optional().default("desc"),
 });
 

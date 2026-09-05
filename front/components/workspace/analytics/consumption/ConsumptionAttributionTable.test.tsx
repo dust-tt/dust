@@ -283,7 +283,7 @@ describe("ConsumptionAttributionTable", () => {
     expect(screen.getByRole("tab", { name: "Groups" })).toBeInTheDocument();
   });
 
-  it("shows active members and per-member usage for groups", async () => {
+  it("shows active members and sorts groups by per-member usage", async () => {
     mockUseConsumptionTop.mockReturnValue({
       rows: [
         {

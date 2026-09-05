@@ -643,10 +643,34 @@ describe("consumption top rankings", () => {
   });
 
   it.each([
-    { sortOrder: "desc" as const, expectedGroupIds: ["group-b", "group-a"] },
-    { sortOrder: "asc" as const, expectedGroupIds: ["group-b", "group-c"] },
-  ])("sorts and paginates groups by workspace-average usage $sortOrder on the server", async ({
+    {
+      sortOrder: "desc" as const,
+      offset: 1,
+      limit: 3,
+      expectedGroupIds: ["group-b", "group-e", "group-a"],
+    },
+    {
+      sortOrder: "asc" as const,
+      offset: 1,
+      limit: 3,
+      expectedGroupIds: ["group-b", "group-e", "group-c"],
+    },
+    {
+      sortOrder: "desc" as const,
+      offset: 0,
+      limit: 5,
+      expectedGroupIds: ["group-c", "group-b", "group-e", "group-a", "group-d"],
+    },
+    {
+      sortOrder: "asc" as const,
+      offset: 0,
+      limit: 5,
+      expectedGroupIds: ["group-a", "group-b", "group-e", "group-c", "group-d"],
+    },
+  ])("sorts groups by workspace-average usage $sortOrder with offset $offset", async ({
     sortOrder,
+    offset,
+    limit,
     expectedGroupIds,
   }) => {
     const { auth } = await setup();
@@ -678,6 +702,13 @@ describe("consumption top rankings", () => {
                       messages: { value: 1 },
                       active_members: { value: 0 },
                     },
+                    {
+                      key: { group: "group-e" },
+                      doc_count: 3,
+                      credit_micro: { value: 90_000_000 },
+                      messages: { value: 3 },
+                      active_members: { value: 3 },
+                    },
                   ]
                 : [
                     {
@@ -697,8 +728,12 @@ describe("consumption top rankings", () => {
                   ],
               ...(isSecondPage ? {} : { after_key: { group: "group-b" } }),
             },
-            total_credit_micro: { value: 200_000_000 },
-            active_members: { value: 12 },
+            ...(!isSecondPage
+              ? {
+                  total_credit_micro: { value: 200_000_000 },
+                  active_members: { value: 12 },
+                }
+              : {}),
           });
         }
 
@@ -720,8 +755,8 @@ describe("consumption top rankings", () => {
 
     const result = await fetchConsumptionTopGroups(auth, {
       period: PERIOD,
-      limit: 2,
-      offset: 1,
+      limit,
+      offset,
       sortBy: "workspace_average",
       sortOrder,
     });
@@ -735,8 +770,11 @@ describe("consumption top rankings", () => {
     );
     expect(result.value.totalCredits).toBe(200);
     expect(result.value.totalActiveMembers).toBe(12);
-    expect(result.value.totalCount).toBe(4);
-    expect(result.value.hasMore).toBe(true);
+    expect(result.value.totalCount).toBe(5);
+    expect(result.value.hasMore).toBe(offset + limit < 5);
+    expect(result.value.groups.map((group) => group.previousCredits)).toEqual(
+      expectedGroupIds.map(() => 1)
+    );
 
     const compositeCalls = vi
       .mocked(searchConsumptionAnalytics)
@@ -753,6 +791,12 @@ describe("consumption top rankings", () => {
     expect(
       compositeCalls[1]?.[1]?.aggregations?.by_group?.composite?.after
     ).toEqual({ group: "group-b" });
+    expect(
+      compositeCalls[1]?.[1]?.aggregations?.total_credit_micro
+    ).toBeUndefined();
+    expect(
+      compositeCalls[1]?.[1]?.aggregations?.active_members
+    ).toBeUndefined();
   });
 
   it("ranks reasoning efforts per message for the selected model", async () => {

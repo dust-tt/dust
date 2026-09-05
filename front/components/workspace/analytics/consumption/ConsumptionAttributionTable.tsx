@@ -444,16 +444,11 @@ function buildColumns({
             sortDescFirst: true,
             sortUndefined: "last",
             meta: { sizeRatio: 22, headerAlign: "right" },
-            cell: (info) => {
-              const usagePercent = usageDifferenceFromAveragePercent({
-                credits: info.row.original.credits,
-                activeMembers: info.row.original.activeMembers,
-                totalCredits,
-                totalActiveMembers,
-              });
-
-              return <UsageVsAverageCell percentage={usagePercent} />;
-            },
+            cell: (info) => (
+              <UsageVsAverageCell
+                percentage={info.getValue<number | undefined>() ?? null}
+              />
+            ),
           },
         ] satisfies ColumnDef<AttributionRowData>[])
       : ([

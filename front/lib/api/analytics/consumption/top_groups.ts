@@ -71,7 +71,7 @@ export async function fetchConsumptionTopGroups(
     offset,
     search,
     filter,
-    sortBy,
+    rankBy: sortBy,
     sortOrder,
   });
   if (result.isErr()) {

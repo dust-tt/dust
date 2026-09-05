@@ -353,13 +353,18 @@ function buildConsumptionTopWorkspaceAverageAggregations({
 
   return {
     ...rankingRootAggregations,
-    total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
-    [ACTIVE_MEMBERS_AGG]: {
-      cardinality: {
-        field: CONSUMPTION_DIMENSION_FIELDS.user,
-        precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
-      },
-    },
+    // Workspace totals are independent of the composite cursor.
+    ...(!afterKey
+      ? {
+          total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+          [ACTIVE_MEMBERS_AGG]: {
+            cardinality: {
+              field: CONSUMPTION_DIMENSION_FIELDS.user,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        }
+      : {}),
   };
 }
 
@@ -389,18 +394,15 @@ function compareGroupsByWorkspaceAverage(
   return sortOrder === "asc" ? comparison : -comparison;
 }
 
-async function fetchConsumptionGroupsRankedByWorkspaceAverage(
-  auth: Authenticator,
-  {
-    query,
-    searchFilter,
-    sortOrder,
-  }: {
-    query: estypes.QueryDslQueryContainer;
-    searchFilter: estypes.QueryDslQueryContainer | null;
-    sortOrder: ConsumptionTopSortOrder;
-  }
-): Promise<Result<CurrentConsumptionTopRanking, ElasticsearchError>> {
+async function fetchConsumptionGroupsRankedByWorkspaceAverage({
+  query,
+  searchFilter,
+  sortOrder,
+}: {
+  query: estypes.QueryDslQueryContainer;
+  searchFilter: estypes.QueryDslQueryContainer | null;
+  sortOrder: ConsumptionTopSortOrder;
+}): Promise<Result<CurrentConsumptionTopRanking, ElasticsearchError>> {
   const groups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
   let afterKey: CompositeGroupKey | undefined;
   let buckets: CompositeGroupBucket[];
@@ -435,12 +437,14 @@ async function fetchConsumptionGroupsRankedByWorkspaceAverage(
         activeMembers: Math.round(bucket[ACTIVE_MEMBERS_AGG]?.value ?? 0),
       }))
     );
-    totalCredits = microCreditsToCredits(
-      result.value.aggregations?.total_credit_micro?.value ?? 0
-    );
-    totalActiveMembers = Math.round(
-      result.value.aggregations?.[ACTIVE_MEMBERS_AGG]?.value ?? 0
-    );
+    if (!afterKey) {
+      totalCredits = microCreditsToCredits(
+        result.value.aggregations?.total_credit_micro?.value ?? 0
+      );
+      totalActiveMembers = Math.round(
+        result.value.aggregations?.[ACTIVE_MEMBERS_AGG]?.value ?? 0
+      );
+    }
     afterKey = ranking?.by_group?.after_key;
   } while (afterKey !== undefined && buckets.length > 0);
 
@@ -593,7 +597,6 @@ export async function fetchConsumptionTopGroups(
     offset = 0,
     search,
     filter,
-    sortBy = "credits",
     sortOrder = "desc",
     rankBy = "credits",
     includePreviousCredits = true,
@@ -605,9 +608,8 @@ export async function fetchConsumptionTopGroups(
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
-    sortBy?: ConsumptionTopGroupSortBy;
     sortOrder?: ConsumptionTopSortOrder;
-    rankBy?: ConsumptionTopRankBy;
+    rankBy?: ConsumptionTopRankBy | ConsumptionTopGroupSortBy;
     includePreviousCredits?: boolean;
     includeTotalCount?: boolean;
   }
@@ -624,17 +626,18 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
 
-  if (sortBy === "workspace_average") {
-    if (dimension !== "group" || rankBy !== "credits") {
+  if (rankBy === "workspace_average") {
+    if (dimension !== "group") {
       throw new Error(
         "Workspace-average consumption sorting is only supported for " +
           "group credit rankings."
       );
     }
-    const rankingResult = await fetchConsumptionGroupsRankedByWorkspaceAverage(
-      auth,
-      { query, searchFilter, sortOrder }
-    );
+    const rankingResult = await fetchConsumptionGroupsRankedByWorkspaceAverage({
+      query,
+      searchFilter,
+      sortOrder,
+    });
     if (rankingResult.isErr()) {
       return rankingResult;
     }
