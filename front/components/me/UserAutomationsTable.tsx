@@ -42,6 +42,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  EmptyCTA,
   Pagination,
   SearchInput,
   SliderToggle,
@@ -54,6 +55,13 @@ import { useCallback, useMemo, useState } from "react";
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const TRIGGERS_PAGE_SIZE = 10;
+
+// TODO(2026-08-25 AUTOMATIONS): link to be provided.
+const SETUP_TRIGGER_URL = "#";
+const TRIGGERS_DOC_URL =
+  "https://docs.dust.tt/docs/user-documentation/agents/triggers/schedules";
+const WAKEUPS_DOC_URL =
+  "https://docs.dust.tt/docs/user-documentation/agents/tools/wake-ups";
 
 interface TriggerRowData extends BaseTriggerRowData, PoolRowFields {
   isStatusPending: boolean;
@@ -380,30 +388,44 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
       ? Math.min(pagination.pageSize, totalCount - firstRowIndex)
       : pagination.pageSize;
 
+  const hasActiveQuery =
+    debouncedValue.trim().length > 0 || Object.keys(triggersFilter).length > 0;
+  // No automations at all (as opposed to a search/filter matching nothing):
+  // the empty state replaces the search and filter controls.
+  const showEmptyState =
+    !isTriggersError &&
+    !isTriggersLoading &&
+    rows.length === 0 &&
+    !hasActiveQuery;
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <SearchInput
-          name="user-automations-search"
-          placeholder="Search automations"
-          value={inputValue}
-          onChange={setValue}
-          className="flex-1"
-        />
-        <AutomationsFilterPanel
-          owner={owner}
-          period={period}
-          filter={filter}
-          onFilterChange={setFilter}
-          categories={USER_AUTOMATIONS_FILTER_CATEGORIES}
-          agentOptions={agents}
-        />
-      </div>
-      <AutomationsFilterSummary
-        filter={filter}
-        onFilterChange={setFilter}
-        categories={USER_AUTOMATIONS_FILTER_CATEGORIES}
-      />
+    <div className="flex flex-1 flex-col gap-2">
+      {!showEmptyState && (
+        <>
+          <div className="flex items-center gap-2">
+            <SearchInput
+              name="user-automations-search"
+              placeholder="Search automations"
+              value={inputValue}
+              onChange={setValue}
+              className="flex-1"
+            />
+            <AutomationsFilterPanel
+              owner={owner}
+              period={period}
+              filter={filter}
+              onFilterChange={setFilter}
+              categories={USER_AUTOMATIONS_FILTER_CATEGORIES}
+              agentOptions={agents}
+            />
+          </div>
+          <AutomationsFilterSummary
+            filter={filter}
+            onFilterChange={setFilter}
+            categories={USER_AUTOMATIONS_FILTER_CATEGORIES}
+          />
+        </>
+      )}
 
       {!isConsumptionAvailable && (
         <div className="text-sm text-muted-foreground">
@@ -416,11 +438,40 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
           Failed to load your automations.
         </div>
       ) : !isTriggersLoading && rows.length === 0 ? (
-        <div className="py-10 text-center text-sm text-muted-foreground">
-          {debouncedValue.trim() || Object.keys(triggersFilter).length > 0
-            ? "No automation matches your search criteria."
-            : "You haven't created any automation yet."}
-        </div>
+        hasActiveQuery ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            No automation matches your search criteria.
+          </div>
+        ) : (
+          <EmptyCTA
+            className="flex-1"
+            title="Create your first automation"
+            message="Triggers start automations when something happens. Agents can also start them with wakeups."
+            action={
+              <div className="mt-4 flex flex-col items-center gap-3">
+                <Button
+                  label="Set up a trigger"
+                  variant="highlight"
+                  href={SETUP_TRIGGER_URL}
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    label="Learn about triggers"
+                    variant="ghost-secondary"
+                    href={TRIGGERS_DOC_URL}
+                    target="_blank"
+                  />
+                  <Button
+                    label="Learn about wakeups"
+                    variant="ghost-secondary"
+                    href={WAKEUPS_DOC_URL}
+                    target="_blank"
+                  />
+                </div>
+              </div>
+            }
+          />
+        )
       ) : (
         <div aria-busy={isTriggersLoading || undefined}>
           <div className="overflow-x-auto">

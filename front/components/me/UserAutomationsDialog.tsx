@@ -2,7 +2,6 @@ import { UserAutomationsTable } from "@app/components/me/UserAutomationsTable";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
-  DialogContainer,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -27,9 +26,10 @@ export function UserAutomationsDialog({
         <DialogHeader>
           <DialogTitle>Automations</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
+        {/* Not DialogContainer: the empty state must stretch to the dialog height, which doesn't chain through its ScrollArea. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4">
           <UserAutomationsTable owner={owner} />
-        </DialogContainer>
+        </div>
       </DialogContent>
     </Dialog>
   );
