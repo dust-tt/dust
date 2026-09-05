@@ -14,7 +14,10 @@ import {
   getProcessedContentType,
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
-import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  withFramePublishLock,
+  withFrameSourceLock,
+} from "@app/lib/api/frames/operation_lock";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
@@ -809,6 +812,14 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   private async deleteFrameV2(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    return withFrameSourceLock(this.sId, () =>
+      this.deleteFrameV2WithPublishLock(auth)
+    );
+  }
+
+  private async deleteFrameV2WithPublishLock(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
