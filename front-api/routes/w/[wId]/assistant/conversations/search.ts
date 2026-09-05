@@ -1,12 +1,50 @@
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SearchConversationsResponseBody } from "@app/types/api/assistant/conversation/search";
+import type { GetConversationsResponseBody } from "@app/types/api/assistant/conversation/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 // Mounted at /api/w/:wId/assistant/conversations/search.
 const app = workspaceApp();
+
+const SearchBodySchema = z.object({
+  query: z.string().trim().min(1).max(1000),
+  limit: z.number().int().min(1).max(100).default(20),
+  lastValue: z.string().nullish(),
+});
+
+// Mobile clients send search text in the body so it does not appear in URLs.
+// Keep GET available for existing clients. POST returns the standard list item
+// representation, which omits internal model identifiers.
+/** @ignoreswagger */
+app.post(
+  "/",
+  validate("json", SearchBodySchema),
+  async (ctx): HandlerResult<GetConversationsResponseBody> => {
+    const auth = ctx.get("auth");
+    const { query, limit, lastValue } = ctx.req.valid("json");
+    const result = await ConversationResource.searchByTitlePaginated(auth, {
+      query,
+      pagination: {
+        limit,
+        lastValue: lastValue ?? undefined,
+        orderDirection: "desc",
+      },
+    });
+
+    return ctx.json({
+      conversations: result.conversations.map((conversation) =>
+        conversation.toListItem()
+      ),
+      hasMore: result.hasMore,
+      lastValue: result.lastValue,
+    });
+  }
+);
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SearchConversationsResponseBody> => {
