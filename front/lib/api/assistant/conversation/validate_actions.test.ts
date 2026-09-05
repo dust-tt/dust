@@ -71,7 +71,7 @@ import { resolveAndCreateUserMentions } from "@app/tests/utils/mentions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
+import type { MentionType } from "@app/types/assistant/mentions";
 import { isRichUserMention } from "@app/types/assistant/mentions";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -663,12 +663,6 @@ describe("dismissMention", () => {
           name: "Test Agent",
         }
       );
-
-      const _agentMentions: MentionType[] = [
-        {
-          configurationId: agentConfig.sId,
-        } satisfies AgentMention,
-      ];
 
       const modelResolution = await resolveModelForMentionedAgent(
         refreshedAuth,
