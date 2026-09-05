@@ -1,6 +1,6 @@
 import {
   File02,
-  FileCode01,
+  Code01,
   Icon,
   Image01,
   NotionLogo,
@@ -43,7 +43,7 @@ export function fileTypeToIcon(fileType: FileInsertType): IconComponent {
     case "notion":
       return NotionLogo;
     case "code":
-      return FileCode01;
+      return Code01;
     case "doc":
     case "docx":
     case "pdf":

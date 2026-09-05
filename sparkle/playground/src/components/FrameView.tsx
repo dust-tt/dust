@@ -20,7 +20,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SpaceOpen,
+  SpaceClosed,
   Terminal,
   TextArea,
   XClose,
@@ -119,7 +119,7 @@ export function FrameView() {
                     {!isAddedToProject && (
                       <DropdownMenuItem
                         label="Add to project"
-                        icon={SpaceOpen}
+                        icon={SpaceClosed}
                         onClick={handleAddToProject}
                       />
                     )}

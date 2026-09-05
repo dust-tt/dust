@@ -59,7 +59,7 @@ import {
   SlackLogo,
   Star01,
   Trash01,
-  User03,
+  User01,
   Users01,
   UserSquare,
   XClose,
@@ -1939,7 +1939,7 @@ function Pods() {
         <DropdownMenuContent>
           <DropdownMenuItem
             label="Profile"
-            icon={User03}
+            icon={User01}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

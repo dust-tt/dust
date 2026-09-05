@@ -8,7 +8,7 @@ import {
   NavigationList,
   NavigationListItem,
   ShapesPlus,
-  Stars01,
+  Stars02,
 } from "@sparkle/index_with_tw_base";
 
 const meta = {
@@ -134,7 +134,7 @@ export const Targets: Story = {
           <Button
             variant="outline"
             size="sm"
-            icon={Stars01}
+            icon={Stars02}
             label="Try it"
             isRounded
           />
@@ -149,7 +149,7 @@ export const Targets: Story = {
           <NavigationList>
             <NavigationListItem label="Conversations" />
             <DiscoveryGlint className="flex w-full">
-              <NavigationListItem label="Skills" icon={Stars01} />
+              <NavigationListItem label="Skills" icon={Stars02} />
             </DiscoveryGlint>
             <NavigationListItem label="Spaces" />
           </NavigationList>

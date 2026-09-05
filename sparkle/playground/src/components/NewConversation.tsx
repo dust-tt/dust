@@ -5,22 +5,21 @@ import {
   Button,
   Card,
   Chip,
-  Code02,
+  Code01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  File01,
-  FilterLines,
+  File02,
+  FilterFunnel01,
   Globe01,
-  GraduationHat01,
   Image01,
-  Laptop01,
-  LifeBuoy01,
+  Monitor01,
+  InfoCircle,
   MessageChatSquare,
-  Phone01,
+  MessageCircle01,
   Plus,
   SearchInput,
   Settings01,
@@ -28,8 +27,8 @@ import {
   Table,
   Terminal,
   Tooltip,
-  Translate01,
-  User03,
+  Type01,
+  User01,
   Users01,
 } from "@dust-tt/sparkle";
 import {
@@ -137,7 +136,7 @@ const mockSkills: Skill[] = [
     id: "skill-summarize",
     name: "Summarize",
     description: "Condense long documents into key takeaways.",
-    icon: File01,
+    icon: File02,
   },
   {
     id: "skill-image",
@@ -161,7 +160,7 @@ const mockSkills: Skill[] = [
     id: "skill-translate",
     name: "Translate",
     description: "Translate text across languages.",
-    icon: Translate01,
+    icon: Type01,
   },
 ];
 
@@ -261,7 +260,7 @@ const ABOUT_DUST_SECTIONS: AboutDustSection[] = [
         description:
           "Quick access from anywhere on your machine. Works with your local files and apps.",
         action: "Download for macOS",
-        icon: Laptop01,
+        icon: Monitor01,
       },
       {
         id: "mobile",
@@ -269,7 +268,7 @@ const ABOUT_DUST_SECTIONS: AboutDustSection[] = [
         description:
           "Take Dust anywhere. Start conversations and pick up tasks on the go.",
         action: "Get the app",
-        icon: Phone01,
+        icon: MessageCircle01,
       },
       {
         id: "extension",
@@ -343,7 +342,7 @@ const ABOUT_DUST_SECTIONS: AboutDustSection[] = [
         description:
           "Call agents and run workflows programmatically from your stack.",
         action: "Read the docs",
-        icon: Code02,
+        icon: Code01,
       },
       {
         id: "docs",
@@ -372,14 +371,14 @@ const ABOUT_DUST_SECTIONS: AboutDustSection[] = [
         name: "Help center",
         description: "Setup guides and troubleshooting.",
         action: "Open",
-        icon: LifeBuoy01,
+        icon: InfoCircle,
       },
       {
         id: "academy",
         name: "Dust Academy",
         description: "Courses to master agents and skills.",
         action: "Open",
-        icon: GraduationHat01,
+        icon: BookOpen01,
       },
       {
         id: "community",
@@ -466,7 +465,7 @@ export function NewConversationActionBar({
                 {
                   value: "browse" as WelcomeAgentTab,
                   pinned: "end" as const,
-                  icon: FilterLines,
+                  icon: FilterFunnel01,
                   tooltip: "Type and order",
                   dropdownSections: [
                     {
@@ -763,7 +762,7 @@ export function NewConversation({
                   <Chip
                     size="xs"
                     color="warning"
-                    icon={User03}
+                    icon={User01}
                     label={String(usageStats.users)}
                   />
                 </span>

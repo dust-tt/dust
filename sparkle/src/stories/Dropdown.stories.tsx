@@ -39,14 +39,14 @@ import {
 
 import {
   ActionCommand1Icon,
-  ArrowCircleBrokenDown,
+  ArrowDown,
   Upload01,
   Attachment01,
   Avatar,
   Button,
   MessagePlusCircle,
   Chip,
-  DownloadCloud01,
+  Download01,
   Settings01,
   File02,
   DoubleIcon,
@@ -156,7 +156,7 @@ export const GroupedWithSubmenus: Story = {
                 <Button size="icon" icon={Upload01} variant="ghost" />
               }
             />
-            <DropdownMenuItem icon={ArrowCircleBrokenDown} label="Billing" />
+            <DropdownMenuItem icon={ArrowDown} label="Billing" />
             <DropdownMenuItem icon={Settings01} label="Settings" />
             <DropdownMenuItem icon={User01} label="Keyboard shortcuts" />
           </DropdownMenuGroup>
@@ -180,7 +180,7 @@ export const GroupedWithSubmenus: Story = {
           <DropdownMenuSeparator />
           <DropdownMenuItem icon={GithubLogo} label="GitHub" />
           <DropdownMenuItem icon={User01} label="Support" />
-          <DropdownMenuItem icon={DownloadCloud01} label="API" disabled />
+          <DropdownMenuItem icon={Download01} label="API" disabled />
           <DropdownMenuSeparator />
           <DropdownMenuItem
             icon={LogOut01}
@@ -295,7 +295,7 @@ export const WithShortcuts: Story = {
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+p" />}
           />
           <DropdownMenuItem
-            icon={DownloadCloud01}
+            icon={Download01}
             label="Download"
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+d" />}
           />
@@ -678,7 +678,7 @@ export const WithStaticItems: Story = {
             onClick={fn()}
           />
           <DropdownMenuItem
-            icon={DownloadCloud01}
+            icon={Download01}
             label="Download Report"
             onClick={fn()}
           />
@@ -918,7 +918,7 @@ export const WithTooltips: Story = {
             media={
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                  <DownloadCloud01 className="h-5 w-5 text-green-600" />
+                  <Download01 className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-green-800">
@@ -931,7 +931,7 @@ export const WithTooltips: Story = {
             side="right"
             sideOffset={8}
           >
-            <DropdownMenuItem icon={DownloadCloud01} label="Export Data" />
+            <DropdownMenuItem icon={Download01} label="Export Data" />
           </DropdownTooltipTrigger>
           <DropdownTooltipTrigger
             description="This feature is disabled because you need to configure settings first."

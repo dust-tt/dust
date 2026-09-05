@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  DownloadCloud01,
+  Download01,
   Folder,
   Icon,
   Label,
@@ -83,7 +83,7 @@ export const WithIcons: Story = {
         value="downloads"
         id="downloads"
         label="Downloads"
-        icon={DownloadCloud01}
+        icon={Download01}
       />
       <RadioGroupItem
         value="private"
