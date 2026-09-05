@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getAuthRedirectBaseUrl: () => "https://dust.tt",
+    getOAuthRedirectBaseUrl: () => "https://dust.tt",
     getDevOAuthRedirectBaseUrl: () => undefined,
     getOAuthShopifyClientId: () => "shopify-client-id",
     getOAuthShopifyClientSecret: () => "shopify-client-secret",
