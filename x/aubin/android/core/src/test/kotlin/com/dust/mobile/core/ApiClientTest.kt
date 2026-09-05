@@ -66,6 +66,38 @@ class ApiClientTest {
     }
 
     @Test
+    fun `conversation search sends private text in a body and preserves pagination`() = runTest {
+        val engine = FakeHttpEngine(
+            HttpResponse(
+                statusCode = 200,
+                body = """{"conversations":[],"hasMore":true,"lastValue":"next"}""".encodeToByteArray(),
+            ),
+        )
+        val repository = ConversationRepository(ApiClient(AppConfig.production(), engine))
+        val provider = TokenProvider(
+            accessToken = "token",
+            refreshToken = "refresh",
+            authApi = object : AuthApi {
+                override suspend fun refreshTokens(refreshToken: String): AuthResponse =
+                    authResponse(accessToken = "new", refreshToken = "new-refresh")
+            },
+            tokenStore = InMemoryTokenStore(),
+        )
+
+        val response = repository.searchConversations("w1", "Customer & roadmap", provider)
+
+        val request = engine.requests.single()
+        assertEquals(HttpMethod.POST, request.method)
+        assertEquals("https://dust.tt/api/w/w1/assistant/conversations/search", request.url)
+        assertEquals(
+            """{"query":"Customer & roadmap","limit":20,"lastValue":null}""",
+            request.body?.decodeToString(),
+        )
+        assertEquals(true, response.hasMore)
+        assertEquals("next", response.lastValue)
+    }
+
+    @Test
     fun `create conversation dispatches authenticated post payload`() = runTest {
         val engine = FakeHttpEngine(
             HttpResponse(

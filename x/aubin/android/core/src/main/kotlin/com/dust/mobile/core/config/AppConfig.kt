@@ -41,6 +41,9 @@ object Endpoints {
     fun conversations(workspaceId: String): String =
         "/api/w/$workspaceId/assistant/conversations"
 
+    fun searchConversations(workspaceId: String): String =
+        "/api/w/$workspaceId/assistant/conversations/search"
+
     fun conversation(workspaceId: String, conversationId: String): String =
         "/api/w/$workspaceId/assistant/conversations/$conversationId"
 

@@ -10,6 +10,7 @@ import com.dust.mobile.core.model.Conversation
 import com.dust.mobile.core.model.ConversationMessage
 import com.dust.mobile.core.model.ConversationMessagesResponse
 import com.dust.mobile.core.model.ConversationsResponse
+import com.dust.mobile.core.model.SearchConversationsRequest
 import com.dust.mobile.core.model.CreateConversationRequest
 import com.dust.mobile.core.model.PostMessageRequest
 import com.dust.mobile.core.model.PostMessageResponse
@@ -23,6 +24,17 @@ import kotlinx.serialization.Serializable
 class ConversationRepository(
     private val apiClient: ApiClient,
 ) {
+    suspend fun searchConversations(
+        workspaceId: String,
+        query: String,
+        tokenProvider: TokenProvider,
+        lastValue: String? = null,
+    ): ConversationsResponse = apiClient.authenticatedPost(
+        endpoint = Endpoints.searchConversations(workspaceId),
+        body = SearchConversationsRequest(query = query, lastValue = lastValue),
+        tokenProvider = tokenProvider,
+    )
+
     suspend fun fetchConversations(
         workspaceId: String,
         tokenProvider: TokenProvider,

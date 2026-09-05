@@ -7,10 +7,12 @@ import kotlinx.coroutines.coroutineScope
 data class ConversationListData(
     val conversations: List<Conversation>,
     val pods: List<Space>,
+    val hasMore: Boolean = false,
+    val lastValue: String? = null,
 )
 
 suspend fun loadConversationListData(
-    fetchConversations: suspend () -> List<Conversation>,
+    fetchConversations: suspend () -> ConversationsResponse,
     fetchPods: suspend () -> List<Space>,
 ): ConversationListData = coroutineScope {
     val conversations = async { fetchConversations() }
@@ -24,8 +26,11 @@ suspend fun loadConversationListData(
         }
     }
 
+    val page = conversations.await()
     ConversationListData(
-        conversations = conversations.await(),
+        conversations = page.conversations,
         pods = pods.await(),
+        hasMore = page.hasMore,
+        lastValue = page.lastValue,
     )
 }

@@ -1,6 +1,7 @@
 package com.dust.mobile.core
 
 import com.dust.mobile.core.model.Conversation
+import com.dust.mobile.core.model.ConversationsResponse
 import com.dust.mobile.core.model.Space
 import com.dust.mobile.core.model.loadConversationListData
 import kotlinx.coroutines.test.runTest
@@ -12,12 +13,14 @@ class ConversationListRefreshTest {
     @Test
     fun `pod failures do not block conversation refresh`() = runTest {
         val data = loadConversationListData(
-            fetchConversations = { listOf(conversation("c1")) },
+            fetchConversations = { ConversationsResponse(listOf(conversation("c1")), hasMore = true, lastValue = "2") },
             fetchPods = { error("pods failed") },
         )
 
         assertEquals(listOf(conversation("c1")), data.conversations)
         assertTrue(data.pods.isEmpty())
+        assertTrue(data.hasMore)
+        assertEquals("2", data.lastValue)
     }
 
     @Test

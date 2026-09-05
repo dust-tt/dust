@@ -10,6 +10,7 @@ import com.dust.mobile.core.model.filteredByTitleSearch
 data class ConversationListState(
     val isLoading: Boolean = true,
     val error: String? = null,
+    val actionError: String? = null,
     val dustUser: DustUser? = null,
     val workspace: Workspace? = null,
     val workspaces: List<Workspace> = emptyList(),
@@ -19,6 +20,12 @@ data class ConversationListState(
     val searchText: String = "",
     val systemSearchEnabled: Boolean = false,
     val isRefreshing: Boolean = false,
+    val hasMore: Boolean = false,
+    val lastValue: String? = null,
+    val hasLoadedMore: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val loadMoreError: String? = null,
+    val search: ConversationSearchState = ConversationSearchState(),
 ) {
     val bodyState: ConversationListBodyState
         get() = when {
@@ -35,6 +42,10 @@ data class ConversationListState(
 
     val groupedConversations: List<ConversationGroup>
         get() {
+            if (searchText.isNotBlank()) {
+                val matches = search.results ?: conversations.filteredByTitleSearch(searchText.trim())
+                return if (matches.isEmpty()) emptyList() else listOf(ConversationGroup("Search results", matches))
+            }
             val filtered = conversations.filteredByTitleSearch(searchText)
             val focus = filtered.filter { it.unread || it.actionRequired || it.hasError }
             val focusIds = focus.map { it.sId }.toSet()
@@ -55,18 +66,27 @@ enum class ConversationListBodyState {
 internal fun ConversationListState.withRefreshDataForWorkspace(
     workspaceId: String,
     data: ConversationListData,
-): ConversationListState =
-    if (workspace?.sId == workspaceId) {
-        copy(
-            isLoading = false,
-            isRefreshing = false,
-            error = null,
-            conversations = data.conversations,
-            pods = data.pods,
-        )
+): ConversationListState {
+    if (workspace?.sId != workspaceId) return this
+    val oldestRefreshedMs = data.conversations.minOfOrNull { it.effectiveEpochMs }
+    val older = if (hasLoadedMore && data.hasMore && oldestRefreshedMs != null) {
+        conversations.filter { it.effectiveEpochMs < oldestRefreshedMs }
     } else {
-        this
+        emptyList()
     }
+    return copy(
+        isLoading = false,
+        isRefreshing = false,
+        error = null,
+        conversations = (data.conversations + older).distinctBy { it.sId },
+        pods = data.pods,
+        hasMore = if (older.isEmpty()) data.hasMore else hasMore,
+        lastValue = if (older.isEmpty()) data.lastValue else lastValue,
+        hasLoadedMore = older.isNotEmpty(),
+        isLoadingMore = false,
+        loadMoreError = null,
+    )
+}
 
 internal fun ConversationListState.withRefreshErrorForWorkspace(
     workspaceId: String,
@@ -97,7 +117,14 @@ internal fun ConversationListState.withWorkspaceSelection(
         workspace = workspace,
         conversations = data?.conversations.orEmpty(),
         pods = data?.pods.orEmpty(),
+        actionError = null,
         searchText = "",
+        search = ConversationSearchState(),
+        hasMore = data?.hasMore ?: false,
+        lastValue = data?.lastValue,
+        hasLoadedMore = false,
+        isLoadingMore = false,
+        loadMoreError = null,
         isLoading = data == null,
         isRefreshing = false,
         error = null,
@@ -119,4 +146,21 @@ internal fun ConversationListState.withWorkspaceData(
         conversations = data?.conversations.orEmpty(),
         pods = data?.pods.orEmpty(),
         systemSearchEnabled = systemSearchEnabled,
+        actionError = null,
+        searchText = "",
+        search = ConversationSearchState(),
+        hasMore = data?.hasMore ?: false,
+        lastValue = data?.lastValue,
+        hasLoadedMore = false,
+        isLoadingMore = false,
+        loadMoreError = null,
     )
+
+data class ConversationSearchState(
+    val retryLoadMore: Boolean = false,
+    val results: List<Conversation>? = null,
+    val isLoading: Boolean = false,
+    val hasMore: Boolean = false,
+    val lastValue: String? = null,
+    val error: String? = null,
+)

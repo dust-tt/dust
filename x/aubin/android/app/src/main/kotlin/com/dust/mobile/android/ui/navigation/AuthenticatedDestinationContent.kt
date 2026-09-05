@@ -76,6 +76,9 @@ internal fun AuthenticatedDestinationContent(
             onCatchUp = listState.unreadConversations.takeIf { it.isNotEmpty() }
                 ?.let { unread -> { navigateTo(Destination.CatchUp(unread)) } },
             onRefresh = listViewModel::refresh,
+            onLoadMore = listViewModel::loadMore,
+            onRetrySearch = listViewModel::retrySearch,
+            onDismissActionError = listViewModel::dismissActionError,
         )
         is Destination.CatchUp -> CatchUpDestinationContent(
             destination = destination,

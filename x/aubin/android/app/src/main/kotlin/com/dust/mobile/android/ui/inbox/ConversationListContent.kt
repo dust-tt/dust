@@ -54,11 +54,13 @@ internal fun ConversationListContent(
     onDelete: (Conversation) -> Unit,
     onCatchUp: (() -> Unit)?,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit = {},
+    onRetrySearch: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     PullToRefreshBox(
-        isRefreshing = state.isRefreshing,
-        onRefresh = onRefresh,
+        isRefreshing = if (state.searchText.isBlank()) state.isRefreshing else state.search.isLoading,
+        onRefresh = if (state.searchText.isBlank()) onRefresh else onRetrySearch,
         modifier = modifier.fillMaxSize(),
     ) {
         ContentCrossfade(
@@ -85,6 +87,8 @@ internal fun ConversationListContent(
                     onDelete = onDelete,
                     onCatchUp = onCatchUp,
                     onRefresh = onRefresh,
+                    onLoadMore = onLoadMore,
+                    onRetrySearch = onRetrySearch,
                 )
             }
         }
@@ -101,6 +105,8 @@ private fun ConversationListRows(
     onDelete: (Conversation) -> Unit,
     onCatchUp: (() -> Unit)?,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
+    onRetrySearch: () -> Unit,
 ) {
     val listMotionEnabled = motionEnabled()
     val listFadeInSpec = if (listMotionEnabled) {
@@ -132,7 +138,7 @@ private fun ConversationListRows(
                 )
             }
         }
-        state.pods.takeIf { it.isNotEmpty() }?.let { pods ->
+        state.pods.takeIf { it.isNotEmpty() && state.searchText.isBlank() }?.let { pods ->
             item(key = "pods-header") {
                 val chevronRotation by animateFloatAsState(
                     targetValue = if (state.isPodsExpanded) 0f else -90f,
@@ -195,7 +201,7 @@ private fun ConversationListRows(
                 }
             }
         }
-        if (state.groupedConversations.isEmpty()) {
+        if (state.groupedConversations.isEmpty() && !state.search.isLoading) {
             item(key = "empty-state") {
                 ConversationEmptyState(
                     label = conversationListEmptyLabel(state.searchText),
@@ -244,6 +250,9 @@ private fun ConversationListRows(
                     onDelete = { onDelete(conversation) },
                 )
             }
+        }
+        item(key = "discovery-footer") {
+            ConversationDiscoveryFooter(state, onLoadMore, onRetrySearch)
         }
     }
 }
