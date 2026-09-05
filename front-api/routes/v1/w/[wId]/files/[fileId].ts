@@ -155,7 +155,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     return accessError;
   }
 
-  if (!auth.isBuilder() && file.useCase !== "conversation") {
+  if (!auth.isManager() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
@@ -212,7 +212,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     return accessError;
   }
 
-  if (!auth.isBuilder() && file.useCase !== "conversation") {
+  if (!auth.isManager() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
