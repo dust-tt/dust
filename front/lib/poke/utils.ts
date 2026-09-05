@@ -20,7 +20,7 @@ export async function spaceToPokeJSON(
   space: SpaceResource
 ): Promise<PokeSpaceType> {
   const groups = await space.fetchGroupResources(auth);
-  const [enriched] = await SpaceResource.batchToJSONEnriched(auth, [space]);
+  const [enriched] = await SpaceResource.enrichSpacesWithAccess(auth, [space]);
   return {
     id: space.id,
     ...space.toJSON(),

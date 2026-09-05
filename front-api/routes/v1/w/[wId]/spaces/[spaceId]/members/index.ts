@@ -205,7 +205,7 @@ app.post(
       });
     }
 
-    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+    const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(auth, [
       space,
     ]);
 

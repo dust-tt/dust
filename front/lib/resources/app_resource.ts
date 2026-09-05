@@ -320,9 +320,9 @@ export class AppResource extends ResourceWithSpace<AppModel> {
 
   // The app serialized with its space in enriched form (`groupIds`, `isRestricted` — part of the
   // public app contract). The caller obtains the `EnrichedSpaceType` on demand via
-  // `SpaceResource.batchToJSONEnriched`, so app serialization does not depend on the space's
+  // `SpaceResource.enrichSpacesWithAccess`, so app serialization does not depend on the space's
   // eagerly-loaded grants.
-  toJSONEnriched(space: EnrichedSpaceType): EnrichedAppType {
+  enrichWithSpaceAccess(space: EnrichedSpaceType): EnrichedAppType {
     return {
       ...this.toJSON(),
       space,

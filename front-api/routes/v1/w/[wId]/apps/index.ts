@@ -30,14 +30,14 @@ app.get(
 
     // All apps belong to `space`; load its group sIds once so the public app response keeps the
     // space's `groupIds` without relying on the eagerly-loaded grants.
-    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+    const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(auth, [
       space,
     ]);
 
     return ctx.json({
       apps: apps
         .filter((a) => a.canRead(auth))
-        .map((a) => a.toJSONEnriched(enrichedSpace)),
+        .map((a) => a.enrichWithSpaceAccess(enrichedSpace)),
     });
   }
 );

@@ -215,7 +215,10 @@ export async function enrichProjectsWithMetadata(
     metadatas.map((m) => [m.spaceId, m])
   );
 
-  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(auth, spaces);
+  const enrichedSpaces = await SpaceResource.enrichSpacesWithAccess(
+    auth,
+    spaces
+  );
 
   return spaces.map((space, i) => ({
     ...enrichedSpaces[i],
@@ -275,7 +278,7 @@ export async function listAllProjectsWithAdminMetadata(
   );
   const metadataMap = new Map(metadatas.map((m) => [m.spaceId, m]));
 
-  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(
+  const enrichedSpaces = await SpaceResource.enrichSpacesWithAccess(
     auth,
     projectSpaces
   );

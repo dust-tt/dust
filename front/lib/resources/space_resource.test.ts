@@ -1740,8 +1740,8 @@ describe("SpaceResource", () => {
           workspaceId: workspace.id,
         }),
       ]);
-      // groupIds/isRestricted are likewise loaded on demand (via `batchToJSONEnriched`).
-      const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(
+      // groupIds/isRestricted are likewise loaded on demand (via `enrichSpacesWithAccess`).
+      const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(
         adminAuth,
         [regularSpace]
       );

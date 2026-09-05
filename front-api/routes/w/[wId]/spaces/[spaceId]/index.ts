@@ -314,7 +314,7 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
 
-    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+    const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(auth, [
       space,
     ]);
 

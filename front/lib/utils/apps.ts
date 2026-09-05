@@ -399,7 +399,7 @@ export async function exportApps(
   // All apps belong to `space`; load its grant-derived enrichment once so the exported app keeps the
   // space's `groupIds`/`isRestricted` (part of the public app contract) without relying on the
   // eagerly-loaded grants.
-  const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+  const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(auth, [
     space,
   ]);
 
@@ -448,7 +448,7 @@ export async function exportApps(
       }
 
       return {
-        ...app.toJSONEnriched(enrichedSpace),
+        ...app.enrichWithSpaceAccess(enrichedSpace),
         datasets,
         coreSpecifications,
       };
