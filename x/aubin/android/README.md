@@ -36,3 +36,6 @@ Play Store artifact.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for the toolchain, architecture, build variants, authentication
 flow, development commands, physical-device setup, testing, and release workflow.
+
+See [PRODUCT_REVIEW.md](PRODUCT_REVIEW.md) for the mobile product decisions, review fixes, and
+validation boundaries.
