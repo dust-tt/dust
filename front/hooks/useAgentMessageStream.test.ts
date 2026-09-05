@@ -13,6 +13,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
+import type { ItemLocation } from "@virtuoso.dev/message-list";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseEventSource = vi.fn();
@@ -22,11 +23,14 @@ const mockIsAutoScrollEnabledRef = { current: true };
 
 function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
   return {
+    getScrollLocation: () => ({ bottomOffset: 0 }),
     data: {
-      map,
-      batch: (callback: () => void) => {
-        callback();
-      },
+      map: vi.fn(
+        (
+          updater: (message: T) => T,
+          _scroll?: { location: () => ItemLocation | null | undefined }
+        ) => map(updater)
+      ),
     },
   };
 }
@@ -139,6 +143,7 @@ const mockOwner: LightWorkspaceType = {
 };
 
 beforeEach(() => {
+  mockIsAutoScrollEnabledRef.current = true;
   mockUseEventSource.mockReset();
   mockMutateContextUsage.mockReset();
   mockUseVirtuosoMethods.mockReset();
@@ -290,6 +295,104 @@ describe("appendThinkingStep", () => {
 });
 
 describe("useAgentMessageStream", () => {
+  it.each([
+    {
+      scenario: "first answer tokens while detached",
+      isInitiallyAttached: false,
+      shouldScroll: false,
+    },
+    {
+      scenario: "first reasoning tokens while detached",
+      classification: "chain_of_thought",
+      isInitiallyAttached: false,
+      shouldScroll: false,
+    },
+    {
+      scenario: "detachment after scheduling a scroll",
+      isInitiallyAttached: true,
+      detachBeforeScroll: true,
+      shouldScroll: false,
+    },
+    {
+      scenario: "preserving space below a short new turn",
+      isInitiallyAttached: true,
+      bottomOffset: -50,
+      shouldScroll: false,
+    },
+    {
+      scenario: "following once a new turn fills the viewport",
+      isInitiallyAttached: true,
+      bottomOffset: 20,
+      shouldScroll: true,
+    },
+  ])("respects scroll intent: $scenario", ({
+    classification = "tokens",
+    isInitiallyAttached,
+    detachBeforeScroll = false,
+    bottomOffset = 0,
+    shouldScroll,
+  }) => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: "", chainOfThought: "" })
+    );
+    let onEvent = (_event: string) => {};
+    mockIsAutoScrollEnabledRef.current = isInitiallyAttached;
+    const methods = makeVirtuosoMethodsMock(
+      (updater: (message: typeof currentMessage) => typeof currentMessage) => {
+        currentMessage = updater(currentMessage);
+        return [currentMessage];
+      }
+    );
+    methods.getScrollLocation = () => ({ bottomOffset });
+    mockUseVirtuosoMethods.mockReturnValue(methods);
+    mockUseEventSource.mockImplementation(
+      (_buildURL: unknown, callback: (event: string) => void) => {
+        onEvent = callback;
+        return { isError: null };
+      }
+    );
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+    act(() => {
+      onEvent(
+        JSON.stringify({
+          eventId: "1-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "New text",
+            classification,
+          },
+        })
+      );
+    });
+    if (detachBeforeScroll) {
+      mockIsAutoScrollEnabledRef.current = false;
+    }
+    expect(mockIsAutoScrollEnabledRef.current).toBe(
+      isInitiallyAttached && !detachBeforeScroll
+    );
+    const scrollLocation = methods.data.map.mock.calls.at(-1)?.[1]?.location;
+    expect(scrollLocation).toBeDefined();
+    expect(scrollLocation?.()).toEqual(
+      shouldScroll ? { index: "LAST", align: "end", behavior: "smooth" } : null
+    );
+    expect(
+      classification === "tokens"
+        ? currentMessage.content
+        : currentMessage.chainOfThought
+    ).toBe("New text");
+  });
+
   it("clears stale database content before replaying fresh-mount tokens", () => {
     let currentMessage = makeInitialMessageStreamState(makeLightAgentMessage());
     const snapshots: Array<{
