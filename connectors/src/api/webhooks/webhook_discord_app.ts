@@ -138,10 +138,7 @@ function validateDiscordSignature(
     );
     return isVerified;
   } catch (error) {
-    logger.error(
-      { error, signature, timestamp, publicKey },
-      "Error validating Discord signature"
-    );
+    logger.error({ error }, "Error validating Discord signature");
     return false;
   }
 }
