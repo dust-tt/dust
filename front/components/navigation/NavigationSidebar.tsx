@@ -17,8 +17,9 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin, isManager } from "@app/types/user";
 import {
-  CollapseButton,
+  Button,
   cn,
+  Icon,
   LayoutLeft,
   NavigationList,
   NavigationListCompactLabel,
@@ -221,15 +222,30 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
     toggleNavigationBarVisibility(!isNavigationBarOpened);
   }, [isNavigationBarOpened, toggleNavigationBarVisibility]);
 
-  if (isNavigationBarOpened || isFullScreen) {
+  if (isFullScreen) {
     return null;
   }
 
+  // Stays mounted while the sidebar is open so it can crossfade: it fades in
+  // once the sidebar has finished sliding away, and fades out immediately on
+  // expand.
   return (
-    <div ref={ref} onClick={handleClick} className="lg:top-1/2 lg:flex lg:w-5">
-      <CollapseButton
-        direction={isNavigationBarOpened ? "left" : "right"}
-        variant="light"
+    <div
+      ref={ref}
+      className={cn(
+        "transition-opacity duration-150 ease-out motion-reduce:transition-none lg:flex",
+        isNavigationBarOpened ? "pointer-events-none opacity-0" : "delay-150"
+      )}
+      aria-hidden={isNavigationBarOpened}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        // Element icon to render at the pill's 20px instead of sm's 16px.
+        icon={<Icon visual={LayoutLeft} size="sm" />}
+        onClick={handleClick}
+        aria-label="Open navigation"
+        tabIndex={isNavigationBarOpened ? -1 : 0}
       />
     </div>
   );

@@ -54,7 +54,10 @@ function AppContentInnerWrapper({
     <div
       className={cn(
         "my-2 mr-2 rounded-xl flex-1 bg-panel-background border border-border overflow-hidden h-panel",
-        !isNavigationBarOpen && !isFullScreen && "ml-5",
+        // Keeps the gutter in sync with the sidebar's width animation.
+        "transition-[margin-left] duration-150 ease-out motion-reduce:transition-none",
+        // ml-9 = expand button in Navigation.tsx: px-0.5 (2px) + w-8 (32px) + 2px.
+        !isNavigationBarOpen && !isFullScreen && "ml-9",
         isFullScreen && "ml-2"
       )}
       style={{
