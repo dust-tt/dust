@@ -11,7 +11,7 @@ struct DatabaseEntry {
     size_bytes: u64,
 }
 
-/// List the live pod databases (`*.db` files in the databases directory) with
+/// List the live sandbox databases (`*.db` files in the databases directory) with
 /// their sizes as a one-line JSON envelope. A missing directory is an empty
 /// list: it is created by the first reconcile that claims a database.
 pub fn cmd_db_list() -> Result<()> {
@@ -48,8 +48,8 @@ fn enumerate_databases(dir: &Path) -> std::io::Result<Vec<DatabaseEntry>> {
         let Some(name) = path.file_stem().and_then(|s| s.to_str()) else {
             continue;
         };
-        // Hostile-name allowlist: only names satisfying the frozen contract are pod databases
-        // (consistent with db_file_path and Track 1's replica-name filtering).
+        // Hostile-name allowlist: only names satisfying the frozen contract are databases
+        // (consistent with db_file_path and replica-name filtering).
         if !super::is_valid_db_name(name) {
             continue;
         }
@@ -86,7 +86,7 @@ mod tests {
         std::fs::write(dir.path().join("chat.db-shm"), b"s")?;
         std::fs::write(dir.path().join("readme.txt"), b"t")?;
         std::fs::create_dir(dir.path().join("subdir.db"))?;
-        // Names outside the frozen ^[a-z][a-z0-9_]{0,63}$ contract are not pod databases.
+        // Names outside the frozen ^[a-z][a-z0-9_]{0,63}$ contract are not databases.
         std::fs::write(dir.path().join("Weird Name.db"), b"n")?;
         std::fs::write(dir.path().join("UPPER.db"), b"n")?;
 

@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use super::{db_file_path, spawn_runner};
 
-/// Regenerate a drizzle `{db}.db.ts` schema file from the live pod database
+/// Regenerate a drizzle `{db}.db.ts` schema file from the live sandbox database
 /// `name`, writing it to `out_schema` (file-output pattern: the file is the
 /// payload, stdout only carries the `{ok}` envelope). Column modes are not
 /// recoverable from SQLite — the regenerated file carries storage types only.
