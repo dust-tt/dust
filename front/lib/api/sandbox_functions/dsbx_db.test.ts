@@ -240,7 +240,10 @@ describe("reconcileDatabaseOnReadySandbox", () => {
         "db reconcile -- 'tasks' '/tmp/frame/databases/tasks.db.ts'"
       ),
       expect.objectContaining({
-        envVars: expect.objectContaining({ DUST_POD_DATABASE_PREFIX: "" }),
+        envVars: expect.objectContaining({
+          DUST_SANDBOX_DATABASE_PREFIX: "",
+          DUST_POD_DATABASE_PREFIX: "",
+        }),
         user: "agent-proxied",
       })
     );

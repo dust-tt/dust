@@ -138,17 +138,16 @@ export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/sandbox-state/replica";
 
 /**
  * Absolute in-sandbox path of the owner's live SQLite databases (`{name}.db` files opened by
- * `@dust/pod`'s `db()`). Local disk, not a gcsfuse mount — Litestream replicates it to GCS.
- * Front is the only layer that hardcodes this location (the paths-env.v1 contract): it is
- * passed per exec to `dsbx function run` as `DUST_POD_DATABASES_DIR`, dsbx forwards it to
- * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
+ * the sandbox runtime's `db()`). This is local disk, not a gcsfuse mount. Litestream replicates
+ * it to GCS. Front is the only layer that hardcodes this location and passes it per exec through
+ * both the canonical `DUST_SANDBOX_DATABASES_DIR` ABI and its legacy alias.
  */
 export const SANDBOX_STATE_DATABASES_DIR = "/pod-state/databases";
 
 /**
  * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like
  * the databases dir, front owns this value and passes it per exec as
- * `DUST_POD_DATABASE_MAX_SIZE_BYTES`; both `@dust/pod`'s `db()` and the `dsbx db query` runner
+ * `DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES`; both the runtime's `db()` and the `dsbx db query` runner
  * require it and carry no fallback (see `cli/dust-sandbox/pod/db.ts`). A single source here
  * keeps the quota the workload writes against identical to the one `db_query` enforces.
  */
@@ -159,7 +158,7 @@ const SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
  * must carry so the bun child resolves the databases dir and the size quota. Returned as a
  * fresh object so callers can spread it into their own env without sharing a reference.
  *
- * The `DUST_POD_*` names are the existing DSBX/@dust/pod ABI and also apply to Frame-owned state.
+ * The `DUST_POD_*` names remain temporary aliases for already-released sandboxes and functions.
  * `databasePrefix` is the Pod app prefix that namespaces the databases the exec resolves by their
  * app-relative name, i.e. `@dust/pod`'s `db("chat")` inside a published function (see
  * `podDatabasePrefixFromSlug`). Omit it for execs that address databases by their on-disk name —
@@ -172,16 +171,26 @@ export function sandboxDatabaseExecEnvVars({
   databasePrefix?: string | null;
   framePublicationDescriptorPath?: string;
 } = {}): {
+  DUST_SANDBOX_DATABASES_DIR: string;
+  DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES: string;
+  DUST_SANDBOX_DATABASE_PREFIX: string;
   DUST_POD_DATABASES_DIR: string;
   DUST_POD_DATABASE_MAX_SIZE_BYTES: string;
   DUST_POD_DATABASE_PREFIX: string;
   DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH?: string;
 } {
+  const databaseMaxSizeBytes = String(SANDBOX_DATABASE_MAX_SIZE_BYTES);
+  const normalizedDatabasePrefix = databasePrefix ?? "";
+
   return {
+    DUST_SANDBOX_DATABASES_DIR: SANDBOX_STATE_DATABASES_DIR,
+    DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES: databaseMaxSizeBytes,
+    DUST_SANDBOX_DATABASE_PREFIX: normalizedDatabasePrefix,
+    // Compatibility ABI for already-released dsbx and @dust/pod builds.
     DUST_POD_DATABASES_DIR: SANDBOX_STATE_DATABASES_DIR,
-    DUST_POD_DATABASE_MAX_SIZE_BYTES: String(SANDBOX_DATABASE_MAX_SIZE_BYTES),
+    DUST_POD_DATABASE_MAX_SIZE_BYTES: databaseMaxSizeBytes,
     // Empty means unprefixed, which is what the shim reads an absent value as.
-    DUST_POD_DATABASE_PREFIX: databasePrefix ?? "",
+    DUST_POD_DATABASE_PREFIX: normalizedDatabasePrefix,
     ...(framePublicationDescriptorPath
       ? {
           DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH:

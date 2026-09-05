@@ -908,6 +908,9 @@ describe("SandboxFunctionInvocationResource", () => {
     );
     expect(opts?.envVars).toMatchObject({
       DUST_FUNCTIONS_DIR: `/sandbox-functions/pods/${space.sId}`,
+      DUST_SANDBOX_DATABASES_DIR: "/pod-state/databases",
+      DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES: "1073741824",
+      DUST_SANDBOX_DATABASE_PREFIX: "",
       DUST_POD_DATABASES_DIR: "/pod-state/databases",
       DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
       // Published outside an app folder, so its databases are unprefixed.
@@ -992,6 +995,9 @@ describe("SandboxFunctionInvocationResource", () => {
     const execOptions = execSpy.mock.calls[0]?.[2];
     expect(execOptions?.envVars).toMatchObject({
       DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH: `/frames/${frame.sId}/publications/${publicationId}/publication.json`,
+      DUST_SANDBOX_DATABASES_DIR: "/pod-state/databases",
+      DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES: "1073741824",
+      DUST_SANDBOX_DATABASE_PREFIX: "",
       DUST_POD_DATABASES_DIR: "/pod-state/databases",
       DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
       DUST_POD_DATABASE_PREFIX: "",
@@ -1211,6 +1217,7 @@ describe("SandboxFunctionInvocationResource", () => {
 
     const opts = execSpy.mock.calls[0]?.[2];
     expect(opts?.envVars).toMatchObject({
+      DUST_SANDBOX_DATABASE_PREFIX: "task_list__",
       DUST_POD_DATABASE_PREFIX: "task_list__",
     });
   });
