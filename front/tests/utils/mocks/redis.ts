@@ -159,16 +159,43 @@ class RedisMock {
           script: string,
           { keys, arguments: args }: { keys: string[]; arguments: string[] }
         ) => {
-          if (!script.includes('redis.call("del", KEYS[1])')) {
+          // Distributed unlock: delete the lock key only if we still own it.
+          if (script.includes('redis.call("del", KEYS[1])')) {
+            const [key] = keys;
+            const [expectedValue] = args;
+            if (key && this.stringStore.get(key)?.value === expectedValue) {
+              this.stringStore.delete(key);
+              return 1;
+            }
+            return 0;
+          }
+
+          // cacheWithRedis invalidate: DEL value + INCR generation per key.
+          if (script.includes('key .. ":generation"')) {
+            for (const key of keys) {
+              this.stringStore.delete(key);
+              const genKey = `${key}:generation`;
+              const current = this.stringStore.get(genKey)?.value;
+              const next = String(Number(current ?? "0") + 1);
+              this.stringStore.set(genKey, { value: next, expiresAtMs: 0 });
+            }
+            return keys.length;
+          }
+
+          // cacheWithRedis write: SET value only if generation still matches.
+          if (script.includes("current ~= ARGV[1]")) {
+            const [valueKey, genKey] = keys;
+            const [expectedGen, value, ttl] = args;
+            const current = this.stringStore.get(genKey)?.value ?? "";
+            if (current !== expectedGen) {
+              return 0;
+            }
+            const expiresAtMs = ttl ? Date.now() + Number(ttl) : 0;
+            this.stringStore.set(valueKey, { value, expiresAtMs });
             return 1;
           }
-          const [key] = keys;
-          const [expectedValue] = args;
-          if (key && this.stringStore.get(key)?.value === expectedValue) {
-            this.stringStore.delete(key);
-            return 1;
-          }
-          return 0;
+
+          return 1;
         }
       ),
       exists: vi.fn(async (key: string) => {

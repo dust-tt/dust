@@ -1,3 +1,4 @@
+import type { RedisClientType } from "@app/lib/api/redis";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import logger from "@app/logger/logger";
@@ -7,6 +8,76 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Transaction } from "sequelize";
 
 const SPIN_WAIT_INTERVAL_MS = 100;
+
+// Per-key generation fence: invalidate bumps the counter atomically with the
+// value delete, and writers only SET when the generation they observed before
+// the DB load is still current. Stops an in-flight stale load from
+// repopulating Redis after a concurrent invalidation (no-TTL caches would
+// otherwise keep that poison until the next explicit delete).
+function buildCacheGenerationKey(valueKey: string): string {
+  return `${valueKey}:generation`;
+}
+
+// KEYS[1]=value, KEYS[2]=generation. ARGV[1]=expected gen ("" if absent),
+// ARGV[2]=payload, ARGV[3]=ttl ms or "".
+const SET_IF_GENERATION_MATCH_SCRIPT = `
+  local current = redis.call("GET", KEYS[2])
+  if not current then
+    current = ""
+  end
+  if current ~= ARGV[1] then
+    return 0
+  end
+  if ARGV[3] ~= "" then
+    redis.call("SET", KEYS[1], ARGV[2], "PX", tonumber(ARGV[3]))
+  else
+    redis.call("SET", KEYS[1], ARGV[2])
+  end
+  return 1
+`;
+
+// For each value key: delete the cached payload and bump its generation.
+const INVALIDATE_CACHE_KEYS_SCRIPT = `
+  for _, key in ipairs(KEYS) do
+    redis.call("DEL", key)
+    redis.call("INCR", key .. ":generation")
+  end
+  return #KEYS
+`;
+
+async function readCacheGeneration(
+  redisCli: RedisClientType,
+  valueKey: string
+): Promise<string> {
+  return (await redisCli.get(buildCacheGenerationKey(valueKey))) ?? "";
+}
+
+async function setValueIfGenerationMatch(
+  redisCli: RedisClientType,
+  valueKey: string,
+  generation: string,
+  value: string,
+  ttlMs?: number
+): Promise<boolean> {
+  const result = await redisCli.eval(SET_IF_GENERATION_MATCH_SCRIPT, {
+    keys: [valueKey, buildCacheGenerationKey(valueKey)],
+    arguments: [generation, value, ttlMs !== undefined ? String(ttlMs) : ""],
+  });
+  return result === 1;
+}
+
+async function invalidateCacheKeys(
+  redisCli: RedisClientType,
+  valueKeys: string[]
+): Promise<void> {
+  if (valueKeys.length === 0) {
+    return;
+  }
+  await redisCli.eval(INVALIDATE_CACHE_KEYS_SCRIPT, {
+    keys: valueKeys,
+    arguments: [],
+  });
+}
 
 // JSON-serializable primitive types.
 type JsonPrimitive = string | number | boolean | null;
@@ -168,12 +239,18 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
-    const setValue = async (keyToSet: string, value: string): Promise<void> => {
-      if (resolvedTtlMs !== undefined) {
-        await redisCli.set(keyToSet, value, { PX: resolvedTtlMs });
-      } else {
-        await redisCli.set(keyToSet, value);
-      }
+    const setValue = async (
+      keyToSet: string,
+      generation: string,
+      value: string
+    ): Promise<void> => {
+      await setValueIfGenerationMatch(
+        redisCli,
+        keyToSet,
+        generation,
+        value,
+        resolvedTtlMs
+      );
     };
 
     const copyToOtherKey = async (
@@ -186,7 +263,8 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       if (fromCacheHit && migration?.copyToOtherKey !== "after_read") {
         return;
       }
-      await setValue(otherKey, value);
+      const otherGeneration = await readCacheGeneration(redisCli, otherKey);
+      await setValue(otherKey, otherGeneration, value);
     };
 
     let cacheVal = await redisCli.get(readKey);
@@ -230,13 +308,20 @@ export function cacheWithRedis<T, Args extends unknown[]>(
         return JSON.parse(cacheVal) as JsonSerializable<T>;
       }
 
+      // Capture generations before the DB load so a concurrent invalidate
+      // (which bumps them) makes the subsequent SET a no-op.
+      const readKeyGeneration = await readCacheGeneration(redisCli, readKey);
+      const otherKeyGeneration = otherKey
+        ? await readCacheGeneration(redisCli, otherKey)
+        : null;
+
       const result = await fn(...args);
       if (cacheNullValues || result != null) {
         const serializedResult = JSON.stringify(result);
-        await setValue(readKey, serializedResult);
-        await copyToOtherKey(serializedResult, {
-          fromCacheHit: false,
-        });
+        await setValue(readKey, readKeyGeneration, serializedResult);
+        if (otherKey && otherKeyGeneration !== null) {
+          await setValue(otherKey, otherKeyGeneration, serializedResult);
+        }
       }
       return result;
     } finally {
@@ -317,11 +402,14 @@ export function warmCacheWithRedis<T, Args extends unknown[]>(
   ): Promise<void> {
     const key = getCacheKey(fn, resolver, args);
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
-    if (ttlMs !== undefined) {
-      await redisCli.set(key, JSON.stringify(value), { PX: ttlMs });
-    } else {
-      await redisCli.set(key, JSON.stringify(value));
-    }
+    const generation = await readCacheGeneration(redisCli, key);
+    await setValueIfGenerationMatch(
+      redisCli,
+      key,
+      generation,
+      JSON.stringify(value),
+      ttlMs
+    );
   };
 }
 
@@ -347,7 +435,10 @@ export function invalidateCacheWithRedis<T, Args extends unknown[]>(
           _options.migration.previousKey.cacheId
         )
       : null;
-    await redisCli.del(previousKey ? [newKey, previousKey] : newKey);
+    await invalidateCacheKeys(
+      redisCli,
+      previousKey ? [newKey, previousKey] : [newKey]
+    );
   };
 }
 
@@ -382,7 +473,7 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
         );
       }
     }
-    await redisCli.del([...keys]);
+    await invalidateCacheKeys(redisCli, [...keys]);
   };
 }
 
@@ -443,7 +534,10 @@ function unlock(key: string) {
  * 2. Another request reads the DB (can't see uncommitted data)
  * 3. Cache repopulated with stale data
  * 4. Transaction commits
- * 5. Cache now has stale data for TTL duration
+ * 5. Cache now has stale data until the next invalidation
+ *
+ * Generation-guarded writes also defend against the complementary race where a
+ * load that started before invalidation tries to SET after it.
  */
 export function invalidateCacheAfterCommit(
   transaction: Transaction | undefined,
