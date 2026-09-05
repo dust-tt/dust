@@ -3,6 +3,7 @@ import { z } from "zod";
 import { normalizeError } from "../../utils/errors.js";
 import { MAX_LINE_LENGTH_TEXT_FILE } from "../../utils/fileHandling.js";
 import { formatGrepRes, performGrep } from "../../utils/grep.js";
+import { resolveInSandbox } from "../../utils/sandbox.js";
 import type { McpTool } from "../types/tools.js";
 
 export class SearchContentTool implements McpTool {
@@ -26,7 +27,18 @@ export class SearchContentTool implements McpTool {
     path = ".",
     file_pattern = "*",
   }: z.infer<typeof this.inputSchema>) {
-    const grepRes = await performGrep(pattern, path, file_pattern);
+    const pathRes = resolveInSandbox(path);
+    if (pathRes.isErr()) {
+      return {
+        content: [
+          { type: "text" as const, text: `Error: ${pathRes.error.message}` },
+        ],
+        isError: true,
+      };
+    }
+    const searchPath = pathRes.value;
+
+    const grepRes = await performGrep(pattern, searchPath, file_pattern);
     if (grepRes.isErr()) {
       return {
         content: [
@@ -41,7 +53,7 @@ export class SearchContentTool implements McpTool {
       };
     }
 
-    const formattedGrep = formatGrepRes(grepRes.value, path);
+    const formattedGrep = formatGrepRes(grepRes.value, searchPath);
 
     if (formattedGrep.length === 0) {
       return {

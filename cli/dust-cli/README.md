@@ -138,7 +138,27 @@ Headless authentication is particularly useful for:
 - **`-v`, `--version`**: Display the installed CLI version.
 - **`-f`, `--force`**: Used with the `login` command to force re-authentication.
 - **`--auto`**: Automatically accept all file edit operations without prompting for approval (chat command only).
+- **`--allow-path <path>`**: Grant the file system tools access to a path outside the current directory. Repeatable.
+- **`--dangerously-disable-sandbox`**: Let the file system tools reach anywhere on the machine.
 - **`--help`**: Display help information for the CLI.
+
+### File system scope
+
+The file system tools (`read_file`, `edit_file`, `search_files`, `search_content`, `run_command`)
+are scoped to the directory the CLI was started in. Paths outside it, including through symlinks,
+are refused, and the scope is printed when a chat starts.
+
+Widen the scope with `--allow-path`:
+
+```bash
+dust chat --allow-path ~/shared/design-docs
+```
+
+`run_command` is the weak spot: its arguments are checked against the same boundary, so `ls ..` is
+refused, but the CLI does not confine the process it spawns. A command that reaches outside on its
+own (a shell one-liner, a script, a tool reading an absolute path from a config file) is not
+stopped. Treat the boundary as a guardrail against accidents and casual prompt injection, not as
+containment.
 
 ### In-Chat Commands
 
@@ -158,6 +178,7 @@ While chatting with an agent, you can use these commands by typing them with a f
 - `dust chat`
 - `dust chat --sId 1234567890`
 - `dust chat --auto` (automatically accept all file edits)
+- `dust chat --allow-path ~/notes` (let the agent read a directory outside the workspace)
 - `dust help`
 
 ## Development

@@ -16,7 +16,8 @@
     "build:dev": "NODE_ENV=development tsup",
     "build": "NODE_ENV=development tsup",
     "dev": "NODE_ENV=development tsup --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest --run"
   },
   "keywords": ["dust", "cli", "terminal", "command-line"],
   "author": "Dust",
@@ -61,6 +62,7 @@
     "diff": "^8.0.2",
     "dotenv-flow": "^4.1.0",
     "ts-node": "^10.9.2",
-    "tsup": "^8.4.0"
+    "tsup": "^8.4.0",
+    "vitest": "^4.0.16"
   }
 }

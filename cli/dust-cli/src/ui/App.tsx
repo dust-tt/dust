@@ -82,6 +82,13 @@ interface AppProps {
     withTools: {
       type: "boolean";
     };
+    allowPath: {
+      type: "string";
+      isMultiple: true;
+    };
+    dangerouslyDisableSandbox: {
+      type: "boolean";
+    };
   }>;
 }
 
