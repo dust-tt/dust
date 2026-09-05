@@ -22,6 +22,7 @@ import {
   GPT_5_5_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
+  GPT_6_ASTRA_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
@@ -29,6 +30,16 @@ import { GROK_4_6_MODEL_ID } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
 
 describe("model_tiers", () => {
+  it("keeps Astra premium at every supported reasoning effort", () => {
+    const efforts = getAvailableReasoningEfforts(
+      STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[GPT_6_ASTRA_MODEL_ID]
+    );
+    expect(efforts).toEqual(["light", "medium", "high"]);
+    for (const effort of efforts) {
+      expect(getTierForModel(GPT_6_ASTRA_MODEL_ID, effort)).toBe("premium");
+    }
+  });
+
   it("lists tier definitions without selections", () => {
     expect(MODELS_TIERS.map((tier) => tier.id)).toEqual([1, 2, 3]);
     expect(MODELS_TIERS.every((tier) => tier.description.length > 0)).toBe(
