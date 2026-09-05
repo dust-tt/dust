@@ -525,6 +525,7 @@ export async function runModel(
       serverToolsAndInstructions,
     };
   });
+  durationRecorder.record(METRICS.TIME_TO_TOOLS_RESOLVED);
 
   // Filter out ask_user_question when no human is available to answer: origins with no
   // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
@@ -659,6 +660,7 @@ export async function runModel(
         })
       )
   );
+  durationRecorder.record(METRICS.TIME_TO_CONVERSATION_RENDERED);
 
   if (modelConversationRes.isErr()) {
     const categorizedError = categorizeConversationRenderErrorMessage(
@@ -876,6 +878,7 @@ export async function runModel(
   });
 
   const modelInteractionEndDate = performance.now();
+  durationRecorder.record(METRICS.TIME_TO_STREAM_DONE);
 
   if (getOutputFromActionResponse.isErr()) {
     const error = getOutputFromActionResponse.error;
