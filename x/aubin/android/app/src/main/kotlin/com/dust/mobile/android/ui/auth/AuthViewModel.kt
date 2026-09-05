@@ -1,6 +1,5 @@
 package com.dust.mobile.android.ui.auth
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dust.mobile.android.data.AppGraph
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 class AuthViewModel(
     private val graph: AppGraph,
@@ -122,7 +120,6 @@ class AuthViewModel(
         clearPendingAuth()
         val authenticatedState = _state.value as? AuthUiState.Authenticated
         if (authenticatedState == null || tokens == null) {
-            graph.pushRegistrationManager.invalidateLocalRegistration()
             graph.tokenStore.clearTokens()
             graph.clearPersistedSession()
             _state.value = AuthUiState.Unauthenticated()
@@ -130,13 +127,6 @@ class AuthViewModel(
         }
         _state.value = AuthUiState.Loading
         viewModelScope.launch {
-            withTimeoutOrNull(NOTIFICATION_UNREGISTER_TIMEOUT_MS) {
-                runCatching {
-                    graph.pushRegistrationManager.unregisterForSession(authenticatedState.tokenProvider)
-                }.onFailure { error ->
-                    Log.w(TAG, "Failed to unregister mobile notifications during sign out", error)
-                }
-            }
             graph.tokenStore.clearTokens()
             graph.clearPersistedSession()
             _state.value = AuthUiState.Unauthenticated()
@@ -173,7 +163,6 @@ class AuthViewModel(
                     publishAuthenticatedSession(tokens, cachedUser)
                     return@launch
                 }
-                graph.pushRegistrationManager.invalidateLocalRegistration()
                 graph.tokenStore.clearTokens()
                 graph.clearPersistedSession()
                 _state.value = AuthUiState.Unauthenticated(notice = SESSION_EXPIRED_NOTICE)
@@ -184,7 +173,6 @@ class AuthViewModel(
     private fun handleSessionExpired() {
         localPreviewActive = false
         loginReturnJob?.cancel()
-        graph.pushRegistrationManager.invalidateLocalRegistration()
         graph.tokenStore.clearTokens()
         graph.clearPersistedSession()
         clearPendingAuth()
@@ -207,11 +195,7 @@ class AuthViewModel(
             graph.offlineCacheRepository.activateUser(user)
             graph.outboxRepository.schedule()
             graph.catchUpWidgetController.schedulePeriodicRefresh()
-            runCatching {
-                graph.pushRegistrationManager.registerForSession(provider)
-            }.onFailure { error ->
-                Log.w(TAG, "Failed to register mobile notifications", error)
-            }
+
         }
     }
 
@@ -236,8 +220,4 @@ class AuthViewModel(
         return "${user.id}-$sessionCounter"
     }
 
-    private companion object {
-        const val TAG = "DustAuth"
-        const val NOTIFICATION_UNREGISTER_TIMEOUT_MS = 3_000L
-    }
 }

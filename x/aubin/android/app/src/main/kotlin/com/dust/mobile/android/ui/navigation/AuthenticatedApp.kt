@@ -64,7 +64,7 @@ internal fun AuthenticatedApp(
     var searchFocusRequestId by remember { mutableIntStateOf(0) }
     val currentListState by rememberUpdatedState(listState)
     val notificationPermission = rememberNotificationPermissionController(
-        isAvailable = graph.pushRegistrationManager.isConfigured && !isLocalPreview,
+        isAvailable = false,
     )
     val backDestination = destination.backDestinationOrNull()
     val dismissesImeBeforeBack = isImeVisible && destination.dismissesImeBeforeBackNavigation

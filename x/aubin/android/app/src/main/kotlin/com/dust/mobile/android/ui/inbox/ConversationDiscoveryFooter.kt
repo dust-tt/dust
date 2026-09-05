@@ -38,8 +38,8 @@ internal fun ConversationDiscoveryFooter(
         DustButton(
             label = when {
                 error != null -> "Try again"
-                isSearch && isLoading -> "Searching conversations…"
-                isSearch -> "Load more results"
+                isSearch && isLoading -> "Searching conversation titles…"
+                isSearch -> "Search older conversations"
                 isLoading -> "Loading older conversations…"
                 else -> "Load older conversations"
             },

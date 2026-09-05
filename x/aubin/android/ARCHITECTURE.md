@@ -77,8 +77,9 @@ work and repository calls. Platform-independent protocol and business rules belo
 - Keep Android and AndroidX APIs out of `core`.
 - Add focused pure-state tests for focus, send readiness, stream reduction, navigation policy, and
   other behavior that does not require a device.
-- Persist user-authored work before network dispatch. Retry paths keep the original idempotency key;
-  platform entry points must restore through the same session and navigation reducers as app UI.
+- Persist user-authored work before network dispatch. Pending work can send when connectivity returns. Unconfirmed deliveries require manual review;
+  the existing API does not provide send deduplication. Platform entry points restore through the
+  same session and navigation reducers as app UI.
 
 ## Mobile UI Rules
 

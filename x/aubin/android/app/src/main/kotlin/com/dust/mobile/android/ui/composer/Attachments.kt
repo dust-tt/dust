@@ -96,15 +96,13 @@ internal suspend fun uploadAttachmentDraft(
 internal fun replyContentFragmentPayloads(
     uploadedAttachments: List<UploadedAttachment>,
     profilePictureUrl: String?,
-    clientRequestId: String? = null,
 ): List<ContentFragmentPayload> {
     val context = ContentFragmentContext(profilePictureUrl = profilePictureUrl)
-    return uploadedAttachments.mapIndexed { index, attachment ->
+    return uploadedAttachments.map { attachment ->
         ContentFragmentPayload.file(
             title = attachment.fileName,
             fileId = attachment.fileId,
             context = context,
-            clientRequestId = clientRequestId?.let { "$it:fragment:$index" },
         )
     }
 }

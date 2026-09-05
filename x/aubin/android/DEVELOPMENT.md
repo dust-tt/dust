@@ -167,26 +167,16 @@ network.
 
 ## Notifications
 
-Remote notifications are optional at build time. Add the Firebase Android app configuration as
-`app/google-services.json` for package `com.dust.mobile`; without that file, every variant still
-builds but FCM auto-initialization and token registration stay disabled. Configure Novu's FCM
-integration with the matching Firebase project before expecting remote delivery.
+Remote push registration is unavailable in this standalone client because the existing backend
+has no mobile token-registration API. No Firebase configuration or server changes are required.
+The account's remote-notification control stays disabled. Existing Pod notification preferences
+continue to use the existing API.
 
-The app registers the current device token after authentication and removes only that token on
-sign-out. The backend uses the existing delayed unread workflow, so push follows the same read
-state, mentions, Pod preferences, trigger exclusions, and retention-safe preview rules as other
-channels. Normal replies use default priority; mentions and actions use high-priority channels.
+The native notification renderer, channels, privacy handling, and inline-reply receiver can be
+inspected with local debug notifications. Inline replies enter the same durable queue as app sends;
+unconfirmed delivery requires manual review before another attempt.
 
-Android asks for notification permission only after an explicit user action, either from the
-account menu or when enabling a Pod notification preference. The app exposes separate system
-channels for conversations, mentions, and actions, groups notifications by workspace, hides content
-on a privacy-sensitive lock screen, suppresses a notification for the conversation already visible,
-and opens the exact conversation when tapped.
-Human-authored conversation notifications use Android conversation semantics and expose an inline
-`RemoteInput` reply that enters the durable outbox. Action-required notifications expose a Review
-action; approval remains inside Dust so a notification cannot accidentally commit a sensitive act.
-
-Use a debuggable build to inspect each local rendering mode without Firebase:
+Use a debuggable build to inspect local notification rendering:
 
 ```bash
 make run-prod-debug
@@ -221,7 +211,7 @@ adb shell am start -n com.dust.mobile/com.dust.mobile.android.MainActivity \
 ## Android Platform Surfaces
 
 - The Glance Catch Up widget supports compact, medium, and large layouts, links to exact content,
-  and renders privacy-safe logged-out/locked states. It refreshes after foreground sync, FCM, and
+  and renders privacy-safe logged-out/locked states. It refreshes after foreground sync and
   periodic WorkManager updates; the in-app account menu can request widget pinning.
 - Android search is opt-in from the account menu. Conversation, Pod, and agent metadata remains
   app-private until enabled for system surfaces, and the index is cleared on sign-out. AppSearch is

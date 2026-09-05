@@ -13,10 +13,7 @@ internal class OutboxWorker(
         val graph = (applicationContext as DustApplication).graph
         val tokens = graph.tokenStore.loadTokens() ?: return Result.success()
         val tokenProvider = graph.tokenProvider(tokens) { graph.clearPersistedSession() }
-        return if (graph.outboxRepository.flush(tokenProvider).shouldRetry) {
-            Result.retry()
-        } else {
-            Result.success()
-        }
+        graph.outboxRepository.flush(tokenProvider)
+        return Result.success()
     }
 }

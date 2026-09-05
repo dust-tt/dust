@@ -7,7 +7,6 @@ import com.dust.mobile.android.data.offline.OfflineCacheRepository
 import com.dust.mobile.android.data.offline.OfflineCacheStore
 import com.dust.mobile.android.data.outbox.OutboxRepository
 import com.dust.mobile.android.data.persistence.PersistedStateStore
-import com.dust.mobile.android.notifications.PushRegistrationManager
 import com.dust.mobile.android.notifications.ConversationNotificationShortcutPublisher
 import com.dust.mobile.android.search.DustAppSearchIndexer
 import com.dust.mobile.android.shortcuts.AgentShortcutPublisher
@@ -24,7 +23,6 @@ import com.dust.mobile.core.repository.AgentRepository
 import com.dust.mobile.core.repository.CapabilityRepository
 import com.dust.mobile.core.repository.ConversationRepository
 import com.dust.mobile.core.repository.FileRepository
-import com.dust.mobile.core.repository.MobileNotificationRepository
 import com.dust.mobile.core.repository.PodRepository
 import com.dust.mobile.core.repository.SpaceRepository
 import com.dust.mobile.core.repository.TranscriptionRepository
@@ -55,7 +53,6 @@ class AppGraph(context: Context) {
     val capabilityRepository = CapabilityRepository(apiClient)
     val spaceRepository = SpaceRepository(apiClient)
     val fileRepository = FileRepository(apiClient)
-    val mobileNotificationRepository = MobileNotificationRepository(apiClient)
     val podRepository = PodRepository(apiClient)
     val transcriptionRepository = TranscriptionRepository(apiClient)
     internal val persistedStateStore = PersistedStateStore(appContext)
@@ -75,12 +72,6 @@ class AppGraph(context: Context) {
         conversationRepository = conversationRepository,
         fileRepository = fileRepository,
         userRepository = userRepository,
-    )
-    val pushRegistrationManager = PushRegistrationManager(
-        context = appContext,
-        repository = mobileNotificationRepository,
-        tokenStore = tokenStore,
-        authService = authService,
     )
 
     fun tokenProvider(tokens: AuthTokens, onSessionExpired: () -> Unit): TokenProvider =

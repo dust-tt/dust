@@ -1,7 +1,7 @@
 package com.dust.mobile.android.data.outbox
 
 import android.content.Context
-import androidx.work.BackoffPolicy
+import android.net.ConnectivityManager
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -16,12 +16,12 @@ import com.dust.mobile.core.model.MentionPayload
 import com.dust.mobile.core.model.MessageContext
 import com.dust.mobile.core.model.PostMessageRequest
 import com.dust.mobile.core.model.replyAgentConfigurationId
-import com.dust.mobile.core.network.ApiError
 import com.dust.mobile.core.repository.ConversationRepository
 import com.dust.mobile.core.repository.FileRepository
 import com.dust.mobile.core.repository.UserRepository
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -35,6 +35,7 @@ internal class OutboxRepository(
     private val fileRepository: FileRepository,
     private val userRepository: UserRepository,
 ) {
+    private val connectivity = context.getSystemService(ConnectivityManager::class.java)
     private val workManager = WorkManager.getInstance(context)
     private val flushMutex = Mutex()
 
@@ -59,25 +60,21 @@ internal class OutboxRepository(
         tokenProvider: TokenProvider,
     ): PersistedOutboxItem {
         enqueue(item)
-        flush(tokenProvider)
+        if (connectivity.activeNetwork != null) flush(tokenProvider)
         return observe(item.id).first { queued -> queued?.status != PersistedOutboxStatus.SENDING }
             ?: error("Outbox item was removed before completion")
-    }
-
-    suspend fun retry(id: String) {
-        updateItem(id) {
-            it.copy(status = PersistedOutboxStatus.PENDING, lastError = null)
-        }
-        schedule()
     }
 
     suspend fun acknowledge(id: String) {
         stateStore.update { state -> state.copy(outbox = state.outbox.filterNot { it.id == id }) }
     }
 
-    suspend fun flush(tokenProvider: TokenProvider): OutboxFlushResult = flushMutex.withLock {
+    suspend fun flush(tokenProvider: TokenProvider): Unit = flushMutex.withLock {
+        stateStore.update { state ->
+            state.copy(outbox = state.outbox.map { it.recoverInterruptedDelivery() })
+        }
         var item = stateStore.current().outbox.firstOrNull {
-            it.status == PersistedOutboxStatus.PENDING || it.status == PersistedOutboxStatus.SENDING
+            it.status == PersistedOutboxStatus.PENDING
         }
         while (item != null) {
             val currentItem = item
@@ -100,32 +97,23 @@ internal class OutboxRepository(
                     )
                 }
             } catch (error: CancellationException) {
-                updateItem(currentItem.id) { it.copy(status = PersistedOutboxStatus.PENDING) }
+                withContext(NonCancellable) {
+                    updateItem(currentItem.id) { it.withUnconfirmedDelivery() }
+                }
                 throw error
-            } catch (error: Throwable) {
-                val permanent = error.isPermanentOutboxFailure()
-                updateItem(currentItem.id) {
-                    it.copy(
-                        status = if (permanent) PersistedOutboxStatus.FAILED else PersistedOutboxStatus.PENDING,
-                        lastError = error.message ?: "Send failed",
-                    )
-                }
-                if (!permanent) {
-                    return@withLock OutboxFlushResult(shouldRetry = true)
-                }
+            } catch (error: Exception) {
+                updateItem(currentItem.id) { it.withUnconfirmedDelivery() }
             }
 
             item = stateStore.current().outbox.firstOrNull {
-                it.status == PersistedOutboxStatus.PENDING || it.status == PersistedOutboxStatus.SENDING
+                it.status == PersistedOutboxStatus.PENDING
             }
         }
-        OutboxFlushResult(shouldRetry = false)
     }
 
     fun schedule() {
         val request = OneTimeWorkRequestBuilder<OutboxWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, MIN_BACKOFF_SECONDS, TimeUnit.SECONDS)
             .build()
         workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request)
     }
@@ -181,7 +169,6 @@ internal class OutboxRepository(
                     timezone = java.util.TimeZone.getDefault().id,
                     profilePictureUrl = user.image,
                 ),
-                clientRequestId = item.id,
             ),
             tokenProvider = tokenProvider,
         )
@@ -196,13 +183,7 @@ internal class OutboxRepository(
 
     private companion object {
         const val WORK_NAME = "dust-durable-outbox"
-        const val MIN_BACKOFF_SECONDS = 10L
     }
 }
 
-internal data class OutboxFlushResult(val shouldRetry: Boolean)
-
 private data class OutboxSendResult(val conversationId: String, val messageId: String? = null)
-
-private fun Throwable.isPermanentOutboxFailure(): Boolean =
-    this is ApiError.Http && statusCode in 400..499 && statusCode !in setOf(408, 409, 425, 429)

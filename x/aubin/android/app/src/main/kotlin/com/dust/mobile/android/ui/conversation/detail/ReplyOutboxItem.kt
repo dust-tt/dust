@@ -31,12 +31,10 @@ internal fun buildReplyOutboxItem(
             MentionPayload(state.selectedReplyAgent?.sId ?: replyAgentConfigurationId(state.messages)),
         ),
         context = buildMessageContext(state.selectedCapabilities, user.profilePictureUrl),
-        clientRequestId = clientRequestId,
     ),
     contentFragments = replyContentFragmentPayloads(
         uploadedAttachments = uploadedAttachments,
         profilePictureUrl = user.profilePictureUrl,
-        clientRequestId = clientRequestId,
     ),
     displayText = sentDraft,
     createdAtEpochMillis = System.currentTimeMillis(),
