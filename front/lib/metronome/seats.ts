@@ -1168,6 +1168,39 @@ async function emptyOriginSeatCreditsForTransfers({
     allocationBySeatType,
   });
 
+  return emptyOriginCreditsForTransfers({
+    metronomeCustomerId,
+    contractId,
+    workspaceId,
+    transfers,
+    subscriptionIdBySeatType,
+    recurringCreditIdBySeatType,
+  });
+}
+
+/**
+ * Empty each transfer's origin seat credit (reclaim its unused balance) so the
+ * consumed amount can be carried onto the new seat once it's assigned. Shared by
+ * the workspace-wide sync (which computes `transfers` from Metronome's current
+ * state) and the single-user immediate move (which knows the from→to types from
+ * the DB). Returns the transfers whose origin was handled — a fully-consumed
+ * origin is kept (nothing to reclaim, but its consumption still carries).
+ */
+async function emptyOriginCreditsForTransfers({
+  metronomeCustomerId,
+  contractId,
+  workspaceId,
+  transfers,
+  subscriptionIdBySeatType,
+  recurringCreditIdBySeatType,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  workspaceId: string;
+  transfers: SeatCreditTransfer[];
+  subscriptionIdBySeatType: Map<MembershipSeatType, string>;
+  recurringCreditIdBySeatType: Map<MembershipSeatType, string>;
+}): Promise<SeatCreditTransfer[]> {
   const segmentCache = new Map<
     string,
     { creditId: string; segmentId: string; segmentStartingAt: string } | null
@@ -1403,6 +1436,168 @@ async function carryConsumptionToNewSeatCredits({
       );
     }
   }
+}
+
+/**
+ * Move (or add) a single user's seat in Metronome, carrying seat-credit
+ * consumption across a recurring-credit seat-type change (e.g. pro→max: empty
+ * the pro credit, carry the consumed AWU onto the max credit) — the same ledger
+ * transfer `syncSeatCount` performs workspace-wide, but scoped to one user and
+ * driven off the known from→to seat types rather than Metronome's pre-move
+ * assignment.
+ *
+ * This is the immediate-unblock primitive behind `assignSeatForUser`: it MUST do
+ * the carry itself, because it moves the seat_id right away — which would
+ * otherwise hide the seat-type change from the debounced workspace sync (that
+ * detects moves by diffing Metronome's assignment against the DB, and would see
+ * the user already on the new seat). It touches only this user's seat + credits,
+ * never the unassigned pool or other users, so it stays safe to run alongside
+ * the debounced workflow.
+ *
+ * Order matches `syncSeatCount`: empty origin credit (while still on the old
+ * seat) → move the seat → carry consumption onto the new credit (now active).
+ * The credit steps are best-effort; a seat-move failure is returned as `Err`.
+ */
+export async function moveSeatWithCreditCarry({
+  metronomeCustomerId,
+  contractId,
+  contract,
+  productSeatTypes,
+  workspaceId,
+  userId,
+  fromSeatType,
+  toSeatType,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  contract: CachedContract;
+  productSeatTypes: Map<string, MembershipSeatType>;
+  workspaceId: string;
+  userId: string;
+  fromSeatType: MembershipSeatType | undefined;
+  toSeatType: MembershipSeatType;
+}): Promise<Result<undefined, Error>> {
+  const seatSubscriptions = [
+    ...getSeatSubscriptionsFromContract(contract, productSeatTypes),
+  ].flatMap(([seatType, sub]) => (sub.id ? [{ seatType, sub }] : []));
+
+  const targetSubId = seatSubscriptions.find((s) => s.seatType === toSeatType)
+    ?.sub.id;
+  const previousSubId = fromSeatType
+    ? seatSubscriptions.find((s) => s.seatType === fromSeatType)?.sub.id
+    : undefined;
+
+  if (!targetSubId) {
+    // Non-billable target (e.g. "none", or a type not entitled here). Leave the
+    // seat removal + any credit cleanup to the debounced workspace sync.
+    logger.info(
+      { workspaceId, userId, toSeatType },
+      "[Metronome] No billable subscription for target seat type — leaving to debounced workflow"
+    );
+    return new Ok(undefined);
+  }
+
+  // Seat-type → subscription / recurring-credit / allocation maps for the
+  // recurring-credit seat types (same derivation as `syncSeatCount`).
+  const subscriptionIdBySeatType = new Map<MembershipSeatType, string>(
+    seatSubscriptions.flatMap(({ sub, seatType }) =>
+      sub.id && getSeatCreditNameForSeatType(seatType)
+        ? [[seatType, sub.id] as const]
+        : []
+    )
+  );
+  const recurringCreditIdBySeatType = new Map<MembershipSeatType, string>();
+  const allocationBySeatType = new Map<MembershipSeatType, number>();
+  for (const { sub, seatType } of seatSubscriptions) {
+    if (!sub.id || !getSeatCreditNameForSeatType(seatType)) {
+      continue;
+    }
+    const recurringCredit = (contract.recurring_credits ?? []).find(
+      (c) => c.subscription_config?.subscription_id === sub.id
+    );
+    if (recurringCredit?.id) {
+      recurringCreditIdBySeatType.set(seatType, recurringCredit.id);
+    }
+    allocationBySeatType.set(
+      seatType,
+      getAwuAllocationForSeatType(contract, seatType, productSeatTypes)
+    );
+  }
+
+  // Compute the single-user transfer (only when both ends carry a recurring
+  // credit). We know the move from the DB, so we don't rely on Metronome's
+  // pre-move assignment to detect it.
+  let transfers: SeatCreditTransfer[] = [];
+  if (
+    fromSeatType &&
+    fromSeatType !== toSeatType &&
+    getSeatCreditNameForSeatType(fromSeatType) &&
+    getSeatCreditNameForSeatType(toSeatType)
+  ) {
+    const balancesRes = await listMetronomeSeatBalances({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+      seatIds: [userId],
+    });
+    if (balancesRes.isErr()) {
+      logger.error(
+        { workspaceId, userId, error: balancesRes.error },
+        "[Metronome] Failed to read origin seat balance for single-user transfer — skipping carry"
+      );
+    } else {
+      const awuCreditTypeId = getCreditTypeAwuId();
+      const remaining = balancesRes.value
+        .find((s) => s.seat_id === userId)
+        ?.balances.find((b) => b.credit_type_id === awuCreditTypeId)?.balance;
+      const balanceByUser = new Map<string, number>();
+      if (remaining !== undefined) {
+        balanceByUser.set(userId, remaining);
+      }
+      const computed = computeSeatCreditTransfers({
+        metronomeSeatByUser: new Map([[userId, fromSeatType]]),
+        desiredSeatByUser: new Map([[userId, toSeatType]]),
+        balanceByUser,
+        allocationBySeatType,
+      });
+      // Empty the origin credit while the user is still on the old seat.
+      transfers = await emptyOriginCreditsForTransfers({
+        metronomeCustomerId,
+        contractId,
+        workspaceId,
+        transfers: computed,
+        subscriptionIdBySeatType,
+        recurringCreditIdBySeatType,
+      });
+    }
+  }
+
+  // Move (or add) the seat.
+  const isMove = !!previousSubId && previousSubId !== targetSubId;
+  const seatUpdate = await updateSubscriptionSeats({
+    metronomeCustomerId,
+    contractId,
+    fromSubscriptionId: isMove ? previousSubId : targetSubId,
+    toSubscriptionId: isMove ? targetSubId : undefined,
+    addSeatIds: [userId],
+    removeSeatIds: isMove ? [userId] : [],
+  });
+  if (seatUpdate.isErr()) {
+    return new Err(seatUpdate.error);
+  }
+
+  // Carry consumption onto the new credit now that the seat is assigned.
+  if (transfers.length > 0) {
+    await carryConsumptionToNewSeatCredits({
+      metronomeCustomerId,
+      contractId,
+      workspaceId,
+      transfers,
+      subscriptionIdBySeatType,
+      recurringCreditIdBySeatType,
+      allocationBySeatType,
+    });
+  }
+  return new Ok(undefined);
 }
 
 // Summary of the work `syncSeatCount` actually did, surfaced up to the poke
