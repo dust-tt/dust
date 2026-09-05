@@ -1,7 +1,7 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  ArrowNarrowLeft,
+  ArrowLeft,
   Avatar,
   Bar,
   BarChart01,
@@ -51,14 +51,13 @@ import {
   SheetTitle,
   Sidekick,
   SpaceClosed,
-  SpaceOpen,
   Stars02,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   Tag01,
-  Tool02,
+  Settings01,
   Users01,
   XClose,
   Zap,
@@ -930,7 +929,7 @@ export function AgentBuilderView({
                           return (
                             <Chip
                               key={space.id}
-                              icon={isRestricted ? SpaceClosed : SpaceOpen}
+                              icon={SpaceClosed}
                               size="sm"
                               color={isRestricted ? "rose" : "primary"}
                               label={space.name}
@@ -943,7 +942,7 @@ export function AgentBuilderView({
                         return (
                           <Chip
                             key={project.id}
-                            icon={isRestricted ? SpaceClosed : SpaceOpen}
+                            icon={SpaceClosed}
                             size="sm"
                             color={isRestricted ? "rose" : "primary"}
                             label={project.name}
@@ -971,7 +970,7 @@ export function AgentBuilderView({
                         size="sm"
                         variant="outline"
                         label="Capabilities"
-                        icon={Tool02}
+                        icon={Settings01}
                       />
                       <Button
                         size="sm"
@@ -1463,7 +1462,7 @@ export function AgentBuilderView({
         {!isRightPanelOpen && (
           <div className="flex h-full w-14 flex-col items-center gap-2 py-3">
             <Button
-              icon={ArrowNarrowLeft}
+              icon={ArrowLeft}
               size="sm"
               variant="ghost-secondary"
               onClick={() => setIsRightPanelOpen(true)}
@@ -1555,14 +1554,7 @@ export function AgentBuilderView({
                         onClick={() => toggleDraftProject(space.id)}
                         className={isSelected ? "bg-primary-50" : ""}
                       >
-                        <Icon
-                          visual={
-                            isRestrictedSpace(space.id)
-                              ? SpaceClosed
-                              : SpaceOpen
-                          }
-                          size="sm"
-                        />
+                        <Icon visual={SpaceClosed} size="sm" />
                         <div className="flex min-w-0 flex-1 flex-col">
                           <span className="truncate text-sm font-medium text-foreground">
                             {space.name}
@@ -1599,14 +1591,7 @@ export function AgentBuilderView({
                         onClick={() => toggleDraftProject(space.id)}
                         className={isSelected ? "bg-primary-50" : ""}
                       >
-                        <Icon
-                          visual={
-                            isRestrictedSpace(space.id)
-                              ? SpaceClosed
-                              : SpaceOpen
-                          }
-                          size="sm"
-                        />
+                        <Icon visual={SpaceClosed} size="sm" />
                         <div className="flex min-w-0 flex-1 flex-col">
                           <span className="truncate text-sm font-medium text-foreground">
                             {space.name}
