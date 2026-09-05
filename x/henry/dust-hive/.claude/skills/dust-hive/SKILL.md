@@ -1,6 +1,6 @@
 ---
 name: dust-hive
-description: Information about dust-hive, a CLI tool for running multiple isolated Dust development environments. ALWAYS enable this skill when the working directory is under ~/dust-hive/. Use for understanding port allocation, running tests, and working with the environment.
+description: Information about dust-hive, a CLI tool for running multiple isolated Dust development environments. ALWAYS enable this skill when the working directory is under a repository's `.hives/` directory or `~/dust-hive/`, when its `.envrc` identifies a dust-hive environment, or when working with dust-hive. Use for understanding port allocation, running tests, and working with the environment.
 ---
 
 # dust-hive
@@ -17,12 +17,13 @@ dust-hive is a CLI tool for running multiple isolated Dust development environme
 
 To check if you're currently running in a dust-hive environment:
 
-1. **Check working directory**: dust-hive worktrees are located at `~/dust-hive/{env-name}/`
-2. **Check for worktree**: The `.git` file (not directory) indicates a git worktree
+1. **Check registered environments**: run `dust-hive list`
+2. **Check the current environment**: Hive-owned worktrees normally live at
+   `<repo>/.hives/{env-name}/`; adopted worktrees can live elsewhere under the main repository
+   root, and older environments may still use `~/dust-hive/{env-name}/`
 
 ```bash
-# Check if in worktree path
-pwd | grep -q "$HOME/dust-hive/" && echo "In dust-hive environment"
+dust-hive status [ENV_NAME]
 ```
 
 ## Environment States
@@ -32,8 +33,8 @@ Environments can be in one of three states:
 | State | What's Running | Can Run Tests? |
 |-------|----------------|----------------|
 | **stopped** | Nothing | No |
-| **cold** | SDK watch only | Yes (front tests use shared test DB) |
-| **warm** | All services (front, core, connectors, oauth, workers) + Docker | Yes |
+| **cold** | SDK and Sparkle watches | Yes (front tests use shared test DB) |
+| **warm** | SDK/Sparkle, application services except Viz/Storybook, and Docker | Yes |
 
 Check the current state:
 ```bash
@@ -56,7 +57,7 @@ source ~/.dust-hive/envs/{ENV_NAME}/env.sh
 ## Port Allocation
 
 Each environment gets a 1000-port range starting at 10000:
-- 1st env: 10000-10999 (front:10000, core:10001, connectors:10002, oauth:10006)
+- 1st env: 10000-10999 (proxy:10000, core:10001, connectors:10002, front-api:10003, oauth:10006)
 - 2nd env: 11000-11999
 - 3rd env: 12000-12999
 
@@ -80,26 +81,25 @@ bun run test         # All tests
 # TypeScript SDK (watch is running - check logs if issues after SDK changes)
 dust-hive logs [ENV_NAME] sdk
 
-# Front (Next.js)
-cd front && npm run lint                                              # ESLint
-cd front && NODE_OPTIONS="--max-old-space-size=8192" npx tsgo --noEmit  # Type-check
-cd front && npm run build                                             # Build
+# Front library and services
+npm -w front run tsgo -- --noEmit
+npm -w front-api run tsgo -- --noEmit
+npm -w front-spa run tsgo -- --noEmit
 
-# Core (Rust)
+# Format and lint changed files (from the repository root)
+npm run format:changed
+
+# Core and OAuth (Rust)
 cd core && cargo check && cargo clippy
 
 # Connectors
-cd connectors && npm run lint   # ESLint
-cd connectors && npm run build  # Type-check + build
-
-# OAuth (Rust)
-cd oauth && cargo check && cargo clippy
+npm -w connectors run build  # Type-check + build
 ```
 
 ### Quick health check after warming:
 ```bash
-curl -sf http://localhost:10000/api/healthz  # front
-curl -sf http://localhost:10001/             # core
+curl -sf "$DUST_FRONT_API/api/healthz"  # front API
+curl -sf "$CORE_API/"                    # core
 ```
 
 ## Running Front Tests in Cold Environments
@@ -108,51 +108,54 @@ The `front` project requires a Postgres database and Redis to run tests. dust-hi
 
 ### How it works
 
-- A shared Postgres container runs on port **5433** (started by `dust-hive up`)
-- A shared Redis container runs on port **6479** (started by `dust-hive up`)
+- A shared Postgres container runs on port **5433** (started by `dust-hive up` from the clean main repository)
+- A shared Redis container runs on port **6479** (started by `dust-hive up` from the clean main repository)
 - Each environment gets its own test database: `dust_front_test_{env_name}`
 - `TEST_FRONT_DATABASE_URI` and `TEST_REDIS_URI` are already set in each environment's `env.sh`
 
 ### Running front tests
 
-**IMPORTANT**: You must set `NODE_ENV=test` when running front tests.
-
 ```bash
 # From any cold environment, run front tests directly
-cd front && NODE_ENV=test npm test
+cd front && npm run test
 
 # Run specific test file
-cd front && NODE_ENV=test npm test lib/resources/user_resource.test.ts
+cd front && npm run test -- lib/resources/user_resource.test.ts
 
 # Run with verbose output
-cd front && NODE_ENV=test npm test --reporter verbose path/to/test.test.ts
+cd front && npm run test -- --reporter verbose path/to/test.test.ts
 ```
 
-**No need to warm the environment** - the shared test Postgres and Redis are always available.
+**No need to warm the environment** - `dust-hive up`, run from the clean main repository, starts the shared test Postgres and Redis.
 
 ### Troubleshooting front tests
 
 If front tests fail with database connection errors:
 1. Check if test postgres is running: `docker ps | grep dust-hive-test-postgres`
-2. If not running, start it: `docker start dust-hive-test-postgres`
+2. If not running, start the shared services from the clean main repository: `dust-hive up`
 3. Verify the database exists: `docker exec dust-hive-test-postgres psql -U test -l`
 
 ## Known Issues
 
 ### Node modules structure
 
-In dust-hive environments, `node_modules` for `front` and `connectors` uses a **shallow copy** structure:
-- A real `node_modules` directory with symlinks to packages from the main repo
-- `@dust-tt/client` is overridden to point to the worktree's SDK (ensuring correct type resolution)
+In dust-hive environments, dependencies are shared with the main repo:
+- Root packages resolve from the main repo's `node_modules`
+- Workspace-level `node_modules` use shallow copies when needed
+- `@dust-tt` packages point to the current worktree
 
-**Running `npm install` requires manual cleanup**:
+Do not run `npm install` directly in a Hive worktree:
 ```bash
-rm -rf node_modules && npm install
+# From a clean main repository
+dust-hive sync
+dust-hive refresh [ENV_NAME]
 ```
+
+Do not use `dust-hive refresh` with a legacy `~/dust-hive/` worktree; move or recreate it under the main repository first.
 
 ### SDK watcher doesn't detect changes after git rebase
 
-The SDK watcher uses nodemon which relies on filesystem events. When running `git rebase`, `git pull`, or `git checkout`, nodemon may not detect file changes.
+The SDK watcher relies on filesystem events. When running `git rebase`, `git pull`, or `git checkout`, it may not detect file changes.
 
 **Symptoms**: Type errors in front about missing types that should exist in the SDK.
 
