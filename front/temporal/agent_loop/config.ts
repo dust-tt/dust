@@ -98,11 +98,22 @@ export const RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS = 1 * 60 * 1000;
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 export const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 
+// The worker's maxHeartbeatThrottleInterval: the SDK sends at most one heartbeat to the server
+// per interval, so a faster app-side cadence buys nothing. The activity cadences below derive
+// from it so the values cannot drift apart.
+export const HEARTBEAT_THROTTLE_INTERVAL_MS = 20 * 1000;
+
 // Heartbeat cadence for the whole model activity. Its setup phase (agent data loading, MCP
 // tools listing, conversation rendering) can stall past the heartbeat timeout, e.g. a hung MCP
-// server's tools/list call times out after 60s, exactly the heartbeat timeout. Aligned with the
-// worker's maxHeartbeatThrottleInterval.
-export const MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS = 20 * 1000;
+// server's tools/list call times out after 60s, exactly the heartbeat timeout.
+export const MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS =
+  HEARTBEAT_THROTTLE_INTERVAL_MS;
+
+// Heartbeat cadence for the whole tool activity. Phases outside the MCP call loop (action state
+// transitions, input handling, MCP server connection, event publication) are DB/network-bound and
+// can stall past the heartbeat timeout under contention.
+export const TOOL_ACTIVITY_HEARTBEAT_INTERVAL_MS =
+  HEARTBEAT_THROTTLE_INTERVAL_MS;
 
 // Heartbeat cadence while tool result processing runs (file handling can take minutes): fire
 // comfortably within the heartbeat timeout.
@@ -114,5 +125,5 @@ export const TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS =
 // Heartbeat cadence while the tool activity's DB-bound setup (auth + conversation + action
 // fetches) runs. Setup normally completes in well under a second, so a firing means the fetch
 // phase is stalling (DB contention): the log emitted alongside each firing is monitored in
-// Datadog. Aligned with the worker's maxHeartbeatThrottleInterval.
-export const TOOL_SETUP_HEARTBEAT_INTERVAL_MS = 20 * 1000;
+// Datadog.
+export const TOOL_SETUP_HEARTBEAT_INTERVAL_MS = HEARTBEAT_THROTTLE_INTERVAL_MS;

@@ -27,6 +27,7 @@ import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activ
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import {
   BATCH_QUEUE_NAME,
+  HEARTBEAT_THROTTLE_INTERVAL_MS,
   INTERACTIVE_QUEUE_NAME,
   PROGRAMMATIC_QUEUE_NAME,
   SCHEDULES_QUEUE_NAME,
@@ -125,7 +126,7 @@ async function runAgentLoopWorkerForQueue({
     shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     // This also bounds the time until an activity may receive a cancellation signal.
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
-    maxHeartbeatThrottleInterval: "20 seconds",
+    maxHeartbeatThrottleInterval: HEARTBEAT_THROTTLE_INTERVAL_MS,
     maxConcurrentActivityTaskExecutions:
       MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS,
     interceptors: {
