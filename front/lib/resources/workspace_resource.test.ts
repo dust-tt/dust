@@ -301,7 +301,6 @@ describe("WorkspaceResource", () => {
           conversationsRetentionDays: null,
           metronomeCustomerId: null,
           poolCreditState: "active",
-          programmaticCreditState: "active",
           createdAt: 1755000000000,
           updatedAt: 1755000000000,
         };
