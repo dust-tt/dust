@@ -25,7 +25,14 @@ describe("creditsExhaustedMessage", () => {
 });
 
 describe("logStuckToolsForErroredAgentMessage", () => {
-  const error = { message: "Activity task timed out", name: "ActivityFailure" };
+  const error = {
+    message: "Activity task timed out",
+    name: "ActivityFailure",
+    swallowed: true,
+    activityType: "runToolActivity",
+    retryState: "MAXIMUM_ATTEMPTS_REACHED",
+    timeoutType: "HEARTBEAT",
+  };
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -69,6 +76,8 @@ describe("logStuckToolsForErroredAgentMessage", () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         workflowErrorName: "ActivityFailure",
+        swallowed: true,
+        activityType: "runToolActivity",
         stuckTools: [
           {
             actionModelId: action.id,
