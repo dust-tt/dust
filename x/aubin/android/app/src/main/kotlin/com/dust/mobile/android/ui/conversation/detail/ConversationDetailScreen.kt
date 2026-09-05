@@ -111,6 +111,7 @@ internal fun ConversationDetailScreen(
         messageCount = state.messages.size,
         lastMessageId = state.messages.lastOrNull()?.id,
         hasMore = state.hasMore,
+        hasRefreshError = state.refreshError != null,
         streamingMessageId = state.streamingMessageId,
         isComposerFocused = composerFocus.isInputFocused,
         isSending = state.isSending,

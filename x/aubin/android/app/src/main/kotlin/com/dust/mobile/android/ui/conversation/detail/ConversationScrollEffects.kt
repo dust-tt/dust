@@ -25,6 +25,7 @@ internal fun ConversationScrollEffects(
     messageCount: Int,
     lastMessageId: String?,
     hasMore: Boolean,
+    hasRefreshError: Boolean = false,
     streamingMessageId: String?,
     isComposerFocused: Boolean,
     isSending: Boolean,
@@ -52,11 +53,11 @@ internal fun ConversationScrollEffects(
         }
     }
 
-    LaunchedEffect(lastMessageId, messageCount, hasMore, isSending) {
+    LaunchedEffect(lastMessageId, messageCount, hasMore, hasRefreshError, isSending) {
         if (isSending) {
             pendingSendFollow = true
         }
-        val bottomAnchorIndex = conversationBottomAnchorIndex(messageCount, hasMore)
+        val bottomAnchorIndex = conversationBottomAnchorIndex(messageCount, hasMore, hasRefreshError)
             ?: return@LaunchedEffect
         val followAnchorIndex = conversationFollowAnchorIndex(
             previousLastMessageId = previousLastMessageId,
@@ -68,6 +69,11 @@ internal fun ConversationScrollEffects(
             hasPositionedInitialMessages = hasPositionedInitialMessages,
             lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index,
             bottomAnchorIndex = followAnchorIndex,
+            lastVisibleItemEndOffset = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.let {
+                it.offset + it.size
+            },
+            viewportEndOffset = listState.layoutInfo.viewportEndOffset,
+            followThresholdPx = streamingBottomFollowThresholdPx,
         )
         previousLastMessageId = lastMessageId
         previousBottomAnchorIndex = bottomAnchorIndex
@@ -83,18 +89,23 @@ internal fun ConversationScrollEffects(
             shouldAnchorOnImeOpen = false
             return@LaunchedEffect
         }
-        val bottomAnchorIndex = conversationBottomAnchorIndex(messageCount, hasMore)
+        val bottomAnchorIndex = conversationBottomAnchorIndex(messageCount, hasMore, hasRefreshError)
             ?: return@LaunchedEffect
         shouldAnchorOnImeOpen = shouldFollowConversationBottom(
             hasPositionedInitialMessages = hasPositionedInitialMessages,
             lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index,
             bottomAnchorIndex = bottomAnchorIndex,
+            lastVisibleItemEndOffset = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.let {
+                it.offset + it.size
+            },
+            viewportEndOffset = listState.layoutInfo.viewportEndOffset,
+            followThresholdPx = streamingBottomFollowThresholdPx,
         )
     }
     LaunchedEffect(isImeVisible, isComposerFocused, shouldAnchorOnImeOpen) {
         if (isImeVisible && isComposerFocused && shouldAnchorOnImeOpen) {
             repeat(2) { withFrameNanos { } }
-            val bottomAnchorIndex = conversationBottomAnchorIndex(messageCount, hasMore)
+            val bottomAnchorIndex = conversationBottomAnchorIndex(messageCount, hasMore, hasRefreshError)
                 ?: return@LaunchedEffect
             if (!listState.isScrollInProgress) {
                 listState.scrollToItem(bottomAnchorIndex)
@@ -102,9 +113,9 @@ internal fun ConversationScrollEffects(
             shouldAnchorOnImeOpen = false
         }
     }
-    LaunchedEffect(streamingMessageId, messageCount, hasMore) {
+    LaunchedEffect(streamingMessageId, messageCount, hasMore, hasRefreshError) {
         if (streamingMessageId == null) return@LaunchedEffect
-        val bottomAnchorIndex = conversationBottomAnchorIndex(messageCount, hasMore)
+        val bottomAnchorIndex = conversationBottomAnchorIndex(messageCount, hasMore, hasRefreshError)
             ?: return@LaunchedEffect
         while (isActive) {
             val layoutInfo = listState.layoutInfo

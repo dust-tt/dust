@@ -1,7 +1,14 @@
 package com.dust.mobile.android.ui.conversation.detail
 
-internal fun conversationBottomAnchorIndex(messageCount: Int, hasMore: Boolean): Int? =
-    if (messageCount > 0) messageCount + if (hasMore) 1 else 0 else null
+internal fun conversationBottomAnchorIndex(
+    messageCount: Int,
+    hasMore: Boolean,
+    hasRefreshError: Boolean = false,
+): Int? = if (messageCount > 0) {
+    messageCount + (if (hasMore) 1 else 0) + (if (hasRefreshError) 1 else 0)
+} else {
+    null
+}
 
 internal fun conversationFollowAnchorIndex(
     previousLastMessageId: String?,
@@ -22,10 +29,17 @@ internal fun shouldFollowConversationBottom(
     hasPositionedInitialMessages: Boolean,
     lastVisibleItemIndex: Int?,
     bottomAnchorIndex: Int,
+    lastVisibleItemEndOffset: Int?,
+    viewportEndOffset: Int,
+    followThresholdPx: Int,
 ): Boolean =
-    !hasPositionedInitialMessages ||
-        lastVisibleItemIndex == null ||
-        lastVisibleItemIndex >= bottomAnchorIndex - 2
+    !hasPositionedInitialMessages || isNearStreamingBottom(
+        lastVisibleItemIndex = lastVisibleItemIndex,
+        lastVisibleItemEndOffset = lastVisibleItemEndOffset,
+        viewportEndOffset = viewportEndOffset,
+        bottomAnchorIndex = bottomAnchorIndex,
+        followThresholdPx = followThresholdPx,
+    )
 
 internal fun isNearStreamingBottom(
     lastVisibleItemIndex: Int?,
