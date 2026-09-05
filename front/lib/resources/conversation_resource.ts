@@ -909,16 +909,87 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       agentMessageModelId,
       costCredits,
-    }: { agentMessageModelId: ModelId; costCredits: number | null }
+      totalCostCredits,
+    }: {
+      agentMessageModelId: ModelId;
+      costCredits: number | null;
+      // Left unchanged when omitted. The finalize path always passes it so that
+      // `costCredits` (own cost) and `totalCostCredits` (own + run_agent
+      // sub-agents) are written together in a single, idempotent UPDATE.
+      totalCostCredits?: number | null;
+    }
   ): Promise<void> {
     await AgentMessageModel.update(
-      { costCredits },
+      { costCredits, totalCostCredits },
       {
         where: {
           id: agentMessageModelId,
           workspaceId: auth.getNonNullableWorkspace().id,
         },
       }
+    );
+  }
+
+  /**
+   * Sums the `totalCostCredits` of the direct `run_agent` sub-agents spawned by
+   * an agent message. Non-recursive: since a sub-agent's own `totalCostCredits`
+   * already includes its entire run_agent subtree, summing only the direct
+   * children yields the full sub-agent cost. Handovers run in the parent
+   * conversation and are billed there directly, so they are excluded.
+   *
+   * Callers add this to the message's own `costCredits` to obtain its
+   * `totalCostCredits`. This assumes each direct sub-agent has already finalized
+   * (written its `totalCostCredits`) by the time the parent finalizes.
+   */
+  static async sumDirectSubAgentTotalCostCredits(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<number> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // `agentMessageId` is a `messages.sId`. Direct sub-agents are the agent
+    // message replies to the user messages whose `agenticOriginMessageId` points
+    // at it with a run_agent type. Resolve in two indexed lookups: first the
+    // triggering user message rows, then their agent replies.
+    const subAgentUserMessageRows = await MessageModel.findAll({
+      where: { workspaceId },
+      attributes: ["id"],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: [],
+          where: {
+            agenticOriginMessageId: agentMessageId,
+            agenticMessageType: "run_agent",
+          },
+        },
+      ],
+    });
+    if (subAgentUserMessageRows.length === 0) {
+      return 0;
+    }
+
+    const subAgentReplies = await MessageModel.findAll({
+      where: {
+        workspaceId,
+        parentId: { [Op.in]: subAgentUserMessageRows.map((m) => m.id) },
+      },
+      attributes: ["id"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["totalCostCredits"],
+        },
+      ],
+    });
+
+    return subAgentReplies.reduce(
+      (sum, reply) => sum + (reply.agentMessage?.totalCostCredits ?? 0),
+      0
     );
   }
 

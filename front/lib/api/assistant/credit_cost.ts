@@ -163,9 +163,25 @@ export async function computeAndStoreAgentMessageCredits(
     contextOrigin: triggeringUserMessageOrigin,
   });
 
+  // The message-level total is its own cost plus the cost of all its run_agent
+  // sub-agents. Since a sub-agent's own `totalCostCredits` already includes its
+  // whole subtree, summing only the direct sub-agents yields the full total.
+  // This assumes sub-agents have finalized (written their `totalCostCredits`)
+  // before the parent does. Both values are absolute (recomputed from scratch)
+  // and written together, so the whole store is idempotent under Temporal retry.
+  const subAgentTotalCostCredits =
+    await ConversationResource.sumDirectSubAgentTotalCostCredits(auth, {
+      agentMessageId,
+    });
+  const totalCostCredits =
+    costCredits === null && subAgentTotalCostCredits === 0
+      ? null
+      : (costCredits ?? 0) + subAgentTotalCostCredits;
+
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId,
     costCredits,
+    totalCostCredits,
   });
 
   // `costCredits` is the message-level running total (recomputed from all
