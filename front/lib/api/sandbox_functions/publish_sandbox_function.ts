@@ -1,6 +1,7 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { lintSandboxFunctionPublish } from "@app/lib/api/sandbox_functions/publish_lints";
 import { deriveSandboxFunctionSlug } from "@app/lib/api/sandbox_functions/slug";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -13,6 +14,7 @@ import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionStake,
 } from "@app/types/api/sandbox_functions";
+import { DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -23,6 +25,9 @@ export type PublishSandboxFunctionResult = {
   // True when a re-publish produced a bundle byte-identical to the one it replaced: the edit the
   // publisher thinks they made did not change the built output. Always false on a first publish.
   byteIdentical: boolean;
+  // Advisory lint findings over the built bundle and contract (see publish_lints.ts). Never
+  // block the publish; the tool appends them to its result text.
+  warnings: string[];
 };
 
 /**
@@ -45,6 +50,7 @@ export async function publishSandboxFunction(
     path: sourcePath,
     executionMode,
     defaultStake,
+    confirmFast,
   }: {
     space: SpaceResource;
     slug: string;
@@ -52,6 +58,9 @@ export async function publishSandboxFunction(
     path: string;
     executionMode?: SandboxFunctionExecutionMode;
     defaultStake?: SandboxFunctionStake;
+    // Publisher's confirmation that a `fast` publish flagged by the tool-call lint is
+    // intentional; suppresses that warning only (see publish_lints.ts).
+    confirmFast?: boolean;
   }
 ): Promise<Result<PublishSandboxFunctionResult, SandboxFunctionError>> {
   // Resolve the model-supplied scoped path (e.g. `pod-{id}/greet.ts`) to its absolute path inside
@@ -94,6 +103,16 @@ export async function publishSandboxFunction(
   const { bundleCode, userIdentity, inputSchema, outputSchema } =
     buildResult.value;
 
+  // Lint the built output rather than the source: the bundle is what runs, and helpers pulled in
+  // from `functions/lib/` only appear here. Runs on the caller's requested mode, i.e. the mode
+  // the function will be stored with.
+  const warnings = lintSandboxFunctionPublish({
+    bundleCode,
+    executionMode: executionMode ?? DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+    inputSchema,
+    confirmFast,
+  });
+
   // Re-publish overwrites the existing bundle in place so its mount path (<prefix>/<slug>.ts) stays
   // stable; only a first publish creates the backing file.
   const existing = await SandboxFunctionResource.fetchBySpaceAndSlug(
@@ -120,6 +139,7 @@ export async function publishSandboxFunction(
     return new Ok({
       sandboxFunction: existing,
       byteIdentical: updateResult.value.byteIdentical,
+      warnings,
     });
   }
 
@@ -145,7 +165,7 @@ export async function publishSandboxFunction(
     outputSchema,
   });
 
-  return new Ok({ sandboxFunction: created, byteIdentical: false });
+  return new Ok({ sandboxFunction: created, byteIdentical: false, warnings });
 }
 
 async function createBundleFile(
