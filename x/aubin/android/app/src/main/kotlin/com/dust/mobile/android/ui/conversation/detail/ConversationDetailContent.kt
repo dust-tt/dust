@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
@@ -50,99 +51,110 @@ internal fun ConversationDetailContent(
     val initialError = state.error?.takeIf { state.messages.isEmpty() }
     val uriHandler = LocalUriHandler.current
 
-    ContentCrossfade(
-        targetState = isInitialLoading,
-        label = "conversation-detail-loading",
-        modifier = Modifier.fillMaxSize(),
-    ) { initialLoading ->
-        when {
-            initialLoading -> ConversationDetailSkeleton(Modifier.padding(contentPadding))
-            initialError != null -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(contentPadding),
-            ) {
-                ErrorScreen(
-                    message = initialError,
-                    onRetry = onRetryLoad,
-                )
-            }
-            else -> LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(contentPadding)
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 20.dp),
-            ) {
-                state.refreshError?.let { error ->
-                    item(key = "saved-messages-notice") {
-                        SavedContentBanner(
-                            message = error,
-                            retryContentDescription = "Retry loading messages",
-                            onRetry = onRetryLoad,
-                            modifier = Modifier.padding(bottom = 12.dp),
-                        )
-                    }
-                }
-                if (state.hasMore) {
-                    item {
-                        DustButton(
-                            label = "Load older messages",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            enabled = !state.isLoadingMore,
-                            loading = state.isLoadingMore,
-                            variant = DustButtonVariant.Text,
-                            onClick = onLoadMore,
-                        )
-                    }
-                }
-                itemsIndexed(state.messages, key = { _, message -> message.id }) { index, message ->
-                    val inlineActivity = state.inlineActivities[message.id]
-                    val inlineBlockedState = inlineBlockedStateForMessage(
-                        message = message,
-                        streamingMessageId = state.streamingMessageId,
-                        blockedState = state.blockedState,
+    Box(Modifier.fillMaxSize()) {
+        ContentCrossfade(
+            targetState = isInitialLoading,
+            label = "conversation-detail-loading",
+            modifier = Modifier.fillMaxSize(),
+        ) { initialLoading ->
+            when {
+                initialLoading -> ConversationDetailSkeleton(Modifier.padding(contentPadding))
+                initialError != null -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(contentPadding),
+                ) {
+                    ErrorScreen(
+                        message = initialError,
+                        onRetry = onRetryLoad,
                     )
-                    val hidesAgentHeader = message.id in hiddenAgentHeaderIds
-                    Box(
-                        modifier = Modifier.padding(
-                            top = conversationMessageTopSpacing(
-                                previousMessage = state.messages.getOrNull(index - 1),
-                                message = message,
-                                hidesAgentHeader = hidesAgentHeader,
-                            ),
-                        ),
-                    ) {
-                        MessageBubble(
+                }
+                else -> LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(contentPadding)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 20.dp),
+                ) {
+                    state.refreshError?.let { error ->
+                        item(key = "saved-messages-notice") {
+                            SavedContentBanner(
+                                message = error,
+                                retryContentDescription = "Retry loading messages",
+                                onRetry = onRetryLoad,
+                                modifier = Modifier.padding(bottom = 12.dp),
+                            )
+                        }
+                    }
+                    if (state.hasMore) {
+                        item {
+                            DustButton(
+                                label = "Load older messages",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                                enabled = !state.isLoadingMore,
+                                loading = state.isLoadingMore,
+                                variant = DustButtonVariant.Text,
+                                onClick = onLoadMore,
+                            )
+                        }
+                    }
+                    itemsIndexed(state.messages, key = { _, message -> message.id }) { index, message ->
+                        val inlineActivity = state.inlineActivities[message.id]
+                        val inlineBlockedState = inlineBlockedStateForMessage(
                             message = message,
-                            currentUserEmail = user.email,
-                            currentUserSId = currentUserSId,
-                            lastError = state.lastError?.takeIf { it.messageId == message.id },
-                            hideAgentHeader = hidesAgentHeader,
-                            streamingActivity = inlineActivity?.activity,
-                            activeActions = inlineActivity?.activeActions.orEmpty(),
-                            completedSteps = inlineActivity?.completedSteps.orEmpty(),
-                            blockedState = inlineBlockedState,
-                            isValidatingAction = state.isValidatingAction,
-                            actionError = state.actionError.takeIf { inlineBlockedState != null },
-                            onOpenContentFragment = onOpenContentFragment,
-                            loadContentFragmentImage = loadContentFragmentImage,
-                            onOpenGeneratedFile = onOpenFile,
-                            onOpenCitation = { citation -> citation.href?.let(uriHandler::openUri) },
-                            onRetryMessage = onRetryMessage,
-                            onValidateAction = onValidateAction,
-                            onAnswerQuestion = onAnswerQuestion,
-                            onOpenInBrowser = onOpenInBrowser,
+                            streamingMessageId = state.streamingMessageId,
+                            blockedState = state.blockedState,
                         )
+                        val hidesAgentHeader = message.id in hiddenAgentHeaderIds
+                        Box(
+                            modifier = Modifier.padding(
+                                top = conversationMessageTopSpacing(
+                                    previousMessage = state.messages.getOrNull(index - 1),
+                                    message = message,
+                                    hidesAgentHeader = hidesAgentHeader,
+                                ),
+                            ),
+                        ) {
+                            MessageBubble(
+                                message = message,
+                                currentUserEmail = user.email,
+                                currentUserSId = currentUserSId,
+                                lastError = state.lastError?.takeIf { it.messageId == message.id },
+                                hideAgentHeader = hidesAgentHeader,
+                                streamingActivity = inlineActivity?.activity,
+                                activeActions = inlineActivity?.activeActions.orEmpty(),
+                                completedSteps = inlineActivity?.completedSteps.orEmpty(),
+                                blockedState = inlineBlockedState,
+                                isValidatingAction = state.isValidatingAction,
+                                actionError = state.actionError.takeIf { inlineBlockedState != null },
+                                onOpenContentFragment = onOpenContentFragment,
+                                loadContentFragmentImage = loadContentFragmentImage,
+                                onOpenGeneratedFile = onOpenFile,
+                                onOpenCitation = { citation -> citation.href?.let(uriHandler::openUri) },
+                                onRetryMessage = onRetryMessage,
+                                onValidateAction = onValidateAction,
+                                onAnswerQuestion = onAnswerQuestion,
+                                onOpenInBrowser = onOpenInBrowser,
+                            )
+                        }
+                    }
+                    item(key = "conversation-bottom-anchor") {
+                        Spacer(Modifier.height(1.dp))
                     }
                 }
-                item(key = "conversation-bottom-anchor") {
-                    Spacer(Modifier.height(1.dp))
-                }
             }
+        }
+        if (!isInitialLoading && initialError == null) {
+            ConversationJumpToLatest(
+                listState = listState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(contentPadding)
+                    .padding(bottom = 12.dp),
+            )
         }
     }
 }

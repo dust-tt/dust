@@ -89,7 +89,7 @@ work and repository calls. Platform-independent protocol and business rules belo
   was active, and clear it when navigation or explicit dismissal ends editing.
 - Agent avatars are square with an 8 dp corner radius. User avatars are round. Conversations,
   workspaces, files, skills, tools, and actions use icons or status marks, never decorative avatars.
-- Use a 4 dp spacing grid. Interactive targets are at least 44 dp. Main page sections are unframed;
+- Use a 4 dp spacing grid. Interactive targets are at least 48 dp. Main page sections are unframed;
   cards are reserved for repeated items, blocked actions, and genuinely bounded tools.
 - Generic controls and cards use at most an 8 dp corner radius. Message bubbles and modal sheets are
   deliberate exceptions.
@@ -119,7 +119,7 @@ The action hierarchy is explicit:
 
 - `DustButton` owns all text actions. Primary is blue, secondary is a quiet fill, outline is a
   neutral alternative, neutral text is for dismissal or skipping, and destructive is red.
-- `DustIconButton` owns standard icon commands. It is 44 dp with a 20 dp icon. A blue container is
+- `DustIconButton` owns standard icon commands. It is 48 dp with a 20 dp icon. A blue container is
   reserved for a primary command or active selection.
 - Circular icon buttons are limited to recording controls. Other commands use the shared 8 dp
   action shape.
@@ -129,7 +129,7 @@ The action hierarchy is explicit:
 The layout scale is defined in `ui/theme/Layout.kt`:
 
 - Page edge: 16 dp. Bottom command edge: 12 dp. Standard internal gap: 12 dp. Compact gap: 8 dp.
-- Touch target: 44 dp minimum. Field and text-action height: 48 dp. Navigation row: 56 dp minimum.
+- Touch target: 48 dp minimum. Field and text-action height: 48 dp. Navigation row: 56 dp minimum.
 - Generic controls and bounded surfaces: 8 dp radius. User message bubbles: 16 dp. Modal sheets use
   the platform sheet shape.
 - Page title: `titleMedium`. Section label: muted `labelMedium`. Row title: strong body or label.
@@ -141,7 +141,7 @@ Component placement follows mobile behavior:
   header at the top because it filters the transient list.
 - `DustSearchField` is the only search presentation: 48 dp, quiet fill, blue focus border, leading
   search/back icon, trailing clear action, and IME Search dismissal.
-- The composer is one bounded 8 dp panel above system and IME insets. Tools are 44 dp, agent identity
+- The composer is one bounded 8 dp panel above system and IME insets. Tools are 48 dp, agent identity
   is the only avatar in the toolbar, and send becomes blue only when it can commit.
 - Sheets use `boundedSurface`, `DustModalHeader`, a top search when needed, and rows of at least 56 dp.
 - Empty and error states are unframed icon/title/body/action layouts. Brand art is not a fallback

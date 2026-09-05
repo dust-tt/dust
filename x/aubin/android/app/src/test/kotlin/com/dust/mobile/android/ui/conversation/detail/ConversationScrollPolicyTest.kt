@@ -15,6 +15,26 @@ class ConversationScrollPolicyTest {
     }
 
     @Test
+    fun `bottom anchor includes the saved content notice and pagination`() {
+        assertEquals(4, conversationBottomAnchorIndex(3, hasMore = false, hasRefreshError = true))
+        assertEquals(5, conversationBottomAnchorIndex(3, hasMore = true, hasRefreshError = true))
+    }
+
+    @Test
+    fun `reading the middle of the final long response does not follow new messages`() {
+        assertFalse(
+            shouldFollowConversationBottom(
+                hasPositionedInitialMessages = true,
+                lastVisibleItemIndex = 19,
+                bottomAnchorIndex = 20,
+                lastVisibleItemEndOffset = 3_000,
+                viewportEndOffset = 1_000,
+                followThresholdPx = 96,
+            ),
+        )
+    }
+
+    @Test
     fun `message appends use the previous tail to preserve bottom follow intent`() {
         assertEquals(
             8,
@@ -43,6 +63,9 @@ class ConversationScrollPolicyTest {
                 hasPositionedInitialMessages = false,
                 lastVisibleItemIndex = 0,
                 bottomAnchorIndex = 20,
+                lastVisibleItemEndOffset = 1_000,
+                viewportEndOffset = 1_000,
+                followThresholdPx = 96,
             ),
         )
         assertTrue(
@@ -50,6 +73,9 @@ class ConversationScrollPolicyTest {
                 hasPositionedInitialMessages = true,
                 lastVisibleItemIndex = 19,
                 bottomAnchorIndex = 20,
+                lastVisibleItemEndOffset = 1_000,
+                viewportEndOffset = 1_000,
+                followThresholdPx = 96,
             ),
         )
         assertFalse(
@@ -57,24 +83,33 @@ class ConversationScrollPolicyTest {
                 hasPositionedInitialMessages = true,
                 lastVisibleItemIndex = 8,
                 bottomAnchorIndex = 20,
+                lastVisibleItemEndOffset = 1_000,
+                viewportEndOffset = 1_000,
+                followThresholdPx = 96,
             ),
         )
     }
 
     @Test
-    fun `unknown viewport and exact threshold keep following`() {
+    fun `unknown viewport follows but earlier messages do not`() {
         assertTrue(
             shouldFollowConversationBottom(
                 hasPositionedInitialMessages = true,
                 lastVisibleItemIndex = null,
                 bottomAnchorIndex = 20,
+                lastVisibleItemEndOffset = 1_000,
+                viewportEndOffset = 1_000,
+                followThresholdPx = 96,
             ),
         )
-        assertTrue(
+        assertFalse(
             shouldFollowConversationBottom(
                 hasPositionedInitialMessages = true,
                 lastVisibleItemIndex = 18,
                 bottomAnchorIndex = 20,
+                lastVisibleItemEndOffset = 1_000,
+                viewportEndOffset = 1_000,
+                followThresholdPx = 96,
             ),
         )
     }

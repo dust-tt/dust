@@ -12,7 +12,7 @@ internal object DustSpacing {
 }
 
 internal object DustDimensions {
-    val minimumTouchTarget = 44.dp
+    val minimumTouchTarget = 48.dp
     val controlHeight = 48.dp
     val conversationRowMinimumHeight = 56.dp
     val rowMinimumHeight = 56.dp

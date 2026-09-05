@@ -211,8 +211,7 @@ internal fun DustIconButton(
 
     Surface(
         modifier = modifier
-            .size(DustDimensions.minimumTouchTarget)
-            .semantics { this.contentDescription = contentDescription },
+            .size(DustDimensions.minimumTouchTarget),
         shape = RoundedCornerShape(
             if (variant == DustIconButtonVariant.Primary) {
                 DustRadii.prominentControl
@@ -224,7 +223,9 @@ internal fun DustIconButton(
         contentColor = contentColor,
     ) {
         IconButton(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics { this.contentDescription = contentDescription },
             enabled = enabled && !loading,
             onClick = onClick,
         ) {
