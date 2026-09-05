@@ -15,6 +15,7 @@ import type {
   FolderEntry,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
+import type { DownloadableEntry } from "@app/components/file_explorer/useFileDownload";
 import { isFileExplorerMovableFile } from "@app/components/file_explorer/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CardGrid, ScrollArea, Spinner } from "@dust-tt/sparkle";
@@ -34,7 +35,7 @@ interface FileExplorerContentProps {
   onFolderNavigate: (node: FileSystemTreeNode) => void;
   onFileOpen: (entry: FileEntry) => void;
   onFramePackageOpen: (entry: FramePackageEntry) => void;
-  onFileDownload: (entry: FileEntry) => Promise<void>;
+  onFileDownload: (entry: DownloadableEntry) => Promise<void>;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   onNodeOpen: (entry: ContentNodeEntry) => void;
   getFileMenuItems?: (entry: FileExplorerEntry) => FileExplorerMenuAction[];
@@ -121,6 +122,7 @@ export function FileExplorerContent({
             searchFolderPath={searchFolderPath}
             viewMode={viewMode}
             onOpen={onFramePackageOpen}
+            onDownload={onFileDownload}
             extraMenuItems={getFileMenuItems?.(entry)}
           />
         );

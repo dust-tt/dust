@@ -257,6 +257,7 @@ describe("FileExplorer Frame packages", () => {
     }
     await user.click(within(packageRow).getByRole("button"));
     expect(screen.getByText("View source")).toBeInTheDocument();
+    expect(screen.getByText("Download")).toBeInTheDocument();
     expect(screen.queryByText("Rename")).not.toBeInTheDocument();
     expect(screen.queryByText("Move to…")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("Delete"));
