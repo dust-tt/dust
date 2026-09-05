@@ -52,7 +52,7 @@ import {
 import { HUBSPOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/hubspot/metadata";
 import {
   formatHubSpotCreateSuccess,
-  formatHubSpotSearchResults,
+  formatHubSpotSearchResponse,
   formatHubSpotUpdateSuccess,
   formatOwnersAsText,
   formatTransformedPropertiesAsText,
@@ -76,8 +76,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         creatableOnly
       );
       return new Ok([
-        { type: "text" as const, text: "Properties retrieved successfully" },
         { type: "text" as const, text: formattedText },
+        { type: "text" as const, text: "Properties retrieved successfully" },
       ]);
     });
   },
@@ -94,11 +94,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         ]);
       }
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(schemas, null, 2) },
         {
           type: "text" as const,
           text: `Found ${schemas.length} custom object schema(s).`,
         },
-        { type: "text" as const, text: JSON.stringify(schemas, null, 2) },
       ]);
     });
   },
@@ -110,8 +110,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         return new Err(new MCPError("No owners found."));
       }
       return new Ok([
-        { type: "text" as const, text: "Owners retrieved successfully." },
         { type: "text" as const, text: formatOwnersAsText(owners) },
+        { type: "text" as const, text: "Owners retrieved successfully." },
       ]);
     });
   },
@@ -125,11 +125,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         );
       }
       return new Ok([
+        { type: "text" as const, text: formatOwnersAsText(owners) },
         {
           type: "text" as const,
           text: `Found ${owners.length} owner(s) matching "${searchQuery}".`,
         },
-        { type: "text" as const, text: formatOwnersAsText(owners) },
       ]);
     });
   },
@@ -146,19 +146,19 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       }
       if (count >= MAX_COUNT_LIMIT) {
         return new Ok([
+          { type: "text" as const, text: `${MAX_COUNT_LIMIT}+` },
           {
             type: "text" as const,
             text: `Found ${MAX_COUNT_LIMIT}+ ${objectType} matching the filters (exact count unavailable due to API limits)`,
           },
-          { type: "text" as const, text: `${MAX_COUNT_LIMIT}+` },
         ]);
       }
       return new Ok([
+        { type: "text" as const, text: count.toString() },
         {
           type: "text" as const,
           text: `Found ${count} ${objectType} matching the specified filters`,
         },
-        { type: "text" as const, text: count.toString() },
       ]);
     });
   },
@@ -174,8 +174,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         );
       }
       return new Ok([
-        { type: "text" as const, text: "Meeting retrieved successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Meeting retrieved successfully." },
       ]);
     });
   },
@@ -191,11 +191,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: "File public URL retrieved successfully.",
+          text: JSON.stringify({ url: result }, null, 2),
         },
         {
           type: "text" as const,
-          text: JSON.stringify({ url: result }, null, 2),
+          text: "File public URL retrieved successfully.",
         },
       ]);
     });
@@ -212,11 +212,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         return new Err(new MCPError("Error retrieving associated meetings."));
       }
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: "Associated meetings retrieved successfully.",
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -235,19 +235,32 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       if (!result) {
         return new Err(new MCPError("Search failed."));
       }
+
+      const payload = formatHubSpotSearchResponse({
+        objects: result.results,
+        objectType: input.objectType,
+        after: result.paging?.next?.after,
+      });
+
       if (result.results.length === 0) {
-        return new Ok([{ type: "text" as const, text: "No results found." }]);
+        return new Ok([
+          { type: "text" as const, text: JSON.stringify(payload, null, 2) },
+          { type: "text" as const, text: "No results found." },
+        ]);
       }
 
-      const searchResults = formatHubSpotSearchResults(
-        result.results,
-        input.objectType
-      );
+      const paginationNote = payload.paging
+        ? ` More results available. Pass after="${payload.paging.after}" to fetch the next page.`
+        : "";
 
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(searchResults, null, 2),
+          text: JSON.stringify(payload, null, 2),
+        },
+        {
+          type: "text" as const,
+          text: `Found ${result.results.length} ${input.objectType}.${paginationNote}`,
         },
       ]);
     });
@@ -326,11 +339,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     const fullCsv = `${csvHeader}\n${csvContent}`;
 
     return new Ok([
+      { type: "text" as const, text: fullCsv },
       {
         type: "text" as const,
         text: `Exported ${csvRows.length} ${input.objectType} to CSV`,
       },
-      { type: "text" as const, text: fullCsv },
     ]);
   },
 
@@ -361,8 +374,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     const urlResults = generateUrls(portalId, uiDomain, pageRequests);
 
     return new Ok([
-      { type: "text" as const, text: "HubSpot links generated successfully." },
       { type: "text" as const, text: JSON.stringify(urlResults, null, 2) },
+      { type: "text" as const, text: "HubSpot links generated successfully." },
     ]);
   },
 
@@ -372,11 +385,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: "Portal information retrieved successfully",
+          text: `Portal ID: ${result.hub_id}\nUI Domain: app.hubspot.com`,
         },
         {
           type: "text" as const,
-          text: `Portal ID: ${result.hub_id}\nUI Domain: app.hubspot.com`,
+          text: "Portal information retrieved successfully",
         },
       ]);
     });
@@ -391,11 +404,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         toObjectType,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: `Associations retrieved successfully for ${objectType}:${objectId}`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -408,11 +421,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         toObjectType,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: `Association labels retrieved successfully between ${fromObjectType} and ${toObjectType}`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -421,11 +434,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     return withAuth(extra, async (accessToken) => {
       const result = await getCurrentUserId(accessToken);
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: "Current user information retrieved successfully",
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -444,20 +457,16 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         return new Ok([
           {
             type: "text" as const,
-            text: `No activities found for owner ${ownerId} between ${startDate} and ${endDate}`,
+            text: `No activities found for the specified period. Summary: ${JSON.stringify(result.summary, null, 2)}`,
           },
           {
             type: "text" as const,
-            text: `No activities found for the specified period. Summary: ${JSON.stringify(result.summary, null, 2)}`,
+            text: `No activities found for owner ${ownerId} between ${startDate} and ${endDate}`,
           },
         ]);
       }
 
       return new Ok([
-        {
-          type: "text" as const,
-          text: `Found ${result.results.length} activities for owner ${ownerId} between ${startDate} and ${endDate}`,
-        },
         {
           type: "text" as const,
           text: JSON.stringify(
@@ -468,6 +477,10 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
             null,
             2
           ),
+        },
+        {
+          type: "text" as const,
+          text: `Found ${result.results.length} activities for owner ${ownerId} between ${startDate} and ${endDate}`,
         },
       ]);
     });
@@ -483,11 +496,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         state,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: `Found ${result.total} marketing email(s).`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -496,11 +509,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     return withAuth(extra, async (accessToken) => {
       const result = await getMarketingEmail({ accessToken, emailId });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: "Marketing email retrieved successfully.",
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -513,11 +526,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         interval,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: "Marketing email statistics retrieved successfully.",
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -537,11 +550,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         endTimestamp,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: `Retrieved ${result.events.length} email event(s).`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -554,11 +567,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         offset,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: `Retrieved ${result.campaigns.length} email campaign(s).`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -567,11 +580,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     return withAuth(extra, async (accessToken) => {
       const result = await getEmailCampaign({ accessToken, campaignId });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: "Email campaign retrieved successfully.",
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -586,11 +599,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       const formatted = formatHubSpotCreateSuccess(result, "contacts");
       return new Ok([
-        { type: "text" as const, text: formatted.message },
         {
           type: "text" as const,
           text: JSON.stringify(formatted.result, null, 2),
         },
+        { type: "text" as const, text: formatted.message },
       ]);
     });
   },
@@ -604,11 +617,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       const formatted = formatHubSpotCreateSuccess(result, "companies");
       return new Ok([
-        { type: "text" as const, text: formatted.message },
         {
           type: "text" as const,
           text: JSON.stringify(formatted.result, null, 2),
         },
+        { type: "text" as const, text: formatted.message },
       ]);
     });
   },
@@ -621,8 +634,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
-        { type: "text" as const, text: "Deal created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Deal created successfully." },
       ]);
     });
   },
@@ -636,11 +649,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       const formatted = formatHubSpotCreateSuccess(result, "tickets");
       return new Ok([
-        { type: "text" as const, text: formatted.message },
         {
           type: "text" as const,
           text: JSON.stringify(formatted.result, null, 2),
         },
+        { type: "text" as const, text: formatted.message },
       ]);
     });
   },
@@ -653,8 +666,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
-        { type: "text" as const, text: "Lead created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Lead created successfully." },
       ]);
     });
   },
@@ -667,8 +680,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
-        { type: "text" as const, text: "Task created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Task created successfully." },
       ]);
     });
   },
@@ -681,8 +694,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
-        { type: "text" as const, text: "Note created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Note created successfully." },
       ]);
     });
   },
@@ -695,12 +708,12 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -713,8 +726,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
-        { type: "text" as const, text: "Meeting created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Meeting created successfully." },
       ]);
     });
   },
@@ -731,11 +744,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: `Custom object (${objectType}) created successfully.`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -762,11 +775,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associationTypeId,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: `Association created successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -781,11 +794,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       const formatted = formatHubSpotUpdateSuccess(result, "contacts");
       return new Ok([
-        { type: "text" as const, text: formatted.message },
         {
           type: "text" as const,
           text: JSON.stringify(formatted.result, null, 2),
         },
+        { type: "text" as const, text: formatted.message },
       ]);
     });
   },
@@ -799,6 +812,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       return new Ok([
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Company updated successfully." },
       ]);
     });
   },
@@ -812,6 +826,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       return new Ok([
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Deal updated successfully." },
       ]);
     });
   },
@@ -825,11 +840,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         properties,
       });
       return new Ok([
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
         {
           type: "text" as const,
           text: `Custom object (${objectType}) updated successfully.`,
         },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
@@ -842,8 +857,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         properties,
       });
       return new Ok([
-        { type: "text" as const, text: "Task updated successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Task updated successfully." },
       ]);
     });
   },
@@ -856,8 +871,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         properties: { hs_task_status: "COMPLETED" },
       });
       return new Ok([
-        { type: "text" as const, text: "Task marked as completed." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        { type: "text" as const, text: "Task marked as completed." },
       ]);
     });
   },
@@ -871,11 +886,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `Task ${taskId} deleted successfully.`,
+          text: JSON.stringify({ success: true }, null, 2),
         },
         {
           type: "text" as const,
-          text: JSON.stringify({ success: true }, null, 2),
+          text: `Task ${taskId} deleted successfully.`,
         },
       ]);
     });
@@ -896,11 +911,11 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `Association removed successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
+          text: JSON.stringify({ success: true }, null, 2),
         },
         {
           type: "text" as const,
-          text: JSON.stringify({ success: true }, null, 2),
+          text: `Association removed successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
         },
       ]);
     });

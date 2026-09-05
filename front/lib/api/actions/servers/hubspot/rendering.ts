@@ -11,6 +11,11 @@ interface HubSpotObjectSummary {
   updated_at?: string;
 }
 
+export interface HubSpotSearchResponsePayload {
+  results: HubSpotObjectSummary[];
+  paging?: { after: string };
+}
+
 const IMPORTANT_DATE_FIELDS: Record<string, string[]> = {
   contacts: ["createdate", "lastmodifieddate"],
   companies: ["createdate", "lastmodifieddate"],
@@ -137,6 +142,23 @@ export function formatHubSpotSearchResults(
   return objects.map((object) => {
     return formatHubSpotObject(object, objectType, portalId);
   });
+}
+
+export function formatHubSpotSearchResponse({
+  objects,
+  objectType,
+  after,
+  portalId,
+}: {
+  objects: SimplePublicObject[];
+  objectType: string;
+  after?: string;
+  portalId?: string;
+}): HubSpotSearchResponsePayload {
+  return {
+    results: formatHubSpotSearchResults(objects, objectType, portalId),
+    ...(after ? { paging: { after } } : {}),
+  };
 }
 
 export function formatTransformedPropertiesAsText(
