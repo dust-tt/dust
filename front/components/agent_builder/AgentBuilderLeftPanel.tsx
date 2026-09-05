@@ -9,6 +9,7 @@ import {
   BarFooter,
   BarHeader,
   Button,
+  cn,
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
@@ -27,6 +28,7 @@ interface AgentBuilderLeftPanelProps {
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
+  hasUnsavedChanges: boolean;
 }
 
 export function AgentBuilderLeftPanel({
@@ -40,6 +42,7 @@ export function AgentBuilderLeftPanel({
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
+  hasUnsavedChanges,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
 
@@ -50,19 +53,20 @@ export function AgentBuilderLeftPanel({
     <div className="flex h-full w-full flex-col">
       <BarHeader
         variant="default"
-        className="mx-4"
         title={title}
         rightActions={
-          <Button
-            icon={XClose}
-            onClick={handleCancel}
-            variant="ghost"
-            type="button"
-          />
+          hasUnsavedChanges ? undefined : (
+            <Button
+              icon={XClose}
+              onClick={handleCancel}
+              variant="ghost"
+              type="button"
+            />
+          )
         }
       />
       <ScrollArea className="flex-1">
-        <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+        <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
           {editorGateMessage}
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
@@ -87,24 +91,33 @@ export function AgentBuilderLeftPanel({
           />
         </div>
       </ScrollArea>
-      <BarFooter
-        variant="default"
-        className="mx-4 justify-between"
-        leftActions={
-          <Button
-            variant="outline"
-            label="Cancel"
-            onClick={handleCancel}
-            type="button"
+      <div
+        className={cn(
+          "grid shrink-0 transition-[grid-template-rows] duration-300 ease-in-out",
+          hasUnsavedChanges ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        )}
+      >
+        <div className="overflow-hidden">
+          <BarFooter
+            variant="default"
+            className="justify-between"
+            leftActions={
+              <Button
+                variant="outline"
+                label="Cancel"
+                onClick={handleCancel}
+                type="button"
+              />
+            }
+            rightActions={
+              <BarFooter.ButtonBar
+                variant="validate"
+                saveButtonProps={saveButtonProps}
+              />
+            }
           />
-        }
-        rightActions={
-          <BarFooter.ButtonBar
-            variant="validate"
-            saveButtonProps={saveButtonProps}
-          />
-        }
-      />
+        </div>
+      </div>
     </div>
   );
 }
