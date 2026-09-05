@@ -222,10 +222,6 @@ function sanitizeSkillInstructionsHtml(html: string): string {
 }
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[50vh]";
-const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_CONTAINER_SIZE =
-  "h-80 min-h-80 max-h-[50vh]";
-const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
-  "h-full min-h-0 max-h-none resize-none rounded-b-none border-b-0 pb-44";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
@@ -307,13 +303,6 @@ export function SkillBuilderInstructionsEditor({
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
-  const hasInstructionReferenceSummary =
-    (attachedKnowledgeField.value?.length ?? 0) > 0 ||
-    tools.length > 0 ||
-    (instructionsField.value?.includes("<knowledge ") ?? false) ||
-    (instructionsField.value?.includes("<tool ") ?? false) ||
-    (instructionsField.value?.includes("<skill ") ?? false) ||
-    (instructionsField.value?.includes("<unavailable_skill ") ?? false);
 
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
@@ -735,9 +724,7 @@ export function SkillBuilderInstructionsEditor({
               disabled: isDiffMode || isReadOnly,
               readOnly: isInstructionsReadOnly,
             }),
-            INSTRUCTIONS_EDITOR_SIZE,
-            hasInstructionReferenceSummary &&
-              INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE
+            INSTRUCTIONS_EDITOR_SIZE
           ),
         },
       },
@@ -748,7 +735,6 @@ export function SkillBuilderInstructionsEditor({
     isDiffMode,
     isInstructionsReadOnly,
     isReadOnly,
-    hasInstructionReferenceSummary,
   ]);
 
   // Sync external changes to the editor content
@@ -840,23 +826,11 @@ export function SkillBuilderInstructionsEditor({
         <div
           className={cn(
             "group relative overflow-hidden rounded-xl",
-            hasInstructionReferenceSummary &&
-              INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_CONTAINER_SIZE,
-            hasInstructionReferenceSummary && !isDiffMode && "resize-y"
           )}
         >
           <SkillInstructionsEditorContent
-            className={hasInstructionReferenceSummary ? "h-full" : undefined}
             editor={editor}
             isReadOnly={isInstructionsReadOnly}
-          />
-          <SkillBuilderInstructionsReferenceSummary
-            attachedKnowledge={attachedKnowledgeField.value}
-            containerRef={instructionReferenceSummaryRef}
-            hasError={displayError}
-            instructions={instructionsField.value ?? ""}
-            onReferenceClick={handleReferenceClick}
-            tools={tools}
           />
         </div>
 
@@ -866,6 +840,15 @@ export function SkillBuilderInstructionsEditor({
           </div>
         )}
       </div>
+
+      <SkillBuilderInstructionsReferenceSummary
+        attachedKnowledge={attachedKnowledgeField.value}
+        containerRef={instructionReferenceSummaryRef}
+        hasError={displayError}
+        instructions={instructionsField.value ?? ""}
+        onReferenceClick={handleReferenceClick}
+        tools={tools}
+      />
 
       <CapabilityDetailsSheets
         owner={owner}

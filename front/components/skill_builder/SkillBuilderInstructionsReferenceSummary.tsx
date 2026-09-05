@@ -7,13 +7,21 @@ import { getSkillIcon } from "@app/lib/skill";
 import { extractSkillReferenceTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { AttachmentChip, Chip, cn, File02 } from "@dust-tt/sparkle";
-import type { Ref } from "react";
-import { useMemo } from "react";
+import {
+  AttachmentChip,
+  Button,
+  ChevronDown,
+  ChevronUp,
+  Chip,
+  cn,
+  File02,
+} from "@dust-tt/sparkle";
+import type { RefObject } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
-  containerRef?: Ref<HTMLDivElement>;
+  containerRef?: RefObject<HTMLDivElement>;
   hasError: boolean;
   instructions: string;
   onReferenceClick: (target: ReferenceSummaryItem) => void;
@@ -109,6 +117,10 @@ function renderReferenceSummaryItem({
   }
 }
 
+const BROWSER_DEFAULT_FONT_SIZE = 16;
+const THRESHOLD_HEIGHT_REM = 3.75; // max-h-15 => 3.75 rem 
+const DEFAULT_OVERFLOW_THRESHOLD_HEIGHT = BROWSER_DEFAULT_FONT_SIZE * THRESHOLD_HEIGHT_REM; // 60px
+
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
   containerRef,
@@ -117,6 +129,9 @@ export function SkillBuilderInstructionsReferenceSummary({
   onReferenceClick,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
+  const [isExpand, setIsExpand] = useState(false);
+  const [overflowThresholdHeight, setOverflowThresholdHeight] = useState(DEFAULT_OVERFLOW_THRESHOLD_HEIGHT);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -202,32 +217,53 @@ export function SkillBuilderInstructionsReferenceSummary({
     [knowledgeReferences, skillReferences, toolReferences]
   );
 
-  if (referenceItems.length === 0) {
-    return null;
-  }
+  // compute root font size only once
+  useEffect(() => {
+    const rootFontSize = parseFloat(
+      getComputedStyle(document.documentElement).fontSize
+    );
 
+    if (rootFontSize !== BROWSER_DEFAULT_FONT_SIZE) {
+      setOverflowThresholdHeight(rootFontSize * THRESHOLD_HEIGHT_REM)
+    }
+  }, []);
+
+  const isOverflow = contentRef.current && contentRef.current.scrollHeight > overflowThresholdHeight
+
+  // have min height to always keep space to show references so there is less content shift.
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b bg-background px-3 pb-3 pt-3",
-        "",
-        hasError
-          ? [
-              "border-border-warning/30 group-focus-within:border-border-warning",
-              "",
-            ]
-          : ["border-border group-focus-within:border-highlight-300", ""]
+    <div>
+      {referenceItems.length > 0 && (
+        <div
+          ref={containerRef}
+          className={cn(
+            !isExpand && "overflow-y-hidden max-h-14",
+            hasError
+              ? [
+                  "border-border-warning/30 group-focus-within:border-border-warning",
+                  "",
+                ]
+              : ["border-border group-focus-within:border-highlight-300", ""]
+          )}
+        >
+          <div ref={contentRef} className="flex flex-wrap gap-2">
+            {referenceItems.map((item) =>
+              renderReferenceSummaryItem({ item, onReferenceClick })
+            )}
+          </div>
+        </div>
       )}
-    >
-      <div className="mb-2 text-sm font-medium text-foreground">
-        Capabilities and knowledge
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {referenceItems.map((item) =>
-          renderReferenceSummaryItem({ item, onReferenceClick })
-        )}
-      </div>
+      {isOverflow && (
+        <div className="flex justify-end">
+          <Button
+            label={`See ${isExpand ? "less" : "more"}`}
+            onClick={() => setIsExpand((prev) => !prev)}
+            icon={isExpand ? ChevronUp : ChevronDown}
+            variant="ghost-secondary"
+            size="xs"
+          />
+        </div>
+      )}
     </div>
   );
 }
