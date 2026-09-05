@@ -1,4 +1,4 @@
-// Pod database wire/type contract: the single authored definition.
+// Sandbox database wire/type contract: the single authored definition.
 //
 // This file must stay dependency-free (no imports): front type-imports the error kinds
 // (front/lib/api/sandbox_functions/build_on_sandbox.ts, dsbx_db.ts) and mirrors

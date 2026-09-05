@@ -30,7 +30,7 @@ describe("runner run", () => {
   });
 
   test("creates function-authored files group-writable (umask 007)", async () => {
-    // A pod database a function opens directly must stay writable by group
+    // A sandbox database a function opens directly must stay writable by group
     // `agent`, or litestream can never replicate it.
     const { stdout, code } = await run(
       ["run", fx("file-mode-probe.ts")],

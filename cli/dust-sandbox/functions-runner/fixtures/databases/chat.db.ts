@@ -1,4 +1,4 @@
-// Happy-path pod database schema fixture: covers modes, defaults, plain and unique indexes,
+// Happy-path sandbox database schema fixture: covers modes, defaults, plain and unique indexes,
 // and single-column table-level primaryKey().
 import {
   blob,
