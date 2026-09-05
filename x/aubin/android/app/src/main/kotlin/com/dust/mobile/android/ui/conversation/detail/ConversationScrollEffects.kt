@@ -65,11 +65,14 @@ internal fun ConversationScrollEffects(
             previousBottomAnchorIndex = previousBottomAnchorIndex,
             bottomAnchorIndex = bottomAnchorIndex,
         )
+        // A new message takes the old bottom spacer's index. Measure the previous
+        // final message so the new response's height cannot disable following.
+        val followItem = listState.layoutInfo.visibleItemsInfo.lastOrNull { it.index < followAnchorIndex }
         val shouldFollow = pendingSendFollow || shouldFollowConversationBottom(
             hasPositionedInitialMessages = hasPositionedInitialMessages,
-            lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index,
+            lastVisibleItemIndex = followItem?.index,
             bottomAnchorIndex = followAnchorIndex,
-            lastVisibleItemEndOffset = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.let {
+            lastVisibleItemEndOffset = followItem?.let {
                 it.offset + it.size
             },
             viewportEndOffset = listState.layoutInfo.viewportEndOffset,
@@ -80,7 +83,7 @@ internal fun ConversationScrollEffects(
         repeat(2) { withFrameNanos { } }
         if (shouldFollow && !listState.isScrollInProgress) {
             listState.scrollToItem(bottomAnchorIndex)
-            pendingSendFollow = false
+            pendingSendFollow = isSending
         }
         hasPositionedInitialMessages = true
     }

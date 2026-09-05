@@ -81,5 +81,10 @@ class ConversationReadingInstrumentedTest {
         composeRule.waitForIdle()
         composeRule.runOnIdle { assertFalse(listState.canScrollForward) }
         composeRule.onNodeWithText("Jump to latest").assertDoesNotExist()
+
+        composeRule.runOnIdle { messageCount.intValue = 5 }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle { assertFalse(listState.canScrollForward) }
+        composeRule.onNodeWithText("Jump to latest").assertDoesNotExist()
     }
 }
