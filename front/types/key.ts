@@ -33,10 +33,5 @@ export type KeyType = {
   monthlyCapMicroUsd: number | null;
   monthlyCapAwuCredits: number | null;
   creditState: ApiKeyCreditState;
-  // Flag-aware "blocked by the per-key spend cap" verdict — the signal the UI
-  // uses to show the "capped" status. With the `enforce_user_spend_limit_rate_cap`
-  // flag on, from the Redis rate-limiter counter (the persisted `creditState`
-  // must not be read); with it off, from `creditState === "capped"`. Mirrors the
-  // enforcement switch in lib/api/credits/access_control.ts (`isApiKeyBlocked`).
   isSpendCapped: boolean;
 };
