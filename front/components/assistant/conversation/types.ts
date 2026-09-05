@@ -240,9 +240,15 @@ export const makeInitialMessageStreamState = (
     streaming: {
       actionProgress: new Map(),
       agentState: message.status === "created" ? "thinking" : "done",
-      // Live messages rebuild inline steps from the SSE replay on mount.
-      inlineActivitySteps:
-        message.status === "created" ? [] : (message.activitySteps ?? []),
+      // Hydrate the persisted steps for every message, including "created"
+      // (paused/blocked) ones. When a live SSE stream is still available it
+      // replays from the start and rebuilds these steps (the fresh-mount reset
+      // in useAgentMessageStream clears the hydrated steps on the first replayed
+      // event to avoid duplication). When the stream has expired — e.g. a
+      // message paused on a user question for longer than the Redis stream TTL —
+      // the persisted steps are the only source, so we keep them instead of
+      // dropping the content the user was meant to see.
+      inlineActivitySteps: message.activitySteps ?? [],
       isRetrying: false,
       lastUpdated: new Date(),
       pendingToolCalls: [],
