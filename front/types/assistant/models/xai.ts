@@ -40,9 +40,6 @@ export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfOneOf: {
-    featureFlag: "xai_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -71,9 +68,6 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfOneOf: {
-    featureFlag: "xai_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -105,9 +99,6 @@ export const GROK_4_5_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "high",
   supportsResponseFormat: true,
-  availableIfOneOf: {
-    featureFlag: "xai_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -144,9 +135,6 @@ export const GROK_4_6_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "high",
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
-  availableIfOneOf: {
-    featureFlag: "xai_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   // xAI lists only US clusters (us-east-1 and us-west-2) at launch:
   // https://docs.x.ai/developers/models/grok-4.6 (2026-08-12).
@@ -178,9 +166,6 @@ export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
-  availableIfOneOf: {
-    featureFlag: "xai_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -210,9 +195,6 @@ export const GROK_4_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfOneOf: {
-    featureFlag: "xai_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -241,9 +223,6 @@ export const GROK_4_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfOneOf: {
-    featureFlag: "xai_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -272,9 +251,6 @@ export const GROK_4_1_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
-  availableIfOneOf: {
-    featureFlag: "xai_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -305,9 +281,6 @@ export const GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType =
     },
     defaultReasoningEffort: "none",
     supportsResponseFormat: false,
-    availableIfOneOf: {
-      featureFlag: "xai_feature",
-    },
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
       "us-central1": true,
