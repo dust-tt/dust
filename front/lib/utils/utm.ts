@@ -48,6 +48,25 @@ const CLICK_ID_COOKIE_EXPIRY_DAYS: Record<
   msclkid: 90,
 };
 
+// Allowlist for click ID values. Real click IDs from Google, Meta, Microsoft
+// and LinkedIn are opaque alphanumeric tokens that may contain hyphens,
+// underscores and dots. Any value that does not match is likely tampered and
+// must not be written into a cookie: Cloudflare's WAF decodes cookie values
+// before inspection, so a payload like `%3Cscript` stored in `_dust_msclkid`
+// (90-day expiry, scoped to .dust.tt) would block every subsequent login
+// attempt until the victim clears their cookies (HackerOne #3685798).
+const CLICK_ID_VALUE_RE = /^[A-Za-z0-9_\-.]+$/;
+
+/**
+ * Returns true only when `value` is safe to store as a cookie.
+ * Silently rejects anything that contains characters outside the
+ * alphanumeric + `_ - .` set so that injected payloads are ignored
+ * rather than persisted.
+ */
+export function isValidClickIdValue(value: string): boolean {
+  return CLICK_ID_VALUE_RE.test(value);
+}
+
 // Extract UTM parameters from query string
 export const extractUTMParams = (searchParams: {
   [key: string]: string | string[] | undefined;
@@ -65,6 +84,8 @@ export const extractUTMParams = (searchParams: {
 };
 
 // Write click ID values as first-party cookies with per-platform expiry.
+// Values that do not pass isValidClickIdValue() are silently skipped so that
+// tampered parameters cannot be used to poison persistent cookies.
 export function persistClickIdCookies(params: UTMParams): void {
   if (typeof document === "undefined") {
     return;
@@ -75,7 +96,7 @@ export function persistClickIdCookies(params: UTMParams): void {
 
   for (const key of CLICK_ID_KEYS) {
     const value = params[key];
-    if (value) {
+    if (value && isValidClickIdValue(value)) {
       const expiryDays = CLICK_ID_COOKIE_EXPIRY_DAYS[key];
       const expires = new Date(
         Date.now() + expiryDays * 24 * 60 * 60 * 1000
