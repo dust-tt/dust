@@ -27,7 +27,6 @@ import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversa
 import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
-import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
@@ -156,7 +155,10 @@ export const ASHBY_SERVER_NAME = "ashby";
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
 // 1047 was workspace_people, folded into workspace_management as list_workspace_members.
 export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [
-  4, 28, 1004, 1016, 1047,
+  // 45 (databricks) was removed in favor of the official Databricks managed MCP servers, added as
+  // remote MCP server presets (see DEFAULT_REMOTE_MCP_SERVERS).
+  4,
+  28, 45, 1004, 1016, 1047,
 ];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
@@ -178,7 +180,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "conversation_files",
   "conversation_side_panel",
   "files",
-  "databricks",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
@@ -776,19 +777,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: VANTA_SERVER,
-  },
-  databricks: {
-    id: 45,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("databricks_tool");
-    },
-    isPreview: true,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: DATABRICKS_SERVER,
   },
   productboard: {
     id: 46,

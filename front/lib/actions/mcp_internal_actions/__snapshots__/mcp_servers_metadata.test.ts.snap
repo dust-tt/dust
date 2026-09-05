@@ -350,12 +350,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
-  "databricks": {
-    "list_warehouses": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-  },
   "exa_people_and_company": {
     "search_companies": {
       "freeUsage": false,
@@ -2774,9 +2768,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "find": "never_ask",
     "list": "never_ask",
     "query": "never_ask",
-  },
-  "databricks": {
-    "list_warehouses": "never_ask",
   },
   "exa_people_and_company": {
     "search_companies": "never_ask",

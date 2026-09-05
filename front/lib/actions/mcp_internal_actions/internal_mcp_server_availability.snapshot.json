@@ -71,7 +71,6 @@
     { "name": "zendesk", "id": 42 },
     { "name": "slab", "id": 43 },
     { "name": "vanta", "id": 44 },
-    { "name": "databricks", "id": 45 },
     { "name": "productboard", "id": 46 },
     { "name": "snowflake", "id": 47 },
     { "name": "ukg_ready", "id": 48 },
