@@ -447,13 +447,13 @@ describe("SpaceResource", () => {
         ).toEqual([{ groupId: regularGroup.id, grantType: "member" }]);
       });
 
-      it("should restore suspended members when switching from group to manual mode", async () => {
+      it("should not bring the former members back when switching from group to manual mode", async () => {
         // Add members first
         await regularGroup.dangerouslyAddMembers(adminAuth, {
           users: [user1.toJSON(), user2.toJSON()],
         });
 
-        // Switch to group mode (this should suspend members)
+        // Switch to group mode (this ends the manual memberships)
         const provisionedGroup = await GroupResource.makeNew({
           name: "Provisioned Group",
           workspaceId: workspace.id,
@@ -469,17 +469,7 @@ describe("SpaceResource", () => {
         });
         expect(groupResult.isOk()).toBe(true);
 
-        // Verify members are suspended
-        const membershipsAfterSuspend = await GroupMembershipModel.findAll({
-          where: {
-            groupId: regularGroup.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const suspendedMemberships = membershipsAfterSuspend.filter(
-          (m) => m.status === "suspended"
-        );
-        expect(suspendedMemberships.length).toBe(2);
+        expect(await regularGroup.getActiveMembers(adminAuth)).toEqual([]);
 
         // Reload space to get updated state
         const spaceAfterGroup = await SpaceResource.fetchById(
@@ -487,28 +477,21 @@ describe("SpaceResource", () => {
           regularSpace.sId
         );
 
-        // Switch back to manual mode
+        // Switch back to manual mode with an empty member list: the memberships were ended, not
+        // suspended, so nobody regains access.
         const manualResult = await spaceAfterGroup!.updatePermissions(
           adminAuth,
           {
             name: "Test Space",
             isRestricted: true,
             managementMode: "manual",
-            memberIds: [user1.sId, user2.sId],
+            memberIds: [],
             editorIds: [],
           }
         );
         expect(manualResult.isOk()).toBe(true);
 
-        // Verify members are restored
-        const membershipsAfterRestore = await GroupMembershipModel.findAll({
-          where: {
-            groupId: regularGroup.id,
-            workspaceId: workspace.id,
-            status: "active",
-          },
-        });
-        expect(membershipsAfterRestore.length).toBe(2);
+        expect(await regularGroup.getActiveMembers(adminAuth)).toEqual([]);
       });
     });
 
@@ -696,7 +679,45 @@ describe("SpaceResource", () => {
         );
       });
 
-      it("should suspend active members when switching from manual to group mode", async () => {
+      it("should not end memberships when the switch to group mode is rejected", async () => {
+        await regularGroup.dangerouslyAddMembers(adminAuth, {
+          users: [user1.toJSON(), user2.toJSON()],
+        });
+
+        // The workspace global group is readable but cannot be selected as a member group (it
+        // would silently open the space): the request must be rejected before anything is mutated.
+        const globalGroupRes =
+          await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+        expect(globalGroupRes.isOk()).toBe(true);
+        if (globalGroupRes.isErr()) {
+          throw globalGroupRes.error;
+        }
+
+        const result = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          managementMode: "group",
+          groupIds: [globalGroupRes.value.sId],
+          editorGroupIds: [],
+        });
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.code).toBe("invalid_group_kind");
+        }
+
+        // The members are untouched and the space is still manually managed.
+        const members = await regularGroup.getActiveMembers(adminAuth);
+        expect(members.map((m) => m.sId).sort()).toEqual(
+          [user1.sId, user2.sId].sort()
+        );
+        const reloaded = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        expect(reloaded?.managementMode).toBe("manual");
+      });
+
+      it("should end active memberships when switching from manual to group mode", async () => {
         // Add members first
         await regularGroup.dangerouslyAddMembers(adminAuth, {
           users: [user1.toJSON(), user2.toJSON()],
@@ -743,15 +764,17 @@ describe("SpaceResource", () => {
         });
         expect(result.isOk()).toBe(true);
 
-        // Verify members are suspended
+        // Verify the memberships were ended rather than suspended.
         const membershipsAfter = await GroupMembershipModel.findAll({
           where: {
             groupId: regularGroup.id,
             workspaceId: workspace.id,
-            status: "suspended",
           },
         });
         expect(membershipsAfter.length).toBe(2);
+        expect(membershipsAfter.every((m) => m.endAt !== null)).toBe(true);
+        expect(membershipsAfter.every((m) => m.status === "active")).toBe(true);
+        expect(await regularGroup.getActiveMembers(adminAuth)).toEqual([]);
       });
     });
 

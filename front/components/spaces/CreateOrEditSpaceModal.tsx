@@ -90,7 +90,7 @@ export function CreateOrEditSpaceModal({
   const { spaceInfo, mutateSpaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space?.sId ?? null,
-    includeAllMembers: true, // Always include all members so we can see suspended ones when switching modes
+    includeAllMembers: true, // Include members whose membership is not active yet.
   });
 
   const { groups } = useGroups({
