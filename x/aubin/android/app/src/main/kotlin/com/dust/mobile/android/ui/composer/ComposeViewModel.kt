@@ -18,7 +18,6 @@ import com.dust.mobile.core.model.DEFAULT_AGENT_CONFIGURATION_ID
 import com.dust.mobile.core.model.KnowledgeItem
 import com.dust.mobile.core.model.LightAgentConfiguration
 import com.dust.mobile.core.model.MentionPayload
-import com.dust.mobile.core.model.MessageContext
 import com.dust.mobile.core.model.User
 import com.dust.mobile.core.model.contentWithSkillTags
 import com.dust.mobile.core.model.removeActiveSkillSlashQuery
@@ -273,7 +272,7 @@ class ComposeViewModel(
                 message = CreateMessagePayload(
                     content = contentWithSkillTags(text, selectedCapabilities),
                     mentions = listOf(MentionPayload(selectedAgentId)),
-                    context = buildMessageContext(selectedCapabilities),
+                    context = buildMessageContext(selectedCapabilities, user.profilePictureUrl),
                     clientRequestId = clientRequestId,
                 ),
                 contentFragments = uploadedAttachments.map {
@@ -318,6 +317,16 @@ class ComposeViewModel(
                 return@launch
             } catch (error: CancellationException) {
                 throw error
+            } catch (error: Exception) {
+                Log.w(MESSAGE_SEND_LOG_TAG, "Conversation queue failed", error)
+                _state.update {
+                    it.copy(
+                        isSending = false,
+                        pendingOutboxId = null,
+                        error = messageSendError(error, "Failed to queue message"),
+                    )
+                }
+                return@launch
             }
             durability.applyOutboxState(queued)
             if (queued.status == PersistedOutboxStatus.PENDING) {
@@ -338,13 +347,4 @@ class ComposeViewModel(
         super.onCleared()
     }
 
-    private fun buildMessageContext(capabilities: List<Capability>): MessageContext {
-        return buildMessageContext(capabilities, user.profilePictureUrl)
-    }
-
-}
-
-internal fun appendSharedText(current: String, shared: String?): String {
-    val incoming = shared?.trim()?.takeIf { it.isNotEmpty() } ?: return current
-    return if (current.isBlank()) incoming else "${current.trimEnd()}\n\n$incoming"
 }

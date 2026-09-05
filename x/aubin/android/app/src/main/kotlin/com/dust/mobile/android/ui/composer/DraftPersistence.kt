@@ -7,6 +7,7 @@ internal fun ComposeState.toPersistedDraft(): PersistedDraft = PersistedDraft(
     text = text,
     selectedAgentId = selectedAgent?.sId,
     selectedCapabilityIds = selectedCapabilities.map { it.id },
+    selectedKnowledgeItems = selectedKnowledgeItems,
     attachments = attachments.mapNotNull { attachment ->
         attachment.fileId?.let { fileId ->
             PersistedAttachment(
@@ -23,6 +24,7 @@ internal fun ComposeState.toPersistedDraft(): PersistedDraft = PersistedDraft(
 
 internal fun ComposeState.restoreDraftContent(draft: PersistedDraft): ComposeState = copy(
     text = draft.text,
+    selectedKnowledgeItems = draft.selectedKnowledgeItems,
     attachments = draft.attachments.map { attachment ->
         AttachmentDraft(
             id = attachment.id,

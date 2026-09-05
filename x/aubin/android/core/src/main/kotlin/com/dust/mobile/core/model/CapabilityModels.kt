@@ -131,6 +131,7 @@ data class SearchResponse(
     val resultsCount: Int? = null,
 )
 
+@Serializable
 data class KnowledgeItem(
     val title: String,
     val internalId: String,
