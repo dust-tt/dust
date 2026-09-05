@@ -93,11 +93,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
-  fireworks_new_model_feature: {
-    description: "Access to Fireworks new model",
-    stage: "self_serve",
-    owner: "pmilliotte",
-  },
   exa_people_and_company: {
     description: "Access to Exa MCP server (search_people, search_companies)",
     stage: "dust_only",

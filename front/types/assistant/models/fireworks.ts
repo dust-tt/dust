@@ -50,9 +50,6 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -178,9 +175,6 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
@@ -212,9 +206,6 @@ export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
@@ -288,9 +279,6 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
@@ -361,11 +349,6 @@ export const FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
-  // Limited private preview announced 2026-08-26:
-  // https://dust4ai.slack.com/archives/C08B2C3NP5Z/p1787757368773129
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -397,9 +380,6 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
@@ -448,9 +428,6 @@ export const FIREWORKS_INKLING_MODEL_CONFIG: ModelConfigurationType = {
   // Inkling's official renderer uses an o200k-base tokenizer:
   // https://tinker-docs.thinkingmachines.ai/cookbook/inkling/tml-renderers/
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
