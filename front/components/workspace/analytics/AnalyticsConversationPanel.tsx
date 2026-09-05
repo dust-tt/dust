@@ -37,8 +37,7 @@ import {
   TabsTrigger,
   XClose,
 } from "@dust-tt/sparkle";
-
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 interface AnalyticsConversationPanelHeaderProps {
   onClose: () => void;
@@ -136,7 +135,15 @@ function AnalyticsConversationPanelBody({
       disabled,
     });
 
-  const { currentPanel } = useConversationSidePanelContext();
+  const { currentPanel, onPanelClosed } = useConversationSidePanelContext();
+
+  // The side panel type lives in the URL hash and outlives the in-memory
+  // conversation across a reload.
+  useEffect(() => {
+    if (!conversation && currentPanel) {
+      onPanelClosed();
+    }
+  }, [conversation, currentPanel, onPanelClosed]);
 
   const stickyMentions = useMemo<RichMention[]>(
     () =>
@@ -173,7 +180,9 @@ function AnalyticsConversationPanelBody({
     <>
       <div
         className={
-          currentPanel ? "hidden" : "flex h-full w-full min-h-0 flex-col"
+          currentPanel && conversation
+            ? "hidden"
+            : "flex h-full w-full min-h-0 flex-col"
         }
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
