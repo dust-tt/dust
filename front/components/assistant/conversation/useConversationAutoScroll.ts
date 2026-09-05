@@ -105,10 +105,7 @@ export function useConversationAutoScroll({
       }
       if (!isAutoScrollEnabledRef.current) {
         if (translation === 0 && previousTranslation !== 0) {
-          const viewportHeight = isMobile
-            ? window.innerHeight
-            : scrollElement.clientHeight;
-          const maxScrollTop = scrollElement.scrollHeight - viewportHeight;
+          const maxScrollTop = scrollElement.scrollHeight - window.innerHeight;
           const compensation = Math.max(
             -previousScrollTop,
             Math.min(-previousTranslation, maxScrollTop - previousScrollTop)
@@ -146,12 +143,22 @@ export function useConversationAutoScroll({
         direction = scrollTopDelta < 0 ? "up" : "down";
       }
 
-      if (
-        scrollTopDelta < 0 &&
-        scrollHeightDelta >= 0 &&
-        !methods.getScrollLocation().isAtBottom
-      ) {
+      if (scrollTopDelta < 0 && scrollHeightDelta >= 0) {
         detach();
+      }
+
+      const { isAtBottom, bottomOffset } = methods.getScrollLocation();
+      if (!isAutoScrollEnabledRef.current && isAtBottom && bottomOffset > 0) {
+        // isAtBottom also includes an active bottom target after cancellation.
+        // Clear it after the native scroll moves, so growth cannot pull us back.
+        methods.scrollToItem({
+          index: 0,
+          align: "start-no-overflow",
+          offset: isMobile
+            ? -listElement.getBoundingClientRect().top
+            : scrollElement.scrollTop,
+          behavior: "instant",
+        });
       }
 
       if (scrollTopDelta > 0) {
@@ -172,26 +179,6 @@ export function useConversationAutoScroll({
       }
     };
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        !(event.target instanceof HTMLElement) ||
-        (!listElement.contains(event.target) &&
-          event.target !== document.body) ||
-        event.target.closest("input, textarea, [contenteditable=true]")
-      ) {
-        return;
-      }
-      if (
-        event.key === "ArrowUp" ||
-        event.key === "PageUp" ||
-        event.key === "Home" ||
-        (event.key === " " && event.shiftKey)
-      ) {
-        direction = "up";
-        detach();
-      }
-    };
-
     const onTouchStart = (event: TouchEvent) => {
       lastTouchY = event.touches.length === 1 ? event.touches[0].clientY : null;
     };
@@ -201,10 +188,7 @@ export function useConversationAutoScroll({
         lastTouchY = null;
         return;
       }
-      const touchY = event.touches[0]?.clientY;
-      if (touchY === undefined) {
-        return;
-      }
+      const touchY = event.touches[0].clientY;
       if (lastTouchY !== null && touchY !== lastTouchY) {
         direction = touchY > lastTouchY ? "up" : "down";
         if (direction === "up") {
@@ -279,7 +263,6 @@ export function useConversationAutoScroll({
     observeContent();
 
     scrollTarget.addEventListener("scroll", onScroll, { passive: true });
-    document.addEventListener("keydown", onKeyDown);
     listElement.addEventListener("wheel", onWheel, { passive: true });
     listElement.addEventListener("touchstart", onTouchStart, { passive: true });
     listElement.addEventListener("touchmove", onTouchMove, { passive: true });
@@ -293,7 +276,6 @@ export function useConversationAutoScroll({
         contentElement.style.translate = "";
       }
       scrollTarget.removeEventListener("scroll", onScroll);
-      document.removeEventListener("keydown", onKeyDown);
       listElement.removeEventListener("wheel", onWheel);
       listElement.removeEventListener("touchstart", onTouchStart);
       listElement.removeEventListener("touchmove", onTouchMove);

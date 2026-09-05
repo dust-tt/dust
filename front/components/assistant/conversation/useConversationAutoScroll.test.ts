@@ -134,6 +134,32 @@ describe.each([
   false,
   true,
 ])("conversation auto-scroll (mobile: %s)", (isMobile) => {
+  it("detaches on upward scrolling even while content grows", () => {
+    const { result, methods, scroll } = setup(isMobile);
+    scroll(1110, 2072);
+    expect(result.current.current).toBe(false);
+    expect(methods.cancelSmoothScroll).toHaveBeenCalledOnce();
+  });
+
+  it("clears a retained bottom target after the native scroll moves", () => {
+    const { methods, wheel, scroll } = setup(isMobile);
+    vi.spyOn(methods, "getScrollLocation").mockReturnValue({
+      ...methods.getScrollLocation(),
+      isAtBottom: true,
+      bottomOffset: 90,
+    });
+    wheel(-90);
+    expect(methods.scrollToItem).not.toHaveBeenCalled();
+
+    scroll(1110);
+    expect(methods.scrollToItem).toHaveBeenCalledWith({
+      index: 0,
+      align: "start-no-overflow",
+      offset: 1110,
+      behavior: "instant",
+    });
+  });
+
   it("detaches on upward intent and reattaches only at the bottom above the input", () => {
     const { result, methods, wheel, scroll } = setup(isMobile);
     expect(result.current.current).toBe(true);
