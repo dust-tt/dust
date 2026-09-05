@@ -273,7 +273,6 @@ class ComposeViewModel(
                     content = contentWithSkillTags(text, selectedCapabilities),
                     mentions = listOf(MentionPayload(selectedAgentId)),
                     context = buildMessageContext(selectedCapabilities, user.profilePictureUrl),
-                    clientRequestId = clientRequestId,
                 ),
                 contentFragments = uploadedAttachments.map {
                     ContentFragmentPayload.file(it.fileName, it.fileId, context)

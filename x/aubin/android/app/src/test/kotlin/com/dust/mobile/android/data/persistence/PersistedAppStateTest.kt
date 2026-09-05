@@ -43,7 +43,6 @@ class PersistedAppStateTest {
                             content = "Summarize this",
                             mentions = listOf(MentionPayload("dust")),
                             context = MessageContext(timezone = "Europe/Paris"),
-                            clientRequestId = requestId,
                         ),
                     ),
                     createdAtEpochMillis = 123L,

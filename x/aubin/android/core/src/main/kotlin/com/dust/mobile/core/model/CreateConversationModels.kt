@@ -41,9 +41,6 @@ data class CreateMessagePayload(
     val content: String,
     val mentions: List<MentionPayload>,
     val context: MessageContext,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val clientRequestId: String? = null,
 )
 
 @Serializable
@@ -65,9 +62,6 @@ data class PostMessageRequest(
     val content: String,
     val mentions: List<MentionPayload>,
     val context: MessageContext,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val clientRequestId: String? = null,
 )
 
 @Serializable
@@ -80,7 +74,6 @@ sealed interface ContentFragmentPayload {
     val title: String
     val context: ContentFragmentContext
     val url: String?
-    val clientRequestId: String?
 
     @Serializable
     data class File(
@@ -90,9 +83,6 @@ sealed interface ContentFragmentPayload {
         @OptIn(ExperimentalSerializationApi::class)
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         override val url: String? = null,
-        @OptIn(ExperimentalSerializationApi::class)
-        @EncodeDefault(EncodeDefault.Mode.NEVER)
-        override val clientRequestId: String? = null,
     ) : ContentFragmentPayload
 
     @Serializable
@@ -104,9 +94,6 @@ sealed interface ContentFragmentPayload {
         @OptIn(ExperimentalSerializationApi::class)
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         override val url: String? = null,
-        @OptIn(ExperimentalSerializationApi::class)
-        @EncodeDefault(EncodeDefault.Mode.NEVER)
-        override val clientRequestId: String? = null,
     ) : ContentFragmentPayload
 
     companion object {
@@ -115,13 +102,11 @@ sealed interface ContentFragmentPayload {
             fileId: String,
             context: ContentFragmentContext,
             url: String? = null,
-            clientRequestId: String? = null,
         ): ContentFragmentPayload = File(
             title = title,
             fileId = fileId,
             context = context,
             url = url,
-            clientRequestId = clientRequestId,
         )
 
         fun node(
@@ -130,7 +115,6 @@ sealed interface ContentFragmentPayload {
             nodeDataSourceViewId: String,
             context: ContentFragmentContext,
             url: String? = null,
-            clientRequestId: String? = null,
         ): ContentFragmentPayload =
             Node(
                 title = title,
@@ -138,7 +122,6 @@ sealed interface ContentFragmentPayload {
                 nodeDataSourceViewId = nodeDataSourceViewId,
                 context = context,
                 url = url,
-                clientRequestId = clientRequestId,
             )
     }
 }

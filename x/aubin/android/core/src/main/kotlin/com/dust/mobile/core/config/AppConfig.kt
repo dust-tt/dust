@@ -36,13 +36,9 @@ object Endpoints {
     const val AUTHENTICATE = "/api/workos/authenticate"
     const val REVOKE_SESSION = "/api/workos/revoke-session"
     const val USER = "/api/user"
-    const val MOBILE_NOTIFICATION_TOKENS = "/api/user/mobile_notification_tokens"
 
     fun conversations(workspaceId: String): String =
         "/api/w/$workspaceId/assistant/conversations"
-
-    fun searchConversations(workspaceId: String): String =
-        "/api/w/$workspaceId/assistant/conversations/search"
 
     fun conversation(workspaceId: String, conversationId: String): String =
         "/api/w/$workspaceId/assistant/conversations/$conversationId"

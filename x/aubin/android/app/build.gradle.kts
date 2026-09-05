@@ -6,11 +6,6 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-val hasFirebaseConfig = file("google-services.json").isFile
-if (hasFirebaseConfig) {
-    apply(plugin = "com.google.gms.google-services")
-}
-
 android {
     namespace = "com.dust.mobile.android"
     compileSdk = 35
@@ -25,8 +20,6 @@ android {
 
         manifestPlaceholders["authScheme"] = "dust"
         manifestPlaceholders["authHost"] = "auth"
-        manifestPlaceholders["firebaseAutoInitEnabled"] = hasFirebaseConfig.toString()
-        buildConfigField("Boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
     }
 
     buildTypes {
@@ -116,8 +109,6 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.messaging)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

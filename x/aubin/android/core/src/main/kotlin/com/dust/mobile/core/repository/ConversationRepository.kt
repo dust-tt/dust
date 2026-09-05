@@ -10,7 +10,7 @@ import com.dust.mobile.core.model.Conversation
 import com.dust.mobile.core.model.ConversationMessage
 import com.dust.mobile.core.model.ConversationMessagesResponse
 import com.dust.mobile.core.model.ConversationsResponse
-import com.dust.mobile.core.model.SearchConversationsRequest
+import com.dust.mobile.core.model.filteredByTitleSearch
 import com.dust.mobile.core.model.CreateConversationRequest
 import com.dust.mobile.core.model.PostMessageRequest
 import com.dust.mobile.core.model.PostMessageResponse
@@ -29,11 +29,10 @@ class ConversationRepository(
         query: String,
         tokenProvider: TokenProvider,
         lastValue: String? = null,
-    ): ConversationsResponse = apiClient.authenticatedPost(
-        endpoint = Endpoints.searchConversations(workspaceId),
-        body = SearchConversationsRequest(query = query, lastValue = lastValue),
-        tokenProvider = tokenProvider,
-    )
+    ): ConversationsResponse {
+        val page = fetchConversations(workspaceId, tokenProvider, lastValue = lastValue)
+        return page.copy(conversations = page.conversations.filteredByTitleSearch(query))
+    }
 
     suspend fun fetchConversations(
         workspaceId: String,

@@ -108,7 +108,7 @@ internal class ConversationDiscoveryController(
                             isLoading = false,
                             retryLoadMore = loadMore,
                             error = if (it.search.results == null) {
-                                "Couldn't search all conversations. Showing matches from recent conversations."
+                                "Couldn't load conversations. Showing matches from saved conversations."
                             } else if (loadMore) {
                                 "Couldn't load more matches. Try again."
                             } else {

@@ -204,7 +204,9 @@ private fun ConversationListRows(
         if (state.groupedConversations.isEmpty() && !state.search.isLoading) {
             item(key = "empty-state") {
                 ConversationEmptyState(
-                    label = conversationListEmptyLabel(state.searchText),
+                    label = if (state.searchText.isNotBlank() && state.search.hasMore) {
+                        "No matches in searched conversations"
+                    } else conversationListEmptyLabel(state.searchText),
                     supportingLabel = if (state.searchText.isEmpty()) {
                         "Start a conversation with an agent."
                     } else {

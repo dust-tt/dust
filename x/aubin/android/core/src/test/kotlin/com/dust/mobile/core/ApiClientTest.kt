@@ -25,7 +25,6 @@ import com.dust.mobile.core.repository.CapabilityRepository
 import com.dust.mobile.core.repository.ConversationRepository
 import com.dust.mobile.core.repository.ConversationAction
 import com.dust.mobile.core.repository.FileRepository
-import com.dust.mobile.core.repository.MobileNotificationRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.KSerializer
@@ -66,11 +65,11 @@ class ApiClientTest {
     }
 
     @Test
-    fun `conversation search sends private text in a body and preserves pagination`() = runTest {
+    fun `conversation title search uses existing list pages without sending query text`() = runTest {
         val engine = FakeHttpEngine(
             HttpResponse(
                 statusCode = 200,
-                body = """{"conversations":[],"hasMore":true,"lastValue":"next"}""".encodeToByteArray(),
+                body = """{"conversations":[{"sId":"match","title":"Customer & roadmap","created":1,"updated":1,"unread":false,"actionRequired":false},{"sId":"other","title":"Other work","created":1,"updated":1,"unread":false,"actionRequired":false}],"hasMore":true,"lastValue":"next"}""".encodeToByteArray(),
             ),
         )
         val repository = ConversationRepository(ApiClient(AppConfig.production(), engine))
@@ -84,17 +83,15 @@ class ApiClientTest {
             tokenStore = InMemoryTokenStore(),
         )
 
-        val response = repository.searchConversations("w1", "Customer & roadmap", provider)
+        val response = repository.searchConversations("w1", "Customer & roadmap", provider, "previous")
 
         val request = engine.requests.single()
-        assertEquals(HttpMethod.POST, request.method)
-        assertEquals("https://dust.tt/api/w/w1/assistant/conversations/search", request.url)
-        assertEquals(
-            """{"query":"Customer & roadmap","limit":20,"lastValue":null}""",
-            request.body?.decodeToString(),
-        )
+        assertEquals(HttpMethod.GET, request.method)
+        assertEquals("https://dust.tt/api/w/w1/assistant/conversations?limit=100&lastValue=previous", request.url)
+        assertEquals(null, request.body)
         assertEquals(true, response.hasMore)
         assertEquals("next", response.lastValue)
+        assertEquals(listOf("match"), response.conversations.map { it.sId })
     }
 
     @Test
@@ -164,33 +161,6 @@ class ApiClientTest {
         assertEquals("c1", conversation.sId)
         assertEquals("Linked conversation", conversation.title)
         assertEquals("https://dust.tt/api/w/w1/assistant/conversations/c1", engine.requests.single().url)
-    }
-
-    @Test
-    fun `mobile notification registration uses the authenticated user endpoint`() = runTest {
-        val engine = FakeHttpEngine(
-            HttpResponse(statusCode = 200, body = """{"success":true}""".encodeToByteArray()),
-            HttpResponse(statusCode = 200),
-        )
-        val repository = MobileNotificationRepository(ApiClient(AppConfig.production(), engine))
-        val provider = TokenProvider(
-            accessToken = "token",
-            refreshToken = "refresh",
-            authApi = object : AuthApi {
-                override suspend fun refreshTokens(refreshToken: String): AuthResponse =
-                    authResponse(accessToken = "new", refreshToken = "new-refresh")
-            },
-            tokenStore = InMemoryTokenStore(),
-        )
-
-        repository.register("device-token", provider)
-        repository.unregister("device-token", provider)
-
-        assertEquals(HttpMethod.POST, engine.requests[0].method)
-        assertEquals(HttpMethod.DELETE, engine.requests[1].method)
-        assertEquals("https://dust.tt/api/user/mobile_notification_tokens", engine.requests[0].url)
-        assertEquals("{\"token\":\"device-token\"}", engine.requests[0].body?.decodeToString())
-        assertEquals("Bearer token", engine.requests[1].headers["Authorization"])
     }
 
     @Test
