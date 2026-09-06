@@ -50,9 +50,16 @@
  * seat (validate the mechanics on one before a bulk run), and --homeSeatType to
  * scope to seats currently of a given tier (e.g. only the confident `max` set).
  *
+ * `--allWorkspaces` runs across every workspace that currently has a
+ * max/max_yearly/pro_yearly seat (the only ones that can carry a stacked
+ * credit), sequentially, dry-run unless --execute. No need to iterate all
+ * workspaces — a plain pro-monthly workspace has no stray credit to empty.
+ *
  *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --workspaceId <wId>
  *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --workspaceId <wId> --homeSeatType max --seatId <userId>
  *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --workspaceId <wId> --homeSeatType max --execute
+ *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --allWorkspaces
+ *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --allWorkspaces --execute
  */
 import config from "@app/lib/api/config";
 import {
@@ -75,11 +82,14 @@ import {
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { getSeatCreditNameForSeatType } from "@app/lib/metronome/seats";
+import { Op } from "@app/lib/resources/storage/data_types";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { makeScript } from "./helpers";
 
@@ -480,18 +490,53 @@ async function fixWorkspace(
   );
 }
 
+// Only workspaces that CURRENTLY have at least one max / max_yearly / pro_yearly
+// seat can carry a stacked credit: stacking is a pro->max (or yearly) upgrade
+// that stranded the origin credit, so the affected seat is on the higher/yearly
+// tier now. A plain pro-monthly-only workspace has no max credit to stray, so
+// there is no need to iterate every workspace. Matches:
+//   select distinct "workspaceId" from memberships
+//   where "seatType" in ('max','max_yearly','pro_yearly')
+const STACKED_RISK_SEAT_TYPES: MembershipSeatType[] = [
+  "max",
+  "max_yearly",
+  "pro_yearly",
+];
+
+async function listStackedRiskWorkspaceIds(): Promise<string[]> {
+  const rows = await MembershipModel.findAll({
+    attributes: ["workspaceId"],
+    where: { seatType: { [Op.in]: STACKED_RISK_SEAT_TYPES } },
+    group: ["workspaceId"],
+    raw: true,
+  });
+  const workspaces = await WorkspaceResource.fetchByModelIds(
+    rows.map((r) => r.workspaceId)
+  );
+  return workspaces.map((w) => w.sId);
+}
+
 makeScript(
   {
     workspaceId: {
       type: "string",
-      demandOption: true,
-      describe: "sId of the workspace to correct",
+      describe:
+        "sId of a single workspace to correct. Omit and pass --allWorkspaces " +
+        "to run across every at-risk workspace instead.",
+    },
+    allWorkspaces: {
+      type: "boolean",
+      default: false,
+      describe:
+        "Run on ALL workspaces that currently have at least one " +
+        "max/max_yearly/pro_yearly seat (the only ones that can carry a " +
+        "stacked credit). Processed sequentially; --seatId is ignored.",
     },
     seatId: {
       type: "string",
       describe:
         "Restrict to a single seat (userId) — validate the mechanics on one " +
-        "before a bulk run",
+        "before a bulk run. Single-workspace mode only.",
     },
     homeSeatType: {
       type: "string",
@@ -507,16 +552,22 @@ makeScript(
     },
   },
   async (
-    { workspaceId, seatId, homeSeatType, excludeSeatIds, execute },
+    {
+      workspaceId,
+      allWorkspaces,
+      seatId,
+      homeSeatType,
+      excludeSeatIds,
+      execute,
+    },
     logger
   ) => {
     if (!config.getMetronomeApiKey()) {
       logger.error({}, "[StackedFix] METRONOME_API_KEY is not configured");
       return;
     }
-    await fixWorkspace(workspaceId, {
+    const sharedOptions = {
       execute,
-      onlySeatId: seatId ?? null,
       onlyHomeSeatType:
         (homeSeatType as MembershipSeatType | undefined) ?? null,
       excludeSeatIds: new Set(
@@ -526,6 +577,56 @@ makeScript(
           .filter((s) => s.length > 0)
       ),
       logger,
+    };
+
+    if (allWorkspaces) {
+      if (seatId) {
+        logger.warn(
+          {},
+          "[StackedFix] --seatId is ignored in --allWorkspaces mode"
+        );
+      }
+      const workspaceIds = await listStackedRiskWorkspaceIds();
+      logger.info(
+        { workspaceCount: workspaceIds.length, execute },
+        "[StackedFix] running across all at-risk workspaces (max/max_yearly/pro_yearly)"
+      );
+      // Sequential on purpose: the Metronome RPS pacer is process-global, and a
+      // single workspace already fans out several paced calls — running
+      // workspaces one at a time keeps request pressure and the DB connection
+      // pool bounded. A per-workspace failure is logged and skipped, never
+      // aborting the whole run.
+      for (const [index, wId] of workspaceIds.entries()) {
+        logger.info(
+          { workspaceId: wId, index: index + 1, total: workspaceIds.length },
+          "[StackedFix] processing workspace"
+        );
+        try {
+          await fixWorkspace(wId, { ...sharedOptions, onlySeatId: null });
+        } catch (err) {
+          logger.error(
+            { workspaceId: wId, err: normalizeError(err).message },
+            "[StackedFix] workspace failed — skipping"
+          );
+        }
+      }
+      logger.info(
+        { workspaceCount: workspaceIds.length, execute },
+        "[StackedFix] all at-risk workspaces done"
+      );
+      return;
+    }
+
+    if (!workspaceId) {
+      logger.error(
+        {},
+        "[StackedFix] provide --workspaceId <wId> or --allWorkspaces"
+      );
+      return;
+    }
+    await fixWorkspace(workspaceId, {
+      ...sharedOptions,
+      onlySeatId: seatId ?? null,
     });
   }
 );
