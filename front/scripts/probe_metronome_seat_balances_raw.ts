@@ -49,7 +49,10 @@ makeScript(
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
     if (!config.getMetronomeApiKey()) {
-      logger.error({}, "[SeatBalancesProbe] METRONOME_API_KEY is not configured");
+      logger.error(
+        {},
+        "[SeatBalancesProbe] METRONOME_API_KEY is not configured"
+      );
       return;
     }
     const workspace = await WorkspaceResource.fetchById(workspaceId);
