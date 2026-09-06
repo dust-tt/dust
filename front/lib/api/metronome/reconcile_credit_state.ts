@@ -754,15 +754,30 @@ export async function reconcileStackedSeatCreditsForWorkspace({
     return;
   }
 
-  const balancesResult = await listMetronomeSeatBalances({
-    metronomeCustomerId,
-    metronomeContractId,
-    seatIds: [...currentSeatTypeBySeatId.keys()],
-  });
+  const seatIds = [...currentSeatTypeBySeatId.keys()];
+  const [balancesResult, usageResult] = await Promise.all([
+    listMetronomeSeatBalances({
+      metronomeCustomerId,
+      metronomeContractId,
+      seatIds,
+    }),
+    fetchPerUserAwuUsage({
+      workspaceId,
+      metronomeCustomerId,
+      userIds: seatIds,
+    }),
+  ]);
   if (balancesResult.isErr()) {
     logger.error(
       { workspaceId, err: balancesResult.error },
       "[StackedSeatCredits] failed to read seat balances"
+    );
+    return;
+  }
+  if (usageResult.isErr()) {
+    logger.error(
+      { workspaceId, err: usageResult.error },
+      "[StackedSeatCredits] failed to read per-user usage"
     );
     return;
   }
@@ -774,6 +789,7 @@ export async function reconcileStackedSeatCreditsForWorkspace({
     contract,
     seatBalances: balancesResult.value,
     currentSeatTypeBySeatId,
+    usageBySeatId: usageResult.value,
     execute: true,
     logger,
   });
