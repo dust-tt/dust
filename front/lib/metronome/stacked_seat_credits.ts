@@ -38,16 +38,26 @@ import { Err, Ok } from "@app/types/shared/result";
  * each individual materialized credit id. We map each materialized credit id to a
  * seat type once per contract, then for each seat:
  *
- *  - empty every STRAY credit fully (a credit whose seat type ≠ the seat's tier),
- *  - carry the consumption that was charged to those strays onto the HOME credit,
- *    so the seat nets `homeAllocation − totalConsumed` instead of a full home
- *    allowance plus forgiven stray usage.
+ *  - empty every STRAY credit fully (a credit whose seat type ≠ the seat's tier);
+ *  - drive the HOME credit to `max(0, homeAllocation − currentPeriodUsage)`, using
+ *    Metronome's authoritative per-user AWU usage.
  *
- * Without the carry, consumption billed to the stray credit is forgiven when the
- * stray is emptied and the seat ends over-credited by that amount. Both figures
- * are exact — observed per-seat credit balances vs. deterministic tier
- * allocations, not an ES/usage estimate. Idempotent by construction: a re-run
- * reads every stray at 0 (no stray consumption left to carry) and emits nothing.
+ * The home step is what keeps the seat correct: consumption billed to a stray is
+ * otherwise forgiven when the stray is emptied, leaving the seat over-credited by
+ * that amount (a seat that spent 69 AWU against its stray would end at a full home
+ * 8000 instead of 7931). Because the target is ABSOLUTE (allocation − usage) not a
+ * relative debit, the whole pass is idempotent and self-correcting:
+ *
+ *  - a healthy seat is a no-op — its home already equals allocation − usage;
+ *  - a partial Metronome failure (one credit's write lands, another doesn't) is
+ *    just retried next run, never double-debiting;
+ *  - it even RECOVERS a stray already emptied by an earlier no-carry run, whose
+ *    consumption is no longer visible in any balance but is still in the usage
+ *    figure — the home debit recomputes correctly from usage alone.
+ *
+ * Stray DETECTION stays exact/per-credit (the credit id names its tier, never
+ * ambiguous); only the home target uses usage. Never adds credit and never drives
+ * a slice negative (both the empty and the home target floor at 0).
  */
 
 // A credit-bearing tier's recurring credit, resolved to its materialized credit
@@ -174,20 +184,25 @@ export async function buildSeatCreditTierMap({
 }
 
 /**
- * Pure detection. For each seat, empty every stray seat credit fully and carry
- * the consumption those strays absorbed onto the home credit so the seat nets
- * `homeAllocation − totalConsumed`. A credit id absent from `tierByCreditId`
- * (excess/pool/unrecognized) is left untouched; a seat with no stray is skipped,
- * so re-runs are idempotent.
+ * Pure detection. For each seat, empty every stray seat credit fully and drive
+ * the home credit to `max(0, homeAllocation − usage)`. A credit id absent from
+ * `tierByCreditId` (excess/pool/unrecognized) is left untouched. Emits nothing for
+ * a healthy seat (no stray, home already at its usage-based target), and — because
+ * the home target is absolute — re-runs are idempotent and recover a seat whose
+ * stray was already emptied without a carry.
  */
 export function computeStackedSeatCreditAdjustments({
   seatBalances,
   currentSeatTypeBySeatId,
   tierByCreditId,
+  usageBySeatId,
 }: {
   seatBalances: MetronomeSeatBalance[];
   currentSeatTypeBySeatId: Map<string, MembershipSeatType>;
   tierByCreditId: Map<string, TierCredit>;
+  // Current-period Metronome per-user AWU consumption (authoritative). Drives the
+  // home credit to its correct balance; a missing entry is treated as 0 usage.
+  usageBySeatId: Map<string, number>;
 }): SeatCreditAdjustment[] {
   const awuCreditTypeId = getCreditTypeAwuId();
   const adjustments: SeatCreditAdjustment[] = [];
@@ -210,9 +225,6 @@ export function computeStackedSeatCreditAdjustments({
     const strays = mapped.filter(
       (m) => m.tier.seatType !== homeSeatType && m.balanceAwu > 0
     );
-    if (strays.length === 0) {
-      continue;
-    }
     const home = mapped.find((m) => m.tier.seatType === homeSeatType) ?? null;
 
     // Empty every stray credit's slice for this seat.
@@ -229,16 +241,19 @@ export function computeStackedSeatCreditAdjustments({
       });
     }
 
-    // Carry the stray-charged consumption onto the home credit. `strayConsumed`
-    // is what the strays absorbed (allocation − remaining); the home is debited
-    // by that, capped at its own balance so it never goes negative. Skipped when
-    // the home credit isn't present (nothing to debit).
+    // Drive the home credit to its correct balance: allocation − current-period
+    // usage. This absolute, usage-based target is what makes the whole pass
+    // idempotent and recovers consumption that leaked onto a stray — including a
+    // stray already emptied by an earlier no-carry run, whose consumption is no
+    // longer visible in any credit balance but is still in the usage figure. It
+    // is a no-op for a healthy seat: its home balance already equals allocation −
+    // usage, so the debit is 0. Never adds credit (debit floors at 0) and never
+    // drives the home negative (target floors at 0). Skipped when the home credit
+    // isn't present.
     if (home) {
-      const strayConsumed = strays.reduce(
-        (sum, s) => sum + Math.max(0, s.tier.allocation - s.balanceAwu),
-        0
-      );
-      const homeDebit = Math.min(home.balanceAwu, strayConsumed);
+      const usageAwu = usageBySeatId.get(seat.seat_id) ?? 0;
+      const targetHomeBalanceAwu = Math.max(0, home.tier.allocation - usageAwu);
+      const homeDebit = home.balanceAwu - targetHomeBalanceAwu;
       if (homeDebit > 0) {
         adjustments.push({
           seatId: seat.seat_id,
@@ -257,29 +272,32 @@ export function computeStackedSeatCreditAdjustments({
   return adjustments;
 }
 
-// Apply a set of same-kind adjustments, batched into ONE ledger write per
-// (credit, segment). Returns which seats were successfully written and counts.
-async function applyAdjustmentBatches({
+/**
+ * Apply seat-credit adjustments, batched into ONE ledger write per (credit,
+ * segment) with a per-seat delta map. No-op when there is nothing to apply; a
+ * per-batch failure is logged and skipped.
+ *
+ * No cross-credit ordering or gating is needed: the stray empty targets 0 and the
+ * home carry targets an ABSOLUTE usage-based balance (allocation − usage), so both
+ * are idempotent. A partial failure (one credit's batch fails, another succeeds)
+ * is simply retried on the next run — the home debit recomputes to 0 once the home
+ * already sits at its target, so a user is never double-debited.
+ */
+async function applyStackedSeatCreditAdjustments({
   workspaceId,
   metronomeCustomerId,
   metronomeContractId,
   adjustments,
-  reasonSuffix,
   logger,
-  pace,
+  pace = NO_PACING,
 }: {
   workspaceId: string;
   metronomeCustomerId: string;
   metronomeContractId: string;
   adjustments: SeatCreditAdjustment[];
-  reasonSuffix: string;
   logger: Logger;
-  pace: PaceFn;
-}): Promise<{
-  succeededSeatIds: Set<string>;
-  appliedAdjustmentCount: number;
-  batchedAdjustCalls: number;
-}> {
+  pace?: PaceFn;
+}): Promise<{ appliedAdjustmentCount: number; batchedAdjustCalls: number }> {
   const batches = new Map<
     string,
     {
@@ -308,7 +326,6 @@ async function applyAdjustmentBatches({
     batches.set(key, batch);
   }
 
-  const succeededSeatIds = new Set<string>();
   let appliedAdjustmentCount = 0;
   let batchedAdjustCalls = 0;
   for (const batch of batches.values()) {
@@ -320,7 +337,7 @@ async function applyAdjustmentBatches({
         creditId: batch.creditId,
         segmentId: batch.segmentId,
         perSeatAmounts,
-        reason: `Stacked-credit correction: ${reasonSuffix} on ${batch.creditSeatType} seat credit`,
+        reason: `Stacked-credit correction on ${batch.creditSeatType} seat credit (empty stray / carry consumption)`,
         timestamp: batch.timestamp,
         alignToHour: false,
       })
@@ -340,9 +357,6 @@ async function applyAdjustmentBatches({
     }
     batchedAdjustCalls += 1;
     appliedAdjustmentCount += batch.perSeatAmounts.size;
-    for (const seatId of batch.perSeatAmounts.keys()) {
-      succeededSeatIds.add(seatId);
-    }
     logger.info(
       {
         workspaceId,
@@ -355,99 +369,7 @@ async function applyAdjustmentBatches({
       "[StackedSeatCredits] applied batched correction"
     );
   }
-  return { succeededSeatIds, appliedAdjustmentCount, batchedAdjustCalls };
-}
-
-/**
- * Apply seat-credit adjustments in two ordered phases so a partial Metronome
- * failure can never over-debit a user: empty every stray FIRST, then carry
- * consumption ONLY for seats whose strays all emptied successfully.
- *
- * The empty and carry for a seat land on DIFFERENT credits (two separate ledger
- * writes), so they are not atomic. Emptying first and gating the carry on the
- * empty's success means the worst-case partial failure is the ORIGINAL (small)
- * over-credit — the safe direction — never a double-carry that would strip a user
- * of credit they are owed. A dropped carry is re-attempted on a later run only if
- * the stray still has a balance; once a stray reads 0 the seat is skipped, so we
- * never re-derive a stale consumption figure and double-debit.
- */
-async function applyStackedSeatCreditAdjustments({
-  workspaceId,
-  metronomeCustomerId,
-  metronomeContractId,
-  adjustments,
-  logger,
-  pace = NO_PACING,
-}: {
-  workspaceId: string;
-  metronomeCustomerId: string;
-  metronomeContractId: string;
-  adjustments: SeatCreditAdjustment[];
-  logger: Logger;
-  pace?: PaceFn;
-}): Promise<{ appliedAdjustmentCount: number; batchedAdjustCalls: number }> {
-  const empties = adjustments.filter((a) => a.kind === "empty_stray");
-  const carries = adjustments.filter((a) => a.kind === "carry_consumption");
-
-  // How many stray-empties each seat needs; the carry is safe only once ALL of
-  // them succeed.
-  const expectedEmptiesBySeat = new Map<string, number>();
-  for (const a of empties) {
-    expectedEmptiesBySeat.set(
-      a.seatId,
-      (expectedEmptiesBySeat.get(a.seatId) ?? 0) + 1
-    );
-  }
-  const succeededEmptiesBySeat = new Map<string, number>();
-
-  const emptyResult = await applyAdjustmentBatches({
-    workspaceId,
-    metronomeCustomerId,
-    metronomeContractId,
-    adjustments: empties,
-    reasonSuffix: "empty stray",
-    logger,
-    pace,
-  });
-  // A successful empty batch may cover multiple seats; count per seat.
-  for (const a of empties) {
-    if (emptyResult.succeededSeatIds.has(a.seatId)) {
-      succeededEmptiesBySeat.set(
-        a.seatId,
-        (succeededEmptiesBySeat.get(a.seatId) ?? 0) + 1
-      );
-    }
-  }
-
-  const carriesToApply = carries.filter(
-    (a) =>
-      (succeededEmptiesBySeat.get(a.seatId) ?? 0) >=
-      (expectedEmptiesBySeat.get(a.seatId) ?? 0)
-  );
-  const droppedCarryCount = carries.length - carriesToApply.length;
-  if (droppedCarryCount > 0) {
-    logger.warn(
-      { workspaceId, droppedCarryCount },
-      "[StackedSeatCredits] deferring consumption carry for seats whose stray empty failed"
-    );
-  }
-
-  const carryResult = await applyAdjustmentBatches({
-    workspaceId,
-    metronomeCustomerId,
-    metronomeContractId,
-    adjustments: carriesToApply,
-    reasonSuffix: "carry consumption",
-    logger,
-    pace,
-  });
-
-  return {
-    appliedAdjustmentCount:
-      emptyResult.appliedAdjustmentCount + carryResult.appliedAdjustmentCount,
-    batchedAdjustCalls:
-      emptyResult.batchedAdjustCalls + carryResult.batchedAdjustCalls,
-  };
+  return { appliedAdjustmentCount, batchedAdjustCalls };
 }
 
 function summarizeAdjustments(
@@ -497,6 +419,7 @@ export async function correctStackedSeatCreditsFromBalances({
   contract,
   seatBalances,
   currentSeatTypeBySeatId,
+  usageBySeatId,
   execute,
   logger,
   pace = NO_PACING,
@@ -507,6 +430,7 @@ export async function correctStackedSeatCreditsFromBalances({
   contract: CachedContract;
   seatBalances: MetronomeSeatBalance[];
   currentSeatTypeBySeatId: Map<string, MembershipSeatType>;
+  usageBySeatId: Map<string, number>;
   execute: boolean;
   logger: Logger;
   pace?: PaceFn;
@@ -525,6 +449,7 @@ export async function correctStackedSeatCreditsFromBalances({
     seatBalances,
     currentSeatTypeBySeatId,
     tierByCreditId: tierMapRes.value,
+    usageBySeatId,
   });
   const totals = summarizeAdjustments(adjustments);
 

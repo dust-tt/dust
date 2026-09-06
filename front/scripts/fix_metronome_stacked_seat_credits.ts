@@ -20,31 +20,30 @@
  * seat:
  *
  *  - empty every STRAY credit (seat type ≠ the seat's current tier) fully, and
- *  - carry the consumption those strays absorbed onto the HOME credit — debiting
- *    it by `min(homeBalance, Σ strayConsumed)` — so the seat nets
- *    `homeAllocation − totalConsumed` instead of a full home allowance plus the
- *    stray usage forgiven. (Without the carry a seat that spent, say, 69 AWU
- *    against its stray would end at a full home 8000 instead of 7931.)
+ *  - drive the HOME credit to `max(0, homeAllocation − currentPeriodUsage)` using
+ *    Metronome's authoritative per-user usage, so consumption that leaked onto a
+ *    stray isn't forgiven when the stray is emptied. (Without it a seat that spent
+ *    69 AWU against its stray would end at a full home 8000 instead of 7931.)
  *
- * Both figures are exact (observed per-seat balances vs. deterministic tier
- * allocations, not an ES estimate) and inherently IDEMPOTENT: a re-run reads
- * every stray at 0, so there is no stray consumption left to carry and nothing
- * is emitted. No allocation matching, no same-family ambiguity — the credit id
- * itself names each credit's tier, so a pro-vs-pro_yearly collision is never a
- * question. Deltas on the same credit batch into ONE ledger entry.
+ * Stray detection stays exact/per-credit — the credit id itself names each
+ * credit's tier, so a pro-vs-pro_yearly collision is never a question — and only
+ * the home target uses usage. Because that target is ABSOLUTE (allocation −
+ * usage) the pass is IDEMPOTENT and self-correcting: a healthy seat is a no-op
+ * (home already equals allocation − usage), and a RE-RUN even recovers a seat
+ * whose stray was already emptied by an earlier no-carry run — the missing home
+ * debit recomputes from usage alone (the stray balance is gone, but the usage
+ * figure isn't). Deltas on the same credit batch into ONE ledger entry.
  *
  * A credit id that maps to no credit-bearing tier (the contract's "Excess" or
  * pool credit, or a tier we don't recognize) is left untouched.
  *
  * IMPORTANT — read before running with --execute:
  *
- *  - Debits never drive a slice negative (a stray is debited exactly its
- *    balance; the home carry is capped at the home balance). Harmless for a seat
- *    no longer assigned to a stray tier: nothing draws from it and it expires
- *    next recurrence.
+ *  - Never adds credit and never drives a slice negative: a stray is debited
+ *    exactly its balance, and the home target floors at 0.
  *  - `--excludeSeatIds` still exists for belt-and-suspenders, but is not required
- *    for safety: an already-corrected seat reads 0 strays and is a no-op. Re-run
- *    the audit afterwards to confirm.
+ *    for safety: an already-corrected seat is a no-op. Re-run the audit
+ *    afterwards to confirm.
  *
  * NOTE: this corrects the CURRENT period only. Recurring credits are materialized
  * one period ahead, so a mid-period move also leaves a stray grant on the NEXT
@@ -72,6 +71,7 @@ import {
   getMetronomeSubscriptionSeatState,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
+import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getProductSeatTypes,
@@ -237,6 +237,24 @@ async function fixWorkspace(
     return;
   }
 
+  // Current-period per-user AWU usage (Metronome, authoritative) — drives each
+  // home credit to allocation − usage, recovering consumption that leaked onto a
+  // (possibly already-emptied) stray.
+  const usageRes = await paceMetronome(() =>
+    fetchPerUserAwuUsage({
+      workspaceId,
+      metronomeCustomerId,
+      userIds: [...currentSeatTypeBySeatId.keys()],
+    })
+  );
+  if (usageRes.isErr()) {
+    logger.error(
+      { workspaceId, err: usageRes.error.message },
+      "[StackedFix] failed to read per-user usage"
+    );
+    return;
+  }
+
   const result = await correctStackedSeatCreditsFromBalances({
     workspaceId,
     metronomeCustomerId,
@@ -244,6 +262,7 @@ async function fixWorkspace(
     contract,
     seatBalances: balancesRes.value,
     currentSeatTypeBySeatId,
+    usageBySeatId: usageRes.value,
     execute,
     logger,
     pace: paceMetronome,
