@@ -39,17 +39,6 @@ app.post(
       });
     }
 
-    if (space.managementMode !== "manual") {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "You cannot join this Pod, its members are not managed manually.",
-        },
-      });
-    }
-
     if (space.isMember(auth)) {
       return apiError(ctx, {
         status_code: 400,

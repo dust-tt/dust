@@ -78,8 +78,6 @@ makeScript(
         name,
         isRestricted: true,
         spaceKind: "project",
-        managementMode: "manual",
-        memberIds: [],
       });
       if (createResult.isErr()) {
         logger.error({ err: createResult.error }, "Pod creation failed");

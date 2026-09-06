@@ -222,8 +222,6 @@ describe("canAgentBeUsedInProjectConversation", () => {
         name: `open solo ${faker.string.alphanumeric(10)}`,
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
-        memberIds: [],
       });
       if (openProjectRes.isErr()) {
         throw new Error(openProjectRes.error.message);
@@ -399,7 +397,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
     ).resolves.toBe(true);
   });
 
-  it("rejects the agent when a project member reaches the restricted space only through a provisioned group on a manually-managed space", async () => {
+  it("allows the agent when a project member reaches the restricted space through a provisioned group", async () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -411,9 +409,9 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await addUserToSpaceRegularGroup(internalAdminAuth, projectSpace, userJson);
 
-    // The user's only link to the restricted space is a provisioned group. Provisioned groups
-    // carry no grants on manually-managed spaces (see spaceGroupRoles), so the user is not a
-    // member of the space.
+    // The user's only link to the restricted space is a provisioned group. A space's manual
+    // member list and the groups attached to it are merged, so the group makes the user a member
+    // of the space.
     const provisionedGroup = await GroupFactory.provisioned(
       workspace,
       faker.string.alphanumeric(8)
@@ -440,7 +438,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
         ]),
         conversation: conversationJson,
       })
-    ).resolves.toBe(false);
+    ).resolves.toBe(true);
   });
 
   it("allows the agent when all project members belong to required restricted spaces mixed with open spaces", async () => {

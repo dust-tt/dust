@@ -1096,6 +1096,7 @@
  *         managementMode:
  *           type: string
  *           enum: [manual, group]
+ *           description: Deprecated. Derived from whether any group has access to the space; a space's members are its manual member list plus the members of those groups.
  *         createdAt:
  *           type: integer
  *         updatedAt:

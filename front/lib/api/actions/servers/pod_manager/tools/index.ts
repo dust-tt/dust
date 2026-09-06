@@ -318,7 +318,6 @@ export function createProjectManagerTools(
             const updatePermissionsRes = await pod.updatePermissions(auth, {
               name: pod.name,
               isRestricted: newIsRestricted,
-              managementMode: "manual",
               memberIds,
               editorIds,
             });
@@ -973,8 +972,6 @@ export function createProjectManagerTools(
           name: params.title,
           isRestricted: params.access !== "open",
           spaceKind: "project",
-          managementMode: "manual",
-          memberIds: [],
         });
 
         if (createSpaceRes.isErr()) {

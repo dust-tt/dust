@@ -99,7 +99,11 @@ app.patch(
         });
       }
 
-      if (space.managementMode !== "manual") {
+      // Admin-controlled means workspace admins are the only administrators. A group attached to
+      // the Pod as an editor would keep administrating it, so the mode is refused while one is.
+      // Pods are manually managed in the product today; this covers one configured through the
+      // API.
+      if (await space.hasAttachedGroups(auth)) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {

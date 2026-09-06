@@ -39,7 +39,11 @@ type SearchError = {
   error: APIError;
 };
 
-function getSpaceAccessPriority(space: SpaceResource, isOpen: boolean) {
+function getSpaceAccessPriority(
+  space: SpaceResource,
+  isOpen: boolean,
+  hasAttachedGroups: boolean
+) {
   // Global spaces have highest priority.
   if (space.isGlobal()) {
     return 3;
@@ -50,19 +54,20 @@ function getSpaceAccessPriority(space: SpaceResource, isOpen: boolean) {
     return 2;
   }
 
-  // For restricted spaces: provisioned groups get higher priority than manual membership. A space
-  // in group management mode is backed by provisioned (IdP-owned) groups.
-  if (space.managementMode === "group") {
+  // For restricted spaces: access through a directory group (provisioned or manual) gets higher
+  // priority than a hand-picked member list.
+  if (hasAttachedGroups) {
     return 1;
   }
 
-  // Restricted spaces with manual membership have the lowest priority.
+  // Restricted spaces with manual membership only have the lowest priority.
   return 0;
 }
 
 function selectHighestPriorityDataSourceView(
   views: DataSourceViewResource[],
-  openSpaceIds: Set<ModelId>
+  openSpaceIds: Set<ModelId>,
+  spaceIdsWithAttachedGroups: Set<ModelId>
 ): DataSourceViewResource {
   if (views.length <= 1) {
     return views[0];
@@ -72,7 +77,8 @@ function selectHighestPriorityDataSourceView(
     view,
     priority: getSpaceAccessPriority(
       view.space,
-      openSpaceIds.has(view.space.id)
+      openSpaceIds.has(view.space.id),
+      spaceIdsWithAttachedGroups.has(view.space.id)
     ),
     spaceName: view.space.name,
   }));
@@ -145,6 +151,11 @@ export async function handleSearch(
     auth,
     spacesToSearch
   );
+  const spaceIdsWithAttachedGroups =
+    await SpaceResource.listSpaceModelIdsWithAttachedGroups(
+      auth,
+      spacesToSearch
+    );
 
   const allDatasourceViews = await DataSourceViewResource.listBySpaces(
     auth,
@@ -252,7 +263,13 @@ export async function handleSearch(
       }
 
       const selectedViews = prioritizeSpaceAccess
-        ? [selectHighestPriorityDataSourceView(matchingViews, openSpaceIds)]
+        ? [
+            selectHighestPriorityDataSourceView(
+              matchingViews,
+              openSpaceIds,
+              spaceIdsWithAttachedGroups
+            ),
+          ]
         : matchingViews;
 
       return {

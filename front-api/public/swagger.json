@@ -10394,8 +10394,7 @@
                 "required": [
                   "isRestricted",
                   "name",
-                  "spaceKind",
-                  "managementMode"
+                  "spaceKind"
                 ],
                 "properties": {
                   "isRestricted": {
@@ -10411,26 +10410,27 @@
                       "project"
                     ]
                   },
-                  "managementMode": {
-                    "type": "string",
-                    "enum": [
-                      "manual",
-                      "group"
-                    ]
-                  },
                   "memberIds": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     },
-                    "description": "Required when managementMode is manual"
+                    "description": "The space's manual member list. Omitted or empty means the space starts with no manual member."
                   },
                   "groupIds": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     },
-                    "description": "Required when managementMode is group"
+                    "description": "The groups given access to the space. Omitted or empty means no group has access to it."
+                  },
+                  "managementMode": {
+                    "type": "string",
+                    "enum": [
+                      "manual",
+                      "group"
+                    ],
+                    "description": "Deprecated and ignored. A space's members are its manual member list plus the members of the groups given access to it."
                   }
                 }
               }
@@ -12294,7 +12294,8 @@
             "enum": [
               "manual",
               "group"
-            ]
+            ],
+            "description": "Deprecated. Derived from whether any group has access to the space; a space's members are its manual member list plus the members of those groups."
           },
           "createdAt": {
             "type": "integer"

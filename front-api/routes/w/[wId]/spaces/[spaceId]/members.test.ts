@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
@@ -161,7 +162,6 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/members", () => {
     const response = await patchMembers(workspace, project.sId, {
       name: project.name,
       isRestricted: false,
-      managementMode: "manual",
       memberIds: [],
       editorIds: [user.sId],
     });
@@ -176,6 +176,141 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/members", () => {
     });
   });
 
+  it("sets the members and the groups from one request", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await SpaceFactory.defaults(auth);
+    const space = await SpaceFactory.regular(workspace);
+
+    const provisionedGroup = await GroupFactory.provisioned(
+      workspace,
+      "Provisioned"
+    );
+    const response = await patchMembers(workspace, space.sId, {
+      name: space.name,
+      isRestricted: true,
+      memberIds: [user.sId],
+      groupIds: [provisionedGroup.sId],
+    });
+    expect(response.status).toBe(200);
+
+    const refreshedSpace = await SpaceResource.fetchById(auth, space.sId);
+    const attached = await refreshedSpace!.fetchAttachedManageableGroups(auth);
+    expect(attached.memberGroups.map((g) => g.sId)).toEqual([
+      provisionedGroup.sId,
+    ]);
+
+    const memberGroup = await refreshedSpace!.fetchManualMemberGroup(auth);
+    const members = await memberGroup.getActiveMembers(auth);
+    expect(members.map((m) => m.sId)).toEqual([user.sId]);
+  });
+
+  it("clears the groups when the request only carries members", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await SpaceFactory.defaults(auth);
+    const space = await SpaceFactory.regular(workspace);
+
+    const provisionedGroup = await GroupFactory.provisioned(
+      workspace,
+      "Provisioned"
+    );
+    const withGroup = await patchMembers(workspace, space.sId, {
+      name: space.name,
+      isRestricted: true,
+      groupIds: [provisionedGroup.sId],
+    });
+    expect(withGroup.status).toBe(200);
+
+    // The request carries the space's whole membership, so leaving the groups out drops them —
+    // what a client switching the space back to manual access means.
+    const response = await patchMembers(workspace, space.sId, {
+      name: space.name,
+      isRestricted: true,
+      memberIds: [user.sId],
+    });
+    expect(response.status).toBe(200);
+
+    const refreshedSpace = await SpaceResource.fetchById(auth, space.sId);
+    const attached = await refreshedSpace!.fetchAttachedManageableGroups(auth);
+    expect(attached.memberGroups).toEqual([]);
+  });
+
+  it("clears the members when the request only carries groups", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await SpaceFactory.defaults(auth);
+    const space = await SpaceFactory.regular(workspace);
+
+    const withMember = await patchMembers(workspace, space.sId, {
+      name: space.name,
+      isRestricted: true,
+      memberIds: [user.sId],
+    });
+    expect(withMember.status).toBe(200);
+
+    // The mirror of the case above: leaving the members out drops them, which is what a client
+    // switching the space to group access means.
+    const provisionedGroup = await GroupFactory.provisioned(
+      workspace,
+      "Provisioned"
+    );
+    const response = await patchMembers(workspace, space.sId, {
+      name: space.name,
+      isRestricted: true,
+      groupIds: [provisionedGroup.sId],
+    });
+    expect(response.status).toBe(200);
+
+    const refreshedSpace = await SpaceResource.fetchById(auth, space.sId);
+    const memberGroup = await refreshedSpace!.fetchManualMemberGroup(auth);
+    expect(await memberGroup.getActiveMembers(auth)).toEqual([]);
+
+    const attached = await refreshedSpace!.fetchAttachedManageableGroups(auth);
+    expect(attached.memberGroups.map((g) => g.sId)).toEqual([
+      provisionedGroup.sId,
+    ]);
+  });
+
+  it("adds a member to a group-backed space", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await SpaceFactory.defaults(auth);
+    const space = await SpaceFactory.regular(workspace);
+
+    const provisionedGroup = await GroupFactory.provisioned(
+      workspace,
+      "Provisioned"
+    );
+    const withGroup = await patchMembers(workspace, space.sId, {
+      name: space.name,
+      isRestricted: true,
+      groupIds: [provisionedGroup.sId],
+    });
+    expect(withGroup.status).toBe(200);
+
+    // A space's manual member list and its groups live side by side, so POST still adds one.
+    const response = await postMembers(workspace, space.sId, {
+      memberIds: [user.sId],
+    });
+    expect(response.status).toBe(200);
+
+    const refreshedSpace = await SpaceResource.fetchById(auth, space.sId);
+    const memberGroup = await refreshedSpace!.fetchManualMemberGroup(auth);
+    const members = await memberGroup.getActiveMembers(auth);
+    expect(members.map((m) => m.sId)).toEqual([user.sId]);
+
+    // And the group is still attached.
+    const attached = await refreshedSpace!.fetchAttachedManageableGroups(auth);
+    expect(attached.memberGroups.map((g) => g.sId)).toEqual([
+      provisionedGroup.sId,
+    ]);
+  });
+
   it("allows making a restricted project open when open projects are allowed", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       role: "admin",
@@ -186,7 +321,6 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/members", () => {
     const response = await patchMembers(workspace, project.sId, {
       name: project.name,
       isRestricted: false,
-      managementMode: "manual",
       memberIds: [],
       editorIds: [user.sId],
     });

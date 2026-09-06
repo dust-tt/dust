@@ -119,7 +119,6 @@ const GetSpacesQuerySchema = z.object({
  *               - isRestricted
  *               - name
  *               - spaceKind
- *               - managementMode
  *             properties:
  *               isRestricted:
  *                 type: boolean
@@ -128,19 +127,20 @@ const GetSpacesQuerySchema = z.object({
  *               spaceKind:
  *                 type: string
  *                 enum: [regular, project]
- *               managementMode:
- *                 type: string
- *                 enum: [manual, group]
  *               memberIds:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Required when managementMode is manual
+ *                 description: The space's manual member list. Omitted or empty means the space starts with no manual member.
  *               groupIds:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Required when managementMode is group
+ *                 description: The groups given access to the space. Omitted or empty means no group has access to it.
+ *               managementMode:
+ *                 type: string
+ *                 enum: [manual, group]
+ *                 description: Deprecated and ignored. A space's members are its manual member list plus the members of the groups given access to it.
  *     responses:
  *       201:
  *         description: Successfully created space

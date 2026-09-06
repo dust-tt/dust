@@ -232,8 +232,6 @@ async function provisionTrainingPod(
     name: podName,
     isRestricted: true,
     spaceKind: "project",
-    managementMode: "manual",
-    memberIds: [],
   });
   if (createResult.isErr()) {
     return new Err(new Error(createResult.error.message));

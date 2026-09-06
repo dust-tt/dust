@@ -107,7 +107,6 @@ describe("POST /api/w/:wId/spaces", () => {
       name: "Open project should fail",
       isRestricted: false,
       spaceKind: "project",
-      managementMode: "manual",
       memberIds: [],
     });
 
@@ -145,7 +144,6 @@ describe("POST /api/w/:wId/spaces", () => {
       name: "Open project is allowed",
       isRestricted: false,
       spaceKind: "project",
-      managementMode: "manual",
       memberIds: [],
     });
 
@@ -175,7 +173,6 @@ describe("POST /api/w/:wId/spaces", () => {
       name: "[Dust FS] Test project",
       isRestricted: true,
       spaceKind: "project",
-      managementMode: "manual",
       memberIds: [],
     });
 

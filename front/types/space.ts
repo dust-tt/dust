@@ -16,6 +16,26 @@ export type SpaceKind = (typeof SPACE_KINDS)[number];
 
 type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 /**
+ * A space's whole desired membership. Every dimension is optional, and one the request leaves out
+ * is emptied rather than kept: the request describes the end state, not a patch.
+ *
+ * - `memberIds` / `editorIds`: the space's manual member and editor lists (editors are Pod-only).
+ * - `groupIds` / `editorGroupIds`: the groups given member and editor access to the space.
+ *
+ * `managementMode` is legacy and ignored. The two used to be exclusive — a space was managed
+ * either by a manual member list or by groups — and clients that still send the field get the
+ * behaviour they expect for free: the dimension their mode does not cover is one they do not
+ * send, and so is emptied. Dropped once no client sends it.
+ */
+export type SpaceMembershipUpdate = {
+  memberIds?: string[];
+  editorIds?: string[];
+  groupIds?: string[];
+  editorGroupIds?: string[];
+  managementMode?: "manual" | "group";
+};
+
+/**
  * @swaggerschema PrivateSpace (swagger_private_schemas.ts)
  */
 export type SpaceType = {
