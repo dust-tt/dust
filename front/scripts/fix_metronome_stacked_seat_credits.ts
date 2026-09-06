@@ -9,46 +9,52 @@
  * candidate and can no longer self-heal it — see `audit_metronome_seat_state.ts`
  * ("over-allocated seats").
  *
- * Detection + correction are EXACT and per-credit. The seat-balances read
- * (`include_credits_and_commits`) returns, for each seat, a `credits[]` array
- * with that seat's balance on EACH individual credit id (not just the aggregate
- * per credit type). We map each materialized credit id to its seat type once per
- * contract (via `findSeatCreditSegmentForPeriod` per credit-bearing tier, whose
- * `creditId` is the materialized id), then for each seat empty exactly the
- * credits whose seat type ≠ the seat's CURRENT tier. The negative delta equals
- * that seat's own per-seat balance on the stray credit, driving it to 0.
+ * Detection + correction are EXACT and per-credit, and live in the shared
+ * `lib/metronome/stacked_seat_credits` core (also used by the
+ * `credit.segment.start` webhook reconcile, so the two can never drift). The
+ * seat-balances read (`include_credits_and_commits`) returns, for each seat, a
+ * `credits[]` array with that seat's balance on EACH individual credit id (not
+ * just the aggregate per credit type). We map each materialized credit id to its
+ * seat type once per contract (via `findSeatCreditSegmentForPeriod` per
+ * credit-bearing tier, whose `creditId` is the materialized id), then for each
+ * seat:
  *
- * This is inherently IDEMPOTENT: a re-run reads the stray credit's per-seat
- * balance as 0 and emits nothing. No consumption estimate, no allocation
- * matching, no same-family ambiguity — the credit id itself names the stray
- * tier, so a pro-vs-pro_yearly collision is never a question. All corrections on
- * the same stray credit share its segment start as their entry time, so they
- * apply in ONE batched ledger entry per stray credit (write cost is O(stray
- * credits)).
+ *  - empty every STRAY credit (seat type ≠ the seat's current tier) fully, and
+ *  - carry the consumption those strays absorbed onto the HOME credit — debiting
+ *    it by `min(homeBalance, Σ strayConsumed)` — so the seat nets
+ *    `homeAllocation − totalConsumed` instead of a full home allowance plus the
+ *    stray usage forgiven. (Without the carry a seat that spent, say, 69 AWU
+ *    against its stray would end at a full home 8000 instead of 7931.)
+ *
+ * Both figures are exact (observed per-seat balances vs. deterministic tier
+ * allocations, not an ES estimate) and inherently IDEMPOTENT: a re-run reads
+ * every stray at 0, so there is no stray consumption left to carry and nothing
+ * is emitted. No allocation matching, no same-family ambiguity — the credit id
+ * itself names each credit's tier, so a pro-vs-pro_yearly collision is never a
+ * question. Deltas on the same credit batch into ONE ledger entry.
  *
  * A credit id that maps to no credit-bearing tier (the contract's "Excess" or
- * pool credit, or a tier we don't recognize) is left untouched — only credits
- * whose seat type is known AND differs from the seat's current tier are emptied.
+ * pool credit, or a tier we don't recognize) is left untouched.
  *
  * IMPORTANT — read before running with --execute:
  *
- *  - Emptying the stray credit's per-seat balance can leave THAT pool's slice at
- *    0 (never negative — we debit exactly the balance). Harmless for a seat no
- *    longer assigned to that tier: nothing draws from it and it expires next
- *    recurrence.
+ *  - Debits never drive a slice negative (a stray is debited exactly its
+ *    balance; the home carry is capped at the home balance). Harmless for a seat
+ *    no longer assigned to a stray tier: nothing draws from it and it expires
+ *    next recurrence.
  *  - `--excludeSeatIds` still exists for belt-and-suspenders, but is not required
- *    for safety: an already-emptied seat reads 0 and is a no-op. Re-run the audit
- *    afterwards to confirm.
+ *    for safety: an already-corrected seat reads 0 strays and is a no-op. Re-run
+ *    the audit afterwards to confirm.
  *
  * NOTE: this corrects the CURRENT period only. Recurring credits are materialized
  * one period ahead, so a mid-period move also leaves a stray grant on the NEXT
- * segment (fixed at the source by `emptyOriginNextPeriodCredits` in seats.ts).
- * Re-run after that ships to clear any next-period backlog.
+ * segment; the `credit.segment.start` webhook reconcile cleans each segment as it
+ * becomes current, so a backfill re-run is only needed for the current period.
  *
- * Dry-run by default (prints the full plan, including per-seat credit/segment
- * resolution). Pass --execute to apply. Use --seatId to restrict to a single
- * seat (validate the mechanics on one before a bulk run), and --homeSeatType to
- * scope to seats currently of a given tier (e.g. only the confident `max` set).
+ * Dry-run by default (prints the full plan, including every per-seat adjustment).
+ * Pass --execute to apply. Use --seatId to restrict to a single seat (validate
+ * the mechanics on one before a bulk run), and --homeSeatType to scope to seats
+ * currently of a given tier (e.g. only the confident `max` set).
  *
  * `--allWorkspaces` runs across every workspace that currently has a
  * max/max_yearly/pro_yearly seat (the only ones that can carry a stacked
@@ -63,25 +69,16 @@
  */
 import config from "@app/lib/api/config";
 import {
-  adjustSeatCreditBalances,
-  findSeatCreditSegmentForPeriod,
   getMetronomeSubscriptionSeatState,
-  invalidateCachedCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
-import type { ContractCreditType } from "@app/lib/metronome/constants";
-import {
-  CONTRACT_CREDIT_TYPE_EXCESS,
-  CONTRACT_CREDIT_TYPE_FREE_SEAT,
-  CONTRACT_CREDIT_TYPE_POOL,
-  getCreditTypeAwuId,
-} from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { getSeatCreditNameForSeatType } from "@app/lib/metronome/seats";
+import { correctStackedSeatCreditsFromBalances } from "@app/lib/metronome/stacked_seat_credits";
 import { Op } from "@app/lib/resources/storage/data_types";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -108,33 +105,6 @@ async function paceMetronome<T>(fn: () => Promise<T>): Promise<T> {
     await new Promise((r) => setTimeout(r, wait));
   }
   return fn();
-}
-
-// A credit-bearing tier's recurring credit, resolved to its materialized credit
-// id + segment for the current period.
-interface TierCredit {
-  seatType: MembershipSeatType;
-  recurringCreditId: string;
-  // Materialized credit id for the current segment (matches seat.credits[].id).
-  creditId: string;
-  segmentId: string;
-  // Shared, in-segment entry time so all seats on this credit batch into one
-  // ledger write.
-  adjustmentTimestamp: Date;
-}
-
-interface SeatCorrection {
-  seatId: string;
-  // The seat's current (home) tier.
-  homeSeatType: MembershipSeatType;
-  // Seat type of the stray credit being emptied (named by the credit id itself).
-  strayType: MembershipSeatType;
-  // The seat's exact per-seat balance on the stray credit — debited in full so
-  // the pool slice lands on 0.
-  strayBalanceAwu: number;
-  creditId: string;
-  segmentId: string;
-  adjustmentTimestamp: Date;
 }
 
 async function fixWorkspace(
@@ -184,73 +154,28 @@ async function fixWorkspace(
     return;
   }
 
-  // Recurring-credit tiers (pro/max families). `free`/`workspace`/`none` carry
-  // no per-seat recurring credit (getSeatCreditNameForSeatType === null), so
-  // they are neither a home nor a stray tier here.
+  // Credit-bearing tiers (pro/max families). `free`/`workspace`/`none` carry no
+  // per-seat recurring credit (getSeatCreditNameForSeatType === null), so they
+  // are never a valid home tier for a stacked seat here.
   const productSeatTypes = await getProductSeatTypes();
   const seatSubscriptions = [
     ...getSeatSubscriptionsFromContract(contract, productSeatTypes),
   ];
-  const recurringCreditByTier = new Map<
-    MembershipSeatType,
-    { subscriptionId: string; recurringCreditId: string }
-  >();
+  const creditBearingHomeTypes = new Set<MembershipSeatType>();
   for (const [seatType, sub] of seatSubscriptions) {
-    if (!sub.id || !getSeatCreditNameForSeatType(seatType)) {
-      continue;
-    }
-    const recurringCredit = (contract.recurring_credits ?? []).find(
-      (c) => c.subscription_config?.subscription_id === sub.id
-    );
-    if (recurringCredit?.id) {
-      recurringCreditByTier.set(seatType, {
-        subscriptionId: sub.id,
-        recurringCreditId: recurringCredit.id,
-      });
+    if (
+      sub.id &&
+      getSeatCreditNameForSeatType(seatType) &&
+      (contract.recurring_credits ?? []).some(
+        (c) => c.subscription_config?.subscription_id === sub.id
+      )
+    ) {
+      creditBearingHomeTypes.add(seatType);
     }
   }
 
-  // Resolve each credit-bearing tier's recurring credit to its MATERIALIZED
-  // credit id + segment for the current period, and index BY that credit id.
-  // findSeatCreditSegmentForPeriod returns the materialized credit id (the same
-  // id seats carry in `credits[].id`), which is what names the stray tier below:
-  // a credit id whose tier ≠ the seat's current tier is stray, no matter which
-  // family it belongs to (so pro-vs-pro_yearly is never ambiguous).
-  const tierByCreditId = new Map<string, TierCredit>();
-  for (const [seatType, { recurringCreditId }] of recurringCreditByTier) {
-    const segRes = await paceMetronome(() =>
-      findSeatCreditSegmentForPeriod({
-        metronomeCustomerId,
-        metronomeContractId: contractId,
-        recurringCreditId,
-      })
-    );
-    if (segRes.isErr()) {
-      logger.error(
-        { workspaceId, seatType, err: segRes.error.message },
-        "[StackedFix] failed to resolve seat credit segment for tier"
-      );
-      return;
-    }
-    const segment = segRes.value;
-    if (!segment) {
-      logger.warn(
-        { workspaceId, seatType, recurringCreditId },
-        "[StackedFix] no active seat credit segment for tier — skipping tier"
-      );
-      continue;
-    }
-    tierByCreditId.set(segment.creditId, {
-      seatType,
-      recurringCreditId,
-      creditId: segment.creditId,
-      segmentId: segment.segmentId,
-      // Shared, in-segment entry time so all seats on this credit batch.
-      adjustmentTimestamp: new Date(segment.segmentStartingAt),
-    });
-  }
-
-  // Map every assigned seat to its home (current) tier.
+  // Map every assigned seat to its home (current) tier from Metronome's own
+  // per-subscription assignment.
   const seatTypeBySeatId = new Map<string, MembershipSeatType>();
   for (const [seatType, sub] of seatSubscriptions) {
     if (!sub.id) {
@@ -276,12 +201,8 @@ async function fixWorkspace(
   }
 
   // Candidate seats: currently on a credit-bearing tier (a free/none home has no
-  // recurring credit of its own; its stray is handled separately). Apply the CLI
-  // filters here.
-  const candidates: Array<{
-    seatId: string;
-    homeSeatType: MembershipSeatType;
-  }> = [];
+  // recurring credit of its own). Apply the CLI filters here.
+  const currentSeatTypeBySeatId = new Map<string, MembershipSeatType>();
   for (const [seatId, homeSeatType] of seatTypeBySeatId) {
     if (onlySeatId && seatId !== onlySeatId) {
       continue;
@@ -292,22 +213,20 @@ async function fixWorkspace(
     if (onlyHomeSeatType && homeSeatType !== onlyHomeSeatType) {
       continue;
     }
-    if (!recurringCreditByTier.has(homeSeatType)) {
+    if (!creditBearingHomeTypes.has(homeSeatType)) {
       continue;
     }
-    candidates.push({ seatId, homeSeatType });
+    currentSeatTypeBySeatId.set(seatId, homeSeatType);
   }
 
-  // Read per-seat, per-credit balances for the candidate seats. `credits[]` is
-  // populated by `include_credits_and_commits` and gives each seat's balance on
-  // each individual credit id — the aggregate `balances[]` cannot distinguish a
-  // seat's pro slice from its max slice.
-  const awuCreditTypeId = getCreditTypeAwuId();
+  // Read per-seat, per-credit balances once (credits[] via
+  // include_credits_and_commits), then delegate detection + correction to the
+  // shared core so the backfill and the webhook reconcile can never drift.
   const balancesRes = await paceMetronome(() =>
     listMetronomeSeatBalances({
       metronomeCustomerId,
       metronomeContractId: contractId,
-      seatIds: candidates.map((c) => c.seatId),
+      seatIds: [...currentSeatTypeBySeatId.keys()],
     })
   );
   if (balancesRes.isErr()) {
@@ -317,76 +236,26 @@ async function fixWorkspace(
     );
     return;
   }
-  // seatId -> [{ creditId, balanceAwu }] for AWU credits only.
-  const seatCreditsBySeatId = new Map<
-    string,
-    Array<{ creditId: string; balanceAwu: number }>
-  >();
-  for (const seat of balancesRes.value) {
-    seatCreditsBySeatId.set(
-      seat.seat_id,
-      (seat.credits ?? [])
-        .filter((c) => c.credit_type_id === awuCreditTypeId)
-        .map((c) => ({ creditId: c.id, balanceAwu: c.balance }))
+
+  const result = await correctStackedSeatCreditsFromBalances({
+    workspaceId,
+    metronomeCustomerId,
+    metronomeContractId: contractId,
+    contract,
+    seatBalances: balancesRes.value,
+    currentSeatTypeBySeatId,
+    execute,
+    logger,
+    pace: paceMetronome,
+  });
+  if (result.isErr()) {
+    logger.error(
+      { workspaceId, err: result.error.message },
+      "[StackedFix] failed to correct stacked seat credits"
     );
+    return;
   }
-
-  // For each candidate seat, empty exactly the credits whose seat type differs
-  // from the seat's current tier. A credit id absent from `tierByCreditId`
-  // (excess/pool/unrecognized) is left untouched, and a stray already at 0
-  // (prior run / empty-origin) is a no-op — so re-runs are idempotent.
-  const corrections: SeatCorrection[] = [];
-  for (const { seatId, homeSeatType } of candidates) {
-    const seatCredits = seatCreditsBySeatId.get(seatId) ?? [];
-    for (const { creditId, balanceAwu } of seatCredits) {
-      const tier = tierByCreditId.get(creditId);
-      if (!tier || tier.seatType === homeSeatType || balanceAwu <= 0) {
-        continue;
-      }
-      corrections.push({
-        seatId,
-        homeSeatType,
-        strayType: tier.seatType,
-        strayBalanceAwu: balanceAwu,
-        creditId: tier.creditId,
-        segmentId: tier.segmentId,
-        adjustmentTimestamp: tier.adjustmentTimestamp,
-      });
-    }
-  }
-
-  // Group corrections by stray credit segment — one batched ledger entry each.
-  const batches = new Map<
-    string,
-    {
-      creditId: string;
-      segmentId: string;
-      strayType: MembershipSeatType;
-      timestamp: Date;
-      items: SeatCorrection[];
-    }
-  >();
-  for (const c of corrections) {
-    const key = `${c.creditId}:${c.segmentId}`;
-    const batch = batches.get(key) ?? {
-      creditId: c.creditId,
-      segmentId: c.segmentId,
-      strayType: c.strayType,
-      timestamp: c.adjustmentTimestamp,
-      items: [],
-    };
-    batch.items.push(c);
-    batches.set(key, batch);
-  }
-
-  const byTransition = new Map<string, { count: number; totalAwu: number }>();
-  for (const c of corrections) {
-    const key = `${c.homeSeatType}<-${c.strayType}`;
-    const agg = byTransition.get(key) ?? { count: 0, totalAwu: 0 };
-    agg.count += 1;
-    agg.totalAwu += c.strayBalanceAwu;
-    byTransition.set(key, agg);
-  }
+  const summary = result.value;
 
   logger.info(
     {
@@ -396,12 +265,14 @@ async function fixWorkspace(
       onlySeatId,
       onlyHomeSeatType,
       excludedSeatCount: excludeSeatIds.size,
-      candidateSeatCount: candidates.length,
-      correctedSeatCount: corrections.length,
-      totalEmptiedAwu: corrections.reduce((s, c) => s + c.strayBalanceAwu, 0),
-      batchedAdjustCalls: batches.size,
-      byTransition: Object.fromEntries(byTransition),
-      corrections,
+      candidateSeatCount: currentSeatTypeBySeatId.size,
+      emptiedStrayCount: summary.emptiedStrayCount,
+      carriedConsumptionCount: summary.carriedConsumptionCount,
+      totalEmptiedAwu: summary.totalEmptiedAwu,
+      totalCarriedAwu: summary.totalCarriedAwu,
+      batchedAdjustCalls: summary.batchedAdjustCalls,
+      appliedAdjustmentCount: summary.appliedAdjustmentCount,
+      adjustments: summary.adjustments,
     },
     "[StackedFix] correction plan"
   );
@@ -414,78 +285,12 @@ async function fixWorkspace(
     return;
   }
 
-  let appliedSeats = 0;
-  for (const batch of batches.values()) {
-    const perSeatAmounts = Object.fromEntries(
-      batch.items.map((c) => [c.seatId, -c.strayBalanceAwu])
-    );
-    const adjustRes = await paceMetronome(() =>
-      adjustSeatCreditBalances({
-        metronomeCustomerId,
-        metronomeContractId: contractId,
-        creditId: batch.creditId,
-        segmentId: batch.segmentId,
-        perSeatAmounts,
-        reason: `Stacked-credit correction: empty orphaned ${batch.strayType} grant`,
-        timestamp: batch.timestamp,
-        alignToHour: false,
-      })
-    );
-    if (adjustRes.isErr()) {
-      logger.error(
-        {
-          workspaceId,
-          strayType: batch.strayType,
-          creditId: batch.creditId,
-          seatCount: batch.items.length,
-          err: adjustRes.error.message,
-        },
-        "[StackedFix] batched correction failed"
-      );
-      continue;
-    }
-    appliedSeats += batch.items.length;
-    logger.info(
-      {
-        workspaceId,
-        strayType: batch.strayType,
-        creditId: batch.creditId,
-        seatCount: batch.items.length,
-        totalAwu: batch.items.reduce((s, c) => s + c.strayBalanceAwu, 0),
-        timestamp: batch.timestamp.toISOString(),
-      },
-      "[StackedFix] applied batched correction"
-    );
-  }
-
-  // Bust the 1-hour per-user credit-balance Redis cache
-  // (getCachedCustomerPerUserCreditBalances) so poke reflects the corrections
-  // without waiting out the TTL. A manual balance entry does NOT fire the
-  // Metronome credit.create / segment.start webhook that normally invalidates
-  // it, so nothing else clears it. This covers the free-seat / pool surfaces
-  // that read the cache; the pro/max seat balance in the members table is read
-  // LIVE (uncached listMetronomeSeatBalances), so its brief post-correction lag
-  // is Metronome's own seat-balance read model catching up and self-heals.
-  if (appliedSeats > 0) {
-    const contractCreditTypes: ContractCreditType[] = [
-      CONTRACT_CREDIT_TYPE_FREE_SEAT,
-      CONTRACT_CREDIT_TYPE_POOL,
-      CONTRACT_CREDIT_TYPE_EXCESS,
-    ];
-    for (const contractCreditType of contractCreditTypes) {
-      await invalidateCachedCustomerPerUserCreditBalances({
-        metronomeCustomerId,
-        contractCreditType,
-      });
-    }
-    logger.info(
-      { workspaceId, metronomeCustomerId },
-      "[StackedFix] invalidated cached per-user credit balances"
-    );
-  }
-
   logger.info(
-    { workspaceId, appliedSeats, plannedSeats: corrections.length },
+    {
+      workspaceId,
+      appliedAdjustmentCount: summary.appliedAdjustmentCount,
+      batchedAdjustCalls: summary.batchedAdjustCalls,
+    },
     "[StackedFix] done"
   );
 }
