@@ -5,6 +5,7 @@ import type {
   FileEntry,
   FileExplorerEntry,
   FileExplorerPathEntry,
+  FileExplorerVirtualScopeRoot,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
@@ -25,8 +26,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, XClose } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo } from "react";
 
-const POD_CONVERSATION_SCOPE_ROOTS = ["conversation", "pod"] as const;
-
 function isFramePackageEntry(entry: FileExplorerEntry): boolean {
   return entry.kind === "frame_package";
 }
@@ -44,6 +43,22 @@ export function ConversationFileExplorer({
   const { hasFeature } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
   const isPod = isPodConversation(conversation);
+
+  const virtualScopeRoots = useMemo<
+    readonly FileExplorerVirtualScopeRoot[] | undefined
+  >(() => {
+    if (!isPod) {
+      return undefined;
+    }
+
+    return [
+      {
+        path: "conversation",
+        canonicalPath: `conversation-${conversation.sId}`,
+      },
+      { path: "pod", canonicalPath: `pod-${conversation.spaceId}` },
+    ];
+  }, [conversation, isPod]);
 
   const [currentFolderPath, setCurrentFolderPath] = useFolderPathUrlState();
 
@@ -169,7 +184,7 @@ export function ConversationFileExplorer({
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
           owner={owner}
-          virtualScopeRoots={isPod ? POD_CONVERSATION_SCOPE_ROOTS : undefined}
+          virtualScopeRoots={virtualScopeRoots}
         />
       </div>
     </div>

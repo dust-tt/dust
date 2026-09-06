@@ -1,5 +1,6 @@
 import type {
   FileEntry,
+  FileSystemFileTreeNode,
   FileSystemTreeNode,
 } from "@app/components/file_explorer/types";
 import {
@@ -120,10 +121,11 @@ describe("file preview configuration", () => {
   });
 
   it("keeps code and text in separate explorer filters", () => {
-    const node: FileSystemTreeNode = {
+    const node: FileSystemFileTreeNode = {
       name: "file",
       path: "file",
       isDirectory: false,
+      canonicalPath: "project/file",
       contentType: "text/javascript",
       fileId: "file-1",
       children: [],
@@ -186,8 +188,14 @@ describe("buildFileSystemTree", () => {
     const q1 = findTreeNodeByPath(tree, "reports/q1");
     const summary = findTreeNodeByPath(tree, "reports/q1/summary.pdf");
 
-    expect(reports?.isDirectory).toBe(true);
-    expect(q1?.isDirectory).toBe(true);
+    expect(reports).toMatchObject({
+      isDirectory: true,
+      canonicalPath: "project/reports",
+    });
+    expect(q1).toMatchObject({
+      isDirectory: true,
+      canonicalPath: "project/reports/q1",
+    });
     expect(summary?.isDirectory).toBe(false);
     expect(q1?.children.map((n) => n.path)).toEqual(["reports/q1/summary.pdf"]);
   });
@@ -196,7 +204,10 @@ describe("buildFileSystemTree", () => {
     const tree = buildFileSystemTree([mountDir("archive")]);
 
     const archive = findTreeNodeByPath(tree, "archive");
-    expect(archive?.isDirectory).toBe(true);
+    expect(archive).toMatchObject({
+      isDirectory: true,
+      canonicalPath: "project/archive",
+    });
     expect(archive?.children).toEqual([]);
   });
 
@@ -403,6 +414,14 @@ describe("buildFileSystemTree with virtualPath", () => {
     expect(
       getChildrenAtFolderPath(tree, "pod/shared").map((n) => n.path)
     ).toEqual(["pod/shared/readme.md"]);
+    expect(findTreeNodeByPath(tree, "conversation")).toMatchObject({
+      canonicalPath: "conversation",
+      path: "conversation",
+    });
+    expect(findTreeNodeByPath(tree, "pod/shared")).toMatchObject({
+      canonicalPath: "project/shared",
+      path: "pod/shared",
+    });
   });
 });
 
@@ -412,8 +431,15 @@ describe("getVirtualScopeRootNodes", () => {
       withVirtualExplorerPath(mountFile("a.txt"), "pod"),
     ]);
 
-    const roots = getVirtualScopeRootNodes(tree, ["conversation", "pod"]);
+    const roots = getVirtualScopeRootNodes(tree, [
+      { path: "conversation", canonicalPath: "conversation-c1" },
+      { path: "pod", canonicalPath: "pod-p1" },
+    ]);
     expect(roots.map((n) => n.path)).toEqual(["conversation", "pod"]);
+    expect(roots.map((n) => n.canonicalPath)).toEqual([
+      "conversation-c1",
+      "pod-p1",
+    ]);
     expect(roots[0]?.children).toEqual([]);
     expect(roots[1]?.children).toHaveLength(1);
   });
