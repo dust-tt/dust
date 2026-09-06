@@ -34,7 +34,6 @@
     { "name": "skill_authoring", "id": 1034 },
     { "name": "workspace_analytics", "id": 1035 },
     { "name": "exa_people_and_company", "id": 1036 },
-    { "name": "sandbox_functions", "id": 1037 },
     { "name": "user_analytics", "id": 1039 },
     { "name": "activation_recommendations", "id": 1040 },
     { "name": "agent_templates", "id": 1041 },

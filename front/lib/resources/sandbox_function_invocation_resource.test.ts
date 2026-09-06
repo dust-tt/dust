@@ -1,4 +1,3 @@
-import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/sandbox_functions/tools/inspect_invocations";
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import {
@@ -377,18 +376,6 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(recentInvocations[0]?.toJSONForLLM()).not.toHaveProperty(
       "bundleSha256"
     );
-
-    const formatted = formatSandboxFunctionInvocations(
-      sandboxFunction.slug,
-      recentInvocations
-    );
-    expect(formatted).toContain('"status": "succeeded"');
-    expect(formatted).toContain('"input": {');
-    expect(formatted).toContain('"result": {');
-    expect(formatted).toContain('"message": "second invocation failed"');
-    expect(formatted).toContain('"code": "invocation_failed"');
-    expect(formatted).toContain('"createdAt":');
-    expect(formatted).toContain('"updatedAt":');
   });
 
   it("shows readers only their invocations while Pod administrators see all", async () => {
@@ -477,12 +464,6 @@ describe("SandboxFunctionInvocationResource", () => {
         access: "system",
       })
     ).resolves.toMatchObject({ sId: userlessInvocation.sId });
-  });
-
-  it("formats an explicit message when a function has no invocations", () => {
-    expect(formatSandboxFunctionInvocations("never-called", [])).toBe(
-      'No invocations found for pod function "never-called".'
-    );
   });
 
   it("stores and reloads its input from GCS", async () => {

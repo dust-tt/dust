@@ -19,7 +19,6 @@ import {
   isPodTasksCreateTasksInput,
   isPodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
-import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
@@ -61,17 +60,6 @@ const MCP_TOOL_OVERRIDES: Partial<
     add_egress_domain: {
       title: () => `Allow agent to add a domain to the Computer?`,
       detailsInline: true,
-    },
-  },
-  [SANDBOX_FUNCTIONS_SERVER_NAME]: {
-    publish: {
-      title: () => "Publish this function?",
-      approveLabel: "Publish",
-      alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
-    },
-    unpublish: {
-      title: () => "Unpublish this function?",
-      approveLabel: "Unpublish",
     },
   },
   [POD_TASKS_SERVER_NAME]: {

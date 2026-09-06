@@ -21,7 +21,6 @@ import type {
   SandboxFunctionInvocationEvent,
   SandboxFunctionInvocationOutcome,
 } from "@app/types/api/sandbox_functions";
-import { frameShareTokenHeader } from "@app/types/api/sandbox_functions";
 import type {
   CallFunctionRequest,
   CommandResultMap,
@@ -248,20 +247,12 @@ const getExtensionFromBlob = (blob: Blob): string => {
 export interface FrameViewer {
   owner: LightWorkspaceType;
   user: UserType;
-  /**
-   * Share token the viewer loaded the frame with, presented on invocation requests: the server
-   * grants invocation of the frame's app's functions to workspace members who may view the frame
-   * (invite-only frames also require an email grant). Authorization happens server-side on every
-   * request.
-   */
-  frameShareToken?: string;
 }
 
 interface SandboxFunctionInvocationProps {
   workspaceId: string;
   functionId: string;
   invocationId: string;
-  frameShareToken?: string;
   onBlocked: (eventId: string, event: SandboxFunctionBlockingEvent) => void;
   onSettle: (
     invocationId: string,
@@ -288,7 +279,6 @@ function SandboxFunctionInvocation({
   workspaceId,
   functionId,
   invocationId,
-  frameShareToken,
   onBlocked,
   onSettle,
 }: SandboxFunctionInvocationProps) {
@@ -359,7 +349,7 @@ function SandboxFunctionInvocation({
     buildEventSourceURL,
     onEventCallback,
     `sandbox-function-invocation-${invocationId}`,
-    { onTerminalError, headers: frameShareTokenHeader(frameShareToken) }
+    { onTerminalError }
   );
 
   return null;
@@ -967,10 +957,7 @@ export const VisualizationActionIframe = forwardRef<
           `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...frameShareTokenHeader(props.viewer?.frameShareToken),
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           }
         );
@@ -1003,7 +990,6 @@ export const VisualizationActionIframe = forwardRef<
       runtimeAccess.canInvokeFunctions,
       runtimeAccess.userIdentity.isWorkspaceMember,
       workspaceId,
-      props.viewer?.frameShareToken,
     ]
   );
 
@@ -1086,7 +1072,6 @@ export const VisualizationActionIframe = forwardRef<
           workspaceId={workspaceId}
           functionId={invocation.functionId}
           invocationId={invocation.invocationId}
-          frameShareToken={props.viewer?.frameShareToken}
           onBlocked={enqueueBlockedAction}
           onSettle={settleSandboxFunctionInvocation}
         />

@@ -62,7 +62,6 @@ import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_
 import { default as salesforceServer } from "@app/lib/api/actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/api/actions/servers/salesloft";
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
-import { default as sandboxFunctionsServer } from "@app/lib/api/actions/servers/sandbox_functions";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as servicenowServer } from "@app/lib/api/actions/servers/servicenow";
 import { default as shopifyServer } from "@app/lib/api/actions/servers/shopify";
@@ -285,8 +284,6 @@ export async function getInternalMCPServer(
       return statuspageServer(auth, toolContext);
     case "sandbox":
       return sandboxServer(auth, toolContext);
-    case "sandbox_functions":
-      return sandboxFunctionsServer(auth, toolContext);
     case "wakeups":
       return wakeupsServer(auth, toolContext);
     case "plan_mode":

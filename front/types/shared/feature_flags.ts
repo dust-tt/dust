@@ -248,11 +248,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "spolu",
   },
-  sandbox_functions: {
-    description: "Enable Pod Function invocation endpoints",
-    stage: "dust_only",
-    owner: "spolu",
-  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
