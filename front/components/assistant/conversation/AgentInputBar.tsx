@@ -122,7 +122,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     workspaceId: context.owner.sId,
   });
   const methods = useVirtuosoMethods<VirtuosoMessage>();
-  const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
+  const { bottomOffset, listOffset } = useVirtuosoLocation();
   const {
     effectiveIsCompact,
     expandInputBar,
@@ -256,7 +256,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     canScrollUp,
     canScrollDown,
     scrollToPreviousUserMessage,
-    scrollToNextUserMessage,
+    scrollToBottom,
   } = useMemo(() => {
     const allMessages = methods.data.get();
 
@@ -284,22 +284,14 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     // Convert listOffset to positive scroll position.
     // listOffset is negative when scrolled down (distance from list top to viewport top).
     const viewportTop = -listOffset;
-    const viewportTopQuarter = viewportTop + visibleListHeight / 4;
 
     // Find user messages fully above viewport (for arrow up).
     const fullyAboveIndices = userMessageIndices.filter(
       (idx) => positions[idx] && positions[idx].bottom <= viewportTop
     );
 
-    // Find user messages whose top is below the top quarter of viewport (for arrow down).
-    const belowTopQuarterIndices = userMessageIndices.filter(
-      (idx) => positions[idx] && positions[idx].top >= viewportTopQuarter
-    );
-
     const canUp = fullyAboveIndices.length > 0;
-    const canDown =
-      (belowTopQuarterIndices.length > 0 || bottomOffset > 0) &&
-      !methods.getScrollLocation().isAtBottom;
+    const canDown = bottomOffset > 0 && !methods.getScrollLocation().isAtBottom;
 
     return {
       canScrollUp: canUp,
@@ -315,29 +307,20 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           });
         }
       },
-      scrollToNextUserMessage: () => {
-        if (belowTopQuarterIndices.length > 0) {
-          // Scroll to the first user message below top quarter.
-          const targetIndex = belowTopQuarterIndices[0];
-          methods.scrollToItem({
-            index: targetIndex,
-            align: "start",
-            behavior: "smooth",
-          });
-        } else if (bottomOffset > 0) {
-          // No more user messages below, but there's content - scroll to bottom.
-          methods.scrollToItem({
-            index: "LAST",
-            align: "end",
-            behavior:
-              bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL
-                ? "smooth"
-                : "instant",
-          });
-        }
+      scrollToBottom: () => {
+        // Reattach before scrolling so streaming keeps the bottom target active.
+        context.isAutoScrollEnabledRef.current = true;
+        methods.scrollToItem({
+          index: "LAST",
+          align: "end",
+          behavior:
+            bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL
+              ? "smooth"
+              : "instant",
+        });
       },
     };
-  }, [methods, listOffset, visibleListHeight, bottomOffset]);
+  }, [methods, listOffset, bottomOffset, context.isAutoScrollEnabledRef]);
 
   const blockedActionItems = getBlockedActionItems(context.user.sId);
   const blockedActions = blockedActionItems.map((item) => item.blockedAction);
@@ -553,7 +536,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     canScrollUp,
     canScrollDown,
     onScrollUp: scrollToPreviousUserMessage,
-    onScrollDown: scrollToNextUserMessage,
+    onScrollDown: scrollToBottom,
   };
 
   if (context.projectId && context.isProjectArchived) {

@@ -120,7 +120,7 @@ export function InputBarMessageNavigation({
             ArrowDown,
             onScrollDown,
             !canScrollDown,
-            "Next user message"
+            "Scroll to bottom"
           )}
         </>
       )}
