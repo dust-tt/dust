@@ -2,6 +2,7 @@ import type { FolderDownloadEntry } from "@app/components/file_explorer/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { prepareFolderArchiveDownload } from "@app/lib/swr/files";
 import logger from "@app/logger/logger";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -15,9 +16,20 @@ export function useFolderDownload({
 
   return useCallback(
     async (entry: FolderDownloadEntry) => {
-      const canonicalPath =
-        entry.kind === "folder" ? entry.path : entry.sourceFolderCanonicalPath;
-      const folderName = entry.kind === "folder" ? entry.name : entry.fileName;
+      let canonicalPath: string;
+      let folderName: string;
+      switch (entry.kind) {
+        case "folder":
+          canonicalPath = entry.path;
+          folderName = entry.name;
+          break;
+        case "frame_package":
+          canonicalPath = entry.sourceFolderCanonicalPath;
+          folderName = entry.fileName;
+          break;
+        default:
+          assertNever(entry);
+      }
 
       try {
         const url = await prepareFolderArchiveDownload({
