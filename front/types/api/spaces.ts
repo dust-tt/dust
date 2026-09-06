@@ -54,7 +54,7 @@ export type PatchPodMetadataBodyType = z.infer<
 >;
 
 // A new space's members: its manual member list, the groups given access to it, or both. A
-// dimension the request leaves out is simply not seeded, and `managementMode` is ignored (see
+// dimension the request leaves out is simply not seeded (see
 // `PatchSpaceMembersRequestBodySchema` for the same shape on update).
 export const PostSpaceRequestBodySchema = z.object({
   isRestricted: z.boolean(),
@@ -62,7 +62,6 @@ export const PostSpaceRequestBodySchema = z.object({
   spaceKind: z.enum(["regular", "project"]),
   memberIds: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),
-  managementMode: z.enum(["manual", "group"]).optional(),
 });
 
 export type PostSpaceRequestBodyType = z.infer<

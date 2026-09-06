@@ -8,6 +8,7 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { makeSandboxConnectCommand } from "@app/lib/poke/sandbox";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { isManageableGroupKind } from "@app/types/groups";
 import type { PokeSandboxType, PokeSpaceType } from "@app/types/poke";
 
 interface ViewSpaceTableProps {
@@ -56,20 +57,14 @@ export function ViewSpaceViewTable({ sandbox, space }: ViewSpaceTableProps) {
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Management Mode</PokeTableHead>
-                <PokeTableCell>{space.managementMode}</PokeTableCell>
+                <PokeTableHead>Groups</PokeTableHead>
+                <PokeTableCell>
+                  {space.groups
+                    .filter((g) => isManageableGroupKind(g.kind))
+                    .map((g) => g.name)
+                    .join(", ") || "None"}
+                </PokeTableCell>
               </PokeTableRow>
-              {space.managementMode === "group" && (
-                <PokeTableRow>
-                  <PokeTableHead>Groups</PokeTableHead>
-                  <PokeTableCell>
-                    {space.groups
-                      .filter((g) => g.kind === "provisioned")
-                      .map((g) => g.name)
-                      .join(", ")}
-                  </PokeTableCell>
-                </PokeTableRow>
-              )}
               {sandbox && (
                 <>
                   <PokeTableRow>
