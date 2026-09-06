@@ -11,6 +11,12 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
+import {
+  type FolderArchivePlanError,
+  isFolderArchiveError,
+  planFolderArchive,
+  streamFolderArchive,
+} from "@app/lib/api/files/folder_archive";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
@@ -103,9 +109,10 @@ const putBodyLimit = honoBodyLimit({
 /** Resolve and validate the canonical path from the URL, returning an error response if invalid. */
 async function resolveFs(
   ctx: Context<WorkspaceAwareCtx>,
-  canonicalPath: string
+  canonicalPath: string,
+  { allowMountRoot = false }: { allowMountRoot?: boolean } = {}
 ) {
-  if (!canonicalPath || !canonicalPath.includes("/")) {
+  if (!canonicalPath || (!allowMountRoot && !canonicalPath.includes("/"))) {
     return {
       fs: null,
       err: apiError(ctx, {
@@ -127,6 +134,79 @@ async function resolveFs(
   }
 
   return { fs: fsResult.value, err: null };
+}
+
+function mapFolderArchiveError(error: FolderArchivePlanError) {
+  if (!isFolderArchiveError(error)) {
+    return mapDustFsError(error);
+  }
+
+  const { code } = error;
+  switch (code) {
+    case "not_found":
+      return {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: error.message },
+      } as const;
+
+    case "not_directory":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: error.message },
+      } as const;
+
+    case "too_many_entries":
+    case "too_large":
+      return {
+        status_code: 413,
+        api_error: { type: "invalid_request_error", message: error.message },
+      } as const;
+
+    case "internal":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: error.message },
+      } as const;
+
+    default:
+      return assertNever(code);
+  }
+}
+
+async function handleFolderArchiveRequest(
+  ctx: Context<WorkspaceAwareCtx>,
+  canonicalPath: string,
+  { headOnly }: { headOnly: boolean }
+) {
+  const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath, {
+    allowMountRoot: true,
+  });
+  if (err) {
+    return err;
+  }
+
+  const planResult = await planFolderArchive(dustFs, canonicalPath);
+  if (planResult.isErr()) {
+    return apiError(ctx, mapFolderArchiveError(planResult.error));
+  }
+
+  const headers = {
+    "Content-Type": "application/zip",
+    "Content-Disposition": contentDispositionAttachment(
+      planResult.value.archiveFileName
+    ),
+    "Cache-Control": "private, no-store",
+    "X-Content-Type-Options": "nosniff",
+  };
+
+  if (headOnly) {
+    return new Response(null, { status: 200, headers });
+  }
+
+  return new Response(
+    readableToReadableStream(streamFolderArchive(dustFs, planResult.value)),
+    { status: 200, headers }
+  );
 }
 
 async function handleHeadRequest(
@@ -174,10 +254,18 @@ async function handleHeadRequest(
 /** @ignoreswagger */
 app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   const { canonicalPath } = ctx.req.valid("param");
+  const archive = ctx.req.query("archive");
 
   // Hono dispatches HEAD requests through the matching GET route.
   if (ctx.req.method === "HEAD") {
+    if (archive === "zip") {
+      return handleFolderArchiveRequest(ctx, canonicalPath, { headOnly: true });
+    }
     return handleHeadRequest(ctx, canonicalPath);
+  }
+
+  if (archive === "zip") {
+    return handleFolderArchiveRequest(ctx, canonicalPath, { headOnly: false });
   }
 
   const auth = ctx.get("auth");
