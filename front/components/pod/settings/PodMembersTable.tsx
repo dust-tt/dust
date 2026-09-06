@@ -84,7 +84,6 @@ export function PodMembersTable({
             .filter((member) => !member.isEditor)
             .map((member) => member.sId),
           editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
-          managementMode: "manual",
           name: pod.name,
         },
         {
@@ -138,7 +137,6 @@ export function PodMembersTable({
           editorIds: updatedMembers
             .filter((member) => member.isEditor)
             .map((member) => member.sId),
-          managementMode: "manual",
           name: pod.name,
         },
         {

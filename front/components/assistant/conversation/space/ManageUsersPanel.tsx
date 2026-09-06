@@ -115,7 +115,6 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
           isRestricted: props.space.isRestricted,
           memberIds,
           editorIds,
-          managementMode: "manual",
           name: props.space.name,
         },
         {
