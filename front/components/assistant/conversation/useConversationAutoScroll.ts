@@ -44,11 +44,8 @@ export function useConversationAutoScroll({
     }
 
     const scrollTarget = isMobile ? window : scrollElement;
-    const getViewportHeight = () =>
-      isMobile ? window.innerHeight : scrollElement.clientHeight;
     let previousScrollTop = scrollElement.scrollTop;
     let previousScrollHeight = scrollElement.scrollHeight;
-    let previousViewportHeight = getViewportHeight();
     let previousItemCount = methods.data.get().length;
     let direction: "up" | "down" | null = null;
     let lastTouchY: number | null = null;
@@ -58,7 +55,9 @@ export function useConversationAutoScroll({
     let isChangingItemCount = false;
 
     const reattachAtBottom = () => {
-      const viewportHeight = getViewportHeight();
+      const viewportHeight = isMobile
+        ? window.innerHeight
+        : scrollElement.clientHeight;
       // The scrollable height includes the sticky input bar. At this boundary,
       // the last message is visible above it, rather than hidden behind it.
       const bottomOffset = isMobile
@@ -136,7 +135,6 @@ export function useConversationAutoScroll({
 
     const onScroll = () => {
       syncTranslation();
-      const viewportHeight = getViewportHeight();
       const scrollTopDelta = scrollElement.scrollTop - previousScrollTop;
       const scrollHeightDelta =
         scrollElement.scrollHeight - previousScrollHeight;
@@ -145,12 +143,7 @@ export function useConversationAutoScroll({
         direction = scrollTopDelta < 0 ? "up" : "down";
       }
 
-      // A growing viewport can reduce scrollTop without an upward gesture.
-      if (
-        scrollTopDelta <
-          -Math.max(0, viewportHeight - previousViewportHeight) &&
-        scrollHeightDelta >= 0
-      ) {
+      if (scrollTopDelta < 0 && scrollHeightDelta >= 0) {
         detach();
       }
 
@@ -174,7 +167,6 @@ export function useConversationAutoScroll({
 
       previousScrollTop = scrollElement.scrollTop;
       previousScrollHeight = scrollElement.scrollHeight;
-      previousViewportHeight = viewportHeight;
     };
 
     const onWheel = (event: WheelEvent) => {

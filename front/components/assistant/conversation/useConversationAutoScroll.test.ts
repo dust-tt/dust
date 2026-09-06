@@ -134,39 +134,6 @@ describe.each([
   false,
   true,
 ])("conversation auto-scroll (mobile: %s)", (isMobile) => {
-  it.each([
-    0, 200,
-  ])("stays attached when the viewport grows with %ipx of new padding", (padding) => {
-    const { result, methods, scroller, scroll } = setup(isMobile);
-    vi.spyOn(scroller, "clientHeight", "get").mockReturnValue(1000);
-    if (isMobile) {
-      vi.stubGlobal("innerHeight", 1000);
-    }
-
-    scroll(1000, 2000 + padding);
-
-    expect(result.current.current).toBe(true);
-    expect(methods.cancelSmoothScroll).not.toHaveBeenCalled();
-
-    scroll(990, 2000 + padding);
-    expect(result.current.current).toBe(false);
-    expect(methods.cancelSmoothScroll).toHaveBeenCalledOnce();
-  });
-
-  it("detaches on native upward scrolling despite a retained bottom target", () => {
-    const { result, methods, scroll } = setup(isMobile);
-    vi.spyOn(methods, "getScrollLocation").mockReturnValue({
-      ...methods.getScrollLocation(),
-      isAtBottom: true,
-      bottomOffset: 90,
-    });
-
-    scroll(1110);
-
-    expect(result.current.current).toBe(false);
-    expect(methods.cancelSmoothScroll).toHaveBeenCalledOnce();
-  });
-
   it("detaches on upward scrolling even while content grows", () => {
     const { result, methods, scroll } = setup(isMobile);
     scroll(1110, 2072);
