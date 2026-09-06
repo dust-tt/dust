@@ -12,6 +12,8 @@ import { Spinner } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentContainerProps {
   shareToken: string;
+  // Display name of the Frame, resolved by the share metadata endpoint.
+  title: string;
   workspaceId: string;
   vizUrl: string;
   logoUrl?: string | null;
@@ -25,6 +27,7 @@ interface PublicInteractiveContentContainerProps {
  */
 export function PublicInteractiveContentContainer({
   shareToken,
+  title,
   workspaceId,
   vizUrl,
   logoUrl,
@@ -61,7 +64,7 @@ export function PublicInteractiveContentContainer({
                 ? frameMetadata.sId
                 : undefined
             }
-            fileName={frameMetadata.fileName}
+            title={title}
             shareToken={shareToken}
             workspaceId={workspaceId}
             vizUrl={vizUrl}

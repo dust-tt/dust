@@ -5,7 +5,6 @@ import { EmailVerificationFlow } from "@app/components/pages/share/EmailVerifica
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import config from "@app/lib/api/config";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
-import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePathParam } from "@app/lib/platform";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useShareFrameMetadata } from "@app/lib/swr/share";
@@ -78,9 +77,7 @@ export function SharedFramePage() {
   const needsEmailVerification =
     !isVerified && !!shareMetadata?.requiresEmailVerification && !!frameError;
 
-  const humanFriendlyTitle = shareMetadata
-    ? formatFilenameForDisplay(shareMetadata.title)
-    : "";
+  const humanFriendlyTitle = shareMetadata?.title ?? "";
 
   useDocumentTitle(
     humanFriendlyTitle ? `${humanFriendlyTitle} - Powered by Dust` : "Dust"
@@ -210,6 +207,7 @@ export function SharedFramePage() {
     <div className="flex h-dvh w-full">
       <PublicInteractiveContentContainer
         shareToken={token}
+        title={shareMetadata.title}
         workspaceId={shareMetadata.workspaceId}
         vizUrl={shareMetadata.vizUrl}
         logoUrl={shareMetadata.logoUrl}

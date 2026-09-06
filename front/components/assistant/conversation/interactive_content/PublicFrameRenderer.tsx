@@ -2,7 +2,6 @@ import { VisualizationActionIframe } from "@app/components/assistant/conversatio
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { PublicInteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
-import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useUser } from "@app/lib/swr/user";
 import type {
@@ -17,7 +16,7 @@ import { useCookies } from "react-cookie";
 interface PublicFrameRendererProps {
   fileId: string;
   frameId?: string;
-  fileName?: string;
+  title: string;
   hideHeader?: boolean;
   logoUrl?: string | null;
   showSignUpCta?: boolean;
@@ -64,7 +63,7 @@ export function getPublicFrameUserIdentity(
 export function PublicFrameRenderer({
   fileId,
   frameId,
-  fileName,
+  title,
   hideHeader = false,
   logoUrl,
   showSignUpCta = false,
@@ -136,7 +135,7 @@ export function PublicFrameRenderer({
     <div className="flex h-full flex-col">
       {!hideHeader && (
         <PublicInteractiveContentHeader
-          title={formatFilenameForDisplay(fileName ?? "Frame")}
+          title={title}
           user={user}
           conversationUrl={conversationUrl}
           projectUrl={projectUrl}

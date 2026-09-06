@@ -126,6 +126,7 @@ describe("PublicFrameRenderer", () => {
       fileId: "file_123",
       hideHeader: true,
       shareToken: "share-token",
+      title: "Frame",
       workspaceId: "w_current",
       vizUrl: "https://viz.dust.tt",
     };
@@ -150,6 +151,7 @@ describe("PublicFrameRenderer", () => {
         frameId: "fil_frame",
         hideHeader: true,
         shareToken: "share-token",
+        title: "Frame",
         workspaceId: "w_current",
         vizUrl: "https://viz.dust.tt",
       })
@@ -182,6 +184,7 @@ describe("PublicFrameRenderer", () => {
         fileId: "file_123",
         hideHeader: true,
         shareToken: "share-token",
+        title: "Frame",
         workspaceId: "w_current",
         vizUrl: "https://viz.dust.tt",
       })

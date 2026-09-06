@@ -61,10 +61,6 @@ vi.mock("@app/lib/cookies", () => ({
   hasSessionIndicator: () => mocks.hasSession,
 }));
 
-vi.mock("@app/lib/files", () => ({
-  formatFilenameForDisplay: (name: string) => name,
-}));
-
 vi.mock("@app/lib/platform", () => ({
   usePathParam: () => "share-token",
 }));

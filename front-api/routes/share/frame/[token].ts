@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { lookupShareToken } from "@app/lib/api/regions/lookup";
 import { getWorkspaceBrandingPublicUrls } from "@app/lib/api/workspace_branding";
+import { formatFilenameForDisplay } from "@app/lib/files";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -129,7 +130,11 @@ app.get(
       requiresEmailVerification,
       shareUrl,
       showSignUpCta: !isBrandedWorkspace,
-      title: file.fileName,
+      // A Frame v2's file is its manifest, so its display name comes from the active
+      // publication rather than the file name.
+      title:
+        file.useCaseMetadata?.frameName ??
+        formatFilenameForDisplay(file.fileName),
       vizUrl: config.getVizPublicUrl(),
       workspaceId: workspace.sId,
       workspaceName: workspace.name,

@@ -54,6 +54,7 @@ describe("PublicInteractiveContentContainer", () => {
   it("passes the stable identity only for Frames v2", () => {
     const props = {
       shareToken: "share-token",
+      title: "App",
       workspaceId: "w_current",
       vizUrl: "https://viz.dust.tt",
     };
