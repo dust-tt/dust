@@ -171,6 +171,9 @@
     "credit_micro": {
       "type": "long"
     },
+    "micro_usd": {
+      "type": "long"
+    },
     "usage_type": {
       "type": "keyword"
     },
