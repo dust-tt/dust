@@ -2598,6 +2598,21 @@ export async function checkMessagesLimit(
     // it reflects membership, not credit state.
     if (!isFreeOrigin(context.origin)) {
       if (blockedReason === "user_cap_reached") {
+        // A free seat that has exhausted its lifetime credit allowance is
+        // auto-upgraded to pro (if the workspace opted in) so it can proceed
+        // with this message — the reactive replacement for the Metronome
+        // per-user free-credit exhaustion alert. Restricted to free→pro;
+        // pro→max stays on the seat-balance webhook for now.
+        if (user) {
+          const upgrade = await maybeAutoUpgradeSeat({
+            workspaceId: owner.sId,
+            userId: user.sId,
+            restrictToBaseSeatTypes: ["free"],
+          });
+          if (upgrade.isOk() && upgrade.value.upgraded) {
+            return new Ok(undefined);
+          }
+        }
         return new Err({
           status_code: 403,
           api_error: {

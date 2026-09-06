@@ -161,9 +161,13 @@ export async function isEligibleForAutoSeatUpgrade(
 export async function maybeAutoUpgradeSeat({
   workspaceId,
   userId,
+  restrictToBaseSeatTypes,
 }: {
   workspaceId: string;
   userId: string;
+  // When set, only upgrade if the member's current base seat tier is in this
+  // list (e.g. `["free"]` to enable free→pro without also triggering pro→max).
+  restrictToBaseSeatTypes?: MembershipSeatType[];
 }): Promise<Result<{ upgraded: boolean }, Error>> {
   // The caller's auth can't mutate seats (member, or no user at all). This only
   // reads workspace data, so a plain user auth is sufficient.
@@ -192,6 +196,13 @@ export async function maybeAutoUpgradeSeat({
       workspace: lightWorkspace,
     });
   if (!membership) {
+    return new Ok({ upgraded: false });
+  }
+
+  if (
+    restrictToBaseSeatTypes &&
+    !restrictToBaseSeatTypes.includes(toBaseSeatType(membership.seatType))
+  ) {
     return new Ok({ upgraded: false });
   }
 

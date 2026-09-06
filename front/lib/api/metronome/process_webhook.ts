@@ -25,7 +25,6 @@ import {
   markAwuPurchaseAttemptFailed,
   markAwuPurchaseAttemptSucceeded,
 } from "@app/lib/credits/awu_purchase_status";
-import { resolvePerUserCreditAlertUserId } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import { emitSubscriptionChangedAuditEvent } from "@app/lib/metronome/audit";
 import {
   getMetronomeCommit,
@@ -41,7 +40,6 @@ import {
   CONTRACT_CREDIT_TYPE_EXCESS,
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   CONTRACT_CREDIT_TYPE_POOL,
-  fromFreeMetronomeUserId,
   getCreditTypeAwuId,
   getProductExcessCreditsId,
   LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY,
@@ -722,57 +720,12 @@ export async function processMetronomeWebhook({
       break;
     }
 
-    // Per-user free-seat credit balance. These alerts are scoped (via the
-    // `DUST_PER_USER_CREDIT_USER` custom field) to a single free user's credit,
-    // so they drive that user's seat↔capped transitions — the seat-balance
-    // alert can't, because the free credit isn't a seat balance. The event
-    // carries no `credit_id` for a custom-field-filtered alert, so the user is
-    // resolved from the alert's enforced `custom_field_filters` via its
-    // `alert_id` (see `resolvePerUserCreditAlertUserId`); events for any other
-    // alert return null and are ignored. Two thresholds:
-    // `threshold === 0` → exhausted (→ capped), else → near-limit flag set.
-    case "alerts.low_remaining_contract_credit_balance_reached": {
-      const { alert_id: alertId, threshold } = event.properties;
-      const metronomeUserId = await resolvePerUserCreditAlertUserId({
-        metronomeCustomerId: event.properties.customer_id,
-        alertId,
-      });
-      if (!metronomeUserId || threshold === null || threshold === undefined) {
-        break;
-      }
-      // Alerts are keyed by the free-prefixed Metronome user id; strip the
-      // prefix to recover the raw sId used everywhere else.
-      const userId =
-        fromFreeMetronomeUserId(metronomeUserId) ?? metronomeUserId;
-      if (threshold === 0) {
-        await dispatchSeatBalanceExhausted({ workspace, userId });
-        logger.info(
-          { eventId: event.id, workspaceId: workspace.sId, userId },
-          "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit exhausted dispatched"
-        );
-      }
-      break;
-    }
-    case "alerts.low_remaining_contract_credit_balance_resolved": {
-      const metronomeUserId = await resolvePerUserCreditAlertUserId({
-        metronomeCustomerId: event.properties.customer_id,
-        alertId: event.properties.alert_id,
-      });
-      if (!metronomeUserId) {
-        break;
-      }
-      // Alerts are keyed by the free-prefixed Metronome user id; strip the
-      // prefix to recover the raw sId used everywhere else.
-      const userId =
-        fromFreeMetronomeUserId(metronomeUserId) ?? metronomeUserId;
-      await dispatchSeatBalanceResolved({ workspace, userId });
-      logger.info(
-        { eventId: event.id, workspaceId: workspace.sId, userId },
-        "[Metronome Webhook] low_remaining_contract_credit_balance_resolved: per-user credit resolved dispatched"
-      );
-      break;
-    }
-
+    // Per-user free-seat credit-balance alerts are no longer consumed: free→pro
+    // auto-upgrade on allowance exhaustion is now handled reactively at
+    // message-send time (see `maybeAutoUpgradeSeat` in conversation.ts), so
+    // these events are ignored.
+    case "alerts.low_remaining_contract_credit_balance_reached":
+    case "alerts.low_remaining_contract_credit_balance_resolved":
     case "alerts.invoice_total_reached":
     case "alerts.invoice_total_resolved":
     case "alerts.low_remaining_commit_balance_reached":

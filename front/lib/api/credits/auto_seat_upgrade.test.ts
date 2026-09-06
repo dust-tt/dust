@@ -243,6 +243,49 @@ describe("maybeAutoUpgradeSeat", () => {
     );
   });
 
+  it("upgrades a free member to pro when restricted to free seats", async () => {
+    const { workspace, user } = await setup({
+      autoSeatUpgradeEnabled: true,
+      seatType: "free",
+    });
+    setupEntitledSeats(["free", "pro"]);
+    vi.mocked(membershipApi.updateMembershipSeatAndTrack).mockResolvedValue(
+      new Ok({
+        previousSeatType: "free",
+        newSeatType: "pro",
+        scheduledSeatChangeAt: undefined,
+      })
+    );
+
+    const result = await maybeAutoUpgradeSeat({
+      workspaceId: workspace.sId,
+      userId: user.sId,
+      restrictToBaseSeatTypes: ["free"],
+    });
+
+    expect(expectOk(result)).toEqual({ upgraded: true });
+    expect(membershipApi.updateMembershipSeatAndTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ newSeatType: "pro" })
+    );
+  });
+
+  it("no-ops for a pro member when restricted to free seats (no pro→max)", async () => {
+    const { workspace, user } = await setup({
+      autoSeatUpgradeEnabled: true,
+      seatType: "pro",
+    });
+    setupEntitledSeats(["pro", "max"]);
+
+    const result = await maybeAutoUpgradeSeat({
+      workspaceId: workspace.sId,
+      userId: user.sId,
+      restrictToBaseSeatTypes: ["free"],
+    });
+
+    expect(expectOk(result)).toEqual({ upgraded: false });
+    expect(membershipApi.updateMembershipSeatAndTrack).not.toHaveBeenCalled();
+  });
+
   it("no-ops when the workspace toggle is off", async () => {
     const { workspace, user } = await setup({
       autoSeatUpgradeEnabled: false,
