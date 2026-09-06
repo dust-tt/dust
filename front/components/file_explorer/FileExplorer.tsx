@@ -18,6 +18,7 @@ import type {
   FileExplorerSortMode,
   FileExplorerVirtualScopeRoot,
   FileSystemTreeNode,
+  FolderDownloadEntry,
   FolderEntry,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
@@ -54,6 +55,7 @@ interface FileExplorerProps {
   /** Restricts which entries get a Delete item when `onDelete` is set; all of them by default. */
   canDelete?: (entry: FileExplorerEntry) => boolean;
   onFileDownload: (entry: FileEntry) => Promise<void>;
+  onFolderDownload?: (entry: FolderDownloadEntry) => Promise<void>;
   onMoveFile?: (
     entry: FileEntry,
     parentRelativePath: string
@@ -85,6 +87,7 @@ export function FileExplorer({
   onDelete,
   canDelete,
   onFileDownload,
+  onFolderDownload,
   onMoveFile,
   onOpenInteractive,
   onOpenInPanel,
@@ -366,6 +369,7 @@ export function FileExplorer({
             onFileOpen={handleFileOpen}
             onFramePackageOpen={handleFramePackageOpen}
             onFileDownload={onFileDownload}
+            onFolderDownload={onFolderDownload}
             onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             onNodeOpen={handleNodeOpen}
             getFileMenuItems={

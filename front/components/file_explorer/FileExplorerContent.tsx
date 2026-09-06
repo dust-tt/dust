@@ -12,6 +12,7 @@ import type {
   FileExplorerEntry,
   FileExplorerMenuAction,
   FileSystemTreeNode,
+  FolderDownloadEntry,
   FolderEntry,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
@@ -35,6 +36,7 @@ interface FileExplorerContentProps {
   onFileOpen: (entry: FileEntry) => void;
   onFramePackageOpen: (entry: FramePackageEntry) => void;
   onFileDownload: (entry: FileEntry) => Promise<void>;
+  onFolderDownload?: (entry: FolderDownloadEntry) => Promise<void>;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   onNodeOpen: (entry: ContentNodeEntry) => void;
   getFileMenuItems?: (entry: FileExplorerEntry) => FileExplorerMenuAction[];
@@ -54,6 +56,7 @@ export function FileExplorerContent({
   onFileOpen,
   onFramePackageOpen,
   onFileDownload,
+  onFolderDownload,
   onMoveFileDrop,
   onNodeOpen,
   getFileMenuItems,
@@ -71,6 +74,9 @@ export function FileExplorerContent({
           key={`dir:${node.path}`}
           node={node}
           viewMode={viewMode}
+          onDownload={
+            onFolderDownload ? () => onFolderDownload(folderEntry) : undefined
+          }
           onNavigate={onFolderNavigate}
           onMoveFileDrop={onMoveFileDrop}
           extraMenuItems={getFileMenuItems?.(folderEntry)}
@@ -116,6 +122,9 @@ export function FileExplorerContent({
             entry={entry}
             searchFolderPath={searchFolderPath}
             viewMode={viewMode}
+            onDownload={
+              onFolderDownload ? () => onFolderDownload(entry) : undefined
+            }
             onOpen={onFramePackageOpen}
             extraMenuItems={getFileMenuItems?.(entry)}
           />

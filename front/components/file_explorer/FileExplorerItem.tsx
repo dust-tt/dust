@@ -286,6 +286,7 @@ function FileExplorerDropTargetWrapper({
 interface FileExplorerFolderCardProps {
   node: FileSystemTreeNode;
   viewMode: ViewMode;
+  onDownload?: () => Promise<void>;
   onNavigate: (node: FileSystemTreeNode) => void;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   extraMenuItems?: FileExplorerMenuAction[];
@@ -294,6 +295,7 @@ interface FileExplorerFolderCardProps {
 export function FileExplorerFolderCard({
   node,
   viewMode,
+  onDownload,
   onNavigate,
   onMoveFileDrop,
   extraMenuItems,
@@ -321,6 +323,7 @@ export function FileExplorerFolderCard({
           titleClassName="font-semibold"
           subtitle={subtitle}
           surfaceClassName={surfaceClassName}
+          onDownload={onDownload}
           onOpen={() => onNavigate(node)}
           extraMenuItems={extraMenuItems}
         />
@@ -451,6 +454,7 @@ interface FileExplorerFramePackageCardProps {
   /** When set, title shows path relative to this folder (search mode). */
   searchFolderPath?: string;
   viewMode: ViewMode;
+  onDownload?: () => Promise<void>;
   onOpen: (entry: FramePackageEntry) => void;
   extraMenuItems?: FileExplorerMenuAction[];
 }
@@ -459,6 +463,7 @@ export function FileExplorerFramePackageCard({
   entry,
   searchFolderPath,
   viewMode,
+  onDownload,
   onOpen,
   extraMenuItems,
 }: FileExplorerFramePackageCardProps) {
@@ -474,6 +479,7 @@ export function FileExplorerFramePackageCard({
       viewMode={viewMode}
       title={title}
       subtitle="Frame"
+      onDownload={onDownload}
       onOpen={() => onOpen(entry)}
       extraMenuItems={extraMenuItems}
     />

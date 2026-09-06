@@ -240,10 +240,48 @@ describe("FileExplorer navigation", () => {
       path: "conversation-c1/folder",
     });
   });
+
+  it("downloads a folder from its canonical path", async () => {
+    const user = userEvent.setup();
+    const onFolderDownload = vi.fn().mockResolvedValue(undefined);
+    const nestedFile = makeFile({
+      contentType: "text/plain",
+      fileName: "nested.txt",
+      lastModifiedMs: 1,
+      path: "folder/nested.txt",
+    });
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        files={[nestedFile]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onFolderDownload={onFolderDownload}
+      />
+    );
+
+    const folderTitle = screen.getByText("folder");
+    const folderRow = folderTitle.closest("div.cursor-pointer");
+    expect(folderRow).toBeInstanceOf(HTMLElement);
+    if (!(folderRow instanceof HTMLElement)) {
+      throw new Error("Folder row not found.");
+    }
+
+    await user.click(within(folderRow).getByRole("button"));
+    await user.click(screen.getByText("Download"));
+
+    expect(onFolderDownload).toHaveBeenCalledWith({
+      kind: "folder",
+      name: "folder",
+      path: "conversation-c1/folder",
+    });
+  });
 });
 
 describe("FileExplorer Frame packages", () => {
-  it("opens the Frame and exposes only View source and Delete", async () => {
+  it("opens the Frame and downloads its source folder", async () => {
     const user = userEvent.setup();
     mockClientFetch.mockResolvedValue(new Response("preview content"));
     const manifest = makeFile({
@@ -261,6 +299,7 @@ describe("FileExplorer Frame packages", () => {
     });
     const onOpenInteractive = vi.fn();
     const onDelete = vi.fn().mockResolvedValue(undefined);
+    const onFolderDownload = vi.fn().mockResolvedValue(undefined);
 
     render(
       <ControlledFileExplorer
@@ -271,6 +310,7 @@ describe("FileExplorer Frame packages", () => {
         isLoading={false}
         onDelete={onDelete}
         onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onFolderDownload={onFolderDownload}
         onMoveFile={vi.fn().mockResolvedValue(new Ok(undefined))}
         onOpenInteractive={onOpenInteractive}
         onRename={vi.fn()}
@@ -293,6 +333,16 @@ describe("FileExplorer Frame packages", () => {
     if (!(packageRow instanceof HTMLElement)) {
       throw new Error("Frame package row not found.");
     }
+    await user.click(within(packageRow).getByRole("button"));
+    await user.click(screen.getByText("Download"));
+    expect(onFolderDownload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "frame_package",
+        path: "conversation-c1/status/manifest.json",
+        sourceFolderCanonicalPath: "conversation-c1/status",
+      })
+    );
+
     await user.click(within(packageRow).getByRole("button"));
     expect(screen.getByText("View source")).toBeInTheDocument();
     expect(screen.queryByText("Rename")).not.toBeInTheDocument();

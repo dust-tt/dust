@@ -49,6 +49,8 @@ export type FolderEntry = {
   name: string;
 };
 
+export type FolderDownloadEntry = FolderEntry | FramePackageEntry;
+
 export type FileExplorerEntry =
   | FileEntry
   | FramePackageEntry

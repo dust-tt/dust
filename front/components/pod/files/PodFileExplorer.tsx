@@ -12,6 +12,7 @@ import type {
   FolderEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import { useFolderDownload } from "@app/components/file_explorer/useFolderDownload";
 import {
   isFilePreviewableContentType,
   joinMountRelativePath,
@@ -636,6 +637,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   );
 
   const onFileDownload = useFileDownload({ getFileResponse });
+  const onFolderDownload = useFolderDownload({ owner });
 
   const handleCloseOverlay = useCallback(() => {
     setActiveOverlay(null);
@@ -869,6 +871,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         currentFolderPath={currentFolderPath}
         onCurrentFolderChange={setCurrentFolderPath}
         onFileDownload={onFileDownload}
+        onFolderDownload={onFolderDownload}
         onDelete={!isArchived ? onDelete : undefined}
         onMoveFile={!isArchived ? onMoveFile : undefined}
         onRename={!isArchived ? onRename : undefined}

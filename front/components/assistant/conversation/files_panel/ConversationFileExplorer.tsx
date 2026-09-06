@@ -8,6 +8,7 @@ import type {
   FileExplorerVirtualScopeRoot,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import { useFolderDownload } from "@app/components/file_explorer/useFolderDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
@@ -102,6 +103,7 @@ export function ConversationFileExplorer({
   );
 
   const onFileDownload = useFileDownload({ getFileResponse });
+  const onFolderDownload = useFolderDownload({ owner });
 
   const onOpenInteractive = useCallback(
     (entry: { fileId: string }) =>
@@ -181,6 +183,7 @@ export function ConversationFileExplorer({
           onDelete={hasFeature("frames_v2") ? onDelete : undefined}
           canDelete={isFramePackageEntry}
           onFileDownload={onFileDownload}
+          onFolderDownload={onFolderDownload}
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
           owner={owner}
