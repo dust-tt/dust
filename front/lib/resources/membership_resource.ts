@@ -142,6 +142,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return { memberships: orderedResourcesFromModels(rows), total: count };
   }
 
+  /**
+   * @cc [owner:philipperolet,label:performance] empty-users-skip-membership-queries
+   * With a workspace, empty users return no memberships without querying; omitted users do not filter.
+   */
   static async getActiveMemberships({
     users,
     workspace,
@@ -155,6 +159,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }): Promise<MembershipsWithTotal> {
     if (!workspace && !users?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
+    }
+
+    if (users?.length === 0) {
+      return { memberships: [], total: 0, nextPageParams: undefined };
     }
 
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {

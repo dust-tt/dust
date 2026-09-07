@@ -165,10 +165,18 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
+  /**
+   * @cc [owner:philipperolet,label:performance] empty-user-ids-skip-queries
+   * Empty ids return no users without querying the database.
+   */
   static async fetchByModelIds(
     ids: ModelId[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<UserResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
     const users = await UserModel.findAll({
       where: {
         id: ids,

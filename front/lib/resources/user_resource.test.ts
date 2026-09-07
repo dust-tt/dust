@@ -105,6 +105,7 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import { Authenticator } from "@app/lib/auth";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -125,6 +126,24 @@ describe("UserResource", () => {
     workspace = await WorkspaceFactory.basic();
     user = await UserFactory.basic();
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  });
+
+  describe("fetchByModelIds", () => {
+    it("returns no users without querying for empty ids", async () => {
+      const onQuery = vi.fn();
+      frontSequelize.addHook("afterQuery", "empty-user-ids", onQuery);
+      try {
+        expect(await UserResource.fetchByModelIds([])).toEqual([]);
+        expect(onQuery).not.toHaveBeenCalled();
+      } finally {
+        frontSequelize.removeHook("afterQuery", "empty-user-ids");
+      }
+    });
+
+    it("returns users for non-empty ids", async () => {
+      const users = await UserResource.fetchByModelIds([user.id]);
+      expect(users.map((u) => u.id)).toEqual([user.id]);
+    });
   });
 
   describe("searchUsers", () => {

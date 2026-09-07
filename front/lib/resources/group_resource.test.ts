@@ -114,6 +114,21 @@ describe("GroupResource", () => {
     inMemoryCache.clear();
   });
 
+  describe("getActiveMembershipsForGroups", () => {
+    it("returns no memberships without querying for empty groups", async () => {
+      const onQuery = vi.fn();
+      frontSequelize.addHook("afterQuery", "empty-groups", onQuery);
+      try {
+        expect(
+          await GroupResource.getActiveMembershipsForGroups(authenticator, [])
+        ).toEqual({});
+        expect(onQuery).not.toHaveBeenCalled();
+      } finally {
+        frontSequelize.removeHook("afterQuery", "empty-groups");
+      }
+    });
+  });
+
   describe("fetchByModelIds", () => {
     it("filters on group kind when asked", async () => {
       const autoGroup = await GroupResource.makeNew({
