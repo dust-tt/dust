@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "storybook/test";
 
-import { Breadcrumbs, Building04, Folder, Home01 } from "../index_with_tw_base";
+import {
+  Breadcrumbs,
+  Building04,
+  Folder,
+  Globe01,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Navigation/Breadcrumbs",
@@ -41,7 +46,7 @@ type Story = StoryObj<typeof meta>;
 export const ShortTrail: Story = {
   args: {
     items: [
-      { label: "Home", href: "#", icon: Home01 },
+      { label: "Home", href: "#", icon: Globe01 },
       { label: "Spaces", onClick: fn() },
       { label: "My Space" },
     ],
@@ -57,7 +62,7 @@ export const ShortTrail: Story = {
 export const EllipsisCollapse: Story = {
   args: {
     items: [
-      { label: "Home", href: "#", icon: Home01 },
+      { label: "Home", href: "#", icon: Globe01 },
       { label: "Company Space", href: "#", icon: Building04 },
       { label: "Data Sources", href: "#" },
       { label: "Quarterly Reports", href: "#", icon: Folder },
@@ -76,6 +81,6 @@ export const EllipsisCollapse: Story = {
  */
 export const SingleItem: Story = {
   args: {
-    items: [{ label: "Home", icon: Home01 }],
+    items: [{ label: "Home", icon: Globe01 }],
   },
 };
