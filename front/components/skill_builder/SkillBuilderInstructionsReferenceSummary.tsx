@@ -243,9 +243,7 @@ export function SkillBuilderInstructionsReferenceSummary({
       {referenceItems.length > 0 && (
         <div
           ref={containerRef}
-          className={cn(
-            !isExpand && "overflow-y-hidden max-h-14",
-          )}
+          className={cn(!isExpand && "overflow-y-hidden max-h-14")}
         >
           <div ref={contentRef} className="flex flex-wrap gap-2">
             {referenceItems.map((item) =>
