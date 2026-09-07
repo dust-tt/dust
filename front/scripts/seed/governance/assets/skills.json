@@ -14,5 +14,13 @@
     "instructions": "# Release Notes\n\nGroup changes under three headings: **New**, **Improved**, **Fixed**.\n\n- One line per change, written from the user's point of view.\n- No internal ticket numbers, no commit hashes.\n- Skip purely internal refactors.",
     "instructionsHtml": "<div data-type=\"instructions-root\" data-block-id=\"instructions-root\"><h1 data-block-id=\"rn01titl\">Release Notes</h1><p data-block-id=\"rn02intr\">Group changes under three headings: <strong>New</strong>, <strong>Improved</strong>, <strong>Fixed</strong>.</p><ul data-block-id=\"rn03rul\"><li>One line per change, written from the user's point of view.</li><li>No internal ticket numbers, no commit hashes.</li><li>Skip purely internal refactors.</li></ul></div>",
     "availability": "workspace_users"
+  },
+  "alfredPrivateSpaceSkill": {
+    "name": "Space Restricted Procedures",
+    "agentFacingDescription": "Guidelines to answer questions about the procedures documented in the restricted space.",
+    "userFacingDescription": "Answer questions about the procedures of the restricted space.",
+    "instructions": "# Space Restricted Procedures\n\nAnswer only from the documents of the restricted space. Cite the document for every statement, and say so when the procedures do not cover the question.",
+    "instructionsHtml": "<div data-type=\"instructions-root\" data-block-id=\"instructions-root\"><h1 data-block-id=\"sp01titl\">Space Restricted Procedures</h1><p data-block-id=\"sp02rule\">Answer only from the documents of the restricted space. Cite the document for every statement, and say so when the procedures do not cover the question.</p></div>",
+    "availability": "workspace_users"
   }
 }
