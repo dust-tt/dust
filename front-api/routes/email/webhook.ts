@@ -14,18 +14,18 @@ import {
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
   recordEmailRelay,
-  relayEmailToOtherRegion,
+  relayEmailToOtherCells,
   replyToError,
   resolveRelayedErrorReply,
-  shouldRelayToOtherRegion,
+  shouldRelayToOtherCells,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { config as cellsConfig } from "@app/lib/api/cells/config";
 import apiConfig from "@app/lib/api/config";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -194,8 +194,8 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         email: email.sender.email,
       });
       if (userRes.isErr()) {
-        if (shouldRelayToOtherRegion({ headers, error: userRes.error })) {
-          const relayRes = await relayEmailToOtherRegion(email, {
+        if (shouldRelayToOtherCells({ headers, error: userRes.error })) {
+          const relayRes = await relayEmailToOtherCells(email, {
             sourceError: userRes.error,
           });
           if (relayRes.isOk()) {
@@ -205,10 +205,9 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
             {
               senderEmail: email.sender.email,
               error: relayRes.error,
-              sourceRegion: regionsConfig.getCurrentRegion(),
-              targetRegion: regionsConfig.getOtherRegionInfo().name,
+              sourceCell: cellsConfig.getCurrentCell().name,
             },
-            "[email] Failed to relay inbound email to other region"
+            "[email] Failed to relay inbound email to other cells"
           );
         }
         await replyToError(
