@@ -1,8 +1,8 @@
 import { MIN_DEGRADED_DURATION_MS } from "@app/lib/api/llm/health/config";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
 import type * as activities from "@app/temporal/model_health/activities";
-import { MAX_PROBE_ROUNDS_PER_RUN } from "@app/temporal/model_health/config";
-import { continueAsNew, proxyActivities, sleep } from "@temporalio/workflow";
+import { MAX_PROBE_ROUNDS } from "@app/temporal/model_health/config";
+import { proxyActivities, sleep } from "@temporalio/workflow";
 
 const {
   probeEndpointActivity,
@@ -25,27 +25,28 @@ const {
  *
  * Started by whichever pod detected the breach; the deterministic workflow id
  * makes concurrent starts collapse into this single run, and its existence is
- * what "degraded" means while it lasts.
+ * what "degraded" means while it lasts. Because that is the only state, this
+ * run's start time is also the moment the endpoint became degraded, which is
+ * what the detection guard reads back off `describe()`.
  *
- * Holds for `MIN_DEGRADED_DURATION_MS` on a durable Temporal timer -- a worker
- * restart mid-hold costs nothing -- then probes until the endpoint answers.
+ * Every round waits `MIN_DEGRADED_DURATION_MS` on a durable Temporal timer --
+ * a worker restart mid-wait costs nothing -- and then probes once. The timer
+ * comes first, so it serves as both the initial hold and the backoff between
+ * failed rounds: a dead endpoint sees one round every ten minutes rather than
+ * as fast as it can refuse them.
  *
- * There is no sleep between failed rounds. A round is three sequential provider
- * calls, so the loop paces itself on real provider latency rather than spinning.
+ * After `MAX_PROBE_ROUNDS` the run simply ends, logging no transition. The
+ * endpoint stops being degraded because the workflow id frees up, so an outage
+ * still in progress is re-detected from the counters and opens a fresh run.
  */
 export async function modelHealthRecoveryWorkflow(
-  endpoint: DegradedModelEndpointType,
-  degradedAtMs?: number
+  endpoint: DegradedModelEndpointType
 ): Promise<void> {
-  // Preserved across `continueAsNew` so the recovery log reports the full
-  // outage, not just the last run.
-  const startedAtMs = degradedAtMs ?? Date.now();
+  const startedAtMs = Date.now();
 
-  if (degradedAtMs === undefined) {
+  for (let round = 0; round < MAX_PROBE_ROUNDS; round++) {
     await sleep(MIN_DEGRADED_DURATION_MS);
-  }
 
-  for (let round = 0; round < MAX_PROBE_ROUNDS_PER_RUN; round++) {
     const healthy = await probeEndpointActivity(endpoint);
     const degradedForMs = Date.now() - startedAtMs;
 
@@ -56,9 +57,4 @@ export async function modelHealthRecoveryWorkflow(
 
     await logModelHealthProbeFailedActivity({ endpoint, degradedForMs });
   }
-
-  await continueAsNew<typeof modelHealthRecoveryWorkflow>(
-    endpoint,
-    startedAtMs
-  );
 }
