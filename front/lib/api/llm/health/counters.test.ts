@@ -1,10 +1,28 @@
+import {
+  MIN_DEGRADED_DURATION_MS,
+  MIN_EVALUATION_INTERVAL_MS,
+} from "@app/lib/api/llm/health/config";
 import { recordLLMAttempt } from "@app/lib/api/llm/health/counters";
+import { evaluateEndpoint } from "@app/lib/api/llm/health/detect";
 import { modelHealthKey } from "@app/lib/api/llm/health/keys";
+import { isModelHealthDetectionPaused } from "@app/lib/api/llm/health/kill_switch";
 import type { LLMAttemptOutcomeTelemetry } from "@app/lib/api/llm/telemetry";
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import { runOnRedisCache } from "@app/lib/api/redis";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Detection is exercised on its own; here we only care about when it is asked
+// for, so it never reaches Redis.
+vi.mock("@app/lib/api/llm/health/detect", () => ({
+  evaluateEndpoint: vi.fn().mockResolvedValue({ outcome: "not_breaching" }),
+}));
+
+// Reads the kill switch out of an in-process cache in production; here it is
+// simply off unless a test says otherwise.
+vi.mock("@app/lib/api/llm/health/kill_switch", () => ({
+  isModelHealthDetectionPaused: vi.fn().mockReturnValue(false),
+}));
 
 const ENDPOINT = {
   modelId: "claude-sonnet-5",
@@ -121,5 +139,145 @@ describe("model health counters", () => {
     await record(SUCCESS);
 
     expect((await redisMock.cacheClient.hGetAll(KEY)).attempts).toBe("1");
+  });
+
+  it("evaluates the endpoint it just wrote, and only on a provider error", async () => {
+    // The throttle is module state keyed by endpoint, so each of these tests
+    // takes a model of its own.
+    const endpoint = { ...ENDPOINT, modelId: "claude-opus-5" } as const;
+
+    await recordLLMAttempt({ endpoint, outcome: SUCCESS, now: NOW });
+    expect(evaluateEndpoint).not.toHaveBeenCalled();
+
+    await recordLLMAttempt({
+      endpoint,
+      outcome: providerError("overloaded_error"),
+      now: NOW,
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledWith(endpoint, NOW);
+  });
+
+  it("evaluates one endpoint at most once per interval", async () => {
+    const endpoint = { ...ENDPOINT, modelId: "claude-opus-4-8" } as const;
+    const error = providerError("overloaded_error");
+
+    // An outage puts hundreds of these a second on the same endpoint; they must
+    // not each read the window and hand Temporal a duplicate start.
+    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(NOW.getTime() + 1_000),
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+
+    const laterMs = NOW.getTime() + MIN_EVALUATION_INTERVAL_MS;
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(laterMs),
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    { outcome: "recovery_started", modelId: "claude-sonnet-4-6" },
+    { outcome: "already_degraded", modelId: "claude-opus-4-6" },
+  ] as const)("holds a $outcome endpoint until the workflow's next probe", async ({
+    outcome,
+    modelId,
+  }) => {
+    const endpoint = { ...ENDPOINT, modelId } as const;
+    const error = providerError("overloaded_error");
+    const degradedSinceMs = NOW.getTime() - MIN_DEGRADED_DURATION_MS * 0.9;
+    vi.mocked(evaluateEndpoint).mockResolvedValue({
+      outcome,
+      degradedSinceMs,
+    });
+
+    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+
+    // Nothing can change before that probe, so re-reading the window until
+    // then would only earn a rejected start, from every pod.
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(degradedSinceMs + MIN_DEGRADED_DURATION_MS - 1),
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(degradedSinceMs + MIN_DEGRADED_DURATION_MS),
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the usual cadence when the workflow start time is unknown", async () => {
+    const endpoint = { ...ENDPOINT, modelId: "claude-fable-5" } as const;
+    const error = providerError("overloaded_error");
+    vi.mocked(evaluateEndpoint).mockResolvedValue({
+      outcome: "already_degraded",
+      degradedSinceMs: null,
+    });
+
+    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(NOW.getTime() + MIN_EVALUATION_INTERVAL_MS),
+    });
+
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps evaluating when the workflow could not be started", async () => {
+    const endpoint = { ...ENDPOINT, modelId: "claude-opus-4-7" } as const;
+    const error = providerError("overloaded_error");
+    vi.mocked(evaluateEndpoint).mockResolvedValue({
+      outcome: "launch_failed",
+    });
+
+    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(NOW.getTime() + MIN_EVALUATION_INTERVAL_MS),
+    });
+
+    // Nothing holds the endpoint, so the next window is still worth a look.
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not evaluate when the write failed", async () => {
+    const endpoint = {
+      ...ENDPOINT,
+      modelId: "claude-haiku-4-5-20251001",
+    } as const;
+    vi.mocked(runOnRedisCache).mockRejectedValueOnce(
+      new Error("redis is down")
+    );
+
+    await recordLLMAttempt({
+      endpoint,
+      outcome: providerError("server_error"),
+      now: NOW,
+    });
+
+    expect(evaluateEndpoint).not.toHaveBeenCalled();
+  });
+
+  it("does nothing at all while the kill switch is on", async () => {
+    vi.mocked(isModelHealthDetectionPaused).mockReturnValueOnce(true);
+
+    await record(providerError("server_error"));
+
+    // The point of the switch is to take the whole path out during an incident,
+    // so neither the write nor the detection it triggers may run.
+    expect(runOnRedisCache).not.toHaveBeenCalled();
+    expect(evaluateEndpoint).not.toHaveBeenCalled();
   });
 });
