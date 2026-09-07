@@ -132,6 +132,11 @@ type SkillReferenceTarget = {
   status: SkillStatus;
 };
 
+type AgentUsageAttributes = Pick<
+  Attributes<AgentConfigurationModel>,
+  "id" | "sId" | "name" | "pictureUrl"
+>;
+
 type ReplaceSkillReferenceTagsOptions = {
   html?: boolean;
 };
@@ -2337,12 +2342,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  private async listActiveAgents(
-    auth: Authenticator
-  ): Promise<AgentConfigurationModel[]> {
+  /**
+   * @cc [owner:aubin-tchoi,label:performance] select-requested-agent-attributes
+   * `listActiveAgents` selects only the agent attributes requested by its caller.
+   */
+  private async listActiveAgents<
+    K extends keyof Attributes<AgentConfigurationModel>,
+  >(
+    auth: Authenticator,
+    { attributes }: { attributes: K[] }
+  ): Promise<Pick<Attributes<AgentConfigurationModel>, K>[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
+      attributes: ["agentConfigurationId"],
       where: {
         ...this.skillReference,
         workspaceId: workspace.id,
@@ -2356,6 +2369,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
 
     return AgentConfigurationModel.findAll({
+      attributes,
       where: {
         id: { [Op.in]: agentConfigIds },
         workspaceId: workspace.id,
@@ -2365,7 +2379,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
-    const agents = await this.listActiveAgents(auth);
+    const agents = await this.listActiveAgents(auth, {
+      attributes: ["sId", "name", "pictureUrl"],
+    });
 
     const sortedAgents = agents
       .map((agent) => ({
@@ -2404,7 +2420,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const agents = await this.listActiveAgents(auth);
+    const agents = await this.listActiveAgents(auth, {
+      attributes: ["id", "requestedSpaceIds"],
+    });
 
     if (agents.length === 0) {
       // No agents are using this skill, skip.
@@ -2774,10 +2792,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * Batch version of listActiveAgents, returns active agents grouped by skill sId.
    */
+  /**
+   * @cc [owner:aubin-tchoi,label:performance] select-usage-agent-attributes
+   * `batchListActiveAgents` selects only agent identifiers and usage display fields.
+   */
   private static async batchListActiveAgents(
     auth: Authenticator,
     skills: SkillResource[]
-  ): Promise<Map<string, AgentConfigurationModel[]>> {
+  ): Promise<Map<string, AgentUsageAttributes[]>> {
     if (skills.length === 0) {
       return new Map();
     }
@@ -2792,6 +2814,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Single query: all agent-skill associations for the given skills.
     const agentSkills = await AgentSkillModel.findAll({
+      attributes: ["agentConfigurationId", "customSkillId", "globalSkillId"],
       where: {
         workspaceId: workspace.id,
         [Op.or]: removeNulls([
@@ -2814,6 +2837,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...new Set(agentSkills.map((as) => as.agentConfigurationId)),
     ];
     const agentConfigs = await AgentConfigurationModel.findAll({
+      attributes: ["id", "sId", "name", "pictureUrl"],
       where: {
         id: { [Op.in]: uniqueAgentConfigIds },
         workspaceId: workspace.id,
@@ -2828,7 +2852,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.filter((s) => !s.globalSId).map((s) => [s.id, s.sId])
     );
 
-    const result = new Map<string, AgentConfigurationModel[]>();
+    const result = new Map<string, AgentUsageAttributes[]>();
     for (const as of agentSkills) {
       const skillId = as.customSkillId
         ? sIdByCustomId.get(as.customSkillId)
