@@ -1,4 +1,4 @@
-import type { RegionInfo, RegionType } from "@app/types/region";
+import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
@@ -25,19 +25,6 @@ export const config = {
     return region === "europe-west1"
       ? EnvironmentConfig.getEnvVariable("DUST_EU_URL")
       : EnvironmentConfig.getEnvVariable("DUST_US_URL");
-  },
-  isMainRegion(): boolean {
-    return this.getCurrentRegion() === "us-central1";
-  },
-  getOtherRegionInfo(): RegionInfo {
-    const currentRegion = this.getCurrentRegion();
-    const otherRegion =
-      currentRegion === "europe-west1" ? "us-central1" : "europe-west1";
-
-    return {
-      name: otherRegion,
-      url: this.getRegionUrl(otherRegion),
-    };
   },
   getDustRegionSyncEnabled: (): boolean => {
     return (
