@@ -1,3 +1,4 @@
+import { BigQueryCastKnownErrorsInterceptor } from "@connectors/connectors/bigquery/temporal/cast_known_errors";
 import { Context, type Info } from "@temporalio/activity";
 import {
   noopMetricMeter,
@@ -224,6 +225,48 @@ describe("ActivityInboundLogInterceptor", () => {
     );
     expect(mocks.pauseAndStop).toHaveBeenCalledWith({
       reason: "Stopped on workspace_can_use_product_required_error",
+    });
+  });
+
+  it("pauses BigQuery when its activity encounters a policy violation", async () => {
+    mocks.fetchById.mockResolvedValue({
+      dataSourceId: "data-source-id",
+      id: 42,
+      type: "bigquery",
+      workspaceId: "workspace-id",
+    });
+    const interceptor = new ActivityInboundLogInterceptor(
+      makeActivityContext("bigquerySyncWorkflow"),
+      logger,
+      "bigquery"
+    );
+    const error = Object.assign(
+      new Error(
+        "VPC Service Controls: Request is prohibited by organization's policy."
+      ),
+      { code: 403, errors: [{ reason: "policyViolation" }] }
+    );
+    const input = {
+      args: [],
+      headers: {},
+    } satisfies ActivityExecuteInput;
+    const activity = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+    const next = vi.fn((activityInput: ActivityExecuteInput) =>
+      new BigQueryCastKnownErrorsInterceptor().execute(activityInput, activity)
+    ) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(interceptor.execute(input, next)).rejects.toThrow(
+      ThirdPartyConfigurationError
+    );
+
+    expect(mocks.syncFailed).toHaveBeenCalledWith(
+      42,
+      "third_party_internal_error"
+    );
+    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+      reason: "Stopped on ThirdPartyConfigurationError",
     });
   });
 
