@@ -12,10 +12,10 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
+import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
-import { MemberSpendLimitModal } from "@app/components/workspace/MemberSpendLimitModal";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
@@ -1482,13 +1482,13 @@ export function UsagePage() {
           onSaved={handleApproveOnModalSaved}
         />
 
-        <MemberSpendLimitModal
+        <EditMemberSpendLimitModal
           isOpen={spendLimitRecapMember !== null}
           onClose={() => setSpendLimitRecapMember(null)}
           member={spendLimitRecapMember}
           owner={owner}
           groups={groups}
-          onSavingChange={handleUsagePendingChange}
+          readOnly
         />
 
         <BulkEditSpendLimitModal
