@@ -12,6 +12,8 @@ type ConversationScrollMethods = Pick<
   data: Pick<VirtuosoMessageListMethods["data"], "get">;
 };
 
+// Downward scrolling reattaches within this many pixels of the bottom.
+// Increase to reattach sooner; decrease to require scrolling closer to the bottom.
 const BOTTOM_THRESHOLD_PX = 4;
 
 interface UseConversationAutoScrollProps {
