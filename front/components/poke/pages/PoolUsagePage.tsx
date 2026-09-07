@@ -7,7 +7,10 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
-import { CreditPoolCardsFromCycleData } from "@app/components/workspace/WorkspaceCreditPoolCards";
+import {
+  CreditPoolCardsFromCycleData,
+  toCreditPoolFetchStatus,
+} from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { expandMaxTierName } from "@app/lib/client/model_tiers";
@@ -89,12 +92,16 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
   return (
     <CreditPoolCardsFromCycleData
       awuPoolCurrentCycle={awuPoolCurrentCycle}
-      isAwuPoolCurrentCycleLoading={isAwuPoolCurrentCycleLoading}
-      isAwuPoolCurrentCycleError={!!isAwuPoolCurrentCycleError}
+      cardsStatus={toCreditPoolFetchStatus(
+        isAwuPoolCurrentCycleLoading,
+        !!isAwuPoolCurrentCycleError
+      )}
       poolCycleBreakdown={poolCycleBreakdown}
       excessCycleBreakdown={excessCycleBreakdown}
-      isAwuPoolCycleHistoryLoading={isAwuPoolCycleHistoryLoading}
-      isAwuPoolCycleHistoryError={!!isAwuPoolCycleHistoryError}
+      tableStatus={toCreditPoolFetchStatus(
+        isAwuPoolCycleHistoryLoading,
+        !!isAwuPoolCycleHistoryError
+      )}
     />
   );
 }

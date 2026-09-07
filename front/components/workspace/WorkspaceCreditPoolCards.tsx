@@ -274,12 +274,10 @@ export function WorkspaceCreditPoolSection({
 
 interface CreditPoolCardsFromCycleDataProps {
   awuPoolCurrentCycle: AwuPoolCurrentCycleResponseBody | null;
-  isAwuPoolCurrentCycleLoading: boolean;
-  isAwuPoolCurrentCycleError: boolean;
+  cardsStatus: CreditPoolFetchStatus;
   poolCycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
-  isAwuPoolCycleHistoryLoading: boolean;
-  isAwuPoolCycleHistoryError: boolean;
+  tableStatus: CreditPoolFetchStatus;
 }
 
 // Turns a fetched current-cycle/cycle-history pair into the credit
@@ -288,12 +286,10 @@ interface CreditPoolCardsFromCycleDataProps {
 // them — only the SWR hooks feeding it differ per page.
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
-  isAwuPoolCurrentCycleLoading,
-  isAwuPoolCurrentCycleError,
+  cardsStatus,
   poolCycleBreakdown,
   excessCycleBreakdown,
-  isAwuPoolCycleHistoryLoading,
-  isAwuPoolCycleHistoryError,
+  tableStatus,
 }: CreditPoolCardsFromCycleDataProps) {
   const {
     totalRemainingCredits,
@@ -321,14 +317,8 @@ export function CreditPoolCardsFromCycleData({
 
   return (
     <WorkspaceCreditPoolSection
-      cardsStatus={toCreditPoolFetchStatus(
-        isAwuPoolCurrentCycleLoading,
-        isAwuPoolCurrentCycleError
-      )}
-      tableStatus={toCreditPoolFetchStatus(
-        isAwuPoolCycleHistoryLoading,
-        isAwuPoolCycleHistoryError
-      )}
+      cardsStatus={cardsStatus}
+      tableStatus={tableStatus}
       showPoolCard={hasPool}
       isVisible={hasPool || hasExcessData}
       totalRemainingCredits={totalRemainingCredits}
