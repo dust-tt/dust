@@ -1452,6 +1452,60 @@ describe("postUserMessage", () => {
     vi.clearAllMocks();
   });
 
+  it("should reject a Slack message when the sender's email doesn't match a workspace member", async () => {
+    const apiKey = await KeyFactory.regular(globalGroup);
+    const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
+    expect(apiKeyAuth.user()).toBeNull();
+
+    const result = await postUserMessage(apiKeyAuth, {
+      conversationResource,
+      content: "Hello from Slack",
+      mentions: [],
+      context: {
+        username: "slack-bot",
+        timezone: "UTC",
+        fullName: null,
+        email: "not-a-workspace-member@example.com",
+        profilePictureUrl: null,
+        origin: "slack",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(404);
+      expect(result.error.api_error.type).toBe("workspace_user_not_found");
+    }
+  });
+
+  it("should attribute a Slack message to the workspace member matching the sender's email", async () => {
+    const memberUser = auth.getNonNullableUser();
+    const apiKey = await KeyFactory.regular(globalGroup);
+    const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
+    expect(apiKeyAuth.user()).toBeNull();
+
+    const result = await postUserMessage(apiKeyAuth, {
+      conversationResource,
+      content: "Hello from Slack",
+      mentions: [],
+      context: {
+        username: "slack-bot",
+        timezone: "UTC",
+        fullName: null,
+        email: memberUser.toJSON().email,
+        profilePictureUrl: null,
+        origin: "slack",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.userMessage.user?.sId).toBe(memberUser.sId);
+    }
+  });
+
   it("should reject programmatic messages when programmatic credits are exhausted", async () => {
     const setup = await createResourceTest({});
     const noCreditAuth = setup.authenticator;
