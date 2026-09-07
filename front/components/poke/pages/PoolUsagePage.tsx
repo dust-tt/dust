@@ -252,7 +252,14 @@ export function PoolUsagePage() {
 
   const { data: allGroups } = usePokeGroups({ owner, withPoolCaps: true });
   const groups = useMemo(
-    () => allGroups.filter((group) => isCapEligibleGroupKind(group.kind)),
+    () =>
+      allGroups
+        .filter((group) => isCapEligibleGroupKind(group.kind))
+        // Present because this page requests `withPoolCaps`.
+        .map((group) => ({
+          ...group,
+          poolCapAwuCredits: group.poolCapAwuCredits ?? null,
+        })),
     [allGroups]
   );
   const selectedGroupName = groups.find(

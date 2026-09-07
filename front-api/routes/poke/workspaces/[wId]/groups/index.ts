@@ -9,10 +9,7 @@ import groupId from "./[groupId]";
 
 const ListGroupsQuerySchema = z.object({
   // When "true", each group also carries its pool cap (one extra batched
-  // query). Accepted but not yet honored: the cap is still returned
-  // unconditionally so front-end bundles that predate the flag keep working.
-  // A follow-up makes the cap conditional on this flag, once the bundles
-  // sending it are deployed everywhere.
+  // query). Omitted otherwise: only the pool usage view reads it.
   withPoolCaps: z.enum(["true", "false"]).optional(),
 });
 
@@ -25,23 +22,14 @@ app.get(
   validate("query", ListGroupsQuerySchema),
   async (ctx): HandlerResult<PokeListGroups> => {
     const auth = ctx.get("auth");
+    const { withPoolCaps } = ctx.req.valid("query");
 
     const groups = await GroupResource.listAllWorkspaceGroups(auth);
-    const memberCounts = await GroupResource.getMemberCountsForGroups(
-      auth,
-      groups
-    );
-    const poolCaps = await GroupResource.getPoolCapAwuCreditsForGroups(
-      auth,
-      groups
-    );
 
     return ctx.json({
-      groups: groups.map((group) => ({
-        ...group.toJSON(),
-        memberCount: memberCounts.get(group.id) ?? 0,
-        poolCapAwuCredits: poolCaps.get(group.id) ?? null,
-      })),
+      groups: await GroupResource.toJSONWithMemberCounts(auth, groups, {
+        withPoolCaps: withPoolCaps === "true",
+      }),
     });
   }
 );

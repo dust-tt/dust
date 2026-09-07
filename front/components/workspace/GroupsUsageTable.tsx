@@ -92,7 +92,8 @@ export function GroupsUsageTable({
         groupId: group.sId,
         name: group.name,
         memberCount: group.memberCount,
-        poolCapAwuCredits: group.poolCapAwuCredits,
+        // Present because this table requests `withPoolCaps`.
+        poolCapAwuCredits: group.poolCapAwuCredits ?? null,
       })),
     [groups]
   );

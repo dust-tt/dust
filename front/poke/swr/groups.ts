@@ -8,9 +8,9 @@ export function usePokeGroups({
   owner,
   withPoolCaps,
 }: PokeConditionalFetchProps & {
-  // Declares that this caller reads `poolCapAwuCredits`. The cap is still
-  // returned unconditionally, so callers that omit this keep working; a
-  // follow-up makes it conditional once every bundle sends the flag.
+  // Also resolves each group's pool cap (one extra batched query server-side).
+  // Without it `poolCapAwuCredits` is absent from the response, so any caller
+  // that reads the cap must set this.
   withPoolCaps?: boolean;
 }) {
   const { fetcher } = useFetcher();
