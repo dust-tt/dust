@@ -1,4 +1,8 @@
-import { MIN_EVALUATION_INTERVAL_MS } from "@app/lib/api/llm/health/config";
+import {
+  ALREADY_DEGRADED_EVALUATION_INTERVAL_MS,
+  MIN_EVALUATION_INTERVAL_MS,
+  RECOVERY_STARTED_EVALUATION_INTERVAL_MS,
+} from "@app/lib/api/llm/health/config";
 import { recordLLMAttempt } from "@app/lib/api/llm/health/counters";
 import { evaluateEndpoint } from "@app/lib/api/llm/health/detect";
 import { modelHealthKey } from "@app/lib/api/llm/health/keys";
@@ -11,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Detection is exercised on its own; here we only care about when it is asked
 // for, so it never reaches Redis.
 vi.mock("@app/lib/api/llm/health/detect", () => ({
-  evaluateEndpoint: vi.fn().mockResolvedValue(undefined),
+  evaluateEndpoint: vi.fn().mockResolvedValue("not_breaching"),
 }));
 
 const ENDPOINT = {
@@ -168,6 +172,68 @@ describe("model health counters", () => {
       outcome: error,
       now: new Date(laterMs),
     });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
+  });
+
+  it("holds an endpoint it declared degraded for the whole degradation", async () => {
+    const endpoint = { ...ENDPOINT, modelId: "claude-sonnet-4-6" } as const;
+    const error = providerError("overloaded_error");
+    vi.mocked(evaluateEndpoint).mockResolvedValue("recovery_started");
+
+    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+
+    // Past the plain throttle, but this pod launched the workflow, so it knows
+    // the endpoint is held from here: re-reading the window would only earn a
+    // rejected start, from every pod, for the whole outage.
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(NOW.getTime() + MIN_EVALUATION_INTERVAL_MS * 10),
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+
+    // The hold only ever delays: once it lapses the endpoint is evaluated
+    // again, whatever became of the workflow in the meantime.
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(NOW.getTime() + RECOVERY_STARTED_EVALUATION_INTERVAL_MS),
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
+  });
+
+  it("holds an endpoint another pod declared degraded for much less", async () => {
+    const endpoint = { ...ENDPOINT, modelId: "claude-opus-4-6" } as const;
+    const error = providerError("overloaded_error");
+    vi.mocked(evaluateEndpoint).mockResolvedValue("already_degraded");
+
+    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+
+    // The workflow may have started nine minutes ago, so this pod cannot hold
+    // for a full degradation without going blind to whatever follows recovery.
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(NOW.getTime() + ALREADY_DEGRADED_EVALUATION_INTERVAL_MS),
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps evaluating when the workflow could not be started", async () => {
+    const endpoint = { ...ENDPOINT, modelId: "claude-opus-4-7" } as const;
+    const error = providerError("overloaded_error");
+    vi.mocked(evaluateEndpoint).mockResolvedValue("launch_failed");
+
+    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: new Date(NOW.getTime() + MIN_EVALUATION_INTERVAL_MS),
+    });
+
+    // Nothing holds the endpoint, so the next window is still worth a look.
     expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
   });
 

@@ -8,6 +8,7 @@ import { readEndpointWindow } from "@app/lib/api/llm/health/window";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
 import logger from "@app/logger/logger";
 import { launchModelHealthRecovery } from "@app/temporal/model_health/client";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export function isBreaching(window: ModelHealthWindowType): boolean {
@@ -18,13 +19,25 @@ export function isBreaching(window: ModelHealthWindowType): boolean {
   return window.providerErrors / window.attempts >= ERROR_RATIO_THRESHOLD;
 }
 
+/**
+ * What one evaluation established, mirroring `LaunchRecoveryOutcome` so the
+ * caller can tell the two degraded outcomes apart: `recovery_started` anchors
+ * the degradation at now, `already_degraded` says only that some other pod
+ * anchored it at a time we cannot know.
+ */
+export type EndpointEvaluationType =
+  | "not_breaching"
+  | "recovery_started"
+  | "already_degraded"
+  | "launch_failed";
+
 export async function evaluateEndpoint(
   endpoint: DegradedModelEndpointType,
   now: Date = new Date()
-): Promise<void> {
+): Promise<EndpointEvaluationType> {
   const window = await readEndpointWindow(endpoint, now);
   if (!isBreaching(window)) {
-    return;
+    return "not_breaching";
   }
 
   const launchRes = await launchModelHealthRecovery(endpoint);
@@ -38,10 +51,19 @@ export async function evaluateEndpoint(
       },
       "Failed to start the model health recovery workflow"
     );
-    return;
+    return "launch_failed";
   }
 
-  if (launchRes.value === "started") {
-    logModelHealthTransition({ endpoint, transition: "degraded", window });
+  switch (launchRes.value) {
+    case "started":
+      logModelHealthTransition({ endpoint, transition: "degraded", window });
+      return "recovery_started";
+
+    case "already_degraded":
+      // Not a state change: another pod already logged the transition.
+      return "already_degraded";
+
+    default:
+      assertNever(launchRes.value);
   }
 }

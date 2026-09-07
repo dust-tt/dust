@@ -25,6 +25,20 @@ export const PROBES_PER_RECOVERY = 3;
 // learn the same thing.
 export const MIN_EVALUATION_INTERVAL_MS = 5_000;
 
+// How long a pod holds off re-evaluating an endpoint it declared degraded
+// itself. Recovery will hold it for at least `MIN_DEGRADED_DURATION_MS` counted
+// from that launch, so nothing this pod could learn before then can change
+// anything: the window still breaches and the workflow id is still taken.
+export const RECOVERY_STARTED_EVALUATION_INTERVAL_MS = MIN_DEGRADED_DURATION_MS;
+
+// How long a pod holds off re-evaluating an endpoint it found already degraded.
+// The workflow's start time is not knowable from a rejected start, so this hold
+// cannot be anchored the way the launcher's can -- recovery may have ten minutes
+// left or ten seconds. Kept short for that reason: it still drops the duplicate
+// starts by an order of magnitude, and it bounds how long this pod stays blind
+// to a fresh breach once recovery completes.
+export const ALREADY_DEGRADED_EVALUATION_INTERVAL_MS = 60_000;
+
 // Counter keys are only ever read across `WINDOW_MINUTES`; the extra headroom
 // covers clock skew between pods.
 export const COUNTER_KEY_TTL_SECONDS = WINDOW_MINUTES * 60 * 3;

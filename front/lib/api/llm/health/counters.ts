@@ -1,7 +1,10 @@
 import {
+  ALREADY_DEGRADED_EVALUATION_INTERVAL_MS,
   COUNTER_KEY_TTL_SECONDS,
   MIN_EVALUATION_INTERVAL_MS,
+  RECOVERY_STARTED_EVALUATION_INTERVAL_MS,
 } from "@app/lib/api/llm/health/config";
+import type { EndpointEvaluationType } from "@app/lib/api/llm/health/detect";
 import { evaluateEndpoint } from "@app/lib/api/llm/health/detect";
 import {
   ATTEMPTS_FIELD,
@@ -16,24 +19,46 @@ import { degradedModelEndpointKey } from "@app/lib/model_constructors/types/degr
 import { NOOP_HOST } from "@app/lib/model_constructors/types/hosts";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 
-// One entry per endpoint, so bounded by the endpoint catalog.
-const lastEvaluatedAtMs = new Map<string, number>();
+// How long to wait before evaluating an endpoint again, by what the last
+// evaluation established. Exhaustive, so a new outcome has to declare its hold.
+const EVALUATION_HOLD_MS: Record<EndpointEvaluationType, number> = {
+  not_breaching: MIN_EVALUATION_INTERVAL_MS,
+  recovery_started: RECOVERY_STARTED_EVALUATION_INTERVAL_MS,
+  already_degraded: ALREADY_DEGRADED_EVALUATION_INTERVAL_MS,
+  // Temporal was unreachable, so nothing is holding this endpoint: keep looking
+  // at the usual cadence.
+  launch_failed: MIN_EVALUATION_INTERVAL_MS,
+};
+
+// The soonest each endpoint may be evaluated again, per pod. One entry per
+// endpoint, so bounded by the endpoint catalog.
+const nextEvaluationAtMs = new Map<string, number>();
+
+function holdEvaluation(
+  endpoint: DegradedModelEndpointType,
+  now: Date,
+  forMs: number
+): void {
+  nextEvaluationAtMs.set(
+    degradedModelEndpointKey(endpoint),
+    now.getTime() + forMs
+  );
+}
 
 function isEvaluationDue(
   endpoint: DegradedModelEndpointType,
   now: Date
 ): boolean {
-  const key = degradedModelEndpointKey(endpoint);
-  const previousMs = lastEvaluatedAtMs.get(key);
+  const dueAtMs = nextEvaluationAtMs.get(degradedModelEndpointKey(endpoint));
 
-  if (
-    previousMs !== undefined &&
-    now.getTime() - previousMs < MIN_EVALUATION_INTERVAL_MS
-  ) {
+  if (dueAtMs !== undefined && now.getTime() < dueAtMs) {
     return false;
   }
 
-  lastEvaluatedAtMs.set(key, now.getTime());
+  // Held before the evaluation runs, not after: two attempts on this pod can
+  // interleave across the await otherwise, and both would evaluate. The outcome
+  // overwrites this with its own hold.
+  holdEvaluation(endpoint, now, MIN_EVALUATION_INTERVAL_MS);
 
   return true;
 }
@@ -49,8 +74,8 @@ function isEvaluationDue(
  * of attempts over five minutes, so a handful of lost increments cannot change
  * the verdict -- which is why nothing here retries, batches or blocks.
  *
- * An error write is also what triggers detection for that endpoint, throttled to
- * `MIN_EVALUATION_INTERVAL_MS`.
+ * An error write is also what triggers detection for that endpoint, throttled by
+ * `EVALUATION_HOLD_MS` on what the last evaluation established.
  *
  * Only provider-attributed errors count towards the numerator. That is exactly
  * the `error_source:provider` filter the existing Datadog monitor applies at
@@ -93,7 +118,11 @@ export async function recordLLMAttempt({
     // attempt has nothing to detect. This reads back the window for this one
     // endpoint -- the one we just served -- and never for any other.
     if (isProviderError && isEvaluationDue(endpoint, now)) {
-      await evaluateEndpoint(endpoint, now);
+      // While recovery holds the endpoint, evaluating again buys nothing: the
+      // window still breaches and the start still comes back rejected. How long
+      // that stays true depends on the outcome, so the hold does too.
+      const evaluation = await evaluateEndpoint(endpoint, now);
+      holdEvaluation(endpoint, now, EVALUATION_HOLD_MS[evaluation]);
     }
   } catch {
     // Counted rather than logged: this runs once per attempt, so a Redis outage

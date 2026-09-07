@@ -71,7 +71,7 @@ describe("evaluateEndpoint", () => {
   it("declares a breaching endpoint degraded", async () => {
     await seedWindow({ attempts: 250, providerErrors: 60 });
 
-    await evaluateEndpoint(ENDPOINT, NOW);
+    expect(await evaluateEndpoint(ENDPOINT, NOW)).toBe("recovery_started");
 
     expect(launchModelHealthRecovery).toHaveBeenCalledWith(ENDPOINT);
     expect(logModelHealthTransition).toHaveBeenCalledWith(
@@ -82,7 +82,7 @@ describe("evaluateEndpoint", () => {
   it("leaves a healthy endpoint alone", async () => {
     await seedWindow({ attempts: 250, providerErrors: 10 });
 
-    await evaluateEndpoint(ENDPOINT, NOW);
+    expect(await evaluateEndpoint(ENDPOINT, NOW)).toBe("not_breaching");
 
     expect(launchModelHealthRecovery).not.toHaveBeenCalled();
     expect(logModelHealthTransition).not.toHaveBeenCalled();
@@ -96,7 +96,7 @@ describe("evaluateEndpoint", () => {
     );
     await seedWindow({ attempts: 250, providerErrors: 60 });
 
-    await evaluateEndpoint(ENDPOINT, NOW);
+    expect(await evaluateEndpoint(ENDPOINT, NOW)).toBe("already_degraded");
 
     expect(launchModelHealthRecovery).toHaveBeenCalledTimes(1);
     expect(logModelHealthTransition).not.toHaveBeenCalled();
@@ -108,7 +108,7 @@ describe("evaluateEndpoint", () => {
     );
     await seedWindow({ attempts: 250, providerErrors: 60 });
 
-    await evaluateEndpoint(ENDPOINT, NOW);
+    expect(await evaluateEndpoint(ENDPOINT, NOW)).toBe("launch_failed");
 
     expect(logModelHealthTransition).not.toHaveBeenCalled();
   });
