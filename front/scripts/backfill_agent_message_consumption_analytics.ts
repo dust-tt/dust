@@ -2,6 +2,9 @@
  * Enqueue the consumption attribution + Elasticsearch indexing workflow for historical agent
  * messages. Run once in each region after the consumption analytics index and V3 analytics worker
  * have been deployed, and after agent step content dustRunIds have been backfilled.
+ * Includes billed pauses still in `created`: their date range uses the persisted updatedAt,
+ * while terminal messages use completedAt. Re-enqueueing also repairs user/seat attribution
+ * on existing documents; it does not emit Metronome events or recompute billed credits.
  *
  * Before enqueueing each batch, the script classifies any run usages whose usageType is still null.
  * It reconstructs the same billing classification as the live path from the triggering user
@@ -26,8 +29,6 @@ import { Authenticator } from "@app/lib/auth";
 import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
 import {
-  AgentMessageModel,
-  ConversationModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -36,14 +37,11 @@ import {
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { listConsumptionAnalyticsBackfillMessages } from "@app/scripts/consumption_analytics_backfill";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { launchStoreAgentMessageConsumptionAttributionWorkflow } from "@app/temporal/analytics_queue/client";
 import type { AgentMessageRef } from "@app/types/assistant/agent_run";
-import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
-  isTerminalAgentMessageStatus,
-} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -53,9 +51,6 @@ import { fromError } from "zod-validation-error";
 
 const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_CONCURRENCY = 4;
-const TERMINAL_TRACKED_STATUSES = AGENT_MESSAGE_STATUSES_TO_TRACK.filter(
-  isTerminalAgentMessageStatus
-);
 const TimestampSchema = z.string().datetime({ offset: true });
 
 type AgentMessageBackfillCandidate = {
@@ -103,37 +98,12 @@ async function listAgentMessageRefs({
   toDate: Date;
   workspace: LightWorkspaceType;
 }): Promise<AgentMessageBackfillCandidate[]> {
-  const agentMessages = await AgentMessageModel.findAll({
-    attributes: ["id", "runIds"],
-    where: {
-      id: { [Op.gt]: afterAgentMessageModelId },
-      workspaceId: workspace.id,
-      status: { [Op.in]: TERMINAL_TRACKED_STATUSES },
-      completedAt: { [Op.gte]: fromDate, [Op.lt]: toDate },
-      costCredits: { [Op.ne]: null },
-      runIds: { [Op.ne]: null },
-    },
-    include: [
-      {
-        model: MessageModel,
-        as: "message",
-        attributes: ["sId", "parentId"],
-        required: true,
-        include: [
-          {
-            model: ConversationModel,
-            as: "conversation",
-            attributes: ["sId"],
-            required: true,
-            where: {
-              workspaceId: workspace.id,
-            },
-          },
-        ],
-      },
-    ],
-    order: [["id", "ASC"]],
-    limit: batchSize,
+  const agentMessages = await listConsumptionAnalyticsBackfillMessages({
+    afterAgentMessageModelId,
+    batchSize,
+    fromDate,
+    toDate,
+    workspace,
   });
 
   const triggeringMessages = await MessageModel.findAll({
@@ -252,13 +222,14 @@ makeScript(
     fromDate: {
       type: "string",
       required: true,
-      description: "Inclusive ISO-8601 completion timestamp.",
+      description:
+        "Inclusive ISO-8601 completion timestamp (updatedAt for paused messages).",
     },
     toDate: {
       type: "string",
       required: false,
       description:
-        "Exclusive ISO-8601 completion timestamp (defaults to script start).",
+        "Exclusive ISO-8601 completion timestamp, or updatedAt for paused messages (defaults to script start).",
     },
     workspaceId: {
       type: "string",

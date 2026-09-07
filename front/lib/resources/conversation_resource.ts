@@ -131,6 +131,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     resolvedReasoningEffort: string | null;
     runIds: string[] | null;
     status: AgentMessageStatus;
+    updatedAt: Date;
     version: number;
   };
   conversation: {
@@ -886,6 +887,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         resolvedReasoningEffort: agentMessage.resolvedReasoningEffort,
         runIds: agentMessage.runIds,
         status: agentMessage.status,
+        updatedAt: agentMessage.updatedAt,
         version: messageRow.version,
       },
       conversation: {
@@ -902,6 +904,59 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         userId: triggeringUserMessage.user?.sId ?? null,
       },
     };
+  }
+
+  /**
+   * Resolve the nearest persisted human author through message parents and agentic origins.
+   * Analytics/backfills must not fall back to the worker's authenticated user. Deleted
+   * conversations remain billable; every edge is workspace-scoped, regardless of visibility.
+   */
+  static async fetchOriginatingUserId(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<string | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    // biome-ignore lint/plugin/noRawSql: recursive message ancestry has no Sequelize equivalent.
+    const rows = await frontSequelize.query<{
+      user_id: string | null;
+      depth: number;
+    }>(
+      `WITH RECURSIVE ancestry AS (
+        SELECT m.id, m."parentId", m."conversationId", m."userMessageId",
+               ARRAY[m.id] AS visited, 0 AS depth
+        FROM messages m
+        WHERE m."workspaceId" = :workspaceId AND m."sId" = :agentMessageId
+
+        UNION ALL
+
+        SELECT m.id, m."parentId", m."conversationId", m."userMessageId",
+               a.visited || m.id, a.depth + 1
+        FROM ancestry a
+        LEFT JOIN user_messages um
+          ON um.id = a."userMessageId" AND um."workspaceId" = :workspaceId
+        JOIN messages m
+          ON m."workspaceId" = :workspaceId
+         AND (
+           (a."userMessageId" IS NULL AND m.id = a."parentId"
+             AND m."conversationId" = a."conversationId")
+           OR (um."userId" IS NULL AND m."sId" = um."agenticOriginMessageId")
+         )
+        WHERE a.depth < 64 AND NOT m.id = ANY(a.visited)
+      )
+      SELECT u."sId" AS user_id, a.depth
+      FROM ancestry a
+      LEFT JOIN user_messages um
+        ON um.id = a."userMessageId" AND um."workspaceId" = :workspaceId
+      LEFT JOIN users u ON u.id = um."userId"
+      ORDER BY a.depth`,
+      { type: QueryTypes.SELECT, replacements: { workspaceId, agentMessageId } }
+    );
+    if (rows.at(-1)?.depth === 64) {
+      throw new Error(
+        "Originating user resolution exceeded the ancestry depth limit"
+      );
+    }
+    return rows.find((row) => row.user_id !== null)?.user_id ?? null;
   }
 
   static async updateAgentMessageCostCredits(

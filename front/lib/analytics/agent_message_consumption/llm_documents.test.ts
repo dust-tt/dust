@@ -155,6 +155,7 @@ describe("buildLlmConsumptionDocuments", () => {
         user: {
           id: auth.getNonNullableUser().sId,
           group_ids: [],
+          seat_type: null,
         },
       }),
     ]);

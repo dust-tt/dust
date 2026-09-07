@@ -1,5 +1,5 @@
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   USAGE_TYPE_FREE,
   USAGE_TYPE_PROGRAMMATIC,
@@ -255,6 +255,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     expect(input?.user).toEqual({
       id: testContext.authenticator.getNonNullableUser().sId,
       group_ids: [group.sId],
+      seat_type: "workspace",
     });
   });
 
@@ -426,6 +427,74 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     expect(input?.user).toBeNull();
   });
 
+  it.each([
+    "workspace",
+    "free",
+  ] as const)("resolves an authorless nested agent to its persisted %s-seat author during a backfill", async (seatType) => {
+    const testContext = await createResourceTest({ role: "admin" });
+    await testContext.membership.updateMembershipSeat({
+      user: testContext.user,
+      workspace: testContext.workspace,
+      newSeatType: seatType,
+      author: "no-author",
+    });
+    const root = await createAgenticMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      depth: 0,
+      agentName: "Originating agent",
+    });
+    const parent = await createAgenticMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      depth: 1,
+      agentName: "Intermediate agent",
+      authorless: true,
+      agenticOriginMessageId: root.agentMessage.sId,
+    });
+    const child = await setupSettledMessage({
+      testContext,
+      completedAt: new Date(),
+      depth: 2,
+      agentName: "Nested agent",
+      authorless: true,
+      agenticOriginMessageId: parent.agentMessage.sId,
+    });
+    await root.conversation.updateVisibilityToDeleted(
+      testContext.authenticator
+    );
+    const backfillAuth = await Authenticator.internalAdminForWorkspace(
+      testContext.workspace.sId
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      backfillAuth,
+      {
+        agentMessageId: child.agentMessage.sId,
+      }
+    );
+
+    expect(input?.user).toMatchObject({
+      id: testContext.user.sId,
+      seat_type: seatType,
+    });
+  });
+
+  it("does not follow an agentic origin into another workspace", async () => {
+    const root = await setupSettledMessage();
+    const child = await setupSettledMessage({
+      authorless: true,
+      depth: 1,
+      agenticOriginMessageId: root.agentMessage.sId,
+    });
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(child.auth, {
+      agentMessageId: child.agentMessage.sId,
+    });
+
+    expect(input?.user).toBeNull();
+  });
+
   it("returns null when every usage is explicitly free", async () => {
     const context = await setupSettledMessage({ usageType: USAGE_TYPE_FREE });
 
@@ -476,10 +545,11 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     ).rejects.toThrow("Billed agent message is missing costCredits");
   });
 
-  it("returns null while the message can still resume", async () => {
+  it("loads billed paused messages using the persisted billing timestamp", async () => {
     const context = await setupSettledMessage();
+    const pausedAt = new Date("2026-08-06T12:00:00.000Z");
     await AgentMessageModel.update(
-      { status: "created" },
+      { status: "created", completedAt: null },
       {
         where: {
           id: context.agentMessage.agentMessageId!,
@@ -487,12 +557,56 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
         },
       }
     );
+    await ConversationFactory.setAgentMessageUpdatedAtForTest(
+      context.auth,
+      context.agentMessage.agentMessageId!,
+      pausedAt
+    );
 
     const input = await loadAgentMessageConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
 
-    expect(input).toBeNull();
+    expect(input).toMatchObject({
+      billedCredits: 5,
+      completedAt: pausedAt,
+      messageStatus: "created",
+    });
+  });
+
+  it("still excludes failed messages and refuses terminal messages without completedAt", async () => {
+    const context = await setupSettledMessage();
+    await AgentMessageModel.update(
+      { status: "failed", completedAt: null },
+      {
+        where: {
+          id: context.agentMessage.agentMessageId!,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    const failedInput = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      {
+        agentMessageId: context.agentMessage.sId,
+      }
+    );
+    expect(failedInput).toBeNull();
+
+    await AgentMessageModel.update(
+      { status: "succeeded" },
+      {
+        where: {
+          id: context.agentMessage.agentMessageId!,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    await expect(
+      loadAgentMessageConsumptionAnalyticsInput(context.auth, {
+        agentMessageId: context.agentMessage.sId,
+      })
+    ).rejects.toThrow("Settled agent message is missing completedAt");
   });
 });
