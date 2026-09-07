@@ -1,20 +1,32 @@
-import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
+import { ElasticsearchError, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { buildSkillMatchQuery } from "@app/lib/skill_search/ranking";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
-import assert from "assert";
+import { z } from "zod";
 
 export const MAX_SKILL_SEARCH_RESULTS = 150;
-const MAX_SKILL_SEARCH_CANDIDATES = 200;
-const MIN_SKILL_SEARCH_CANDIDATES = 50;
+export const SKILL_SEARCH_KEEP_ALIVE_SECONDS = 300;
+export const SkillSearchSortSchema = z.tuple([
+  z.number().finite(),
+  z.string(),
+  z.string(),
+  z.number().int(),
+]);
+export type SkillSearchSort = z.infer<typeof SkillSearchSortSchema>;
+
+export interface SkillSearchCandidate {
+  // Rejected hits retain their position so a page of denied hits can advance.
+  document: SkillSearchDocument | null;
+  sort: SkillSearchSort;
+}
 
 function buildNonPodAccessFilter(
   readableNonPodSpaceIds: string[]
@@ -89,16 +101,6 @@ function canReadEditorsOnlyCandidate(
   );
 }
 
-function escapeWildcardCharacter(character: string): string {
-  return character === "\\" || character === "*" || character === "?"
-    ? `\\${character}`
-    : character;
-}
-
-function buildSubsequencePattern(searchTerm: string): string {
-  return `*${Array.from(searchTerm, escapeWildcardCharacter).join("*")}*`;
-}
-
 function buildSkillSearchQuery({
   workspaceId,
   searchTerm,
@@ -112,8 +114,6 @@ function buildSkillSearchQuery({
   editorUserId: ModelId | null;
   canReadAllEditorsOnly: boolean;
 }): estypes.QueryDslQueryContainer {
-  const trimmedSearchTerm = searchTerm.trim();
-
   return {
     bool: {
       filter: [
@@ -124,51 +124,16 @@ function buildSkillSearchQuery({
           : [buildAvailabilityFilter(editorUserId)]),
         buildNonPodAccessFilter(readableNonPodSpaceIds),
       ],
-      ...(trimmedSearchTerm
-        ? {
-            should: [
-              {
-                multi_match: {
-                  query: trimmedSearchTerm,
-                  fields: ["name^4", "user_facing_description^2"],
-                  type: "bool_prefix",
-                },
-              },
-              {
-                wildcard: {
-                  "name.subsequence": {
-                    value: buildSubsequencePattern(trimmedSearchTerm),
-                    case_insensitive: true,
-                    boost: 4,
-                  },
-                },
-              },
-              {
-                wildcard: {
-                  "user_facing_description.subsequence": {
-                    value: buildSubsequencePattern(trimmedSearchTerm),
-                    case_insensitive: true,
-                    boost: 2,
-                  },
-                },
-              },
-            ],
-            minimum_should_match: 1,
-          }
-        : {}),
+      must: [buildSkillMatchQuery(searchTerm)],
     },
   };
 }
 
-function buildSkillSearchSort(hasSearchTerm: boolean): estypes.Sort {
-  return hasSearchTerm
-    ? [
-        { _score: { order: "desc" } },
-        { "name.keyword": { order: "asc" } },
-        { skill_id: { order: "asc" } },
-      ]
-    : [{ "name.keyword": { order: "asc" } }, { skill_id: { order: "asc" } }];
-}
+const SKILL_SEARCH_SORT: estypes.Sort = [
+  { _score: { order: "desc" } },
+  { "name.keyword": { order: "asc" } },
+  { skill_id: { order: "asc" } },
+];
 
 function getSkillSearchHitSources(
   hits: estypes.SearchHit<SkillSearchDocument>[]
@@ -190,30 +155,11 @@ function getSkillSearchHitSources(
   );
 }
 
-/**
- * Searches a bounded custom-skill candidate window.
- *
- * Non-pod spaces and editors-only visibility are filtered directly in
- * Elasticsearch. Projects/pods are authorized from only the IDs present in
- * the candidate window, so a user's potentially unbounded memberships are
- * never sent to Elasticsearch.
- */
-export async function searchSkillDocuments(
+// Prepare once per API request, not once per candidate batch.
+export async function prepareSkillSearchQuery(
   auth: Authenticator,
-  {
-    searchTerm,
-    limit,
-  }: {
-    searchTerm: string;
-    limit: number;
-  }
-): Promise<Result<SkillSearchDocument[], ElasticsearchError>> {
-  assert(
-    Number.isInteger(limit) && limit > 0 && limit <= MAX_SKILL_SEARCH_RESULTS,
-    `limit must be between 1 and ${MAX_SKILL_SEARCH_RESULTS}`
-  );
-
-  const workspace = auth.getNonNullableWorkspace();
+  searchTerm: string
+): Promise<estypes.QueryDslQueryContainer> {
   const workspaceSpaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeConversationsSpace: true,
   });
@@ -224,34 +170,21 @@ export async function searchSkillDocuments(
         .map((s) => s.sId)
     ),
   ];
-  const candidateLimit = Math.min(
-    MAX_SKILL_SEARCH_CANDIDATES,
-    Math.max(MIN_SKILL_SEARCH_CANDIDATES, limit * 3)
-  );
+  return buildSkillSearchQuery({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    searchTerm,
+    readableNonPodSpaceIds: readableNonPodSpaceIds.sort(),
+    editorUserId: auth.user()?.id ?? null,
+    canReadAllEditorsOnly: auth.isKey(),
+  });
+}
 
-  const candidateSearchResult = await withEs((client) =>
-    client.search<SkillSearchDocument>({
-      index: SKILL_SEARCH_ALIAS_NAME,
-      query: buildSkillSearchQuery({
-        workspaceId: workspace.sId,
-        searchTerm,
-        readableNonPodSpaceIds,
-        editorUserId: auth.user()?.id ?? null,
-        canReadAllEditorsOnly: auth.isKey(),
-      }),
-      size: candidateLimit,
-      sort: buildSkillSearchSort(searchTerm.trim().length > 0),
-    })
-  );
-  if (candidateSearchResult.isErr()) {
-    return new Err(candidateSearchResult.error);
-  }
-
-  const candidates = getSkillSearchHitSources(
-    candidateSearchResult.value.hits.hits
-  );
+async function filterSkillSearchCandidates(
+  auth: Authenticator,
+  candidates: SkillSearchDocument[]
+): Promise<SkillSearchDocument[]> {
   if (candidates.length === 0) {
-    return new Ok([]);
+    return [];
   }
   const candidatePodIds = [
     ...new Set(
@@ -277,5 +210,88 @@ export async function searchSkillDocuments(
       accessFilteredCandidates
     );
 
-  return new Ok(visibleCandidates.slice(0, limit));
+  return visibleCandidates;
+}
+
+export async function searchSkillDocumentCandidates(
+  auth: Authenticator,
+  {
+    query,
+    pitId,
+    searchAfter,
+    limit,
+  }: {
+    query: estypes.QueryDslQueryContainer;
+    pitId: string;
+    searchAfter: SkillSearchSort | null;
+    limit: number;
+  }
+): Promise<
+  Result<
+    {
+      candidates: SkillSearchCandidate[];
+      pitId: string;
+      exhausted: boolean;
+    },
+    ElasticsearchError
+  >
+> {
+  const result = await withEs((client) =>
+    client.search<SkillSearchDocument>({
+      pit: { id: pitId, keep_alive: `${SKILL_SEARCH_KEEP_ALIVE_SECONDS}s` },
+      // A PIT replaces the index parameter, never the workspace/ACL filters.
+      query: {
+        bool: {
+          filter: [
+            { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+          ],
+          must: [query],
+        },
+      },
+      size: limit,
+      sort: SKILL_SEARCH_SORT,
+      ...(searchAfter ? { search_after: searchAfter } : {}),
+      track_total_hits: false,
+      allow_partial_search_results: false,
+    })
+  );
+  if (result.isErr()) {
+    return result;
+  }
+  if (result.value.timed_out) {
+    return new Err(
+      new ElasticsearchError("query_error", "Skill search timed out")
+    );
+  }
+  const hits = result.value.hits.hits;
+  const visible = await filterSkillSearchCandidates(
+    auth,
+    getSkillSearchHitSources(hits)
+  );
+  const visibleById = new Map(
+    visible.map((document) => [document.skill_id, document])
+  );
+  const candidates: SkillSearchCandidate[] = [];
+  for (const hit of hits) {
+    const sort = SkillSearchSortSchema.safeParse(hit.sort);
+    if (!sort.success) {
+      return new Err(
+        new ElasticsearchError(
+          "query_error",
+          "Missing skill search sort values"
+        )
+      );
+    }
+    candidates.push({
+      sort: sort.data,
+      document: hit._source
+        ? (visibleById.get(hit._source.skill_id) ?? null)
+        : null,
+    });
+  }
+  return new Ok({
+    candidates,
+    pitId: result.value.pit_id ?? pitId,
+    exhausted: hits.length < limit,
+  });
 }
