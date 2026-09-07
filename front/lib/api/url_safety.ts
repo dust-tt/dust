@@ -26,7 +26,7 @@ BLOCKED_IPV6.addSubnet("64:ff9b::", 96, "ipv6"); // NAT64 (RFC 6052)
 BLOCKED_IPV6.addSubnet("::ffff:0:0", 96, "ipv6"); // IPv4-mapped (e.g. ::ffff:127.0.0.1)
 BLOCKED_IPV6.addSubnet("::ffff:0:0:0", 96, "ipv6"); // IPv4-translated
 
-function isPrivateIp(address: string, family: 4 | 6): boolean {
+function _isPrivateIp(address: string, family: 4 | 6): boolean {
   if (family === 4) {
     return BLOCKED_IPV4.check(address, "ipv4");
   }
