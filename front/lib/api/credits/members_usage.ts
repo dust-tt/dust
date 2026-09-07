@@ -302,7 +302,7 @@ type ConsumedCreditsSplit = {
 
 type ConsumedCreditsBucket = {
   key: string;
-  paid_credits?: ConsumedCreditsSplit;
+  total_credits?: estypes.AggregationsSumAggregate;
   free_credits?: ConsumedCreditsSplit;
 };
 
@@ -358,6 +358,7 @@ export async function resolveMetronomeCycle(
 // completed, mirroring Metronome's free-seat user-id split (`free-<sId>` vs
 // `<sId>`). Free-seat users see their free-seat usage; paid and seatless users
 // see their non-free usage. Documents without a seat type count as non-free.
+// Compute non-free usage as total minus free usage to avoid a negative filter.
 // Returns an empty map on any failure so the table still renders.
 export async function fetchConsumedAwuCreditsByUserId({
   workspace,
@@ -409,14 +410,7 @@ export async function fetchConsumedAwuCreditsByUserId({
             size: Math.max(1, userIds.length),
           },
           aggs: {
-            paid_credits: {
-              filter: {
-                bool: {
-                  must_not: [{ term: { "user.seat_type": "free" } }],
-                },
-              },
-              aggs: { credits: { sum: { field: "credit_micro" } } },
-            },
+            total_credits: { sum: { field: "credit_micro" } },
             free_credits: {
               filter: { term: { "user.seat_type": "free" } },
               aggs: { credits: { sum: { field: "credit_micro" } } },
@@ -440,12 +434,13 @@ export async function fetchConsumedAwuCreditsByUserId({
     result.value.aggregations?.by_user?.buckets
   )) {
     const userId = String(bucket.key);
-    const split = freeSeatUserIdSet.has(userId)
-      ? bucket.free_credits
-      : bucket.paid_credits;
+    const freeCreditMicro = bucket.free_credits?.credits?.value ?? 0;
+    const selectedCreditMicro = freeSeatUserIdSet.has(userId)
+      ? freeCreditMicro
+      : (bucket.total_credits?.value ?? 0) - freeCreditMicro;
     consumedByUserId.set(
       userId,
-      Math.round(microCreditsToCredits(split?.credits?.value ?? 0))
+      Math.round(microCreditsToCredits(selectedCreditMicro))
     );
   }
   return consumedByUserId;

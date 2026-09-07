@@ -53,7 +53,7 @@ type StatusCreditsAggregate =
 
 type LegacyUserCreditsBucket = {
   key: UserCompositeKey;
-  paid_credits?: CreditsFilterAggregate;
+  total_credits?: estypes.AggregationsSumAggregate;
   free_credits?: CreditsFilterAggregate;
   by_status?: StatusCreditsAggregate;
 };
@@ -65,7 +65,7 @@ type ConsumptionCreditsFilterAggregate = CreditsFilterAggregate & {
 
 type ConsumptionUserCreditsBucket = {
   key: UserCompositeKey;
-  paid_credits?: ConsumptionCreditsFilterAggregate;
+  total_credits?: ConsumptionCreditsFilterAggregate;
   free_credits?: ConsumptionCreditsFilterAggregate;
 };
 
@@ -142,24 +142,43 @@ function legacyCreditsByStatus(
 }
 
 function consumptionCreditsByValue(
-  aggregation: StatusCreditsAggregate | undefined
+  aggregation: StatusCreditsAggregate | undefined,
+  freeAggregation?: StatusCreditsAggregate
 ): Record<string, number> {
+  const freeCreditMicroByValue = new Map(
+    bucketsToArray<StatusCreditsBucket>(freeAggregation?.buckets).map(
+      (bucket) => [String(bucket.key), bucket.credits?.value ?? 0]
+    )
+  );
   return Object.fromEntries(
     bucketsToArray<StatusCreditsBucket>(aggregation?.buckets).map((bucket) => [
       String(bucket.key),
-      microCreditsToCredits(Math.round(bucket.credits?.value ?? 0)),
+      microCreditsToCredits(
+        Math.round(
+          (bucket.credits?.value ?? 0) -
+            (freeCreditMicroByValue.get(String(bucket.key)) ?? 0)
+        )
+      ),
     ])
   );
 }
 
 function consumptionSeatCredits(
-  aggregation: ConsumptionCreditsFilterAggregate | undefined
+  aggregation: ConsumptionCreditsFilterAggregate | undefined,
+  freeAggregation?: ConsumptionCreditsFilterAggregate
 ): ConsumptionSeatCredits {
   return {
-    creditMicro: Math.round(aggregation?.credits?.value ?? 0),
-    awuCreditsByStatus: consumptionCreditsByValue(aggregation?.by_status),
+    creditMicro: Math.round(
+      (aggregation?.credits?.value ?? 0) -
+        (freeAggregation?.credits?.value ?? 0)
+    ),
+    awuCreditsByStatus: consumptionCreditsByValue(
+      aggregation?.by_status,
+      freeAggregation?.by_status
+    ),
     awuCreditsByUsageType: consumptionCreditsByValue(
-      aggregation?.by_usage_type
+      aggregation?.by_usage_type,
+      freeAggregation?.by_usage_type
     ),
   };
 }
@@ -223,12 +242,7 @@ async function fetchLegacyUserCredits({
                 ...(afterKey ? { after: afterKey } : {}),
               },
               aggs: {
-                paid_credits: {
-                  filter: {
-                    bool: { must_not: [{ term: { is_free_seat: true } }] },
-                  },
-                  aggs: { credits: { sum: { field: "cost.billable_awu" } } },
-                },
+                total_credits: { sum: { field: "cost.billable_awu" } },
                 free_credits: {
                   filter: { term: { is_free_seat: true } },
                   aggs: { credits: { sum: { field: "cost.billable_awu" } } },
@@ -253,7 +267,9 @@ async function fetchLegacyUserCredits({
       const buckets = aggregation?.buckets ?? [];
       for (const bucket of buckets) {
         creditsByUserId.set(bucket.key.user_id, {
-          paidAwuCredits: bucket.paid_credits?.credits?.value ?? 0,
+          paidAwuCredits:
+            (bucket.total_credits?.value ?? 0) -
+            (bucket.free_credits?.credits?.value ?? 0),
           freeAwuCredits: bucket.free_credits?.credits?.value ?? 0,
           awuCreditsByStatus: legacyCreditsByStatus(bucket.by_status),
         });
@@ -310,12 +326,8 @@ async function fetchConsumptionUserCredits({
                 ...(afterKey ? { after: afterKey } : {}),
               },
               aggs: {
-                paid_credits: {
-                  filter: {
-                    bool: {
-                      must_not: [{ term: { "user.seat_type": "free" } }],
-                    },
-                  },
+                total_credits: {
+                  filter: { match_all: {} },
                   aggs: {
                     credits: { sum: { field: "credit_micro" } },
                     by_status: {
@@ -364,7 +376,10 @@ async function fetchConsumptionUserCredits({
       const buckets = aggregation?.buckets ?? [];
       for (const bucket of buckets) {
         creditsByUserId.set(bucket.key.user_id, {
-          paid: consumptionSeatCredits(bucket.paid_credits),
+          paid: consumptionSeatCredits(
+            bucket.total_credits,
+            bucket.free_credits
+          ),
           free: consumptionSeatCredits(bucket.free_credits),
         });
       }

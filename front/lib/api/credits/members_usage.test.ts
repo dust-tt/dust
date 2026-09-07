@@ -111,7 +111,15 @@ describe("getEsConsumedAwuCreditsForUser", () => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
   });
 
-  it("sums consumption-index microcredits attributed to the user", async () => {
+  it.each([
+    { totalCreditMicro: 13_200_000, freeCreditMicro: 10_600_000, expected: 3 },
+    { totalCreditMicro: 2_600_000, freeCreditMicro: undefined, expected: 3 },
+    { totalCreditMicro: 11_000_000, freeCreditMicro: 11_000_000, expected: 0 },
+  ])("subtracts free usage before rounding: %j", async ({
+    totalCreditMicro,
+    freeCreditMicro,
+    expected,
+  }) => {
     const workspace = await WorkspaceFactory.creditPriced();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const user = await UserFactory.basic();
@@ -125,7 +133,11 @@ describe("getEsConsumedAwuCreditsForUser", () => {
           buckets: [
             {
               key: user.sId,
-              paid_credits: { credits: { value: 2_600_000 } },
+              total_credits: { value: totalCreditMicro },
+              free_credits:
+                freeCreditMicro === undefined
+                  ? undefined
+                  : { credits: { value: freeCreditMicro } },
             },
           ],
         },
@@ -137,7 +149,7 @@ describe("getEsConsumedAwuCreditsForUser", () => {
       cycle,
     });
 
-    expect(result).toBe(3);
+    expect(result).toBe(expected);
     expect(searchConsumptionAnalytics).toHaveBeenCalledWith(
       {
         bool: {
@@ -160,14 +172,7 @@ describe("getEsConsumedAwuCreditsForUser", () => {
           by_user: {
             terms: { field: "user.id", size: 1 },
             aggs: {
-              paid_credits: {
-                filter: {
-                  bool: {
-                    must_not: [{ term: { "user.seat_type": "free" } }],
-                  },
-                },
-                aggs: { credits: { sum: { field: "credit_micro" } } },
-              },
+              total_credits: { sum: { field: "credit_micro" } },
               free_credits: {
                 filter: { term: { "user.seat_type": "free" } },
                 aggs: { credits: { sum: { field: "credit_micro" } } },
@@ -198,7 +203,7 @@ describe("getEsConsumedAwuCreditsForUser", () => {
           buckets: [
             {
               key: user.sId,
-              paid_credits: { credits: { value: 11_000_000 } },
+              total_credits: { value: 37_000_000 },
               free_credits: { credits: { value: 26_000_000 } },
             },
           ],
