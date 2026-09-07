@@ -241,7 +241,6 @@ export function SkillBuilderInstructionsReferenceSummary({
     return null;
   }
 
-  // have min height to always keep space to show references so there is less content shift.
   return (
     <>
       <div
