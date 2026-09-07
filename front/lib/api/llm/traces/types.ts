@@ -41,17 +41,18 @@ interface LLMTraceContextBase {
 
   workspaceId?: string;
   /** User who triggered the operation */
-  userId?: string;
+  userId?: string | null;
   /**
    * Origin of the triggering user message, set for agent_conversation calls.
    * Used to classify usage as free, user, or programmatic at the LLM call site.
    */
   userMessageOrigin?: UserMessageOrigin;
+  userMessageAuthMethod?: string | null;
 }
 
 export type LLMTraceContext = LLMTraceContextBase & {
   /** Additional context fields for tagging - MUST be camelCase (no underscores, starts lowercase) */
-  [key: string]: string | undefined;
+  [key: string]: string | null | undefined;
 };
 
 export interface LLMTraceCustomization {

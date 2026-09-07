@@ -1,15 +1,15 @@
 import { PokeChangeSeatModal } from "@app/components/poke/credits/PokeChangeSeatModal";
-import { PokeMemberSpendLimitModal } from "@app/components/poke/credits/PokeMemberSpendLimitModal";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
 import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import {
+  CreditPoolCardsFromCycleData,
   toCreditPoolFetchStatus,
-  WorkspaceCreditPoolSection,
 } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -33,10 +33,7 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import {
-  isCreditPricedPlan,
-  isSubscriptionMetronomeBilled,
-} from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   AlertCircle,
   Button,
@@ -89,51 +86,19 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
     isAwuPoolCycleHistoryError,
   } = usePokeAwuPoolCycleHistory({ owner });
 
-  const {
-    totalRemainingCredits,
-    totalActiveCredits,
-    currentCycleConsumedCredits,
-    currentCycleStartMs,
-    currentCycleEndMs,
-    excessConsumedCredits,
-    programmaticConsumedCredits,
-    otherConsumedCredits,
-  } = awuPoolCurrentCycle ?? {
-    totalRemainingCredits: 0,
-    totalActiveCredits: 0,
-    currentCycleConsumedCredits: null,
-    currentCycleStartMs: null,
-    currentCycleEndMs: null,
-    excessConsumedCredits: null,
-    programmaticConsumedCredits: null,
-    otherConsumedCredits: null,
-  };
-
-  const hasPool = totalActiveCredits > 0;
-  const hasExcessData =
-    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
-
   return (
-    <WorkspaceCreditPoolSection
+    <CreditPoolCardsFromCycleData
+      awuPoolCurrentCycle={awuPoolCurrentCycle}
       cardsStatus={toCreditPoolFetchStatus(
         isAwuPoolCurrentCycleLoading,
         !!isAwuPoolCurrentCycleError
       )}
+      poolCycleBreakdown={poolCycleBreakdown}
+      excessCycleBreakdown={excessCycleBreakdown}
       tableStatus={toCreditPoolFetchStatus(
         isAwuPoolCycleHistoryLoading,
         !!isAwuPoolCycleHistoryError
       )}
-      showPoolCard={hasPool}
-      isVisible={hasPool || hasExcessData}
-      totalRemainingCredits={totalRemainingCredits}
-      consumedCredits={
-        hasPool ? currentCycleConsumedCredits : excessConsumedCredits
-      }
-      currentCycleStartMs={currentCycleStartMs}
-      currentCycleEndMs={currentCycleEndMs}
-      cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
-      programmaticConsumedCredits={programmaticConsumedCredits}
-      otherConsumedCredits={otherConsumedCredits}
     />
   );
 }
@@ -186,12 +151,10 @@ export function PoolUsagePage() {
 
   const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
   const activeSubscription = workspaceInfo?.activeSubscription;
-  const hasMetronomeContract =
-    !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
   const isLegacyPremiumMessagePlan =
     !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
   const isLegacyWithoutPoolOrMetronome =
-    isLegacyPremiumMessagePlan && !hasMetronomeContract;
+    isLegacyPremiumMessagePlan && !workspaceInfo?.hasMetronomeFeature;
   const showPoolSection =
     !!activeSubscription && !isLegacyWithoutPoolOrMetronome;
 
@@ -429,7 +392,13 @@ export function PoolUsagePage() {
                   isSeatBased
                   showSpendLimit
                   hasPool={hasPool}
-                  showPremiumMessageUsage={isLegacyWithoutPoolOrMetronome}
+                  isPremiumMessagePlan={isLegacyWithoutPoolOrMetronome}
+                  showPremiumMessageColumn={
+                    !!workspaceInfo?.hasEnforcePremiumModelMessageLimitFeature
+                  }
+                  showFairUseCreditsColumn={
+                    !workspaceInfo?.hasDisableFairUseAwuLimitFeature
+                  }
                   readOnly
                   onChangeSeat={noopOnMember}
                   onOpenChangeSeatRecap={setChangeSeatRecapMember}
@@ -469,10 +438,12 @@ export function PoolUsagePage() {
         onClose={() => setChangeSeatRecapMember(null)}
       />
 
-      <PokeMemberSpendLimitModal
+      <EditMemberSpendLimitModal
         isOpen={!!spendLimitRecapMember}
         member={spendLimitRecapMember}
+        owner={owner}
         groups={groups}
+        readOnly
         onClose={() => setSpendLimitRecapMember(null)}
       />
     </main>

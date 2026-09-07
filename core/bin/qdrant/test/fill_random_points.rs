@@ -3,8 +3,8 @@
 //
 // Fills a Qdrant collection with random points spread over fake data sources, for local testing
 // of shard-key operations (e.g. qdrant_reshard). Data sources are assigned to shard keys the same
-// way production does (blake3(internal_id) % SHARD_KEY_COUNT via DustQdrantClient), so points
-// spread over all shard keys:
+// way production does (blake3(internal_id) modulo the collection's own key count, read from
+// Qdrant), so points spread over all shard keys:
 //
 //   fill_random_points --provider openai --model text-embedding-3-large-1536 \
 //     --cluster cluster-0 --data-sources 96 --points-per-data-source 1000
@@ -17,7 +17,7 @@ use clap::Parser;
 use dust::{
     data_sources::{
         data_source::EmbedderConfig,
-        qdrant::{env_var_prefix_for_cluster, QdrantClients, QdrantCluster},
+        qdrant::{env_var_prefix_for_cluster, QdrantClients, QdrantCluster, QdrantTenant},
         splitter::SplitterID,
     },
     providers::{
@@ -28,6 +28,7 @@ use dust::{
 };
 use qdrant_client::{qdrant, Payload};
 use rand::Rng;
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 #[derive(Parser, Debug)]
@@ -122,7 +123,19 @@ async fn main() -> Result<()> {
         let internal_id = blake3::hash(format!("fill_random_points-{}", d).as_bytes())
             .to_hex()
             .to_string();
-        let shard_key = client.shard_key_name(&internal_id)?;
+        // Routed like production: the collection's own key list decides the key.
+        let assigned = client
+            .assign_shard_key(&embedder_config, &internal_id)
+            .await?;
+        let shard_keys: BTreeMap<_, _> = assigned
+            .iter()
+            .map(|key| (client.cluster, key.clone()))
+            .collect();
+        let shard_key = assigned.as_deref().unwrap_or("none");
+        let tenant = QdrantTenant {
+            internal_id: &internal_id,
+            shard_keys: &shard_keys,
+        };
 
         let mut upserted = 0;
         while upserted < args.points_per_data_source {
@@ -152,7 +165,7 @@ async fn main() -> Result<()> {
                 .collect::<Vec<_>>();
 
             client
-                .upsert_points(&embedder_config, &internal_id, points)
+                .upsert_points(&embedder_config, &tenant, points)
                 .await?;
             upserted += batch_size;
         }

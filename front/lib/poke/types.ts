@@ -4,6 +4,7 @@ export const KILL_SWITCH_TYPES = [
   "global_blacklist_anthropic",
   "global_blacklist_openai",
   "global_disable_firecrawl",
+  "pause_model_health_detection",
   "pause_upsert_queue",
   "use_legacy_acls",
 ] as const;

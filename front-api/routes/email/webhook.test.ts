@@ -8,19 +8,22 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/regions/config", async (importOriginal) => {
+vi.mock("@app/lib/api/cells/config", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@app/lib/api/regions/config")>();
+    await importOriginal<typeof import("@app/lib/api/cells/config")>();
   return {
     ...actual,
     config: {
       ...actual.config,
       getCurrentRegion: () => "europe-west1",
       getLookupApiSecret: () => "test-lookup-secret",
-      getOtherRegionInfo: () => ({
-        name: "us-central1",
-        url: "http://other-region.test",
-      }),
+      getOtherCells: () => [
+        {
+          name: "cell-00001",
+          region: "europe-west1",
+          url: "http://other-region.test",
+        } satisfies CellInfo,
+      ],
     },
   };
 });
@@ -49,6 +52,7 @@ vi.mock(
 );
 
 import { sendEmailToRecipients } from "@app/lib/api/email";
+import type { CellInfo } from "@app/types/cell";
 
 process.env.EMAIL_WEBHOOK_SECRET ||= "test-email-webhook-secret";
 const SENDGRID_AUTH_HEADER = `Basic ${Buffer.from(

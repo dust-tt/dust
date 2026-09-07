@@ -1,7 +1,7 @@
 import {
   canCreateCoupon,
-  createCouponAndPushToOtherRegion,
-  type pushCouponToOtherRegion,
+  createCoupon,
+  type pushCouponToOtherCells,
 } from "@app/lib/api/poke/coupons";
 import { CouponFactory } from "@app/tests/utils/CouponFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -11,8 +11,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/poke/coupons", () => ({
   canCreateCoupon: vi.fn(),
-  createCouponAndPushToOtherRegion: vi.fn(),
-  pushCouponToOtherRegion: vi.fn(),
+  createCoupon: vi.fn(),
+  pushCouponToOtherCells: vi.fn(),
 }));
 
 const VALID_BODY = {
@@ -50,7 +50,7 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(canCreateCoupon).mockReturnValue(true);
-    vi.mocked(createCouponAndPushToOtherRegion).mockResolvedValue(
+    vi.mocked(createCoupon).mockResolvedValue(
       new Ok({ toJSON: () => ({ ...mockCouponJSON }) } as any)
     );
   });
@@ -73,11 +73,11 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
     expect(await response.json()).toMatchObject({
       error: { type: "invalid_request_error" },
     });
-    expect(createCouponAndPushToOtherRegion).not.toHaveBeenCalled();
+    expect(createCoupon).not.toHaveBeenCalled();
   });
 
   it("returns 400 when a coupon with the same code already exists", async () => {
-    vi.mocked(createCouponAndPushToOtherRegion).mockResolvedValue(
+    vi.mocked(createCoupon).mockResolvedValue(
       new Err({ type: "coupon_already_exists" })
     );
     await createPrivateApiMockRequest({ isSuperUser: true });
@@ -94,7 +94,7 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
   });
 
   it("calls createCouponAndPushToOtherRegion and returns 201", async () => {
-    vi.mocked(createCouponAndPushToOtherRegion).mockResolvedValue(
+    vi.mocked(createCoupon).mockResolvedValue(
       new Ok({ toJSON: () => ({ ...mockCouponJSON, code: "NEWCODE" }) } as any)
     );
     await createPrivateApiMockRequest({ isSuperUser: true });
@@ -104,17 +104,15 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
     expect(response.status).toBe(201);
     const { coupon } = await response.json();
     expect(coupon.code).toBe("NEWCODE");
-    expect(createCouponAndPushToOtherRegion).toHaveBeenCalledOnce();
-    expect(createCouponAndPushToOtherRegion).toHaveBeenCalledWith(
+    expect(createCoupon).toHaveBeenCalledOnce();
+    expect(createCoupon).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ code: "NEWCODE" })
     );
   });
 
   it("returns 500 when sync to other region fails", async () => {
-    vi.mocked(createCouponAndPushToOtherRegion).mockResolvedValue(
-      new Err({ type: "sync_failed" })
-    );
+    vi.mocked(createCoupon).mockResolvedValue(new Err({ type: "sync_failed" }));
     await createPrivateApiMockRequest({ isSuperUser: true });
 
     const response = await postCoupon({ ...VALID_BODY, code: "FAILCODE" });
@@ -129,14 +127,14 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
 describe("pushCouponToOtherRegion — dev vs prod", { sequential: true }, () => {
   // The module is mocked at the file level for the handler tests above, so we
   // need importActual to get the real implementation here.
-  let realPushCouponToOtherRegion: typeof pushCouponToOtherRegion;
+  let realPushCouponToOtherCells: typeof pushCouponToOtherCells;
   const mockFetch = vi.fn();
 
   beforeAll(async () => {
     const mod = await vi.importActual<
       typeof import("@app/lib/api/poke/coupons")
     >("@app/lib/api/poke/coupons");
-    realPushCouponToOtherRegion = mod.pushCouponToOtherRegion;
+    realPushCouponToOtherCells = mod.pushCouponToOtherCells;
   });
 
   beforeEach(() => {
@@ -151,7 +149,7 @@ describe("pushCouponToOtherRegion — dev vs prod", { sequential: true }, () => 
     const spy = vi.spyOn(envModule, "isDevelopment").mockReturnValue(true);
 
     const coupon = await CouponFactory.create();
-    const result = await realPushCouponToOtherRegion(coupon.toJSON());
+    const result = await realPushCouponToOtherCells(coupon.toJSON());
 
     spy.mockRestore();
 

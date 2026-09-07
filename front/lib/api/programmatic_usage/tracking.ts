@@ -79,11 +79,21 @@ class ProgrammaticUsageLimitError extends Error {
 
 export function isProgrammaticUsage(
   auth: Authenticator,
-  { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin }
+  {
+    userMessageOrigin,
+    userId,
+    messageAuthMethod,
+  }: {
+    userMessageOrigin: UserMessageOrigin;
+    userId?: string | null;
+    messageAuthMethod?: string | null;
+  }
 ): boolean {
   return isProgrammaticUsageFromContext({
     authMethod: auth.authMethod(),
     userMessageOrigin,
+    userId,
+    messageAuthMethod,
   });
 }
 

@@ -55,6 +55,7 @@
   ],
   "postCreateCommand": "bash dev/scripts/install.sh",
   "postStartCommand": "DUST_OFFER_START_APPS=1 bash dev/scripts/infra.sh",
+  "shutdownAction": "none",
   "customizations": {
     "vscode": {
       "extensions": [

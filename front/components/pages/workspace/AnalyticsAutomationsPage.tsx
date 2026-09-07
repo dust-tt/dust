@@ -4,6 +4,7 @@ import { AutomationsTriggersTable } from "@app/components/workspace/analytics/au
 import { SlackWorkflowsTab } from "@app/components/workspace/analytics/automations/SlackWorkflowsTab";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -33,7 +34,11 @@ export function AnalyticsAutomationsPage() {
     DEFAULT_CONSUMPTION_PERIOD
   );
   const [filter, setFilter] = useState<AutomationsFilter>({});
-  const [tab, setTab] = useState<AutomationsTab>("triggers");
+  const { tab: tabParam } = useQueryParams(["tab"]);
+  const tab: AutomationsTab =
+    tabParam.value === "slack-workflows" ? "slack-workflows" : "triggers";
+  const setTab = (next: AutomationsTab) =>
+    tabParam.setParam(next === "triggers" ? undefined : next);
 
   const canManageSlackWorkflows =
     isAdmin(owner) && isCreditPricedPlan(subscription.plan);
