@@ -4,7 +4,7 @@ import { createServer } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DustAPI } from "./index";
-import type { LoggerInterface } from "./types";
+import { ActionGeneratedFileSchema, type LoggerInterface } from "./types";
 
 const RETRY_LOG_MESSAGE =
   "DustAPI retrying fetch after connection closed before response";
@@ -174,5 +174,33 @@ describe("DustAPI fetch retry on connection closed before response", () => {
     expect(res.isErr()).toBe(true);
     expect(server.connectionCount()).toBe(1);
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("ActionGeneratedFileSchema", () => {
+  it("keeps path-only generated file records intact", () => {
+    const result = ActionGeneratedFileSchema.safeParse({
+      title: "report.bin",
+      snippet: null,
+      contentType: "application/x-custom",
+      fileId: null,
+      filePath: "conversation-test/report.bin",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.filePath).toBe("conversation-test/report.bin");
+    }
+  });
+
+  it("accepts legacy generated file records with a null fileId", () => {
+    const result = ActionGeneratedFileSchema.safeParse({
+      title: "report.txt",
+      snippet: null,
+      contentType: "text/plain",
+      fileId: null,
+    });
+
+    expect(result.success).toBe(true);
   });
 });

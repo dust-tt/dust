@@ -52,6 +52,10 @@ import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch"
 import config from "@app/lib/api/config";
 import { DustFileSystem, SCOPED_PREFIX_POD } from "@app/lib/api/file_system";
 import {
+  readPodAgentsMdContent,
+  writePodAgentsMdContent,
+} from "@app/lib/api/projects/agents_md";
+import {
   addContentNodeToProject,
   listProjectContextAttachments,
   removeContentNodesFromProject,
@@ -264,15 +268,16 @@ export function createProjectManagerTools(
           );
         }
 
-        const { title, description, access } = params;
+        const { title, description, instructions, access } = params;
         if (
           title === undefined &&
           description === undefined &&
+          instructions === undefined &&
           access === undefined
         ) {
           return new Err(
             new MCPError(
-              "At least one of title, description, or access must be provided",
+              "At least one of title, description, instructions, or access must be provided",
               { tracked: false }
             )
           );
@@ -295,6 +300,19 @@ export function createProjectManagerTools(
 
         if (description !== undefined) {
           updates.description = description;
+        }
+
+        if (instructions !== undefined) {
+          const instructionsRes = await writePodAgentsMdContent(
+            auth,
+            pod.sId,
+            instructions
+          );
+          if (instructionsRes.isErr()) {
+            return new Err(
+              new MCPError(instructionsRes.error.message, { tracked: false })
+            );
+          }
         }
 
         if (access !== undefined) {
@@ -348,6 +366,7 @@ export function createProjectManagerTools(
           makeSuccessResponse({
             success: true,
             ...updates,
+            ...(instructions !== undefined ? { instructions } : {}),
             message: "Pod information updated successfully.",
           })
         );
@@ -704,6 +723,7 @@ export function createProjectManagerTools(
               url: projectUrl,
               access: (await pod.isRestricted(auth)) ? "restricted" : "open",
               description: metadata?.description ?? null,
+              instructions: await readPodAgentsMdContent(auth, pod.sId),
               pinnedFramePath: metadata?.pinnedFramePath ?? null,
               defaultAgent,
               contentNodes,

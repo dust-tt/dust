@@ -1,3 +1,4 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
@@ -9,12 +10,29 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function getSpace(workspace: { sId: string }, spaceId: string) {
   return honoApp.request(`/api/w/${workspace.sId}/spaces/${spaceId}`);
+}
+
+function patchSpace(
+  workspace: { sId: string },
+  spaceId: string,
+  body: unknown
+) {
+  return honoApp.request(`/api/w/${workspace.sId}/spaces/${spaceId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 describe("GET /api/w/:wId/spaces/:spaceId", () => {
@@ -139,5 +157,71 @@ describe("GET /api/w/:wId/spaces/:spaceId", () => {
     expect(space.categories.actions.count).toBe(0);
     expect(space.categories.actions.usage.count).toBe(0);
     expect(space.categories.actions.usage.skills).toEqual([]);
+  });
+
+  it("returns Pod instructions from AGENTS.md", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const projectSpace = await SpaceFactory.project(workspace);
+
+    const readBuffer = vi
+      .fn()
+      .mockResolvedValue(new Ok(Buffer.from("Use the Pod runbook.", "utf8")));
+    vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
+      new Ok({
+        readBuffer,
+      } as unknown as DustFileSystem)
+    );
+
+    const response = await getSpace(workspace, projectSpace.sId);
+
+    expect(response.status).toBe(200);
+    const { space } = await response.json();
+    expect(space.instructions).toBe("Use the Pod runbook.");
+  });
+});
+
+describe("PATCH /api/w/:wId/spaces/:spaceId", () => {
+  it("updates Pod instructions in AGENTS.md", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const projectSpace = await SpaceFactory.project(workspace);
+    const write = vi.fn().mockResolvedValue(new Ok({}));
+    vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
+      new Ok({
+        write,
+      } as unknown as DustFileSystem)
+    );
+
+    const response = await patchSpace(workspace, projectSpace.sId, {
+      instructions: "Prefer concise answers.",
+    });
+
+    expect(response.status).toBe(200);
+    const { space } = await response.json();
+    expect(space.instructions).toBe("Prefer concise answers.");
+    expect(write).toHaveBeenCalledWith(
+      `pod-${projectSpace.sId}/AGENTS.md`,
+      "Prefer concise answers.",
+      "text/markdown"
+    );
+  });
+
+  it("rejects instructions on non-project spaces", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    const response = await patchSpace(workspace, regularSpace.sId, {
+      instructions: "Not a Pod.",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toBe(
+      "Instructions for Agents are only available for Pods."
+    );
   });
 });

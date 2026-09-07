@@ -146,8 +146,15 @@ export type ActionGeneratedFilePathType = ActionGeneratedFileBase & {
   filePath: string;
 };
 
+export type ActionGeneratedLegacyDBFileType = ActionGeneratedFileBase & {
+  contentType: AllSupportedFileContentType;
+  fileId: null;
+  filePath?: never;
+};
+
 export type ActionGeneratedFileType =
   | ActionGeneratedDBFileType
+  | ActionGeneratedLegacyDBFileType
   | ActionGeneratedFilePathType;
 
 // A persisted tool output item in the generic shape returned by both AgentMCPActionResource and

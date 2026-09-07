@@ -18,6 +18,7 @@ export const PodManagerUpdateMembersInputSchema = z.object({
 export const PodManagerEditInformationInputSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
+  instructions: z.string().max(8192).optional(),
   access: PodAccessSchema.optional(),
   pinnedFramePath: z.string().nullable().optional(),
   dustPod: DustPodConfigurationSchema.optional(),

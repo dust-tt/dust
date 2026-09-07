@@ -2,6 +2,7 @@ import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import {
   formatPodAgentsMdPromptSection,
   readPodAgentsMdContent,
+  writePodAgentsMdContent,
 } from "@app/lib/api/projects/agents_md";
 import {
   getPodAgentsMdScopedPath,
@@ -15,7 +16,11 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("readPodAgentsMdContent", () => {
   it("returns null when the file does not exist", async () => {
@@ -108,6 +113,53 @@ describe("readPodAgentsMdContent", () => {
     expect(result).toBeNull();
     expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
+  });
+});
+
+describe("writePodAgentsMdContent", () => {
+  it("writes AGENTS.md content to the Pod file system", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const podId = "pod_test";
+    const scopedPath = getPodAgentsMdScopedPath(podId);
+    const write = vi.fn().mockResolvedValue(new Ok({}));
+
+    vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
+      new Ok({
+        write,
+      } as unknown as DustFileSystem)
+    );
+
+    const result = await writePodAgentsMdContent(
+      auth,
+      podId,
+      "Always cite sources."
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(DustFileSystem.fromScopedPath).toHaveBeenCalledWith(
+      auth,
+      scopedPath
+    );
+    expect(write).toHaveBeenCalledWith(
+      scopedPath,
+      "Always cite sources.",
+      "text/markdown"
+    );
+  });
+
+  it("rejects instructions longer than the Pod settings limit", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const result = await writePodAgentsMdContent(
+      auth,
+      "pod_test",
+      "x".repeat(POD_AGENTS_MD_MAX_CHARACTER_COUNT + 1)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_path");
+    }
+    expect(DustFileSystem.fromScopedPath).not.toHaveBeenCalled();
   });
 });
 

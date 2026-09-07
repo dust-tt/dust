@@ -982,7 +982,7 @@ const ActionGeneratedFileBaseSchema = z.object({
   isInProjectContext: z.boolean().optional(),
 });
 
-const ActionGeneratedFileSchema = z.union([
+export const ActionGeneratedFileSchema = z.union([
   // File backed by a Dust FileResource: always a supported content type.
   ActionGeneratedFileBaseSchema.extend({
     contentType: ActionGeneratedFileContentTypeSchema,
@@ -993,6 +993,11 @@ const ActionGeneratedFileSchema = z.union([
     contentType: z.string(),
     fileId: z.null(),
     filePath: z.string(),
+  }),
+  // Legacy FileResource-backed records may have lost their FileResource id.
+  ActionGeneratedFileBaseSchema.extend({
+    contentType: ActionGeneratedFileContentTypeSchema,
+    fileId: z.null(),
   }),
 ]);
 
