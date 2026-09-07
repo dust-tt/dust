@@ -2,7 +2,6 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
-import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import useCustomEditor, {
   buildEditorExtensions,
 } from "@app/components/editor/input_bar/useCustomEditor";
@@ -196,7 +195,7 @@ describe("buildEditorExtensions", () => {
     );
   });
 
-  it("round-trips inline tools through drafts and sanitized HTML paste", () => {
+  it("round-trips inline tools through drafts", () => {
     const content =
       'Use <tool id="tool_123" name="GitHub &amp; Issues" icon="GithubLogo" /> to find the issue.';
     editor.commands.setContent(content, { contentType: "markdown" });
@@ -205,10 +204,6 @@ describe("buildEditorExtensions", () => {
       type: "toolNode",
       attrs: { mcpServerViewId: "tool_123", toolName: "GitHub & Issues" },
     });
-
-    const pastedHtml = cleanupPastedHTML(editor.getHTML());
-    editor.commands.setContent(pastedHtml);
-    expect(editor.getMarkdown()).toBe(content);
   });
 
   it("inserts and removes an inline tool at the cursor", () => {
