@@ -174,48 +174,26 @@ describe("model health counters", () => {
     expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
   });
 
-  it("holds an endpoint it declared degraded until the first probe", async () => {
-    const endpoint = { ...ENDPOINT, modelId: "claude-sonnet-4-6" } as const;
+  it.each([
+    { outcome: "recovery_started", modelId: "claude-sonnet-4-6" },
+    { outcome: "already_degraded", modelId: "claude-opus-4-6" },
+  ] as const)("holds a $outcome endpoint until the workflow's next probe", async ({
+    outcome,
+    modelId,
+  }) => {
+    const endpoint = { ...ENDPOINT, modelId } as const;
     const error = providerError("overloaded_error");
+    const degradedSinceMs = NOW.getTime() - MIN_DEGRADED_DURATION_MS * 0.9;
     vi.mocked(evaluateEndpoint).mockResolvedValue({
-      outcome: "recovery_started",
-      degradedSinceMs: NOW.getTime(),
-    });
-
-    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
-    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
-
-    // Nothing can change before the workflow's first probe, so re-reading the
-    // window until then would only earn a rejected start, from every pod.
-    await recordLLMAttempt({
-      endpoint,
-      outcome: error,
-      now: new Date(NOW.getTime() + MIN_DEGRADED_DURATION_MS - 1),
-    });
-    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
-
-    await recordLLMAttempt({
-      endpoint,
-      outcome: error,
-      now: new Date(NOW.getTime() + MIN_DEGRADED_DURATION_MS),
-    });
-    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
-  });
-
-  it("waits only for the next probe of a workflow another pod started", async () => {
-    const endpoint = { ...ENDPOINT, modelId: "claude-opus-4-6" } as const;
-    const error = providerError("overloaded_error");
-    // Nine minutes into someone else's degradation, so its first probe is a
-    // minute out -- not a full `MIN_DEGRADED_DURATION_MS` from here.
-    const degradedSinceMs = NOW.getTime() - 9 * 60 * 1000;
-    vi.mocked(evaluateEndpoint).mockResolvedValue({
-      outcome: "already_degraded",
+      outcome,
       degradedSinceMs,
     });
 
     await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
     expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
 
+    // Nothing can change before that probe, so re-reading the window until
+    // then would only earn a rejected start, from every pod.
     await recordLLMAttempt({
       endpoint,
       outcome: error,
