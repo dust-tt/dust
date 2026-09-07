@@ -70,7 +70,7 @@ export async function validateExternalUrl(url: string): Promise<string | null> {
     if (family !== 4 && family !== 6) {
       return "URL resolves to an unsupported address family.";
     }
-    if (isPrivateIp(address, family)) {
+    if (_isPrivateIp(address, family)) {
       return "URL resolves to a private or reserved IP address.";
     }
   }
