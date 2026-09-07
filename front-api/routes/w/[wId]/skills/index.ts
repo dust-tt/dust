@@ -236,96 +236,86 @@ app.get(
         );
 
     if (withRelations === "true") {
-      const batchTraceOptions = {
-        tags: { ...traceTags, "skills.count": skills.length },
-      };
-      const usageMap = await tracer.trace(
-        "skills.list.batch_fetch_usage",
-        batchTraceOptions,
-        () => SkillResource.batchFetchUsage(auth, skills)
-      );
-      let messageCountMap: Map<string, number> | null = null;
-      if (withMessageCount) {
-        const countedSkills = skills.filter((skill) => !skill.isSystemSkill);
-        messageCountMap = await tracer.trace(
-          "skills.list.batch_fetch_message_counts",
-          { tags: { ...traceTags, "skills.count": countedSkills.length } },
-          () => SkillResource.batchFetchMessageCounts(auth, countedSkills)
-        );
-      }
-      const editorsMap = await tracer.trace(
-        "skills.list.batch_list_editors",
-        batchTraceOptions,
-        () => SkillResource.batchListEditors(auth, skills)
-      );
-      const editedByUsersMap = await tracer.trace(
-        "skills.list.batch_fetch_edited_by_users",
-        batchTraceOptions,
-        () => SkillResource.batchFetchEditedByUsers(auth, skills)
-      );
-      const childSkillsMap = await tracer.trace(
-        "skills.list.batch_fetch_child_skills",
-        batchTraceOptions,
-        () => SkillResource.batchFetchChildSkills(auth, skills)
-      );
-      const usedBySkillsMap = await tracer.trace(
-        "skills.list.batch_fetch_used_by_skills",
-        batchTraceOptions,
-        () => SkillResource.batchFetchUsedBySkills(auth, skills)
-      );
+      return tracer.trace(
+        "skills.list.with_relations",
+        { tags: { ...traceTags, "skills.count": skills.length } },
+        async () => {
+          const usageMap = await SkillResource.batchFetchUsage(auth, skills);
+          let messageCountMap: Map<string, number> | null = null;
+          if (withMessageCount) {
+            messageCountMap = await SkillResource.batchFetchMessageCounts(
+              auth,
+              skills.filter((skill) => !skill.isSystemSkill)
+            );
+          }
+          const editorsMap = await SkillResource.batchListEditors(auth, skills);
+          const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
+            auth,
+            skills
+          );
+          const childSkillsMap = await SkillResource.batchFetchChildSkills(
+            auth,
+            skills
+          );
+          const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
+            auth,
+            skills
+          );
 
-      const skillsWithRelations = skills.map((sc) => {
-        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
-          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
-          : {};
-        const {
-          instructions,
-          instructionsHtml,
-          tools,
-          ...skillWithoutInstructionsAndTools
-        } = sc.toJSON(auth);
+          const skillsWithRelations = skills.map((sc) => {
+            const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
+              ? { isFavorite: favoriteSkillIds.has(sc.sId) }
+              : {};
+            const {
+              instructions,
+              instructionsHtml,
+              tools,
+              ...skillWithoutInstructionsAndTools
+            } = sc.toJSON(auth);
 
-        const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
-        const editors = editorsMap.get(sc.sId) ?? null;
-        const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
-        const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
-        const usageWithSkills = {
-          ...usage,
-          count: usage.count + usedBySkills.length,
-          skills: usedBySkills,
-        };
+            const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
+            const editors = editorsMap.get(sc.sId) ?? null;
+            const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
+            const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
+            const usageWithSkills = {
+              ...usage,
+              count: usage.count + usedBySkills.length,
+              skills: usedBySkills,
+            };
 
-        return {
-          ...skillWithoutInstructionsAndTools,
-          ...(messageCountMap
-            ? {
-                messageCount: sc.isSystemSkill
-                  ? null
-                  : (messageCountMap.get(sc.sId) ?? 0),
-              }
-            : {}),
-          relations: {
-            usage: usageWithSkills,
-            editors: editors ? editors.map((e) => e.toJSON()) : null,
-            editedByUser: editedByUser ? editedByUser.toJSON() : null,
-            childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
-              (childSkill) => {
-                const {
-                  instructions,
-                  instructionsHtml,
-                  tools,
-                  ...childSkillWithoutInstructionsAndTools
-                } = childSkill.toJSON(auth);
+            return {
+              ...skillWithoutInstructionsAndTools,
+              ...(messageCountMap
+                ? {
+                    messageCount: sc.isSystemSkill
+                      ? null
+                      : (messageCountMap.get(sc.sId) ?? 0),
+                  }
+                : {}),
+              relations: {
+                usage: usageWithSkills,
+                editors: editors ? editors.map((e) => e.toJSON()) : null,
+                editedByUser: editedByUser ? editedByUser.toJSON() : null,
+                childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
+                  (childSkill) => {
+                    const {
+                      instructions,
+                      instructionsHtml,
+                      tools,
+                      ...childSkillWithoutInstructionsAndTools
+                    } = childSkill.toJSON(auth);
 
-                return childSkillWithoutInstructionsAndTools;
-              }
-            ),
-          },
-          ...favoriteState,
-        } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
-      });
+                    return childSkillWithoutInstructionsAndTools;
+                  }
+                ),
+              },
+              ...favoriteState,
+            } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
+          });
 
-      return ctx.json({ skills: skillsWithRelations });
+          return ctx.json({ skills: skillsWithRelations });
+        }
+      );
     }
 
     return ctx.json({
