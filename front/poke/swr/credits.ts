@@ -158,9 +158,10 @@ export function usePokeAwuPoolSummary({
   const fetcherFn: Fetcher<AwuPoolSummaryResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-summary`,
-    fetcherFn,
-    { disabled }
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/awu-pool-summary`,
+    fetcherFn
   );
 
   return {
@@ -180,9 +181,10 @@ export function usePokeAwuPoolCurrentCycle({
   const fetcherFn: Fetcher<AwuPoolCurrentCycleResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-current-cycle`,
-    fetcherFn,
-    { disabled }
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/awu-pool-current-cycle`,
+    fetcherFn
   );
 
   return {
@@ -202,9 +204,10 @@ export function usePokeAwuPoolCycleHistory({
   const fetcherFn: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history`,
-    fetcherFn,
-    { disabled }
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history`,
+    fetcherFn
   );
 
   return {
@@ -225,9 +228,8 @@ export function usePokeTopUpsHistory({
   const fetcherFn: Fetcher<GetAwuTopUpsHistoryResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/top-ups`,
-    fetcherFn,
-    { disabled }
+    disabled ? null : `/api/poke/workspaces/${owner.sId}/credits/top-ups`,
+    fetcherFn
   );
 
   return {
@@ -296,9 +298,11 @@ export function usePokeMembersUsage({
   }
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/members-usage?${params.toString()}`,
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/members-usage?${params.toString()}`,
     fetcherFn,
-    { disabled, revalidateOnFocus: false, keepPreviousData: true }
+    { revalidateOnFocus: false, keepPreviousData: true }
   );
 
   return {
@@ -320,9 +324,11 @@ export function usePokeApiKeysUsage({
   const fetcherFn: Fetcher<GetApiKeysUsageResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/api-keys-usage`,
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/api-keys-usage`,
     fetcherFn,
-    { disabled, revalidateOnFocus: false }
+    { revalidateOnFocus: false }
   );
 
   return {

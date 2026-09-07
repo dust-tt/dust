@@ -433,15 +433,14 @@ export function useFileProcessedContent({
     disabled?: boolean;
   };
 }) {
-  const isDisabled = !fileId || config?.disabled === true;
-  const swrKey = fileId ? getFileProcessedUrl(owner, fileId) : null;
+  const isDisabled = config?.disabled ?? !fileId;
 
   const {
     data: response,
     error,
     mutate,
   } = useSWRWithDefaults(
-    swrKey,
+    isDisabled ? null : getFileProcessedUrl(owner, fileId),
     // Stream fetcher -> don't try to parse the stream.
     // Wait for initial response to trigger swr error handling.
     async (...args) => {
@@ -458,7 +457,7 @@ export function useFileProcessedContent({
 
       return response;
     },
-    { ...config, disabled: isDisabled }
+    config
   );
 
   return {
@@ -535,21 +534,22 @@ export function useFileMetadata({
   const fileMetadataFetcher: Fetcher<FileTypeWithMetadata> = fetcher;
 
   // Include cacheKey in the SWR key if provided to force cache invalidation.
-  const swrKey = fileId
-    ? cacheKey
-      ? `/api/w/${owner.sId}/files/${fileId}/metadata?v=${cacheKey}`
-      : `/api/w/${owner.sId}/files/${fileId}/metadata`
-    : null;
+  const swrKey =
+    !disabled && fileId
+      ? cacheKey
+        ? `/api/w/${owner.sId}/files/${fileId}/metadata?v=${cacheKey}`
+        : `/api/w/${owner.sId}/files/${fileId}/metadata`
+      : null;
 
   const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
     swrKey,
     fileMetadataFetcher,
-    { disabled: disabled || swrKey === null }
+    { disabled: swrKey === null }
   );
 
   return {
     fileMetadata: data,
-    isFileMetadataLoading: !disabled && swrKey !== null && !error && !data,
+    isFileMetadataLoading: swrKey !== null && !error && !data,
     isFileMetadataError: error,
     mutateFileMetadata: mutateRegardlessOfQueryParams,
   };
