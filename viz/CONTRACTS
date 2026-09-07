@@ -1,4 +1,4 @@
-@cc [owner:PopDaph,label:security] allowed-visualization-origins
+@cc [label:security] allowed-visualization-origins
 `ALLOWED_VISUALIZATION_ORIGIN` is the comma-separated list of front origins allowed to embed viz.
 The content page must reject `postMessage` events from any other origin, and in development the
 `frame-ancestors` CSP directive must include these origins. The production `frame-ancestors` list
