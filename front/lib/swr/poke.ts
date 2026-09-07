@@ -7,7 +7,6 @@ import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/met
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetDataSourcePermissionsResponseBody } from "@app/types/api/data_sources/managed_permissions";
 import type { GetPokeCellsResponseType } from "@app/types/api/poke/cells";
 import type {
@@ -25,6 +24,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
+import { isCellRedirectError } from "./workspaces";
 
 export function usePokeCells() {
   const { fetcher } = useFetcher();
@@ -314,7 +314,7 @@ export function usePokeAuthContext(
 ) {
   const { fetcher } = useFetcher();
   const { workspaceId, disabled } = options;
-  const { setCellInfo, cells } = useCellContext();
+  const { setCellInfo } = useCellContext();
 
   const url = workspaceId
     ? `/api/poke/workspaces/${workspaceId}/auth-context`
@@ -326,28 +326,23 @@ export function usePokeAuthContext(
     | GetPokeWorkspaceAuthContextResponseType
   >(url, fetcher, { disabled });
 
-  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
-  const regionRedirect = isRegionRedirectResponse
+  const cellRedirect = isCellRedirectError(error)
     ? error.error.redirect
     : undefined;
-  const isAuthenticated =
-    !isRegionRedirectResponse && !!data?.user && data.isSuperUser;
+  const isAuthenticated = !cellRedirect && !!data?.user && data.isSuperUser;
 
-  // Handle region redirect.
+  // Handle cell redirect.
   useEffect(() => {
-    if (regionRedirect) {
-      setCellInfo(
-        // TODO(single-tenant): fix so that regionRedirect becomes cellRedirect.
-        cells.find((c) => c.region === regionRedirect.region) ?? cells[0]
-      );
+    if (cellRedirect) {
+      setCellInfo(cellRedirect);
       void mutate();
     }
-  }, [regionRedirect, mutate, setCellInfo, cells]);
+  }, [cellRedirect, mutate, setCellInfo]);
 
   return {
-    authContext: isRegionRedirectResponse ? undefined : data,
+    authContext: cellRedirect ? undefined : data,
     isAuthenticated,
-    isAuthContextLoading: isLoading || !!isRegionRedirectResponse,
+    isAuthContextLoading: isLoading || !!cellRedirect,
     authContextError: error,
   };
 }

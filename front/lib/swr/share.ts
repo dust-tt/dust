@@ -5,10 +5,10 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetShareFrameMetadataResponseBody } from "@app/types/api/files/share";
 import { useCallback, useEffect } from "react";
 import type { Fetcher } from "swr";
+import { isCellRedirectError } from "./workspaces";
 
 export function useShareFrameMetadata({
   shareToken,
@@ -18,7 +18,7 @@ export function useShareFrameMetadata({
   const { fetcher } = useFetcher();
   const shareMetadataFetcher: Fetcher<GetShareFrameMetadataResponseBody> =
     fetcher;
-  const { setCellInfo, cells } = useCellContext();
+  const { setCellInfo } = useCellContext();
 
   const swrKey = shareToken ? `/api/share/frame/${shareToken}` : null;
 
@@ -31,27 +31,22 @@ export function useShareFrameMetadata({
     }
   );
 
-  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
-  const regionRedirect = isRegionRedirectResponse
+  const cellRedirect = isCellRedirectError(error)
     ? error.error.redirect
     : undefined;
 
-  // Handle region redirect.
+  // Handle cell redirect.
   useEffect(() => {
-    if (regionRedirect) {
-      setCellInfo(
-        // TODO(single-tenant): fix so that regionRedirect becomes cellRedirect.
-        // Fallback to first cell with a matching region.
-        cells.find((c) => c.region === regionRedirect.region) ?? cells[0]
-      );
+    if (cellRedirect) {
+      setCellInfo(cellRedirect);
       void mutate();
     }
-  }, [regionRedirect, mutate, setCellInfo, cells]);
+  }, [cellRedirect, mutate, setCellInfo]);
 
   return {
-    shareMetadata: isRegionRedirectResponse ? undefined : data,
-    isShareMetadataLoading: isLoading || !!isRegionRedirectResponse,
-    shareMetadataError: isRegionRedirectResponse ? undefined : error,
+    shareMetadata: cellRedirect ? undefined : data,
+    isShareMetadataLoading: isLoading || !!cellRedirect,
+    shareMetadataError: cellRedirect ? undefined : error,
   };
 }
 
