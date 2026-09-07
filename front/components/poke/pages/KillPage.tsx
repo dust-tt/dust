@@ -66,6 +66,16 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
     icon: Fire,
   },
+  pause_model_health_detection: {
+    title: "Model Health Detection",
+    description:
+      "Stop recording model attempts into the health counters, and stop the breach detection they feed.",
+    note:
+      "Sheds the per-attempt Redis write and the recovery workflow starts. Recovery workflows already " +
+      "running are left alone. Takes up to 60s to apply on each pod, as the write path reads the switch " +
+      "from an in-process cache.",
+    icon: AlertCircle,
+  },
   pause_upsert_queue: {
     title: "Upsert Queue",
     description:

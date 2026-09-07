@@ -11,6 +11,7 @@ import {
   modelHealthKey,
   PROVIDER_ERRORS_FIELD,
 } from "@app/lib/api/llm/health/keys";
+import { isModelHealthDetectionPaused } from "@app/lib/api/llm/health/kill_switch";
 import type { LLMAttemptOutcomeTelemetry } from "@app/lib/api/llm/telemetry";
 import { runOnRedisCache } from "@app/lib/api/redis";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
@@ -105,6 +106,12 @@ export async function recordLLMAttempt({
 }): Promise<void> {
   // The noop model is a test fixture, not an endpoint anyone can be degraded on.
   if (endpoint.host === NOOP_HOST) {
+    return;
+  }
+
+  // The operator switch, so this whole path can be taken out during an incident
+  // without shipping a revert.
+  if (isModelHealthDetectionPaused()) {
     return;
   }
 

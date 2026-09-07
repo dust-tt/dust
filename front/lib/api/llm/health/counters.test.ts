@@ -5,6 +5,7 @@ import {
 import { recordLLMAttempt } from "@app/lib/api/llm/health/counters";
 import { evaluateEndpoint } from "@app/lib/api/llm/health/detect";
 import { modelHealthKey } from "@app/lib/api/llm/health/keys";
+import { isModelHealthDetectionPaused } from "@app/lib/api/llm/health/kill_switch";
 import type { LLMAttemptOutcomeTelemetry } from "@app/lib/api/llm/telemetry";
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import { runOnRedisCache } from "@app/lib/api/redis";
@@ -15,6 +16,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // for, so it never reaches Redis.
 vi.mock("@app/lib/api/llm/health/detect", () => ({
   evaluateEndpoint: vi.fn().mockResolvedValue({ outcome: "not_breaching" }),
+}));
+
+// Reads the kill switch out of an in-process cache in production; here it is
+// simply off unless a test says otherwise.
+vi.mock("@app/lib/api/llm/health/kill_switch", () => ({
+  isModelHealthDetectionPaused: vi.fn().mockReturnValue(false),
 }));
 
 const ENDPOINT = {
@@ -260,6 +267,17 @@ describe("model health counters", () => {
       now: NOW,
     });
 
+    expect(evaluateEndpoint).not.toHaveBeenCalled();
+  });
+
+  it("does nothing at all while the kill switch is on", async () => {
+    vi.mocked(isModelHealthDetectionPaused).mockReturnValueOnce(true);
+
+    await record(providerError("server_error"));
+
+    // The point of the switch is to take the whole path out during an incident,
+    // so neither the write nor the detection it triggers may run.
+    expect(runOnRedisCache).not.toHaveBeenCalled();
     expect(evaluateEndpoint).not.toHaveBeenCalled();
   });
 });
