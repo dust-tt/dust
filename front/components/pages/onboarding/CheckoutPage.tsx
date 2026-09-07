@@ -467,9 +467,9 @@ export function CheckoutPage() {
   }
 
   return (
-    <main className="flex h-screen overflow-hidden">
+    <main className="flex min-h-screen flex-col md:h-screen md:flex-row md:overflow-hidden">
       {/* Left pane: order summary + coupon */}
-      <div className="flex w-1/2 flex-col gap-14 overflow-y-auto bg-muted-background p-24">
+      <div className="flex w-full flex-col gap-14 overflow-y-auto bg-muted-background p-6 md:w-1/2 md:p-24">
         <div>
           <Icon visual={DustLogoSquare} size="lg" />
         </div>
@@ -649,15 +649,15 @@ export function CheckoutPage() {
           card_capture (with Stripe iframe): uniform p-24 with no centering so the iframe fills from the top.
           All other phases (spinners): centered. */}
       <div
-        className={`flex w-1/2 flex-col overflow-y-auto bg-white ${
+        className={`flex w-full flex-col overflow-y-auto bg-white md:w-1/2 ${
           phase === "card_capture" && clientSecret
-            ? "p-24"
+            ? "p-6 md:p-24"
             : phase === "payment_review" ||
                 phase === "error" ||
                 phase === "confirming" ||
                 phase === "waiting_for_payment"
-              ? "px-24 pb-24 pt-[296px]"
-              : "items-center justify-center p-24"
+              ? "p-6 md:px-24 md:pb-24 md:pt-[296px]"
+              : "items-center justify-center p-6 md:p-24"
         }`}
       >
         <RightPane
