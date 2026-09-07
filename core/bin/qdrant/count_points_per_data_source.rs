@@ -5,7 +5,7 @@ use csv::Writer;
 use dust::{
     data_sources::{
         data_source::{DataSource, DataSourceConfig},
-        qdrant::{DustQdrantClient, QdrantClients, SHARD_KEY_COUNT},
+        qdrant::{QdrantClients, QdrantTenant, SHARD_KEY_COUNT},
     },
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
@@ -58,7 +58,19 @@ async fn main() -> Result<()> {
             .iter()
             .filter(|row| {
                 let internal_id: String = row.get(2);
-                match DustQdrantClient::shard_key_id_from_internal_id(&internal_id) {
+                let config_json: String = row.get(3);
+                let config: DataSourceConfig = match serde_json::from_str(&config_json) {
+                    Ok(config) => config,
+                    Err(_) => return false,
+                };
+                let tenant = QdrantTenant {
+                    internal_id: &internal_id,
+                    shard_keys: &config.qdrant_config.shard_keys,
+                };
+                match qdrant_clients
+                    .client(config.qdrant_config.cluster)
+                    .shard_key_id(&tenant)
+                {
                     Ok(key_id) => key_id == shard_key_id,
                     Err(_) => false,
                 }
@@ -139,12 +151,7 @@ async fn main() -> Result<()> {
         let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
 
         let (point_count_str, error_str) = match qdrant_client
-            .count_points(
-                &ds.embedder_config(),
-                &ds.internal_id().to_string(),
-                None,
-                false,
-            )
+            .count_points(&ds.embedder_config(), &ds.qdrant_tenant(), None, false)
             .await
         {
             Ok(response) => {

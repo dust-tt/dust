@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use parking_lot::Mutex;
 use qdrant_client::{
@@ -25,6 +25,9 @@ pub enum QdrantCluster {
 }
 
 // See: https://app.notion.com/p/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
+// Key count of the collections created before data sources stored their shard key. A data source
+// without a stored key still hashes into these. Newer collections declare their own count and the
+// data sources created against them carry their key in `QdrantDataSourceConfig::shard_keys`.
 pub const SHARD_KEY_COUNT: u64 = 24;
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[QdrantCluster::Cluster0];
@@ -76,6 +79,27 @@ pub struct QdrantClients {
 pub struct QdrantDataSourceConfig {
     pub cluster: QdrantCluster,
     pub shadow_write_cluster: Option<QdrantCluster>,
+    // Shard key of the data source in each cluster, assigned at creation from the key list of the
+    // cluster's collection. Absent for data sources created before, routed by the legacy hash.
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub shard_keys: HashMap<QdrantCluster, String>,
+}
+
+// What a request needs to know about its data source: the tenant filter value and the shard key.
+pub struct QdrantTenant<'a> {
+    pub internal_id: &'a str,
+    pub shard_keys: &'a HashMap<QdrantCluster, String>,
+}
+
+impl<'a> QdrantTenant<'a> {
+    // A data source known by its internal id only, routed by the legacy hash.
+    pub fn legacy(internal_id: &'a str) -> Self {
+        static EMPTY: OnceLock<HashMap<QdrantCluster, String>> = OnceLock::new();
+        QdrantTenant {
+            internal_id,
+            shard_keys: EMPTY.get_or_init(HashMap::new),
+        }
+    }
 }
 
 impl QdrantClients {
@@ -115,6 +139,7 @@ impl QdrantClients {
                         client: Arc::new(client),
                         cluster: *cluster,
                         use_sharding,
+                        shard_key_names: Arc::new(Mutex::new(HashMap::new())),
                     },
                 ))
             },
@@ -142,6 +167,8 @@ pub struct DustQdrantClient {
     client: Arc<Qdrant>,
     pub cluster: QdrantCluster,
     use_sharding: bool,
+    // Shard keys per collection as Qdrant reports them, read once per process.
+    shard_key_names: Arc<Mutex<HashMap<String, Vec<String>>>>,
 }
 
 impl DustQdrantClient {
@@ -166,31 +193,121 @@ impl DustQdrantClient {
         )
     }
 
-    pub fn shard_key_id_from_internal_id(internal_id: &str) -> Result<u64> {
+    pub fn shard_key_id_from_internal_id(internal_id: &str, key_count: u64) -> Result<u64> {
         // `internal_id` is the hexadecimal representation of a blake3 hash (massive number). We want
         // to get a u64 out of it so we take the first 16 characters which will turn into a fully
-        // random u64. Taking the modulo SHARD_KEY_COUNT will give us a random shard key. 16=2^4 and
+        // random u64. Taking the modulo `key_count` will give us a random shard key. 16=2^4 and
         // 64/4=16 so u64 is represented by 16 hexadecimal characters.
         let h: u64 = u64::from_str_radix(&internal_id[0..16], 16)?;
-        Ok(h % SHARD_KEY_COUNT)
+        Ok(h % key_count)
     }
 
-    pub fn shard_key_name(&self, internal_id: &String) -> Result<String> {
+    fn legacy_shard_key_name(&self, internal_id: &str) -> Result<String> {
         Ok(format!(
             "{}_{}",
             self.shard_key_prefix(),
-            Self::shard_key_id_from_internal_id(internal_id)?
+            Self::shard_key_id_from_internal_id(internal_id, SHARD_KEY_COUNT)?
         ))
     }
 
-    fn shard_key(&self, internal_id: &String) -> Result<shard_key::Key> {
-        Ok(self.shard_key_name(internal_id)?.into())
+    // The stored key for this cluster when the data source has one, the legacy hash otherwise.
+    pub fn shard_key_name(&self, tenant: &QdrantTenant) -> Result<String> {
+        match tenant.shard_keys.get(&self.cluster) {
+            Some(key) => Ok(key.clone()),
+            None => self.legacy_shard_key_name(tenant.internal_id),
+        }
+    }
+
+    pub fn shard_key_id(&self, tenant: &QdrantTenant) -> Result<u64> {
+        let name = self.shard_key_name(tenant)?;
+        let prefix = format!("{}_", self.shard_key_prefix());
+        match name.strip_prefix(&prefix) {
+            Some(id) => Ok(id.parse::<u64>()?),
+            None => Err(anyhow!("Unexpected shard key name {}", name)),
+        }
+    }
+
+    fn shard_key(&self, tenant: &QdrantTenant) -> Result<shard_key::Key> {
+        Ok(self.shard_key_name(tenant)?.into())
+    }
+
+    fn shard_key_names_from_cluster_info(
+        info: &qdrant::CollectionClusterInfoResponse,
+    ) -> Vec<String> {
+        let mut keys = info
+            .local_shards
+            .iter()
+            .filter_map(|s| s.shard_key.as_ref())
+            .chain(
+                info.remote_shards
+                    .iter()
+                    .filter_map(|s| s.shard_key.as_ref()),
+            )
+            .filter_map(|k| match &k.key {
+                Some(shard_key::Key::Keyword(name)) => Some(name.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        keys.sort();
+        keys.dedup();
+        keys
+    }
+
+    // Shard keys of the collection, empty when it has no custom sharding.
+    pub async fn shard_key_names(&self, embedder_config: &EmbedderConfig) -> Result<Vec<String>> {
+        let collection = self.collection_name(embedder_config);
+        if let Some(keys) = self.shard_key_names.lock().get(&collection) {
+            return Ok(keys.clone());
+        }
+        let info = self
+            .client
+            .collection_cluster_info(collection.clone())
+            .await
+            .map_err(|e| anyhow!("Error getting collection cluster info: {}", e))?;
+        let keys = Self::shard_key_names_from_cluster_info(&info);
+        if !keys.is_empty() {
+            self.shard_key_names.lock().insert(collection, keys.clone());
+        }
+        Ok(keys)
+    }
+
+    // The key a new data source gets in this cluster: the collection's keys are counted and the
+    // internal id hashed into them. The layout is read from Qdrant, never configured twice.
+    pub async fn assign_shard_key(
+        &self,
+        embedder_config: &EmbedderConfig,
+        internal_id: &str,
+    ) -> Result<Option<String>> {
+        if !self.use_sharding {
+            return Ok(None);
+        }
+        let collection = self.collection_name(embedder_config);
+        let keys = self.shard_key_names(embedder_config).await?;
+        if keys.is_empty() {
+            return Err(anyhow!(
+                "Collection {} on cluster {} has no shard keys",
+                collection,
+                self.cluster
+            ));
+        }
+        let id = Self::shard_key_id_from_internal_id(internal_id, keys.len() as u64)?;
+        let name = format!("{}_{}", self.shard_key_prefix(), id);
+        if !keys.contains(&name) {
+            return Err(anyhow!(
+                "Collection {} on cluster {} has {} shard keys but none named {}",
+                collection,
+                self.cluster,
+                keys.len(),
+                name
+            ));
+        }
+        Ok(Some(name))
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
     // implementation ensures data separation of our users' data.
     // /!\ Modify with extreme caution.
-    fn apply_tenant_filter(&self, internal_id: &String, filter: &mut qdrant::Filter) -> () {
+    fn apply_tenant_filter(&self, internal_id: &str, filter: &mut qdrant::Filter) -> () {
         filter.must.push(
             qdrant::FieldCondition {
                 key: "data_source_internal_id".to_string(),
@@ -208,19 +325,19 @@ impl DustQdrantClient {
     pub async fn delete_all_points_for_internal_id(
         &self,
         embedder_config: &EmbedderConfig,
-        internal_id: &String,
+        tenant: &QdrantTenant<'_>,
     ) -> Result<()> {
         // Create a default filter and ensure tenant separation to delete all the points
         // associated with the data source.
         let mut filter = qdrant::Filter::default();
-        self.apply_tenant_filter(internal_id, &mut filter);
+        self.apply_tenant_filter(tenant.internal_id, &mut filter);
 
         let mut builder =
             DeletePointsBuilder::new(self.collection_name(embedder_config)).points(filter);
 
         // Only use shard key selector when sharding is enabled
         if self.use_sharding {
-            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+            builder = builder.shard_key_selector(vec![self.shard_key(tenant)?]);
         }
 
         self.client.delete_points(builder).await?;
@@ -241,18 +358,18 @@ impl DustQdrantClient {
     pub async fn delete_points(
         &self,
         embedder_config: &EmbedderConfig,
-        internal_id: &String,
+        tenant: &QdrantTenant<'_>,
         mut filter: qdrant::Filter,
     ) -> Result<qdrant::PointsOperationResponse> {
         // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
-        self.apply_tenant_filter(internal_id, &mut filter);
+        self.apply_tenant_filter(tenant.internal_id, &mut filter);
 
         let mut builder =
             DeletePointsBuilder::new(self.collection_name(embedder_config)).points(filter);
 
         // Only use shard key selector when sharding is enabled
         if self.use_sharding {
-            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+            builder = builder.shard_key_selector(vec![self.shard_key(tenant)?]);
         }
 
         self.client
@@ -264,7 +381,7 @@ impl DustQdrantClient {
     pub async fn scroll(
         &self,
         embedder_config: &EmbedderConfig,
-        internal_id: &String,
+        tenant: &QdrantTenant<'_>,
         filter: Option<qdrant::Filter>,
         limit: Option<u32>,
         offset: Option<qdrant::PointId>,
@@ -272,14 +389,14 @@ impl DustQdrantClient {
     ) -> Result<qdrant::ScrollResponse> {
         // If we don't have a filter create an empty one to ensure tenant separation.
         let mut filter = filter.unwrap_or_default();
-        self.apply_tenant_filter(internal_id, &mut filter);
+        self.apply_tenant_filter(tenant.internal_id, &mut filter);
 
         let mut builder =
             ScrollPointsBuilder::new(self.collection_name(embedder_config)).filter(filter);
 
         // Only use shard key selector when sharding is enabled
         if self.use_sharding {
-            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+            builder = builder.shard_key_selector(vec![self.shard_key(tenant)?]);
         }
 
         if let Some(limit) = limit {
@@ -301,7 +418,7 @@ impl DustQdrantClient {
     pub async fn search_points(
         &self,
         embedder_config: &EmbedderConfig,
-        internal_id: &String,
+        tenant: &QdrantTenant<'_>,
         vector: Vec<f32>,
         filter: Option<qdrant::Filter>,
         limit: u64,
@@ -309,7 +426,7 @@ impl DustQdrantClient {
     ) -> Result<qdrant::SearchResponse> {
         // If we don't have a filter create an empty one to ensure tenant separation.
         let mut filter = filter.unwrap_or_default();
-        self.apply_tenant_filter(internal_id, &mut filter);
+        self.apply_tenant_filter(tenant.internal_id, &mut filter);
 
         let mut builder =
             SearchPointsBuilder::new(self.collection_name(embedder_config), vector, limit)
@@ -317,7 +434,7 @@ impl DustQdrantClient {
 
         // Only use shard key selector when sharding is enabled
         if self.use_sharding {
-            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+            builder = builder.shard_key_selector(vec![self.shard_key(tenant)?]);
         }
 
         if let Some(with_payload) = with_payload {
@@ -333,13 +450,13 @@ impl DustQdrantClient {
     pub async fn count_points(
         &self,
         embedder_config: &EmbedderConfig,
-        internal_id: &String,
+        tenant: &QdrantTenant<'_>,
         filter: Option<qdrant::Filter>,
         exact: bool,
     ) -> Result<qdrant::CountResponse> {
         // If we don't have a filter create an empty one to ensure tenant separation.
         let mut filter = filter.unwrap_or_default();
-        self.apply_tenant_filter(internal_id, &mut filter);
+        self.apply_tenant_filter(tenant.internal_id, &mut filter);
 
         let mut builder = CountPointsBuilder::new(self.collection_name(embedder_config))
             .filter(filter)
@@ -347,7 +464,7 @@ impl DustQdrantClient {
 
         // Only use shard key selector when sharding is enabled
         if self.use_sharding {
-            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+            builder = builder.shard_key_selector(vec![self.shard_key(tenant)?]);
         }
 
         self.client
@@ -359,14 +476,14 @@ impl DustQdrantClient {
     pub async fn upsert_points(
         &self,
         embedder_config: &EmbedderConfig,
-        internal_id: &String,
+        tenant: &QdrantTenant<'_>,
         points: Vec<qdrant::PointStruct>,
     ) -> Result<qdrant::PointsOperationResponse> {
         let mut builder = UpsertPointsBuilder::new(self.collection_name(embedder_config), points);
 
         // Only use shard key selector when sharding is enabled
         if self.use_sharding {
-            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+            builder = builder.shard_key_selector(vec![self.shard_key(tenant)?]);
         }
 
         self.client
@@ -378,12 +495,12 @@ impl DustQdrantClient {
     pub async fn set_payload(
         &self,
         embedder_config: &EmbedderConfig,
-        internal_id: &String,
+        tenant: &QdrantTenant<'_>,
         mut filter: qdrant::Filter,
         payload: Payload,
     ) -> Result<qdrant::PointsOperationResponse> {
         // Inject the `internal_id` to the filter to ensure tenant separation.
-        self.apply_tenant_filter(internal_id, &mut filter);
+        self.apply_tenant_filter(tenant.internal_id, &mut filter);
 
         let mut builder =
             SetPayloadPointsBuilder::new(self.collection_name(embedder_config), payload)
@@ -391,7 +508,7 @@ impl DustQdrantClient {
 
         // Only use shard key selector when sharding is enabled
         if self.use_sharding {
-            builder = builder.shard_key_selector(vec![self.shard_key(internal_id)?]);
+            builder = builder.shard_key_selector(vec![self.shard_key(tenant)?]);
         }
 
         self.client
@@ -409,20 +526,80 @@ impl DustQdrantClient {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_balanced_shard_keys() {
-        let keys = (0..(SHARD_KEY_COUNT * 192))
+    fn hashed_ids(n: u64) -> Vec<String> {
+        (0..n)
             .map(|i| {
                 let mut hasher = blake3::Hasher::new();
                 hasher.update(format!("{}", i).as_bytes());
-                let internal_id = format!("{}", hasher.finalize().to_hex());
-                DustQdrantClient::shard_key_id_from_internal_id(&internal_id).unwrap()
+                format!("{}", hasher.finalize().to_hex())
             })
-            .collect::<Vec<_>>();
-        for i in 0..SHARD_KEY_COUNT {
-            // We test all keys have at least 128 points.
-            let key_count = keys.iter().filter(|&&x| x == i).count();
-            assert!(key_count >= 128);
+            .collect()
+    }
+
+    #[test]
+    fn test_balanced_shard_keys() {
+        for key_count in [SHARD_KEY_COUNT, 3, 1] {
+            let keys = hashed_ids(key_count * 192)
+                .iter()
+                .map(|id| DustQdrantClient::shard_key_id_from_internal_id(id, key_count).unwrap())
+                .collect::<Vec<_>>();
+            for i in 0..key_count {
+                // We test all keys have at least 128 points.
+                let hits = keys.iter().filter(|&&x| x == i).count();
+                assert!(hits >= 128);
+            }
+            assert!(keys.iter().all(|&x| x < key_count));
         }
+    }
+
+    fn local_shard(id: u32, key: Option<&str>) -> qdrant::LocalShardInfo {
+        qdrant::LocalShardInfo {
+            shard_id: id,
+            shard_key: key.map(|k| shard_key::Key::Keyword(k.to_string()).into()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_shard_key_names_from_cluster_info() {
+        let info = qdrant::CollectionClusterInfoResponse {
+            local_shards: vec![local_shard(0, Some("key_1")), local_shard(1, Some("key_0"))],
+            remote_shards: vec![qdrant::RemoteShardInfo {
+                shard_id: 2,
+                shard_key: Some(shard_key::Key::Keyword("key_2".to_string()).into()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        assert_eq!(
+            DustQdrantClient::shard_key_names_from_cluster_info(&info),
+            vec!["key_0", "key_1", "key_2"]
+        );
+
+        let plain = qdrant::CollectionClusterInfoResponse {
+            local_shards: vec![local_shard(0, None)],
+            ..Default::default()
+        };
+        assert!(DustQdrantClient::shard_key_names_from_cluster_info(&plain).is_empty());
+    }
+
+    #[test]
+    fn test_config_without_shard_keys_still_parses() {
+        let config: QdrantDataSourceConfig =
+            serde_json::from_str(r#"{"cluster":"cluster-0","shadow_write_cluster":null}"#).unwrap();
+        assert!(config.shard_keys.is_empty());
+        assert_eq!(
+            serde_json::to_string(&config).unwrap(),
+            r#"{"cluster":"cluster-0","shadow_write_cluster":null}"#
+        );
+
+        let mut with_key = config.clone();
+        with_key
+            .shard_keys
+            .insert(QdrantCluster::Cluster0, "key_2".to_string());
+        let json = serde_json::to_string(&with_key).unwrap();
+        assert!(json.contains(r#""shard_keys":{"cluster-0":"key_2"}"#));
+        let back: QdrantDataSourceConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, with_key);
     }
 }

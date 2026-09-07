@@ -34,6 +34,18 @@ struct Args {
     /// Name of the cluster.
     #[arg(short, long)]
     cluster: QdrantCluster,
+
+    /// Number of shard keys. Data sources hash into them, one key per data source.
+    #[arg(long, default_value_t = SHARD_KEY_COUNT)]
+    shard_key_count: u64,
+
+    /// Number of shards behind each shard key, spread across the nodes.
+    #[arg(long, default_value_t = 2)]
+    shards_per_key: u32,
+
+    /// Number of copies of each shard.
+    #[arg(long, default_value_t = 2)]
+    replication_factor: u32,
 }
 
 async fn create_indexes_for_collection(
@@ -89,11 +101,10 @@ async fn create_indexes_for_collection(
     Ok(())
 }
 
-async fn create_qdrant_collection(
-    cluster: QdrantCluster,
-    provider_id: ProviderID,
-    model_id: SupportedEmbedderModels,
-) -> Result<()> {
+async fn create_qdrant_collection(args: &Args) -> Result<()> {
+    let cluster = args.cluster;
+    let provider_id = args.provider;
+    let model_id = args.model.clone();
     let qdrant_clients = QdrantClients::build().await?;
     let client = qdrant_clients.client(cluster);
     let raw_client = client.raw_client();
@@ -151,8 +162,8 @@ async fn create_qdrant_collection(
     if use_sharding {
         builder = builder
             .sharding_method(qdrant::ShardingMethod::Custom.into())
-            .shard_number(2)
-            .replication_factor(2)
+            .shard_number(args.shards_per_key)
+            .replication_factor(args.replication_factor)
             .write_consistency_factor(1);
     }
 
@@ -172,8 +183,8 @@ async fn create_qdrant_collection(
 
     // Only create shard keys when sharding is enabled
     if use_sharding {
-        // Then, we create the 24 shard_keys.
-        for i in 0..SHARD_KEY_COUNT {
+        // Then, we create the shard keys.
+        for i in 0..args.shard_key_count {
             let shard_key = format!("{}_{}", client.shard_key_prefix(), i);
 
             let operation_result = raw_client
@@ -228,12 +239,10 @@ async fn main() -> Result<(), anyhow::Error> {
         std::process::exit(1);
     }
 
-    create_qdrant_collection(args.cluster, args.provider, args.model)
-        .await
-        .map_err(|e| {
-            eprintln!("Error creating collection: {}", e);
-            e
-        })?;
+    create_qdrant_collection(&args).await.map_err(|e| {
+        eprintln!("Error creating collection: {}", e);
+        e
+    })?;
 
     Ok(())
 }
