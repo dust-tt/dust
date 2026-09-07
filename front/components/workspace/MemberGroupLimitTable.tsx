@@ -25,16 +25,14 @@ export function MemberGroupLimitTable({
         header: "Group",
         accessorFn: (row) => row.name,
         cell: ({ row }) => (
-          <DataTable.CellContent>
-            <span
-              className={
-                row.original.isHighest
-                  ? "font-semibold text-highlight-500"
-                  : undefined
-              }
-            >
-              {row.original.name}
-            </span>
+          <DataTable.CellContent
+            className={
+              row.original.isHighest
+                ? "font-semibold text-highlight-500"
+                : undefined
+            }
+          >
+            {row.original.name}
           </DataTable.CellContent>
         ),
       },
@@ -62,7 +60,7 @@ export function MemberGroupLimitTable({
               isError={message !== null}
               message={message ?? undefined}
               messageStatus={message !== null ? "error" : undefined}
-              suffix="credits/month"
+              suffix="credits/m."
               isUnit
             />
           );
@@ -74,9 +72,10 @@ export function MemberGroupLimitTable({
         accessorFn: (row) => row.memberCount.toString(),
         meta: { headerAlign: "right" },
         cell: ({ row }) => (
-          <span className="block text-right text-sm text-muted-foreground">
-            {row.original.memberCount.toLocaleString()}
-          </span>
+          <DataTable.BasicCellContent
+            label={row.original.memberCount.toLocaleString()}
+            className="justify-end"
+          />
         ),
       },
     ],

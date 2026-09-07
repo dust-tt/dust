@@ -254,6 +254,7 @@ function MemberSpendLimitForm({
           label: "Validate",
           variant: "highlight",
           disabled: isSaving || readOnly,
+          isLoading: isSaving,
           onClick: handleValidate,
         }}
       />
