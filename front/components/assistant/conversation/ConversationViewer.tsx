@@ -766,6 +766,14 @@ export const ConversationViewer = ({
               const exists =
                 virtuosoMessageListRef.current.data.find(predicate);
 
+              // Reattach for a new response, but not when the stream replays it.
+              if (
+                agentMessage.status === "created" &&
+                exists?.sId !== agentMessage.sId
+              ) {
+                isAutoScrollEnabledRef.current = true;
+              }
+
               if (exists) {
                 // Guard against conversation SSE replays overwriting a message
                 // that the message-level SSE has already partially or fully
@@ -1074,6 +1082,7 @@ export const ConversationViewer = ({
     [
       conversation?.forkingData?.forkedFrom?.fileCopyStatus,
       conversationId,
+      isAutoScrollEnabledRef,
       mutateContextUsage,
       mutateConversation,
       mutateConversationAttachments,
