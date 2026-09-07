@@ -42,7 +42,7 @@ type ActiveUsersAggregations = {
  * Throws on failed, timed-out, or incomplete searches so Stripe is never updated
  * with a partial count.
  */
-export async function countActiveUsersForPeriodInWorkspace({
+async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,
   since,
   to,
