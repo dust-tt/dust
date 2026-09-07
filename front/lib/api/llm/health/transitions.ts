@@ -1,7 +1,7 @@
+import { healthLogger } from "@app/lib/api/llm/health/logger";
 import type { ModelHealthWindowType } from "@app/lib/api/llm/health/types";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
 import { statsDMetrics } from "@app/lib/utils/statsd";
-import logger from "@app/logger/logger";
 
 export type ModelHealthTransitionType =
   | "degraded"
@@ -26,7 +26,7 @@ export function logModelHealthTransition({
 }): void {
   const { modelId, providerId, host } = endpoint;
 
-  logger.info(
+  healthLogger.info(
     {
       modelId,
       providerId,

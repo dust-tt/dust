@@ -1,6 +1,6 @@
+import { healthLogger } from "@app/lib/api/llm/health/logger";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
-import logger from "@app/logger/logger";
 import {
   QUEUE_NAME,
   recoveryWorkflowId,
@@ -47,7 +47,7 @@ async function describeDegradedSinceMs(
 
     return description.startTime.getTime();
   } catch (err) {
-    logger.error(
+    healthLogger.error(
       { err: normalizeError(err), workflowId },
       "Failed to read the model health recovery workflow start time"
     );
