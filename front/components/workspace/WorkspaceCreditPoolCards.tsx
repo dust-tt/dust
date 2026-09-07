@@ -334,18 +334,11 @@ export function CreditPoolCardsFromCycleData({
   );
 }
 
-interface CompactCreditPoolCardsProps {
+interface CreditPoolCardsProps {
   owner: LightWorkspaceType;
   disabled: boolean;
 }
-
-// Credit consumption cards for the compact usage page, mirroring Poke's
-// read-only pool view (front/components/poke/pages/PoolUsagePage.tsx) but
-// backed by the customer-facing awu-pool-current-cycle/cycle-history routes.
-export function CompactCreditPoolCards({
-  owner,
-  disabled,
-}: CompactCreditPoolCardsProps) {
+export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,

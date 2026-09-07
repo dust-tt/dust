@@ -26,7 +26,7 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
-import { CompactCreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
+import { CreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -1253,10 +1253,7 @@ export function UsagePage() {
 
           {isCompactUsagePage && isCreditPriced ? (
             <div className="flex flex-col items-stretch gap-4">
-              <CompactCreditPoolCards
-                owner={owner}
-                disabled={!isCreditPriced}
-              />
+              <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
               {usageSettings.topUpEnabled && (
                 <div className="flex justify-end">{topUpButton}</div>
               )}
