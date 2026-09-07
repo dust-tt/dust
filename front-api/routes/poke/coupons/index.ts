@@ -1,7 +1,4 @@
-import {
-  canCreateCoupon,
-  createCouponAndPushToOtherRegion,
-} from "@app/lib/api/poke/coupons";
+import { canCreateCoupon, createCoupon } from "@app/lib/api/poke/coupons";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponDiscountType } from "@app/types/coupon";
 import { CreateCouponBodySchema } from "@app/types/coupon";
@@ -71,7 +68,7 @@ app.post(
       });
     }
 
-    const result = await createCouponAndPushToOtherRegion(auth, body);
+    const result = await createCoupon(auth, body);
     if (result.isErr()) {
       switch (result.error.type) {
         case "coupon_already_exists":
