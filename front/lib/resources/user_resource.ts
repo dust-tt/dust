@@ -151,11 +151,15 @@ export class UserResource extends BaseResource<UserModel> {
     return userResource;
   }
 
-  static async fetchByIds(userIds: string[]): Promise<UserResource[]> {
+  static async fetchByIds(
+    userIds: string[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[]> {
     const users = await UserModel.findAll({
       where: {
         sId: userIds,
       },
+      transaction,
     });
 
     return users.map((user) => new UserResource(UserModel, user.get()));

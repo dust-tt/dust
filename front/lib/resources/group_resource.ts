@@ -1553,7 +1553,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const users = await UserResource.fetchByModelIds(
-      memberships.map((m) => m.userId)
+      memberships.map((m) => m.userId),
+      { transaction }
     );
 
     const { memberships: workspaceMemberships } =
@@ -1671,7 +1672,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userIds = users.map((u) => u.sId);
-    const userResources = await UserResource.fetchByIds(userIds);
+    const userResources = await UserResource.fetchByIds(userIds, {
+      transaction,
+    });
 
     if (userResources.length !== userIds.length) {
       return new Err(
@@ -1686,6 +1689,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await MembershipResource.getActiveMemberships({
         users: userResources,
         workspace: owner,
+        transaction,
       });
 
     if (
@@ -1814,7 +1818,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userIds = users.map((u) => u.sId);
-    const userResources = await UserResource.fetchByIds(userIds);
+    const userResources = await UserResource.fetchByIds(userIds, {
+      transaction,
+    });
     if (userResources.length !== userIds.length) {
       return new Err(
         new DustError(
