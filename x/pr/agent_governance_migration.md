@@ -118,8 +118,19 @@ time, behind one operational switch with a single kill-switch fallback to legacy
 
 ### PR 13: Remove legacy reads and rollout infrastructure
 
-Remove all legacy read fallbacks and shadow comparisons. Remove `group_permissions_shadow`,
-`use_legacy_acls`, and shared migration helpers once no other resource migration uses them.
+After PR 12's observation gate, remove all legacy read fallbacks and agent shadowing introduced by
+PRs 11a–11c: editor-list, permission, editable-agent, usage-filter, and list/manage/archive comparisons.
+Remove shadow wrappers and update every direct and indirect caller to use the permanent grant-backed
+path. Delete comparison-only normalization helpers, types, logging, tests, and migration TODOs; retain
+resource methods and regression tests needed by the final behavior.
+
+Remove `shadowCompare` and its module/tests, `group_permissions_shadow`, `use_legacy_acls`, and shared
+migration helpers once no other resource migration uses them. If shared cleanup must wait, track it
+explicitly in the last dependent migration; disabling a flag is not a substitute for deleting code.
+
+**Completion check:** search definitions, imports, and call sites across `front`, `front-api`, and the
+SDK to verify that no agent shadow path remains, including through wrappers. Verify that no callers
+remain before deleting shared utilities and flag/kill-switch declarations.
 
 ### PR 14: Stop all legacy agent-editor writes
 
