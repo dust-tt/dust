@@ -1,5 +1,5 @@
 import { useConversationAutoScroll } from "@app/components/assistant/conversation/useConversationAutoScroll";
-import { act, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const resizeCallbacks: Array<(entries: ResizeObserverEntry[]) => void> = [];
@@ -15,17 +15,6 @@ beforeEach(() => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    }
-  );
-  vi.stubGlobal(
-    "DOMMatrixReadOnly",
-    class {
-      m42: number;
-      constructor(transform: string) {
-        this.m42 = Number(
-          transform.match(/translateY\(([-\d.]+)px\)/)?.[1] ?? 0
-        );
-      }
     }
   );
 });
@@ -102,7 +91,6 @@ function setup(isMobile = false) {
   measureRow(scroller.scrollTop);
   return {
     ...hook,
-    content,
     methods,
     scroller,
     wheel: (deltaY: number) => {
@@ -226,25 +214,4 @@ describe.each([
     expect(result.current.current).toBe(false);
     expect(methods.cancelSmoothScroll).toHaveBeenCalledOnce();
   });
-});
-
-it("cancels iOS transforms and the delayed scroll adjustment without moving a touch gesture", async () => {
-  const { content, scroller, touch, scroll, resize } = setup(true);
-  touch("touchstart", 300);
-  touch("touchmove", 390);
-  scroll(1110);
-
-  await act(async () => {
-    content.style.transform = "translateY(-72px)";
-    resize(2072);
-  });
-  expect(scroller.scrollTop).toBe(1110);
-  expect(content.style.translate).toBe("0px 72px");
-
-  await act(async () => {
-    scroller.scrollTop += 72;
-    content.style.transform = "translateY(0px)";
-  });
-  expect(scroller.scrollTop).toBe(1110);
-  expect(content.style.translate).toBe("0px 0px");
 });

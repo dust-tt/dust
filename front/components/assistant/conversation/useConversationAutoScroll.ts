@@ -51,10 +51,6 @@ export function useConversationAutoScroll({
     let previousItemCount = methods.data.get().length;
     let direction: "up" | "down" | null = null;
     let lastTouchY: number | null = null;
-    let contentElement: HTMLElement | null = null;
-    let previousTranslation = 0;
-    let translationItemCount = previousItemCount;
-    let isChangingItemCount = false;
 
     const reattachAtBottom = () => {
       const viewportHeight = isMobile
@@ -68,7 +64,6 @@ export function useConversationAutoScroll({
       if (
         !isAutoScrollEnabledRef.current &&
         direction === "down" &&
-        previousTranslation === 0 &&
         bottomOffset <= BOTTOM_THRESHOLD_PX
       ) {
         isAutoScrollEnabledRef.current = true;
@@ -81,52 +76,6 @@ export function useConversationAutoScroll({
       }
     };
 
-    // On iOS, Virtuoso defers its scrollTop compensation with a transform
-    // until scrolling stops. Cancel that visual displacement without writing
-    // scrollTop during the touch gesture, which would interrupt momentum.
-    const syncTranslation = () => {
-      if (!isMobile || !contentElement) {
-        return;
-      }
-      const translation = new DOMMatrixReadOnly(contentElement.style.transform)
-        .m42;
-      const itemCount = methods.data.get().length;
-      if (itemCount !== translationItemCount) {
-        isChangingItemCount = true;
-        translationItemCount = itemCount;
-      }
-      // Prepending history also uses a transform, but that movement anchors
-      // the existing messages and must be kept.
-      if (isChangingItemCount) {
-        previousTranslation = 0;
-        isChangingItemCount = translation !== 0;
-        if (contentElement.style.translate) {
-          contentElement.style.translate = "";
-        }
-        return;
-      }
-      // While detached, undo Virtuoso's shifts to keep the text in place.
-      if (!isAutoScrollEnabledRef.current) {
-        if (translation === 0 && previousTranslation !== 0) {
-          const maxScrollTop = scrollElement.scrollHeight - window.innerHeight;
-          const compensation = Math.max(
-            -previousScrollTop,
-            Math.min(-previousTranslation, maxScrollTop - previousScrollTop)
-          );
-          scrollElement.scrollTop -= compensation;
-          previousScrollTop = scrollElement.scrollTop;
-        }
-        const translate = `0px ${-translation}px`;
-        if (contentElement.style.translate !== translate) {
-          contentElement.style.translate = translate;
-        }
-      } else if (contentElement.style.translate) {
-        contentElement.style.translate = "";
-      }
-      previousTranslation = translation;
-      reattachAtBottom();
-    };
-
     const detach = () => {
       if (isAutoScrollEnabledRef.current) {
         isAutoScrollEnabledRef.current = false;
@@ -137,7 +86,6 @@ export function useConversationAutoScroll({
     };
 
     const onScroll = () => {
-      syncTranslation();
       const scrollTopDelta = scrollElement.scrollTop - previousScrollTop;
       const scrollHeightDelta =
         scrollElement.scrollHeight - previousScrollHeight;
@@ -241,19 +189,13 @@ export function useConversationAutoScroll({
       previousScrollTop = scrollElement.scrollTop;
       previousItemCount = methods.data.get().length;
     });
-    const translationObserver = new MutationObserver(syncTranslation);
     const observeContent = () => {
       resizeObserver.disconnect();
       beforeResizeObserver?.disconnect();
-      translationObserver.disconnect();
-      contentElement = listElement.querySelector(
+      const contentElement = listElement.querySelector(
         '[data-testid="virtuoso-list"]'
       );
       if (contentElement) {
-        translationObserver.observe(contentElement, {
-          attributes: true,
-          attributeFilter: ["style"],
-        });
         mutationObserver.observe(contentElement, { childList: true });
         for (const row of contentElement.children) {
           beforeResizeObserver?.observe(row);
@@ -274,10 +216,6 @@ export function useConversationAutoScroll({
       beforeResizeObserver?.disconnect();
       beforeResizeRef.current = null;
       mutationObserver.disconnect();
-      translationObserver.disconnect();
-      if (contentElement) {
-        contentElement.style.translate = "";
-      }
       scrollTarget.removeEventListener("scroll", onScroll);
       listElement.removeEventListener("wheel", onWheel);
       listElement.removeEventListener("touchstart", onTouchStart);
