@@ -2342,10 +2342,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  /**
-   * @cc [owner:aubin-tchoi,label:performance] select-requested-agent-attributes
-   * `listActiveAgents` selects only the agent attributes requested by its caller.
-   */
   private async listActiveAgents<
     K extends keyof Attributes<AgentConfigurationModel>,
   >(
@@ -2791,10 +2787,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * Batch version of listActiveAgents, returns active agents grouped by skill sId.
-   */
-  /**
-   * @cc [owner:aubin-tchoi,label:performance] select-usage-agent-attributes
-   * `batchListActiveAgents` selects only agent identifiers and usage display fields.
    */
   private static async batchListActiveAgents(
     auth: Authenticator,
