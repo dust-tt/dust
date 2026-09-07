@@ -34,7 +34,8 @@ export type PublishSandboxFunctionResult = {
  * SandboxFunctionResource is upserted on (space, slug): re-publish swaps the bundle, otherwise a new
  * row is created. `slug` here is the caller's bare function name; the stored slug prefixes it with
  * the app folder the source lives in (see deriveSandboxFunctionSlug), so the upsert is scoped to one
- * app rather than the whole pod. Returns a domain Result, no HTTP shapes (BACK18).
+ * app rather than the whole pod. Returns a domain Result, no HTTP shapes
+ * (transport-independent-business-results).
  */
 export async function publishSandboxFunction(
   auth: Authenticator,

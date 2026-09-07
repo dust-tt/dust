@@ -571,7 +571,7 @@ export function ConversationMenu({
                         isRounded
                       />
                     }
-                    // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
+                    // biome-ignore lint/plugin/noCssImportant: legacy [no-css-important]
                     className="text-foreground!"
                   />
                 ))}

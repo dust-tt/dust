@@ -1,7 +1,7 @@
 // Editing this file edits both the v1 (public API) and private SSE
 // MCP-requests handlers — the private mirror under
 // `front-api/routes/sse/w/[wId]/mcp/requests.ts` imports `streamMcpRequests`
-// from here. Public-API stability rules ([BACK12]) apply.
+// from here. Public-API stability rules ([api-backward-compatibility]) apply.
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";

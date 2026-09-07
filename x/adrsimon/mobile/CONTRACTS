@@ -1,19 +1,12 @@
-# [mobile] Coding Rules
-
-## GENERAL
-
-### [GEN1] Consistently bad is better than inconsistently good
-
+@cc [owner:spolu,label:coding] reuse-mobile-patterns
 Favor re-using existing patterns (with broad refactors if necessary) over introducing new ones
 sporadically. Match the conventions already established in the codebase.
 
-### [GEN2] Simple but good is better than perfect but complex
-
+@cc [owner:spolu,label:coding] prefer-simple-mobile-solutions
 Favor simple and easy to understand approaches vs overly optimized but complex ones.
 
-## SWIFT
-
-### [SWIFT1] Never use force unwrap (`!`) or force cast (`as!`)
+@cc [owner:spolu,label:swift] no-force-unwrap-or-cast
+Never use force unwraps (`!`) or force casts (`as!`).
 
 Force unwraps and force casts crash at runtime. Instead:
 
@@ -31,7 +24,8 @@ guard let name = user.firstName else { return }
 guard let scene = connectedScenes.first as? UIWindowScene else { return }
 ```
 
-### [SWIFT2] Never use `try!` or `try?` silently
+@cc [owner:spolu,label:swift] no-silent-try-failures
+Never use `try!` or silently discard errors with `try?`.
 
 `try!` crashes on failure. `try?` silently discards the error. Instead:
 
@@ -53,8 +47,7 @@ do {
 }
 ```
 
-### [SWIFT3] No magic values
-
+@cc [owner:spolu,label:swift] named-domain-values
 Don't scatter raw literals (strings, numbers, etc.) across the code when they carry domain meaning
 or appear in multiple places. Extract them into named constants, enums, or defaulted properties.
 
@@ -73,8 +66,7 @@ struct TokenRefreshRequest: Encodable {
 }
 ```
 
-### [SWIFT4] Use `Encodable`/`Decodable` over `[String: Any]`
-
+@cc [owner:spolu,label:swift] typed-json-serialization
 Never use `[String: Any]` for JSON serialization. Define typed structs conforming to `Codable`
 and use `JSONEncoder`/`JSONDecoder`. This ensures compile-time safety and eliminates key typos.
 
@@ -91,8 +83,7 @@ struct TokenExchangeRequest: Encodable {
 request.httpBody = try encoder.encode(TokenExchangeRequest(code: code, codeVerifier: verifier))
 ```
 
-### [SWIFT5] Check Security framework return values
-
+@cc [owner:spolu,label:swift] check-security-framework-results
 `SecRandomCopyBytes`, `SecItemAdd`, `SecItemDelete`, and similar Security framework functions
 return `OSStatus`. Always check the return value — never discard it with `_ =`.
 
@@ -107,10 +98,7 @@ guard status == errSecSuccess else {
 }
 ```
 
-## ARCHITECTURE
-
-### [ARCH1] Views receive data and closures, not view models
-
+@cc [owner:spolu,label:architecture] views-receive-values-and-closures
 Leaf views (views that don't own navigation) should receive data as plain values and actions as
 closures. Only container/root views should hold `@EnvironmentObject` or `@StateObject`
 references. This makes views testable, previewable, and decoupled from specific dependencies.
@@ -128,8 +116,7 @@ struct ProfileView: View {
 }
 ```
 
-### [ARCH2] Respect abstraction layers
-
+@cc [owner:spolu,label:architecture] view-models-use-service-interfaces
 ViewModels should go through service interfaces, not reach into lower layers directly.
 If `AuthService` wraps `KeychainService`, callers should use `AuthService` — never import
 `KeychainService` from a ViewModel.
@@ -142,8 +129,7 @@ let token = KeychainService.load(.accessToken)
 let token = AuthService.loadTokens()?.accessToken
 ```
 
-### [ARCH3] No dead code or no-op branches
-
+@cc [owner:spolu,label:architecture] no-dead-code
 Do not leave empty `if` blocks, commented-out logic, or branches that don't affect control flow.
 Either implement the intended behavior or remove the branch entirely.
 
@@ -161,23 +147,18 @@ if !AuthService.isTokenExpired() {
 }
 ```
 
-## CONCURRENCY
-
-### [CONC1] Never call `DispatchQueue.main.sync` from the main thread
+@cc [owner:spolu,label:concurrency] no-main-thread-sync-dispatch
+Never call `DispatchQueue.main.sync` from the main thread.
 
 This deadlocks. If you need to assert you're on the main thread, use `MainActor.assumeIsolated`.
 If you need to dispatch to main from a background thread, use `DispatchQueue.main.async` or
 `@MainActor`.
 
-### [CONC2] Clean up retained resources on all exit paths
-
+@cc [owner:spolu,label:concurrency] release-retained-resources-on-exit
 Objects like `ASWebAuthenticationSession` that are retained by the view model must be nil'd out
 on every terminal path (success, error, and cancellation) — not just the happy path.
 
-## LOGGING
-
-### [LOG1] Use `os.Logger` for all logging
-
+@cc [owner:spolu,label:logging] use-os-logger
 Do not use `print()` or `debugPrint()`. Use `os.Logger` with the app subsystem and an
 appropriate category. This ensures logs are filterable in Console.app and structured for
 production diagnostics.

@@ -23,7 +23,7 @@ export type ConversationEventsOptions = {
 
 // Shared orchestration for both the v1 (public API) and private SSE
 // conversation-events routes; each supplies its own `transformEvent`. Public-API
-// stability rules ([BACK12]) apply to whatever the v1 caller emits.
+// stability rules ([api-backward-compatibility]) apply to whatever the v1 caller emits.
 export async function streamConversationEventsForRoute(
   ctx: Context,
   auth: Authenticator,

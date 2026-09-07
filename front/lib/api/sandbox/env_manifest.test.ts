@@ -276,7 +276,7 @@ describe("sandbox environment manifest", () => {
     // placeholderNonce, but the builder still defends against that DB
     // corruption case. Simulate it by overriding the instance attribute and
     // stubbing the resource list lookup, rather than reaching into the
-    // Sequelize model from the test ([TEST5]).
+    // Sequelize model from the test ([tests-use-resources]).
     Object.defineProperty(secretResult.value, "placeholderNonce", {
       value: null,
       configurable: true,

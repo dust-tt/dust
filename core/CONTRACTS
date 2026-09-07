@@ -1,9 +1,4 @@
-# [dust-sandbox] Coding Rules
-
-## RUST
-
-### [RUST1] Never use `unwrap`
-
+@cc [owner:spolu,label:rust] never-use-unwrap
 The use of `unwrap()` is prohibited in the codebase as it can cause runtime panics and hard to debug errors. Instead:
 
 - Use the `?` operator to propagate errors
@@ -22,15 +17,3 @@ let value = match some_option {
     None => Err(anyhow!("failed to get value"))?,
 };
 ```
-
-## TEST
-
-### [TEST1] Tests live inline
-
-Tests go in the same file as the code they test, using `#[cfg(test)] mod tests`.
-
-## CLI
-
-### [CLI1] One command per file
-
-Each CLI subcommand lives in its own file under `src/commands/`. Re-export the handler from `commands/mod.rs`.

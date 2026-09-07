@@ -1,24 +1,4 @@
-@CODING_RULES.md
-
-@AGENTS.local.md
-
-# Code Contracts
-
-Use the `code-contracts` skill for every code change and code review. Follow its contract discovery,
-writing, and enforcement procedures before submitting commits or pull requests.
-
-This code-base pre-existed code contracts and thefore can lack important contracts. When making, as
-part of a code change, an important assumptions about a component's or function's behavior that is
-not covered by an existing code contract, create a new code contract for that component and check
-that existing callers comply to the new contract.
-
-**Well-known labels:**
-
-- `coding`: general coding rules enforced at the repository or directory level, generally in
-  CONTRACTS files.
-- `product`: product and business logic related contracts.
-- `security`: contracts on which our security rely, whose enforcement is critical.
-- `performance`: performance and reliability related contracts.
+@CODE-CONTRACTS.md
 
 # Storybook MCP (Sparkle design system)
 
@@ -61,3 +41,5 @@ sign-in page. Enter the email, continue, then enter the password.
 `front-spa` is a Vite SPA: every path returns HTTP 200 with the same HTML shell.
 `curl` status codes cannot tell you whether a client route exists. `/login` falls through
 to the React catch-all and renders a 404 page. Do not type `/login` in the address bar.
+
+@AGENTS.local.md

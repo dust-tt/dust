@@ -3,7 +3,7 @@ language js
 
 // Disallows `!important` in CSS produced from JS/TS (CSS-in-JS, template
 // literals, inline style strings) and Tailwind v4's `!` important-suffix
-// utilities (e.g. `text-foreground!`, `mt-0!`). See CODING_RULES.md [GEN12].
+// utilities (e.g. `text-foreground!`, `mt-0!`). See CONTRACTS [no-css-important].
 // Narrow exceptions for third-party library overrides and dev tooling are
 // scoped via biome.json overrides.
 //
@@ -21,7 +21,7 @@ pattern css_important_string() {
 css_important_string() as $val where {
     register_diagnostic(
         span = $val,
-        message = "Avoid `!important` in CSS (CODING_RULES.md [GEN12]). Fix the specificity issue instead. Narrow exceptions (third-party overrides, dev tooling) require a justifying comment and a biome.json scoping override.",
+        message = "Avoid `!important` in CSS (CONTRACTS [no-css-important]). Fix the specificity issue instead. Narrow exceptions (third-party overrides, dev tooling) require a justifying comment and a biome.json scoping override.",
         severity = "error"
     )
 }

@@ -1,6 +1,6 @@
 # dust-hive Development Context
 
-Follow all rules in **CODING_RULES.md** before making changes.
+@../../../CODE-CONTRACTS.md
 
 ## Development Workflow
 
