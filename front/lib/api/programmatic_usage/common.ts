@@ -1,5 +1,12 @@
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
+import { isFreeOrigin } from "@app/lib/credits/agent_message_billing";
+import {
+  USAGE_TYPE_FREE,
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
+} from "@app/lib/metronome/constants";
+import type { UsageType } from "@app/lib/metronome/types";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { estypes } from "@elastic/elasticsearch";
@@ -68,6 +75,43 @@ export function isProgrammaticUsageFromContext({
     authMethod === "api_key" ||
     USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
   );
+}
+
+export function getUsageType(
+  isProgrammaticUsage: boolean,
+  origin: UserMessageOrigin
+): UsageType {
+  if (isFreeOrigin(origin)) {
+    return USAGE_TYPE_FREE;
+  }
+  return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
+}
+
+const PROGRAMMATIC_FALLBACK_ORIGINS: ReadonlySet<UserMessageOrigin> =
+  new Set<UserMessageOrigin>(["slack"]);
+
+// For user_usage with no user check if we need to fallback to programmatic.
+export function resolveUsageTypeForAttribution(
+  usageType: UsageType,
+  {
+    userId,
+    origin,
+    authMethod,
+  }: {
+    userId: string | null;
+    origin: UserMessageOrigin;
+    authMethod: string | null;
+  }
+): UsageType {
+  if (
+    usageType === USAGE_TYPE_USER &&
+    !userId &&
+    authMethod === "system_api_key" &&
+    PROGRAMMATIC_FALLBACK_ORIGINS.has(origin)
+  ) {
+    return USAGE_TYPE_PROGRAMMATIC;
+  }
+  return usageType;
 }
 
 // Markup multiplier to convert raw ES costs to costs with Dust markup.

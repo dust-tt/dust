@@ -1,18 +1,17 @@
 import { reconcileApiKey } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import {
+  getUsageType,
+  resolveUsageTypeForAttribution,
+} from "@app/lib/api/programmatic_usage/common";
+import {
   isProgrammaticUsage,
   trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
-import {
-  buildUsageEvents,
-  computeRunKey,
-  getUsageType,
-  resolveUsageTypeForAttribution,
-} from "@app/lib/metronome/events";
+import { buildUsageEvents, computeRunKey } from "@app/lib/metronome/events";
 import {
   AgentMessageModel,
   MessageModel,
@@ -352,7 +351,7 @@ export async function emitMetronomeUsageEventsActivity(
   const messageStatus = agentMessage.status ?? "unknown";
   const usageType = resolveUsageTypeForAttribution(
     getUsageType(programmatic, userMessageOrigin),
-    { userId, origin: userMessageOrigin }
+    { userId, origin: userMessageOrigin, authMethod }
   );
 
   // Attribute usage to the parent (triggering) agent only for *hidden helper*

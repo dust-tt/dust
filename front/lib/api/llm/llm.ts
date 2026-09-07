@@ -40,12 +40,14 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
-import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
+import {
+  getUsageType,
+  isProgrammaticUsageFromContext,
+} from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
-import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
 import type { Host } from "@app/lib/model_constructors/types/hosts";
 import type { RunUsageType } from "@app/lib/resources/run_resource";

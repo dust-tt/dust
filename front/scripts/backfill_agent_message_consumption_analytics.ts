@@ -21,9 +21,12 @@ import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
   withEs,
 } from "@app/lib/api/elasticsearch";
-import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
+import {
+  getUsageType,
+  isProgrammaticUsageFromContext,
+  resolveUsageTypeForAttribution,
+} from "@app/lib/api/programmatic_usage/common";
 import { Authenticator } from "@app/lib/auth";
-import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
 import {
   AgentMessageModel,
@@ -35,6 +38,7 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -153,6 +157,7 @@ async function listAgentMessageRefs({
         as: "userMessage",
         attributes: ["userContextAuthMethod", "userContextOrigin"],
         required: true,
+        include: [{ model: UserModel, required: false }],
       },
     ],
   });
@@ -179,12 +184,19 @@ async function listAgentMessageRefs({
         agentMessageId: message.sId,
         conversationId: conversation.sId,
       },
-      usageType: getUsageType(
-        isProgrammaticUsageFromContext({
+      usageType: resolveUsageTypeForAttribution(
+        getUsageType(
+          isProgrammaticUsageFromContext({
+            authMethod: triggeringUserMessage.userContextAuthMethod,
+            userMessageOrigin: origin,
+          }),
+          origin
+        ),
+        {
+          userId: triggeringUserMessage.user?.sId ?? null,
+          origin,
           authMethod: triggeringUserMessage.userContextAuthMethod,
-          userMessageOrigin: origin,
-        }),
-        origin
+        }
       ),
     };
   });

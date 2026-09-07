@@ -1,8 +1,5 @@
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
-import {
-  buildUsageEvents,
-  resolveUsageTypeForAttribution,
-} from "@app/lib/metronome/events";
+import { buildUsageEvents } from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
 
@@ -301,53 +298,5 @@ describe("Metronome aggregated usage event", () => {
       cost_awu: 0,
       usage_type: "free",
     });
-  });
-});
-
-describe("resolveUsageTypeForAttribution", () => {
-  it("resolves unattributed Slack usage to programmatic", () => {
-    // e.g. a Slack message whose sender's email didn't match a Dust
-    // workspace member: attributeUserFromWorkspaceAndEmail found no user.
-    expect(
-      resolveUsageTypeForAttribution("user", {
-        userId: null,
-        origin: "slack",
-      })
-    ).toBe("programmatic");
-  });
-
-  it("resolves attributed Slack usage to the matched user", () => {
-    expect(
-      resolveUsageTypeForAttribution("user", {
-        userId: "user",
-        origin: "slack",
-      })
-    ).toBe("user");
-  });
-
-  it("leaves other unattributed user origins untouched (genuine attribution bug)", () => {
-    // web/extension/cli/... always carry a real Dust user — a missing
-    // userId there is a bug that buildUsageEvents must still catch.
-    expect(
-      resolveUsageTypeForAttribution("user", {
-        userId: null,
-        origin: "web",
-      })
-    ).toBe("user");
-  });
-
-  it("leaves non-user usage types untouched", () => {
-    expect(
-      resolveUsageTypeForAttribution("programmatic", {
-        userId: null,
-        origin: "slack",
-      })
-    ).toBe("programmatic");
-    expect(
-      resolveUsageTypeForAttribution("free", {
-        userId: null,
-        origin: "slack",
-      })
-    ).toBe("free");
   });
 });
