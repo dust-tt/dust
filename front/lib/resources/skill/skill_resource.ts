@@ -132,6 +132,11 @@ type SkillReferenceTarget = {
   status: SkillStatus;
 };
 
+type AgentUsageAttributes = Pick<
+  Attributes<AgentConfigurationModel>,
+  "id" | "sId" | "name" | "pictureUrl" | "requestedSpaceIds"
+>;
+
 type ReplaceSkillReferenceTagsOptions = {
   html?: boolean;
 };
@@ -2339,10 +2344,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private async listActiveAgents(
     auth: Authenticator
-  ): Promise<AgentConfigurationModel[]> {
+  ): Promise<AgentUsageAttributes[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
+      attributes: ["agentConfigurationId"],
       where: {
         ...this.skillReference,
         workspaceId: workspace.id,
@@ -2356,6 +2362,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
 
     return AgentConfigurationModel.findAll({
+      attributes: ["id", "sId", "name", "pictureUrl", "requestedSpaceIds"],
       where: {
         id: { [Op.in]: agentConfigIds },
         workspaceId: workspace.id,
@@ -2416,7 +2423,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     const workspace = auth.getNonNullableWorkspace();
-    const agentIds = agents.map((a) => a.id);
+    const agentModelIds = agents.map((a) => a.id);
 
     let actionsByAgentModelId = new Map<
       ModelId,
@@ -2426,13 +2433,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     if (spaceIdsRemovedFromThisSkill.length > 0) {
       actionsByAgentModelId = await fetchMCPServerActionConfigurations(auth, {
-        configurationIds: agentIds,
+        configurationIds: agentModelIds,
         variant: "full",
       });
 
       const agentSkillModels = await AgentSkillModel.findAll({
         where: {
-          agentConfigurationId: { [Op.in]: agentIds },
+          agentConfigurationId: { [Op.in]: agentModelIds },
           workspaceId: workspace.id,
         },
       });
@@ -2777,7 +2784,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private static async batchListActiveAgents(
     auth: Authenticator,
     skills: SkillResource[]
-  ): Promise<Map<string, AgentConfigurationModel[]>> {
+  ): Promise<Map<string, AgentUsageAttributes[]>> {
     if (skills.length === 0) {
       return new Map();
     }
@@ -2792,6 +2799,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Single query: all agent-skill associations for the given skills.
     const agentSkills = await AgentSkillModel.findAll({
+      attributes: ["agentConfigurationId", "customSkillId", "globalSkillId"],
       where: {
         workspaceId: workspace.id,
         [Op.or]: removeNulls([
@@ -2814,6 +2822,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...new Set(agentSkills.map((as) => as.agentConfigurationId)),
     ];
     const agentConfigs = await AgentConfigurationModel.findAll({
+      attributes: ["id", "sId", "name", "pictureUrl", "requestedSpaceIds"],
       where: {
         id: { [Op.in]: uniqueAgentConfigIds },
         workspaceId: workspace.id,
@@ -2828,7 +2837,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.filter((s) => !s.globalSId).map((s) => [s.id, s.sId])
     );
 
-    const result = new Map<string, AgentConfigurationModel[]>();
+    const result = new Map<string, AgentUsageAttributes[]>();
     for (const as of agentSkills) {
       const skillId = as.customSkillId
         ? sIdByCustomId.get(as.customSkillId)
