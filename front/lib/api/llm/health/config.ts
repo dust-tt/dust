@@ -10,7 +10,7 @@ export const ERROR_RATIO_THRESHOLD = 0.2;
 // Length of the sliding window, in whole UTC minutes.
 export const WINDOW_MINUTES = 5;
 
-export const MIN_ATTEMPTS_IN_WINDOW = 200;
+export const MIN_ATTEMPTS_IN_WINDOW = 100;
 
 // How long an endpoint stays degraded before the first recovery probe.
 export const MIN_DEGRADED_DURATION_MS = 10 * 60 * 1000;
