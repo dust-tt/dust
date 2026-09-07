@@ -24,7 +24,6 @@ import {
 import {
   getUsageType,
   isProgrammaticUsageFromContext,
-  resolveUsageTypeForAttribution,
 } from "@app/lib/api/programmatic_usage/common";
 import { Authenticator } from "@app/lib/auth";
 import type { UsageType } from "@app/lib/metronome/types";
@@ -184,19 +183,14 @@ async function listAgentMessageRefs({
         agentMessageId: message.sId,
         conversationId: conversation.sId,
       },
-      usageType: resolveUsageTypeForAttribution(
-        getUsageType(
-          isProgrammaticUsageFromContext({
-            authMethod: triggeringUserMessage.userContextAuthMethod,
-            userMessageOrigin: origin,
-          }),
-          origin
-        ),
-        {
-          userId: triggeringUserMessage.user?.sId ?? null,
-          origin,
+      usageType: getUsageType(
+        isProgrammaticUsageFromContext({
           authMethod: triggeringUserMessage.userContextAuthMethod,
-        }
+          userMessageOrigin: origin,
+          userId: triggeringUserMessage.user?.sId ?? null,
+          messageAuthMethod: triggeringUserMessage.userContextAuthMethod,
+        }),
+        origin
       ),
     };
   });

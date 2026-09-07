@@ -62,18 +62,32 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
     USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
 );
 
+const PROGRAMMATIC_FALLBACK_ORIGINS: ReadonlySet<UserMessageOrigin> =
+  new Set<UserMessageOrigin>(["slack"]);
+
 export function isProgrammaticUsageFromContext({
   authMethod,
   userMessageOrigin,
+  userId,
+  messageAuthMethod,
 }: {
   // Persisted historical values predate the AuthMethodType union, so keep the input broad and
   // reproduce the live rule by recognizing the one auth method that changes classification.
   authMethod: string | null;
   userMessageOrigin: UserMessageOrigin;
+  // The triggering user message's own resolved user and auth method, when known. Used to fall
+  // back to programmatic for messages (e.g. Slack) that couldn't be attributed to a workspace
+  // member. Omit when this information isn't available (the fallback is then simply skipped —
+  // it never downgrades usage to user, only ever promotes an unattributed one to programmatic).
+  userId?: string | null;
+  messageAuthMethod?: string | null;
 }): boolean {
   return (
     authMethod === "api_key" ||
-    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic" ||
+    (userId === null &&
+      messageAuthMethod === "system_api_key" &&
+      PROGRAMMATIC_FALLBACK_ORIGINS.has(userMessageOrigin))
   );
 }
 
@@ -85,33 +99,6 @@ export function getUsageType(
     return USAGE_TYPE_FREE;
   }
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
-}
-
-const PROGRAMMATIC_FALLBACK_ORIGINS: ReadonlySet<UserMessageOrigin> =
-  new Set<UserMessageOrigin>(["slack"]);
-
-// For user_usage with no user check if we need to fallback to programmatic.
-export function resolveUsageTypeForAttribution(
-  usageType: UsageType,
-  {
-    userId,
-    origin,
-    authMethod,
-  }: {
-    userId: string | null;
-    origin: UserMessageOrigin;
-    authMethod: string | null;
-  }
-): UsageType {
-  if (
-    usageType === USAGE_TYPE_USER &&
-    !userId &&
-    authMethod === "system_api_key" &&
-    PROGRAMMATIC_FALLBACK_ORIGINS.has(origin)
-  ) {
-    return USAGE_TYPE_PROGRAMMATIC;
-  }
-  return usageType;
 }
 
 // Markup multiplier to convert raw ES costs to costs with Dust markup.

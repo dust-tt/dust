@@ -1,9 +1,6 @@
 import { reconcileApiKey } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
-import {
-  getUsageType,
-  resolveUsageTypeForAttribution,
-} from "@app/lib/api/programmatic_usage/common";
+import { getUsageType } from "@app/lib/api/programmatic_usage/common";
 import {
   isProgrammaticUsage,
   trackProgrammaticCost,
@@ -344,14 +341,17 @@ export async function emitMetronomeUsageEventsActivity(
   const parentAgentMessageId = userMessage?.agenticOriginMessageId ?? null;
   const isSubAgentMessage = userMessage?.agenticMessageType !== null;
 
-  const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
   // Use updatedAt — this is when the agent message finished (not when it was created).
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
   const messageStatus = agentMessage.status ?? "unknown";
-  const usageType = resolveUsageTypeForAttribution(
-    getUsageType(programmatic, userMessageOrigin),
-    { userId, origin: userMessageOrigin, authMethod }
+  const usageType = getUsageType(
+    isProgrammaticUsage(auth, {
+      userMessageOrigin,
+      userId,
+      messageAuthMethod: authMethod,
+    }),
+    userMessageOrigin
   );
 
   // Attribute usage to the parent (triggering) agent only for *hidden helper*

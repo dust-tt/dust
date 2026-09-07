@@ -5,10 +5,7 @@ import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
-import {
-  getUsageType,
-  resolveUsageTypeForAttribution,
-} from "@app/lib/api/programmatic_usage/common";
+import { getUsageType } from "@app/lib/api/programmatic_usage/common";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import {
   recordFreeSeatLifetimeUsage,
@@ -146,16 +143,13 @@ export async function computeAndStoreAgentMessageCredits(
   const messageOrigin = triggeringUserMessageOrigin ?? "web";
   await RunResource.setUsageTypeForRunsIfMissing(auth, {
     runs,
-    usageType: resolveUsageTypeForAttribution(
-      getUsageType(
-        isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin }),
-        messageOrigin
-      ),
-      {
+    usageType: getUsageType(
+      isProgrammaticUsage(auth, {
+        userMessageOrigin: messageOrigin,
         userId: triggeringUserId,
-        origin: messageOrigin,
-        authMethod: triggeringUserMessageAuthMethod,
-      }
+        messageAuthMethod: triggeringUserMessageAuthMethod,
+      }),
+      messageOrigin
     ),
   });
 

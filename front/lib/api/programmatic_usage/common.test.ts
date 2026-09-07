@@ -1,6 +1,6 @@
 import {
   getUsageType,
-  resolveUsageTypeForAttribution,
+  isProgrammaticUsageFromContext,
 } from "@app/lib/api/programmatic_usage/common";
 import { describe, expect, it } from "vitest";
 
@@ -19,67 +19,85 @@ describe("getUsageType", () => {
   });
 });
 
-describe("resolveUsageTypeForAttribution", () => {
+describe("isProgrammaticUsageFromContext", () => {
+  it("classifies api_key auth as programmatic regardless of origin", () => {
+    expect(
+      isProgrammaticUsageFromContext({
+        authMethod: "api_key",
+        userMessageOrigin: "web",
+      })
+    ).toBe(true);
+  });
+
+  it("classifies programmatic origins as programmatic regardless of auth method", () => {
+    expect(
+      isProgrammaticUsageFromContext({
+        authMethod: "session",
+        userMessageOrigin: "api",
+      })
+    ).toBe(true);
+  });
+
   it("resolves unattributed Slack usage to programmatic", () => {
     // e.g. a Slack message whose sender's email didn't match a Dust
     // workspace member: attributeUserFromWorkspaceAndEmail found no user.
     expect(
-      resolveUsageTypeForAttribution("user", {
+      isProgrammaticUsageFromContext({
+        authMethod: "session",
+        userMessageOrigin: "slack",
         userId: null,
-        origin: "slack",
-        authMethod: "system_api_key",
+        messageAuthMethod: "system_api_key",
       })
-    ).toBe("programmatic");
+    ).toBe(true);
   });
 
-  it("resolves attributed Slack usage to the matched user", () => {
+  it("resolves attributed Slack usage to user", () => {
     expect(
-      resolveUsageTypeForAttribution("user", {
+      isProgrammaticUsageFromContext({
+        authMethod: "session",
+        userMessageOrigin: "slack",
         userId: "user",
-        origin: "slack",
-        authMethod: "system_api_key",
+        messageAuthMethod: "system_api_key",
       })
-    ).toBe("user");
+    ).toBe(false);
   });
 
-  it("leaves unattributed Slack usage untouched when not authenticated via the system key", () => {
+  it("leaves unattributed Slack usage as user when not authenticated via the system key", () => {
     // A real session/oauth (or any non-system-key) auth on a Slack origin is
     // unexpected — treat a missing userId there as a genuine attribution bug.
     expect(
-      resolveUsageTypeForAttribution("user", {
-        userId: null,
-        origin: "slack",
+      isProgrammaticUsageFromContext({
         authMethod: "session",
+        userMessageOrigin: "slack",
+        userId: null,
+        messageAuthMethod: "session",
       })
-    ).toBe("user");
+    ).toBe(false);
   });
 
-  it("leaves other unattributed user origins untouched (genuine attribution bug)", () => {
+  it("leaves other unattributed user origins as user (genuine attribution bug)", () => {
     // web/extension/cli/... always carry a real Dust user — a missing
     // userId there is a bug that buildUsageEvents must still catch.
     expect(
-      resolveUsageTypeForAttribution("user", {
+      isProgrammaticUsageFromContext({
+        authMethod: "session",
+        userMessageOrigin: "web",
         userId: null,
-        origin: "web",
-        authMethod: "system_api_key",
+        messageAuthMethod: "system_api_key",
       })
-    ).toBe("user");
+    ).toBe(false);
   });
 
-  it("leaves non-user usage types untouched", () => {
+  it("skips the fallback when userId is not provided", () => {
+    // Callers that don't have the resolved userId (e.g. the live LLM
+    // classifier) must not trigger the fallback — it should never
+    // downgrade or upgrade classification on unknown information.
     expect(
-      resolveUsageTypeForAttribution("programmatic", {
-        userId: null,
-        origin: "slack",
-        authMethod: "system_api_key",
+      isProgrammaticUsageFromContext({
+        authMethod: "session",
+        userMessageOrigin: "slack",
+        messageAuthMethod: "system_api_key",
       })
-    ).toBe("programmatic");
-    expect(
-      resolveUsageTypeForAttribution("free", {
-        userId: null,
-        origin: "slack",
-        authMethod: "system_api_key",
-      })
-    ).toBe("free");
+    ).toBe(false);
   });
 });

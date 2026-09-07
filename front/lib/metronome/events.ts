@@ -44,9 +44,9 @@ function truncateTransactionId(id: string): string {
 // ---------------------------------------------------------------------------
 // Usage type helpers
 // ---------------------------------------------------------------------------
-// getUsageType / resolveUsageTypeForAttribution live in
-// @app/lib/api/programmatic_usage/common, alongside the rest of the usage_type
-// classification logic (USAGE_ORIGINS_CLASSIFICATION, isProgrammaticUsageFromContext).
+// getUsageType lives in @app/lib/api/programmatic_usage/common, alongside the
+// rest of the usage_type classification logic (USAGE_ORIGINS_CLASSIFICATION,
+// isProgrammaticUsageFromContext).
 
 // Intelligence (AI compute) credits for a *single execution's* run usages.
 // Usages are grouped by (providerId, modelId) and converted per group before
