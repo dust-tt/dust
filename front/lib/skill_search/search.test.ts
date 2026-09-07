@@ -13,14 +13,23 @@ vi.mock("@app/lib/api/elasticsearch", async () => {
   };
 });
 
+import { Authenticator } from "@app/lib/auth";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { searchSkillDocuments } from "@app/lib/skill_search/search";
+import {
+  MAX_SKILL_SEARCH_RESULTS,
+  searchSkillDocuments,
+} from "@app/lib/skill_search/search";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
+import assert from "assert";
 
 function makeSkillDocument(
   overrides: Partial<SkillSearchDocument> = {}
@@ -56,6 +65,283 @@ describe("skill_search/search", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockClientSearch.mockReset();
+  });
+
+  it.each([
+    { role: "user", keyFactory: null, label: "user" },
+    { role: "builder", keyFactory: null, label: "builder" },
+    { role: "manager", keyFactory: null, label: "manager" },
+    { role: "admin", keyFactory: null, label: "admin" },
+    { role: "user", keyFactory: KeyFactory.readOnly, label: "read-only key" },
+    { role: "builder", keyFactory: KeyFactory.regular, label: "builder key" },
+    { role: "admin", keyFactory: KeyFactory.admin, label: "admin key" },
+  ] as const)("enforces the space × pod × availability × editor matrix for $label", async ({
+    role,
+    keyFactory,
+  }) => {
+    const {
+      authenticator: authorAuth,
+      workspace,
+      user,
+      globalGroup,
+      globalSpace,
+      conversationsSpace,
+    } = await createResourceTest({ role });
+    const readableSpace = await SpaceFactory.regular(workspace);
+    const spaceMemberGroup =
+      await readableSpace.fetchManualMemberGroup(authorAuth);
+    assert(spaceMemberGroup);
+    await GroupFactory.withMembers(authorAuth, spaceMemberGroup, [user]);
+    const deniedSpace = await SpaceFactory.regular(workspace);
+    const readablePod = await SpaceFactory.project(workspace);
+    const podMemberGroup = await readablePod.fetchManualMemberGroup(authorAuth);
+    assert(podMemberGroup);
+    await GroupFactory.withMembers(authorAuth, podMemberGroup, [user]);
+    const deniedPod = await SpaceFactory.project(workspace);
+    // An unrelated readable space catches reversing the subset predicate.
+    const extraSpace = await SpaceFactory.regular(workspace);
+    await SpaceFactory.attachGroup(extraSpace, globalGroup);
+
+    const spaceCases = [
+      { label: "no spaces", spaces: [], readable: true },
+      { label: "all spaces", spaces: [readableSpace], readable: true },
+      {
+        label: "two readable spaces",
+        spaces: [readableSpace, extraSpace],
+        readable: true,
+      },
+      { label: "no space access", spaces: [deniedSpace], readable: false },
+      {
+        label: "partial space access",
+        spaces: [readableSpace, deniedSpace],
+        readable: false,
+      },
+    ];
+    const podCases = [
+      { label: "no pod", spaces: [], readable: true },
+      { label: "readable pod", spaces: [readablePod], readable: true },
+      { label: "denied pod", spaces: [deniedPod], readable: false },
+    ];
+    const esCandidateIds = new Set<string>();
+    const expectedSkillIds: string[] = [];
+    const skillIds: string[] = [];
+
+    // Bounded Cartesian product: 5 space cases × 3 pod cases × 3 availabilities × 2 editor states.
+    // Fixtures and auth/grant hydration stay real; only the ES boundary is mocked.
+    for (const spaceCase of spaceCases) {
+      for (const podCase of podCases) {
+        for (const availability of SKILL_AVAILABILITIES) {
+          for (const isEditor of [false, true]) {
+            const skill = await SkillFactory.create(authorAuth, {
+              name: `${spaceCase.label}, ${podCase.label}, ${availability}, editor=${isEditor}`,
+              availability,
+              addCurrentUserAsEditor: isEditor,
+              requestedSpaceIds: [...spaceCase.spaces, ...podCase.spaces].map(
+                (space) => space.id
+              ),
+            });
+            skillIds.push(skill.sId);
+            const visibleByAvailability =
+              availability !== "editors" || isEditor || keyFactory !== null;
+            if (spaceCase.readable && visibleByAvailability) {
+              esCandidateIds.add(skill.sId);
+              if (podCase.readable) {
+                expectedSkillIds.push(skill.sId);
+              }
+            }
+          }
+        }
+      }
+    }
+    const documents = await SkillSearchDocumentResource.fetchSearchDocuments(
+      authorAuth,
+      skillIds
+    );
+    expect(documents).toHaveLength(skillIds.length);
+    let auth = authorAuth;
+    if (keyFactory) {
+      const key = await keyFactory([
+        globalGroup,
+        spaceMemberGroup,
+        podMemberGroup,
+      ]);
+      auth = await Authenticator.fromKey(key, workspace.sId);
+    }
+    await auth.refresh();
+    expect(auth.can("read", readableSpace)).toBe(true);
+    expect(auth.can("read", deniedSpace)).toBe(false);
+    expect(auth.can("read", readablePod)).toBe(true);
+    expect(auth.can("read", deniedPod)).toBe(false);
+
+    // ES is not executed here: assert its full ACL contract below, then supply its expected
+    // candidates, including unreadable pods that the real post-filter must reject.
+    mockHits(
+      documents.filter((document) => esCandidateIds.has(document.skill_id))
+    );
+    const result = await searchSkillDocuments(auth, {
+      searchTerm: "",
+      limit: MAX_SKILL_SEARCH_RESULTS,
+    });
+    assert(result.isOk());
+    expect(result.value.map((document) => document.skill_id)).toEqual(
+      expectedSkillIds
+    );
+    expect(mockClientSearch).toHaveBeenCalledOnce();
+    expect(mockClientSearch.mock.calls[0][0].query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          { term: { status: "active" } },
+          ...(keyFactory
+            ? []
+            : [
+                {
+                  bool: {
+                    should: [
+                      {
+                        terms: {
+                          availability: ["workspace_users", "users_and_agents"],
+                        },
+                      },
+                      {
+                        bool: {
+                          filter: [
+                            { term: { availability: "editors" } },
+                            { term: { editor_user_ids: user.id } },
+                          ],
+                        },
+                      },
+                    ],
+                    minimum_should_match: 1,
+                  },
+                },
+              ]),
+          {
+            bool: {
+              should: [
+                { term: { non_pod_space_count: 0 } },
+                {
+                  terms_set: {
+                    non_pod_space_ids: {
+                      terms: expect.arrayContaining([
+                        globalSpace.sId,
+                        conversationsSpace.sId,
+                        readableSpace.sId,
+                        extraSpace.sId,
+                      ]),
+                      minimum_should_match_field: "non_pod_space_count",
+                    },
+                  },
+                },
+              ],
+              minimum_should_match: 1,
+            },
+          },
+        ],
+      },
+    });
+    const filters = mockClientSearch.mock.calls[0][0].query.bool.filter;
+    const spaceTerms =
+      filters.at(-1).bool.should[1].terms_set.non_pod_space_ids.terms;
+    expect(spaceTerms).toHaveLength(4);
+  }, 30_000);
+
+  it.each([
+    "open",
+    "member",
+    "editor",
+    "denied",
+  ] as const)("combines %s pod access with skill editorship and availability", async (access) => {
+    const { auth, workspace, user, globalGroup } =
+      await createPrivateApiMockRequest({ role: "user" });
+    const pod = await SpaceFactory.project(
+      workspace,
+      access === "editor" ? user.id : undefined
+    );
+    if (access === "open") {
+      await SpaceFactory.attachGroup(pod, globalGroup, "project_viewer");
+    }
+    if (access === "member") {
+      const members = await pod.fetchManualMemberGroup(auth);
+      assert(members);
+      await GroupFactory.withMembers(auth, members, [user]);
+    }
+    const skillIds: string[] = [];
+    const expectedSkillIds: string[] = [];
+    for (const availability of SKILL_AVAILABILITIES) {
+      for (const isEditor of [false, true]) {
+        const skill = await SkillFactory.create(auth, {
+          name: `${availability}, editor=${isEditor}`,
+          availability,
+          addCurrentUserAsEditor: isEditor,
+          requestedSpaceIds: [pod.id],
+        });
+        skillIds.push(skill.sId);
+        if (access !== "denied" && (availability !== "editors" || isEditor)) {
+          expectedSkillIds.push(skill.sId);
+        }
+      }
+    }
+    await auth.refresh();
+    expect(auth.can("read", pod)).toBe(access !== "denied");
+    expect(pod.isMember(auth)).toBe(access === "member" || access === "editor");
+    const documents = await SkillSearchDocumentResource.fetchSearchDocuments(
+      auth,
+      skillIds
+    );
+    expect(documents).toHaveLength(skillIds.length);
+    // Deliberately include non-editor hits: the live editor guard must also fail closed.
+    mockHits(documents);
+    const result = await searchSkillDocuments(auth, {
+      searchTerm: "",
+      limit: 10,
+    });
+    assert(result.isOk());
+    expect(result.value.map((document) => document.skill_id)).toEqual(
+      expectedSkillIds
+    );
+  });
+
+  it.each([
+    "pod",
+    "editor",
+  ] as const)("rejects a previously visible hit after revoking %s access without reindexing", async (access) => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const skill = await SkillFactory.create(auth, {
+      availability: "editors",
+      requestedSpaceIds: [pod.id],
+    });
+    const document = await SkillSearchDocumentResource.fetchSearchDocument(
+      auth,
+      skill.sId
+    );
+    assert(document);
+    mockHits([document]);
+    const before = await searchSkillDocuments(auth, {
+      searchTerm: "",
+      limit: 10,
+    });
+    assert(before.isOk());
+    expect(before.value).toEqual([document]);
+
+    if (access === "pod") {
+      await pod.writeGroupPermissions(auth, { members: [], editors: [] });
+    } else {
+      const removeResult = await skill.removeEditors(auth, [user]);
+      expect(removeResult.isOk()).toBe(true);
+    }
+    await auth.refresh();
+    mockHits([document]);
+    const after = await searchSkillDocuments(auth, {
+      searchTerm: "",
+      limit: 10,
+    });
+    assert(after.isOk());
+    expect(after.value).toEqual([]);
+    expect(mockClientSearch).toHaveBeenCalledTimes(2);
   });
 
   it("requires every skill non-pod space to match a readable user space", async () => {
