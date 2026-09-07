@@ -202,6 +202,44 @@ describe("FileExplorer navigation", () => {
 
     expect(screen.getByText("nested.txt")).toBeInTheDocument();
   });
+
+  it("passes a folder's canonical path to folder actions", async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn();
+    const nestedFile = makeFile({
+      contentType: "text/plain",
+      fileName: "nested.txt",
+      lastModifiedMs: 1,
+      path: "folder/nested.txt",
+    });
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        files={[nestedFile]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onRename={onRename}
+      />
+    );
+
+    const folderTitle = screen.getByText("folder");
+    const folderRow = folderTitle.closest("div.cursor-pointer");
+    expect(folderRow).toBeInstanceOf(HTMLElement);
+    if (!(folderRow instanceof HTMLElement)) {
+      throw new Error("Folder row not found.");
+    }
+
+    await user.click(within(folderRow).getByRole("button"));
+    await user.click(screen.getByText("Rename"));
+
+    expect(onRename).toHaveBeenCalledWith({
+      kind: "folder",
+      name: "folder",
+      path: "conversation-c1/folder",
+    });
+  });
 });
 
 describe("FileExplorer Frame packages", () => {

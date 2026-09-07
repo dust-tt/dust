@@ -4,6 +4,7 @@ import type {
   FileExplorerFilter,
   FileExplorerPathEntry,
   FileExplorerSortMode,
+  FileExplorerVirtualScopeRoot,
   FileSystemTreeNode,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
@@ -45,7 +46,7 @@ interface GetFileExplorerPipelineParams {
   /** Collapse registered Frames v2 source folders into package entries. */
   displayFramePackages?: boolean;
   /** Top-level scope folders at the virtual root (e.g. `conversation`, `pod`). */
-  virtualScopeRoots?: readonly string[];
+  virtualScopeRoots?: readonly FileExplorerVirtualScopeRoot[];
 }
 
 function isPathAtOrBelow(path: string, parentPath: string): boolean {
@@ -73,6 +74,7 @@ function getCollapsedFramePackages({
 
     const manifestExplorerPath = getExplorerRelativePath(file);
     const sourceFolderPath = getParentFolderRelativePath(manifestExplorerPath);
+    const sourceFolderCanonicalPath = getParentFolderRelativePath(file.path);
     if (
       !sourceFolderPath ||
       isPathAtOrBelow(currentFolderPath, sourceFolderPath)
@@ -87,6 +89,7 @@ function getCollapsedFramePackages({
       fileId: file.fileId,
       fileName: sourceFolderPath.slice(sourceFolderPath.lastIndexOf("/") + 1),
       sourceFolderPath,
+      sourceFolderCanonicalPath,
       virtualPath: sourceFolderPath,
     });
   }
@@ -219,6 +222,7 @@ export function getFileExplorerPipeline({
     name: cn.fileName,
     path: cn.path,
     isDirectory: false,
+    canonicalPath: null,
     contentType: null,
     fileId: null,
     children: [],

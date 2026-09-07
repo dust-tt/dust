@@ -5,6 +5,11 @@ import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import { describe, expect, it } from "vitest";
 
+const virtualScopeRoots = [
+  { path: "conversation", canonicalPath: "conversation-c1" },
+  { path: "pod", canonicalPath: "pod-p1" },
+] as const;
+
 function mountFile(
   scopedPath: string,
   fileName = scopedPath.split("/").pop() ?? scopedPath,
@@ -67,6 +72,7 @@ describe("getFileExplorerPipeline Frame packages", () => {
     expect(pipeline.entryByRelativePath.get("apps/status")).toMatchObject({
       kind: "frame_package",
       fileId: "frame-1",
+      sourceFolderCanonicalPath: "conversation-c1/apps/status",
       sourceFolderPath: "apps/status",
     });
     expect(pipeline.filterCounts.frames).toBe(1);
@@ -165,7 +171,7 @@ describe("getFileExplorerPipeline Frame packages", () => {
       files,
       searchQuery: "",
       sortMode: "last-modified",
-      virtualScopeRoots: ["conversation", "pod"],
+      virtualScopeRoots,
     });
 
     expect(pipeline.sortedNodes).toMatchObject([
@@ -175,6 +181,12 @@ describe("getFileExplorerPipeline Frame packages", () => {
         path: "conversation/status",
       },
     ]);
+    expect(
+      pipeline.entryByRelativePath.get("conversation/status")
+    ).toMatchObject({
+      sourceFolderCanonicalPath: "conversation-c1/status",
+      sourceFolderPath: "conversation/status",
+    });
   });
 });
 
@@ -194,10 +206,14 @@ describe("getFileExplorerPipeline virtualScopeRoots", () => {
       files,
       searchQuery: "",
       sortMode: "last-modified",
-      virtualScopeRoots: ["conversation", "pod"],
+      virtualScopeRoots,
     });
 
     expect(sortedNodes.map((n) => n.path)).toEqual(["conversation", "pod"]);
+    expect(sortedNodes.map((n) => n.canonicalPath)).toEqual([
+      "conversation-c1",
+      "pod-p1",
+    ]);
   });
 
   it("lists files inside a scope folder", () => {
@@ -216,7 +232,7 @@ describe("getFileExplorerPipeline virtualScopeRoots", () => {
       files,
       searchQuery: "",
       sortMode: "last-modified",
-      virtualScopeRoots: ["conversation", "pod"],
+      virtualScopeRoots,
     });
 
     expect(sortedNodes.map((n) => n.path)).toEqual(["conversation/notes.txt"]);
@@ -247,7 +263,7 @@ describe("getFileExplorerPipeline search", () => {
       files,
       searchQuery: "readme",
       sortMode: "last-modified",
-      virtualScopeRoots: ["conversation", "pod"],
+      virtualScopeRoots,
     });
 
     expect(sortedNodes).toEqual([]);
@@ -272,7 +288,7 @@ describe("getFileExplorerPipeline search", () => {
       files,
       searchQuery: "summary",
       sortMode: "last-modified",
-      virtualScopeRoots: ["conversation", "pod"],
+      virtualScopeRoots,
     });
 
     expect(sortedNodes.map((n) => n.path)).toEqual([
@@ -295,7 +311,7 @@ describe("getFileExplorerPipeline search", () => {
       files,
       searchQuery: "reports",
       sortMode: "last-modified",
-      virtualScopeRoots: ["conversation", "pod"],
+      virtualScopeRoots,
     });
 
     expect(sortedNodes.map((n) => n.path)).toEqual([

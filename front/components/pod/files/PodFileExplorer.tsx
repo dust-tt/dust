@@ -544,8 +544,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           validateVariant: "warning",
         });
         if (confirmed) {
-          // TODO: once FileSystemTreeNode carries the canonical scoped path, use entry.path directly.
-          const result = await deletePodFile(`pod-${pod.sId}/${entry.path}`);
+          const result = await deletePodFile(entry.path);
           if (result.isOk()) {
             await refreshPodFiles();
           }
@@ -586,33 +585,28 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [
       confirm,
       deletePodFile,
-      pod.sId,
       refreshPodContextAttachments,
       refreshPodFiles,
       removePodContextContentNodes,
     ]
   );
 
-  const onRename = useCallback(
-    (entry: FileEntry | FolderEntry) => {
-      if (entry.kind === "file") {
-        setItemToRename({
-          kind: "file",
-          path: entry.path,
-          name: entry.fileName,
-        });
-      } else {
-        // TODO: once FileSystemTreeNode carries the canonical scoped path, use entry.path directly.
-        setItemToRename({
-          kind: "folder",
-          path: `pod-${pod.sId}/${entry.path}`,
-          name: entry.name,
-        });
-      }
-      setShowRenameDialog(true);
-    },
-    [pod.sId]
-  );
+  const onRename = useCallback((entry: FileEntry | FolderEntry) => {
+    if (entry.kind === "file") {
+      setItemToRename({
+        kind: "file",
+        path: entry.path,
+        name: entry.fileName,
+      });
+    } else {
+      setItemToRename({
+        kind: "folder",
+        path: entry.path,
+        name: entry.name,
+      });
+    }
+    setShowRenameDialog(true);
+  }, []);
 
   const onMoveFile = useCallback(
     async (entry: FileEntry, parentRelativePath: string) => {

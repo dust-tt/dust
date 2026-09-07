@@ -28,6 +28,8 @@ export type FramePackageEntry = Omit<
   fileName: string;
   /** Explorer navigation path of the package's source folder. */
   sourceFolderPath: string;
+  /** Canonical filesystem path of the package's source folder. */
+  sourceFolderCanonicalPath: string;
 };
 
 export type ContentNodeEntry = {
@@ -71,14 +73,38 @@ export type FilePanelCategory =
   | "knowledge"
   | "other";
 
-export type FileSystemTreeNode = {
+type FileSystemTreeNodeBase = {
   name: string;
   /** Explorer-relative path (mount-relative, or virtual when `virtualPath` is used). */
   path: string;
-  isDirectory: boolean;
+  children: FileSystemTreeNode[];
+};
+
+export type FileSystemDirectoryTreeNode = FileSystemTreeNodeBase & {
+  isDirectory: true;
+  /** Canonical filesystem path, including the scope prefix. */
+  canonicalPath: string;
+  contentType: null;
+  fileId: null;
+};
+
+export type FileSystemFileTreeNode = FileSystemTreeNodeBase & {
+  isDirectory: false;
+  /** Null only for synthetic content nodes that are not filesystem entries. */
+  canonicalPath: string | null;
   contentType: string | null;
   fileId: string | null;
-  children: FileSystemTreeNode[];
+};
+
+export type FileSystemTreeNode =
+  | FileSystemDirectoryTreeNode
+  | FileSystemFileTreeNode;
+
+export type FileExplorerVirtualScopeRoot = {
+  /** Explorer path shown at the merged root. */
+  path: string;
+  /** Canonical filesystem mount path represented by this root. */
+  canonicalPath: string;
 };
 
 export type FileExplorerBucket =

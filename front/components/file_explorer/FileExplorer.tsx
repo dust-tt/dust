@@ -16,6 +16,7 @@ import type {
   FileExplorerMenuAction,
   FileExplorerPathEntry,
   FileExplorerSortMode,
+  FileExplorerVirtualScopeRoot,
   FileSystemTreeNode,
   FolderEntry,
   FramePackageEntry,
@@ -65,7 +66,7 @@ interface FileExplorerProps {
     entry: FileExplorerEntry
   ) => FileExplorerMenuAction[];
   /** Top-level scope folders at the virtual root (e.g. `conversation`, `pod`). */
-  virtualScopeRoots?: readonly string[];
+  virtualScopeRoots?: readonly FileExplorerVirtualScopeRoot[];
 }
 
 export function FileExplorer({
