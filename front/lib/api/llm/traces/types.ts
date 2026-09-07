@@ -40,24 +40,13 @@ interface LLMTraceContextBase {
     | "workspace_tags_suggestion";
 
   workspaceId?: string;
-  /**
-   * User who triggered the operation. For agent_conversation calls, this is
-   * the triggering user message's own resolved user — explicitly `null` (not
-   * `undefined`) when the message couldn't be attributed to a workspace
-   * member, so the usage-type fallback at the LLM call site can tell "no
-   * user" apart from "not looked up".
-   */
+  /** User who triggered the operation */
   userId?: string | null;
   /**
    * Origin of the triggering user message, set for agent_conversation calls.
    * Used to classify usage as free, user, or programmatic at the LLM call site.
    */
   userMessageOrigin?: UserMessageOrigin;
-  /**
-   * Auth method of the triggering user message itself (e.g. "system_api_key"
-   * for Slack), set for agent_conversation calls. Used alongside `userId` to
-   * apply the unattributed-usage fallback at the LLM call site.
-   */
   userMessageAuthMethod?: string | null;
 }
 
