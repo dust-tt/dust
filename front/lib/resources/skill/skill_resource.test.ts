@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import * as elasticsearch from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -32,6 +33,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -2926,18 +2928,21 @@ describe("SkillResource", () => {
   });
 
   describe("batchFetchMessageCounts", () => {
-    it("returns an empty map for empty input", async () => {
+    it("skips Elasticsearch for empty input", async () => {
+      const search = vi.spyOn(elasticsearch, "searchConsumptionAnalytics");
       const messageCountMap = await SkillResource.batchFetchMessageCounts(
         testContext.authenticator,
         []
       );
 
       expect(messageCountMap.size).toBe(0);
+      expect(search).not.toHaveBeenCalled();
     });
 
-    it("counts distinct messages for custom and global skills", async () => {
-      const customSkill = await SkillFactory.create(testContext.authenticator, {
-        name: "Custom Skill With Messages",
+    it("fetches distinct message counts for requested custom and global skills", async () => {
+      const customSkill = await SkillFactory.create(testContext.authenticator);
+      const unusedSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Unused Skill",
       });
       const globalSkill = await SkillResource.fetchById(
         testContext.authenticator,
@@ -2946,78 +2951,92 @@ describe("SkillResource", () => {
       if (!globalSkill) {
         throw new Error("Expected frames global skill to exist.");
       }
-
-      const agent = await AgentConfigurationFactory.createTestAgent(
-        testContext.authenticator,
-        { name: "Agent With Skill Messages" }
-      );
-      const conversation = await ConversationFactory.create(
-        testContext.authenticator,
-        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
-      );
-
-      await customSkill.enableForAgent(testContext.authenticator, {
-        agentConfiguration: agent,
-        conversation,
-      });
-      await globalSkill.enableForAgent(testContext.authenticator, {
-        agentConfiguration: agent,
-        conversation,
-      });
-
-      const firstMessage = await ConversationFactory.createAgentMessageWithRank(
-        {
-          workspace: testContext.workspace,
-          conversationId: conversation.id,
-          rank: 0,
-          agentConfigurationId: agent.sId,
-        }
-      );
-      const secondMessage =
-        await ConversationFactory.createAgentMessageWithRank({
-          workspace: testContext.workspace,
-          conversationId: conversation.id,
-          rank: 1,
-          agentConfigurationId: agent.sId,
-        });
-      if (!firstMessage.agentMessageId || !secondMessage.agentMessageId) {
-        throw new Error("Expected agent messages to exist.");
-      }
-
-      await SkillResource.snapshotConversationSkillsForMessage(
-        testContext.authenticator,
-        {
-          agentConfigurationId: agent.sId,
-          agentMessageId: firstMessage.agentMessageId,
-          conversationId: conversation.id,
-        }
-      );
-      // Simulate a finalization retry after the first snapshot insert succeeds.
-      await SkillResource.snapshotConversationSkillsForMessage(
-        testContext.authenticator,
-        {
-          agentConfigurationId: agent.sId,
-          agentMessageId: firstMessage.agentMessageId,
-          conversationId: conversation.id,
-        }
-      );
-      await SkillResource.snapshotConversationSkillsForMessage(
-        testContext.authenticator,
-        {
-          agentConfigurationId: agent.sId,
-          agentMessageId: secondMessage.agentMessageId,
-          conversationId: conversation.id,
-        }
+      const search = vi.spyOn(elasticsearch, "searchConsumptionAnalytics");
+      search.mockResolvedValueOnce(
+        new Ok({
+          took: 1,
+          timed_out: false,
+          _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+          hits: { hits: [] },
+          aggregations: {
+            by_skill: {
+              buckets: [
+                {
+                  key: customSkill.sId,
+                  doc_count: 9,
+                  unique_messages: { value: 2 },
+                },
+                {
+                  key: globalSkill.sId,
+                  doc_count: 7,
+                  unique_messages: { value: 3 },
+                },
+              ],
+            },
+          },
+        })
       );
 
       const messageCountMap = await SkillResource.batchFetchMessageCounts(
         testContext.authenticator,
-        [customSkill, globalSkill]
+        [customSkill, globalSkill, unusedSkill]
       );
 
-      expect(messageCountMap.size).toBe(2);
-      expect(messageCountMap.get(customSkill.sId)).toBe(2);
-      expect(messageCountMap.get(globalSkill.sId)).toBe(2);
+      expect(messageCountMap).toEqual(
+        new Map([
+          [customSkill.sId, 2],
+          [globalSkill.sId, 3],
+        ])
+      );
+      const skillIds = [customSkill.sId, globalSkill.sId, unusedSkill.sId];
+      expect(search).toHaveBeenCalledWith(
+        {
+          bool: {
+            filter: [
+              { term: { workspace_id: testContext.workspace.sId } },
+              { terms: { skill_ids: skillIds } },
+            ],
+          },
+        },
+        {
+          size: 0,
+          aggregations: {
+            by_skill: {
+              terms: {
+                field: "skill_ids",
+                include: skillIds,
+                size: skillIds.length,
+              },
+              aggs: {
+                unique_messages: {
+                  cardinality: {
+                    field: "agent_message_id",
+                    precision_threshold: 40_000,
+                  },
+                },
+              },
+            },
+          },
+        }
+      );
+    });
+
+    it("propagates Elasticsearch failures instead of reporting zero usage", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator);
+      const error = new elasticsearch.ElasticsearchError(
+        "query_error",
+        "Unavailable"
+      );
+      vi.spyOn(
+        elasticsearch,
+        "searchConsumptionAnalytics"
+      ).mockResolvedValueOnce(new Err(error));
+
+      await expect(
+        SkillResource.batchFetchMessageCounts(testContext.authenticator, [
+          skill,
+        ])
+      ).rejects.toThrow(error);
     });
   });
 

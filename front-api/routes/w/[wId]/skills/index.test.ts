@@ -1,3 +1,4 @@
+import * as elasticsearch from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import {
   SkillFileAttachmentModel,
@@ -8,7 +9,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -29,6 +29,7 @@ import type {
   SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
@@ -868,48 +869,24 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     const skill = await SkillFactory.create(auth, {
       name: "Skill Used In Messages",
     });
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agent.sId,
-      messagesCreatedAt: [],
+    const unusedSkill = await SkillFactory.create(auth, {
+      name: "Unused Skill",
     });
-
-    await skill.enableForAgent(auth, {
-      agentConfiguration: agent,
-      conversation,
-    });
-
-    const firstAgentMessage =
-      await ConversationFactory.createAgentMessageWithRank({
-        workspace,
-        conversationId: conversation.id,
-        rank: 0,
-        agentConfigurationId: agent.sId,
-      });
-    if (!firstAgentMessage.agentMessageId) {
-      throw new Error("Expected an agent message");
-    }
-    await SkillResource.snapshotConversationSkillsForMessage(auth, {
-      agentConfigurationId: agent.sId,
-      agentMessageId: firstAgentMessage.agentMessageId,
-      conversationId: conversation.id,
-    });
-
-    const secondAgentMessage =
-      await ConversationFactory.createAgentMessageWithRank({
-        workspace,
-        conversationId: conversation.id,
-        rank: 1,
-        agentConfigurationId: agent.sId,
-      });
-    if (!secondAgentMessage.agentMessageId) {
-      throw new Error("Expected an agent message");
-    }
-    await SkillResource.snapshotConversationSkillsForMessage(auth, {
-      agentConfigurationId: agent.sId,
-      agentMessageId: secondAgentMessage.agentMessageId,
-      conversationId: conversation.id,
-    });
+    vi.spyOn(elasticsearch, "searchConsumptionAnalytics").mockResolvedValueOnce(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { hits: [] },
+        aggregations: {
+          by_skill: {
+            buckets: [
+              { key: skill.sId, doc_count: 8, unique_messages: { value: 2 } },
+            ],
+          },
+        },
+      })
+    );
 
     const response = await getSkills(workspace, {
       withRelations: "true",
@@ -927,6 +904,9 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     );
 
     expect(skillResult?.messageCount).toBe(2);
+    expect(
+      responseBody.skills.find((s) => s.sId === unusedSkill.sId)?.messageCount
+    ).toBe(0);
     expect(systemSkillResult).toBeDefined();
     expect(systemSkillResult?.messageCount).toBeNull();
   });

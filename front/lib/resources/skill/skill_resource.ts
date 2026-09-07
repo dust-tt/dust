@@ -1,10 +1,15 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { uniqueMessagesCardinalityAgg } from "@app/lib/api/analytics/consumption/scope";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import {
+  bucketsToArray,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import {
   filterUsersWithSharedMembership,
   hasSharedMembership,
@@ -98,11 +103,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import {
-  isNumber,
-  isString,
-  removeNulls,
-} from "@app/types/shared/utils/general";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -2874,7 +2875,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Count distinct agent messages using each skill, keyed by skill sId.
+   * @cc [owner:aubin-tchoi,label:product] skill-message-counts
+   * Counts distinct indexed messages per requested skill in the authenticated workspace,
+   * using snapshotted skill membership rather than tool attribution. Counts are eventually
+   * consistent cardinality estimates over the consumption index's billed-message coverage.
    */
   static async batchFetchMessageCounts(
     auth: Authenticator,
@@ -2885,50 +2889,47 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const customSkillIdByModelId = new Map(
-      skills
-        .filter((skill) => !skill.globalSId)
-        .map((skill) => [skill.id, skill.sId])
-    );
-    const globalSkillIds = removeNulls(skills.map((skill) => skill.globalSId));
-
-    const counts = await AgentMessageSkillModel.count({
-      attributes: ["customSkillId", "globalSkillId"],
-      // Finalization activities can retry after the snapshot insert succeeds.
-      distinct: true,
-      col: "agentMessageId",
-      where: {
-        workspaceId: workspace.id,
-        [Op.or]: removeNulls([
-          customSkillIdByModelId.size > 0
-            ? {
-                customSkillId: {
-                  [Op.in]: [...customSkillIdByModelId.keys()],
-                },
-              }
-            : null,
-          globalSkillIds.length > 0
-            ? { globalSkillId: { [Op.in]: globalSkillIds } }
-            : null,
-        ]),
+    const skillIds = [...new Set(skills.map((skill) => skill.sId))];
+    type SkillBucket = {
+      key: string;
+      unique_messages: { value: number };
+    };
+    const result = await searchConsumptionAnalytics<
+      never,
+      { by_skill: { buckets: SkillBucket[] } }
+    >(
+      {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspace.sId } },
+            { terms: { skill_ids: skillIds } },
+          ],
+        },
       },
-      group: ["customSkillId", "globalSkillId"],
-    });
-
-    const result = new Map<string, number>();
-    for (const row of counts) {
-      let skillId: string | undefined;
-      if (isNumber(row.customSkillId)) {
-        skillId = customSkillIdByModelId.get(row.customSkillId);
-      } else if (isString(row.globalSkillId)) {
-        skillId = row.globalSkillId;
+      {
+        size: 0,
+        aggregations: {
+          by_skill: {
+            terms: {
+              field: "skill_ids",
+              include: skillIds,
+              size: skillIds.length,
+            },
+            aggs: { unique_messages: uniqueMessagesCardinalityAgg() },
+          },
+        },
       }
-      if (skillId) {
-        result.set(skillId, row.count);
-      }
+    );
+    if (result.isErr()) {
+      throw result.error;
     }
 
-    return result;
+    const buckets = bucketsToArray<SkillBucket>(
+      result.value.aggregations?.by_skill.buckets
+    );
+    return new Map(
+      buckets.map((bucket) => [bucket.key, bucket.unique_messages.value])
+    );
   }
 
   /**
