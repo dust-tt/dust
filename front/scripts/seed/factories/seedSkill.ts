@@ -38,7 +38,7 @@ export async function seedSkill(
   });
   const [existingSkill] = existingSkillRow
     ? await SkillResource.fetchByModelIds(auth, [existingSkillRow.id], {
-        dangerouslySkipPermissionFiltering: true,
+        permissionFiltering: "dangerously_skip",
       })
     : [];
 
