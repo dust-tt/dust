@@ -33,10 +33,7 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import {
-  isCreditPricedPlan,
-  isSubscriptionMetronomeBilled,
-} from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   AlertCircle,
   Button,
@@ -154,12 +151,10 @@ export function PoolUsagePage() {
 
   const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
   const activeSubscription = workspaceInfo?.activeSubscription;
-  const hasMetronomeContract =
-    !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
   const isLegacyPremiumMessagePlan =
     !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
   const isLegacyWithoutPoolOrMetronome =
-    isLegacyPremiumMessagePlan && !hasMetronomeContract;
+    isLegacyPremiumMessagePlan && !workspaceInfo?.hasMetronomeFeature;
   const showPoolSection =
     !!activeSubscription && !isLegacyWithoutPoolOrMetronome;
 
@@ -397,7 +392,13 @@ export function PoolUsagePage() {
                   isSeatBased
                   showSpendLimit
                   hasPool={hasPool}
-                  showPremiumMessageUsage={isLegacyWithoutPoolOrMetronome}
+                  isPremiumMessagePlan={isLegacyWithoutPoolOrMetronome}
+                  showPremiumMessageColumn={
+                    !!workspaceInfo?.hasEnforcePremiumModelMessageLimitFeature
+                  }
+                  showFairUseCreditsColumn={
+                    !workspaceInfo?.hasDisableFairUseAwuLimitFeature
+                  }
                   readOnly
                   onChangeSeat={noopOnMember}
                   onOpenChangeSeatRecap={setChangeSeatRecapMember}
