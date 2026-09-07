@@ -1,12 +1,6 @@
 @cc [label:coding] hive-task-scope
 Make only the changes required for the task. Avoid opportunistic refactors.
 
-@cc [label:coding] hive-simplicity
-Keep code simple and readable; prefer small, explicit functions over clever abstractions.
-
-@cc [label:coding] hive-parameter-immutability
-Do not mutate function parameters; return new values instead.
-
 @cc [label:coding] hive-const
 Use `const` by default; use `let` only when reassignment is required.
 
@@ -16,9 +10,6 @@ Strict mode is expected. Do not introduce `any`.
 @cc [label:coding] hive-no-non-null-assertions
 Avoid non-null assertions (`!`).
 
-@cc [label:coding] hive-type-guards
-Avoid unsafe `as` casts. Prefer typeguards or validation helpers.
-
 @cc [label:coding] hive-type-imports
 Use `import type` for type-only imports.
 
@@ -27,9 +18,6 @@ Do not hide or paper over errors with defaults. If a value is required, fail fas
 
 @cc [label:error-handling] hive-no-swallowed-errors
 Never swallow errors (empty `catch`, or log-and-continue) unless the caller explicitly accepts partial failure.
-
-@cc [label:error-handling] hive-result
-Use `Result<T, E>` when callers need to handle failures; otherwise let exceptions bubble.
 
 @cc [label:error-handling] hive-catch-scope
 Only wrap the minimal statement that can throw. Do not wrap whole functions in `try/catch`.

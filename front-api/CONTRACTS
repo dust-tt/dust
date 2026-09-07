@@ -11,9 +11,9 @@ workers and the migrations. The dependency is one-way: `front-api` reaches into 
 via `@app/*`, never the reverse.
 
 @cc [label:api] url-aligned-route-files
-`front-api/routes/<path>.ts` maps 1:1 to the `/api/<path>` URL, including
-dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory names. The
-path mapping is deterministic.
+Each route must live in one file whose path mirrors its URL: `front-api/routes/<path>.ts` maps
+1:1 to `/api/<path>`, with dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory
+names.
 
 ```
 front-api/routes/
@@ -56,12 +56,10 @@ export default app;
 ```
 
 @cc [label:api] directory-route-mounts
-The directory tree is composed via per-directory `index.ts` files. Each
-`index.ts` does one or both of:
-
-- Mount children via `app.route("/segment", child)`.
-- Apply directory-scoped middleware (e.g. resource fetch that all routes in
-  the directory need — see [resource-middleware-per-handler]).
+Each route directory must have an `index.ts` that mounts its children via
+`app.route("/segment", child)`. These files compose the route tree and may also apply
+directory-scoped middleware, such as resource fetches shared by all routes in the directory
+(see [resource-middleware-per-handler]).
 
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/index.ts
@@ -79,9 +77,9 @@ mounted before `/tables/:tableId`, otherwise the param route swallows
 "search" as an id. Hono's router scans in registration order.
 
 @cc [label:api] route-mounting-is-source-of-truth
-A route is reachable only because a parent mounted it, up to the top-level
-mounts in `front-api/app.ts`. There is no route manifest to keep in sync:
-adding a file and mounting it is the whole registration step.
+Route mounting must be the single source of truth; do not maintain a separate route list or
+manifest. A route is reachable only through its parent mounts, up to `front-api/app.ts`.
+Adding the file and mounting it completes registration.
 
 Root-level mount order in `app.ts` follows the same literal-before-param rule
 as [directory-route-mounts], and the exceptions are commented there — e.g. `/w/:wId/join` is
@@ -90,8 +88,8 @@ mounted before `/w/:wId` so it does not inherit `workspaceAuth`, and the
 not shadow the literal-prefixed routes above it.
 
 @cc [label:api] auth-at-sub-app-boundaries
-`workspaceAuth` and `publicApiAuth` are applied once at the workspace
-sub-app level (the `[wId]/index.ts` mount file), not per-route:
+Auth middleware must be applied once at the sub-app boundary, not per-route. For `workspaceAuth`
+and `publicApiAuth`, this is the workspace sub-app's `[wId]/index.ts` mount file:
 
 ```ts
 // front-api/routes/w/[wId]/index.ts
@@ -190,10 +188,9 @@ Reviewer: if you see `c.json({ error: ... }, status)` in a handler, require
 the author to switch to `apiError(c, ...)`.
 
 @cc [label:api] workspace-import-aliases
-The path tree is deeply nested, so relative imports across the tree get long
-fast. Use the `@front-api/*` alias for anything inside `front-api/` itself
-(middleware, app, helpers), and the existing `@app/*` alias for reaching
-into `front/`:
+Use `@front-api/*` for imports from `front-api/` itself (middleware, app, helpers) and `@app/*`
+for imports from `front/`. The path tree is deeply nested, so relative imports across the tree
+get long quickly:
 
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search.ts
