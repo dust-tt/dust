@@ -107,11 +107,6 @@ function resolveRequestedAvailability({
 }
 
 // Mounted at /api/w/:wId/skills.
-/**
- * @cc [owner:aubin-tchoi,label:logging] skills-list-tracing
- * GET list fetches emit separate spans with fixed operation names; custom tags contain only
- * validated list options and batch sizes.
- */
 const app = workspaceApp();
 
 // Static sub-paths must be registered before the param sub-app.
