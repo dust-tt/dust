@@ -75,11 +75,6 @@ export type PokeWorkspaceInfo = {
   extensionConfig: ExtensionConfigurationType | null;
   hasDummyFeature: boolean;
   hasMetronomeFeature: boolean;
-  // Whether the premium-model message cap is enforced on this workspace.
-  hasEnforcePremiumModelMessageLimitFeature: boolean;
-  // Whether the per-user fair-use AWU credit limit is disabled on this
-  // workspace.
-  hasDisableFairUseAwuLimitFeature: boolean;
   membersCount: number;
   inactiveMembersCount: number;
   metronomeCustomerId: string | null;
@@ -268,16 +263,6 @@ export async function getPokeWorkspaceInfo(
 
   const hasMetronomeFeature = await isMetronomeBillingEnabled(auth);
 
-  const hasEnforcePremiumModelMessageLimitFeature = await hasFeatureFlag(
-    auth,
-    "enforce_premium_model_message_limit"
-  );
-
-  const hasDisableFairUseAwuLimitFeature = await hasFeatureFlag(
-    auth,
-    "disable_fair_use_awu_limit"
-  );
-
   const pendingSubscriptionResource =
     await SubscriptionResource.fetchPendingByWorkspaceModelId(
       workspaceResource.id
@@ -331,8 +316,6 @@ export async function getPokeWorkspaceInfo(
     activeSubscription,
     hasDummyFeature,
     hasMetronomeFeature,
-    hasEnforcePremiumModelMessageLimitFeature,
-    hasDisableFairUseAwuLimitFeature,
     membersCount,
     inactiveMembersCount: allMembersCount - membersCount,
     metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,

@@ -1103,31 +1103,21 @@ function buildCreditPlanColumns({
   creditsResetAt,
   variant,
   hasPool,
-  isPremiumMessagePlan,
-  showPremiumMessageColumn,
-  showFairUseCreditsColumn,
+  showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
 }: {
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
   hasPool: boolean;
-  isPremiumMessagePlan: boolean;
-  showPremiumMessageColumn: boolean;
-  showFairUseCreditsColumn: boolean;
+  showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
 }): ColumnDef<RowData, string>[] {
-  const creditsUsageColumn = isPremiumMessagePlan
-    ? showPremiumMessageColumn
-      ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
-      : null
-    : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool);
-
   return [
     // Premium message plans have no seats: every member is billed per
     // message, so the seat columns have nothing to show.
-    ...(isPremiumMessagePlan
+    ...(showPremiumMessageUsage
       ? []
       : (() => {
           switch (variant) {
@@ -1140,17 +1130,20 @@ function buildCreditPlanColumns({
               return [seatTypeColumn];
           }
         })()),
-    ...(creditsUsageColumn
-      ? [{ ...creditsUsageColumn, meta: { className: "w-56" } }]
-      : []),
+    {
+      ...(showPremiumMessageUsage
+        ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
+        : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool)),
+      meta: { className: "w-56" },
+    },
     // Premium message plans also carry a fixed AWU credit allowance for
     // usage on non-premium models, alongside the rolling message limit.
-    ...(isPremiumMessagePlan &&
-    showFairUseCreditsColumn &&
-    fairUseWindowDays !== null
+    ...(showPremiumMessageUsage && fairUseWindowDays !== null
       ? [buildFairUseCreditsColumn(fairUseWindowDays)]
       : []),
-    ...(variant === "compact" && !isPremiumMessagePlan ? [offPaceColumn] : []),
+    ...(variant === "compact" && !showPremiumMessageUsage
+      ? [offPaceColumn]
+      : []),
   ];
 }
 
@@ -1162,9 +1155,7 @@ function buildColumns({
   creditsResetAt,
   variant,
   hasPool,
-  isPremiumMessagePlan,
-  showPremiumMessageColumn,
-  showFairUseCreditsColumn,
+  showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
 }: {
@@ -1175,9 +1166,7 @@ function buildColumns({
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
   hasPool: boolean;
-  isPremiumMessagePlan: boolean;
-  showPremiumMessageColumn: boolean;
-  showFairUseCreditsColumn: boolean;
+  showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
 }): ColumnDef<RowData, string>[] {
@@ -1191,9 +1180,7 @@ function buildColumns({
           creditsResetAt,
           variant,
           hasPool,
-          isPremiumMessagePlan,
-          showPremiumMessageColumn,
-          showFairUseCreditsColumn,
+          showPremiumMessageUsage,
           premiumMessageWindowDays,
           fairUseWindowDays,
         })
@@ -1255,11 +1242,7 @@ interface MembersUsageTableProps {
   // Whether the workspace has an active credit pool. Only affects the
   // "compact" (poke) variant's credit column header.
   hasPool?: boolean;
-  isPremiumMessagePlan?: boolean;
-  // Independently hide the premium-message / fair-use-credits columns even
-  // when `isPremiumMessagePlan` is true.
-  showPremiumMessageColumn?: boolean;
-  showFairUseCreditsColumn?: boolean;
+  showPremiumMessageUsage?: boolean;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
   userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
   groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
@@ -1299,9 +1282,7 @@ export function MembersUsageTable({
   showModelTiersColumn = false,
   variant = "legacy",
   hasPool = true,
-  isPremiumMessagePlan = false,
-  showPremiumMessageColumn = isPremiumMessagePlan,
-  showFairUseCreditsColumn = isPremiumMessagePlan,
+  showPremiumMessageUsage = false,
   userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
   userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
   groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
@@ -1378,7 +1359,7 @@ export function MembersUsageTable({
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
-            ...(showSeatAndCredits && !hasSeat && !isPremiumMessagePlan
+            ...(showSeatAndCredits && !hasSeat && !showPremiumMessageUsage
               ? [
                   {
                     kind: "item" as const,
@@ -1464,7 +1445,7 @@ export function MembersUsageTable({
       groupNameToId,
       readOnly,
       showSeatAndCredits,
-      isPremiumMessagePlan,
+      showPremiumMessageUsage,
       seatActionsDisabled,
       onChangeSeat,
       onRemoveSeat,
@@ -1494,9 +1475,7 @@ export function MembersUsageTable({
         creditsResetAt,
         variant,
         hasPool,
-        isPremiumMessagePlan,
-        showPremiumMessageColumn,
-        showFairUseCreditsColumn,
+        showPremiumMessageUsage,
         premiumMessageWindowDays,
         fairUseWindowDays,
       }),
@@ -1509,9 +1488,7 @@ export function MembersUsageTable({
       variant,
       hasPool,
       premiumMessageWindowDays,
-      isPremiumMessagePlan,
-      showPremiumMessageColumn,
-      showFairUseCreditsColumn,
+      showPremiumMessageUsage,
       fairUseWindowDays,
     ]
   );
