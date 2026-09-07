@@ -125,6 +125,13 @@ export type UsageAggregations = {
  * (`user_id` is indexed as the literal string "unknown" when unattributed, see
  * temporal/analytics_queue/activities/agent_analytics.ts). Single source of
  * truth for splitting analytics docs into programmatic vs user.
+ *
+ * TODO: only needed because the legacy analytics index has no stored
+ * usage_type field, unlike the newer consumption analytics index. Once that
+ * legacy index is retired, delete this (and getShouldTrackTokenUsageCostsESFilter)
+ * and repoint their remaining callers — daily_cap.ts, programmatic_cost.ts,
+ * programmatic_cost_export.ts, observability/credit_usage.ts — at a stored
+ * usage_type term query instead.
  */
 export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContainer {
   return {
