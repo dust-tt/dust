@@ -3,6 +3,7 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -52,17 +53,43 @@ function userDifference(
   return left.filter(({ id }) => !rightIds.has(id));
 }
 
-async function fetchLegacyEditors(
+async function prepareLegacyEditors(
   auth: Authenticator,
-  configuration: AgentConfigurationModel
+  configuration: AgentConfigurationModel,
+  { execute, logger, workspace }: BackfillSpec
 ): Promise<UserResource[]> {
-  const group = await GroupResource.fetchByAgentConfiguration({
+  const groupResult = await GroupResource.findEditorGroupForAgent(
     auth,
-    agentConfiguration: configuration,
-  });
-  assert(group, "Non-draft agent must have an editor group.");
+    configuration
+  );
+  if (groupResult.isOk()) {
+    return groupResult.value.getActiveMembers(auth);
+  }
+  if (groupResult.error.code !== "group_not_found") {
+    throw groupResult.error;
+  }
 
-  return group.getActiveMembers(auth);
+  logger.warn(
+    { workspaceId: workspace.sId, agentId: configuration.sId, execute },
+    "Missing legacy editor group"
+  );
+  // A few legacy agents lack an editor group. Recreate it with the author, as on agent creation.
+  if (execute) {
+    const group = await withTransaction((transaction) =>
+      GroupResource.makeNewAgentEditorsGroup(auth, configuration, {
+        transaction,
+        authorId: configuration.authorId,
+      })
+    );
+    return group.getActiveMembers(auth);
+  }
+
+  const authors = await UserResource.fetchByModelIds([configuration.authorId]);
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users: authors,
+    workspace,
+  });
+  return memberships.length > 0 ? authors : [];
 }
 
 async function fetchGrantEditors(
@@ -82,13 +109,14 @@ async function fetchGrantEditors(
   return group ? group.getActiveMembers(auth) : [];
 }
 
-async function fetchEditorState(
+async function prepareEditorState(
   auth: Authenticator,
   agent: AgentResource,
-  configuration: AgentConfigurationModel
+  configuration: AgentConfigurationModel,
+  spec: BackfillSpec
 ): Promise<EditorState> {
   const [legacyEditors, grantEditors] = await Promise.all([
-    fetchLegacyEditors(auth, configuration),
+    prepareLegacyEditors(auth, configuration, spec),
     fetchGrantEditors(auth, agent),
   ]);
 
@@ -160,7 +188,12 @@ async function backfillAgentGrants(
   spec: BackfillSpec
 ): Promise<AgentEditorGrantStats> {
   const agent = AgentResource.fromAgentConfigurationModel(configuration);
-  const initialState = await fetchEditorState(auth, agent, configuration);
+  const initialState = await prepareEditorState(
+    auth,
+    agent,
+    configuration,
+    spec
+  );
   const changes = {
     toAdd: userDifference(
       initialState.legacyEditors,
@@ -176,7 +209,7 @@ async function backfillAgentGrants(
   const hasChanges = changes.toAdd.length > 0 || changes.toRemove.length > 0;
   const finalState =
     spec.execute && hasChanges
-      ? await fetchEditorState(auth, agent, configuration)
+      ? await prepareEditorState(auth, agent, configuration, spec)
       : initialState;
 
   return {

@@ -525,7 +525,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async findEditorGroupForAgent(
     auth: Authenticator,
-    agent: LightAgentConfigurationType
+    agent: Pick<LightAgentConfigurationType, "id">
   ): Promise<
     Result<
       GroupResource,
