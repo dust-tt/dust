@@ -41,7 +41,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/files/:fileId/share.
 const app = workspaceApp();
 
-// Register `/grants` BEFORE the bare `/` handlers — see [API2] for ordering
+// Register `/grants` BEFORE the bare `/` handlers — see [directory-route-mounts] for ordering
 // rules around literal vs. param siblings (though they are different routes,
 // keeping mounts before leaf handlers matches the convention used elsewhere).
 app.route("/grants", grants);

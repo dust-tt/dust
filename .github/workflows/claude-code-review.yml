@@ -37,13 +37,18 @@ jobs:
         with:
           fetch-depth: 0 # Fetch full history for accurate diffs
 
-      # Pin CLAUDE.md to the base branch to prevent prompt injection via PR-supplied CODING_RULES.md
+      # Pin CLAUDE.md to the base branch to prevent prompt injection via PR-supplied contracts.
       - name: Create CLAUDE.md from trusted base branch
         if: steps.should-run.outputs.result == 'true'
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          git show origin/"$BASE_REF":front/CODING_RULES.md > CLAUDE.md
+          if git cat-file -e origin/"$BASE_REF":front/CONTRACTS 2>/dev/null; then
+            git show origin/"$BASE_REF":front/CONTRACTS > CLAUDE.md
+          else
+            # The migration PR still targets a base branch with the legacy filename.
+            git show origin/"$BASE_REF":front/CODING_RULES.md > CLAUDE.md
+          fi
 
       - name: Run Code Review with Claude
         if: steps.should-run.outputs.result == 'true'

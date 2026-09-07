@@ -190,7 +190,8 @@ export async function imageUrlToBase64ImageBlock(
   try {
     fetchResult = await trustedFetchImageBase64(url);
   } catch (err) {
-    // Don't log the URL: conversation image URLs are signed GCS URLs ([SEC1]).
+    // Don't log the URL: conversation image URLs are signed GCS URLs
+    // ([sensitive-data-in-bodies-or-headers]).
     logger.warn(
       { err: normalizeError(err) },
       "Failed to fetch image for base64 inlining; using text placeholder."

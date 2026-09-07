@@ -1,1 +1,1 @@
-../front/CODING_RULES.md
+../front/CONTRACTS

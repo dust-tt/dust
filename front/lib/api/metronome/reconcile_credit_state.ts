@@ -510,7 +510,7 @@ export async function reconcileWorkspaceUserCreditStates({
   const workspaceId = workspace.sId;
 
   // The seat-allowance cache (contract) and the DB queries can genuinely
-  // throw, so they stay wrapped — the ERR1-authorised case. None of these
+  // throw, so they stay wrapped — the no-catching-own-errors-authorised case. None of these
   // three depend on each other's results, so they run concurrently instead
   // of one round trip at a time.
   let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
@@ -550,7 +550,7 @@ export async function reconcileWorkspaceUserCreditStates({
   // These four reads are all independent (each scoped to the member list
   // resolved above, none depends on another's result), so they run
   // concurrently. Results return our `Result` type: handled with early
-  // returns below rather than throw + catch (ERR1).
+  // returns below rather than throw + catch (no-catching-own-errors).
   const [
     seatBalancesResult,
     perUserCreditBalancesResult,
