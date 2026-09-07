@@ -10,6 +10,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
@@ -183,18 +184,32 @@ app.get(
       });
     }
 
-    const allSkills = await SkillResource.listByWorkspace(auth, {
-      status: skillStatus,
-      globalSpaceOnly: globalSpaceOnly === "true",
-      onlyCustom: onlyCustom === "true",
-      availability,
-      withInstructions: false,
-      withTools: false,
-      withFileAttachments: false,
-      permissionFiltering: bypassEditorVisibility
-        ? "redact_unreadable"
-        : "strict",
-    });
+    const traceTags = {
+      "skills.status": skillStatus ?? "all",
+      "skills.with_relations": withRelations === "true",
+      "skills.with_message_count": withMessageCount,
+      "skills.bypass_editor_visibility": bypassEditorVisibility,
+    };
+    const allSkills = await tracer.trace(
+      "skills.list.list_by_workspace",
+      { tags: traceTags },
+      async (span) => {
+        const skills = await SkillResource.listByWorkspace(auth, {
+          status: skillStatus,
+          globalSpaceOnly: globalSpaceOnly === "true",
+          onlyCustom: onlyCustom === "true",
+          availability,
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+          permissionFiltering: bypassEditorVisibility
+            ? "redact_unreadable"
+            : "strict",
+        });
+        span?.setTag("skills.count", skills.length);
+        return skills;
+      }
+    );
     const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
     let favoriteSkillIds = new Set<string>();
     if (hasSkillFavorites) {
@@ -221,80 +236,86 @@ app.get(
         );
 
     if (withRelations === "true") {
-      const usageMap = await SkillResource.batchFetchUsage(auth, skills);
-      let messageCountMap: Map<string, number> | null = null;
-      if (withMessageCount) {
-        messageCountMap = await SkillResource.batchFetchMessageCounts(
-          auth,
-          skills.filter((skill) => !skill.isSystemSkill)
-        );
-      }
-      const editorsMap = await SkillResource.batchListEditors(auth, skills);
-      const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
-        auth,
-        skills
+      return tracer.trace(
+        "skills.list.with_relations",
+        { tags: { ...traceTags, "skills.count": skills.length } },
+        async () => {
+          const usageMap = await SkillResource.batchFetchUsage(auth, skills);
+          let messageCountMap: Map<string, number> | null = null;
+          if (withMessageCount) {
+            messageCountMap = await SkillResource.batchFetchMessageCounts(
+              auth,
+              skills.filter((skill) => !skill.isSystemSkill)
+            );
+          }
+          const editorsMap = await SkillResource.batchListEditors(auth, skills);
+          const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
+            auth,
+            skills
+          );
+          const childSkillsMap = await SkillResource.batchFetchChildSkills(
+            auth,
+            skills
+          );
+          const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
+            auth,
+            skills
+          );
+
+          const skillsWithRelations = skills.map((sc) => {
+            const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
+              ? { isFavorite: favoriteSkillIds.has(sc.sId) }
+              : {};
+            const {
+              instructions,
+              instructionsHtml,
+              tools,
+              ...skillWithoutInstructionsAndTools
+            } = sc.toJSON(auth);
+
+            const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
+            const editors = editorsMap.get(sc.sId) ?? null;
+            const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
+            const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
+            const usageWithSkills = {
+              ...usage,
+              count: usage.count + usedBySkills.length,
+              skills: usedBySkills,
+            };
+
+            return {
+              ...skillWithoutInstructionsAndTools,
+              ...(messageCountMap
+                ? {
+                    messageCount: sc.isSystemSkill
+                      ? null
+                      : (messageCountMap.get(sc.sId) ?? 0),
+                  }
+                : {}),
+              relations: {
+                usage: usageWithSkills,
+                editors: editors ? editors.map((e) => e.toJSON()) : null,
+                editedByUser: editedByUser ? editedByUser.toJSON() : null,
+                childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
+                  (childSkill) => {
+                    const {
+                      instructions,
+                      instructionsHtml,
+                      tools,
+                      ...childSkillWithoutInstructionsAndTools
+                    } = childSkill.toJSON(auth);
+
+                    return childSkillWithoutInstructionsAndTools;
+                  }
+                ),
+              },
+              ...favoriteState,
+            } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
+          });
+
+          return ctx.json({ skills: skillsWithRelations });
+        }
       );
-      const childSkillsMap = await SkillResource.batchFetchChildSkills(
-        auth,
-        skills
-      );
-      const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
-        auth,
-        skills
-      );
-
-      const skillsWithRelations = skills.map((sc) => {
-        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
-          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
-          : {};
-        const {
-          instructions,
-          instructionsHtml,
-          tools,
-          ...skillWithoutInstructionsAndTools
-        } = sc.toJSON(auth);
-
-        const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
-        const editors = editorsMap.get(sc.sId) ?? null;
-        const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
-        const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
-        const usageWithSkills = {
-          ...usage,
-          count: usage.count + usedBySkills.length,
-          skills: usedBySkills,
-        };
-
-        return {
-          ...skillWithoutInstructionsAndTools,
-          ...(messageCountMap
-            ? {
-                messageCount: sc.isSystemSkill
-                  ? null
-                  : (messageCountMap.get(sc.sId) ?? 0),
-              }
-            : {}),
-          relations: {
-            usage: usageWithSkills,
-            editors: editors ? editors.map((e) => e.toJSON()) : null,
-            editedByUser: editedByUser ? editedByUser.toJSON() : null,
-            childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
-              (childSkill) => {
-                const {
-                  instructions,
-                  instructionsHtml,
-                  tools,
-                  ...childSkillWithoutInstructionsAndTools
-                } = childSkill.toJSON(auth);
-
-                return childSkillWithoutInstructionsAndTools;
-              }
-            ),
-          },
-          ...favoriteState,
-        } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
-      });
-
-      return ctx.json({ skills: skillsWithRelations });
     }
 
     return ctx.json({
