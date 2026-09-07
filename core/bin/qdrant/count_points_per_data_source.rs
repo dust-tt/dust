@@ -59,9 +59,8 @@ async fn main() -> Result<()> {
             .filter(|row| {
                 let internal_id: String = row.get(2);
                 let config_json: String = row.get(3);
-                let config: DataSourceConfig = match serde_json::from_str(&config_json) {
-                    Ok(config) => config,
-                    Err(_) => return false,
+                let Ok(config) = serde_json::from_str::<DataSourceConfig>(&config_json) else {
+                    return false;
                 };
                 let tenant = QdrantTenant {
                     internal_id: &internal_id,

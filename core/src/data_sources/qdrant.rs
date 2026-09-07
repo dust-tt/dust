@@ -1,9 +1,9 @@
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::str::FromStr;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use parking_lot::Mutex;
 use qdrant_client::{
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use super::data_source::EmbedderConfig;
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize, Eq, Hash, PartialOrd, Ord)]
 pub enum QdrantCluster {
     #[serde(rename = "cluster-0")]
     Cluster0,
@@ -81,25 +81,15 @@ pub struct QdrantDataSourceConfig {
     pub shadow_write_cluster: Option<QdrantCluster>,
     // Shard key of the data source in each cluster, assigned at creation from the key list of the
     // cluster's collection. Absent for data sources created before, routed by the legacy hash.
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub shard_keys: HashMap<QdrantCluster, String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub shard_keys: BTreeMap<QdrantCluster, String>,
 }
 
 // What a request needs to know about its data source: the tenant filter value and the shard key.
+#[derive(Clone, Copy, Debug)]
 pub struct QdrantTenant<'a> {
     pub internal_id: &'a str,
-    pub shard_keys: &'a HashMap<QdrantCluster, String>,
-}
-
-impl<'a> QdrantTenant<'a> {
-    // A data source known by its internal id only, routed by the legacy hash.
-    pub fn legacy(internal_id: &'a str) -> Self {
-        static EMPTY: OnceLock<HashMap<QdrantCluster, String>> = OnceLock::new();
-        QdrantTenant {
-            internal_id,
-            shard_keys: EMPTY.get_or_init(HashMap::new),
-        }
-    }
+    pub shard_keys: &'a BTreeMap<QdrantCluster, String>,
 }
 
 impl QdrantClients {
@@ -198,7 +188,10 @@ impl DustQdrantClient {
         // to get a u64 out of it so we take the first 16 characters which will turn into a fully
         // random u64. Taking the modulo `key_count` will give us a random shard key. 16=2^4 and
         // 64/4=16 so u64 is represented by 16 hexadecimal characters.
-        let h: u64 = u64::from_str_radix(&internal_id[0..16], 16)?;
+        let prefix = internal_id
+            .get(0..16)
+            .ok_or_else(|| anyhow!("Internal id too short: {}", internal_id))?;
+        let h: u64 = u64::from_str_radix(prefix, 16)?;
         Ok(h % key_count)
     }
 
@@ -221,10 +214,10 @@ impl DustQdrantClient {
     pub fn shard_key_id(&self, tenant: &QdrantTenant) -> Result<u64> {
         let name = self.shard_key_name(tenant)?;
         let prefix = format!("{}_", self.shard_key_prefix());
-        match name.strip_prefix(&prefix) {
-            Some(id) => Ok(id.parse::<u64>()?),
-            None => Err(anyhow!("Unexpected shard key name {}", name)),
-        }
+        let id = name
+            .strip_prefix(&prefix)
+            .ok_or_else(|| anyhow!("Unexpected shard key name {}", name))?;
+        Ok(id.parse::<u64>()?)
     }
 
     fn shard_key(&self, tenant: &QdrantTenant) -> Result<shard_key::Key> {
@@ -234,8 +227,7 @@ impl DustQdrantClient {
     fn shard_key_names_from_cluster_info(
         info: &qdrant::CollectionClusterInfoResponse,
     ) -> Vec<String> {
-        let mut keys = info
-            .local_shards
+        info.local_shards
             .iter()
             .filter_map(|s| s.shard_key.as_ref())
             .chain(
@@ -247,10 +239,9 @@ impl DustQdrantClient {
                 Some(shard_key::Key::Keyword(name)) => Some(name.clone()),
                 _ => None,
             })
-            .collect::<Vec<_>>();
-        keys.sort();
-        keys.dedup();
-        keys
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect()
     }
 
     // Shard keys of the collection, empty when it has no custom sharding.
@@ -284,22 +275,22 @@ impl DustQdrantClient {
         let collection = self.collection_name(embedder_config);
         let keys = self.shard_key_names(embedder_config).await?;
         if keys.is_empty() {
-            return Err(anyhow!(
+            Err(anyhow!(
                 "Collection {} on cluster {} has no shard keys",
                 collection,
                 self.cluster
-            ));
+            ))?;
         }
         let id = Self::shard_key_id_from_internal_id(internal_id, keys.len() as u64)?;
         let name = format!("{}_{}", self.shard_key_prefix(), id);
         if !keys.contains(&name) {
-            return Err(anyhow!(
+            Err(anyhow!(
                 "Collection {} on cluster {} has {} shard keys but none named {}",
                 collection,
                 self.cluster,
                 keys.len(),
                 name
-            ));
+            ))?;
         }
         Ok(Some(name))
     }

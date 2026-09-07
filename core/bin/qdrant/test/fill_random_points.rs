@@ -28,7 +28,7 @@ use dust::{
 };
 use qdrant_client::{qdrant, Payload};
 use rand::Rng;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 #[derive(Parser, Debug)]
@@ -124,17 +124,14 @@ async fn main() -> Result<()> {
             .to_hex()
             .to_string();
         // Routed like production: the collection's own key list decides the key.
-        let mut shard_keys = HashMap::new();
-        let shard_key = match client
+        let assigned = client
             .assign_shard_key(&embedder_config, &internal_id)
-            .await?
-        {
-            Some(key) => {
-                shard_keys.insert(client.cluster, key.clone());
-                key
-            }
-            None => "none".to_string(),
-        };
+            .await?;
+        let shard_keys: BTreeMap<_, _> = assigned
+            .iter()
+            .map(|key| (client.cluster, key.clone()))
+            .collect();
+        let shard_key = assigned.as_deref().unwrap_or("none");
         let tenant = QdrantTenant {
             internal_id: &internal_id,
             shard_keys: &shard_keys,

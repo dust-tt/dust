@@ -481,12 +481,11 @@ impl DataSource {
         ];
         for cluster in clusters.into_iter().flatten() {
             let client = qdrant_clients.client(cluster);
-            let key = match client
+            let Some(key) = client
                 .assign_shard_key(self.embedder_config(), &self.internal_id)
                 .await?
-            {
-                Some(key) => key,
-                None => continue,
+            else {
+                continue;
             };
             if let Some(shadow_embedder) = &self.config.embedder_config.shadow_embedder {
                 let shadow_keys = client.shard_key_names(shadow_embedder).await?;
