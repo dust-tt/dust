@@ -1,3 +1,7 @@
+import {
+  ERROR_RATIO_THRESHOLD,
+  MIN_ATTEMPTS_IN_WINDOW,
+} from "@app/lib/api/llm/health/config";
 import { evaluateEndpoint, isBreaching } from "@app/lib/api/llm/health/detect";
 import {
   ATTEMPTS_FIELD,
@@ -24,6 +28,11 @@ const ENDPOINT = {
   host: "anthropic",
 } as const;
 
+// Just enough attempts to clear the volume floor, so only the ratio decides,
+// and the fewest errors that breach on them.
+const ATTEMPTS = MIN_ATTEMPTS_IN_WINDOW;
+const BREACHING_ERRORS = Math.ceil(ATTEMPTS * ERROR_RATIO_THRESHOLD);
+
 const NOW = new Date("2026-09-03T14:32:10Z");
 const DEGRADED_SINCE_MS = NOW.getTime();
 
@@ -45,16 +54,21 @@ async function seedWindow({
 
 describe("isBreaching", () => {
   it("ignores an endpoint below the volume floor, however bad the ratio", () => {
-    // 100% errors, but on 199 attempts the ratio is noise.
-    expect(isBreaching({ attempts: 199, providerErrors: 199 })).toBe(false);
+    // 100% errors, but one attempt short of the floor the ratio is noise.
+    const attempts = MIN_ATTEMPTS_IN_WINDOW - 1;
+    expect(isBreaching({ attempts, providerErrors: attempts })).toBe(false);
   });
 
   it("breaches at the threshold", () => {
-    expect(isBreaching({ attempts: 200, providerErrors: 40 })).toBe(true);
+    expect(
+      isBreaching({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS })
+    ).toBe(true);
   });
 
   it("does not breach just below it", () => {
-    expect(isBreaching({ attempts: 200, providerErrors: 39 })).toBe(false);
+    expect(
+      isBreaching({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS - 1 })
+    ).toBe(false);
   });
 
   it("treats an idle endpoint as healthy", () => {
@@ -72,7 +86,7 @@ describe("evaluateEndpoint", () => {
   });
 
   it("declares a breaching endpoint degraded", async () => {
-    await seedWindow({ attempts: 250, providerErrors: 60 });
+    await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
 
     expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
       outcome: "recovery_started",
@@ -86,7 +100,10 @@ describe("evaluateEndpoint", () => {
   });
 
   it("leaves a healthy endpoint alone", async () => {
-    await seedWindow({ attempts: 250, providerErrors: 10 });
+    await seedWindow({
+      attempts: ATTEMPTS,
+      providerErrors: BREACHING_ERRORS - 1,
+    });
 
     expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
       outcome: "not_breaching",
@@ -105,7 +122,7 @@ describe("evaluateEndpoint", () => {
         degradedSinceMs: DEGRADED_SINCE_MS,
       })
     );
-    await seedWindow({ attempts: 250, providerErrors: 60 });
+    await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
 
     expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
       outcome: "already_degraded",
@@ -120,7 +137,7 @@ describe("evaluateEndpoint", () => {
     vi.mocked(launchModelHealthRecovery).mockResolvedValue(
       new Err(new Error("temporal is unreachable"))
     );
-    await seedWindow({ attempts: 250, providerErrors: 60 });
+    await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
 
     expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
       outcome: "launch_failed",

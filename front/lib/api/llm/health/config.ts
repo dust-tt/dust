@@ -22,16 +22,6 @@ export const PROBES_PER_RECOVERY = 3;
 // writes land hundreds of times a second on the same endpoint.
 export const MIN_EVALUATION_INTERVAL_MS = 5_000;
 
-// The next instant the recovery workflow will probe, mirroring its
-// sleep-`MIN_DEGRADED_DURATION_MS`-then-probe loop from its start time.
-export function nextProbeAtMs(degradedSinceMs: number, nowMs: number): number {
-  const elapsedRounds = Math.floor(
-    (nowMs - degradedSinceMs) / MIN_DEGRADED_DURATION_MS
-  );
-
-  return degradedSinceMs + MIN_DEGRADED_DURATION_MS * (elapsedRounds + 1);
-}
-
 // Counter keys are only ever read across `WINDOW_MINUTES`; the extra headroom
 // covers clock skew between pods.
 export const COUNTER_KEY_TTL_SECONDS = WINDOW_MINUTES * 60 * 3;

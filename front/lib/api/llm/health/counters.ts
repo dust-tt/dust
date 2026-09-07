@@ -1,7 +1,7 @@
 import {
   COUNTER_KEY_TTL_SECONDS,
+  MIN_DEGRADED_DURATION_MS,
   MIN_EVALUATION_INTERVAL_MS,
-  nextProbeAtMs,
 } from "@app/lib/api/llm/health/config";
 import type { EndpointEvaluationType } from "@app/lib/api/llm/health/detect";
 import { evaluateEndpoint } from "@app/lib/api/llm/health/detect";
@@ -19,68 +19,59 @@ import { NOOP_HOST } from "@app/lib/model_constructors/types/hosts";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-// How long to wait before evaluating an endpoint again, given what the last
-// evaluation established. Never shorter than `MIN_EVALUATION_INTERVAL_MS`, so
-// clock skew against the Temporal server can only cost a redundant look.
-function holdForEvaluation(
+// The soonest each endpoint may be evaluated again, per pod.
+const nextEvaluationAtMs = new Map<string, number>();
+
+// A running recovery workflow only releases the endpoint at one of its probes,
+// so wait for the next one; anything else keeps the usual cadence.
+function evaluationDueAtMs(
   evaluation: EndpointEvaluationType,
-  now: Date
+  nowMs: number
 ): number {
+  const cadenceAtMs = nowMs + MIN_EVALUATION_INTERVAL_MS;
+
   switch (evaluation.outcome) {
     case "recovery_started":
-    case "already_degraded":
-      // A running workflow can only release the endpoint at one of its probes,
-      // so wait for the next one. A start time we could not read leaves nothing
-      // to wait for.
-      if (evaluation.degradedSinceMs === null) {
-        return MIN_EVALUATION_INTERVAL_MS;
+    case "already_degraded": {
+      const { degradedSinceMs } = evaluation;
+      if (degradedSinceMs === null) {
+        return cadenceAtMs;
       }
 
-      return Math.max(
-        MIN_EVALUATION_INTERVAL_MS,
-        nextProbeAtMs(evaluation.degradedSinceMs, now.getTime()) - now.getTime()
+      const probesSoFar = Math.floor(
+        (nowMs - degradedSinceMs) / MIN_DEGRADED_DURATION_MS
       );
+
+      return Math.max(
+        cadenceAtMs,
+        degradedSinceMs + MIN_DEGRADED_DURATION_MS * (probesSoFar + 1)
+      );
+    }
 
     case "not_breaching":
     case "launch_failed":
-      // Nothing is holding this endpoint -- no breach, or Temporal was
-      // unreachable -- so keep looking at the usual cadence.
-      return MIN_EVALUATION_INTERVAL_MS;
+      return cadenceAtMs;
 
     default:
       assertNever(evaluation);
   }
 }
 
-// The soonest each endpoint may be evaluated again, per pod. One entry per
-// endpoint, so bounded by the endpoint catalog.
-const nextEvaluationAtMs = new Map<string, number>();
-
-function holdEvaluation(
-  endpoint: DegradedModelEndpointType,
-  now: Date,
-  forMs: number
-): void {
-  nextEvaluationAtMs.set(
-    degradedModelEndpointKey(endpoint),
-    now.getTime() + forMs
-  );
-}
-
 function isEvaluationDue(
   endpoint: DegradedModelEndpointType,
-  now: Date
+  nowMs: number
 ): boolean {
-  const dueAtMs = nextEvaluationAtMs.get(degradedModelEndpointKey(endpoint));
+  const key = degradedModelEndpointKey(endpoint);
+  const dueAtMs = nextEvaluationAtMs.get(key);
 
-  if (dueAtMs !== undefined && now.getTime() < dueAtMs) {
+  if (dueAtMs !== undefined && nowMs < dueAtMs) {
     return false;
   }
 
   // Held before the evaluation runs, not after: two attempts on this pod can
   // interleave across the await otherwise, and both would evaluate. The outcome
   // overwrites this with its own hold.
-  holdEvaluation(endpoint, now, MIN_EVALUATION_INTERVAL_MS);
+  nextEvaluationAtMs.set(key, nowMs + MIN_EVALUATION_INTERVAL_MS);
 
   return true;
 }
@@ -97,7 +88,7 @@ function isEvaluationDue(
  * the verdict -- which is why nothing here retries, batches or blocks.
  *
  * An error write is also what triggers detection for that endpoint, throttled by
- * `holdForEvaluation` on what the last evaluation established.
+ * `evaluationDueAtMs` on what the last evaluation established.
  *
  * Only provider-attributed errors count towards the numerator. That is exactly
  * the `error_source:provider` filter the existing Datadog monitor applies at
@@ -117,6 +108,7 @@ export async function recordLLMAttempt({
     return;
   }
 
+  const nowMs = now.getTime();
   const key = modelHealthKey(endpoint, minuteBucket(now));
   const isProviderError =
     outcome.outcome === "error" && outcome.errorSource === "provider";
@@ -139,12 +131,15 @@ export async function recordLLMAttempt({
     // Only an error can push the ratio over the threshold, so a successful
     // attempt has nothing to detect. This reads back the window for this one
     // endpoint -- the one we just served -- and never for any other.
-    if (isProviderError && isEvaluationDue(endpoint, now)) {
+    if (isProviderError && isEvaluationDue(endpoint, nowMs)) {
       // While recovery holds the endpoint, evaluating again buys nothing: the
       // window still breaches and the start still comes back rejected. How long
       // that stays true depends on the outcome, so the hold does too.
       const evaluation = await evaluateEndpoint(endpoint, now);
-      holdEvaluation(endpoint, now, holdForEvaluation(evaluation, now));
+      nextEvaluationAtMs.set(
+        degradedModelEndpointKey(endpoint),
+        evaluationDueAtMs(evaluation, nowMs)
+      );
     }
   } catch {
     // Counted rather than logged: this runs once per attempt, so a Redis outage
