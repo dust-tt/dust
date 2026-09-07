@@ -4,9 +4,11 @@ import type { OAuthConnectionType, OAuthProvider } from "@connectors/types";
 import { getOAuthConnectionAccessToken } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
 
-// Most connectors are built on the assumption that errors are thrown with special handling of
-// selected errors such as ExternalOauthTokenError. This function is used to retrieve an OAuth
-// connection access token and throw an ExternalOauthTokenError if the token is revoked.
+/**
+ * @cc [label:error-handling] google-drive-admin-policy-error
+ * Google Drive token refresh failures containing `admin_policy_enforced` must throw
+ * `ExternalOAuthTokenError` to trigger the connector's existing pause-and-stop handling.
+ */
 export async function getOAuthConnectionAccessTokenWithThrow({
   logger,
   provider,
@@ -44,9 +46,11 @@ export async function getOAuthConnectionAccessTokenWithThrow({
       (tokRes.error.code === "provider_access_token_refresh_error" &&
         (tokRes.error.message.includes("invalid_grant") ||
           tokRes.error.message.includes("invalid_client"))) ||
-      // Happens with google drive
+      // Happens with Google Drive.
       (tokRes.error.code === "provider_access_token_refresh_error" &&
-        tokRes.error.message.includes("Account Restricted"))
+        (tokRes.error.message.includes("Account Restricted") ||
+          (provider === "google_drive" &&
+            tokRes.error.message.includes("admin_policy_enforced"))))
     ) {
       throw new ExternalOAuthTokenError(new Error(tokRes.error.message));
     } else {
