@@ -821,10 +821,10 @@ export abstract class LLM<
       }
       statsDMetrics.increment("llm_interaction.count", 1, metricTags);
 
-      // TODO(detect_outage): batch attempts deliberately do not feed the model
-      // health counters. A batch job is submitted then polled over hours, so its
-      // error surfaces at a timestamp unrelated to when the provider was
-      // unhealthy, and folding that into a five-minute window would smear it.
+      // batch attempts deliberately do not feed the model health counters.
+      // A batch job is submitted then polled over hours, so its error surfaces
+      // at a timestamp unrelated to when the provider was unhealthy, and folding
+      // that into a five-minute window would smear it.
 
       const { tokenUsage, ...rest } = buffer.currentOutput;
 
