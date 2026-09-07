@@ -38,7 +38,7 @@ export function ConversationPlanModePanel({
       message:
         "This plan will be moved to the conversation's archived files. You can still open it later, and the agent can create a new plan if needed.",
       validateLabel: "Archive plan",
-      validateVariant: "warning",
+      validateVariant: "primary",
     });
     if (confirmed) {
       await closePlan();
