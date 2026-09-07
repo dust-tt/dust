@@ -58,14 +58,7 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
-// Origins whose messages are created via a system/integration API key and
-// attribute the message to a Dust user through a best-effort email match
-// against workspace membership (`attributeUserFromWorkspaceAndEmail`) rather
-// than an authenticated session — that match can legitimately find no user
-// (e.g. a Slack user with no Dust seat). For these origins only, a "user"
-// usage type with no userId is an expected outcome, not a caller bug: it
-// must resolve to a specific user or be billed as programmatic usage, never
-// silently ship as user_id "unknown".
+// Origins attributed via a best-effort email match rather than a session (`attributeUserFromWorkspaceAndEmail`), where a resulting missing userId is expected, not a caller bug.
 const BEST_EFFORT_USER_ATTRIBUTION_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>(["slack"]);
 
