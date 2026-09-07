@@ -105,8 +105,7 @@ export function useConversationAutoScroll({
         }
         return;
       }
-      // Keep the reader in place while detached by cancelling Virtuoso's temporary
-      // visual shift and the scrollTop adjustment that replaces it.
+      // While detached, undo Virtuoso's shifts to keep the text in place.
       if (!isAutoScrollEnabledRef.current) {
         if (translation === 0 && previousTranslation !== 0) {
           const maxScrollTop = scrollElement.scrollHeight - window.innerHeight;
