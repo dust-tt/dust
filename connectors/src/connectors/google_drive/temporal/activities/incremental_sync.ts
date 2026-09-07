@@ -18,6 +18,7 @@ import {
   getCachedLabels,
   getDriveClient,
   getInternalId,
+  isGoogleDriveRateLimitError,
   isSharedDriveNotFoundError,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -361,7 +362,17 @@ export async function incrementalSync(
 
     return { nextPageToken, newFolders };
   } catch (e) {
+    // A 403 can also mean a transient rate-limit/quota exhaustion ("User rate limit
+    // exceeded."). Those must be re-thrown so Temporal retries with backoff, not
+    // treated as a permanent loss of access to the drive (which would silently skip
+    // the drive and leave it stale).
     if (
+      isGoogleDriveRateLimitError(e) ||
+      (e instanceof WithRetriesError &&
+        e.errors.every((error) => isGoogleDriveRateLimitError(error.error)))
+    ) {
+      throw e;
+    } else if (
       (e instanceof GaxiosError && e.response?.status === 403) ||
       (e instanceof WithRetriesError &&
         e.errors.every(

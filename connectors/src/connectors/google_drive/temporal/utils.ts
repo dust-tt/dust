@@ -405,3 +405,42 @@ export function isSharedDriveNotFoundError(error: unknown): boolean {
 
   return false;
 }
+
+// Google answers 403 (and sometimes 429) for rate-limit/quota exhaustion, with a
+// `reason` such as `userRateLimitExceeded` or `rateLimitExceeded` (message: "User rate
+// limit exceeded."). These are transient and must be retried, not confused with a
+// permanent loss of access (which is also a 403).
+const GOOGLE_DRIVE_RATE_LIMIT_REASONS = new Set([
+  "userRateLimitExceeded",
+  "rateLimitExceeded",
+  "sharingRateLimitExceeded",
+  "dailyLimitExceeded",
+  "quotaExceeded",
+]);
+
+export function isGoogleDriveRateLimitError(error: unknown): boolean {
+  if (!(error instanceof GaxiosError)) {
+    return false;
+  }
+
+  const status = error.response?.status;
+  if (status !== 403 && status !== 429) {
+    return false;
+  }
+
+  const errorData = error.response?.data?.error;
+  if (!errorData) {
+    return false;
+  }
+
+  const errors = errorData.errors;
+  if (Array.isArray(errors)) {
+    return errors.some(
+      (err) =>
+        typeof err.reason === "string" &&
+        GOOGLE_DRIVE_RATE_LIMIT_REASONS.has(err.reason)
+    );
+  }
+
+  return false;
+}

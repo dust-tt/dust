@@ -1,3 +1,4 @@
+import { isGoogleDriveRateLimitError } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   ExternalOAuthTokenError,
   ProviderWorkflowError,
@@ -72,6 +73,17 @@ export class GoogleDriveCastKnownErrorsInterceptor
     } catch (err: unknown) {
       if (isGoogleDriveInsufficientPermissionsError(err)) {
         throw new ExternalOAuthTokenError(err);
+      }
+
+      // Google returns 403 (not 429) for user rate-limit/quota exhaustion, e.g. "User
+      // rate limit exceeded.". Map it to a retryable rate_limit_error like the 429 case.
+      if (isGoogleDriveRateLimitError(err)) {
+        throw new ProviderWorkflowError(
+          "google_drive",
+          "403: Rate Limit Error",
+          "rate_limit_error",
+          err
+        );
       }
 
       if (err instanceof GaxiosError) {
