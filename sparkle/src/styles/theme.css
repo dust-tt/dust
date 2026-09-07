@@ -52,7 +52,9 @@
        ui-section-title 20    -> xl      ui-page-title 24 (28 desktop) -> 2xl
        article-h1 & marketing-section 32 -> 3xl
        marketing-hero 40 (section leading on desktop) -> 4xl
-       5xl..9xl follow the hero/display ramp (leading 1.05-1.17, tracking -0.035/-0.04em). */
+       5xl..9xl follow the hero/display ramp (leading 1.05-1.17).
+     Tracking bands: 16-20px -0.005..-0.015em, 24-32px -0.015..-0.02em,
+     40-72px -0.025..-0.04em, interpolated linearly per step. */
   --text-xs: 12px;
   --text-xs--line-height: 1.333333;
   --text-xs--letter-spacing: 0;
@@ -64,7 +66,7 @@
   --text-base--letter-spacing: 0;
   --text-lg: 18px;
   --text-lg--line-height: 1.444444;
-  --text-lg--letter-spacing: -0.005em;
+  --text-lg--letter-spacing: -0.01em;
   --text-xl: 20px;
   --text-xl--line-height: 1.4;
   --text-xl--letter-spacing: -0.015em;
@@ -76,16 +78,16 @@
   --text-3xl--letter-spacing: -0.02em;
   --text-4xl: 40px;
   --text-4xl--line-height: 1.1;
-  --text-4xl--letter-spacing: -0.03em;
+  --text-4xl--letter-spacing: -0.025em;
   --text-5xl: 48px;
   --text-5xl--line-height: 1.166667;
-  --text-5xl--letter-spacing: -0.035em;
+  --text-5xl--letter-spacing: -0.029em;
   --text-6xl: 56px;
   --text-6xl--line-height: 1.1;
-  --text-6xl--letter-spacing: -0.04em;
+  --text-6xl--letter-spacing: -0.0325em;
   --text-7xl: 64px;
   --text-7xl--line-height: 1.0625;
-  --text-7xl--letter-spacing: -0.04em;
+  --text-7xl--letter-spacing: -0.036em;
   --text-8xl: 72px;
   --text-8xl--line-height: 1.055556;
   --text-8xl--letter-spacing: -0.04em;
@@ -168,7 +170,7 @@
   :root {
     --text-2xl: 28px;
     --text-2xl--line-height: 1.285714;
-    --text-2xl--letter-spacing: -0.02em;
+    --text-2xl--letter-spacing: -0.0175em;
     --text-4xl--line-height: 1.2;
   }
 }
@@ -617,8 +619,8 @@
 @utility heading-base {
   font-size: var(--text-base);
   line-height: var(--text-base--line-height);
-  /* Spec ui-card-title: -0.01em; the base token itself stays at 0 for body. */
-  letter-spacing: -0.01em;
+  /* Small-heading tracking at 16px: -0.005em; the base token stays at 0 for body. */
+  letter-spacing: -0.005em;
   font-weight: 550;
 }
 @utility heading-lg {
