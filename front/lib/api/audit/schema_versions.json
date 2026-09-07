@@ -112,6 +112,7 @@
   "wake_up.created": 1,
   "wake_up.expired": 1,
   "wake_up.fired": 1,
+  "webhook_source.deleted": 1,
   "workspace.advanced_model_access_updated": 1,
   "workspace.analytics_updated": 1,
   "workspace.audit_logs_updated": 1,
