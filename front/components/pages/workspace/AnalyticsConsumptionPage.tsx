@@ -2,6 +2,8 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { AnalyticsConversationPanel } from "@app/components/workspace/analytics/AnalyticsConversationPanel";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
@@ -26,6 +28,7 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
@@ -38,7 +41,11 @@ import {
   DEFAULT_CONSUMPTION_GRANULARITY,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { TrackingExtra } from "@app/lib/tracking";
 import {
@@ -47,18 +54,24 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import type { LightWorkspaceType } from "@app/types/user";
+import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 import {
+  Button,
   cn,
   LoadingBlock,
   Page,
+  ResizableSidePanel,
+  Robot,
   SafeSuspense,
   safeLazy,
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
+
+const MIN_CONTENT_WIDTH_WITH_PANEL_PX = 720;
 
 const LazyConsumptionChart = safeLazy(
   () =>
@@ -164,6 +177,13 @@ export function AnalyticsConsumptionPage() {
     filter: state.filter,
   });
 
+  const [isOpen, setIsOpen] = useState(false);
+
+  const { hasFeature } = useFeatureFlags();
+  const analyticsAssistantEnabled =
+    hasFeature("analytics_conversation_panel") &&
+    isWorkspaceAnalyticsEnabled(owner);
+
   useEffect(() => {
     trackEvent({
       area: TRACKING_AREAS.ANALYTICS,
@@ -172,6 +192,51 @@ export function AnalyticsConsumptionPage() {
       extra: { workspace_id: owner.sId },
     });
   }, [owner.sId]);
+
+  const { isNavigationBarOpen, setIsNavigationBarOpen } =
+    useDesktopNavigation();
+  const didFoldNavigationForPanelRef = useRef(false);
+
+  const foldNavigationForPanel = useCallback(() => {
+    if (isNavigationBarOpen) {
+      didFoldNavigationForPanelRef.current = true;
+      setIsNavigationBarOpen(false);
+    }
+  }, [isNavigationBarOpen, setIsNavigationBarOpen]);
+
+  const closePanel = () => {
+    setIsOpen(false);
+    if (didFoldNavigationForPanelRef.current) {
+      didFoldNavigationForPanelRef.current = false;
+      setIsNavigationBarOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    if (isNavigationBarOpen) {
+      didFoldNavigationForPanelRef.current = false;
+    }
+  }, [isNavigationBarOpen]);
+
+  const content = (
+    <AdminPageContainer className="relative">
+      {analyticsAssistantEnabled && !isOpen && (
+        <Button
+          variant="outline"
+          icon={Robot}
+          label="Ask @analyst"
+          className="absolute right-4 top-4 z-10 sm:right-10 sm:top-8"
+          onClick={() => setIsOpen(true)}
+        />
+      )}
+      <AnalyticsConsumptionContent
+        owner={owner}
+        state={{ ...state, filter }}
+        onAgentClick={setAgentDetailsId}
+        onSkillClick={setSkillDetailsId}
+      />
+    </AdminPageContainer>
+  );
 
   return (
     <>
@@ -187,14 +252,27 @@ export function AnalyticsConsumptionPage() {
         skillId={skillDetailsId}
         onClose={() => setSkillDetailsId(null)}
       />
-      <AdminPageContainer>
-        <AnalyticsConsumptionContent
-          owner={owner}
-          state={{ ...state, filter }}
-          onAgentClick={setAgentDetailsId}
-          onSkillClick={setSkillDetailsId}
-        />
-      </AdminPageContainer>
+      {analyticsAssistantEnabled ? (
+        <ResizableSidePanel
+          isOpen={isOpen}
+          onCollapse={closePanel}
+          minContentWidthPx={MIN_CONTENT_WIDTH_WITH_PANEL_PX}
+          onContentSqueezed={foldNavigationForPanel}
+          className="min-h-0 flex-1"
+          panel={
+            <AnalyticsConversationPanel
+              owner={owner}
+              user={user}
+              onClose={closePanel}
+              disabled={!isOpen}
+            />
+          }
+        >
+          <div className="h-full w-full overflow-y-auto">{content}</div>
+        </ResizableSidePanel>
+      ) : (
+        content
+      )}
     </>
   );
 }
