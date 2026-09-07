@@ -12,8 +12,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withCreditPricedPlan } from "@front-api/middlewares/with_credit_priced_plan";
 
-export type { GetSlackWorkflowsOverviewResponse };
-
 // Mounted at /api/w/:wId/slack-workflows/overview.
 const app = workspaceApp();
 

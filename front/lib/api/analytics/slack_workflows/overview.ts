@@ -68,7 +68,7 @@ export async function fetchSlackWorkflowsOverview(
     return searchResult;
   }
 
-  const aggregations = searchResult.value.aggregations;
+  const { aggregations } = searchResult.value;
 
   return new Ok({
     period,
