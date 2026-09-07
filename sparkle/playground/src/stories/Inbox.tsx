@@ -31,7 +31,7 @@ import {
   FolderOpen,
   Heart,
   Icon,
-  Inbox01,
+  Mail01,
   IntersectDust,
   Lightbulb04,
   Link01,
@@ -61,7 +61,7 @@ import {
   SlackLogo,
   Star01,
   Trash01,
-  User03,
+  User01,
   Users01,
   UserSquare,
   XClose,
@@ -1692,7 +1692,7 @@ function Inbox() {
               />
               <NavigationListItem
                 label="Inbox"
-                icon={Inbox01}
+                icon={Mail01}
                 selected={p2View.kind === "inbox"}
                 count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
@@ -1955,7 +1955,7 @@ function Inbox() {
         <DropdownMenuContent>
           <DropdownMenuItem
             label="Profile"
-            icon={User03}
+            icon={User01}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

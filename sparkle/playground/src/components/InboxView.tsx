@@ -8,7 +8,7 @@ import {
   Cube01,
   CubeOutline,
   Icon,
-  Inbox01,
+  Mail01,
   ListGroup,
   MessageChatSquare,
   ReplySection,
@@ -734,7 +734,7 @@ export function InboxView({
   };
 
   const renderEmptyState = (title: string, description: React.ReactNode) => (
-    <EmptyState icon={Inbox01} title={title} description={description} />
+    <EmptyState icon={Mail01} title={title} description={description} />
   );
 
   const renderConversationsTab = () => {

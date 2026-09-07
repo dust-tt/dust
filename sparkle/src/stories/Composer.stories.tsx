@@ -20,7 +20,7 @@ import {
   Code01,
   Command,
   DoubleQuotes,
-  File01,
+  File02,
   Folder,
   Globe01,
   Heading01,
@@ -395,7 +395,7 @@ function ComposerDemo({
         previewUrl: f.type.startsWith("image/")
           ? URL.createObjectURL(f)
           : undefined,
-        icon: File01,
+        icon: File02,
       }));
       setAttachments((prev) => [...prev, ...newAttachments]);
       newAttachments.forEach((attachment) => {

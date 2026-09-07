@@ -1,4 +1,7 @@
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ThirdPartyConfigurationError,
+} from "@connectors/lib/error";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -6,6 +9,29 @@ import type {
 } from "@temporalio/worker";
 import { GaxiosError } from "googleapis-common";
 
+function isBigQueryPolicyViolationError(err: unknown): err is Error {
+  return (
+    err instanceof Error &&
+    "code" in err &&
+    err.code === 403 &&
+    "errors" in err &&
+    Array.isArray(err.errors) &&
+    err.errors.some(
+      (error: unknown) =>
+        typeof error === "object" &&
+        error !== null &&
+        "reason" in error &&
+        error.reason === "policyViolation"
+    )
+  );
+}
+
+/**
+ * @cc [label:error-handling] bigquery-error-classification
+ * Map recognized authentication and provider configuration failures to `ExternalOAuthTokenError`
+ * and `ThirdPartyConfigurationError`, respectively. Return successful activity results and rethrow
+ * unrecognized errors unchanged.
+ */
 export class BigQueryCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -17,7 +43,8 @@ export class BigQueryCastKnownErrorsInterceptor
       return await next(input);
     } catch (err: unknown) {
       if (err instanceof GaxiosError) {
-        // Check for invalid_grant error which indicates the account/authorization is no longer valid
+        // Check for invalid_grant error which indicates the account/authorization is no longer
+        // valid
         if (
           err.response?.data &&
           typeof err.response.data === "object" &&
@@ -39,6 +66,10 @@ export class BigQueryCastKnownErrorsInterceptor
         err.message.includes("invalid_grant: Invalid grant: account not found")
       ) {
         throw new ExternalOAuthTokenError(err);
+      }
+
+      if (isBigQueryPolicyViolationError(err)) {
+        throw new ThirdPartyConfigurationError(err);
       }
 
       throw err;

@@ -1,6 +1,6 @@
 use super::file_storage_document::FileStorageDocument;
 use super::node::ProviderVisibility;
-use super::qdrant::{DustQdrantClient, QdrantCluster};
+use super::qdrant::{DustQdrantClient, QdrantCluster, QdrantTenant};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
 use crate::data_sources::splitter::{splitter, SplitterID};
@@ -465,6 +465,44 @@ impl DataSource {
         self.config.qdrant_config.cluster
     }
 
+    pub fn qdrant_tenant(&self) -> QdrantTenant<'_> {
+        QdrantTenant {
+            internal_id: &self.internal_id,
+            shard_keys: &self.config.qdrant_config.shard_keys,
+        }
+    }
+
+    // Once at creation: every cluster the data source writes to hands out the key its collection
+    // layout dictates. A shadow embedder collection must agree on that key.
+    pub async fn assign_qdrant_shard_keys(&mut self, qdrant_clients: &QdrantClients) -> Result<()> {
+        let clusters = [
+            Some(self.main_qdrant_cluster()),
+            self.shadow_write_qdrant_cluster(),
+        ];
+        for cluster in clusters.into_iter().flatten() {
+            let client = qdrant_clients.client(cluster);
+            let Some(key) = client
+                .assign_shard_key(self.embedder_config(), &self.internal_id)
+                .await?
+            else {
+                continue;
+            };
+            if let Some(shadow_embedder) = &self.config.embedder_config.shadow_embedder {
+                let shadow_keys = client.shard_key_names(shadow_embedder).await?;
+                if !shadow_keys.contains(&key) {
+                    Err(anyhow!(
+                        "Shard key {} missing from collection {} on cluster {}",
+                        key,
+                        client.collection_name(shadow_embedder),
+                        cluster
+                    ))?;
+                }
+            }
+            self.config.qdrant_config.shard_keys.insert(cluster, key);
+        }
+        Ok(())
+    }
+
     pub fn shadow_write_qdrant_cluster(&self) -> Option<QdrantCluster> {
         self.config.qdrant_config.shadow_write_cluster
     }
@@ -632,7 +670,7 @@ impl DataSource {
                 match qdrant_client
                     .set_payload(
                         embedder_config,
-                        &self.internal_id,
+                        &self.qdrant_tenant(),
                         filter.clone(),
                         payload.clone(),
                     )
@@ -661,7 +699,7 @@ impl DataSource {
         }
 
         qdrant_client
-            .set_payload(embedder_config, &self.internal_id, filter, payload)
+            .set_payload(embedder_config, &self.qdrant_tenant(), filter, payload)
             .await?;
 
         Ok(())
@@ -901,7 +939,7 @@ impl DataSource {
                 let scroll_results = qdrant_client
                     .scroll(
                         embedder_config,
-                        &self.internal_id,
+                        &self.qdrant_tenant(),
                         Some(qdrant::Filter {
                             must_not: vec![],
                             should: vec![],
@@ -1064,7 +1102,7 @@ impl DataSource {
 
         match self.shadow_write_qdrant_client(&qdrant_clients) {
             Some(qdrant_client) => match qdrant_client
-                .delete_points(embedder_config, &self.internal_id, filter.clone())
+                .delete_points(embedder_config, &self.qdrant_tenant(), filter.clone())
                 .await
             {
                 Ok(_) => {
@@ -1089,7 +1127,7 @@ impl DataSource {
         }
 
         qdrant_client
-            .delete_points(embedder_config, &self.internal_id, filter)
+            .delete_points(embedder_config, &self.qdrant_tenant(), filter)
             .await?;
 
         let deletion_duration = utils::now() - now;
@@ -1148,7 +1186,7 @@ impl DataSource {
                 match self.shadow_write_qdrant_client(&qdrant_clients) {
                     Some(qdrant_client) => {
                         match qdrant_client
-                            .upsert_points(embedder_config, &self.internal_id, chunk.clone())
+                            .upsert_points(embedder_config, &self.qdrant_tenant(), chunk.clone())
                             .await
                         {
                             Ok(_) => {
@@ -1174,7 +1212,7 @@ impl DataSource {
                 }
 
                 qdrant_client
-                    .upsert_points(embedder_config, &self.internal_id, chunk)
+                    .upsert_points(embedder_config, &self.qdrant_tenant(), chunk)
                     .await?;
             }
         }
@@ -1340,7 +1378,7 @@ impl DataSource {
                 let results = qdrant_client
                     .search_points(
                         self.embedder_config(),
-                        &self.internal_id,
+                        &self.qdrant_tenant(),
                         vec,
                         f,
                         top_k as u64,
@@ -1518,7 +1556,7 @@ impl DataSource {
                             let results_expand = match qdrant_client
                                 .scroll(
                                     &data_source.embedder_config(),
-                                    &data_source.internal_id,
+                                    &data_source.qdrant_tenant(),
                                     Some(filter),
                                     Some(new_offsets_count),
                                     None,
@@ -1654,7 +1692,7 @@ impl DataSource {
         info!(
             data_source_internal_id = self.internal_id(),
             qdrant_shard_key = qdrant_client
-                .shard_key_name(&self.internal_id)
+                .shard_key_name(&self.qdrant_tenant())
                 .unwrap_or_else(|_| "unknown".to_string()),
             document_count = documents.len(),
             chunk_count = documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
@@ -1740,7 +1778,7 @@ impl DataSource {
                 let mut r = qdrant_client
                     .scroll(
                         &self.embedder_config(),
-                        &self.internal_id,
+                        &self.qdrant_tenant(),
                         Some(qdrant_batch_filter.clone()),
                         Some(qdrant_page_size),
                         page_offset,
@@ -1926,7 +1964,7 @@ impl DataSource {
 
         match self.shadow_write_qdrant_client(&qdrant_clients) {
             Some(qdrant_client) => match qdrant_client
-                .delete_points(embedder_config, &self.internal_id, filter.clone())
+                .delete_points(embedder_config, &self.qdrant_tenant(), filter.clone())
                 .await
             {
                 Ok(_) => {
@@ -1953,7 +1991,7 @@ impl DataSource {
         }
 
         match qdrant_client
-            .delete_points(embedder_config, &self.internal_id, filter)
+            .delete_points(embedder_config, &self.qdrant_tenant(), filter)
             .await
         {
             Ok(_) => {
@@ -2126,7 +2164,7 @@ impl DataSource {
         let store = store.clone();
 
         qdrant_client
-            .delete_all_points_for_internal_id(self.embedder_config(), &self.internal_id)
+            .delete_all_points_for_internal_id(self.embedder_config(), &self.qdrant_tenant())
             .await?;
 
         info!(

@@ -157,7 +157,16 @@ pub async fn data_sources_register(
     Json(payload): Json<DataSourcesRegisterPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let ds = data_source::DataSource::new(&project, &payload.config, &payload.name);
+    let mut ds = data_source::DataSource::new(&project, &payload.config, &payload.name);
+
+    if let Err(e) = ds.assign_qdrant_shard_keys(&state.qdrant_clients).await {
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to assign a Qdrant shard key to the data source",
+            Some(e),
+        );
+    }
 
     match ds
         .register(state.store.clone(), state.search_store.clone())
