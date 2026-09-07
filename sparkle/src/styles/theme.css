@@ -38,50 +38,61 @@
   --font-sans: Geist, sans-serif;
   --font-mono: "Geist Mono", monospace;
 
-  /* Font weight overrides (shared by sparkle/front/marketing). */
-  --font-weight-medium: 450;
-  --font-weight-semibold: 550;
+  /* Font weight overrides (shared by sparkle/front/marketing).
+     Geist readability-first spec (2026-09-07 test): 500 for labels/buttons,
+     600 for headings and strong. Previously 450 / 550. */
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
 
-  /* Font sizes — px scale with line-height + letter-spacing. */
+  /* Font sizes — px scale with line-height + letter-spacing.
+     Geist readability-first spec (2026-09-07 test), 16px root, mobile-first.
+     Desktop (>= 48rem) overrides for 2xl and 4xl live in the @media block
+     after this @theme. Role mapping, spec -> token:
+       ui-micro 12/16            -> xs      ui-compact & label 14/20 -> sm
+       ui-body 16/24             -> base    article-h4 18/26 -0.005em -> lg
+       ui-section-title 20/28    -> xl      ui-page-title 24/32 (28/36 desktop) -> 2xl
+       article-h1 & marketing-section 32/40 -> 3xl
+       marketing-hero 40/44 (section 40/48 desktop) -> 4xl
+       5xl..9xl follow the hero/display ramp (leading 1.05-1.15, tracking -0.035/-0.04em). */
   --text-xs: 12px;
   --text-xs--line-height: 16px;
-  --text-xs--letter-spacing: normal;
+  --text-xs--letter-spacing: 0;
   --text-sm: 14px;
   --text-sm--line-height: 20px;
-  --text-sm--letter-spacing: -0.28px;
+  --text-sm--letter-spacing: 0;
   --text-base: 16px;
   --text-base--line-height: 24px;
-  --text-base--letter-spacing: -0.32px;
+  --text-base--letter-spacing: 0;
   --text-lg: 18px;
   --text-lg--line-height: 26px;
-  --text-lg--letter-spacing: -0.36px;
+  --text-lg--letter-spacing: -0.09px;
   --text-xl: 20px;
   --text-xl--line-height: 28px;
-  --text-xl--letter-spacing: -0.4px;
+  --text-xl--letter-spacing: -0.3px;
   --text-2xl: 24px;
-  --text-2xl--line-height: 30px;
-  --text-2xl--letter-spacing: -0.96px;
+  --text-2xl--line-height: 32px;
+  --text-2xl--letter-spacing: -0.36px;
   --text-3xl: 32px;
-  --text-3xl--line-height: 36px;
-  --text-3xl--letter-spacing: -1.28px;
+  --text-3xl--line-height: 40px;
+  --text-3xl--letter-spacing: -0.64px;
   --text-4xl: 40px;
-  --text-4xl--line-height: 42px;
-  --text-4xl--letter-spacing: -2.4px;
+  --text-4xl--line-height: 44px;
+  --text-4xl--letter-spacing: -1.2px;
   --text-5xl: 48px;
-  --text-5xl--line-height: 52px;
-  --text-5xl--letter-spacing: -2.88px;
+  --text-5xl--line-height: 56px;
+  --text-5xl--letter-spacing: -1.68px;
   --text-6xl: 56px;
-  --text-6xl--line-height: 60px;
-  --text-6xl--letter-spacing: -3.36px;
+  --text-6xl--line-height: 62px;
+  --text-6xl--letter-spacing: -2.24px;
   --text-7xl: 64px;
   --text-7xl--line-height: 68px;
-  --text-7xl--letter-spacing: -3.84px;
+  --text-7xl--letter-spacing: -2.56px;
   --text-8xl: 72px;
   --text-8xl--line-height: 76px;
-  --text-8xl--letter-spacing: -4.32px;
+  --text-8xl--letter-spacing: -2.88px;
   --text-9xl: 80px;
   --text-9xl--line-height: 84px;
-  --text-9xl--letter-spacing: -4.8px;
+  --text-9xl--letter-spacing: -3.2px;
 
   /* Spacing additions. Numeric keys (100/125/150) feed the width, height,
      min and max size utilities — they were the preset's sizeScale. */
@@ -143,6 +154,21 @@
   --animate-move-square: move-square 3s ease-out infinite;
   --animate-breathing: breathing 3s infinite ease-in-out;
   --animate-breathing-scale: breathing-scale 3s infinite ease-in-out;
+}
+
+/*
+ * Geist readability-first spec: desktop steps (>= 48rem). The spec sizes the
+ * UI page title 24px on mobile and 28px on desktop, and relaxes the 40px step
+ * from hero leading (1.1) to section leading (1.2). `@theme` above is not
+ * inline, so the utilities read these custom properties at runtime.
+ */
+@media (min-width: 48rem) {
+  :root {
+    --text-2xl: 28px;
+    --text-2xl--line-height: 36px;
+    --text-2xl--letter-spacing: -0.56px;
+    --text-4xl--line-height: 48px;
+  }
 }
 
 /*
@@ -558,19 +584,19 @@
 @utility label-xs {
   font-size: var(--text-xs);
   line-height: var(--text-xs--line-height);
-  letter-spacing: var(--text-xs--letter-spacing);
+  letter-spacing: 0;
   font-weight: 500;
 }
 @utility label-sm {
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
-  letter-spacing: var(--text-sm--letter-spacing);
+  letter-spacing: 0;
   font-weight: 500;
 }
 @utility label-base {
   font-size: var(--text-base);
   line-height: var(--text-base--line-height);
-  letter-spacing: var(--text-base--letter-spacing);
+  letter-spacing: 0;
   font-weight: 500;
 }
 
@@ -578,79 +604,80 @@
   font-size: var(--text-xs);
   line-height: var(--text-xs--line-height);
   letter-spacing: var(--text-xs--letter-spacing);
-  font-weight: 550;
+  font-weight: 600;
 }
 @utility heading-sm {
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
   letter-spacing: var(--text-sm--letter-spacing);
-  font-weight: 550;
+  font-weight: 600;
 }
 @utility heading-base {
   font-size: var(--text-base);
   line-height: var(--text-base--line-height);
-  letter-spacing: var(--text-base--letter-spacing);
-  font-weight: 550;
+  /* Spec ui-card-title: -0.01em; the base token itself stays at 0 for body. */
+  letter-spacing: -0.16px;
+  font-weight: 600;
 }
 @utility heading-lg {
   font-size: var(--text-lg);
   line-height: var(--text-lg--line-height);
   letter-spacing: var(--text-lg--letter-spacing);
-  font-weight: 550;
+  font-weight: 600;
 }
 @utility heading-xl {
   font-size: var(--text-xl);
   line-height: var(--text-xl--line-height);
   letter-spacing: var(--text-xl--letter-spacing);
-  font-weight: 550;
+  font-weight: 600;
 }
 @utility heading-2xl {
   font-size: var(--text-2xl);
   line-height: var(--text-2xl--line-height);
   letter-spacing: var(--text-2xl--letter-spacing);
-  font-weight: 550;
+  font-weight: 600;
 }
 @utility heading-3xl {
   font-size: var(--text-3xl);
   line-height: var(--text-3xl--line-height);
   letter-spacing: var(--text-3xl--letter-spacing);
-  font-weight: 550;
+  font-weight: 600;
 }
 @utility heading-4xl {
   font-size: var(--text-4xl);
   line-height: var(--text-4xl--line-height);
   letter-spacing: var(--text-4xl--letter-spacing);
-  font-weight: 450;
+  font-weight: 600;
 }
 @utility heading-5xl {
   font-size: var(--text-5xl);
   line-height: var(--text-5xl--line-height);
   letter-spacing: var(--text-5xl--letter-spacing);
-  font-weight: 450;
+  font-weight: 600;
 }
 @utility heading-6xl {
   font-size: var(--text-6xl);
   line-height: var(--text-6xl--line-height);
   letter-spacing: var(--text-6xl--letter-spacing);
-  font-weight: 450;
+  font-weight: 600;
 }
 @utility heading-7xl {
   font-size: var(--text-7xl);
   line-height: var(--text-7xl--line-height);
   letter-spacing: var(--text-7xl--letter-spacing);
-  font-weight: 450;
+  font-weight: 600;
 }
 @utility heading-8xl {
   font-size: var(--text-8xl);
   line-height: var(--text-8xl--line-height);
   letter-spacing: var(--text-8xl--letter-spacing);
-  font-weight: 450;
+  font-weight: 600;
 }
 @utility heading-9xl {
   font-size: var(--text-9xl);
   line-height: var(--text-9xl--line-height);
   letter-spacing: var(--text-9xl--letter-spacing);
-  font-weight: 450;
+  font-weight: 600;
 }
 
 @utility heading-mono-lg {
@@ -727,36 +754,36 @@
 @utility copy-xs {
   font-size: var(--text-xs);
   line-height: var(--text-xs--line-height);
-  letter-spacing: var(--text-xs--letter-spacing);
+  letter-spacing: 0;
   font-weight: 400;
 }
 @utility copy-sm {
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
-  letter-spacing: var(--text-sm--letter-spacing);
+  letter-spacing: 0;
   font-weight: 400;
 }
 @utility copy-base {
   font-size: var(--text-base);
-  line-height: var(--text-base--line-height);
-  letter-spacing: var(--text-base--letter-spacing);
+  line-height: 26px;
+  letter-spacing: 0;
   font-weight: 400;
 }
 @utility copy-lg {
   font-size: var(--text-lg);
-  line-height: var(--text-lg--line-height);
-  letter-spacing: var(--text-lg--letter-spacing);
+  line-height: 28px;
+  letter-spacing: 0;
   font-weight: 400;
 }
 @utility copy-xl {
   font-size: var(--text-xl);
-  line-height: var(--text-xl--line-height);
-  letter-spacing: var(--text-xl--letter-spacing);
+  line-height: 30px;
+  letter-spacing: 0;
   font-weight: 400;
 }
 @utility copy-2xl {
   font-size: var(--text-2xl);
-  line-height: var(--text-2xl--line-height);
-  letter-spacing: var(--text-2xl--letter-spacing);
+  line-height: 34px;
+  letter-spacing: 0;
   font-weight: 400;
 }
