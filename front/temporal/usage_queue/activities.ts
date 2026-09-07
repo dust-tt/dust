@@ -1,6 +1,5 @@
 import { reconcileApiKey } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
-import { getUsageType } from "@app/lib/api/programmatic_usage/common";
 import {
   isProgrammaticUsage,
   trackProgrammaticCost,
@@ -8,7 +7,11 @@ import {
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
-import { buildUsageEvents, computeRunKey } from "@app/lib/metronome/events";
+import {
+  buildUsageEvents,
+  computeRunKey,
+  getUsageType,
+} from "@app/lib/metronome/events";
 import {
   AgentMessageModel,
   MessageModel,

@@ -1,23 +1,5 @@
-import {
-  getUsageType,
-  isProgrammaticUsageFromContext,
-} from "@app/lib/api/programmatic_usage/common";
+import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
 import { describe, expect, it } from "vitest";
-
-describe("getUsageType", () => {
-  it("classifies free origins as free regardless of the programmatic flag", () => {
-    expect(getUsageType(false, "agent_sidekick")).toBe("free");
-    expect(getUsageType(true, "agent_sidekick")).toBe("free");
-  });
-
-  it("classifies programmatic usage as programmatic", () => {
-    expect(getUsageType(true, "web")).toBe("programmatic");
-  });
-
-  it("classifies non-programmatic, non-free usage as user", () => {
-    expect(getUsageType(false, "web")).toBe("user");
-  });
-});
 
 describe("isProgrammaticUsageFromContext", () => {
   it("classifies api_key auth as programmatic regardless of origin", () => {
@@ -89,9 +71,9 @@ describe("isProgrammaticUsageFromContext", () => {
   });
 
   it("skips the fallback when userId is not provided", () => {
-    // Callers that don't have the resolved userId (e.g. the live LLM
-    // classifier) must not trigger the fallback — it should never
-    // downgrade or upgrade classification on unknown information.
+    // Callers that don't have the resolved userId must not trigger the
+    // fallback — it should never downgrade or upgrade classification on
+    // unknown information.
     expect(
       isProgrammaticUsageFromContext({
         authMethod: "session",

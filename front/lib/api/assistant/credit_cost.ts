@@ -5,7 +5,6 @@ import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
-import { getUsageType } from "@app/lib/api/programmatic_usage/common";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import {
   recordFreeSeatLifetimeUsage,
@@ -21,6 +20,7 @@ import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
+import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";

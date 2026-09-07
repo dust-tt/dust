@@ -1,6 +1,9 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
+import {
+  buildAgentMessageBillingPlan,
+  isFreeOrigin,
+} from "@app/lib/credits/agent_message_billing";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
@@ -44,9 +47,16 @@ function truncateTransactionId(id: string): string {
 // ---------------------------------------------------------------------------
 // Usage type helpers
 // ---------------------------------------------------------------------------
-// getUsageType lives in @app/lib/api/programmatic_usage/common, alongside the
-// rest of the usage_type classification logic (USAGE_ORIGINS_CLASSIFICATION,
-// isProgrammaticUsageFromContext).
+
+export function getUsageType(
+  isProgrammaticUsage: boolean,
+  origin: UserMessageOrigin
+): UsageType {
+  if (isFreeOrigin(origin)) {
+    return USAGE_TYPE_FREE;
+  }
+  return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
+}
 
 // Intelligence (AI compute) credits for a *single execution's* run usages.
 // Usages are grouped by (providerId, modelId) and converted per group before

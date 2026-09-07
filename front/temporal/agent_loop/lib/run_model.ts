@@ -753,11 +753,20 @@ export async function runModel(
     operationType: "agent_conversation",
     agentConfigurationId: agentConfiguration.sId,
     conversationId: conversation.sId,
-    userId: auth.user()?.sId,
+    // Prefer the triggering user message's own resolved user; fall back to
+    // the authenticator's user (covers doNotAssociateUser messages like
+    // pod_manager sub-conversations where the DB row has no user but the auth
+    // still carries the original session user). Explicitly null (not
+    // undefined) when neither resolves, so the usage-type fallback below can
+    // tell "confirmed no user" apart from "not looked up".
+    userId: userMessage.user?.sId ?? auth.user()?.sId ?? null,
     workspaceId: conversation.owner.sId,
     // Lets the LLM call site classify free usage (e.g. sidekick) and enforce the
     // per-user free-usage cost cap.
     userMessageOrigin: userMessage.context.origin,
+    // Auth method of the triggering user message itself — used alongside
+    // userId to apply the Slack unattributed-usage fallback.
+    userMessageAuthMethod: userMessage.context.authMethod ?? null,
   };
 
   // Enforce the per-user daily free-usage cost cap before running a free call

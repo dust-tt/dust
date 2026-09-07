@@ -21,11 +21,9 @@ import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
   withEs,
 } from "@app/lib/api/elasticsearch";
-import {
-  getUsageType,
-  isProgrammaticUsageFromContext,
-} from "@app/lib/api/programmatic_usage/common";
+import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
 import { Authenticator } from "@app/lib/auth";
+import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
 import {
   AgentMessageModel,

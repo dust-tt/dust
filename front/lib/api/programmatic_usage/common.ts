@@ -1,12 +1,5 @@
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
-import { isFreeOrigin } from "@app/lib/credits/agent_message_billing";
-import {
-  USAGE_TYPE_FREE,
-  USAGE_TYPE_PROGRAMMATIC,
-  USAGE_TYPE_USER,
-} from "@app/lib/metronome/constants";
-import type { UsageType } from "@app/lib/metronome/types";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { estypes } from "@elastic/elasticsearch";
@@ -65,6 +58,10 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
 const PROGRAMMATIC_FALLBACK_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>(["slack"]);
 
+// The connector's auth method (e.g. Slack) when it posts a message on behalf
+// of a workspace member it couldn't attribute to a real Dust user.
+const SYSTEM_API_KEY_AUTH_METHOD = "system_api_key";
+
 export function isProgrammaticUsageFromContext({
   authMethod,
   userMessageOrigin,
@@ -86,19 +83,9 @@ export function isProgrammaticUsageFromContext({
     authMethod === "api_key" ||
     USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic" ||
     (userId === null &&
-      messageAuthMethod === "system_api_key" &&
+      messageAuthMethod === SYSTEM_API_KEY_AUTH_METHOD &&
       PROGRAMMATIC_FALLBACK_ORIGINS.has(userMessageOrigin))
   );
-}
-
-export function getUsageType(
-  isProgrammaticUsage: boolean,
-  origin: UserMessageOrigin
-): UsageType {
-  if (isFreeOrigin(origin)) {
-    return USAGE_TYPE_FREE;
-  }
-  return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
 // Markup multiplier to convert raw ES costs to costs with Dust markup.
@@ -132,8 +119,12 @@ export type UsageAggregations = {
 
 /**
  * Query-side mirror of isProgrammaticUsage: API-key requests, messages with no
- * context origin, or a listed programmatic origin. Single source of truth for
- * splitting analytics docs into programmatic vs user.
+ * context origin, a listed programmatic origin, or an unattributed message on
+ * a fallback origin (e.g. Slack) — same rule as isProgrammaticUsageFromContext,
+ * replicated over the fields already stored on each indexed document
+ * (`user_id` is indexed as the literal string "unknown" when unattributed, see
+ * temporal/analytics_queue/activities/agent_analytics.ts). Single source of
+ * truth for splitting analytics docs into programmatic vs user.
  */
 export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContainer {
   return {
@@ -142,6 +133,19 @@ export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContain
         { term: { auth_method: "api_key" } },
         { bool: { must_not: { exists: { field: "context_origin" } } } },
         { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
+        {
+          bool: {
+            must: [
+              {
+                terms: {
+                  context_origin: [...PROGRAMMATIC_FALLBACK_ORIGINS],
+                },
+              },
+              { term: { auth_method: SYSTEM_API_KEY_AUTH_METHOD } },
+              { term: { user_id: "unknown" } },
+            ],
+          },
+        },
       ],
       minimum_should_match: 1,
     },
@@ -153,7 +157,8 @@ export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContain
  * Matches messages that should be tracked for billing:
  * - API key requests
  * - Unspecified context origins
- * - Programmatic origins (api, zapier, make, slack, etc.)
+ * - Programmatic origins (api, zapier, make, etc.)
+ * - Unattributed messages on a fallback origin (e.g. Slack)
  */
 export function getShouldTrackTokenUsageCostsESFilter(
   auth: Authenticator
