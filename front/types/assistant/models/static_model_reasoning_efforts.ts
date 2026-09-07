@@ -442,6 +442,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: true,
   },
+  "accounts/fireworks/models/glm-5p3": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "accounts/fireworks/models/glm-5p3-flash": {
     none: false,
     light: true,

@@ -417,6 +417,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "accounts/fireworks/models/glm-5p2": {
     high: "balanced",
   },
+  "accounts/fireworks/models/glm-5p3": {
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
   "accounts/fireworks/models/glm-5p3-flash": {
     light: "cost_efficient",
     medium: "cost_efficient",
