@@ -1,4 +1,5 @@
 import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
+import { useDocumentScrollMode } from "@app/hooks/useDocumentScrollMode";
 import config from "@app/lib/api/config";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
@@ -12,6 +13,7 @@ import {
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   useAuthContext,
   useCheckBusinessActivation,
@@ -99,6 +101,11 @@ export function CheckoutPage() {
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
   const shouldRedirectAwayFromCheckout =
     useRedirectAwayFromCheckoutIfAlreadyPaid();
+
+  // On mobile the two panes stack vertically; enable document scroll so the
+  // whole page (not just each pane) can scroll to reach the payment fields.
+  const isMobile = useIsMobile();
+  useDocumentScrollMode(isMobile);
 
   // Determine if CP checkout is enabled.
   const isMetronomeCheckout = useIsMetronomeCheckout();
@@ -467,7 +474,7 @@ export function CheckoutPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col md:h-screen md:flex-row md:overflow-hidden">
+    <main className="flex min-h-screen flex-col md:flex-row md:overflow-hidden">
       {/* Left pane: order summary + coupon */}
       <div className="flex w-full flex-col gap-14 overflow-y-auto bg-muted-background p-6 md:w-1/2 md:p-24">
         <div>
