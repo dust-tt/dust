@@ -242,7 +242,7 @@ export async function fetchInvitationsInOtherCells(
       invitations.push(
         ...data.pendingInvitations.map((inv) => ({
           ...inv,
-          region: cell.region,
+          cell: cell.name,
         }))
       );
     }
