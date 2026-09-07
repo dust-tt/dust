@@ -729,13 +729,7 @@ export function SkillBuilderInstructionsEditor({
         },
       },
     });
-  }, [
-    editor,
-    displayError,
-    isDiffMode,
-    isInstructionsReadOnly,
-    isReadOnly,
-  ]);
+  }, [editor, displayError, isDiffMode, isInstructionsReadOnly, isReadOnly]);
 
   // Sync external changes to the editor content
   useEffect(() => {
@@ -823,11 +817,7 @@ export function SkillBuilderInstructionsEditor({
   return (
     <>
       <div className="space-y-1 p-px">
-        <div
-          className={cn(
-            "group relative overflow-hidden rounded-xl",
-          )}
-        >
+        <div className={cn("group relative overflow-hidden rounded-xl")}>
           <SkillInstructionsEditorContent
             editor={editor}
             isReadOnly={isInstructionsReadOnly}

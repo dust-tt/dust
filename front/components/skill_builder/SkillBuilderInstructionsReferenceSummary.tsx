@@ -118,8 +118,9 @@ function renderReferenceSummaryItem({
 }
 
 const BROWSER_DEFAULT_FONT_SIZE = 16;
-const THRESHOLD_HEIGHT_REM = 3.75; // max-h-15 => 3.75 rem 
-const DEFAULT_OVERFLOW_THRESHOLD_HEIGHT = BROWSER_DEFAULT_FONT_SIZE * THRESHOLD_HEIGHT_REM; // 60px
+const THRESHOLD_HEIGHT_REM = 3.5; // max-h-14 => 3.5 rem
+const DEFAULT_OVERFLOW_THRESHOLD_HEIGHT =
+  BROWSER_DEFAULT_FONT_SIZE * THRESHOLD_HEIGHT_REM;
 
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
@@ -130,7 +131,10 @@ export function SkillBuilderInstructionsReferenceSummary({
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
   const [isExpand, setIsExpand] = useState(false);
-  const [overflowThresholdHeight, setOverflowThresholdHeight] = useState(DEFAULT_OVERFLOW_THRESHOLD_HEIGHT);
+  const [overflowThresholdHeight, setOverflowThresholdHeight] = useState(
+    DEFAULT_OVERFLOW_THRESHOLD_HEIGHT
+  );
+  const [isOverflow, setIsOverflow] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -224,11 +228,16 @@ export function SkillBuilderInstructionsReferenceSummary({
     );
 
     if (rootFontSize !== BROWSER_DEFAULT_FONT_SIZE) {
-      setOverflowThresholdHeight(rootFontSize * THRESHOLD_HEIGHT_REM)
+      setOverflowThresholdHeight(rootFontSize * THRESHOLD_HEIGHT_REM);
     }
   }, []);
 
-  const isOverflow = contentRef.current && contentRef.current.scrollHeight > overflowThresholdHeight
+  // biome-ignore lint/correctness/useExhaustiveDependencies: referenceItems.length triggers re-measurement
+  useEffect(() => {
+    if (contentRef.current) {
+      setIsOverflow(contentRef.current.scrollHeight > overflowThresholdHeight);
+    }
+  }, [referenceItems.length, overflowThresholdHeight]);
 
   // have min height to always keep space to show references so there is less content shift.
   return (
