@@ -4,7 +4,10 @@ import {
   CONSUMPTION_CHART_BREAKDOWN_COUNT,
   ConsumptionDailyChart,
 } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
-import { consumptionGranularityLabel } from "@app/lib/analytics/consumption_period";
+import {
+  consumptionGranularityLabel,
+  DEFAULT_CONSUMPTION_GRANULARITY,
+} from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTimeseriesMode } from "@app/lib/api/analytics/consumption/timeseries";
 import {
   usePokeConsumptionOverview,
@@ -21,6 +24,7 @@ interface PokeConsumptionDailyChartProps extends ConsumptionChartProps {
 function PokeConsumptionDailyChart({
   workspaceId,
   period,
+  granularity,
   dimension,
   filter,
   additionalControls,
@@ -30,6 +34,7 @@ function PokeConsumptionDailyChart({
     usePokeConsumptionTimeseries({
       workspaceId,
       period,
+      granularity,
       mode: "period",
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
@@ -63,6 +68,7 @@ interface PokeConsumptionBurnUpChartProps
 function PokeConsumptionBurnUpChart({
   workspaceId,
   period,
+  granularity,
   filter,
   additionalControls,
 }: PokeConsumptionBurnUpChartProps) {
@@ -87,6 +93,7 @@ function PokeConsumptionBurnUpChart({
     usePokeConsumptionTimeseries({
       workspaceId,
       period,
+      granularity,
       mode: "cumulative",
       filter,
     });
@@ -107,9 +114,15 @@ function PokeConsumptionBurnUpChart({
   );
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] selected-granularity
+ * Both chart modes request the selected granularity, defaulting to daily, and
+ * the period-mode label reflects that selection.
+ */
 export function PokeConsumptionChart({
   workspaceId,
   period,
+  granularity = DEFAULT_CONSUMPTION_GRANULARITY,
   dimension,
   filter,
 }: ConsumptionChartProps) {
@@ -118,7 +131,7 @@ export function PokeConsumptionChart({
     <ButtonsSwitchList value={mode} size="xs">
       <ButtonsSwitch
         value="period"
-        label={consumptionGranularityLabel("day")}
+        label={consumptionGranularityLabel(granularity)}
         onClick={() => setMode("period")}
       />
       <ButtonsSwitch
@@ -133,6 +146,7 @@ export function PokeConsumptionChart({
     <PokeConsumptionBurnUpChart
       workspaceId={workspaceId}
       period={period}
+      granularity={granularity}
       filter={filter}
       additionalControls={modeSelector}
     />
@@ -140,6 +154,7 @@ export function PokeConsumptionChart({
     <PokeConsumptionDailyChart
       workspaceId={workspaceId}
       period={period}
+      granularity={granularity}
       dimension={dimension}
       filter={filter}
       additionalControls={modeSelector}
