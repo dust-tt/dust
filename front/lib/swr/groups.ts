@@ -32,9 +32,9 @@ export function useGroups({
   // Also resolves each group's member sIds (one extra batched query
   // server-side) instead of just its memberCount.
   withMembers?: boolean;
-  // Declares that this caller reads `poolCapAwuCredits`. The cap is still
-  // returned unconditionally, so callers that omit this keep working; a
-  // follow-up makes it conditional once every bundle sends the flag.
+  // Also resolves each group's pool cap (one extra batched query server-side).
+  // Without it `poolCapAwuCredits` is absent from the response, so any caller
+  // that reads the cap must set this.
   withPoolCaps?: boolean;
   disabled?: boolean;
 }) {

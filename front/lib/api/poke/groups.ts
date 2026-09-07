@@ -1,11 +1,14 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import type { GroupType } from "@app/types/groups";
+import type {
+  GroupType,
+  GroupTypeWithOptionalPoolCap,
+} from "@app/types/groups";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 
 export type PokeListGroups = {
-  groups: (GroupType & { poolCapAwuCredits: number | null })[];
+  groups: GroupTypeWithOptionalPoolCap[];
 };
 
 export type PokeGetGroupDetails = {

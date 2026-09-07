@@ -35,6 +35,23 @@ async function createGroupWithMember() {
   return { workspace, group };
 }
 
+async function createCappedGroup() {
+  const { workspace } = await createPrivateApiMockRequest({
+    isSuperUser: true,
+    role: "admin",
+  });
+  const group = await GroupFactory.regularManual(
+    workspace,
+    "Poke capped group"
+  );
+  const capRes = await group.updatePoolCap(9876);
+  if (capRes.isErr()) {
+    throw capRes.error;
+  }
+
+  return { workspace, group };
+}
+
 describe("GET /api/poke/workspaces/:wId/groups", () => {
   it("excludes revoked workspace members from group counts", async () => {
     const { workspace, group } = await createGroupWithMember();
@@ -49,6 +66,45 @@ describe("GET /api/poke/workspaces/:wId/groups", () => {
       (g: { sId: string }) => g.sId === group.sId
     );
     expect(responseGroup?.memberCount).toBe(1);
+  });
+
+  it("omits poolCapAwuCredits unless withPoolCaps=true is requested", async () => {
+    const { workspace, group } = await createCappedGroup();
+
+    const response = await honoApp.request(
+      `/api/poke/workspaces/${workspace.sId}/groups`
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const responseGroup = data.groups.find(
+      (g: { sId: string }) => g.sId === group.sId
+    );
+    expect(responseGroup).toBeDefined();
+    expect(responseGroup.poolCapAwuCredits).toBeUndefined();
+  });
+
+  it("returns poolCapAwuCredits when withPoolCaps=true is requested", async () => {
+    const { workspace, group } = await createCappedGroup();
+
+    const response = await honoApp.request(
+      `/api/poke/workspaces/${workspace.sId}/groups?withPoolCaps=true`
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const responseGroup = data.groups.find(
+      (g: { sId: string }) => g.sId === group.sId
+    );
+    expect(responseGroup?.poolCapAwuCredits).toBe(9876);
+    // Groups without a cap row report null, not undefined.
+    const otherGroups = data.groups.filter(
+      (g: { sId: string }) => g.sId !== group.sId
+    );
+    expect(otherGroups.length).toBeGreaterThan(0);
+    for (const other of otherGroups) {
+      expect(other.poolCapAwuCredits).toBeNull();
+    }
   });
 });
 

@@ -4,7 +4,10 @@ import {
   CreateGroupBodySchema,
   type PostGroupResponseBody,
 } from "@app/types/api/groups/manage";
-import type { GroupKind, GroupType } from "@app/types/groups";
+import type {
+  GroupKind,
+  GroupTypeWithOptionalPoolCap,
+} from "@app/types/groups";
 import {
   GroupKindCodec,
   isUserVisibleGroupKind,
@@ -21,10 +24,7 @@ import groupDetail from "./[groupId]";
 import spendLimit from "./[groupId]/spend_limit";
 
 export type GetGroupsResponseBody = {
-  groups: (GroupType & {
-    memberCount: number;
-    poolCapAwuCredits: number | null;
-  })[];
+  groups: GroupTypeWithOptionalPoolCap[];
 };
 
 const GetGroupsQuerySchema = z.object({
@@ -33,10 +33,7 @@ const GetGroupsQuerySchema = z.object({
   // query) instead of just memberCount.
   withMembers: z.enum(["true", "false"]).optional(),
   // When "true", each group also carries its pool cap (one extra batched
-  // query). Accepted but not yet honored: the cap is still returned
-  // unconditionally so front-end bundles that predate the flag keep working.
-  // A follow-up makes the cap conditional on this flag, once the bundles
-  // sending it are deployed everywhere.
+  // query). Omitted otherwise: only the spend-limit admin views read it.
   withPoolCaps: z.enum(["true", "false"]).optional(),
 });
 
@@ -49,7 +46,7 @@ app.get(
   validate("query", GetGroupsQuerySchema),
   async (ctx): HandlerResult<GetGroupsResponseBody> => {
     const auth = ctx.get("auth");
-    const { kind, withMembers } = ctx.req.valid("query");
+    const { kind, withMembers, withPoolCaps } = ctx.req.valid("query");
 
     const requestedKinds: GroupKind[] = kind
       ? Array.isArray(kind)
@@ -66,21 +63,13 @@ app.get(
       groupKinds,
     });
 
-    const groupsJSON =
-      withMembers === "true"
-        ? await GroupResource.fetchJSONWithMembers(auth, groups)
-        : await GroupResource.toJSONWithMemberCounts(auth, groups);
-
-    const poolCaps = await GroupResource.getPoolCapAwuCreditsForGroups(
-      auth,
-      groups
-    );
+    const options = { withPoolCaps: withPoolCaps === "true" };
 
     return ctx.json({
-      groups: groupsJSON.map((group) => ({
-        ...group,
-        poolCapAwuCredits: poolCaps.get(group.id) ?? null,
-      })),
+      groups:
+        withMembers === "true"
+          ? await GroupResource.fetchJSONWithMembers(auth, groups, options)
+          : await GroupResource.toJSONWithMemberCounts(auth, groups, options),
     });
   }
 );

@@ -107,6 +107,11 @@ export type GroupType = {
   memberIds?: string[];
 };
 
+export type GroupTypeWithOptionalPoolCap = GroupType & {
+  // `undefined` means "not requested", while `null` means "no cap".
+  poolCapAwuCredits?: number | null;
+};
+
 export const GroupKindCodec = z.enum([
   "global",
   "regular_auto",

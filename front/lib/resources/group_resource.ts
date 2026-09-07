@@ -29,6 +29,7 @@ import type {
 import type {
   GroupKind,
   GroupType,
+  GroupTypeWithOptionalPoolCap,
   UserVisibleGroupKind,
 } from "@app/types/groups";
 import {
@@ -2828,22 +2829,44 @@ export class GroupResource extends BaseResource<GroupModel> {
     };
   }
 
+  // Resolves the caps only when the caller asked for them: it is one extra
+  // batched query, and most group listings never read the cap.
+  private static async getPoolCapsIfRequested(
+    auth: Authenticator,
+    groups: GroupResource[],
+    withPoolCaps: boolean
+  ): Promise<Map<ModelId, number> | null> {
+    if (!withPoolCaps) {
+      return null;
+    }
+    return GroupResource.getPoolCapAwuCreditsForGroups(auth, groups);
+  }
+
   /**
    * Batched counterpart of `toJSONWithMemberCount`: resolves the member counts of all the groups in
    * a single query instead of one per group.
    */
   static async toJSONWithMemberCounts(
     auth: Authenticator,
-    groups: GroupResource[]
-  ): Promise<GroupType[]> {
+    groups: GroupResource[],
+    { withPoolCaps = false }: { withPoolCaps?: boolean } = {}
+  ): Promise<GroupTypeWithOptionalPoolCap[]> {
     const memberCounts = await GroupResource.getMemberCountsForGroups(
       auth,
       groups
+    );
+    const poolCaps = await GroupResource.getPoolCapsIfRequested(
+      auth,
+      groups,
+      withPoolCaps
     );
 
     return groups.map((group) => ({
       ...group.toJSON(),
       memberCount: memberCounts.get(group.id) ?? 0,
+      ...(poolCaps
+        ? { poolCapAwuCredits: poolCaps.get(group.id) ?? null }
+        : {}),
     }));
   }
 
@@ -2854,13 +2877,19 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async fetchJSONWithMembers(
     auth: Authenticator,
-    groups: GroupResource[]
-  ): Promise<(GroupType & { memberIds: string[] })[]> {
+    groups: GroupResource[],
+    { withPoolCaps = false }: { withPoolCaps?: boolean } = {}
+  ): Promise<(GroupTypeWithOptionalPoolCap & { memberIds: string[] })[]> {
     const membershipsByGroup =
       await GroupResource.getActiveMembershipsForGroups(auth, groups);
     const userModelIds = [...new Set(Object.values(membershipsByGroup).flat())];
     const users = await UserResource.fetchByModelIds(userModelIds);
     const sIdByModelId = new Map(users.map((user) => [user.id, user.sId]));
+    const poolCaps = await GroupResource.getPoolCapsIfRequested(
+      auth,
+      groups,
+      withPoolCaps
+    );
 
     return groups.map((group) => {
       const memberIds = removeNulls(
@@ -2872,6 +2901,9 @@ export class GroupResource extends BaseResource<GroupModel> {
         ...group.toJSON(),
         memberCount: memberIds.length,
         memberIds,
+        ...(poolCaps
+          ? { poolCapAwuCredits: poolCaps.get(group.id) ?? null }
+          : {}),
       };
     });
   }

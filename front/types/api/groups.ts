@@ -1,5 +1,5 @@
-import type { GroupType } from "@app/types/groups";
+import type { GroupTypeWithOptionalPoolCap } from "@app/types/groups";
 
 export type GetGroupsResponseBody = {
-  groups: (GroupType & { poolCapAwuCredits: number | null })[];
+  groups: GroupTypeWithOptionalPoolCap[];
 };
