@@ -79,6 +79,34 @@ describe("detectSkillsFromZip", () => {
     }
   });
 
+  test("detects repository root skill alongside nested skills", () => {
+    const zipBuffer = buildZipBuffer({
+      "repo-main/SKILL.md": makeSkillMd("root", "Root skill", "Do root work."),
+      "repo-main/README.md": "# Root readme",
+      "repo-main/skills/foo/SKILL.md": makeSkillMd(
+        "foo",
+        "Foo skill",
+        "Do foo."
+      ),
+      "repo-main/skills/foo/helper.py": "print('hello')",
+    });
+
+    const result = detectSkillsFromZip({ zipBuffer });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.map((s) => s.name)).toEqual(["root", "foo"]);
+      expect(result.value[0].skillMdPath).toBe("repo-main/SKILL.md");
+      expect(result.value[0].attachments).toEqual([
+        {
+          path: "repo-main/README.md",
+          sizeBytes: 13,
+          contentType: "text/markdown",
+          originalEntryName: "repo-main/README.md",
+        },
+      ]);
+    }
+  });
+
   test("detects a single skill directory at the top level", () => {
     const zipBuffer = buildZipBuffer({
       "my-skill/SKILL.md": makeSkillMd("foo", "Foo skill", "Do foo."),

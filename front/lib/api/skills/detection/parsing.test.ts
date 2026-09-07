@@ -99,15 +99,23 @@ describe("findSkillDirectories", () => {
     });
   });
 
-  test("prefers nested skills over SKILL.md at the root", () => {
+  test("includes SKILL.md at the root alongside nested skills", () => {
     const entries: FileEntry[] = [
       { path: "SKILL.md", sizeBytes: 100 },
       { path: "sub/SKILL.md", sizeBytes: 100 },
     ];
 
     const dirs = findSkillDirectories(entries);
-    expect(dirs).toHaveLength(1);
-    expect(dirs[0].skillMdPath).toBe("sub/SKILL.md");
+    expect(dirs).toEqual([
+      {
+        dirPath: ".",
+        skillMdPath: "SKILL.md",
+      },
+      {
+        dirPath: "sub",
+        skillMdPath: "sub/SKILL.md",
+      },
+    ]);
   });
 
   test("deduplicates directories with both skill.md and SKILL.md", () => {
@@ -157,5 +165,28 @@ describe("collectAttachments", () => {
     });
 
     expect(attachments).toEqual([]);
+  });
+
+  test("does not collect files from nested skill directories", () => {
+    const attachments = collectAttachments(
+      [
+        { path: "SKILL.md", sizeBytes: 100 },
+        { path: "helper.py", sizeBytes: 500 },
+        { path: "skills/foo/SKILL.md", sizeBytes: 100 },
+        { path: "skills/foo/helper.py", sizeBytes: 500 },
+      ],
+      {
+        dirPath: ".",
+        skillMdPath: "SKILL.md",
+      }
+    );
+
+    expect(attachments).toEqual([
+      {
+        path: "helper.py",
+        sizeBytes: 500,
+        contentType: "text/x-python",
+      },
+    ]);
   });
 });
