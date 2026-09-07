@@ -26,15 +26,15 @@ function isBigQueryPolicyViolationError(err: unknown): err is Error {
   );
 }
 
+/**
+ * @cc [label:error-handling] bigquery-error-classification
+ * Map recognized authentication and provider configuration failures to `ExternalOAuthTokenError`
+ * and `ThirdPartyConfigurationError`, respectively. Return successful activity results and rethrow
+ * unrecognized errors unchanged.
+ */
 export class BigQueryCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
-  /**
-   * @cc [label:error-handling] bigquery-error-classification
-   * Map recognized authentication and provider configuration failures to `ExternalOAuthTokenError`
-   * and `ThirdPartyConfigurationError`, respectively. Return successful activity results and rethrow
-   * unrecognized errors unchanged.
-   */
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -43,7 +43,8 @@ export class BigQueryCastKnownErrorsInterceptor
       return await next(input);
     } catch (err: unknown) {
       if (err instanceof GaxiosError) {
-        // Check for invalid_grant error which indicates the account/authorization is no longer valid
+        // Check for invalid_grant error which indicates the account/authorization is no longer
+        // valid
         if (
           err.response?.data &&
           typeof err.response.data === "object" &&
