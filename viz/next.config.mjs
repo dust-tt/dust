@@ -8,7 +8,6 @@ const DEV_FRAME_ANCESTORS = [
   "http://localhost:3011",
   "http://localhost:3012",
   "chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg",
-  "http://localhost:16011",
   ...(process.env.ALLOWED_VISUALIZATION_ORIGIN ?? "")
     .split(",")
     .map((origin) => origin.trim())
