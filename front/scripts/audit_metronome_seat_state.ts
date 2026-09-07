@@ -11,6 +11,12 @@
  * assigned seat's live balance, so we can figure out why they won't assign
  * before touching credit state.
  *
+ * It also reports the stacked-credit "would-correct" plan by running the shared
+ * `lib/metronome/stacked_seat_credits` core in read-only mode (execute: false) —
+ * the SAME detection the fix script and the `credit.segment.start` webhook use,
+ * so the audit and the correction can never disagree: strays to empty + the
+ * usage-based home debit that recovers consumption stranded on a stray.
+ *
  * Purely diagnostic — makes only READ calls to Metronome and the DB. There is
  * nothing to --execute; it always just reports.
  *
@@ -23,11 +29,15 @@ import {
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
+  getAwuAllocationForSeatType,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
+import { getSeatCreditNameForSeatType } from "@app/lib/metronome/seats";
+import { correctStackedSeatCreditsFromBalances } from "@app/lib/metronome/stacked_seat_credits";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -345,6 +355,18 @@ async function auditWorkspace(
   );
 
   const allSeatIds = new Set<string>();
+  // Map every assigned seat to its seat type, and each seat type to the AWU
+  // it is entitled to grant, so we can flag seats holding MORE granted AWU
+  // than their allocation (credit stacking left by an un-emptied origin credit
+  // on a prior seat-type change — e.g. a pro 8000 grant stacked on max 40000).
+  const seatTypeBySeatId = new Map<string, MembershipSeatType>();
+  const allocationBySeatType = new Map<MembershipSeatType, number>();
+  for (const { seatType } of seatSubscriptions) {
+    allocationBySeatType.set(
+      seatType,
+      getAwuAllocationForSeatType(contract, seatType, productSeatTypes)
+    );
+  }
 
   // Per seat subscription: compare Metronome assignment vs Dust desired.
   for (const { seatType, subId } of seatSubscriptions) {
@@ -369,7 +391,10 @@ async function auditWorkspace(
     const missingInMetronome = setDiff([...desired], assignedSet);
     const staleInMetronome = setDiff(assignedSeatIds, desired);
 
-    assignedSeatIds.forEach((id) => allSeatIds.add(id));
+    assignedSeatIds.forEach((id) => {
+      allSeatIds.add(id);
+      seatTypeBySeatId.set(id, seatType);
+    });
     desired.forEach((id) => allSeatIds.add(id));
 
     logger.info(
@@ -439,6 +464,91 @@ async function auditWorkspace(
       seatsNonPositiveBalance,
     },
     "[SeatAudit] seat balances summary"
+  );
+
+  // Stacked-credit detection — reuse the SHARED core in read-only mode
+  // (execute: false), so the audit reports EXACTLY what the fix script and the
+  // credit.segment.start webhook would correct (strays to empty + the usage-based
+  // home debit), with zero risk of drift between audit and correction. Purely a
+  // dry-run of `correctStackedSeatCreditsFromBalances`: it makes only READ calls
+  // (segment resolution) and returns the adjustments it WOULD apply.
+  const creditBearingSeatTypes = seatSubscriptions
+    .map(({ seatType }) => seatType)
+    .filter((seatType) => getSeatCreditNameForSeatType(seatType));
+  // Candidate seats: those currently on a credit-bearing tier (a free/none home
+  // has no recurring credit of its own).
+  const candidateSeatTypeById = new Map<string, MembershipSeatType>();
+  for (const [seatId, seatType] of seatTypeBySeatId) {
+    if (creditBearingSeatTypes.includes(seatType)) {
+      candidateSeatTypeById.set(seatId, seatType);
+    }
+  }
+
+  // Current-period per-user AWU usage (Metronome, authoritative) — the core
+  // drives each home credit to allocation - usage.
+  const usageRes = await paceMetronome(() =>
+    fetchPerUserAwuUsage({
+      workspaceId,
+      metronomeCustomerId,
+      userIds: [...candidateSeatTypeById.keys()],
+    })
+  );
+  if (usageRes.isErr()) {
+    logger.error(
+      { workspaceId, err: usageRes.error.message },
+      "[SeatAudit] failed to read per-user usage"
+    );
+    return;
+  }
+
+  const stackedRes = await correctStackedSeatCreditsFromBalances({
+    workspaceId,
+    metronomeCustomerId,
+    metronomeContractId: contractId,
+    contract,
+    seatBalances: balancesRes.value,
+    currentSeatTypeBySeatId: candidateSeatTypeById,
+    usageBySeatId: usageRes.value,
+    execute: false,
+    logger,
+    pace: paceMetronome,
+  });
+  if (stackedRes.isErr()) {
+    logger.error(
+      { workspaceId, err: stackedRes.error.message },
+      "[SeatAudit] failed to detect stacked seat credits"
+    );
+    return;
+  }
+  const stacked = stackedRes.value;
+  // Aggregate the stray-empties by transition (homeSeatType <- strayType) for a
+  // quick view of which seat-type change stranded each credit.
+  const byTransition = new Map<string, { count: number; awu: number }>();
+  for (const a of stacked.adjustments) {
+    if (a.kind !== "empty_stray") {
+      continue;
+    }
+    const key = `${a.homeSeatType}<-${a.creditSeatType}`;
+    const agg = byTransition.get(key) ?? { count: 0, awu: 0 };
+    agg.count += 1;
+    agg.awu += -a.deltaAwu;
+    byTransition.set(key, agg);
+  }
+  logger.info(
+    {
+      workspaceId,
+      contractId,
+      allocationBySeatType: Object.fromEntries(allocationBySeatType),
+      candidateSeatCount: candidateSeatTypeById.size,
+      // Strays to empty and their total; home consumption to carry and its total.
+      emptiedStrayCount: stacked.emptiedStrayCount,
+      totalEmptiedAwu: stacked.totalEmptiedAwu,
+      carriedConsumptionCount: stacked.carriedConsumptionCount,
+      totalCarriedAwu: stacked.totalCarriedAwu,
+      byTransition: Object.fromEntries(byTransition),
+      adjustments: stacked.adjustments,
+    },
+    "[SeatAudit] stacked seat credits (read-only would-correct plan)"
   );
 
   if (!probe) {
