@@ -143,7 +143,7 @@ export type SlashCommandSkillSuggestion = Pick<
   | "requestedSpaceIds"
   | "sId"
   | "userFacingDescription"
->;
+> & { score?: number };
 
 export type SlashCommandToolSuggestion<
   V extends MCPServerViewLightType = MCPServerViewLightType,
