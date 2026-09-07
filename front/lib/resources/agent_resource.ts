@@ -170,6 +170,11 @@ export class AgentResource implements WithAccessControl {
     return editors;
   }
 
+  /**
+   * @cc [owner:philipperolet,label:backend] editor-results-by-agent
+   * Each input agent has a map entry: `null` for globals and active workspace members
+   * of its editor grant for custom agents, or `[]` when there are none.
+   */
   static async batchListEditors(
     auth: Authenticator,
     agents: AgentResource[]
@@ -210,14 +215,6 @@ export class AgentResource implements WithAccessControl {
     const userModelIds = [
       ...new Set(Object.values(membershipsByGroupId).flat()),
     ];
-    // The user and workspace-membership lookups below still query the DB for empty inputs.
-    if (userModelIds.length === 0) {
-      for (const agent of customAgents) {
-        result.set(agent.sId, []);
-      }
-      return result;
-    }
-
     const users = await UserResource.fetchByModelIds(userModelIds);
     const { memberships } = await MembershipResource.getActiveMemberships({
       users,
