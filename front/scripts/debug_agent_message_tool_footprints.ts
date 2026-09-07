@@ -10,6 +10,8 @@
  *   --compareGemini \
  *   --execute
  */
+
+import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import {
@@ -19,6 +21,7 @@ import {
 import { toolCallFootprintTexts } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
+import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { trustedFetch } from "@app/lib/egress/server";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -212,6 +215,17 @@ makeScript(
         maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
       }),
     ]);
+    const billingPlan = buildAgentMessageBillingPlan({
+      actions: actions.map((action) => ({
+        actionId: action.sId,
+        internalMCPServerName: action.metadata.internalMCPServerName,
+        mcpServerId: action.metadata.mcpServerId ?? null,
+        status: action.status,
+        toolName: getToolNameFromFunctionCallName(action.functionCallName),
+      })),
+      contextOrigin: creditContext.triggeringUserMessageOrigin,
+      runUsages: usages,
+    });
 
     const currentItems = items.filter(
       (item) =>
@@ -283,6 +297,13 @@ makeScript(
       (total, item) => total + (item.directCreditAmountMicro ?? 0),
       0
     );
+    const diagnosticReconciledCreditAmountMicro = diagnosticItems.reduce(
+      (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+      0
+    );
+    const diagnosticReconciledItemCount = diagnosticItems.filter(
+      (item) => item.reconciledCreditAmountMicro !== null
+    ).length;
     const reconciledInputCreditAmountMicro =
       billedCreditAmountMicro === null
         ? null
@@ -357,6 +378,8 @@ makeScript(
         grossNonInputCredits:
           diagnosticGrossNonInputCreditAmountMicro / 1_000_000,
         directToolCredits: diagnosticDirectToolCreditAmountMicro / 1_000_000,
+        reconciledItems: `${diagnosticReconciledItemCount}/${diagnosticItems.length}`,
+        reconciledCredits: diagnosticReconciledCreditAmountMicro / 1_000_000,
         inputBudget:
           reconciledInputCreditAmountMicro === null
             ? "n/a"
@@ -378,10 +401,49 @@ makeScript(
       Object.entries(diagnosticGrossCreditAmountMicroByItemType).map(
         ([itemType, amountMicro]) => ({
           itemType,
-          credits: amountMicro / 1_000_000,
+          grossCredits: amountMicro / 1_000_000,
+          directCredits:
+            itemType === "tool"
+              ? diagnosticDirectToolCreditAmountMicro / 1_000_000
+              : 0,
+          modelDerivedCredits:
+            (amountMicro -
+              (itemType === "tool"
+                ? diagnosticDirectToolCreditAmountMicro
+                : 0)) /
+            1_000_000,
         })
       )
     );
+    console.log("\nCanonical LLM billing lines");
+    console.table(
+      billingPlan.llm.map((line) => ({
+        runKey: line.runKey,
+        provider: line.providerId,
+        model: line.modelId,
+        promptTokens: line.promptTokensCount,
+        cachedTokens: line.cachedTokensCount,
+        cacheCreationTokens: line.cacheCreationTokensCount,
+        completionTokens: line.completionTokensCount,
+        providerCostMicroUsd: line.providerCostMicroUsd,
+        ratedCredits: line.ratedCredits,
+        billedCredits: line.billedCredits,
+        disposition: line.billingDisposition,
+      }))
+    );
+    console.log("\nCanonical tool billing lines");
+    console.table(
+      billingPlan.tools.map((line) => ({
+        action: line.action.actionId,
+        tool: line.action.toolName,
+        category: line.toolCostCategory,
+        ratedCredits: line.ratedCredits,
+        billedCredits: line.billedCredits,
+        disposition: line.billingDisposition,
+      }))
+    );
+    console.log("\nCanonical billing totals");
+    console.table([billingPlan.totals]);
     const coverageGaps = actionCoverage.filter(
       (coverage) => coverage.flags.length > 0
     );
@@ -623,6 +685,7 @@ makeScript(
           return [];
         }
         const nextUsage = nextUsageByUsageModelId.get(usage.runUsageModelId);
+        const nextProviderInputTokens = nextUsage?.promptTokens ?? null;
         const nextProviderNewInputTokens = nextUsage
           ? providerNewInputTokens(nextUsage)
           : null;
@@ -635,17 +698,17 @@ makeScript(
           flags.push("default_token_count_adjustment_inflates_footprint");
         }
         if (
-          nextProviderNewInputTokens !== null &&
-          counts.configuredRawInput > nextProviderNewInputTokens
+          nextProviderInputTokens !== null &&
+          counts.configuredRawInput > nextProviderInputTokens
         ) {
-          flags.push("configured_tokenizer_exceeds_provider_new_input");
+          flags.push("configured_tokenizer_exceeds_provider_input");
         }
         if (
-          nextProviderNewInputTokens !== null &&
+          nextProviderInputTokens !== null &&
           (counts.rawInputByTokenizerBase.o200k_base ?? 0) >
-            nextProviderNewInputTokens
+            nextProviderInputTokens
         ) {
-          flags.push("raw_rendered_result_exceeds_provider_new_input");
+          flags.push("raw_rendered_result_exceeds_provider_input");
         }
         if (nextUsage === undefined && (item.inputTokensCount ?? 0) > 0) {
           flags.push("terminal_result_has_no_consuming_usage");
@@ -756,6 +819,7 @@ makeScript(
       const nextProviderNewInputTokens = nextUsage
         ? providerNewInputTokens(nextUsage)
         : null;
+      const nextProviderInputTokens = nextUsage?.promptTokens ?? null;
 
       usageSummaries.push({
         runUsageId: producingRunUsageModelId,
@@ -772,15 +836,17 @@ makeScript(
             ? "n/a"
             : geminiInputTokensIncludingFraming,
         nextRunUsageId: nextUsage?.runUsageModelId ?? "none",
+        providerInput: nextProviderInputTokens ?? "none",
+        providerCachedInput: nextUsage?.cachedTokens ?? 0,
         providerNewInput: nextProviderNewInputTokens ?? "none",
         storedMinusProvider:
-          nextProviderNewInputTokens === null
+          nextProviderInputTokens === null
             ? "n/a"
-            : storedResultTokens - nextProviderNewInputTokens,
+            : storedResultTokens - nextProviderInputTokens,
         rawMinusProvider:
-          nextProviderNewInputTokens === null
+          nextProviderInputTokens === null
             ? "n/a"
-            : configuredRawResultTokens - nextProviderNewInputTokens,
+            : configuredRawResultTokens - nextProviderInputTokens,
       });
     }
 
@@ -807,7 +873,9 @@ makeScript(
             (diagnostic.storedDirectCreditAmountMicro ?? 0) / 1_000_000,
           grossCredits:
             diagnostic.storedGrossAttributedCreditAmountMicro / 1_000_000,
-          nextProviderInput:
+          nextProviderInput: diagnostic.nextUsage?.promptTokens ?? "none",
+          nextProviderCachedInput: diagnostic.nextUsage?.cachedTokens ?? "none",
+          nextProviderNewInput:
             diagnostic.nextUsage?.providerNewInputTokens ?? "none",
           skillIds: diagnostic.enabledSkillIds.join(", ") || "n/a",
           skillResolution: diagnostic.enabledSkillResolution,
