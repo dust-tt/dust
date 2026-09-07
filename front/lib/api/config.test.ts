@@ -47,3 +47,27 @@ describe("getSandboxApiBaseUrl", () => {
     expect(config.getSandboxApiBaseUrl()).toBe(PUBLIC_URL);
   });
 });
+
+describe("getOAuthRedirectBaseUrl", () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    process.env = { ...originalEnv };
+  });
+
+  it("points OAuth providers at the app, where the SPA serves the finalize page", () => {
+    process.env.NEXT_PUBLIC_DUST_APP_URL = "https://app.dust.tt";
+    process.env.NEXT_PUBLIC_DUST_API_URL = PUBLIC_URL;
+    delete process.env.DUST_OAUTH_REDIRECT_BASE_URL;
+
+    expect(config.getOAuthRedirectBaseUrl()).toBe("https://app.dust.tt");
+  });
+
+  it("honours an explicit override", () => {
+    process.env.NEXT_PUBLIC_DUST_APP_URL = "https://app.dust.tt";
+    process.env.DUST_OAUTH_REDIRECT_BASE_URL = "https://oauth.example.com";
+
+    expect(config.getOAuthRedirectBaseUrl()).toBe("https://oauth.example.com");
+  });
+});
