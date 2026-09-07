@@ -301,7 +301,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
           period={period}
           isLoading={isKeysLoading}
           isError={!!isKeysError}
-          showAnalyticsConsumption
+          showAnalyticsConsumption={showCreditMonthlyCap}
           isRevoking={isRevoking}
           isGenerating={isGenerating}
           onRevoke={handleRevoke}
