@@ -443,8 +443,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   enable_new_usage_page: {
     description:
-      "Show the compact credit-pool usage page (credit pool cards + compact members table) on the front usage page instead of the legacy usage page.",
-    stage: "dust_only",
+      "Show the new credit-pool usage page (credit pool cards + compact members table) on the front usage page instead of the legacy usage page.",
+    stage: "ask_owner",
     owner: "avervaet",
   },
 } as const satisfies Record<string, FeatureFlag>;

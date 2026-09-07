@@ -222,7 +222,7 @@ export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
-  const isCompactUsagePage = hasFeature("enable_new_usage_page");
+  const isNewUsagePage = hasFeature("enable_new_usage_page");
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Workspaces off a credit plan see this page without the credit pool, seat
   // and credits columns, spend limits and upgrade requests. Credit actions (top
@@ -1050,7 +1050,7 @@ export function UsagePage() {
       enableSelection={isCreditPriced}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
-      variant={isCompactUsagePage ? "compact" : undefined}
+      variant={isNewUsagePage ? "compact" : undefined}
       hasPool={hasPool}
     />
   );
@@ -1114,7 +1114,7 @@ export function UsagePage() {
           ) : (
             <div className="flex items-center justify-between">
               <Page.Header title="Usage" />
-              {!isCompactUsagePage &&
+              {!isNewUsagePage &&
                 isCreditPriced &&
                 usageSettings.topUpEnabled &&
                 isWorkspaceAdmin && (
@@ -1251,7 +1251,7 @@ export function UsagePage() {
             </Page.Vertical>
           ) : null}
 
-          {isCompactUsagePage && isCreditPriced ? (
+          {isNewUsagePage && isCreditPriced ? (
             <div className="flex flex-col items-stretch gap-4">
               <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
               {usageSettings.topUpEnabled && (
@@ -1260,7 +1260,7 @@ export function UsagePage() {
             </div>
           ) : null}
 
-          {!isCompactUsagePage &&
+          {!isNewUsagePage &&
           isCreditPriced &&
           !showConsumptionAnalytics &&
           !isAwuPoolSummaryLoading &&
