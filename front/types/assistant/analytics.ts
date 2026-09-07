@@ -136,6 +136,7 @@ export interface AgentMessageConsumptionAnalyticsUser {
   id: string;
   // Group sIds the user belonged to when the message completed.
   group_ids: string[];
+  seat_type: string | null;
 }
 
 export interface AgentMessageConsumptionAnalyticsTool {
