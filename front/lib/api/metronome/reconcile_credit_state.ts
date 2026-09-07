@@ -17,6 +17,7 @@ import {
 import { fetchPerApiKeyAwuUsage } from "@app/lib/metronome/per_api_key_usage";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
@@ -24,6 +25,7 @@ import {
   setProgrammaticCreditStateReconciled,
 } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import { correctStackedSeatCreditsFromBalances } from "@app/lib/metronome/stacked_seat_credits";
 import {
   clearWorkspaceProgrammaticWarningReached,
   setUserNearLimit,
@@ -685,6 +687,126 @@ export async function reconcileWorkspaceUserCreditStates({
       );
     }
     await heartbeat();
+  }
+}
+
+/**
+ * Detect and empty "stacked" per-seat AWU credits for a workspace: a seat that
+ * still holds a live balance on a per-seat recurring credit belonging to a
+ * different seat type than its current tier (e.g. a max seat carrying the pro
+ * credit after an upgrade stranded the origin grant). Consumption charged to the
+ * stray is carried onto the home credit so the seat nets the correct balance.
+ *
+ * Triggered from the debounced `credit.segment.start` reconcile: each seat credit
+ * is materialized one period ahead, so a mid-period seat change leaves a stray on
+ * the NEXT segment that only becomes a live balance when that segment starts —
+ * exactly when this runs. The N concurrent segment-start events collapse to one
+ * execution (see `launchReconcileWorkspaceUserCreditStatesWorkflow`), so we read
+ * balances once here. Never throws — logs and returns on failure.
+ */
+export async function reconcileStackedSeatCreditsForWorkspace({
+  workspace,
+  metronomeCustomerId,
+  metronomeContractId,
+  planCode,
+}: {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  planCode: string;
+}): Promise<void> {
+  if (!isCreditPricedPlanPrefix(planCode)) {
+    return;
+  }
+  const workspaceId = workspace.sId;
+
+  const contract = await getActiveContract(workspaceId);
+  if (!contract) {
+    logger.warn(
+      { workspaceId },
+      "[StackedSeatCredits] no active contract — skipping stray-credit reconcile"
+    );
+    return;
+  }
+
+  let memberships: MembershipResource[];
+  try {
+    const result = await MembershipResource.getActiveMemberships({ workspace });
+    memberships = result.memberships;
+  } catch (err) {
+    logger.error(
+      { workspaceId, err: normalizeError(err) },
+      "[StackedSeatCredits] failed to load memberships"
+    );
+    return;
+  }
+
+  // Current tier per seat, restricted to seats that carry an individual seat
+  // balance (pro/max and their _yearly variants) — the only ones that can stack.
+  const currentSeatTypeBySeatId = new Map<string, MembershipSeatType>();
+  for (const membership of memberships) {
+    const sId = membership.user?.sId;
+    if (sId && hasMetronomeSeatBalance(membership.seatType)) {
+      currentSeatTypeBySeatId.set(sId, membership.seatType);
+    }
+  }
+  if (currentSeatTypeBySeatId.size === 0) {
+    return;
+  }
+
+  const seatIds = [...currentSeatTypeBySeatId.keys()];
+  const [balancesResult, usageResult] = await Promise.all([
+    listMetronomeSeatBalances({
+      metronomeCustomerId,
+      metronomeContractId,
+      seatIds,
+    }),
+    fetchPerUserAwuUsage({
+      workspaceId,
+      metronomeCustomerId,
+      userIds: seatIds,
+    }),
+  ]);
+  if (balancesResult.isErr()) {
+    logger.error(
+      { workspaceId, err: balancesResult.error },
+      "[StackedSeatCredits] failed to read seat balances"
+    );
+    return;
+  }
+  if (usageResult.isErr()) {
+    logger.error(
+      { workspaceId, err: usageResult.error },
+      "[StackedSeatCredits] failed to read per-user usage"
+    );
+    return;
+  }
+
+  const result = await correctStackedSeatCreditsFromBalances({
+    workspaceId,
+    metronomeCustomerId,
+    metronomeContractId,
+    contract,
+    seatBalances: balancesResult.value,
+    currentSeatTypeBySeatId,
+    usageBySeatId: usageResult.value,
+    execute: true,
+    logger,
+  });
+  if (result.isErr()) {
+    logger.error(
+      { workspaceId, err: normalizeError(result.error) },
+      "[StackedSeatCredits] failed to reconcile stacked seat credits"
+    );
+    return;
+  }
+  const { appliedAdjustmentCount, totalEmptiedAwu, totalCarriedAwu } =
+    result.value;
+  if (appliedAdjustmentCount > 0) {
+    logger.info(
+      { workspaceId, appliedAdjustmentCount, totalEmptiedAwu, totalCarriedAwu },
+      "[StackedSeatCredits] corrected stacked seat credits"
+    );
   }
 }
 
