@@ -297,6 +297,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "PopDaph",
   },
+  admin_can_see_private_entities: {
+    description:
+      "Let workspace admins see the content (instructions, tools, knowledge, files) of the agents and skills they cannot read, instead of a redacted view",
+    stage: "ask_owner",
+    owner: "fabiencelier",
+  },
   skill_favorites: {
     description:
       "Enable user favorites for skills, including favorite controls and runtime skill availability.",

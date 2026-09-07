@@ -15,7 +15,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -462,8 +462,20 @@ export async function getAgentConfigurationForDetails(
   }
 
   // Either not readable (unpublished, not an editor) or filtered out by a space the admin is not a
-  // member of: refetch without the space filtering to redact it. The light variant is enough, the
-  // full one only adds fields the redaction drops.
+  // member of. With the `admin_can_see_private_entities` feature flag the admin gets it in full;
+  // otherwise it is refetched without the space filtering to be redacted.
+  if (await hasFeatureFlag(auth, "admin_can_see_private_entities")) {
+    const fullAgent =
+      agent ??
+      (await getAgentConfiguration(auth, {
+        agentId,
+        variant: "full",
+        dangerouslySkipPermissionFiltering: true,
+      }));
+    return fullAgent ? { ...fullAgent, canRead: true } : null;
+  }
+
+  // The light variant is enough, the full one only adds fields the redaction drops.
   const restrictedAgent =
     agent ??
     (await getAgentConfiguration(auth, {
