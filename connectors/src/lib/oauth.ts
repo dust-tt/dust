@@ -5,9 +5,10 @@ import { getOAuthConnectionAccessToken } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
 
 /**
- * @cc [label:error-handling] google-drive-admin-policy-error
- * Google Drive token refresh failures containing `admin_policy_enforced` must throw
- * `ExternalOAuthTokenError` to trigger the connector's existing pause-and-stop handling.
+ * @cc [label:error-handling] oauth-access-token-or-error
+ * Return the retrieved token and connection data on success. Revoked tokens, missing connections,
+ * and recognized provider authorization failures must throw `ExternalOAuthTokenError`; other OAuth
+ * failures must throw `Error` with the provider, error code, and message.
  */
 export async function getOAuthConnectionAccessTokenWithThrow({
   logger,
