@@ -88,6 +88,11 @@ export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 export VIZ_PUBLIC_URL=http://localhost:${ports.viz}
 export ALLOWED_VISUALIZATION_ORIGIN=http://localhost:3000,http://localhost:3011,http://localhost:${ports.front},http://localhost:${ports.frontSpaApp}
 
+# === Novu (front reads per-cell variables; placeholders keep the app booting locally) ===
+export NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER_CELL_00000=dummy
+export NEXT_PUBLIC_NOVU_API_URL_US=https://api.novu.co
+export NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL_US=wss://ws.novu.co
+
 # === Region & auth overrides (used by front cross-region and Dust CLI) ===
 export DUST_US_URL=http://localhost:${ports.front}
 export DUST_EU_URL=http://localhost:${ports.front}
