@@ -185,11 +185,6 @@ export function PoolUsagePage() {
   const activeSubscription = workspaceInfo?.activeSubscription;
   const isLegacyPremiumMessagePlan =
     !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
-  // Whether the pool/Metronome columns apply is driven by the `legacy_billing`
-  // feature flag (`hasMetronomeFeature`) rather than the subscription's actual
-  // contract state, so this stays in sync with the flag immediately instead of
-  // trailing subscription/contract provisioning. Poke-only ("compact" variant);
-  // the customer-facing usage table doesn't use this flag.
   const isLegacyWithoutPoolOrMetronome =
     isLegacyPremiumMessagePlan && !workspaceInfo?.hasMetronomeFeature;
   const showPoolSection =
@@ -429,7 +424,7 @@ export function PoolUsagePage() {
                   isSeatBased
                   showSpendLimit
                   hasPool={hasPool}
-                  showPremiumMessageUsage={isLegacyWithoutPoolOrMetronome}
+                  isPremiumMessagePlan={isLegacyWithoutPoolOrMetronome}
                   showPremiumMessageColumn={
                     !!workspaceInfo?.hasEnforcePremiumModelMessageLimitFeature
                   }
