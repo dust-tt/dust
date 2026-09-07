@@ -16,6 +16,7 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -207,11 +208,11 @@ function MemberSpendLimitForm({
           />
           <div>
             <DialogTitle>Edit spend limit for {member?.name}</DialogTitle>
-            <p className="text-sm text-muted-foreground">
+            <DialogDescription>
               This user can currently consume{" "}
               {formatCredits(seatAllowanceAwuCredits)} credits from their seat,
               plus {formatCredits(extraAwuCredits)} on the&nbsp;pool.
-            </p>
+            </DialogDescription>
           </div>
         </div>
       </DialogHeader>
