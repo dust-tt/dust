@@ -89,10 +89,7 @@ export function InviteChoosePage() {
                       onClick={() =>
                         handleInvitationSelection(
                           invitation.token,
-                          // TODO(single-tenant): fix so that invations are using cell, not region.
-                          // Fallback to first cell with a matching region.
-                          cells.find((c) => c.region === invitation.region)
-                            ?.name
+                          invitation.cell
                         )
                       }
                     />
