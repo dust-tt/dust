@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import config from "./config";
 import consumption from "./consumption";
+import messages from "./messages";
 import reinforcementTestCase from "./reinforcement_test_case";
 import render from "./render";
 import wakeups from "./wakeups";
@@ -42,6 +43,7 @@ app.get(
 
 app.route("/config", config);
 app.route("/consumption", consumption);
+app.route("/messages", messages);
 app.route("/reinforcement_test_case", reinforcementTestCase);
 app.route("/render", render);
 app.route("/wakeups", wakeups);

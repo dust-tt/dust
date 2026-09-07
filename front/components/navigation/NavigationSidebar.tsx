@@ -193,6 +193,7 @@ export const NavigationSidebar = React.forwardRef<
           user={user}
           owner={owner}
           subscription={subscription}
+          isFairUseAwuLimitDisabled={hasFeature("disable_fair_use_awu_limit")}
         />
       )}
     </div>

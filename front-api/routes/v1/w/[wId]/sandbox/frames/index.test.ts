@@ -1,14 +1,20 @@
 // Legacy Frame publishing runs esbuild, whose TextEncoder invariant requires Node rather than jsdom.
 // @vitest-environment node
 
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
-import { getConversationFilesBasePath } from "@app/types/mount_path";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+} from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -56,6 +62,38 @@ function requestFrameRegister(
     },
     body: JSON.stringify({ manifestPath }),
   });
+}
+
+function requestFrameValidate(
+  workspaceId: string,
+  token: string,
+  manifestPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/validate`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ manifestPath }),
+  });
+}
+
+function requestFrameShare(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string
+) {
+  const query = new URLSearchParams({ sourceDirectoryPath });
+  return honoApp.request(
+    `/api/v1/w/${workspaceId}/sandbox/frames/share?${query.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    }
+  );
 }
 
 async function setup({ registered = true }: { registered?: boolean } = {}) {
@@ -183,6 +221,166 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       published.publicationId
     );
+  });
+
+  it("validates a registered Frame without activating a publication", async () => {
+    const context = await setup();
+    assert(context.frame);
+
+    const response = await requestFrameValidate(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      frameId: context.frame.sId,
+      manifestPath: context.manifestPath,
+      warnings: [],
+    });
+    expect(
+      (await FileResource.fetchById(context.auth, context.frame.sId))
+        ?.useCaseMetadata?.activePublicationId
+    ).toBeUndefined();
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("does not validate a legacy Frame through the v2-only command", async () => {
+    const context = await setupLegacyFrame();
+
+    const response = await requestFrameValidate(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message:
+          "Pre-publish validation is only available for Frames v2 manifests.",
+      },
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("returns the existing Frame share link without changing use rights", async () => {
+    const context = await setup();
+    assert(context.frame);
+    await context.frame.markFrameV2AsReadyFromMount(context.auth);
+    await context.frame.setShareScope(context.auth, "emails_only");
+    const before = await context.frame.getShareInfo();
+    assert(before);
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath
+    );
+
+    const shared = await response.json();
+    expect(response.status, JSON.stringify(shared)).toBe(200);
+    expect(shared).toEqual({
+      frameId: context.frame.sId,
+      shareScope: "emails_only",
+      shareUrl: before.shareUrl,
+      sourceDirectoryPath,
+    });
+    expect(await context.frame.getShareInfo()).toEqual(before);
+  });
+
+  it("does not create sharing state when retrieving an unshared Frame", async () => {
+    const context = await setup();
+    assert(context.frame);
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath.replace(`/${FRAME_MANIFEST_FILE}`, "")
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message: expect.stringContaining("Configure sharing in the Dust UI"),
+      },
+    });
+    expect(await context.frame.getShareInfo()).toBeNull();
+  });
+
+  it("does not expose the former mutating Frame sharing API", async () => {
+    const context = await setup();
+
+    const response = await honoApp.request(
+      `/api/v1/w/${context.workspace.sId}/sandbox/frames/share`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${context.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          emails: [context.auth.getNonNullableUser().email],
+          shareScope: "public",
+          sourceDirectoryPath: context.manifestPath.replace(
+            `/${FRAME_MANIFEST_FILE}`,
+            ""
+          ),
+        }),
+      }
+    );
+
+    expect(response.status).toBe(401);
+    expect(await context.frame?.getShareInfo()).toBeNull();
+  });
+
+  it("retrieves a Frame share link with read access to the source folder", async () => {
+    const context = await setup();
+    const pod = await SpaceFactory.project(context.workspace);
+    const { globalGroup } = await GroupFactory.defaults(context.workspace);
+    await SpaceFactory.attachGroup(pod, globalGroup, "project_viewer");
+    await ConversationModel.update(
+      { spaceId: pod.id },
+      { where: { id: context.conversation.id } }
+    );
+    const frame = await FileFactory.create(context.auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: context.workspace.sId,
+        podId: pod.sId,
+      })}Status/${FRAME_MANIFEST_FILE}`,
+    });
+    await frame.markFrameV2AsReadyFromMount(context.auth);
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      `pod-${pod.sId}/Status`
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("refuses share-link retrieval without the feature flag", async () => {
+    const context = await createSandboxTokenTestContext();
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      `conversation-${context.conversation.sId}/Status`
+    );
+
+    expect(response.status).toBe(403);
   });
 
   it("publishes a legacy Frame through its existing publication flow", async () => {

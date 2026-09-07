@@ -1,12 +1,21 @@
-import {
-  createAgentConfiguration,
-  searchAgentConfigurationsByName,
-} from "@app/lib/api/assistant/configuration/agent";
+import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
+import {
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 
-import type { AgentAsset, CreatedAgent, SeedContext } from "./types";
+import type {
+  AgentAsset,
+  AgentAssetModel,
+  CreatedAgent,
+  SeedContext,
+} from "./types";
 
 interface SeedAgentOptions {
   skills?: SkillResource[];
@@ -19,6 +28,36 @@ interface SeedAgentOptions {
   spaces?: SpaceResource[];
 }
 
+function resolveModel(
+  model: AgentAssetModel = "standard"
+): Pick<
+  AgentModelConfigurationType,
+  "providerId" | "modelId" | "reasoningEffort"
+> {
+  switch (model) {
+    case "basic":
+      return {
+        providerId: AUTO_FAST_MODEL_ID,
+        modelId: AUTO_FAST_MODEL_ID,
+        reasoningEffort: "none",
+      };
+    case "standard":
+      return {
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+        reasoningEffort: "none",
+      };
+    case "premium":
+      return {
+        providerId: AUTO_COMPLEX_MODEL_ID,
+        modelId: AUTO_COMPLEX_MODEL_ID,
+        reasoningEffort: "none",
+      };
+    default:
+      return model;
+  }
+}
+
 export async function seedAgent(
   ctx: SeedContext,
   agentAsset: AgentAsset,
@@ -27,11 +66,17 @@ export async function seedAgent(
   const { auth, user, execute, logger } = ctx;
   const { skills = [], additionalEditors = [], owner, spaces = [] } = options;
 
-  const existingAgents = await searchAgentConfigurationsByName(
-    auth,
-    agentAsset.name
-  );
-  const existingAgent = existingAgents.find((a) => a.name === agentAsset.name);
+  // Looked up on the model rather than through the context user's view: seeded agents may be
+  // unpublished or require spaces the context user is not a member of, and a re-run must still
+  // find them (agent names are unique among a workspace's active agents).
+  const existingAgent = await AgentConfigurationModel.findOne({
+    attributes: ["sId"],
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      name: agentAsset.name,
+      status: "active",
+    },
+  });
 
   if (existingAgent) {
     logger.info(
@@ -64,8 +109,7 @@ export async function seedAgent(
       status: "active",
       scope: agentAsset.scope ?? "visible",
       model: {
-        providerId: "anthropic",
-        modelId: "claude-sonnet-4-6",
+        ...resolveModel(agentAsset.model),
         temperature: 0.7,
         responseFormat: agentAsset.responseFormat,
       },

@@ -6,18 +6,13 @@ import { SseQuerySchema } from "@front-api/lib/api/sse/stream_events";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
+import { withSandboxFunctionInvocationFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 
 // Mounted at /api/sse/w/:wId/sandbox-functions/:functionId/invocations/:invocationId/events.
 const app = workspaceApp();
 
 app.use("*", streamingTag);
-app.use(
-  "*",
-  withFeatureFlag("sandbox_functions", {
-    message: "Sandbox Functions are not enabled for this workspace.",
-  })
-);
+app.use("*", withSandboxFunctionInvocationFeature());
 
 /** @ignoreswagger */
 app.get(

@@ -167,7 +167,7 @@ export function ConsumptionSummaryView({
       >
         <SummaryCard
           label="Used this period"
-          value={formatCredits(totalCredits)}
+          value={`${formatCredits(totalCredits)} credits`}
           hint={
             creditUsage
               ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`

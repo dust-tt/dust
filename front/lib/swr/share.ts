@@ -1,4 +1,4 @@
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getErrorFromResponse,
@@ -18,7 +18,7 @@ export function useShareFrameMetadata({
   const { fetcher } = useFetcher();
   const shareMetadataFetcher: Fetcher<GetShareFrameMetadataResponseBody> =
     fetcher;
-  const regionContext = useRegionContext();
+  const { setCellInfo, cells } = useCellContext();
 
   const swrKey = shareToken ? `/api/share/frame/${shareToken}` : null;
 
@@ -39,13 +39,14 @@ export function useShareFrameMetadata({
   // Handle region redirect.
   useEffect(() => {
     if (regionRedirect) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+      setCellInfo(
+        // TODO(single-tenant): fix so that regionRedirect becomes cellRedirect.
+        // Fallback to first cell with a matching region.
+        cells.find((c) => c.region === regionRedirect.region) ?? cells[0]
+      );
       void mutate();
     }
-  }, [regionRedirect, mutate, regionContext]);
+  }, [regionRedirect, mutate, setCellInfo, cells]);
 
   return {
     shareMetadata: isRegionRedirectResponse ? undefined : data,

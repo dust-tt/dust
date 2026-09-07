@@ -79,7 +79,7 @@ export async function resolveFile(
       );
     }
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (!space || !space.canRead(auth)) {
+    if (!space || !auth.can("read", space)) {
       return new Err(
         new MCPError("You do not have read permissions for this pod.", {
           tracked: false,

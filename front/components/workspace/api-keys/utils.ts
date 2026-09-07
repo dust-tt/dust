@@ -1,9 +1,3 @@
-import type { GroupType } from "@app/types/groups";
-import {
-  AGENT_GROUP_PREFIX,
-  GLOBAL_SPACE_NAME,
-  SPACE_GROUP_PREFIX,
-} from "@app/types/groups";
 import { z } from "zod";
 
 export const KEY_ROLES = ["user", "admin"] as const;
@@ -73,15 +67,3 @@ export function creditsToString(credits: number | null): string {
 export function parseCreditsString(value: string): number | null {
   return value === "" ? null : parseInt(value, 10);
 }
-
-export const prettifyGroupName = (group: GroupType) => {
-  if (group.kind === "global") {
-    return GLOBAL_SPACE_NAME;
-  }
-
-  if (group.kind === "agent_editors") {
-    return group.name.replace(AGENT_GROUP_PREFIX, "");
-  }
-
-  return group.name.replace(SPACE_GROUP_PREFIX, "");
-};

@@ -1,10 +1,9 @@
+import { getGovernancePermissionMetadata } from "@app/components/pages/workspace/governance/capabilityMetadata";
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
 import type {
   GovernancePermission,
   GovernancePermissionConfiguration,
-  GrantType,
-  GroupPermissionResourceType,
   PermissionConfigurationScope,
 } from "@app/types/group_permissions";
 import { isValidPermissionConfigurationScope } from "@app/types/group_permissions";
@@ -17,66 +16,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useRef, useState } from "react";
 
-type GovernanceSettingMetadata = {
-  label: string;
-  description: string;
-  isGroupsOnly?: boolean;
-};
-
-const GOVERNANCE_SETTING_METADATA: Partial<
-  Record<
-    `${GrantType}:${GroupPermissionResourceType}`,
-    GovernanceSettingMetadata
-  >
-> = {
-  "create:agent": {
-    label: "Create agents",
-    description: "Who can create agents in the Agent Builder",
-  },
-  "publish:agent": {
-    label: "Publish agents",
-    description: "Who can publish agents to the whole workspace",
-  },
-  "create:skill": {
-    label: "Create skills",
-    description: "Who can create custom skills",
-  },
-  "publish:skill": {
-    label: "Manage skill availability",
-    description: "Who can make skills available across the workspace",
-  },
-  "make_discoverable:skill": {
-    label: "Make skills discoverable to agents",
-    description:
-      "Who can make skills discoverable to @Dust and agents with Discover Skills",
-  },
-  "invite:frame": {
-    label: "Invite people by email",
-    description:
-      "Who can share frames by email with people outside your organization",
-  },
-  "publish:frame": {
-    label: "Share by public link",
-    description: "Who can create public links to frames",
-  },
-  "admin:billing": {
-    label: "Access billing features",
-    description:
-      "Who can manage billing settings, invoices, and payment methods",
-    isGroupsOnly: true,
-  },
-  "admin:security": {
-    label: "Access security features",
-    description: "Who can manage user access, identities, and provisioning",
-    isGroupsOnly: true,
-  },
-  "use_workspace_pool:trigger": {
-    label: "Charge automations to the workspace",
-    description:
-      "Who can run a trigger on the workspace credit pool instead of their own",
-  },
-};
-
 const PERMISSION_SCOPE_OPTIONS: {
   value: PermissionConfigurationScope;
   label: string;
@@ -85,21 +24,6 @@ const PERMISSION_SCOPE_OPTIONS: {
   { value: "groups", label: "Groups" },
   { value: "admins_only", label: "Admins only" },
 ];
-
-function getGovernancePermissionMetadata(
-  permissions: GovernancePermission
-): GovernanceSettingMetadata | null {
-  const metadata =
-    GOVERNANCE_SETTING_METADATA[
-      `${permissions.grantType}:${permissions.resourceType}`
-    ];
-
-  if (!metadata) {
-    return null;
-  }
-
-  return metadata;
-}
 
 function getGroupSelection(
   configuration: GovernancePermissionConfiguration,

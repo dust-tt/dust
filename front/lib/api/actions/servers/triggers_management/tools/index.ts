@@ -221,7 +221,6 @@ export function createTriggersManagementTools(
           editor: user.id,
           webhookSourceViewId: null,
           executionPerDayLimitOverride: null,
-          executionMode: "user_pool",
           origin: "agent",
           spaceId,
         });
@@ -604,7 +603,6 @@ export function createTriggersManagementTools(
           webhookSourceViewId: view.id,
           executionPerDayLimitOverride:
             DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
-          executionMode: "user_pool",
           origin: "agent",
           spaceId,
         });

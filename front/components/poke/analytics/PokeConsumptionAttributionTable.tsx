@@ -82,6 +82,7 @@ function PokeConsumptionAttributionRows(
   const {
     rows,
     totalCredits,
+    totalActiveMembers,
     totalCount,
     isTopLoading,
     isTopError,
@@ -103,6 +104,7 @@ function PokeConsumptionAttributionRows(
       data={{
         rows,
         totalCredits,
+        totalActiveMembers,
         totalCount,
         isTopLoading,
         isTopError: Boolean(isTopError),

@@ -4,6 +4,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { PokeRole } from "@app/lib/poke/roles";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -21,7 +22,9 @@ export type WorkspaceAwareCtx = SessionCtx & {
   };
 };
 
-export type PokeCtx = SessionCtx & {
+// Poke authenticates via Cloudflare Access JWT (preferred) or a WorkOS
+// super-user session fallback. Only the resulting Authenticator is exposed.
+export type PokeCtx = {
   Variables: {
     auth: Authenticator;
     pokeRoles: PokeRole[];
@@ -34,9 +37,15 @@ export type PokeProjectCtx = PokeCtx & {
   };
 };
 
-export type PokePodFunctionCtx = PokeProjectCtx & {
+export type PokeFrameFunctionCtx = PokeFrameCtx & {
   Variables: {
-    podFunction: SandboxFunctionResource;
+    frameFunction: SandboxFunctionResource;
+  };
+};
+
+export type PokeFrameCtx = PokeCtx & {
+  Variables: {
+    frame: FileResource;
   };
 };
 
@@ -84,7 +93,8 @@ export const sessionApp = () => createHono<SessionCtx>();
 export const workspaceApp = () => createHono<WorkspaceAwareCtx>();
 export const pokeApp = () => createHono<PokeCtx>();
 export const pokeProjectApp = () => createHono<PokeProjectCtx>();
-export const pokePodFunctionApp = () => createHono<PokePodFunctionCtx>();
+export const pokeFrameFunctionApp = () => createHono<PokeFrameFunctionCtx>();
+export const pokeFrameApp = () => createHono<PokeFrameCtx>();
 export const publicApiApp = () => createHono<PublicApiCtx>();
 export const sandboxApp = () => createHono<SandboxCtx>();
 export const skillApp = () => createHono<SkillCtx>();

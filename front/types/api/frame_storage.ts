@@ -1,6 +1,8 @@
-import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
+import { FRAME_DATABASE_NAME_REGEX } from "@app/types/api/frame_manifest";
 
 const SAFE_FRAME_STORAGE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+
+export const FRAME_PUBLICATION_FILE = "publication.json";
 
 function safeSegment(value: string, label: string): string {
   if (!SAFE_FRAME_STORAGE_SEGMENT.test(value)) {
@@ -10,14 +12,29 @@ function safeSegment(value: string, label: string): string {
   return value;
 }
 
-export function getFrameBasePath({
+export function getFramesBasePath({
   workspaceId,
+}: {
+  workspaceId: string;
+}): string {
+  return `w/${safeSegment(workspaceId, "workspaceId")}/frames/`;
+}
+
+export function getFrameBasePath({
   frameId,
+  ...args
 }: {
   workspaceId: string;
   frameId: string;
 }): string {
-  return `w/${safeSegment(workspaceId, "workspaceId")}/frames/${safeSegment(frameId, "frameId")}/`;
+  return `${getFramesBasePath(args)}${safeSegment(frameId, "frameId")}/`;
+}
+
+export function getFrameDatabaseReplicasBasePath(args: {
+  workspaceId: string;
+  frameId: string;
+}): string {
+  return `${getFrameBasePath(args)}state/databases/`;
 }
 
 export function getFramePublicationsBasePath(args: {
@@ -25,6 +42,21 @@ export function getFramePublicationsBasePath(args: {
   frameId: string;
 }): string {
   return `${getFrameBasePath(args)}publications/`;
+}
+
+export function getFrameDatabaseReplicaBasePath({
+  databaseName,
+  ...args
+}: {
+  workspaceId: string;
+  frameId: string;
+  databaseName: string;
+}): string {
+  if (!FRAME_DATABASE_NAME_REGEX.test(databaseName)) {
+    throw new Error("Invalid databaseName for Frame storage.");
+  }
+
+  return `${getFrameDatabaseReplicasBasePath(args)}${databaseName}.db/`;
 }
 
 export function getFramePublicationBasePath({
@@ -39,36 +71,12 @@ export function getFramePublicationBasePath({
   return `${getFramePublicationsBasePath({ workspaceId, frameId })}${safeSegment(publicationId, "publicationId")}/`;
 }
 
-export function getFramePublicationManifestPath(args: {
+export function getFramePublicationDescriptorPath(args: {
   workspaceId: string;
   frameId: string;
   publicationId: string;
 }): string {
-  return `${getFramePublicationBasePath(args)}manifest.json`;
-}
-
-export function getFramePublicationSourceBasePath(args: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-}): string {
-  return `${getFramePublicationBasePath(args)}source/`;
-}
-
-export function getFramePublicationSourcePath({
-  relativePath,
-  ...args
-}: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-  relativePath: string;
-}): string {
-  if (!isSafeFrameRelativePath(relativePath)) {
-    throw new Error("Invalid relative source path for Frame storage.");
-  }
-
-  return `${getFramePublicationSourceBasePath(args)}${relativePath}`;
+  return `${getFramePublicationBasePath(args)}${FRAME_PUBLICATION_FILE}`;
 }
 
 export function getFramePublicationUiBundlePath(args: {
@@ -79,32 +87,11 @@ export function getFramePublicationUiBundlePath(args: {
   return `${getFramePublicationBasePath(args)}ui/bundle.js`;
 }
 
-export function getFramePublicationFunctionBasePath({
-  functionName,
-  ...args
-}: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-  functionName: string;
-}): string {
-  return `${getFramePublicationBasePath(args)}functions/${safeSegment(functionName, "functionName")}/`;
-}
-
 export function getFramePublicationFunctionBundlePath(args: {
   workspaceId: string;
   frameId: string;
   publicationId: string;
   functionName: string;
 }): string {
-  return `${getFramePublicationFunctionBasePath(args)}bundle.js`;
-}
-
-export function getFramePublicationFunctionSchemaPath(args: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-  functionName: string;
-}): string {
-  return `${getFramePublicationFunctionBasePath(args)}schema.json`;
+  return `${getFramePublicationBasePath(args)}functions/${safeSegment(args.functionName, "functionName")}.ts`;
 }

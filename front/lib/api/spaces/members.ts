@@ -22,3 +22,14 @@ export const PatchSpaceMembersRequestBodySchema = z.intersection(
 export type PatchSpaceMembersRequestBodyType = z.infer<
   typeof PatchSpaceMembersRequestBodySchema
 >;
+
+// Unlike PATCH, which has to carry the full member list, POST only adds users and is bounded.
+export const MAX_SPACE_MEMBERS_PER_ADD = 100;
+
+export const PostSpaceMembersRequestBodySchema = z.object({
+  memberIds: z.array(z.string()).min(1).max(MAX_SPACE_MEMBERS_PER_ADD),
+});
+
+export type PostSpaceMembersRequestBodyType = z.infer<
+  typeof PostSpaceMembersRequestBodySchema
+>;

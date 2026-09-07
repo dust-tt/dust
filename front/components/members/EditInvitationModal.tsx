@@ -68,8 +68,7 @@ export function EditInvitationModal({
   // Check if this invitation's role would be managed by provisioning groups
   const isRoleManagedByProvisioning =
     (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
-    (roleProvisioningStatus.hasManagerGroup && selectedRole === "manager") ||
-    (roleProvisioningStatus.hasBuilderGroup && selectedRole === "builder");
+    (roleProvisioningStatus.hasManagerGroup && selectedRole === "manager");
 
   const roleMessage = invitation
     ? getInvitationRoleMessage({

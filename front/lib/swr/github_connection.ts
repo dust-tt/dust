@@ -1,5 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import type { GetGitHubConnectionResponseBody } from "@app/lib/skill_detection";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -75,7 +75,7 @@ export function useConnectWorkspaceGitHub({
   owner: LightWorkspaceType;
 }) {
   const { fetcher } = useFetcher();
-  const { regionInfo } = useRegionContext();
+  const { cellInfo } = useCellContext();
   const sendNotification = useSendNotification();
   const [isConnectingGitHub, setIsConnectingGitHub] = useState(false);
 
@@ -87,7 +87,7 @@ export function useConnectWorkspaceGitHub({
         provider: "github",
         useCase: "platform_actions",
         extraConfig: {},
-        regionInfo,
+        cellInfo,
       });
       if (connectionResult.isErr()) {
         sendNotification({
@@ -126,7 +126,7 @@ export function useConnectWorkspaceGitHub({
     } finally {
       setIsConnectingGitHub(false);
     }
-  }, [fetcher, owner, regionInfo, sendNotification]);
+  }, [fetcher, owner, cellInfo, sendNotification]);
 
   return { connectGitHub, isConnectingGitHub };
 }

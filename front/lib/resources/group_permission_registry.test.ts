@@ -213,6 +213,12 @@ describe("ROLE_REGISTRY invariants", () => {
     expect(grantTypesForVerb("skill", "admin", "instance")).toContain("editor");
   });
 
+  it("lets the agent editor role administrate its agent", () => {
+    // Agent editors can archive / restore agents and manage their editors. Keep those actions when
+    // group_permissions becomes the read source by granting `admin` through the editor role.
+    expect(grantTypesForVerb("agent", "admin", "instance")).toContain("editor");
+  });
+
   it("keeps every type-level role a singleton", () => {
     // The Governance page toggles capabilities one verb at a time, so a type-level role must carry
     // exactly one verb. The name is not required to be that verb: a governance capability is named
@@ -256,6 +262,7 @@ describe("verbsForGrantAtLevels", () => {
     expect(verbsForGrantAtLevels("editor", "agent", levels)).toEqual([
       "read",
       "write",
+      "admin",
     ]);
   });
 });
@@ -311,6 +318,7 @@ describe("GroupPermissions wildcard grant", () => {
     ]);
     // Type-level capabilities alongside the instance ones.
     expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
+      "admin",
       "create",
       "publish",
       "read",
@@ -331,6 +339,7 @@ describe("GroupPermissions wildcard grant", () => {
       { grantType: "*", resourceType: "agent", resourceId: 42 },
     ]);
     expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
+      "admin",
       "read",
       "write",
     ]);

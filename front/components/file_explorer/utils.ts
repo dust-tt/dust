@@ -2,6 +2,7 @@ import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
   frameSlideshowContentType,
   getFileFormatCategory,
+  isFrameV2ContentType,
   isInteractiveContentType,
   isMarkdownContentType,
   isPdfContentType,
@@ -174,8 +175,11 @@ import type {
   FileExplorerEntry,
   FileExplorerPathEntry,
   FileExplorerSortMode,
+  FileExplorerVirtualScopeRoot,
   FilePanelCategory,
+  FileSystemDirectoryTreeNode,
   FileSystemTreeNode,
+  FramePackageEntry,
 } from "./types";
 
 export const MIN_FILES_FOR_SEARCH = 10;
@@ -217,7 +221,10 @@ export function getFileExplorerBucket(
     return null;
   }
 
-  if (isInteractiveContentType(contentType)) {
+  if (
+    isInteractiveContentType(contentType) ||
+    isFrameV2ContentType(contentType)
+  ) {
     return "frames";
   }
 
@@ -378,7 +385,8 @@ function ensureDirectoryNode(
   nodeMap: Map<string, FileSystemTreeNode>,
   root: FileSystemTreeNode[],
   path: string,
-  name: string
+  name: string,
+  canonicalPath: string
 ): void {
   if (nodeMap.has(path)) {
     return;
@@ -388,6 +396,7 @@ function ensureDirectoryNode(
     name,
     path,
     isDirectory: true,
+    canonicalPath,
     contentType: null,
     fileId: null,
     children: [],
@@ -427,26 +436,29 @@ export function withVirtualExplorerPath(
 /** Top-level scope folders shown at the virtual root (includes empty scopes). */
 export function getVirtualScopeRootNodes(
   tree: FileSystemTreeNode[],
-  scopeRoots: readonly string[]
-): FileSystemTreeNode[] {
-  const topLevelDirs = new Map<string, FileSystemTreeNode>();
+  scopeRoots: readonly FileExplorerVirtualScopeRoot[]
+): FileSystemDirectoryTreeNode[] {
+  const topLevelDirs = new Map<string, FileSystemDirectoryTreeNode>();
   for (const node of tree) {
     if (node.isDirectory && !node.path.includes("/")) {
       topLevelDirs.set(node.path, node);
     }
   }
 
-  return scopeRoots.map(
-    (label) =>
-      topLevelDirs.get(label) ?? {
-        name: label,
-        path: label,
-        isDirectory: true,
-        contentType: null,
-        fileId: null,
-        children: [],
-      }
-  );
+  return scopeRoots.map((scopeRoot) => {
+    const existingNode = topLevelDirs.get(scopeRoot.path);
+    return existingNode
+      ? { ...existingNode, canonicalPath: scopeRoot.canonicalPath }
+      : {
+          name: scopeRoot.path,
+          path: scopeRoot.path,
+          canonicalPath: scopeRoot.canonicalPath,
+          isDirectory: true,
+          contentType: null,
+          fileId: null,
+          children: [],
+        };
+  });
 }
 
 /** Search result card title: explorer path with the current folder prefix stripped. */
@@ -509,7 +521,7 @@ export function fileExplorerNodeMatchesSearch(
  * Uses `virtualPath` when set; otherwise strips the scoped prefix from `path`.
  */
 export function buildFileSystemTree(
-  entries: FileExplorerPathEntry[]
+  entries: (FileExplorerPathEntry | FramePackageEntry)[]
 ): FileSystemTreeNode[] {
   const root: FileSystemTreeNode[] = [];
   const nodeMap = new Map<string, FileSystemTreeNode>();
@@ -522,6 +534,15 @@ export function buildFileSystemTree(
     }
 
     const parts = relativePath.split("/");
+    const canonicalPath =
+      "sourceFolderCanonicalPath" in entry
+        ? entry.sourceFolderCanonicalPath
+        : entry.path;
+    const canonicalParts = canonicalPath.split("/");
+    const canonicalPartOffset = canonicalParts.length - parts.length;
+
+    const getCanonicalPathAtDepth = (depth: number): string =>
+      canonicalParts.slice(0, canonicalPartOffset + depth).join("/");
 
     if (entry.isDirectory) {
       if (nodeMap.has(relativePath)) {
@@ -531,7 +552,13 @@ export function buildFileSystemTree(
       let currentPath = "";
       for (let i = 0; i < parts.length; i++) {
         currentPath = currentPath ? `${currentPath}/${parts[i]!}` : parts[i]!;
-        ensureDirectoryNode(nodeMap, root, currentPath, parts[i]!);
+        ensureDirectoryNode(
+          nodeMap,
+          root,
+          currentPath,
+          parts[i]!,
+          getCanonicalPathAtDepth(i + 1)
+        );
       }
       continue;
     }
@@ -539,13 +566,20 @@ export function buildFileSystemTree(
     let currentPath = "";
     for (let i = 0; i < parts.length - 1; i++) {
       currentPath = currentPath ? `${currentPath}/${parts[i]!}` : parts[i]!;
-      ensureDirectoryNode(nodeMap, root, currentPath, parts[i]!);
+      ensureDirectoryNode(
+        nodeMap,
+        root,
+        currentPath,
+        parts[i]!,
+        getCanonicalPathAtDepth(i + 1)
+      );
     }
 
     const fileNode: FileSystemTreeNode = {
       name: parts[parts.length - 1]!,
       path: relativePath,
       isDirectory: false,
+      canonicalPath,
       contentType: entry.contentType,
       fileId: entry.fileId,
       children: [],

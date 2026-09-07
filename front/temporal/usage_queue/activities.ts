@@ -5,12 +5,9 @@ import {
   trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
-  billedCostAwuFromEvents,
-  buildLlmUsageEvents,
-  buildToolUseEvents,
   buildUsageEvents,
   computeRunKey,
   getUsageType,
@@ -43,6 +40,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -203,10 +201,57 @@ export async function trackProgrammaticUsageActivity(
   return { tracked: false, origin: userMessageOrigin };
 }
 
+// Bounds how many parent-conversation hops we'll walk to find the human who
+// ultimately triggered a message with no direct user attribution
+const MAX_ORIGINATING_USER_TRACE_HOPS = 5;
+
+async function resolveOriginatingUserId(
+  workspace: { id: ModelId },
+  startUserMessage: UserMessageModel | undefined
+): Promise<string | null> {
+  let current = startUserMessage;
+  for (let hop = 0; hop < MAX_ORIGINATING_USER_TRACE_HOPS; hop++) {
+    if (!current?.agenticOriginMessageId) {
+      return null;
+    }
+
+    let messageRow = await MessageModel.findOne({
+      where: {
+        sId: current.agenticOriginMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    for (
+      let parentHop = 0;
+      parentHop < MAX_ORIGINATING_USER_TRACE_HOPS &&
+      messageRow &&
+      !messageRow.userMessageId;
+      parentHop++
+    ) {
+      messageRow = messageRow.parentId
+        ? await MessageModel.findByPk(messageRow.parentId)
+        : null;
+    }
+    if (!messageRow?.userMessageId) {
+      return null;
+    }
+
+    current =
+      (await UserMessageModel.findOne({
+        where: { id: messageRow.userMessageId, workspaceId: workspace.id },
+        include: [{ model: UserModel, required: false }],
+      })) ?? undefined;
+    if (current?.user) {
+      return current.user.sId;
+    }
+  }
+  return null;
+}
+
 /**
- * Emit Metronome llm_usage and tool_use events for an agent message.
- * Called for ALL messages (not just programmatic) — always-on, fire-and-forget.
- * Metronome failures don't affect the agent loop.
+ * Emit the aggregated Metronome usage event (LLM + tool cost) for an agent
+ * message. Called for ALL messages (not just programmatic) — always-on,
+ * fire-and-forget. Metronome failures don't affect the agent loop.
  */
 export async function emitMetronomeUsageEventsActivity(
   authType: AuthenticatorType,
@@ -272,7 +317,9 @@ export async function emitMetronomeUsageEventsActivity(
   // pod_manager sub-conversations where the DB row has no user but the auth
   // still carries the original session user).
   const userId =
-    userMessageRow?.userMessage?.user?.sId ?? auth.user()?.sId ?? null;
+    userMessageRow?.userMessage?.user?.sId ??
+    auth.user()?.sId ??
+    (await resolveOriginatingUserId(workspace, userMessageRow?.userMessage));
 
   // Determine if the user holds a free seat. Free-seat events use a prefixed
   // user_id ("free-<sId>") so Metronome's free-credit specifier only drains
@@ -375,7 +422,6 @@ export async function emitMetronomeUsageEventsActivity(
       mcpServerId: json.mcpServerId,
       internalMCPServerName: json.internalMCPServerName,
       status: json.status,
-      executionDurationMs: json.executionDurationMs,
       shouldEmit:
         agentLoopArgs.startStep === undefined ||
         json.step >= agentLoopArgs.startStep,
@@ -389,51 +435,8 @@ export async function emitMetronomeUsageEventsActivity(
   // ceils per the exact same execution partition that is billed here.
   const runKey = computeRunKey(effectiveRunIds);
 
-  // Build the legacy (per-model llm_usage_v3 + per-tool tool_use_v3) events and
-  // the single aggregated event. Which set is ingested depends on the feature
-  // flag below; the cost parity of both is logged in all cases.
-  const llmEvents = buildLlmUsageEvents({
-    workspaceId: workspace.sId,
-    isByok,
-    conversationId,
-    userId,
-    isFreeSeatedUser,
-    agentMessageId,
-    agentId,
-    subAgentId,
-    parentAgentMessageId,
-    runKey,
-    runUsages,
-    origin: userMessageOrigin,
-    usageType,
-    authMethod,
-    apiKeyName,
-    messageStatus,
-    isSubAgentMessage,
-    timestamp,
-  });
-
-  const toolEvents = buildToolUseEvents({
-    workspaceId: workspace.sId,
-    conversationId,
-    userId,
-    isFreeSeatedUser,
-    agentMessageId,
-    agentId,
-    subAgentId,
-    parentAgentMessageId,
-    runKey,
-    actions: toolActions,
-    origin: userMessageOrigin,
-    usageType,
-    authMethod,
-    apiKeyName,
-    messageStatus,
-    isSubAgentMessage,
-    timestamp,
-  });
-
-  const aggregatedUsageEvents = buildUsageEvents({
+  // Build and ingest the single aggregated usage event (LLM + tool cost).
+  const usageEvents = buildUsageEvents({
     workspaceId: workspace.sId,
     isByok,
     conversationId,
@@ -455,35 +458,7 @@ export async function emitMetronomeUsageEventsActivity(
     timestamp,
   });
 
-  // When the flag is on, ingest the single aggregated event; otherwise keep
-  // ingesting the legacy events. Log the cost of both paths in all cases so we
-  // can confirm parity on real traffic.
-  const useAggregatedEvent = await hasFeatureFlag(
-    auth,
-    "metronome_aggregated_usage_event"
-  );
-  const newCostAwu = aggregatedUsageEvents.reduce((total, event) => {
-    const costAwu = event.properties["cost_awu"];
-    return total + (typeof costAwu === "number" ? costAwu : 0);
-  }, 0);
-  const oldCostAwu = billedCostAwuFromEvents([...llmEvents, ...toolEvents]);
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      conversationId,
-      agentMessageId,
-      runKey,
-      newCostAwu,
-      oldCostAwu,
-      costMatches: newCostAwu === oldCostAwu,
-      useAggregatedEvent,
-    },
-    "[UsageQueue] Metronome usage event cost parity check."
-  );
-
-  await ingestMetronomeEvents(
-    useAggregatedEvent ? aggregatedUsageEvents : [...llmEvents, ...toolEvents]
-  );
+  await ingestMetronomeEvents(usageEvents);
 
   // Per-key cap enforcement is pull-based: Metronome spend alerts can't
   // attribute spend by `api_key_name` (it's not the products' presentation

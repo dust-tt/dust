@@ -17,7 +17,11 @@ import type {
 } from "@app/lib/model_constructors/types/input/messages";
 import type { ReasoningEffort } from "@app/lib/model_constructors/types/reasoning_efforts";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isRecord, removeNulls } from "@app/types/shared/utils/general";
+import {
+  isRecord,
+  isStringArray,
+  removeNulls,
+} from "@app/types/shared/utils/general";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
@@ -242,6 +246,9 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 export function toTool(tool: ToolSpecification): ChatCompletionTool {
   const properties = asRecord(tool.inputSchema.properties);
+  const required = isStringArray(tool.inputSchema.required)
+    ? tool.inputSchema.required
+    : [];
   return {
     type: "function",
     function: {
@@ -251,8 +258,7 @@ export function toTool(tool: ToolSpecification): ChatCompletionTool {
       parameters: {
         type: "object",
         properties,
-        // OpenAI strict mode requires every property to be listed as required.
-        required: Object.keys(properties),
+        required,
         additionalProperties: false,
       },
     },

@@ -1,6 +1,10 @@
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { runOnRedis } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { FileShareScope } from "@app/types/files";
@@ -24,6 +28,82 @@ export function getDefaultFrameShareScope(
     default:
       assertNever(sharingPolicy);
   }
+}
+
+export async function checkFrameShareScopePermission(
+  auth: Authenticator,
+  shareScope: FileShareScope
+): Promise<Result<void, DustError<"unauthorized">>> {
+  if (shareScope !== "public") {
+    return new Ok(undefined);
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  if (workspace.sharingPolicy !== "all_scopes") {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "Public sharing is disabled for this workspace."
+      )
+    );
+  }
+  if (!(await auth.hasWorkspacePermission("publish", "frame"))) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "You do not have permission to share this frame publicly."
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
+export async function checkFrameEmailGrantPermission(
+  auth: Authenticator,
+  rawEmails: string[]
+): Promise<Result<void, DustError<"unauthorized">>> {
+  if (rawEmails.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const externalSharingDisabledByPolicy =
+    workspace.sharingPolicy === "workspace_only";
+  const canInviteExternal =
+    !externalSharingDisabledByPolicy &&
+    (await auth.hasWorkspacePermission("invite", "frame"));
+  if (canInviteExternal) {
+    return new Ok(undefined);
+  }
+
+  const emails = rawEmails.map((email) => email.toLowerCase());
+  const users = await UserResource.fetchByEmails(emails);
+  const userModelIdToEmail = new Map(
+    users.map((user) => [user.id, user.email.toLowerCase()])
+  );
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace,
+  });
+  const memberEmails = new Set(
+    memberships
+      .map((membership) => userModelIdToEmail.get(membership.userId))
+      .filter((email): email is string => email !== undefined)
+  );
+
+  if (emails.some((email) => !memberEmails.has(email))) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        externalSharingDisabledByPolicy
+          ? "Only workspace members can be invited when external sharing is disabled."
+          : "You do not have permission to invite people outside the workspace. Only workspace members can be invited."
+      )
+    );
+  }
+
+  return new Ok(undefined);
 }
 
 const OTP_TTL_SECONDS = 15 * 60; // 15 minutes.

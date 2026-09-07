@@ -1,5 +1,4 @@
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   BarHeader,
   Button,
@@ -8,6 +7,7 @@ import {
   Page,
   Rocket02,
 } from "@dust-tt/sparkle";
+import { useRegionContext } from "@extension/shared/context/RegionContext";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { Link } from "react-router-dom";
 

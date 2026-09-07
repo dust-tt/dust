@@ -18,6 +18,7 @@ import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
+  AgentModel,
   AgentUserRelationModel,
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
@@ -457,6 +458,10 @@ export async function deleteAgentsActivity({
     hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
     await agent.destroy();
   }
+
+  await AgentModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
 }
 
 export async function deleteAppsActivity({

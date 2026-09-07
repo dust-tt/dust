@@ -71,6 +71,7 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
   conversation_id: "conv1",
   credit_micro: 1_000_000,
   execution_time_ms: null,
+  micro_usd: 500_000,
   message_version: "1",
   model: {
     provider_id: "anthropic",
@@ -78,13 +79,14 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
     reasoning_effort: "medium",
     resolution_method: "auto",
   },
+  parent_message_id: null,
   run_usage_id: "123",
   space_id: "space1",
   status: "succeeded",
   step_index: 0,
   trigger_id: null,
   usage_type: "user",
-  user: { id: "user1", group_ids: ["group1"] },
+  user: { id: "user1", group_ids: ["group1"], seat_type: "pro" },
   consumption_type: "llm",
   gross_credit_micro: {
     system: 100_000,
@@ -109,6 +111,7 @@ const TOOL_DOC: AgentMessageConsumptionAnalyticsToolData = {
   ...LLM_DOC,
   consumption_key: "action:1",
   consumption_type: "tool",
+  micro_usd: null,
   model: null,
   gross_credit_micro: {
     system: 0,

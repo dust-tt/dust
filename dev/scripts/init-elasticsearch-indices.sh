@@ -60,14 +60,16 @@ create_core_index() {
   binary="$(elasticsearch_create_index_bin)"
 
   log "Ensuring core.${index_name}_${index_version}..."
+  # Capture status under `set -e`: a bare `(...) ; status=$?` never runs status=$?
+  # when the subshell is non-zero (e.g. "already exists" → 2).
+  status=0
   (
     cd "${DUST_REPO_ROOT}/core"
     run_logged "$binary" \
       --index-name "$index_name" \
       --index-version "$index_version" \
       --skip-confirmation
-  )
-  status=$?
+  ) || status=$?
   if [ "$status" -eq 0 ]; then
     return 0
   fi
@@ -85,6 +87,9 @@ create_front_index() {
   local status
 
   log "Ensuring front.${index_name}_${index_version}..."
+  # Capture status under `set -e`: a bare `(...) ; status=$?` never runs status=$?
+  # when the subshell is non-zero (e.g. "already exists" → 2).
+  status=0
   (
     cd "${DUST_REPO_ROOT}/front"
     run_logged env PATH="${DUST_REPO_ROOT}/node_modules/.bin:${PATH}" \
@@ -93,8 +98,7 @@ create_front_index() {
       --index-version "$index_version" \
       --skip-confirmation \
       --execute
-  )
-  status=$?
+  ) || status=$?
   if [ "$status" -eq 0 ]; then
     return 0
   fi

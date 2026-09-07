@@ -22,7 +22,7 @@ import { Sequelize } from "sequelize";
 const logger = parentLogger.child({ provider: "notion" });
 
 /** Compute the parents field for a notion pageOrDb See the [Design
- * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
+ * Doc](https://app.notion.com/p/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
  * and the field documentation [in
  * core](https://github.com/dust-tt/dust/blob/main/core/src/data_sources/data_source.rs)
  * for relevant details

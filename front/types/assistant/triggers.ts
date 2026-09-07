@@ -76,6 +76,45 @@ export function isTriggerExecutionMode(
   return (TRIGGER_EXECUTION_MODES as readonly string[]).includes(value);
 }
 
+export function availableTriggerExecutionModes({
+  isPlanCreditPriced,
+  hasLegacyTriggerLimits,
+  canUseWorkspacePool,
+  currentExecutionMode,
+}: {
+  isPlanCreditPriced: boolean;
+  hasLegacyTriggerLimits: boolean;
+  canUseWorkspacePool: boolean;
+  currentExecutionMode?: TriggerExecutionMode | null;
+}): TriggerExecutionMode[] {
+  const modes: TriggerExecutionMode[] = [];
+  if (
+    isPlanCreditPriced ||
+    hasLegacyTriggerLimits ||
+    currentExecutionMode === "user_pool"
+  ) {
+    modes.push("user_pool");
+  }
+  if (canUseWorkspacePool) {
+    modes.push("workspace_pool");
+  }
+  return modes;
+}
+
+export const NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE =
+  "Automations on your plan must be charged to the workspace credit pool, " +
+  "which you don't have permission to use. Ask a workspace admin for access.";
+
+export const TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES: Record<
+  TriggerExecutionMode,
+  string
+> = {
+  user_pool:
+    "Your plan doesn't support charging automations to personal credits.",
+  workspace_pool:
+    "You don't have permission to charge automations to the workspace credit pool.",
+};
+
 export type BulkTriggerUpdateOutcome = {
   updatedCount: number;
   // Triggers the caller may not move (insufficient role or permission).

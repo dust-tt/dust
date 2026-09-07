@@ -18,6 +18,7 @@ const CONNECTORS_API_ERROR_TYPES = [
   "connector_update_unauthorized",
   "connector_oauth_target_mismatch",
   "connector_oauth_user_missing_rights",
+  "connector_oauth_user_must_be_admin",
   "connector_oauth_error",
   "connector_authorization_error",
   "slack_channel_not_found",
@@ -130,7 +131,7 @@ export type ProviderVisibility = "public" | "private";
  * own. This is because the Microsoft API does not allow to query a document or
  * list its children using its id alone. We compute an internal id that contains all
  * information. More details here:
- * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
+ * https://app.notion.com/p/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
   expandable: boolean;

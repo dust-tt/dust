@@ -175,14 +175,14 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
     if (keyRes.isErr()) {
       return apiError(ctx, keyRes.error);
     }
+    const requestedRole = getRoleFromHeaders(headers);
 
-    const keyAndWorkspaceAuth = await Authenticator.fromKey(
+    let workspaceAuth = await Authenticator.fromKey(
       keyRes.value,
       wId,
       getGroupIdsFromHeaders(headers),
-      getRoleFromHeaders(headers)
+      requestedRole
     );
-    let { workspaceAuth } = keyAndWorkspaceAuth;
 
     const workspaceError = validateWorkspaceFromAuth(workspaceAuth);
     if (workspaceError) {
@@ -207,6 +207,7 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
           workspaceAuth,
           {
             userEmail: userEmailFromHeader,
+            requestedRole,
           }
         )) ?? workspaceAuth;
     }

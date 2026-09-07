@@ -20,6 +20,8 @@ export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
 export const FIREWORKS_GLM_5P2_MODEL_ID =
   "accounts/fireworks/models/glm-5p2" as const;
+export const FIREWORKS_GLM_5P3_FLASH_MODEL_ID =
+  "accounts/fireworks/models/glm-5p3-flash" as const;
 export const FIREWORKS_INKLING_MODEL_ID =
   "accounts/fireworks/models/inkling" as const;
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
@@ -319,6 +321,51 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "high",
   supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// Specs, pricing, and availability verified 2026-08-31 against
+// https://docs.z.ai/guides/vlm/glm-5.3-flash and
+// https://fireworks.ai/models/fireworks/glm-5p3-flash. The provider supports
+// 1,048,576 context / 131,072 output; Dust caps those to 256k / 64k, matching
+// the standard-context GPT and Claude models.
+export const FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelMaker: "zai",
+  modelId: FIREWORKS_GLM_5P3_FLASH_MODEL_ID,
+  displayName: "GLM-5.3 Flash",
+  contextSize: 256_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Z.ai's efficient native multimodal model for coding, long-horizon agentic work, and visual understanding (256k context, served via Fireworks).",
+  shortDescription: "GLM-5.3 Flash for multimodal coding and agentic tasks.",
+  isLegacy: false,
+  // Flash is the latest efficiency model; GLM-5.2 remains the latest full-size
+  // model rather than being demoted by this separate subfamily.
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  // GLM-5.3 Flash documents low/high/max. Dust maps light/medium/high onto
+  // those native efforts in the llms layer; thinking cannot be disabled.
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  // Limited private preview announced 2026-08-26:
+  // https://dust4ai.slack.com/archives/C08B2C3NP5Z/p1787757368773129
+  availableIfOneOf: {
+    featureFlag: "fireworks_new_model_feature",
+  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,

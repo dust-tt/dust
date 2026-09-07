@@ -1,14 +1,9 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { validatePodFrameTabs } from "@app/lib/api/projects/frame_tabs";
+import { validatePodFileTabs } from "@app/lib/api/projects/file_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import {
-  launchOrSignalProjectTodoWorkflow,
-  startImmediateProjectTodoWorkflowOnce,
-  stopProjectTodoWorkflow,
-} from "@app/temporal/project_task/client";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -68,7 +63,7 @@ app.patch(
       });
     }
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -133,8 +128,8 @@ app.patch(
       }
     }
 
-    let resolvedFrameTabs: {
-      frameTabs: NonNullable<typeof body.frameTabs>;
+    let resolvedFileTabs: {
+      fileTabs: NonNullable<typeof body.frameTabs>;
       tabsOrder: string[];
     } | null = null;
     if (body.frameTabs !== undefined || body.tabsOrder !== undefined) {
@@ -153,7 +148,7 @@ app.patch(
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message: "Pod frame tabs are not enabled for this workspace.",
+            message: "Pod file tabs are not enabled for this workspace.",
           },
         });
       }
@@ -162,7 +157,7 @@ app.patch(
         auth,
         space
       );
-      const existingFrameTabPaths = new Set(
+      const existingFileTabPaths = new Set(
         (existingMetadata?.frameTabs ?? [])
           .map((tab) =>
             resolveCanonicalScopedPath(tab.path, {
@@ -173,12 +168,12 @@ app.patch(
           .filter((path): path is string => path !== null)
       );
 
-      const validation = await validatePodFrameTabs(
+      const validation = await validatePodFileTabs(
         auth,
         space,
         body.frameTabs,
         body.tabsOrder,
-        { existingFrameTabPaths }
+        { existingFileTabPaths }
       );
       if (validation.isErr()) {
         return apiError(ctx, {
@@ -189,7 +184,7 @@ app.patch(
           },
         });
       }
-      resolvedFrameTabs = validation.value;
+      resolvedFileTabs = validation.value;
     }
 
     // Validate the default agent exists and is usable (handles both global agents like
@@ -235,8 +230,6 @@ app.patch(
 
     let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
-    const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
-    const priorTodoGenerationEnabled = metadata?.todoGenerationEnabled ?? false;
     const priorIsAdminControlled = metadata?.isAdminControlled ?? false;
 
     if (
@@ -277,75 +270,42 @@ app.patch(
       }
     }
 
-    const shouldTriggerFirstImmediateSync =
-      body.todoGenerationEnabled === true &&
-      !priorTodoGenerationEnabled &&
-      priorLastTodoAnalysisAt === null;
-
     if (!metadata) {
       metadata = await ProjectMetadataResource.makeNew(auth, space, {
         description: body.description ?? null,
         archivedAt: body.archive ? new Date() : null,
-        todoGenerationEnabled: body.todoGenerationEnabled ?? false,
-        initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
+        // Automated task generation removed; keep columns with hardcoded defaults.
+        todoGenerationEnabled: false,
+        initialTodoAnalysisLookback: null,
         pinnedFramePath: body.pinnedFramePath ?? null,
-        frameTabs: resolvedFrameTabs?.frameTabs ?? [],
-        tabsOrder: resolvedFrameTabs?.tabsOrder ?? [],
+        frameTabs: resolvedFileTabs?.fileTabs ?? [],
+        tabsOrder: resolvedFileTabs?.tabsOrder ?? [],
         defaultAgentId: body.defaultAgentId ?? null,
         isAdminControlled: body.isAdminControlled ?? false,
       });
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
       }
-      if (!body.archive) {
-        void launchOrSignalProjectTodoWorkflow({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
-      }
-      if (shouldTriggerFirstImmediateSync && !body.archive) {
-        void startImmediateProjectTodoWorkflowOnce({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
-      }
     } else {
       if (body.archive !== undefined) {
         if (body.archive) {
           await metadata.archive();
-          void stopProjectTodoWorkflow({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: space.sId,
-          });
         } else {
           await metadata.unarchive();
-          void launchOrSignalProjectTodoWorkflow({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: space.sId,
-          });
         }
       }
       if (body.description !== undefined) {
         await metadata.updateDescription(body.description);
       }
-      if (body.todoGenerationEnabled !== undefined) {
-        await metadata.updateTodoGenerationEnabled(body.todoGenerationEnabled);
-        if (!body.todoGenerationEnabled) {
-          await metadata.updateInitialTodoAnalysisLookback(null);
-        }
-      }
-      if (body.initialTodoAnalysisLookback !== undefined) {
-        await metadata.updateInitialTodoAnalysisLookback(
-          body.initialTodoAnalysisLookback
-        );
-      }
+      // todoGenerationEnabled / initialTodoAnalysisLookback are accepted for
+      // backwards compatibility but ignored (hardcoded off).
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
-      if (resolvedFrameTabs) {
-        await metadata.updateFrameTabs(
-          resolvedFrameTabs.frameTabs,
-          resolvedFrameTabs.tabsOrder
+      if (resolvedFileTabs) {
+        await metadata.updateFileTabs(
+          resolvedFileTabs.fileTabs,
+          resolvedFileTabs.tabsOrder
         );
       }
       if (body.defaultAgentId !== undefined) {
@@ -356,18 +316,6 @@ app.patch(
       }
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
-      }
-      if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
-        void launchOrSignalProjectTodoWorkflow({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
-      }
-      if (shouldTriggerFirstImmediateSync) {
-        void startImmediateProjectTodoWorkflowOnce({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
       }
     }
 

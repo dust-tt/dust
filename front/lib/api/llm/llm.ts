@@ -369,7 +369,6 @@ export abstract class LLM<
         const durationMs = Date.now() - startTime;
         const { tokenUsage, ...rest } = buffer.currentOutput;
         const timingLogFields = llmAttemptLogFields({
-          providerId: this.modelConfig.providerId,
           durationMs,
           timeToFirstEventMs,
           timeToFirstTokenMs,
@@ -795,7 +794,6 @@ export abstract class LLM<
               errorType,
               errorSource,
               ...llmAttemptLogFields({
-                providerId: this.modelConfig.providerId,
                 requestedReasoningEffort: this.reasoningEffort,
                 surface: "batch",
               }),

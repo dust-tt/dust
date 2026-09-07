@@ -16,7 +16,7 @@ const ConnectorIdQuerySchema = z.object({
 const PostBodySchema = z.object({
   connector_id: z.string(),
   bot_name: z.string().trim().min(1),
-  group_ids: z.array(z.string()).min(1),
+  space_ids: z.array(z.string()).min(1),
 });
 
 const DeleteBodySchema = z.object({
@@ -100,7 +100,7 @@ const _postSlackBotSummoningWhitelistHandler = async (
   const {
     connector_id: connectorId,
     bot_name: botName,
-    group_ids: groupIds,
+    space_ids: spaceIds,
   } = bodyValidation.value;
 
   const slackConfig = await fetchSlackConfiguration(connectorId);
@@ -116,7 +116,7 @@ const _postSlackBotSummoningWhitelistHandler = async (
 
   const whitelistRes = await slackConfig.whitelistBot(
     botName,
-    groupIds,
+    { spaceIds },
     WHITELIST_TYPE
   );
   if (whitelistRes.isErr()) {

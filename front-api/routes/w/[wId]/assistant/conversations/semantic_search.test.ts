@@ -325,6 +325,59 @@ describe("GET /api/w/:wId/assistant/conversations/semantic_search", () => {
       expect(data.conversations[2].sId).toBe(conv2.sId);
     });
 
+    it("excludes sub-conversations (depth > 0)", async () => {
+      const { workspace, user, auth, globalGroup } =
+        await createPrivateApiMockRequest({ method: "GET", role: "admin" });
+
+      const projectSpace = await SpaceFactory.project(workspace);
+
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const addMembersRes = await projectSpace.addMembers(adminAuth, {
+        userIds: [user.sId],
+      });
+      if (!addMembersRes.isOk()) {
+        throw new Error("Failed to add user to space");
+      }
+
+      await auth.refresh();
+
+      const { mockDataSourceId } = await setupDataSourceMocks(
+        workspace,
+        globalGroup
+      );
+      await createDataSourceAndConnectorForProject(auth, projectSpace);
+
+      const rootConv = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: projectSpace.id,
+      });
+      const subConv = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: projectSpace.id,
+        depth: 1,
+      });
+
+      vi.spyOn(CoreAPI.prototype, "bulkSearchDataSources").mockResolvedValue(
+        new Ok({
+          documents: [
+            createMockDocument(mockDataSourceId, subConv.sId, 0.9),
+            createMockDocument(mockDataSourceId, rootConv.sId, 0.7),
+          ],
+        })
+      );
+
+      const response = await get(workspace, { query: "test query" });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.conversations).toHaveLength(1);
+      expect(data.conversations[0].sId).toBe(rootConv.sId);
+    });
+
     it("handles documents with multiple chunks and uses max score", async () => {
       const { workspace, user, auth, globalGroup } =
         await createPrivateApiMockRequest({ method: "GET", role: "admin" });

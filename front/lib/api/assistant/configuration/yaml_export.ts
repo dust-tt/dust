@@ -33,6 +33,16 @@ export async function getAgentConfigurationAsYAMLConfig(
 
   const { agentConfiguration, editorUsers, skills } = contextResult.value;
 
+  if (!agentConfiguration.canRead) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "agent_configuration_not_found",
+        message: "The agent configuration you requested was not found.",
+      },
+    });
+  }
+
   const { dataSourceViews, mcpServerViews } =
     await getAccessibleSourcesAndAppsForActions(auth);
   const spaceResources = await SpaceResource.fetchByIds(

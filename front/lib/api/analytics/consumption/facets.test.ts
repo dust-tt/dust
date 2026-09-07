@@ -3,7 +3,7 @@ import { fetchConsumptionFacets } from "@app/lib/api/analytics/consumption/facet
 import type { DimensionLabel } from "@app/lib/api/analytics/consumption/labels";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionTopDimension } from "@app/lib/api/analytics/consumption/scope";
 import {
   ElasticsearchError,
   searchConsumptionAnalytics,
@@ -459,7 +459,7 @@ describe("fetchConsumptionFacets", () => {
         });
       }
     );
-    const labels: Partial<Record<ConsumptionScopeDimension, DimensionLabel>> = {
+    const labels: Partial<Record<ConsumptionTopDimension, DimensionLabel>> = {
       agent: {
         name: "Used agent",
         pictureUrl: "https://example.com/agent.png",

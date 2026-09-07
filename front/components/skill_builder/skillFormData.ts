@@ -26,7 +26,7 @@ export function transformSkillTypeToFormData(
     icon: skill.icon ?? null,
     availability: skill.availability,
     reinforcement: skill.reinforcement,
-    additionalSpaces: [],
+    additionalSpaces: skill.manuallyRequestedSpaceIds ?? [],
     referencedSkills:
       skill.relations?.childSkills.map((childSkill) => ({
         id: childSkill.sId,

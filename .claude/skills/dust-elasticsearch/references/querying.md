@@ -223,7 +223,7 @@ const query = {
 
 Create `front-api/routes/w/[wId]/your_feature/stats.ts`, then mount it from
 `front-api/routes/w/[wId]/your_feature/index.ts`. Endpoint rules (one file per URL, mounting,
-validation, errors) are in `front-api/CODING_RULES.md`:
+validation, errors) are in `front-api/CONTRACTS`:
 
 ```typescript
 import { queryYourData } from "@app/lib/api/your_feature/queries/your_query";

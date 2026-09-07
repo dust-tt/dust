@@ -82,6 +82,7 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
+import logger from "@app/logger/logger";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -122,6 +123,19 @@ app.get("/", ensureIsAdmin(), async (ctx) => {
   }
 
   const owner = auth.getNonNullableWorkspace();
+
+  logger.info(
+    {
+      workspaceId: owner.sId,
+      table: q.data.table,
+      startDate: q.data.startDate,
+      endDate: q.data.endDate,
+      timezone: q.data.timezone ?? "UTC",
+      format: q.data.format ?? "csv",
+    },
+    "Analytics export requested."
+  );
+
   const result = await exportTable({
     auth,
     table: q.data.table,

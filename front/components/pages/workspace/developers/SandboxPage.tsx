@@ -1,3 +1,4 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
 import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
@@ -101,12 +102,14 @@ export function SandboxPage() {
   };
 
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <Page.Header
-        title="Computer"
-        description="Configure workspace and Pod network access and environment variables for the Computer."
-      />
-      {renderBody()}
-    </Page.Vertical>
+    <AdminPageContainer>
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Computer"
+          description="Configure workspace and Pod network access and environment variables for the Computer."
+        />
+        {renderBody()}
+      </Page.Vertical>
+    </AdminPageContainer>
   );
 }

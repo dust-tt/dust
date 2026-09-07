@@ -119,7 +119,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     const updatedSkills = await SkillResource.listByAgentConfiguration(
       auth,
       updatedAgent,
-      { dangerouslySkipPermissionFiltering: true }
+      { permissionFiltering: "dangerously_skip" }
     );
     expect(updatedSkills.map((s) => s.sId)).toEqual([skill.sId]);
   });

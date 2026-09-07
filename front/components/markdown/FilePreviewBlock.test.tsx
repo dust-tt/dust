@@ -191,6 +191,7 @@ describe("getFilePreviewPlugin", () => {
       <ConversationSidePanelContext.Provider
         value={{
           currentPanel: undefined,
+          isPanelClosing: false,
           openPanel,
           togglePanel: vi.fn(),
           closePanel: vi.fn(),

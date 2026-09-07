@@ -229,7 +229,8 @@ function getStdinDelivery(
  * after we gave up on it (verified against a live sandbox). Replacing the wrapper with the
  * command keeps the pid envd owns the pid that matters.
  *
- * `exec`, `unset` and `printf` are bash builtins, so nothing here resolves through PATH (SEC3),
+ * `exec`, `unset` and `printf` are bash builtins, so nothing here resolves through PATH
+ * (sandbox-root-command-safety),
  * and passing the payload as an argument to `%s` keeps it out of the format string. The payload
  * is copied to a shell variable and unexported before the `exec`, so it is absent from the
  * environment of the command and of everything it spawns.

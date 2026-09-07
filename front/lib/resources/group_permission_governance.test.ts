@@ -25,11 +25,9 @@ describe("GroupPermissionResource — governance state (reads)", () => {
     groupB = await GroupFactory.regularAuto(workspace, "B");
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const fetched = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      workspace.id
-    );
-    assert(fetched, "global group should exist");
-    globalGroup = fetched;
+    const fetched = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(fetched.isOk(), "global group should exist");
+    globalGroup = fetched.value;
   });
 
   const stateOf = async (capability: typeof CAPABILITY) =>

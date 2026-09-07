@@ -9,6 +9,8 @@ import {
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,9 +41,14 @@ const PERIOD: ConsumptionPeriod = {
   endDate: new Date(PERIOD_END_MS).toISOString(),
 };
 
-function dayBucket(dayIndex: number, microCredits: number) {
+function dayBucket(
+  dayIndex: number,
+  microCredits: number,
+  activeUsers: number = 0
+) {
   return {
     key: PERIOD_START_MS + dayIndex * DAY_MS,
+    active_users: { value: activeUsers },
     metric: { value: microCredits },
   };
 }
@@ -86,7 +93,7 @@ function mockGroupNames(names: Record<string, string>) {
 async function setup() {
   const workspace = await WorkspaceFactory.basic();
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  return { auth, period: PERIOD };
+  return { auth, period: PERIOD, workspace };
 }
 
 describe("fetchConsumptionTimeseries", () => {
@@ -108,7 +115,7 @@ describe("fetchConsumptionTimeseries", () => {
     const result = await fetchConsumptionTimeseries(auth, {
       period,
       granularity: "day",
-      mode: "daily",
+      mode: "period",
     });
 
     const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
@@ -136,7 +143,7 @@ describe("fetchConsumptionTimeseries", () => {
     await fetchConsumptionTimeseries(auth, {
       period,
       granularity: "day",
-      mode: "daily",
+      mode: "period",
     });
 
     const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
@@ -151,20 +158,114 @@ describe("fetchConsumptionTimeseries", () => {
     });
   });
 
+  it("counts active users in each consumption bucket", async () => {
+    const { auth, period } = await setup();
+    mockBuckets([dayBucket(0, 2_000_000, 4), dayBucket(1, 1_500_000, 2)]);
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "period",
+    });
+
+    const [, options] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(options?.aggregations?.by_date?.aggs?.active_users).toEqual({
+      cardinality: {
+        field: "user.id",
+        precision_threshold: 40_000,
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.points.map((point) => point.activeUsers)).toEqual([
+      4, 2,
+    ]);
+  });
+
+  it("returns the workspace member count independently of scope filters", async () => {
+    const { auth, period, workspace } = await setup();
+    const firstMember = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, firstMember, { role: "user" });
+    const secondMember = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondMember, {
+      role: "manager",
+    });
+    mockBuckets([]);
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "period",
+      filter: { agents: ["agent-id"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.workspaceMemberCount).toBe(2);
+  });
+
+  it("omits the workspace member count without workspace context", async () => {
+    const { auth, period, workspace } = await setup();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    mockBuckets([]);
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity: "day",
+      mode: "period",
+      includeWorkspaceContext: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.workspaceMemberCount).toBeNull();
+  });
+
+  it("omits the workspace member count for non-managers", async () => {
+    const { period, workspace } = await setup();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    mockBuckets([]);
+
+    const result = await fetchConsumptionTimeseries(memberAuth, {
+      period,
+      granularity: "day",
+      mode: "period",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.workspaceMemberCount).toBeNull();
+  });
+
   it("zeroes buckets that have not started yet", async () => {
     const { auth, period } = await setup();
     mockBuckets([
-      dayBucket(0, 2_000_000),
-      dayBucket(2, 500_000), // Today, still filling.
+      dayBucket(0, 2_000_000, 2),
+      dayBucket(2, 500_000, 1), // Today, still filling.
       // A future bucket carrying a value: clock skew, or a document indexed
       // ahead of time. Either way it has not happened.
-      dayBucket(3, 9_000_000),
+      dayBucket(3, 9_000_000, 9),
     ]);
 
     const result = await fetchConsumptionTimeseries(auth, {
       period,
       granularity: "day",
-      mode: "daily",
+      mode: "period",
     });
 
     expect(result.isOk()).toBe(true);
@@ -174,6 +275,9 @@ describe("fetchConsumptionTimeseries", () => {
     expect(
       result.value.points.map((point) => point.values[TOTAL_GROUP_KEY])
     ).toEqual([2, 0.5, 0]);
+    expect(result.value.points.map((point) => point.activeUsers)).toEqual([
+      2, 1, 0,
+    ]);
   });
 
   it("scopes the query to the requested dimension filters", async () => {
@@ -183,7 +287,7 @@ describe("fetchConsumptionTimeseries", () => {
     await fetchConsumptionTimeseries(auth, {
       period,
       granularity: "day",
-      mode: "daily",
+      mode: "period",
       filter: { agents: ["a1"], sources: ["web", "slack"], skills: ["s1"] },
     });
 
@@ -200,11 +304,11 @@ describe("fetchConsumptionTimeseries", () => {
   it("stops the cumulative total at today rather than plateauing", async () => {
     const { auth, period } = await setup();
     mockBuckets([
-      dayBucket(0, 2_000_000),
-      dayBucket(1, 1_500_000),
-      dayBucket(2, 500_000), // Today, still filling.
-      dayBucket(3, 0), // Not happened yet.
-      dayBucket(4, 0),
+      dayBucket(0, 2_000_000, 2),
+      dayBucket(1, 1_500_000, 3),
+      dayBucket(2, 500_000, 1), // Today, still filling.
+      dayBucket(3, 0, 5), // Not happened yet.
+      dayBucket(4, 0, 5),
     ]);
 
     const result = await fetchConsumptionTimeseries(auth, {
@@ -221,6 +325,10 @@ describe("fetchConsumptionTimeseries", () => {
     expect(
       result.value.points.map((point) => point.values[TOTAL_GROUP_KEY])
     ).toEqual([2, 3.5, 4, 0, 0]);
+    // Active users remain a per-bucket count even when credits accumulate.
+    expect(result.value.points.map((point) => point.activeUsers)).toEqual([
+      2, 3, 1, 0, 0,
+    ]);
   });
 
   describe("breakdown", () => {
@@ -257,7 +365,7 @@ describe("fetchConsumptionTimeseries", () => {
       await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: dimension,
         breakdownCount: 10,
       });
@@ -302,7 +410,7 @@ describe("fetchConsumptionTimeseries", () => {
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: "agent",
       });
 
@@ -331,7 +439,7 @@ describe("fetchConsumptionTimeseries", () => {
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: "user",
         breakdownCount: 1,
       });
@@ -368,7 +476,7 @@ describe("fetchConsumptionTimeseries", () => {
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: "skill",
       });
 
@@ -390,7 +498,7 @@ describe("fetchConsumptionTimeseries", () => {
       const result = await fetchConsumptionTimeseries(auth, {
         period,
         granularity: "day",
-        mode: "daily",
+        mode: "period",
         breakdownBy: "model",
       });
 

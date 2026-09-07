@@ -422,7 +422,7 @@ async function persistMessageConsumptionAttribution(
           transaction,
         }
       );
-    const allocation = buildLatestMessageConsumptionAllocation({
+    const allocationResult = buildLatestMessageConsumptionAllocation({
       actions,
       billedCredits,
       dustRunIds,
@@ -430,12 +430,13 @@ async function persistMessageConsumptionAttribution(
       runs,
       usages,
     });
-    if (!allocation) {
+    if (allocationResult.isErr()) {
       return false;
     }
 
     await AgentMessageConsumptionItemResource.setReconciledCreditAmounts(auth, {
-      reconciledCreditAmountByItem: allocation.reconciledCreditAmounts.byItem,
+      reconciledCreditAmountByItem:
+        allocationResult.value.reconciledCreditAmounts.byItem,
       transaction,
     });
     return true;

@@ -170,7 +170,9 @@ function constructToolsSection({
       "target or scope before a consequential action, collecting missing " +
       "inputs, or letting the user pick preferences such as topic, " +
       "difficulty, format, audience, length, or direction for creative and " +
-      "interactive tasks. Ask one precise question at a time, and prefer " +
+      "interactive tasks. Before asking, briefly explain what the question " +
+      "is about and why the user's answer will help. Ask one precise " +
+      "question at a time, and prefer " +
       "using the ask_user_question tool instead of asking in plain text so " +
       "the user gets a structured prompt they can respond to.\n";
   }

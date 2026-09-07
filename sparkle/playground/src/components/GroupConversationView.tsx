@@ -1,6 +1,4 @@
 import {
-  ActionFrame,
-  AnimatedText,
   Archive,
   ArrowRight,
   Avatar,
@@ -8,10 +6,8 @@ import {
   ButtonsSwitch,
   ButtonsSwitchList,
   Check,
-  CheckDone01,
   CheckDouble,
   Chip,
-  CloudArrowLeftRight,
   ContentMessage,
   ConversationListItem,
   Dialog,
@@ -33,36 +29,31 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
-  File01,
   File02,
-  Folder,
   Icon,
   Input,
-  List,
   ListGroup,
   ListItemSection,
+  MagicWand02,
   MessageChatSquare,
-  Plus,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
-  Separator,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  Stars02,
-  Table,
   Tabs,
   TabsContent,
   Trash01,
   TypingAnimation,
   Upload01,
-  UploadCloud02,
   Users01,
   XClose,
+  Zap,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
@@ -80,20 +71,15 @@ import {
 
 import { getAgentById } from "../data/agents";
 import {
-  getDataSourceChildren,
-  getDataSourceIcon,
   getDataSourcesBySpaceId,
-  getDataSourcesInFolderTree,
-  getFolderPath,
-  getItemTypeLabel,
   isDataSourceFolder,
   moveDataSource,
-  sortDataSourcesForDisplay,
 } from "../data/dataSources";
 import {
   enrichMyPodConversationParticipants,
-  matchesMyPodConversationFilter,
-  type MyPodConversationFilter,
+  isMyPodGroupConversation,
+  isMyPodMineConversation,
+  isTriggeredConversation,
 } from "../data/myPod";
 import type {
   Agent,
@@ -103,15 +89,14 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
-import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import {
   PodCustomizationSection,
   type PodTabCustomizationItem,
 } from "./PodCustomizationSection";
-import { ConversationTopSection } from "./ConversationTopSection";
 import { EmptyState } from "./EmptyState";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
+import { FilesBrowser } from "./FilesBrowser";
 import { FrameSheetHeader } from "./FrameSheetHeader";
 import {
   DATA_SOURCE_FILE_DRAG_MIME,
@@ -143,10 +128,14 @@ interface GroupConversationViewProps {
   onTabChange?: (tab: string) => void;
   dynamicFileTabIds?: string[];
   onAddFileToTopbar?: (fileId: string) => void;
+  /** When set, opening a file calls this instead of the built-in sheet. */
+  onFileOpen?: (dataSource: DataSource) => void;
   onFileDragChange?: (fileId: string | null, fileName?: string | null) => void;
   fileToRevealInKnowledge?: string | null;
   onFileToRevealInKnowledgeHandled?: () => void;
   podVariant?: "shared" | "personal";
+  showComposer?: boolean;
+  hideConversationFilters?: boolean;
   currentUserId?: string;
   podTabCustomization?: {
     tabs: PodTabCustomizationItem[];
@@ -244,64 +233,6 @@ function getRandomCreator(
       )
     ];
   return getUserById(creatorId) || null;
-}
-
-type ConversationInitiator = {
-  name: string;
-  portrait?: string;
-  emoji?: string;
-  backgroundColor?: string;
-  isRounded?: boolean;
-};
-
-function getConversationInitiator(
-  conversation: Conversation,
-  _users: User[],
-  _agents: Agent[]
-): ConversationInitiator | null {
-  const preferUser = seededRandom(`${conversation.id}-initiator`, 0) < 0.5;
-
-  const pickUser = (): ConversationInitiator | null => {
-    if (conversation.userParticipants.length === 0) return null;
-    const userId =
-      conversation.userParticipants[
-        Math.floor(
-          seededRandom(`${conversation.id}-initiator-user`, 0) *
-            conversation.userParticipants.length
-        )
-      ];
-    const user = getUserById(userId);
-    if (!user) return null;
-    return {
-      name: user.fullName,
-      portrait: user.portrait,
-      isRounded: true,
-    };
-  };
-
-  const pickAgent = (): ConversationInitiator | null => {
-    if (conversation.agentParticipants.length === 0) return null;
-    const agentId =
-      conversation.agentParticipants[
-        Math.floor(
-          seededRandom(`${conversation.id}-initiator-agent`, 0) *
-            conversation.agentParticipants.length
-        )
-      ];
-    const agent = getAgentById(agentId);
-    if (!agent) return null;
-    return {
-      name: agent.name,
-      emoji: agent.emoji,
-      backgroundColor: agent.backgroundColor,
-      isRounded: false,
-    };
-  };
-
-  if (preferUser) {
-    return pickUser() ?? pickAgent();
-  }
-  return pickAgent() ?? pickUser();
 }
 
 // Convert participants to Avatar props format for Avatar.Stack
@@ -1300,18 +1231,15 @@ function GroupConversationTabContent({
   if (topBox) {
     return (
       <TabsContent value={value}>
-        <div className="flex h-full w-full flex-col overflow-y-auto">
-          <ConversationTopSection>{topBox}</ConversationTopSection>
-          {/* Bottom portion: grows with its content; the page scrolls as a whole. */}
-          <div className="flex flex-none justify-center px-4 pb-8">
-            <div
-              className={cn(
-                "flex w-full max-w-4xl flex-col gap-3",
-                contentClassName
-              )}
-            >
-              {children}
-            </div>
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-4">
+          <div
+            className={cn(
+              "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
+              contentClassName
+            )}
+          >
+            {topBox}
+            {children}
           </div>
         </div>
       </TabsContent>
@@ -1352,7 +1280,7 @@ function ProjectSetupEmptyState({
       action={
         <Button
           label="Let's go"
-          icon={Stars02}
+          icon={MagicWand02}
           size="md"
           variant="highlight"
           onClick={onSetupProject}
@@ -1384,49 +1312,20 @@ export function GroupConversationView({
   onTabChange,
   dynamicFileTabIds = [],
   onAddFileToTopbar,
+  onFileOpen,
   onFileDragChange,
   fileToRevealInKnowledge = null,
   onFileToRevealInKnowledgeHandled,
   podVariant = "shared",
+  showComposer = true,
+  hideConversationFilters = false,
   currentUserId,
   podTabCustomization,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  // Greeting per tab uses the pod name: "<Pod>'s <Tab>", centered horizontally.
-  const renderPodGreeting = (tabLabel: string) => (
-    <h2 className="heading-2xl text-center">
-      <span className="text-foreground">{space.name}</span>
-      <span className="text-faint">{`'s ${tabLabel}`}</span>
-    </h2>
-  );
-  // Shared "Create" CTA for the Files tab so the empty state and the populated
-  // toolbar expose the exact same button and menu.
-  const renderCreateFilesMenu = () => (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="primary" icon={Plus} label="Create" isSelect />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuItem icon={File01} label="Doc" onClick={() => {}} />
-        <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
-        <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
-        <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
-        <DropdownMenuItem
-          icon={UploadCloud02}
-          label="Upload File"
-          onClick={() => {}}
-        />
-        <DropdownMenuItem
-          icon={CloudArrowLeftRight}
-          label="From Company data"
-          onClick={() => {}}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-  const [personalConversationFilter, setPersonalConversationFilter] =
-    useState<MyPodConversationFilter>("all");
+  const [hideTriggeredConversations, setHideTriggeredConversations] =
+    useState(false);
   const [selectedConversationRow, setSelectedConversationRow] = useState<{
     rowId: string;
     conversationId: string;
@@ -1542,15 +1441,7 @@ export function GroupConversationView({
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
     getDataSourcesBySpaceId(space.id)
   );
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedDataSourceId, setSelectedDataSourceId] = useState<
-    string | null
-  >(null);
   const [knowledgeSearchText, setKnowledgeSearchText] = useState("");
-  const [filesViewMode, setFilesViewMode] = useState<"list" | "grid">("list");
-  const [filesSearchScope, setFilesSearchScope] = useState<"folder" | "all">(
-    "folder"
-  );
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [revealedFileIdInKnowledge, setRevealedFileIdInKnowledge] = useState<
     string | null
@@ -1598,7 +1489,11 @@ export function GroupConversationView({
   }, [conversations, space.id]);
 
   const myPodEnrichedConversations = useMemo(() => {
-    if (podVariant !== "personal" || !currentUserId) {
+    if (
+      podVariant !== "personal" ||
+      !currentUserId ||
+      hideConversationFilters
+    ) {
       return expandedConversations;
     }
     return expandedConversations.map((conversation) =>
@@ -1609,28 +1504,54 @@ export function GroupConversationView({
         agents
       )
     );
-  }, [agents, currentUserId, expandedConversations, podVariant, users]);
-
-  const searchableConversations =
-    podVariant === "personal"
-      ? myPodEnrichedConversations
-      : expandedConversations;
+  }, [
+    agents,
+    currentUserId,
+    expandedConversations,
+    hideConversationFilters,
+    podVariant,
+    users,
+  ]);
 
   const visibleConversations = useMemo(() => {
-    if (podVariant !== "personal") return expandedConversations;
-    if (!currentUserId) return myPodEnrichedConversations;
-    return myPodEnrichedConversations.filter((conversation) =>
-      matchesMyPodConversationFilter(
-        conversation,
-        personalConversationFilter,
-        currentUserId
-      )
-    );
+    const source =
+      podVariant === "personal"
+        ? myPodEnrichedConversations
+        : expandedConversations;
+
+    return source.filter((conversation) => {
+      if (podVariant === "personal" && !hideConversationFilters) {
+        if (isTriggeredConversation(conversation)) {
+          return false;
+        }
+      } else if (
+        hideTriggeredConversations &&
+        isTriggeredConversation(conversation)
+      ) {
+        return false;
+      }
+      if (
+        hideConversationFilters ||
+        podVariant !== "personal" ||
+        !currentUserId
+      ) {
+        return true;
+      }
+      if (goodToKnowFilter === "mine") {
+        return isMyPodMineConversation(conversation, currentUserId);
+      }
+      if (goodToKnowFilter === "shared") {
+        return isMyPodGroupConversation(conversation);
+      }
+      return true;
+    });
   }, [
     currentUserId,
     expandedConversations,
+    goodToKnowFilter,
+    hideConversationFilters,
+    hideTriggeredConversations,
     myPodEnrichedConversations,
-    personalConversationFilter,
     podVariant,
   ]);
 
@@ -1664,7 +1585,7 @@ export function GroupConversationView({
       []
     );
 
-    const conversationResults = searchableConversations.reduce<
+    const conversationResults = visibleConversations.reduce<
       UniversalSearchItem[]
     >((acc, conversation) => {
       const creator = getRandomCreator(conversation, users);
@@ -1692,7 +1613,7 @@ export function GroupConversationView({
       }
       return a.title.localeCompare(b.title);
     });
-  }, [dataSources, searchText, searchableConversations, users]);
+  }, [dataSources, searchText, users, visibleConversations]);
 
   const handleSearchItemSelect = (item: UniversalSearchItem) => {
     if (item.type === "document") {
@@ -1701,6 +1622,8 @@ export function GroupConversationView({
         setCurrentFolderId(item.dataSource.id);
         setKnowledgeSearchText("");
         setRevealedFileIdInKnowledge(null);
+      } else if (onFileOpen) {
+        onFileOpen(item.dataSource);
       } else {
         setSelectedDataSource(item.dataSource);
         setIsDocumentSheetOpen(true);
@@ -1872,7 +1795,6 @@ export function GroupConversationView({
       {
         avatarProps: ReturnType<typeof participantsToAvatarProps>;
         creator: User | null;
-        initiator: ConversationInitiator | null;
         mentionCount: number;
         messageCount: number;
         replyCount: number;
@@ -1892,14 +1814,7 @@ export function GroupConversationView({
 
       itemMap.set(conversation.id, {
         avatarProps: participantsToAvatarProps(participants),
-        creator:
-          podVariant === "personal"
-            ? null
-            : getRandomCreator(conversation, users),
-        initiator:
-          podVariant === "personal"
-            ? getConversationInitiator(conversation, users, agents)
-            : null,
+        creator: getRandomCreator(conversation, users),
         mentionCount,
         messageCount,
         replyCount,
@@ -1914,7 +1829,7 @@ export function GroupConversationView({
     });
 
     return itemMap;
-  }, [agents, podVariant, space.id, users, visibleConversations]);
+  }, [agents, space.id, users, visibleConversations]);
 
   const getAutoCheckRationales = (
     summary: OngoingSummary,
@@ -2318,7 +2233,6 @@ export function GroupConversationView({
     setRevealedFileIdInKnowledge(null);
     setDraggingFileId(null);
     setDropHoverTargetId(null);
-    setFilesSearchScope("folder");
   }, [space.id]);
 
   useEffect(() => {
@@ -2337,7 +2251,6 @@ export function GroupConversationView({
     setActiveTab("knowledge");
     setCurrentFolderId(file.parentId);
     setKnowledgeSearchText("");
-    setFilesSearchScope("folder");
     setRevealedFileIdInKnowledge(file.id);
     onFileToRevealInKnowledgeHandled?.();
   }, [
@@ -2346,20 +2259,6 @@ export function GroupConversationView({
     onFileToRevealInKnowledgeHandled,
     setActiveTab,
   ]);
-
-  useEffect(() => {
-    setFilesSearchScope("folder");
-  }, [currentFolderId]);
-
-  const isKnowledgeSearchActive = knowledgeSearchText.trim().length > 0;
-
-  const currentFolder = useMemo(
-    () =>
-      currentFolderId
-        ? dataSources.find((item) => item.id === currentFolderId)
-        : undefined,
-    [currentFolderId, dataSources]
-  );
 
   const handleFileDragEnd = useCallback(() => {
     setDraggingFileId(null);
@@ -2446,155 +2345,6 @@ export function GroupConversationView({
     },
     [dataSources, draggingFileId, handleFileDragEnd, handleMoveFile]
   );
-
-  const visibleItems = useMemo(
-    () =>
-      sortDataSourcesForDisplay(
-        getDataSourceChildren(dataSources, currentFolderId)
-      ),
-    [dataSources, currentFolderId]
-  );
-
-  const folderBreadcrumbItems = useMemo((): BreadcrumbsItem[] => {
-    const path = getFolderPath(dataSources, currentFolderId);
-    const isDragActive = draggingFileId !== null;
-
-    const getDropProps = (
-      targetId: string,
-      targetParentId: string | null
-    ): Pick<
-      BreadcrumbsItem,
-      "isPulsing" | "isDropHighlight" | "onDragOver" | "onDragLeave" | "onDrop"
-    > => ({
-      isPulsing: isDragActive,
-      isDropHighlight: dropHoverTargetId === targetId,
-      onDragOver: (event) => handleDragOverTarget(targetId, event),
-      onDragLeave: (event) => {
-        event.preventDefault();
-      },
-      onDrop: (event) => handleDropOnTarget(targetId, targetParentId, event),
-    });
-
-    const items: BreadcrumbsItem[] = [
-      currentFolderId === null
-        ? { label: "Files", icon: Folder }
-        : {
-            label: "Files",
-            icon: Folder,
-            onClick: () => {
-              setCurrentFolderId(null);
-              setKnowledgeSearchText("");
-              setRevealedFileIdInKnowledge(null);
-            },
-            ...getDropProps("root", null),
-          },
-    ];
-
-    path.forEach((folder, index) => {
-      const isLast = index === path.length - 1;
-      if (isLast) {
-        items.push({ label: folder.fileName, icon: Folder });
-        return;
-      }
-
-      items.push({
-        label: folder.fileName,
-        icon: Folder,
-        onClick: () => {
-          setCurrentFolderId(folder.id);
-          setRevealedFileIdInKnowledge(null);
-        },
-        ...getDropProps(folder.id, folder.id),
-      });
-    });
-
-    return items;
-  }, [
-    currentFolderId,
-    dataSources,
-    draggingFileId,
-    dropHoverTargetId,
-    handleDragOverTarget,
-    handleDropOnTarget,
-  ]);
-
-  const tableItems = useMemo(() => {
-    const searchLower = knowledgeSearchText.trim().toLowerCase();
-    const searchSource =
-      searchLower && filesSearchScope === "folder" && currentFolderId
-        ? getDataSourcesInFolderTree(dataSources, currentFolderId)
-        : dataSources;
-
-    const base = searchLower
-      ? sortDataSourcesForDisplay(
-          searchSource.filter((dataSource) =>
-            dataSource.fileName.toLowerCase().includes(searchLower)
-          )
-        )
-      : visibleItems;
-
-    return base.map((dataSource) => {
-      const item = {
-        ...dataSource,
-        onClick: () => {
-          if (isDataSourceFolder(dataSource)) {
-            setCurrentFolderId(dataSource.id);
-            setKnowledgeSearchText("");
-            setRevealedFileIdInKnowledge(null);
-            return;
-          }
-
-          setSelectedDataSource(dataSource);
-          setIsDocumentSheetOpen(true);
-          setRevealedFileIdInKnowledge(null);
-        },
-      };
-
-      if (isKnowledgeSearchActive) {
-        return item;
-      }
-
-      if (isDataSourceFolder(dataSource)) {
-        return {
-          ...item,
-          onDragOver: (event: DragEvent<HTMLTableRowElement>) =>
-            handleDragOverTarget(dataSource.id, event),
-          onDragLeave: (event: DragEvent<HTMLTableRowElement>) => {
-            event.preventDefault();
-          },
-          onDrop: (event: DragEvent<HTMLTableRowElement>) =>
-            handleDropOnTarget(dataSource.id, dataSource.id, event),
-          isDropHighlight: dropHoverTargetId === dataSource.id,
-        };
-      }
-
-      return {
-        ...item,
-        draggable: true,
-        onDragStart: (event: DragEvent<HTMLTableRowElement>) =>
-          handleFileDragStart(dataSource.id, dataSource.fileName, event),
-        onDragEnd: handleFileDragEnd,
-        isDragging: draggingFileId === dataSource.id,
-        isDropHighlight:
-          dropHoverTargetId === dataSource.id ||
-          revealedFileIdInKnowledge === dataSource.id,
-      };
-    });
-  }, [
-    dataSources,
-    draggingFileId,
-    dropHoverTargetId,
-    handleDragOverTarget,
-    handleDropOnTarget,
-    handleFileDragEnd,
-    handleFileDragStart,
-    isKnowledgeSearchActive,
-    knowledgeSearchText,
-    filesSearchScope,
-    currentFolderId,
-    visibleItems,
-    revealedFileIdInKnowledge,
-  ]);
 
   // Transform spaceMemberIds into Member objects with joinedAt dates
   const members: Member[] = useMemo(() => {
@@ -3297,17 +3047,6 @@ export function GroupConversationView({
     };
   }, [checkedSummaryItems, handleCleanTodoItems]);
 
-  // Handle delete confirmation
-  const handleDeleteConfirm = () => {
-    if (selectedDataSourceId) {
-      setDataSources((prev) =>
-        prev.filter((ds) => ds.id !== selectedDataSourceId)
-      );
-      setSelectedDataSourceId(null);
-    }
-    setDeleteDialogOpen(false);
-  };
-
   // Handle remove member confirmation
   const handleRemoveMemberConfirm = () => {
     if (selectedMemberIdToRemove) {
@@ -3335,153 +3074,6 @@ export function GroupConversationView({
       year: "numeric",
     });
   };
-
-  // Create table columns
-  const columns: ColumnDef<DataSource & { onClick?: () => void }>[] = useMemo(
-    () => [
-      {
-        accessorKey: "fileName",
-        header: "File name",
-        id: "fileName",
-        sortingFn: (rowA, rowB) => {
-          const a = rowA.original;
-          const b = rowB.original;
-          if (a.kind !== b.kind) {
-            return a.kind === "folder" ? -1 : 1;
-          }
-          return a.fileName.localeCompare(b.fileName);
-        },
-        meta: {
-          className: "w-full",
-        },
-        cell: (info) => {
-          const icon = getDataSourceIcon(info.row.original);
-          return (
-            <DataTable.CellContent>
-              <div className="flex items-center gap-2">
-                {icon && <Icon visual={icon} size="sm" />}
-                <span>{info.getValue() as string}</span>
-              </div>
-            </DataTable.CellContent>
-          );
-        },
-      },
-      {
-        accessorKey: "source",
-        header: "Source",
-        id: "source",
-        meta: {
-          className: "w-[84px]",
-        },
-        cell: (info) => {
-          const source = info.getValue() as DataSource["source"];
-          if (source !== "company") {
-            return <DataTable.BasicCellContent label="" />;
-          }
-
-          return (
-            <DataTable.CellContent>
-              <Icon
-                visual={CloudArrowLeftRight}
-                size="sm"
-                className="text-muted-foreground"
-              />
-            </DataTable.CellContent>
-          );
-        },
-      },
-      {
-        accessorKey: "fileType",
-        header: "Type",
-        id: "fileType",
-        sortingFn: (rowA, rowB) =>
-          getItemTypeLabel(rowA.original).localeCompare(
-            getItemTypeLabel(rowB.original)
-          ),
-        meta: {
-          className: "w-[84px]",
-        },
-        cell: (info) => (
-          <DataTable.BasicCellContent
-            label={getItemTypeLabel(info.row.original)}
-          />
-        ),
-      },
-      {
-        accessorKey: "createdBy",
-        header: "Created by",
-        id: "createdBy",
-        meta: {
-          className: "w-[140px]",
-        },
-        cell: (info) => {
-          const userId = info.getValue() as string;
-          const user = getUserById(userId);
-          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
-          return (
-            <DataTable.CellContent>
-              <div className="flex items-center gap-2">
-                <Avatar
-                  name={user.fullName}
-                  visual={user.portrait}
-                  size="xs"
-                  isRounded={true}
-                />
-                <span className="text-sm">{user.fullName}</span>
-              </div>
-            </DataTable.CellContent>
-          );
-        },
-      },
-      {
-        accessorKey: "updatedAt",
-        header: "Last Updated",
-        id: "lastUpdated",
-        meta: {
-          className: "w-[100px]",
-        },
-        cell: (info) => {
-          const date = info.getValue() as Date;
-          return <DataTable.BasicCellContent label={formatDate(date)} />;
-        },
-      },
-      {
-        id: "actions",
-        header: "",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info) => {
-          const dataSource = info.row.original;
-          const menuItems = [
-            ...(onAddFileToTopbar && dataSource.kind === "file"
-              ? [
-                  {
-                    kind: "item" as const,
-                    label: "Add to Topbar",
-                    icon: File02,
-                    onClick: () => onAddFileToTopbar(dataSource.id),
-                  },
-                ]
-              : []),
-            {
-              kind: "item" as const,
-              label: "Delete",
-              icon: Trash01,
-              variant: "warning" as const,
-              onClick: () => {
-                setSelectedDataSourceId(dataSource.id);
-                setDeleteDialogOpen(true);
-              },
-            },
-          ];
-
-          return <DataTable.MoreButton menuItems={menuItems} />;
-        },
-      },
-    ],
-    [onAddFileToTopbar]
-  );
 
   // Create member table columns
   const memberColumns: ColumnDef<Member>[] = useMemo(
@@ -3612,6 +3204,11 @@ export function GroupConversationView({
     });
   }, [members, membersSearchText]);
   const isShowingTodoSuggestions = todoSuggestionStatus !== "idle";
+  const showMineGroupAll =
+    !hideConversationFilters &&
+    (podVariant === "personal" || spaceMemberIds.length > 1);
+  const showTriggeredToggle =
+    !hideConversationFilters && podVariant !== "personal";
 
   return (
     <div className="flex h-full w-full h-full flex-col bg-background">
@@ -3625,73 +3222,30 @@ export function GroupConversationView({
         <GroupConversationTabContent
           value="conversations"
           topBox={
-            <>
-              {renderPodGreeting("Chat")}
+            showComposer ? (
               <InputBar
                 autoFocus
                 placeholder="What are we working on?"
-                className="w-full max-w-4xl"
+                className="w-full"
+                isFloating={false}
               />
-            </>
+            ) : undefined
           }
         >
-          {!hasHistory && (
+          {!hasHistory && showComposer && podVariant !== "personal" && (
             <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
           )}
-          {/* Conversations list */}
-          {hasHistory &&
-            podVariant !== "personal" &&
-            ongoingSummary &&
-            ongoingSummary.projectPulse.length > 0 && (
-              <>
-                <h3 className="heading-lg text-foreground">
-                  {isSummaryUpdating ? (
-                    <AnimatedText
-                      variant="primary"
-                      className="text-muted-foreground"
-                    >
-                      Catching-up
-                    </AnimatedText>
-                  ) : (
-                    "Catching-up"
-                  )}
-                </h3>
-                <div className="text-sm text-muted-foreground">
-                  {ongoingSummary.projectPulse.map((item, index) => {
-                    const itemKey = getSummaryItemKey("projectPulse", item);
-                    const relatedConversationIds =
-                      summaryRelatedConversations[itemKey] ?? [];
-                    const shouldTypePulseItem =
-                      typingItemKeys.has(itemKey) &&
-                      (summaryItemDiffByKey[itemKey] === "modified" ||
-                        summaryItemDiffByKey[itemKey] === "added");
-
-                    return (
-                      <span key={itemKey}>
-                        {shouldTypePulseItem ? (
-                          <TypingAnimation
-                            key={`${itemKey}-${typingVersion}`}
-                            text={item.segments
-                              .map((segment) => segment.text)
-                              .join("")}
-                            duration={16}
-                          />
-                        ) : (
-                          renderProjectPulseItemWithInlineLinks(
-                            item,
-                            relatedConversationIds,
-                            false
-                          )
-                        )}
-                        {index < ongoingSummary.projectPulse.length - 1
-                          ? " "
-                          : null}
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="@container w-full">
-                  <div className="flex w-full flex-row items-center gap-2">
+          {!hasHistory && (podVariant === "personal" || !showComposer) && (
+            <EmptyState
+              title="No conversations"
+              description="Start a conversation from New, or pick one from Recent."
+            />
+          )}
+          {hasHistory && (
+            <div className="flex w-full flex-wrap items-center gap-2">
+              {(showMineGroupAll || showTriggeredToggle) && (
+                <div className="flex flex-none flex-nowrap items-center gap-2">
+                  {showMineGroupAll && (
                     <ButtonsSwitchList
                       defaultValue={goodToKnowFilter}
                       onValueChange={(value) => {
@@ -3707,7 +3261,7 @@ export function GroupConversationView({
                       <ButtonsSwitch
                         value="mine"
                         label="Mine"
-                        tooltip="Conversations you started"
+                        tooltip="Conversations where you have sent a message."
                       />
                       <ButtonsSwitch
                         value="shared"
@@ -3717,116 +3271,29 @@ export function GroupConversationView({
                       <ButtonsSwitch
                         value="all"
                         label="All"
-                        tooltip="Every conversation in this project"
+                        tooltip="Every conversation in this Pod."
                       />
                     </ButtonsSwitchList>
-                    {hasHistory && (
-                      <div className="min-w-0 flex-1">
-                        <SearchInputWithPopover
-                          name="conversation-search"
-                          value={searchText}
-                          onChange={(value) => {
-                            setSearchText(value);
-                            if (!value.trim()) {
-                              setIsSearchOpen(false);
-                            }
-                          }}
-                          open={isSearchOpen}
-                          onOpenChange={setIsSearchOpen}
-                          placeholder={`Search in ${space.name}`}
-                          className="w-full"
-                          items={searchResults}
-                          availableHeight
-                          noResults={
-                            searchText.trim()
-                              ? "No results found"
-                              : "Start typing to search"
-                          }
-                          onItemSelect={handleSearchItemSelect}
-                          renderItem={(item, selected) => (
-                            <SearchResultItem item={item} selected={selected} />
-                          )}
-                        />
-                      </div>
-                    )}
+                  )}
+                  {showTriggeredToggle && (
                     <Button
                       size="sm"
                       variant="outline"
-                      icon={CheckDouble}
-                      className="@sm:hidden"
-                      tooltip="Mark all as read"
-                      onClick={() => {
-                        setCheckedSummaryItems((previous) => ({
-                          ...previous,
-                          ...Object.fromEntries(
-                            ongoingSummary.projectPulse.map((item) => [
-                              getSummaryItemKey("projectPulse", item),
-                              true,
-                            ])
-                          ),
-                        }));
-                      }}
+                      icon={hideTriggeredConversations ? ZapOff : Zap}
+                      tooltip={
+                        hideTriggeredConversations
+                          ? "Show triggered"
+                          : "Hide triggered"
+                      }
+                      className="shrink-0"
+                      onClick={() =>
+                        setHideTriggeredConversations((current) => !current)
+                      }
                     />
-                    <Button
-                      size="sm"
-                      className="hidden @sm:inline-flex"
-                      variant="outline"
-                      icon={CheckDouble}
-                      label="Mark all as read"
-                      onClick={() => {
-                        setCheckedSummaryItems((previous) => ({
-                          ...previous,
-                          ...Object.fromEntries(
-                            ongoingSummary.projectPulse.map((item) => [
-                              getSummaryItemKey("projectPulse", item),
-                              true,
-                            ])
-                          ),
-                        }));
-                      }}
-                    />
-                  </div>
+                  )}
                 </div>
-              </>
-            )}
-          {hasHistory && podVariant === "personal" && (
-            <div className="@container w-full">
-              <div className="flex w-full flex-row items-center gap-2">
-                <ButtonsSwitchList
-                  defaultValue={personalConversationFilter}
-                  onValueChange={(value) => {
-                    if (
-                      value === "all" ||
-                      value === "mine" ||
-                      value === "group" ||
-                      value === "triggered"
-                    ) {
-                      setPersonalConversationFilter(value);
-                    }
-                  }}
-                >
-                  <ButtonsSwitch
-                    value="all"
-                    label="All"
-                    tooltip="All conversations"
-                  />
-                  <ButtonsSwitch
-                    value="mine"
-                    label="Mine"
-                    tooltip="Conversations with just you and an agent"
-                  />
-                  <ButtonsSwitch
-                    value="group"
-                    label="Group"
-                    tooltip="Conversations with multiple people"
-                  />
-                  <Separator orientation="vertical" />
-                  <ButtonsSwitch
-                    value="triggered"
-                    label="Triggered"
-                    tooltip="Agent-owned conversations"
-                  />
-                </ButtonsSwitchList>
+              )}
+              <div className="flex min-w-[20rem] flex-1 items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <SearchInputWithPopover
                     name="conversation-search"
@@ -3839,8 +3306,7 @@ export function GroupConversationView({
                     }}
                     open={isSearchOpen}
                     onOpenChange={setIsSearchOpen}
-                    placeholder={`Search in ${space.name}`}
-                    className="w-full"
+                    placeholder="Search..."
                     items={searchResults}
                     availableHeight
                     noResults={
@@ -3854,6 +3320,13 @@ export function GroupConversationView({
                     )}
                   />
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={CheckDouble}
+                  label="Mark all as read"
+                  className="shrink-0"
+                />
               </div>
             </div>
           )}
@@ -3889,8 +3362,6 @@ export function GroupConversationView({
                             ...conversation,
                             id: baseConversationId,
                           };
-                          const isSelectedConversation =
-                            selectedConversationRow?.rowId === conversation.id;
 
                           return (
                             <div
@@ -3899,29 +3370,8 @@ export function GroupConversationView({
                             >
                               <ConversationListItem
                                 conversation={conversation}
-                                avatar={
-                                  podVariant === "personal" &&
-                                  listItem.initiator
-                                    ? {
-                                        name: listItem.initiator.name,
-                                        visual: listItem.initiator.portrait,
-                                        emoji: listItem.initiator.emoji,
-                                        backgroundColor:
-                                          listItem.initiator.backgroundColor,
-                                        isRounded:
-                                          listItem.initiator.isRounded ?? true,
-                                      }
-                                    : undefined
-                                }
-                                creator={
-                                  podVariant === "personal"
-                                    ? undefined
-                                    : listItem.creator || undefined
-                                }
-                                className={cn(
-                                  "px-3 rounded-2xl",
-                                  isSelectedConversation && "bg-highlight-50"
-                                )}
+                                creator={listItem.creator || undefined}
+                                className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
                                 time={listItem.time}
                                 showFocus={
                                   conversationIdToShowFocus === conversation.id
@@ -3970,13 +3420,10 @@ export function GroupConversationView({
           value="todos"
           contentClassName="gap-4"
           topBox={
-            <>
-              {renderPodGreeting("Tasks")}
-              <TodoInputBar
-                placeholder="Describe the tasks to create"
-                onCreateTasks={handleCreateTodoSuggestions}
-              />
-            </>
+            <TodoInputBar
+              placeholder="Describe the tasks to create"
+              onCreateTasks={handleCreateTodoSuggestions}
+            />
           }
         >
           {isShowingTodoSuggestions && (
@@ -4404,112 +3851,37 @@ export function GroupConversationView({
         </GroupConversationTabContent>
 
         {/* Files Tab */}
-        <GroupConversationTabContent
-          value="knowledge"
-          contentClassName="gap-3"
-          topBox={
-            <>
-              {renderPodGreeting("Files")}
-              {dataSources.length > 0 && (
-                <SearchInput
-                  name="knowledge-search"
-                  value={knowledgeSearchText}
-                  onChange={setKnowledgeSearchText}
-                  placeholder="Search files..."
-                  className="w-full max-w-xl"
-                />
-              )}
-            </>
-          }
-        >
-          {dataSources.length === 0 ? (
-            <EmptyCTA
-              message="No files in this room yet."
-              action={renderCreateFilesMenu()}
-            />
-          ) : (
-            <>
-              <div className="flex items-center justify-between gap-2">
-                {renderCreateFilesMenu()}
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      icon={filesViewMode === "list" ? CheckDone01 : List}
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuRadioGroup
-                      value={filesViewMode}
-                      onValueChange={(value) => {
-                        if (value === "list" || value === "grid") {
-                          setFilesViewMode(value);
-                        }
-                      }}
-                    >
-                      <DropdownMenuRadioItem
-                        value="list"
-                        label="List"
-                        icon={CheckDone01}
-                      />
-                      <DropdownMenuRadioItem
-                        value="grid"
-                        label="Grid"
-                        icon={List}
-                      />
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {!isKnowledgeSearchActive && currentFolderId !== null && (
-                <div className="flex items-center gap-2">
-                  {draggingFileId !== null && (
-                    <AnimatedText variant="muted" className="text-sm italic">
-                      Move to
-                    </AnimatedText>
-                  )}
-                  <Breadcrumbs
-                    items={folderBreadcrumbItems}
-                    size="sm"
-                    hasLighterFont
-                  />
-                </div>
-              )}
-              {isKnowledgeSearchActive && currentFolderId !== null && (
-                <ButtonsSwitchList
-                  key={currentFolderId}
-                  defaultValue={filesSearchScope}
-                  size="xs"
-                  className="w-fit self-start"
-                  onValueChange={(value) => {
-                    if (value === "folder" || value === "all") {
-                      setFilesSearchScope(value);
-                    }
-                  }}
-                >
-                  <ButtonsSwitch
-                    value="folder"
-                    label={`In ${currentFolder?.fileName ?? "folder"}`}
-                  />
-                  <ButtonsSwitch value="all" label="All files" />
-                </ButtonsSwitchList>
-              )}
-              {tableItems.length === 0 && !isKnowledgeSearchActive ? (
-                <div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border bg-muted-background p-12">
-                  <p className="text-center text-sm text-muted-foreground">
-                    This folder is empty.
-                  </p>
-                </div>
-              ) : (
-                <DataTable
-                  columns={columns}
-                  data={tableItems}
-                  sorting={[{ id: "fileName", desc: false }]}
-                />
-              )}
-            </>
-          )}
+        <GroupConversationTabContent value="knowledge" contentClassName="gap-3">
+          <FilesBrowser
+            dataSources={dataSources}
+            searchText={knowledgeSearchText}
+            onSearchTextChange={setKnowledgeSearchText}
+            currentFolderId={currentFolderId}
+            onCurrentFolderIdChange={setCurrentFolderId}
+            revealedFileId={revealedFileIdInKnowledge}
+            onClearRevealedFile={() => setRevealedFileIdInKnowledge(null)}
+            emptyMessage="No files in this room yet."
+            onAddFileToTopbar={onAddFileToTopbar}
+            onFileOpen={(dataSource) => {
+              if (onFileOpen) {
+                onFileOpen(dataSource);
+              } else {
+                setSelectedDataSource(dataSource);
+                setIsDocumentSheetOpen(true);
+              }
+            }}
+            onDeleteFile={(fileId) =>
+              setDataSources((prev) => prev.filter((ds) => ds.id !== fileId))
+            }
+            dnd={{
+              draggingFileId,
+              dropHoverTargetId,
+              onDragOverTarget: handleDragOverTarget,
+              onDropOnTarget: handleDropOnTarget,
+              onFileDragStart: handleFileDragStart,
+              onFileDragEnd: handleFileDragEnd,
+            }}
+          />
         </GroupConversationTabContent>
 
         {dynamicFileTabIds.map((dataSourceId) => {
@@ -4539,11 +3911,7 @@ export function GroupConversationView({
         )}
 
         {/* Settings Tab */}
-        <GroupConversationTabContent
-          value="settings"
-          contentClassName="gap-8"
-          topBox={renderPodGreeting("Settings")}
-        >
+        <GroupConversationTabContent value="settings" contentClassName="gap-8">
           <div className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -4917,48 +4285,6 @@ export function GroupConversationView({
               label: "Confirm",
               variant: "warning",
               onClick: handlePublicToggleConfirm,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete DataSource Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setDeleteDialogOpen(false);
-            setSelectedDataSourceId(null);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Delete file?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            {selectedDataSourceId && (
-              <div>
-                Are you sure you want to delete "
-                {dataSources.find((ds) => ds.id === selectedDataSourceId)
-                  ?.fileName || "this file"}
-                "? This action cannot be undone.
-              </div>
-            )}
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setDeleteDialogOpen(false);
-                setSelectedDataSourceId(null);
-              },
-            }}
-            rightButtonProps={{
-              label: "Delete",
-              variant: "warning",
-              onClick: handleDeleteConfirm,
             }}
           />
         </DialogContent>

@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 type SlackWorkflowRow = {
   botName: string;
-  groupNames: string;
+  spaceNames: string;
   createdAt: number;
 };
 
@@ -21,8 +21,8 @@ function makeColumnsForSlackWorkflows(
       header: () => <p>Workflow / Bot Name</p>,
     },
     {
-      accessorKey: "groupNames",
-      header: () => <p>Groups</p>,
+      accessorKey: "spaceNames",
+      header: () => <p>Spaces</p>,
     },
     {
       accessorKey: "createdAt",
@@ -52,7 +52,7 @@ function prepareSlackWorkflowsForDisplay(
 ): SlackWorkflowRow[] {
   return workflows.map((workflow) => ({
     botName: workflow.botName,
-    groupNames: workflow.groups.map((group) => group.name).join(", "),
+    spaceNames: workflow.spaces.map((space) => space.name).join(", "),
     createdAt: workflow.createdAt,
   }));
 }

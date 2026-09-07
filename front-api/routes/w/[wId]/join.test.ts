@@ -5,9 +5,9 @@ import { honoApp } from "@front-api/app";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 // Mock region redirect to always return null (same region).
-vi.mock("@app/lib/api/regions/lookup", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@app/lib/api/regions/lookup")>()),
-  getWorkspaceRegionRedirect: vi.fn().mockResolvedValue(null),
+vi.mock("@app/lib/api/cells/lookup", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/cells/lookup")>()),
+  getWorkspaceCellRedirect: vi.fn().mockResolvedValue(null),
 }));
 
 // Mock WorkOS user lookup — use importOriginal to preserve other exports.

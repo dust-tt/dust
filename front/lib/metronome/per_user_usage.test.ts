@@ -5,7 +5,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("buildUsageQuerySegments", () => {
-  it("returns a single DAY segment when both boundaries are UTC midnight", () => {
+  it("returns a single NONE segment when both boundaries are UTC midnight", () => {
     const segments = buildUsageQuerySegments({
       cycleStart: new Date("2026-06-01T00:00:00.000Z"),
       requestEnd: new Date("2026-07-01T00:00:00.000Z"),
@@ -14,12 +14,12 @@ describe("buildUsageQuerySegments", () => {
       {
         startingOn: "2026-06-01T00:00:00.000Z",
         endingBefore: "2026-07-01T00:00:00.000Z",
-        windowSize: "DAY",
+        windowSize: "NONE",
       },
     ]);
   });
 
-  it("adds an HOUR segment for a non-midnight start, DAY for the interior", () => {
+  it("adds an HOUR segment for a non-midnight start, NONE for the interior", () => {
     const segments = buildUsageQuerySegments({
       cycleStart: new Date("2026-06-15T15:00:00.000Z"),
       requestEnd: new Date("2026-07-01T00:00:00.000Z"),
@@ -33,12 +33,12 @@ describe("buildUsageQuerySegments", () => {
       {
         startingOn: "2026-06-16T00:00:00.000Z",
         endingBefore: "2026-07-01T00:00:00.000Z",
-        windowSize: "DAY",
+        windowSize: "NONE",
       },
     ]);
   });
 
-  it("adds an HOUR segment for a non-midnight end, DAY for the interior", () => {
+  it("adds an HOUR segment for a non-midnight end, NONE for the interior", () => {
     const segments = buildUsageQuerySegments({
       cycleStart: new Date("2026-06-01T00:00:00.000Z"),
       requestEnd: new Date("2026-06-20T09:30:00.000Z"),
@@ -47,7 +47,7 @@ describe("buildUsageQuerySegments", () => {
       {
         startingOn: "2026-06-01T00:00:00.000Z",
         endingBefore: "2026-06-20T00:00:00.000Z",
-        windowSize: "DAY",
+        windowSize: "NONE",
       },
       {
         startingOn: "2026-06-20T00:00:00.000Z",
@@ -57,7 +57,7 @@ describe("buildUsageQuerySegments", () => {
     ]);
   });
 
-  it("produces HOUR + DAY + HOUR for non-midnight start and end, multi-day", () => {
+  it("produces HOUR + NONE + HOUR for non-midnight start and end, multi-day", () => {
     const segments = buildUsageQuerySegments({
       cycleStart: new Date("2026-06-15T15:00:00.000Z"),
       requestEnd: new Date("2026-06-20T09:30:00.000Z"),
@@ -71,7 +71,7 @@ describe("buildUsageQuerySegments", () => {
       {
         startingOn: "2026-06-16T00:00:00.000Z",
         endingBefore: "2026-06-20T00:00:00.000Z",
-        windowSize: "DAY",
+        windowSize: "NONE",
       },
       {
         startingOn: "2026-06-20T00:00:00.000Z",

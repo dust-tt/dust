@@ -12,24 +12,30 @@ import type {
   FolderEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
-import { joinMountRelativePath } from "@app/components/file_explorer/utils";
+import {
+  isFilePreviewableContentType,
+  joinMountRelativePath,
+} from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
-import { EditPodFrameTabDialog } from "@app/components/pod/files/EditPodFrameTabDialog";
+import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
-import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
+import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
+import {
+  downloadFile,
+  getFilePathViewUrl,
+  useDeleteFileByPath,
+} from "@app/lib/swr/files";
 import {
   useAddPodContextContentNodes,
-  useDeletePodFile,
   useMovePodFile,
   usePodContextAttachments,
   usePodFiles,
@@ -44,15 +50,16 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import {
+  frameV2ContentType,
   getSupportedFileExtensions,
   isInteractiveContentType,
 } from "@app/types/files";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
-  DEFAULT_POD_FRAME_TAB_ICON,
-  MAX_POD_FRAME_TAB_TITLE_LENGTH,
-  podFrameTabBasename,
-} from "@app/types/pod_frame_tab";
+  DEFAULT_POD_FILE_TAB_ICON,
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+  podFileTabBasename,
+} from "@app/types/pod_file_tab";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -266,64 +273,75 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   const isArchived = !!pod.archivedAt;
   const isEditor = pod.isEditor;
   const { hasFeature } = useFeatureFlags();
-  const hasFrameTabs = hasFeature("pod_frame_tabs");
+  const hasFileTabs = hasFeature("pod_frame_tabs");
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
     podId: pod.sId,
     pinnedFramePath: pod.pinnedFramePath ?? null,
     isEditor,
   });
-  const { removeFrameTab, isFrameTab } = usePodFrameTabs({
+  const { removeFileTab, isFileTab } = usePodFileTabs({
     owner,
     podId: pod.sId,
-    frameTabs: pod.frameTabs ?? [],
+    fileTabs: pod.frameTabs ?? [],
     tabsOrder: pod.tabsOrder ?? [],
     isEditor,
   });
-  const [createFrameTabDraft, setCreateFrameTabDraft] =
-    useState<PodFrameTab | null>(null);
+  const [createFileTabDraft, setCreateFileTabDraft] =
+    useState<PodFileTab | null>(null);
 
   const getExtraFileMenuItems = useCallback(
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
       if (
         !isEditor ||
         isArchived ||
-        entry.kind !== "file" ||
-        !isInteractiveContentType(entry.contentType)
+        (entry.kind !== "file" && entry.kind !== "frame_package")
       ) {
         return [];
       }
 
-      const pinned = isPinned(entry.path);
-      const items: FileExplorerMenuAction[] = [
-        {
+      const items: FileExplorerMenuAction[] = [];
+
+      // Legacy Frames pin from their file; a Frame v2 pins from its package entry (manifest path).
+      const canBePinned =
+        entry.kind === "frame_package" ||
+        isInteractiveContentType(entry.contentType);
+      if (canBePinned) {
+        const pinned = isPinned(entry.path);
+        items.push({
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
           icon: Pin02,
           onClick: (e) => {
             e.stopPropagation();
             void togglePin(entry.path, { fileName: entry.fileName });
           },
-        },
-      ];
+        });
+      }
 
-      if (hasFrameTabs) {
-        const asTab = isFrameTab(entry.path);
+      // A Frame is added as a tab from its package entry, whose path is the manifest; the
+      // manifest listed inside the source folder does not get the item again.
+      const canBeTab =
+        entry.kind === "frame_package" ||
+        (entry.contentType !== frameV2ContentType &&
+          isFilePreviewableContentType(entry.contentType));
+      if (hasFileTabs && canBeTab) {
+        const asTab = isFileTab(entry.path);
         items.push({
           label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
           icon: LayoutAlt02,
           onClick: (e) => {
             e.stopPropagation();
             if (asTab) {
-              void removeFrameTab(entry.path, { fileName: entry.fileName });
+              void removeFileTab(entry.path, { fileName: entry.fileName });
               return;
             }
-            setCreateFrameTabDraft({
+            setCreateFileTabDraft({
               path: entry.path,
-              title: podFrameTabBasename(entry.fileName).slice(
+              title: podFileTabBasename(entry.fileName).slice(
                 0,
-                MAX_POD_FRAME_TAB_TITLE_LENGTH
+                MAX_POD_FILE_TAB_TITLE_LENGTH
               ),
-              icon: DEFAULT_POD_FRAME_TAB_ICON,
+              icon: DEFAULT_POD_FILE_TAB_ICON,
             });
           },
         });
@@ -332,12 +350,12 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       return items;
     },
     [
-      hasFrameTabs,
+      hasFileTabs,
       isArchived,
       isEditor,
-      isFrameTab,
+      isFileTab,
       isPinned,
-      removeFrameTab,
+      removeFileTab,
       togglePin,
     ]
   );
@@ -411,10 +429,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [contentNodeAttachments, connectorProviderByDsvId]
   );
 
-  const deletePodFile = useDeletePodFile({
-    owner,
-    podId: pod.sId,
-  });
+  const deletePodFile = useDeleteFileByPath({ owner });
 
   const removePodContextContentNodes = useRemovePodContextContentNodes({
     owner,
@@ -529,8 +544,25 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           validateVariant: "warning",
         });
         if (confirmed) {
-          // TODO: once FileSystemTreeNode carries the canonical scoped path, use entry.path directly.
-          const result = await deletePodFile(`pod-${pod.sId}/${entry.path}`);
+          const result = await deletePodFile(entry.path);
+          if (result.isOk()) {
+            await refreshPodFiles();
+          }
+        }
+      } else if (entry.kind === "frame_package") {
+        const confirmed = await confirm({
+          title: "Delete Frame?",
+          message:
+            `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
+            "functions, databases and share links will be permanently removed. " +
+            "This action cannot be undone.",
+          validateLabel: "Delete",
+          validateVariant: "warning",
+        });
+        if (confirmed) {
+          // The package entry carries the manifest path; deleting the manifest runs the
+          // package-aware Frame deletion server-side.
+          const result = await deletePodFile(entry.path);
           if (result.isOk()) {
             await refreshPodFiles();
           }
@@ -553,33 +585,28 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [
       confirm,
       deletePodFile,
-      pod.sId,
       refreshPodContextAttachments,
       refreshPodFiles,
       removePodContextContentNodes,
     ]
   );
 
-  const onRename = useCallback(
-    (entry: FileEntry | FolderEntry) => {
-      if (entry.kind === "file") {
-        setItemToRename({
-          kind: "file",
-          path: entry.path,
-          name: entry.fileName,
-        });
-      } else {
-        // TODO: once FileSystemTreeNode carries the canonical scoped path, use entry.path directly.
-        setItemToRename({
-          kind: "folder",
-          path: `pod-${pod.sId}/${entry.path}`,
-          name: entry.name,
-        });
-      }
-      setShowRenameDialog(true);
-    },
-    [pod.sId]
-  );
+  const onRename = useCallback((entry: FileEntry | FolderEntry) => {
+    if (entry.kind === "file") {
+      setItemToRename({
+        kind: "file",
+        path: entry.path,
+        name: entry.fileName,
+      });
+    } else {
+      setItemToRename({
+        kind: "folder",
+        path: entry.path,
+        name: entry.name,
+      });
+    }
+    setShowRenameDialog(true);
+  }, []);
 
   const onMoveFile = useCallback(
     async (entry: FileEntry, parentRelativePath: string) => {
@@ -757,7 +784,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         fileName={framePreview?.fileName}
         podId={pod.sId}
         pinnedFramePath={pod.pinnedFramePath ?? null}
-        frameTabs={pod.frameTabs ?? []}
+        fileTabs={pod.frameTabs ?? []}
         tabsOrder={pod.tabsOrder ?? []}
         isEditor={isEditor}
         isMember={pod.isMember}
@@ -766,18 +793,18 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         onClose={() => setFramePreview(null)}
       />
 
-      {createFrameTabDraft && (
-        <EditPodFrameTabDialog
-          key={createFrameTabDraft.path}
+      {createFileTabDraft && (
+        <EditPodFileTabDialog
+          key={createFileTabDraft.path}
           owner={owner}
           podId={pod.sId}
-          frameTabs={pod.frameTabs ?? []}
+          fileTabs={pod.frameTabs ?? []}
           tabsOrder={pod.tabsOrder ?? []}
           isEditor={isEditor}
-          tab={createFrameTabDraft}
+          tab={createFileTabDraft}
           mode="create"
           isOpen
-          onClose={() => setCreateFrameTabDraft(null)}
+          onClose={() => setCreateFileTabDraft(null)}
         />
       )}
 
@@ -835,6 +862,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         contentClassName="max-w-4xl mx-auto w-full"
         contentNodes={contentNodeEntries}
         defaultViewMode="list"
+        displayFramePackages={hasFeature("frames_v2")}
         emptyState={hasFiles ? undefined : emptyState}
         files={podGCSFiles}
         getFileUrl={getFileUrl}

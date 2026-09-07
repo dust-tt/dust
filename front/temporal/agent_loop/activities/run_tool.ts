@@ -508,6 +508,7 @@ async function executeToolStreaming(
             mcp_server_name: action.toolConfiguration.mcpServerName,
             conversation_id: conversation.sId,
             agent_message_id: agentMessage.sId,
+            action_id: action.sId,
             ...(conversation.triggerId
               ? { trigger_id: conversation.triggerId }
               : {}),

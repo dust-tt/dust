@@ -8,6 +8,7 @@ export const FORWARDER_MAPPINGS = [
   { listenPort: 3007, targetOffset: PORT_OFFSETS.viz, name: "viz" },
   { listenPort: 3010, targetOffset: PORT_OFFSETS.frontSpaPoke, name: "front-spa-poke" },
   { listenPort: 3011, targetOffset: PORT_OFFSETS.frontSpaApp, name: "front-spa-app" },
+  { listenPort: 6006, targetOffset: PORT_OFFSETS.storybook, name: "storybook" },
 ] as const;
 
 export const FORWARDER_PORTS = FORWARDER_MAPPINGS.map((mapping) => mapping.listenPort);

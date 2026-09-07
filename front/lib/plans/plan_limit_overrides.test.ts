@@ -15,6 +15,8 @@ const PLAN = {
   maxVaultsInWorkspace: 2,
   maxDataSourcesCount: 7,
   maxConnectionsCount: 4,
+  isSSOAllowed: false,
+  isSCIMAllowed: true,
 };
 
 function override(partial: Partial<PlanLimitOverride>): PlanLimitOverride {
@@ -41,6 +43,26 @@ describe("applyPlanLimitOverrides", () => {
     expect(res.maxVaultsInWorkspace).toBe(2);
     expect(res.maxDataSourcesCount).toBe(7);
     expect(res.maxConnectionsCount).toBe(4);
+    expect(res.isSSOAllowed).toBe(false);
+    expect(res.isSCIMAllowed).toBe(true);
+  });
+
+  it("grants a feature gate the plan does not include", () => {
+    const res = applyPlanLimitOverrides(PLAN, override({ isSSOAllowed: true }));
+
+    expect(res.isSSOAllowed).toBe(true);
+    // Untouched: overriding one gate leaves the other on its plan value.
+    expect(res.isSCIMAllowed).toBe(true);
+  });
+
+  it("denies a feature gate the plan includes", () => {
+    const res = applyPlanLimitOverrides(
+      PLAN,
+      override({ isSCIMAllowed: false })
+    );
+
+    expect(res.isSCIMAllowed).toBe(false);
+    expect(res.isSSOAllowed).toBe(false);
   });
 
   it("overrides the space, data-source and connection limits", () => {
@@ -98,6 +120,15 @@ describe("hasAnyPlanLimitOverride", () => {
       hasAnyPlanLimitOverride(override({ maxLifetimeFreeUsersInWorkspace: 0 }))
     ).toBe(true);
     expect(hasAnyPlanLimitOverride(override({ maxUsersInWorkspace: -1 }))).toBe(
+      true
+    );
+  });
+
+  it("is true when only a feature gate is set, including when denied", () => {
+    expect(hasAnyPlanLimitOverride(override({ isSSOAllowed: true }))).toBe(
+      true
+    );
+    expect(hasAnyPlanLimitOverride(override({ isSCIMAllowed: false }))).toBe(
       true
     );
   });

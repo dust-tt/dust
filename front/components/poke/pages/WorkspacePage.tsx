@@ -5,6 +5,8 @@ import { CreditsDataTable } from "@app/components/poke/credits/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
+import { FramesDataTable } from "@app/components/poke/frames/table";
+import { GovernanceTab } from "@app/components/poke/governance/GovernanceTab";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
@@ -25,12 +27,13 @@ import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/tab
 import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { WorkspaceAnalyticsButton } from "@app/components/poke/workspace/WorkspaceAnalyticsButton";
+import { WorkspacePoolUsageButton } from "@app/components/poke/workspace/WorkspacePoolUsageButton";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { usePokeRegion } from "@app/lib/swr/poke";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
+import { usePokeCells } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
@@ -53,7 +56,7 @@ import {
 export function WorkspacePage() {
   const owner = useWorkspace();
   usePokePageMetadata({ name: owner.name ?? "Workspace", sId: owner.sId });
-  const { regionData } = usePokeRegion();
+  const { currentCell } = usePokeCells();
 
   const router = useAppRouter();
 
@@ -143,6 +146,8 @@ export function WorkspacePage() {
     defaultAlerts,
     programmaticCreditState,
     programmaticWarningReached,
+    spendLimitRateCapEnabled,
+    programmaticRateLimiterState,
     programmaticSpendLimitRateCapCount,
     programmaticEsConsumedAwuCredits,
     programmaticMetronomeConsumedAwuCredits,
@@ -182,9 +187,9 @@ export function WorkspacePage() {
         <div className="flex-grow">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold">{owner.name}</span>
-            {regionData && (
-              <Chip size="xs" color={getRegionChipColor(regionData.region)}>
-                {getRegionDisplay(regionData.region)}
+            {currentCell && (
+              <Chip size="xs" color={getCellChipColor(currentCell.region)}>
+                {getCellDisplay(currentCell)}
               </Chip>
             )}
           </div>
@@ -249,6 +254,7 @@ export function WorkspacePage() {
                     temporalFrontNamespace={temporalFrontNamespace}
                   />
                   <WorkspaceAnalyticsButton workspaceId={owner.sId} />
+                  <WorkspacePoolUsageButton workspaceId={owner.sId} />
                 </div>
               </TabsContent>
               <TabsContent value="subscriptions">
@@ -294,12 +300,13 @@ export function WorkspacePage() {
               <TabsTrigger value="datasources" label="Data Sources" />
               <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
+              <TabsTrigger value="frames" label="Frames" />
+              <TabsTrigger value="governance" label="Governance" />
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP" />
               <TabsTrigger value="pods" label="Pods" />
               <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
-
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
@@ -324,6 +331,9 @@ export function WorkspacePage() {
             </TabsContent>
             <TabsContent value="pods">
               <ProjectsDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="frames">
+              <FramesDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="spaces">
               <SpaceDataTable owner={owner} loadOnInit />
@@ -352,6 +362,12 @@ export function WorkspacePage() {
               />
             </TabsContent>
 
+            <TabsContent value="governance">
+              <GovernanceTab
+                owner={owner}
+                workosEnvironmentId={workosEnvironmentId}
+              />
+            </TabsContent>
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} />
             </TabsContent>
@@ -375,6 +391,8 @@ export function WorkspacePage() {
                 poolCreditState={poolCreditState}
                 programmaticCreditState={programmaticCreditState}
                 programmaticWarningReached={programmaticWarningReached}
+                spendLimitRateCapEnabled={spendLimitRateCapEnabled}
+                programmaticRateLimiterState={programmaticRateLimiterState}
                 programmaticSpendLimitRateCapCount={
                   programmaticSpendLimitRateCapCount
                 }

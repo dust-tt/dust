@@ -25,19 +25,20 @@ function hasPermission(
   space: SpaceResource,
   options: WithSpaceOptions
 ): boolean {
-  if (options.requireCanAdministrate && !space.canAdministrate(auth)) {
+  if (options.requireCanAdministrate && !auth.can("admin", space)) {
     return false;
   }
   if (
     options.requireCanReadOrAdministrate &&
-    !space.canReadOrAdministrate(auth)
+    !auth.can("read", space) &&
+    !auth.can("admin", space)
   ) {
     return false;
   }
-  if (options.requireCanRead && !space.canRead(auth)) {
+  if (options.requireCanRead && !auth.can("read", space)) {
     return false;
   }
-  if (options.requireCanWrite && !space.canWrite(auth)) {
+  if (options.requireCanWrite && !auth.can("write", space)) {
     return false;
   }
   return true;
@@ -94,10 +95,9 @@ export function withSpace(options: WithSpaceOptions) {
     // and the emit is best-effort. Run the whole block off the critical path.
     void (async () => {
       // Only regular/project spaces are "restricted" (member-only); global and conversations spaces
-      // are workspace-wide and system is admin-only, so none of those is audited here. This is not
-      // simply `!isOpen`: a system space is not open, but is not restricted either.
-      const isRestricted =
-        (space.isRegular() || space.isProject()) && !(await space.isOpen(auth));
+      // are workspace-wide and system is admin-only, so none of those is audited here. `isRestricted`
+      // already encodes that: a system space is not open, but is not restricted either.
+      const isRestricted = await space.isRestricted(auth);
       if (isRestricted) {
         void emitAuditLogEvent({
           auth,

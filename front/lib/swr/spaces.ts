@@ -3,7 +3,10 @@ import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
-import type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
+import type {
+  PatchSpaceMembersRequestBodyType,
+  PostSpaceMembersRequestBodyType,
+} from "@app/lib/api/spaces/members";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
@@ -18,6 +21,7 @@ import type {
   GetSpaceDataSourceViewsResponseBody,
 } from "@app/types/api/data_source_view";
 import type { PostSpaceDataSourceResponseBody } from "@app/types/api/data_sources";
+import type { GetKeyScopableSpacesResponseBody } from "@app/types/api/keys";
 import type { SpacesLookupResponseBody } from "@app/types/api/projects/list";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type {
@@ -197,6 +201,31 @@ export function useSpacesAsAdmin({
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
+  };
+}
+
+// The spaces a new API key may be scoped to: the workspace's restricted spaces and pods. Admin
+// only — the endpoint that serves it is behind `ensureIsAdmin()`.
+export function useKeyScopableSpaces({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const spacesFetcher: Fetcher<GetKeyScopableSpacesResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/keys/spaces`,
+    spacesFetcher,
+    { disabled }
+  );
+
+  return {
+    spaces: data?.spaces ?? emptyArray(),
+    isSpacesLoading: !error && !data && !disabled,
+    isSpacesError: !!error,
   };
 }
 
@@ -725,6 +754,62 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     return spaceResponse.space;
   };
   return doUpdate;
+}
+
+// Adds members to a manually managed space without replacing its member list.
+export function useAddSpaceMembers({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+  const { mutate: mutateSpaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: "all",
+    disabled: true, // Needed just to mutate
+  });
+  const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: true, // Needed just to mutate
+  });
+
+  const doAdd = async (
+    space: SpaceType,
+    memberIds: string[],
+    notification?: { title: string; description: string }
+  ): Promise<boolean> => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/spaces/${space.sId}/members`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          memberIds,
+        } satisfies PostSpaceMembersRequestBodyType),
+      }
+    );
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: `Failed to add members to ${getSpaceName(space)}`,
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+
+    void mutateSpaces();
+    void mutateSpacesAsAdmin();
+
+    sendNotification({
+      type: "success",
+      title: notification?.title ?? "Successfully added members",
+      description:
+        notification?.description ??
+        `Members were added to ${getSpaceName(space)}.`,
+    });
+    return true;
+  };
+  return doAdd;
 }
 
 export function useDeleteSpace({

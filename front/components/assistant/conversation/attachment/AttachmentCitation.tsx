@@ -4,7 +4,7 @@ import { PreviewableCitation } from "@app/components/assistant/conversation/atta
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { isInteractiveContentType, opensInSidePanel } from "@app/types/files";
+import { isFrameContentType, opensInSidePanel } from "@app/types/files";
 import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
@@ -78,7 +78,7 @@ export function AttachmentCitation({
   if (
     fileId &&
     !isLoading &&
-    isInteractiveContentType(contentType) &&
+    isFrameContentType(contentType) &&
     sidePanel != null
   ) {
     return (

@@ -213,9 +213,7 @@ export const getConversationDetails = async ({
       .filter((m) => isRichUserMention(m) && m.status === "approved")
       .map((m) => m.id);
   } else if (isLightAgentMessageType(message)) {
-    author = message.configuration.name
-      ? `@${message.configuration.name}`
-      : "An agent";
+    author = message.configuration.name || "An agent";
     authorIsAgent = true;
   } else {
     assertNever(message);

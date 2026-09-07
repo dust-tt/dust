@@ -23,7 +23,7 @@ app.get(
     const { spaceId } = ctx.req.valid("param");
 
     const space = await SpaceResource.fetchById(auth, spaceId);
-    if (!space || !space.canReadOrAdministrate(auth)) {
+    if (!space || (!auth.can("read", space) && !auth.can("admin", space))) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

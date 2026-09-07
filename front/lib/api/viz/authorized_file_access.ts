@@ -8,7 +8,6 @@ import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -101,17 +100,27 @@ export async function readFrameFileContent(
   const workspace = renderLightWorkspaceType({
     workspace: auth.getNonNullableWorkspace(),
   });
-  // Read what actually renders: a published frame's bundle (processed), else the source.
-  const readStream = frameFile.getSharedReadStream(
-    workspace,
-    frameFile.getRenderableVersion()
-  );
-  const bufferResult = await streamToBuffer(readStream);
-  if (bufferResult.isErr()) {
-    return null;
+  return frameFile.getRenderableContent(workspace);
+}
+
+export async function computeAuthorizedFileAccessForShare(
+  auth: Authenticator,
+  frameFile: FileResource,
+  { frameContent }: { frameContent: string }
+): Promise<
+  Result<ComputedAuthorizedFileAccess, AuthorizedFileAccessShareError>
+> {
+  const authorized = await frameFile.computeAuthorizedFileAccess(auth, {
+    frameContent,
+  });
+
+  if (authorized.unverifiableRefs && authorized.unverifiableRefs.length > 0) {
+    return new Err(
+      unverifiableFrameFileRefsShareError(authorized.unverifiableRefs)
+    );
   }
 
-  return bufferResult.value.toString("utf-8") || null;
+  return new Ok(authorized);
 }
 
 /**
@@ -120,11 +129,13 @@ export async function readFrameFileContent(
  */
 export async function ensureAuthorizedFileAccessForShare(
   auth: Authenticator,
-  frameFile: FileResource
+  frameFile: FileResource,
+  { frameContent: suppliedFrameContent }: { frameContent?: string } = {}
 ): Promise<
   Result<ComputedAuthorizedFileAccess, AuthorizedFileAccessShareError>
 > {
-  const frameContent = await readFrameFileContent(auth, frameFile);
+  const frameContent =
+    suppliedFrameContent ?? (await readFrameFileContent(auth, frameFile));
   if (frameContent === null) {
     return new Err({
       name: "dust_error",
@@ -147,26 +158,27 @@ export async function ensureAuthorizedFileAccessForShare(
     return new Ok(active);
   }
 
-  const authorized = await frameFile.computeAuthorizedFileAccess(auth, {
-    frameContent,
-  });
-
-  if (authorized.unverifiableRefs && authorized.unverifiableRefs.length > 0) {
-    return new Err(
-      unverifiableFrameFileRefsShareError(authorized.unverifiableRefs)
-    );
+  const authorized = await computeAuthorizedFileAccessForShare(
+    auth,
+    frameFile,
+    {
+      frameContent,
+    }
+  );
+  if (authorized.isErr()) {
+    return authorized;
   }
 
-  await frameFile.persistAuthorizedFileAccess(authorized);
+  await frameFile.persistAuthorizedFileAccess(authorized.value);
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
     auth,
     frameFile,
-    authorized,
+    authorized.value,
     currentShareScope
   );
 
-  return new Ok(authorized);
+  return authorized;
 }
 
 type VizFileAuthorizationMode = "authorized" | "denied";

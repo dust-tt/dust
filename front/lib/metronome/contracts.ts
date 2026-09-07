@@ -86,7 +86,6 @@ export async function ensureMetronomeCustomerForWorkspace({
     if (updateResult.isErr()) {
       return new Err(updateResult.error);
     }
-    await WorkspaceResource.invalidateCache(workspace.sId);
   }
 
   // If a Stripe customer is provided, make sure the Metronome customer has a

@@ -81,7 +81,7 @@ export async function listSelectableSpaces(
     .filter((space) => space.isRegular())
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const enriched = await SpaceResource.batchToJSONEnriched(
+  const enriched = await SpaceResource.enrichSpacesWithAccess(
     auth,
     selectableSpaceResources
   );
@@ -140,7 +140,7 @@ export async function validateSelectableSpaces(
     );
   }
 
-  if (spaces.some((space) => !space.canRead(auth))) {
+  if (spaces.some((space) => !auth.can("read", space))) {
     return new Err(
       new SelectedConversationSpacesError(
         "space_not_found",
@@ -206,7 +206,7 @@ export async function addSelectedConversationSpaces(
         }
       );
 
-    const enriched = await SpaceResource.batchToJSONEnriched(
+    const enriched = await SpaceResource.enrichSpacesWithAccess(
       auth,
       selectedSpaces
     );
@@ -317,7 +317,7 @@ export async function addSelectedConversationSpaces(
         }
       );
 
-    const enriched = await SpaceResource.batchToJSONEnriched(
+    const enriched = await SpaceResource.enrichSpacesWithAccess(
       auth,
       allSelectedSpaces
     );
@@ -427,7 +427,7 @@ async function getValidSelectedSpaceIdsForAgentRun(
     );
 
   return selectedSpaces
-    .filter((space) => space.canRead(auth) && space.isRegular())
+    .filter((space) => auth.can("read", space) && space.isRegular())
     .map((space) => space.sId);
 }
 

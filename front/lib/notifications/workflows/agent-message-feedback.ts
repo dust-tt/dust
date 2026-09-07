@@ -91,7 +91,7 @@ const getFeedbackDetails = async ({
       });
 
       if (agentConfiguration) {
-        agentName = `@${agentConfiguration.name}`;
+        agentName = agentConfiguration.name;
       }
     }
   }

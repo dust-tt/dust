@@ -1,4 +1,4 @@
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 
 export interface PodMetadataType {
   sId: string;
@@ -7,11 +7,13 @@ export interface PodMetadataType {
   spaceId: string;
   description: string | null;
   archivedAt: number | null;
+  /** Hardcoded false — automated task generation removed; field kept for API compat. */
   todoGenerationEnabled: boolean;
+  /** Hardcoded null — automated task generation removed; field kept for API compat. */
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
-  frameTabs: PodFrameTab[];
-  /** System tab ids + frame paths before Settings. */
+  frameTabs: PodFileTab[];
+  /** System tab ids + file-tab paths before Settings. */
   tabsOrder: string[];
   defaultAgentId: string | null;
   defaultSkillIds: string[];

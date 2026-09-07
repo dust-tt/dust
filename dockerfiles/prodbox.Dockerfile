@@ -1,7 +1,7 @@
 FROM node:24.16.0 AS base
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential tmux
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential cmake tmux screen
 
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

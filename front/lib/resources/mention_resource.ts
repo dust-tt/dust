@@ -22,7 +22,8 @@ export interface AgentIdleRow {
   lastMentionedAt: Date | null;
 }
 
-// Narrowed rather than asserted, per [GEN4]. A failing row is dropped rather than trusted.
+// Narrowed rather than asserted, per [no-unsafe-type-assertions]. A failing row is dropped rather
+// than trusted.
 function isAgentIdleRow(row: unknown): row is AgentIdleRow {
   if (typeof row !== "object" || row === null) {
     return false;

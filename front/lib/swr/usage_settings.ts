@@ -86,14 +86,21 @@ async function patchCreditUsageConfiguration(
   }
 }
 
-export function useUsageSettings({ workspaceId }: { workspaceId: string }) {
+export function useUsageSettings({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
   const { fetcher } = useFetcher();
   const configurationFetcher: Fetcher<GetCreditUsageConfigurationResponseBody> =
     fetcher;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     getCreditUsageConfigurationEndpoint(workspaceId),
-    configurationFetcher
+    configurationFetcher,
+    { disabled }
   );
 
   const usageSettings: UsageSettings = {

@@ -82,7 +82,7 @@ logical agent is hard-deleted; version cleanup and archive leave grants unchange
 ### PR 10: Backfill agent editor grants
 
 Copy each legacy editor set into the final grant group, including archived agents. Make the script
-idempotent and report editor-set differences and authors who are not explicit editors.
+idempotent and report editor-set differences.
 
 ### PR 11: Shadow all grant-backed reads
 
@@ -131,6 +131,5 @@ Remove `GroupAgentModel` and its associations, then drop the table in a post-dep
 
 ### PR 18: Remove `isAuthor` as an authorization source
 
-Inspect authors without editor grants and decide how to handle those outliers. Then remove the
-fallback so explicit grants are the sole source of editorship; model ownership explicitly if the
-product needs it.
+Decide whether author outliers require handling, then remove the fallback so explicit grants are
+the sole source of editorship; model ownership explicitly if the product needs it.

@@ -13,7 +13,6 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
-  LightWorkspaceType,
   UserType,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
@@ -292,13 +291,14 @@ export async function getUserWithWorkspaces<T extends boolean>(
 }
 
 export async function determineUserRoleFromGroups(
-  workspace: LightWorkspaceType,
+  auth: Authenticator,
   user: UserResource
 ): Promise<MembershipRoleType> {
-  // Get all groups the user is a member of.
+  // Only directory-provisioned groups grant a role
   const userGroups = await GroupResource.listUserGroupsInWorkspace({
+    auth,
     user,
-    workspace,
+    groupKinds: ["provisioned"],
   });
 
   let atLeastManager = false;
@@ -312,8 +312,7 @@ export async function determineUserRoleFromGroups(
     }
   }
   // If we're here, the user is not in the admin group. Role precedence is
-  // admin > manager > user. The `dust-builders` group no longer grants a role: it is mirrored
-  // into the manual "Builders" group instead (see handleRoleAssignmentForGroup).
+  // admin > manager > user.
   if (atLeastManager) {
     return "manager";
   }

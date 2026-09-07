@@ -40,6 +40,10 @@ const MODEL_TIER_LOCKED_TOOLTIP =
   "Your current model access doesn't include this option. " +
   "Contact your administrator to get access.";
 
+export function getDegradedModelTooltip(displayName: string): string {
+  return `${displayName} is unstable right now. You may want to select another model.`;
+}
+
 // The three primary picks of the model picker. Each tier is backed by a
 // meta-model that is resolved to a concrete model at message-send time. Tier ids
 // keep the meta-model wording; `name` is what users see:
@@ -48,7 +52,7 @@ const MODEL_TIER_LOCKED_TOOLTIP =
 //   - "Premium"   -> auto_complex  (curated pool of powerful models)
 export type ModelTierId = "fast" | "standard" | "complex";
 
-interface ModelTierDefinition {
+export interface ModelTierDefinition {
   id: ModelTierId;
   metaModelId: ModelStreamIdType;
   name: string;
@@ -122,6 +126,11 @@ export function getTierLockReason(
 
   return null;
 }
+
+export function getTierIdForMetaModelId(modelId: string): ModelTierId | null {
+  return isModelStreamId(modelId) ? TIER_BY_META_MODEL_ID[modelId] : null;
+}
+
 export function getDefaultTierId(
   streamModels: EnabledModelConfigurationType[]
 ): ModelTierId {
@@ -132,6 +141,21 @@ export function getDefaultTierId(
   return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
+export function getReasoningEffortLabel(
+  effort: ReasoningEffort
+): string | null {
+  return effort === "none" ? null : capitalize(effort);
+}
+
+export function formatModelEffortLabel(
+  displayName: string,
+  effort: ReasoningEffort
+): string {
+  const effortLabel = getReasoningEffortLabel(effort);
+
+  return effortLabel ? `${displayName} ${effortLabel}` : displayName;
+}
+
 export function getTierResolvedModelLabel(
   tierId: ModelTierId,
   streams: ModelStreamResolutionsType | null
@@ -140,9 +164,10 @@ export function getTierResolvedModelLabel(
   if (!resolution) {
     return undefined;
   }
-  return resolution.reasoningEffort === "none"
-    ? resolution.displayName
-    : `${resolution.displayName} ${capitalize(resolution.reasoningEffort)}`;
+  return formatModelEffortLabel(
+    resolution.displayName,
+    resolution.reasoningEffort
+  );
 }
 
 // What the picker is currently showing, decoupled from the payload we send:
@@ -164,14 +189,37 @@ export interface MakerGroup {
   models: ModelConfigurationType[];
 }
 
-export type EffortLockReason = "unsupported" | "premium" | "model_tier";
+// A `SelectionDisplay` whose effort may be absent: the manage-agents filter
+// names a model without picking an effort for it.
+export type SelectedEntry =
+  | { kind: "tier"; tierId: ModelTierId }
+  | {
+      kind: "model";
+      model: ModelConfigurationType;
+      effort: ReasoningEffort | null;
+    };
 
-// One stop of the reasoning-effort slider. A stop is `locked` when the level is
-// not selectable; a null `lockedReason` explicitly means it is available.
+export type SelectedModelEntry = Extract<SelectedEntry, { kind: "model" }>;
+
+// What the menu highlights. The conversation picker passes a single display
+// plus the agent default; the manage-agents filter passes one per active
+// filter and no default.
+export interface ModelPickerSelectionModel {
+  selected: SelectedEntry[];
+  agentDefault: SelectionDisplay | null;
+  // Present only when the active selection can be reverted to the default.
+  onRevert?: () => void;
+}
+
+export type ModelLockReason = "premium" | "model_tier";
+export type EffortUnavailabilityReason = "unsupported" | ModelLockReason;
+
+// One stop of the reasoning-effort slider. A null reason means it is available.
+// Unsupported efforts are unavailable; premium and model-tier efforts are
+// locked behind access controls.
 export interface EffortStop {
   effort: ReasoningEffort;
-  locked: boolean;
-  lockedReason: EffortLockReason | null;
+  unavailabilityReason: EffortUnavailabilityReason | null;
 }
 
 // The reasoning-effort slider always presents these three canonical levels so
@@ -205,7 +253,7 @@ export function getModelKey(providerId: string, modelId: string): string {
 
 export function isModelSelection(
   model: ModelConfigurationType,
-  display: SelectionDisplay
+  display: SelectedEntry
 ): boolean {
   return (
     display.kind === "model" &&
@@ -216,9 +264,34 @@ export function isModelSelection(
 
 export function isTierDisplayed(
   tierId: ModelTierId,
-  display: SelectionDisplay
+  display: SelectedEntry
 ): boolean {
   return display.kind === "tier" && display.tierId === tierId;
+}
+
+export function isTierSelected(
+  tierId: ModelTierId,
+  selection: ModelPickerSelectionModel
+): boolean {
+  return selection.selected.some((display) => isTierDisplayed(tierId, display));
+}
+
+export function findSelectedModelEntry(
+  model: ModelConfigurationType,
+  selection: ModelPickerSelectionModel
+): SelectedModelEntry | undefined {
+  return selection.selected.find(
+    (entry): entry is SelectedModelEntry =>
+      entry.kind === "model" && isModelSelection(model, entry)
+  );
+}
+
+export function getSelectedModelEntries(
+  selection: ModelPickerSelectionModel
+): SelectedModelEntry[] {
+  return selection.selected.filter(
+    (entry): entry is SelectedModelEntry => entry.kind === "model"
+  );
 }
 
 // Display equality ignoring reasoning effort: two model displays for the same
@@ -277,8 +350,7 @@ export function getEffortStops(
     if (!allowed.has(effort)) {
       return {
         effort,
-        locked: true,
-        lockedReason: modelSupportsEffortStatically(
+        unavailabilityReason: modelSupportsEffortStatically(
           enabledModel.modelId,
           effort
         )
@@ -290,27 +362,30 @@ export function getEffortStops(
       lockPremiumEfforts &&
       getTierForModel(enabledModel.modelId, effort) === "premium"
     ) {
-      return { effort, locked: true, lockedReason: "premium" };
+      return { effort, unavailabilityReason: "premium" };
     }
-    return { effort, locked: false, lockedReason: null };
+    return { effort, unavailabilityReason: null };
   });
 }
 
 // The reasoning effort to use when a model is freshly selected: its default when
-// that is allowed, otherwise the first unlocked stop.
+// that is allowed, otherwise the first available stop.
 export function getInitialEffort(
   enabledModel: ModelConfigurationType,
-  { lockPremiumEfforts = false }: LockPremiumOptions = {}
+  options: LockPremiumOptions = {}
 ): ReasoningEffort {
-  const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
+  const stops = getEffortStops(enabledModel, options);
   const preferred = stops.find(
     (stop) =>
-      stop.effort === enabledModel.defaultReasoningEffort && !stop.locked
+      stop.effort === enabledModel.defaultReasoningEffort &&
+      stop.unavailabilityReason === null
   );
   if (preferred) {
     return preferred.effort;
   }
-  return stops.find((stop) => !stop.locked)?.effort ?? "none";
+  return (
+    stops.find((stop) => stop.unavailabilityReason === null)?.effort ?? "none"
+  );
 }
 
 function isReasoningModel(modelId: ModelIdType): boolean {
@@ -327,7 +402,9 @@ export function isPremiumModel(
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): boolean {
   const stops = getEffortStops(enabledModel, { lockPremiumEfforts });
-  const hasUsableSliderEffort = stops.some((stop) => !stop.locked);
+  const hasUsableSliderEffort = stops.some(
+    (stop) => stop.unavailabilityReason === null
+  );
 
   if (isReasoningModel(enabledModel.modelId) && !hasUsableSliderEffort) {
     return true;
@@ -337,15 +414,15 @@ export function isPremiumModel(
     return false;
   }
   const supportedSlider = stops.filter(
-    (stop) => stop.lockedReason !== "unsupported"
+    (stop) => stop.unavailabilityReason !== "unsupported"
   );
   if (supportedSlider.length > 0) {
-    return supportedSlider.every((stop) => stop.lockedReason === "premium");
+    return supportedSlider.every(
+      (stop) => stop.unavailabilityReason === "premium"
+    );
   }
   return getTierForModel(enabledModel.modelId, "none") === "premium";
 }
-
-export type ModelLockReason = "premium" | "model_tier";
 
 export function getModelLockReason(
   enabledModel: ModelConfigurationType,
@@ -370,11 +447,7 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
 }
 
 export function getEffortStopTooltip(stop: EffortStop): string | null {
-  if (!stop.locked) {
-    return null;
-  }
-
-  switch (stop.lockedReason) {
+  switch (stop.unavailabilityReason) {
     case "premium":
       return PREMIUM_MODEL_LOCKED_TOOLTIP;
     case "model_tier":
@@ -384,7 +457,7 @@ export function getEffortStopTooltip(stop: EffortStop): string | null {
     case null:
       return null;
     default:
-      assertNeverAndIgnore(stop.lockedReason);
+      assertNeverAndIgnore(stop.unavailabilityReason);
       return null;
   }
 }
@@ -397,9 +470,7 @@ export function getModelWithReasoningEffortLabel(
       return getModelTier(display.tierId).name;
     case "model": {
       const { model, effort } = display;
-      return effort === "none"
-        ? model.displayName
-        : `${model.displayName} ${capitalize(effort)}`;
+      return formatModelEffortLabel(model.displayName, effort);
     }
     default:
       assertNeverAndIgnore(display);

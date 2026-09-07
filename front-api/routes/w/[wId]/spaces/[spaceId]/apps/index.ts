@@ -60,7 +60,7 @@ app.post(
     const owner = auth.getNonNullableWorkspace();
 
     if (
-      !space.canWrite(auth) ||
+      !auth.can("write", space) ||
       !(await auth.hasWorkspacePermission("admin", "dust_app"))
     ) {
       return apiError(ctx, {

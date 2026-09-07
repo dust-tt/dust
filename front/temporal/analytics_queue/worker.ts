@@ -5,9 +5,11 @@ import {
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/analytics_queue/activities";
-import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import {
+  createTemporalWorker,
+  getWorkflowConfig,
+} from "@app/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import { QUEUE_NAME } from "./config";
 
@@ -19,7 +21,7 @@ const MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS = 16;
 export async function runAnalyticsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
-  const worker = await Worker.create({
+  const worker = await createTemporalWorker({
     ...getWorkflowConfig({
       workerName: "analytics_queue",
       getWorkflowsPath: () => require.resolve("./workflows"),

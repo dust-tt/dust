@@ -1,13 +1,19 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { AnalyticsConversationPanel } from "@app/components/workspace/analytics/AnalyticsConversationPanel";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionChartProps } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
 import type { ConsumptionOverviewProps } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
-import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import {
+  ConsumptionGranularitySelector,
+  ConsumptionPeriodSelector,
+} from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionSummaryProps } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
@@ -22,15 +28,24 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
 import {
   consumptionPeriodKey,
+  DEFAULT_CONSUMPTION_GRANULARITY,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { TrackingExtra } from "@app/lib/tracking";
 import {
@@ -39,18 +54,24 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import type { LightWorkspaceType } from "@app/types/user";
+import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 import {
+  Button,
   cn,
   LoadingBlock,
   Page,
+  ResizableSidePanel,
+  Robot,
   SafeSuspense,
   safeLazy,
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
+
+const MIN_CONTENT_WIDTH_WITH_PANEL_PX = 720;
 
 const LazyConsumptionChart = safeLazy(
   () =>
@@ -156,6 +177,13 @@ export function AnalyticsConsumptionPage() {
     filter: state.filter,
   });
 
+  const [isOpen, setIsOpen] = useState(false);
+
+  const { hasFeature } = useFeatureFlags();
+  const analyticsAssistantEnabled =
+    hasFeature("analytics_conversation_panel") &&
+    isWorkspaceAnalyticsEnabled(owner);
+
   useEffect(() => {
     trackEvent({
       area: TRACKING_AREAS.ANALYTICS,
@@ -164,6 +192,51 @@ export function AnalyticsConsumptionPage() {
       extra: { workspace_id: owner.sId },
     });
   }, [owner.sId]);
+
+  const { isNavigationBarOpen, setIsNavigationBarOpen } =
+    useDesktopNavigation();
+  const didFoldNavigationForPanelRef = useRef(false);
+
+  const foldNavigationForPanel = useCallback(() => {
+    if (isNavigationBarOpen) {
+      didFoldNavigationForPanelRef.current = true;
+      setIsNavigationBarOpen(false);
+    }
+  }, [isNavigationBarOpen, setIsNavigationBarOpen]);
+
+  const closePanel = () => {
+    setIsOpen(false);
+    if (didFoldNavigationForPanelRef.current) {
+      didFoldNavigationForPanelRef.current = false;
+      setIsNavigationBarOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    if (isNavigationBarOpen) {
+      didFoldNavigationForPanelRef.current = false;
+    }
+  }, [isNavigationBarOpen]);
+
+  const content = (
+    <AdminPageContainer className="relative">
+      {analyticsAssistantEnabled && !isOpen && (
+        <Button
+          variant="outline"
+          icon={Robot}
+          label="Ask @analyst"
+          className="absolute right-4 top-4 z-10 sm:right-10 sm:top-8"
+          onClick={() => setIsOpen(true)}
+        />
+      )}
+      <AnalyticsConsumptionContent
+        owner={owner}
+        state={{ ...state, filter }}
+        onAgentClick={setAgentDetailsId}
+        onSkillClick={setSkillDetailsId}
+      />
+    </AdminPageContainer>
+  );
 
   return (
     <>
@@ -179,12 +252,27 @@ export function AnalyticsConsumptionPage() {
         skillId={skillDetailsId}
         onClose={() => setSkillDetailsId(null)}
       />
-      <AnalyticsConsumptionContent
-        owner={owner}
-        state={{ ...state, filter }}
-        onAgentClick={setAgentDetailsId}
-        onSkillClick={setSkillDetailsId}
-      />
+      {analyticsAssistantEnabled ? (
+        <ResizableSidePanel
+          isOpen={isOpen}
+          onCollapse={closePanel}
+          minContentWidthPx={MIN_CONTENT_WIDTH_WITH_PANEL_PX}
+          onContentSqueezed={foldNavigationForPanel}
+          className="min-h-0 flex-1"
+          panel={
+            <AnalyticsConversationPanel
+              owner={owner}
+              user={user}
+              onClose={closePanel}
+              disabled={!isOpen}
+            />
+          }
+        >
+          <div className="h-full w-full overflow-y-auto">{content}</div>
+        </ResizableSidePanel>
+      ) : (
+        content
+      )}
     </>
   );
 }
@@ -223,9 +311,11 @@ export function AnalyticsConsumptionContent({
     filter,
     handleDimensionChange,
     period,
+    granularity,
     scopeFilter,
     setFilter,
     setPeriod,
+    setGranularity,
     shouldReduceMotion,
   } = state;
   const {
@@ -244,12 +334,32 @@ export function AnalyticsConsumptionContent({
     setPeriod(nextPeriod);
   };
 
+  const handleGranularityChange = (nextGranularity: ConsumptionGranularity) => {
+    trackAnalyticsClick(trackingWorkspaceId, "granularity_selector", {
+      granularity: nextGranularity,
+    });
+    setGranularity(nextGranularity);
+  };
+
   const handleFilterChange = (nextFilter: UsageFilter) => {
     trackAnalyticsClick(trackingWorkspaceId, "filter", {
       filter_action: "apply",
     });
     setFilter(nextFilter);
   };
+
+  const selectors = (
+    <div className="flex items-center gap-2">
+      <ConsumptionPeriodSelector
+        period={period}
+        onPeriodChange={handlePeriodChange}
+      />
+      <ConsumptionGranularitySelector
+        granularity={granularity}
+        onGranularityChange={handleGranularityChange}
+      />
+    </div>
+  );
 
   const header = embedded ? (
     <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
@@ -260,10 +370,7 @@ export function AnalyticsConsumptionContent({
           showError={showOverviewError}
         />
       </div>
-      <ConsumptionPeriodSelector
-        period={period}
-        onPeriodChange={handlePeriodChange}
-      />
+      {selectors}
     </div>
   ) : (
     <div className="flex w-full flex-row justify-between">
@@ -271,10 +378,7 @@ export function AnalyticsConsumptionContent({
         <Page.H variant="h3">{title}</Page.H>
         <OverviewComponent workspaceId={owner.sId} period={period} />
       </div>
-      <ConsumptionPeriodSelector
-        period={period}
-        onPeriodChange={handlePeriodChange}
-      />
+      {selectors}
     </div>
   );
 
@@ -332,6 +436,7 @@ export function AnalyticsConsumptionContent({
               <ChartComponent
                 workspaceId={owner.sId}
                 period={period}
+                granularity={granularity}
                 dimension={dimension}
                 filter={scopeFilter}
                 onModeChange={(mode) => {
@@ -399,10 +504,14 @@ export function useAnalyticsConsumptionState(
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
+  const [granularity, setGranularity] = useState<ConsumptionGranularity>(
+    DEFAULT_CONSUMPTION_GRANULARITY
+  );
   const { dimension: dimensionParam } = useQueryParams(["dimension"]);
   const dimension = consumptionDimensionFromQueryParam(dimensionParam.value);
   const [filter, setFilter] = useState<UsageFilter>({});
   const activePeriod = urlState?.period ?? period;
+  const activeGranularity = urlState?.granularity ?? granularity;
   const activeDimension = urlState?.dimension ?? dimension;
   const activeFilter = urlState?.filter ?? filter;
   const scopeFilter = toConsumptionScopeFilter(activeFilter);
@@ -415,10 +524,12 @@ export function useAnalyticsConsumptionState(
   return {
     dimension: activeDimension,
     filter: activeFilter,
+    granularity: activeGranularity,
     handleDimensionChange: urlState?.setDimension ?? handleDimensionChange,
     period: activePeriod,
     scopeFilter,
     setFilter: urlState?.setFilter ?? setFilter,
+    setGranularity: urlState?.setGranularity ?? setGranularity,
     setPeriod: urlState?.setPeriod ?? setPeriod,
     shouldReduceMotion,
   };

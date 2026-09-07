@@ -25,7 +25,6 @@ export function AgentCreatedDialog({
   agentId,
   owner,
 }: AgentCreatedDialogProps) {
-  const agentHandle = `@${agentName}`;
   const conversationQuery = `agent=${agentId}`;
 
   const conversationRoute = getConversationRoute(
@@ -38,10 +37,10 @@ export function AgentCreatedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Agent {agentHandle} created!</DialogTitle>
+          <DialogTitle>Agent {agentName} created!</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          You can now use {agentHandle} in conversations. Start a chat or keep
+          You can now use {agentName} in conversations. Start a chat or keep
           editing this agent.
         </DialogContainer>
         <DialogFooter

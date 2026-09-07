@@ -47,7 +47,7 @@ export function PokeConsumptionPreview({ owner }: PokeConsumptionPreviewProps) {
       showMemberGroupFilter={false}
       showOverviewError
       state={state}
-      usageHref={`/poke/${owner.sId}?tab=usage`}
+      usageHref={`/poke/${owner.sId}/pool-usage`}
       usageLinkLabel="View Usage"
     />
   );

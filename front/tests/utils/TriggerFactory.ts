@@ -53,7 +53,7 @@ export class TriggerFactory {
       webhookSourceViewId: options.webhookSourceViewId ?? null,
       spaceId: options.spaceId ?? null,
       origin: "user",
-      executionMode: options.executionMode ?? "user_pool",
+      executionMode: options.executionMode,
     });
 
     if (result.isErr()) {
@@ -85,7 +85,7 @@ export class TriggerFactory {
       configuration: options.configuration,
       webhookSourceViewId: null,
       origin: "user",
-      executionMode: options.executionMode ?? "user_pool",
+      executionMode: options.executionMode,
     });
 
     if (result.isErr()) {

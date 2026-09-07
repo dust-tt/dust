@@ -4,6 +4,7 @@ import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet"
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
@@ -24,7 +25,13 @@ import type {
   AgentUsageType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -45,6 +52,7 @@ import {
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext, HeaderContext } from "@tanstack/react-table";
+import capitalize from "lodash/capitalize";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -62,6 +70,8 @@ type RowData = {
   scope: AgentConfigurationScope;
   model: string;
   modelIcon: ComponentType | undefined;
+  modelConfig: ModelConfigurationType | null;
+  modelReasoningEffort: ReasoningEffort | undefined;
   onClick?: () => void;
   menuItems?: MenuItem[];
   agentTags: TagType[];
@@ -85,6 +95,8 @@ const ASSISTANTS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
     scope: "hidden",
     model: "",
     modelIcon: undefined,
+    modelConfig: null,
+    modelReasoningEffort: undefined,
     agentTags: [],
     agentTagsAsString: "",
     canArchive: false,
@@ -336,20 +348,53 @@ const getTableColumns = ({
       accessorKey: "model",
       cell: (info: CellContext<RowData, string>) => {
         const modelName = info.getValue() || "-";
-        const modelIcon = info.row.original.modelIcon;
+        const { modelIcon, modelConfig, modelReasoningEffort } =
+          info.row.original;
+
+        // Surface the reasoning effort the tier resolves at: two agents on the
+        // same model can be on different tiers because of it.
+        const reasoningEffort = modelConfig
+          ? getTieredReasoningEffort(modelConfig, modelReasoningEffort)
+          : null;
+        const tooltipLabel =
+          reasoningEffort && reasoningEffort !== "none"
+            ? `${modelName} ${capitalize(reasoningEffort)}`
+            : modelName;
+
+        // Streams are named after their tier: the chip alone carries the info.
+        const isStreamModel = modelConfig
+          ? isModelStreamId(modelConfig.modelId)
+          : false;
 
         return (
           <Tooltip
             tooltipTriggerAsChild
-            label={modelName}
+            label={tooltipLabel}
             trigger={
-              <div className="inline-flex">
+              // Full width so the cell constrains the flex chain: the name
+              // truncates instead of the chip being clipped at the cell edge.
+              <div className="inline-flex w-full min-w-0">
                 <DataTable.CellContent
+                  className="w-full min-w-0"
                   icon={modelIcon}
-                  iconClassName="mr-0 @xl:mr-2"
+                  iconClassName="mr-2"
                 >
-                  <span className="hidden @xl:inline">{modelName}</span>
-                  {!modelIcon && <span className="@xl:hidden">-</span>}
+                  <div className="flex min-w-0 items-center gap-2">
+                    {!isStreamModel && (
+                      <span className="hidden min-w-0 truncate @xl:inline">
+                        {modelName}
+                      </span>
+                    )}
+                    {!modelIcon && <span className="@xl:hidden">-</span>}
+                    {modelConfig && (
+                      <div className="shrink-0">
+                        <ModelTierChip
+                          model={modelConfig}
+                          reasoningEffort={modelReasoningEffort}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </DataTable.CellContent>
               </div>
             }
@@ -357,7 +402,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "hidden @sm:w-20 @sm:table-cell @xl:w-48",
+        className: "hidden @sm:w-28 @sm:table-cell @xl:w-56",
       },
     },
     {
@@ -634,6 +679,8 @@ export function AssistantsTable({
           modelIcon: modelConfig
             ? getModelMakerLogo(getModelMaker(modelConfig), isDark)
             : undefined,
+          modelConfig,
+          modelReasoningEffort: agentConfiguration.model.reasoningEffort,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
             agentConfiguration.tags.length > 0

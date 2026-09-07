@@ -1,0 +1,175 @@
+@cc [label:coding] reuse-mobile-patterns
+Favor re-using existing patterns (with broad refactors if necessary) over introducing new ones
+sporadically. Match the conventions already established in the codebase.
+
+@cc [label:coding] prefer-simple-mobile-solutions
+Favor simple and easy to understand approaches vs overly optimized but complex ones.
+
+@cc [label:swift] no-force-unwrap-or-cast
+Never use force unwraps (`!`) or force casts (`as!`).
+
+Force unwraps and force casts crash at runtime. Instead:
+
+- Use `guard let` / `if let` for optionals
+- Use `as?` with conditional binding for downcasts
+- Use `throws` to propagate errors to callers
+
+```swift
+// BAD
+let name = user.firstName!
+let scene = connectedScenes.first as! UIWindowScene
+
+// GOOD
+guard let name = user.firstName else { return }
+guard let scene = connectedScenes.first as? UIWindowScene else { return }
+```
+
+@cc [label:swift] no-silent-try-failures
+Never use `try!` or silently discard errors with `try?`.
+
+`try!` crashes on failure. `try?` silently discards the error. Instead:
+
+- Use `do/catch` and handle or propagate the error
+- `try?` is acceptable only when the failure case is explicitly handled (e.g., `guard let x = try? ... else { ... }`)
+
+```swift
+// BAD
+let data = try! encoder.encode(body)
+let _ = try? saveToKeychain(token)
+
+// GOOD
+let data = try encoder.encode(body)
+
+do {
+    try saveToKeychain(token)
+} catch {
+    logger.error("Keychain save failed: \(error)")
+}
+```
+
+@cc [label:swift] named-domain-values
+Don't scatter raw literals (strings, numbers, etc.) across the code when they carry domain meaning
+or appear in multiple places. Extract them into named constants, enums, or defaulted properties.
+
+```swift
+// BAD
+if retryCount > 3 { ... }
+TokenRefreshRequest(grantType: "refresh_token", refreshToken: token)
+
+// GOOD
+private let maxRetries = 3
+if retryCount > maxRetries { ... }
+
+struct TokenRefreshRequest: Encodable {
+    let grantType: String = "refresh_token"
+    let refreshToken: String
+}
+```
+
+@cc [label:swift] typed-json-serialization
+JSON serialization must use typed `Encodable`/`Decodable` structs (`Codable` when both are
+needed), never `[String: Any]`. Use `JSONEncoder`/`JSONDecoder` to ensure compile-time safety
+and eliminate key typos.
+
+```swift
+// BAD
+let body: [String: Any] = ["code": code, "code_verifier": verifier]
+request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+// GOOD
+struct TokenExchangeRequest: Encodable {
+    let code: String
+    let codeVerifier: String
+}
+request.httpBody = try encoder.encode(TokenExchangeRequest(code: code, codeVerifier: verifier))
+```
+
+@cc [label:swift] check-security-framework-results
+`SecRandomCopyBytes`, `SecItemAdd`, `SecItemDelete`, and similar Security framework functions
+return `OSStatus`. Always check the return value — never discard it with `_ =`.
+
+```swift
+// BAD
+_ = SecRandomCopyBytes(kSecRandomDefault, buffer.count, &buffer)
+
+// GOOD
+let status = SecRandomCopyBytes(kSecRandomDefault, buffer.count, &buffer)
+guard status == errSecSuccess else {
+    throw AuthError.pkceGenerationFailed
+}
+```
+
+@cc [label:architecture] views-receive-values-and-closures
+Leaf views (views that don't own navigation) should receive plain data values and action closures,
+not view models. Only container/root views should hold `@EnvironmentObject` or `@StateObject`
+references. This makes views testable, previewable, and decoupled from specific dependencies.
+
+```swift
+// BAD
+struct ProfileView: View {
+    @EnvironmentObject var authViewModel: AuthViewModel
+}
+
+// GOOD
+struct ProfileView: View {
+    let user: User
+    let onLogout: () -> Void
+}
+```
+
+@cc [label:architecture] view-models-use-service-interfaces
+ViewModels should go through service interfaces, not reach into lower layers directly.
+If `AuthService` wraps `KeychainService`, callers should use `AuthService` — never import
+`KeychainService` from a ViewModel.
+
+```swift
+// BAD (in ViewModel)
+let token = KeychainService.load(.accessToken)
+
+// GOOD (in ViewModel)
+let token = AuthService.loadTokens()?.accessToken
+```
+
+@cc [label:architecture] no-dead-code
+Do not leave dead code or no-op branches, including empty `if` blocks, commented-out logic, or
+branches that do not affect control flow. Implement the intended behavior or remove the code.
+
+```swift
+// BAD
+if !AuthService.isTokenExpired() {
+    // Token still valid — TODO: use directly
+}
+// falls through to refresh regardless
+
+// GOOD — either skip refresh or remove the check
+if !AuthService.isTokenExpired() {
+    state = .authenticated(cachedUser)
+    return
+}
+```
+
+@cc [label:concurrency] no-main-thread-sync-dispatch
+Never call `DispatchQueue.main.sync` from the main thread.
+
+This deadlocks. If you need to assert you're on the main thread, use `MainActor.assumeIsolated`.
+If you need to dispatch to main from a background thread, use `DispatchQueue.main.async` or
+`@MainActor`.
+
+@cc [label:concurrency] release-retained-resources-on-exit
+Retained resources must be cleaned up on every terminal path (success, error, and cancellation).
+Objects such as `ASWebAuthenticationSession` retained by a view model must be set to `nil` on
+each of these paths.
+
+@cc [label:logging] use-os-logger
+Use `os.Logger` for all logging, with the app subsystem and an appropriate category. Do not use
+`print()` or `debugPrint()`. This ensures logs are filterable in Console.app and structured for
+production diagnostics.
+
+```swift
+// BAD
+print("Token refresh failed: \(error)")
+
+// GOOD
+private let logger = Logger(subsystem: "com.dust.mobile", category: "Auth")
+logger.error("Token refresh failed: \(error)")
+```

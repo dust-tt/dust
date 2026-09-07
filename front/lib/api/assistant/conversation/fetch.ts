@@ -558,6 +558,10 @@ export async function listSpaceConversationsForSync(
       options: {
         dangerouslySkipPermissionFiltering: true, // System key has access
         includeDeleted: true,
+        // Sub-conversations (run_agent children) must not be indexed in the
+        // pod's data source: they would surface in search and leak in
+        // citations while being hidden from every conversation list.
+        onlyRootConversations: true,
         updatedSince: updatedSinceMs ?? undefined,
       },
     });

@@ -408,10 +408,7 @@ describe("computeAuthorizedFileAccess", () => {
       [globalGroup]
     );
 
-    const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-      key,
-      workspace.sId
-    );
+    const apiKeyAuth = await Authenticator.fromKey(key, workspace.sId);
     expect(apiKeyAuth.user()).toBeNull();
 
     const conversation = await ConversationFactory.create(userAuth, {

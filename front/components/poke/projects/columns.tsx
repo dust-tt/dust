@@ -51,13 +51,6 @@ export function makeColumnsForProjects(
       ),
     },
     {
-      accessorKey: "todoGenerationEnabled",
-      cell: ({ row }) => (row.original.todoGenerationEnabled ? "Yes" : "No"),
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Suggested tasks" />
-      ),
-    },
-    {
       accessorKey: "createdAt",
       cell: ({ row }) => formatTimestampToFriendlyDate(row.original.createdAt),
       header: ({ column }) => (

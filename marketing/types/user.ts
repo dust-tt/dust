@@ -1,4 +1,4 @@
-export type RoleType = "admin" | "builder" | "user" | "none";
+export type RoleType = "admin" | "manager" | "user" | "none";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 

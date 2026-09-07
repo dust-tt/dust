@@ -1,5 +1,6 @@
 import {
   ActionCardBlock,
+  ActionFrame,
   Download01,
   ArrowRight,
   AttachmentChip,
@@ -515,7 +516,7 @@ export function ConversationView({
   );
 
   const getCitationIcon = (
-    icon?: "table" | "document" | "slack" | "notion" | "image"
+    icon?: "table" | "document" | "slack" | "notion" | "image" | "frame"
   ) => {
     switch (icon) {
       case "table":
@@ -526,6 +527,8 @@ export function ConversationView({
         return NotionLogo;
       case "image":
         return Image01;
+      case "frame":
+        return ActionFrame;
       case "document":
       default:
         return File02;
@@ -1001,9 +1004,9 @@ export function ConversationView({
             </NewConversationContainer>
           </div>
           <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex justify-center">
-            <div className="pointer-events-auto w-full max-w-4xl px-4">
+            <div className="pointer-events-auto w-full max-w-4xl px-4 pb-2">
               <InputBar
-                className="shadow-xl"
+                isFloating
                 onSend={validationDisplayMode === "sheet" ? onSend : undefined}
               />
             </div>

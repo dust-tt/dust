@@ -156,6 +156,7 @@ export const AUDIT_ACTIONS = [
   "agent.archived",
   "agent.restored",
   "agent.scope_changed",
+  "agent.editors_updated",
   // Spaces.
   "space.accessed",
   "space.created",
@@ -173,6 +174,8 @@ export const AUDIT_ACTIONS = [
   // Slack workflows.
   "slack_workflow.allowed",
   "slack_workflow.revoked",
+
+  "webhook_source.deleted",
   // Files.
   "file.moved",
   "frame.authorized_files_updated",
@@ -382,6 +385,14 @@ export async function emitAuditLogEventDirect({
  * Uses the authenticated user when available, falls back to the API key.
  */
 export function buildAuditActor(auth: Authenticator): AuditLogActor {
+  if (auth.isDustSuperUser()) {
+    return {
+      type: "dust_super_user",
+      id: auth.getPokePrincipal().email,
+      name: auth.getPokePrincipal().name ?? undefined,
+    };
+  }
+
   const user = auth.user();
   if (user) {
     return {
@@ -425,7 +436,8 @@ type AuditTargetType =
   | "credential"
   | "mcp_connection"
   | "sandbox_env_var"
-  | "frame";
+  | "frame"
+  | "webhook_source";
 
 /**
  * Resource shape required for each audit target type.

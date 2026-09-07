@@ -1,5 +1,4 @@
-import type { RegionType } from "@app/types/region";
-
+import type { CellType } from "./cell";
 import type { MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import type { ActiveRoleType } from "./user";
@@ -27,7 +26,7 @@ export interface PendingInvitationOption {
   initialRole: ActiveRoleType;
   createdAt: number;
   isExpired: boolean;
-  region?: RegionType;
+  cell?: CellType;
 }
 
 // Types for the invite form in Poke.

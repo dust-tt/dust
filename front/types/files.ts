@@ -10,6 +10,7 @@ const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
 export const TABLE_PREFIX = "TABLE:";
 export const DUST_FILE_ID_HEADER = "X-Dust-File-Id";
+export const DUST_FILE_CONTENT_TYPE_HEADER = "X-Dust-File-Content-Type";
 
 export type FileStatus = "created" | "failed" | "ready";
 
@@ -63,6 +64,10 @@ export type FileUseCaseMetadata = {
   frameEntryRelPath?: string;
   // Immutable Frames v2 publication currently served by the Frame.
   activePublicationId?: string;
+  // Name and description from the manifest of the active publication. Refreshed on every
+  // activation, so they describe what is served, not what the source folder currently says.
+  frameName?: string;
+  frameDescription?: string;
 };
 
 export function isConversationFileUseCase(
@@ -751,6 +756,10 @@ const FRAME_V2_FILE_FORMATS = {
 
 type FrameV2FileContentType = keyof typeof FRAME_V2_FILE_FORMATS;
 
+export type FrameFileContentType =
+  | InteractiveContentFileContentType
+  | FrameV2FileContentType;
+
 const SANDBOX_FUNCTION_FILE_FORMATS = {
   [sandboxFunctionContentType]: {
     cat: "code",
@@ -845,6 +854,29 @@ export function isFrameV2ContentType(
   contentType: string
 ): contentType is FrameV2FileContentType {
   return contentType === frameV2ContentType;
+}
+
+export function isFrameContentType(
+  contentType: string
+): contentType is FrameFileContentType {
+  return (
+    isInteractiveContentType(contentType) || isFrameV2ContentType(contentType)
+  );
+}
+
+export function getFileDisplayName(file: {
+  contentType: string;
+  fileName: string;
+  useCaseMetadata?: FileUseCaseMetadata | null;
+}): string {
+  if (
+    isFrameV2ContentType(file.contentType) &&
+    file.useCaseMetadata?.frameName
+  ) {
+    return file.useCaseMetadata.frameName;
+  }
+
+  return file.fileName;
 }
 
 export function isAllSupportedFileContentType(

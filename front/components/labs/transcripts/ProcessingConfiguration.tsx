@@ -52,7 +52,7 @@ export function ProcessingConfiguration({
       sendNotification({
         type: "success",
         title: "Success!",
-        description: `The agent that will help you summarize your transcripts has been set to @${assistant.name}`,
+        description: `The agent that will help you summarize your transcripts has been set to ${assistant.name}`,
       });
       await mutateTranscriptsConfiguration();
     } else {

@@ -81,7 +81,7 @@ describe("submitCreateMCPServerDialogForm", () => {
       createWithURL: vi.fn(),
       createInternalMCPServer,
       onBeforeCreateServer: vi.fn(),
-      regionInfo: null,
+      cellInfo: null,
     });
 
     expect(result.isOk()).toBe(true);
@@ -124,7 +124,7 @@ describe("submitCreateMCPServerDialogForm", () => {
       createWithURL: vi.fn(),
       createInternalMCPServer,
       onBeforeCreateServer: vi.fn(),
-      regionInfo: null,
+      cellInfo: null,
     });
 
     expect(result.isOk()).toBe(true);
@@ -166,7 +166,7 @@ describe("submitCreateMCPServerDialogForm", () => {
         createWithURL,
         createInternalMCPServer: vi.fn(),
         onBeforeCreateServer: vi.fn(),
-        regionInfo: null,
+        cellInfo: null,
       });
 
     const firstResult = await submit(values, null);

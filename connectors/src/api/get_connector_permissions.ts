@@ -124,6 +124,14 @@ const _getConnectorPermissions = async (
             message: pRes.error.message,
           },
         });
+      case "CONNECTOR_OAUTH_USER_MUST_BE_ADMIN":
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "connector_oauth_user_must_be_admin",
+            message: pRes.error.message,
+          },
+        });
       case "RATE_LIMIT_ERROR":
         return apiError(req, res, {
           status_code: 429,

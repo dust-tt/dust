@@ -34,6 +34,12 @@ const EXCLUDED_PATHS = [
   "/oauth/",
 ];
 
+function isTrackablePathname(pathname: string): boolean {
+  return !EXCLUDED_PATHS.some(
+    (path) => pathname.startsWith(path) || pathname.endsWith(path)
+  );
+}
+
 interface PostHogTrackerProps {
   children: React.ReactNode;
   // When true, assume cookies are accepted (logged in users).
@@ -136,21 +142,17 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     };
   }, [activeSubscription]);
 
-  const isTrackablePage = !EXCLUDED_PATHS.some((path) => {
-    const pathname = router.pathname;
-    return pathname.startsWith(path) || pathname.endsWith(path);
-  });
+  const isTrackablePage = isTrackablePathname(router.pathname);
 
   const lastIdentifiedWorkspaceId = useRef<string | null>(null);
   const lastPlanPropertiesString = useRef<string | null>(null);
   const hasInitialized = useRef(false);
   const hasUpgradedPersistence = useRef(false);
   const lastIdentifiedUserId = useRef<string | null>(null);
-  const lastPageviewPathnameRef = useRef<string | null>(null);
 
-  // Phase 1: Initialize PostHog with memory-only persistence (no cookies).
-  // This captures events for all visitors including anonymous ad traffic,
-  // without setting any cookies or using localStorage (GDPR-compliant).
+  // Phase 1: Initialize PostHog. This captures events for all visitors,
+  // including anonymous ad traffic. Visitors who have not accepted cookies get
+  // sessionStorage persistence, which is cleared when the tab closes.
   useEffect(() => {
     if (
       !POSTHOG_KEY ||
@@ -163,24 +165,38 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     const cookieDomain = getPostHogCookieDomain();
 
-    // Use the persistent _dust_aid cookie as the initial distinct_id so that
-    // anonymous events share a stable identity across page loads. Without this,
-    // memory persistence generates a new throwaway distinct_id on every page
-    // load, and only the last one gets stitched when identify() fires — all
-    // prior anonymous browsing events are orphaned.
     const anonymousId = getOrCreateAnonymousId();
+
+    // PostHog keeps the session id ($sesid) in this store, so "memory" meant a
+    // new session_id on every page load and ~one pageview per session. Pick the
+    // store up front rather than starting in memory and upgrading in Phase 2:
+    // the Phase 2 switch clears the store it moves off, so a store we never
+    // read back at init would reset the session on the next load anyway.
+    const persistence = hasAcceptedCookies
+      ? "localStorage+cookie"
+      : "sessionStorage";
 
     posthog.init(POSTHOG_KEY, {
       api_host: `${config.getApiBaseUrl()}/subtle1`,
       person_profiles: "identified_only",
       defaults: "2025-05-24",
-      persistence: "memory",
-      ...(anonymousId ? { bootstrap: { distinctID: anonymousId } } : {}),
+      persistence,
+      // Pre-consent, use the persistent _dust_aid cookie as distinct_id so
+      // anonymous events share an identity across page loads and across
+      // dust.tt / app.dust.tt (sessionStorage is per-origin). Post-consent we
+      // must not bootstrap: posthog-js applies bootstrap.distinctID
+      // unconditionally at init, which would clobber an identified user's sId
+      // back to the anonymous id on every load. PostHog's own cross-subdomain
+      // cookie carries the identity there.
+      ...(anonymousId && !hasAcceptedCookies
+        ? { bootstrap: { distinctID: anonymousId } }
+        : {}),
       // Share PostHog cookies (including distinct_id) across all *.dust.tt
       // subdomains so the same identity persists through dust.tt → signin →
       // app.dust.tt. Takes effect when persistence upgrades to cookie in Phase 2.
       ...(cookieDomain ? { cookie_domain: cookieDomain } : {}),
-      capture_pageview: true,
+      // Capture client-side navigations, inclusive of initial load, but exclusive of superficial updates (ex: ?q=):
+      capture_pageview: "history_change",
       capture_pageleave: false,
       autocapture: false,
       disable_session_recording: true,
@@ -190,10 +206,19 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
           return null;
         }
 
+        // isTrackablePage only gates initialization; with capture_pageview:
+        // "history_change" posthog-js captures client-side navigations on its
+        // own, so excluded paths have to be filtered per-event.
+        if (
+          event.event === "$pageview" &&
+          !isTrackablePathname(window.location.pathname)
+        ) {
+          return null;
+        }
+
         // Inject marketing parameters from sessionStorage/cookies into every
-        // event. This is needed because memory persistence can't auto-capture
-        // UTM params across page loads, and URLs may have been stripped by
-        // useStripUtmParams.
+        // event, since useStripUtmParams may have removed them from the URL
+        // before PostHog saw it.
         const storedParams = getStoredUTMParams();
         for (const param of MARKETING_PARAMS) {
           const storedValue = storedParams[param];
@@ -204,10 +229,9 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
         // Populate PostHog's built-in "Initial UTM" person properties via
         // $set_once. The SDK auto-captures these from the URL, but since we
-        // strip UTMs before PostHog sees them AND memory persistence resets
-        // across page loads (dust.tt -> app.dust.tt), the SDK fills them
-        // with null. Null counts as "set" for $set_once, permanently
-        // locking in the wrong value, so we need to override event.$set_once.
+        // strip UTMs before PostHog sees them, it fills them with null. Null
+        // counts as "set" for $set_once, permanently locking in the wrong
+        // value, so we need to override event.$set_once.
         if (event.$set_once) {
           // Strip null $initial_* entries auto-generated by posthog-js so
           // they don't permanently claim the key with a null value.
@@ -297,7 +321,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     });
 
     hasInitialized.current = true;
-  }, [isTrackablePage]);
+  }, [hasAcceptedCookies, isTrackablePage]);
 
   // Identify the user as soon as possible after auth completes — NOT gated on
   // cookie consent. identify() is a first-party operation on an already-
@@ -356,7 +380,9 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   }, [user, posthogId]);
 
   // Phase 2: Upgrade to full cookie persistence and enable session recording
-  // once the user has accepted cookies (consent banner or login).
+  // when consent is granted mid-visit (consent banner or login). Visitors who
+  // were already consented at init started there, so only the recording and
+  // super-property parts do anything for them.
   useEffect(() => {
     if (
       !posthog.__loaded ||
@@ -422,34 +448,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     isAdmin,
     currentWorkspace?.role,
   ]);
-
-  // Track pageviews on client navigations when the pathname changes. Shallow
-  // query updates (e.g. space search `?q=`) still fire routeChangeComplete but
-  // must not emit a new $pageview.
-  useEffect(() => {
-    if (!posthog.__loaded || !isTrackablePage) {
-      return;
-    }
-
-    lastPageviewPathnameRef.current = router.pathname;
-
-    const handleRouteChange = () => {
-      const pathname = router.pathname;
-
-      if (pathname === lastPageviewPathnameRef.current) {
-        return;
-      }
-
-      lastPageviewPathnameRef.current = pathname;
-
-      posthog.capture("$pageview");
-    };
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.events, router.pathname, isTrackablePage]);
 
   return null;
 }

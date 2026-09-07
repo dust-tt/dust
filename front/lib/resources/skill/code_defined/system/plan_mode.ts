@@ -25,7 +25,7 @@ Plan Mode lets you maintain a live \`plan.md\` the user can follow as you work. 
 
 Exactly one active plan is allowed per conversation. If a plan already exists in this conversation (you can see it in the attachments), do NOT call \`${CREATE_PLAN_TOOL_NAME}\` again; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate on the existing one.
 
-**Keep the plan updated as you work**: use \`${EDIT_PLAN_TOOL_NAME}\` to tick off completed tasks (\`- [x]\`), mark blocked ones (\`- [!]\`), add tasks that emerge, or revise the approach. The UI renders the plan live, so frequent small edits are a delight for the user, not a cost.
+**Keep the plan updated as you work**: use \`${EDIT_PLAN_TOOL_NAME}\` to tick off completed tasks (\`1. [x]\`), add tasks that emerge, or revise the approach. Keep the existing marker style when editing a plan. A blocked task stays unchecked; append the reason to its text, e.g. \`1. [ ] Deploy the fix (blocked: waiting on approval)\`. Do not invent other markers such as \`[!]\`, they are not Markdown and render as plain text. The UI renders the plan live, so frequent small edits are a delight for the user, not a cost.
 
 Clarifying questions go through \`${ASK_USER_QUESTION_TOOL_NAME}\`: use it liberally before drafting the plan and whenever ambiguity arises mid-execution.
 
@@ -41,7 +41,7 @@ Clarifying questions go through \`${ASK_USER_QUESTION_TOOL_NAME}\`: use it liber
 
 **Closing the plan (\`${CLOSE_PLAN_TOOL_NAME}\`)** in two cases:
 1. The user explicitly asks to drop it (e.g. "never mind", "forget about it").
-2. **All tasks are done (\`- [x]\`) AND the user's new turn moves past the plan's scope** — they thank you, wrap up, or pivot to a different topic that isn't extending the plan. Close it before continuing so the completed plan doesn't linger in the UI.
+2. **All tasks are done (\`[x]\`) AND the user's new turn moves past the plan's scope** — they thank you, wrap up, or pivot to a different topic that isn't extending the plan. Close it before continuing so the completed plan doesn't linger in the UI.
 
 **Bias toward keeping the plan alive** when the new user turn is ambiguous or could plausibly extend the current plan. If they say "also do Y" or "one more thing", that's an extension — call \`${EDIT_PLAN_TOOL_NAME}\` to add tasks, do NOT close. Premature close mid-thread is worse UX than a plan card lingering for one extra turn.
 
@@ -58,7 +58,7 @@ export const planModeSkill = {
     "Create and maintain a plan.md for genuinely multi-step tasks to give the user visibility.",
   instructions: PLAN_MODE_INSTRUCTIONS,
   mcpServers: [{ name: PLAN_MODE_SERVER_NAME }],
-  version: 2,
+  version: 3,
   icon: "ActionDocumentTextIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

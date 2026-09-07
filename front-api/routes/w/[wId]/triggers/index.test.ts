@@ -70,6 +70,7 @@ async function createScheduleTrigger(
 describe("POST /api/w/:wId/triggers (spaceId)", () => {
   it("creates a trigger scoped to an open pod", async () => {
     const { workspace, user, globalGroup } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -99,6 +100,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
 
   it("creates a trigger scoped to a restricted pod the user is a member of", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -165,6 +167,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
 
   it("creates a trigger with no pod (backward compatible default)", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -207,6 +210,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
 describe("PATCH /api/w/:wId/triggers (spaceId)", () => {
   it("updates an existing trigger to run inside a Pod", async () => {
     const { workspace, user, globalGroup } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -241,6 +245,7 @@ describe("PATCH /api/w/:wId/triggers (spaceId)", () => {
 
   it("rejects updating a trigger to a Pod the user is not a member of", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -281,6 +286,7 @@ describe("PATCH /api/w/:wId/triggers (disabled_by_manager)", () => {
 
   it("rejects a non-admin editor re-enabling an admin-locked trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -302,6 +308,7 @@ describe("PATCH /api/w/:wId/triggers (disabled_by_manager)", () => {
 
   it("rejects a non-admin editor re-enabling a relocating trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -375,6 +382,7 @@ describe("PATCH /api/w/:wId/triggers (disabled_by_manager)", () => {
 
   it("lets an editor save other fields of a system-disabled trigger, status echoed unchanged", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -442,6 +450,7 @@ describe("PATCH /api/w/:wId/triggers (disabled_by_manager)", () => {
 
   it("lets a non-admin editor edit other fields of an admin-locked trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "POST",
       role: "user",
     });
@@ -544,6 +553,7 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
 
   it("rejects an update to the workspace pool without the permission", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "user",
     });
@@ -594,5 +604,40 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
     expect(response.status).toBe(204);
     const updated = await TriggerResource.fetchById(auth, trigger.sId);
     expect(updated?.executionMode).toBe("workspace_pool");
+  });
+  it("keeps a legacy plan user pool trigger editable when the pool is unchanged", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await TriggerFactory.schedule(auth, {
+      agentConfigurationId: agent.sId,
+      configuration: { type: "cron", cron: "0 9 * * *", timezone: "UTC" },
+      executionMode: "workspace_pool",
+    });
+    await TriggerResource.update(auth, trigger.sId, {
+      executionMode: "user_pool",
+    });
+
+    const body = scheduleTriggerBody(null);
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [
+        {
+          ...body.triggers[0],
+          sId: trigger.sId,
+          executionMode: "user_pool",
+        },
+      ],
+    });
+
+    expect(response.status).toBe(204);
+    const updated = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(updated?.executionMode).toBe("user_pool");
+    expect(updated?.name).toBe(body.triggers[0].name);
   });
 });

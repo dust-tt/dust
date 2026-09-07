@@ -117,6 +117,7 @@ export async function runSandboxFunctionToolActivity(
                 ? "remote"
                 : "internal",
               mcp_server_name: action.toolConfiguration.mcpServerName,
+              action_id: action.sId,
               ...buildSandboxFunctionAuditMetadata(invocation),
               initiating_user_id: auth.user()?.sId ?? "unknown",
               initiating_user_email: auth.user()?.email ?? "unknown",

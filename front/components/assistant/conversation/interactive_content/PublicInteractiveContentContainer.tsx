@@ -3,11 +3,17 @@ import { PublicFrameRenderer } from "@app/components/assistant/conversation/inte
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import Custom404 from "@app/components/pages/Custom404";
 import { usePublicFrame } from "@app/lib/swr/frames";
-import { frameContentType, frameSlideshowContentType } from "@app/types/files";
+import {
+  frameContentType,
+  frameSlideshowContentType,
+  frameV2ContentType,
+} from "@app/types/files";
 import { Spinner } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentContainerProps {
   shareToken: string;
+  // Display name of the Frame, resolved by the share metadata endpoint.
+  title: string;
   workspaceId: string;
   vizUrl: string;
   logoUrl?: string | null;
@@ -21,6 +27,7 @@ interface PublicInteractiveContentContainerProps {
  */
 export function PublicInteractiveContentContainer({
   shareToken,
+  title,
   workspaceId,
   vizUrl,
   logoUrl,
@@ -48,10 +55,16 @@ export function PublicInteractiveContentContainer({
     switch (frameMetadata.contentType) {
       case frameContentType:
       case frameSlideshowContentType:
+      case frameV2ContentType:
         return (
           <PublicFrameRenderer
             fileId={frameMetadata.sId}
-            fileName={frameMetadata.fileName}
+            frameId={
+              frameMetadata.contentType === frameV2ContentType
+                ? frameMetadata.sId
+                : undefined
+            }
+            title={title}
             shareToken={shareToken}
             workspaceId={workspaceId}
             vizUrl={vizUrl}

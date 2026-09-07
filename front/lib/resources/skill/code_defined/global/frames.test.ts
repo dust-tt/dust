@@ -63,6 +63,18 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("dsbx frame publish");
     expect(instructions).toContain("dsbx frame create");
     expect(instructions).toContain("dsbx frame register");
+    expect(instructions).toContain("dsbx frame share-link");
+    expect(instructions).toContain("dsbx frame call");
+    expect(instructions).toContain("stable Frame ID");
+    expect(instructions).toContain("additionally requires read access");
+    expect(instructions).toContain("does not test the Frame");
+    expect(instructions).toContain("dsbx frame validate");
+    expect(instructions).toContain(
+      "Frame sharing and use rights are configured by the user in the Dust UI"
+    );
+    expect(instructions).toContain("This command is read-only");
+    expect(instructions).not.toContain("--scope");
+    expect(instructions).not.toContain("--email");
     expect(instructions).toContain("package-like folder");
     expect(instructions).toContain("canonical Frame resource");
     expect(instructions).toContain("`index.tsx` by default");
@@ -80,9 +92,34 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("legacy Frame");
     expect(instructions).toContain("<frame>.tsx");
     expect(instructions).toContain(
+      "Chat apps, task lists, trackers, forms, CRUD apps"
+    );
+    expect(instructions).toContain(
+      "Do not store durable application state in memory; use a Frame database"
+    );
+    expect(instructions).toContain(
+      "Use the Computer to create and edit their source"
+    );
+    expect(instructions).toContain("Do not pass the convenience aliases");
+    expect(instructions).toContain("`/files/conversation` or `/files/pod`");
+    expect(instructions).toContain(
+      "Never run concurrent file mutations against the same path"
+    );
+    expect(instructions).toContain(
+      "Do not replace an entire UI or function for a localized"
+    );
+    expect(instructions).toContain(
+      "mark required fields in a newly created table as `.notNull()`"
+    );
+    expect(instructions).toContain("shared Zod domain");
+    expect(instructions).toContain("instead of `bun build`");
+    expect(instructions).toContain(
       "Other interactive-content tools remain available"
     );
-    expect(framesSkill.mcpServers).toEqual([{ name: "interactive_content" }]);
+    expect(framesSkill.mcpServers).toEqual([
+      { name: "interactive_content" },
+      { name: "conversation_side_panel" },
+    ]);
     await expect(
       InternalMCPServerInMemoryResource.isRestrictedForWorkspace(
         auth,

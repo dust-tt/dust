@@ -1,4 +1,4 @@
-import { EditPodFrameTabDialog } from "@app/components/pod/files/EditPodFrameTabDialog";
+import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
 import { PodPageContent } from "@app/components/pod/PodPageContent";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -18,14 +18,14 @@ import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
   buildPodNavItemsBeforeSettings,
-  makePodFrameTabValue,
+  makePodFileTabValue,
   normalizeTabsOrder,
-  parsePodFrameTabPath,
-  sortPodFrameTabs,
-} from "@app/types/pod_frame_tab";
+  parsePodFileTabPath,
+  sortPodFileTabs,
+} from "@app/types/pod_file_tab";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   CheckCircle,
@@ -35,7 +35,6 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  PuzzlePiece01,
   Settings01,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -54,10 +53,6 @@ const SYSTEM_TAB_TRIGGERS = {
     label: "Files",
     icon: Folder,
   },
-  apps: {
-    label: "Apps",
-    icon: PuzzlePiece01,
-  },
   connected_data: {
     label: "Connected Data",
     icon: CloudArrowLeftRight,
@@ -71,13 +66,8 @@ export function PodPage() {
   const podId = useActivePodId();
   const { podKind } = useActivationPod({ workspaceId: owner.sId, podId });
   const isGoalPod = podKind === "goal";
-  const hasFrameTabs = hasFeature("pod_frame_tabs");
-  // Pod Apps sit on top of Pod Functions, so both flags are required.
-  const hasApps =
-    hasFeature("sandbox_functions") && hasFeature("pod_applications");
-  const [editingFrameTab, setEditingFrameTab] = useState<PodFrameTab | null>(
-    null
-  );
+  const hasFileTabs = hasFeature("pod_frame_tabs");
+  const [editingFileTab, setEditingFileTab] = useState<PodFileTab | null>(null);
 
   const {
     spaceInfo: podInfo,
@@ -105,53 +95,45 @@ export function PodPage() {
     isAdminControlled: podInfo?.isAdminControlled,
   });
 
-  const frameTabs = useMemo(
-    () => (hasFrameTabs ? sortPodFrameTabs(podInfo?.frameTabs ?? []) : []),
-    [hasFrameTabs, podInfo?.frameTabs]
+  const fileTabs = useMemo(
+    () => (hasFileTabs ? sortPodFileTabs(podInfo?.frameTabs ?? []) : []),
+    [hasFileTabs, podInfo?.frameTabs]
   );
 
   const tabsOrder = useMemo(
     () =>
-      hasFrameTabs
+      hasFileTabs
         ? normalizeTabsOrder(
             podInfo?.tabsOrder ?? [],
-            frameTabs.map((tab) => tab.path)
+            fileTabs.map((tab) => tab.path)
           )
         : [],
-    [frameTabs, hasFrameTabs, podInfo?.tabsOrder]
+    [fileTabs, hasFileTabs, podInfo?.tabsOrder]
   );
 
   const navVisibility = useMemo(
     () => ({
       includeConnectedData: !!podInfo?.isAdminControlled,
-      includeApps: hasApps,
     }),
-    [podInfo?.isAdminControlled, hasApps]
+    [podInfo?.isAdminControlled]
   );
 
   const navItemsBeforeSettings = useMemo(
-    () => buildPodNavItemsBeforeSettings(frameTabs, tabsOrder, navVisibility),
-    [frameTabs, tabsOrder, navVisibility]
+    () => buildPodNavItemsBeforeSettings(fileTabs, tabsOrder, navVisibility),
+    [fileTabs, tabsOrder, navVisibility]
   );
 
-  // Drop an Apps selection (persisted preference or deep link) when the flag is off.
-  useEffect(() => {
-    if (currentTab === "apps" && !hasApps) {
-      handleTabChange("conversations");
-    }
-  }, [currentTab, handleTabChange, hasApps]);
-
-  // Drop frame-tab selection when the flag is off or the tab was removed
+  // Drop file-tab selection when the flag is off or the tab was removed
   // (including restored preference pointing at a deleted tab).
   useEffect(() => {
-    const framePath = parsePodFrameTabPath(currentTab);
-    if (!framePath) {
+    const filePath = parsePodFileTabPath(currentTab);
+    if (!filePath) {
       return;
     }
-    if (!hasFrameTabs || !frameTabs.some((tab) => tab.path === framePath)) {
+    if (!hasFileTabs || !fileTabs.some((tab) => tab.path === filePath)) {
       handleTabChange("conversations");
     }
-  }, [currentTab, frameTabs, handleTabChange, hasFrameTabs]);
+  }, [currentTab, fileTabs, handleTabChange, hasFileTabs]);
 
   if (isPodsInfoLoading) {
     return (
@@ -209,8 +191,8 @@ export function PodPage() {
                     </NavTabPillTrigger>
                   );
                 }
-                case "frame": {
-                  const tabValue = makePodFrameTabValue(item.tab.path);
+                case "file": {
+                  const tabValue = makePodFileTabValue(item.tab.path);
                   return (
                     <NavTabPillTrigger
                       key={item.tab.path}
@@ -219,7 +201,7 @@ export function PodPage() {
                       onPointerDown={() => {
                         // Re-click of the already-active tab opens the editor.
                         if (podInfo.isEditor && currentTab === tabValue) {
-                          setEditingFrameTab(item.tab);
+                          setEditingFileTab(item.tab);
                         }
                       }}
                     >
@@ -258,23 +240,22 @@ export function PodPage() {
           podUiPreferences={podUiPreferences}
           setPodUiPreferences={setPodUiPreferences}
           mutatePodInfo={mutatePodInfo}
-          frameTabs={frameTabs}
-          hasApps={hasApps}
+          fileTabs={fileTabs}
         />
       </NavTabPill>
 
-      {editingFrameTab && (
-        <EditPodFrameTabDialog
-          key={editingFrameTab.path}
+      {editingFileTab && (
+        <EditPodFileTabDialog
+          key={editingFileTab.path}
           owner={owner}
           podId={podInfo.sId}
-          frameTabs={frameTabs}
+          fileTabs={fileTabs}
           tabsOrder={tabsOrder}
           isEditor={podInfo.isEditor}
           navVisibility={navVisibility}
-          tab={editingFrameTab}
+          tab={editingFileTab}
           isOpen
-          onClose={() => setEditingFrameTab(null)}
+          onClose={() => setEditingFileTab(null)}
         />
       )}
     </div>

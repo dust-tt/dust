@@ -1,0 +1,35 @@
+@cc [label:coding] hive-task-scope
+Make only the changes required for the task. Avoid opportunistic refactors.
+
+@cc [label:coding] hive-const
+Use `const` by default; use `let` only when reassignment is required.
+
+@cc [label:coding] hive-strict-types
+Strict mode is expected. Do not introduce `any`.
+
+@cc [label:coding] hive-no-non-null-assertions
+Avoid non-null assertions (`!`).
+
+@cc [label:coding] hive-type-imports
+Use `import type` for type-only imports.
+
+@cc [label:error-handling] hive-fail-fast
+Do not hide or paper over errors with defaults. If a value is required, fail fast with a clear error.
+
+@cc [label:error-handling] hive-no-swallowed-errors
+Never swallow errors (empty `catch`, or log-and-continue) unless the caller explicitly accepts partial failure.
+
+@cc [label:error-handling] hive-catch-scope
+Only wrap the minimal statement that can throw. Do not wrap whole functions in `try/catch`.
+
+@cc [label:error-handling] hive-no-false-success
+Do not convert failures into success (e.g., returning `Ok` after a failed step).
+
+@cc [label:cli] hive-cli-boundary
+Keep CLI concerns (printing usage, exiting) in `src/index.ts`; library helpers should return data or `Result`.
+
+@cc [label:architecture] hive-centralized-config
+Prefer centralized config/registry data over duplicating lists or constants in multiple files.
+
+@cc [label:coding] hive-comments
+Add comments only when logic is non-obvious. Keep them short and focused.

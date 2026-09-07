@@ -40,7 +40,10 @@ import {
   PRO_SEAT_CREDIT_NAME,
   USAGE_TAG,
 } from "@app/lib/metronome/setup_common";
-import type { BillingFrequency } from "@app/lib/metronome/types";
+import type {
+  BillingFrequency,
+  MetronomeSeatBalance,
+} from "@app/lib/metronome/types";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -50,7 +53,7 @@ import { heartbeat } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   bestEffortInvalidateCacheWithRedis,
-  cacheWithRedis,
+  cacheWithRedisResult,
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -2431,7 +2434,7 @@ export async function buildSeatDataByUserId({
   return new Ok(seatDataByUserId);
 }
 
-const SEAT_DATA_CACHE_TTL_MS = 60 * 1000;
+const SEAT_DATA_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const seatDataCacheResolver = ({
   metronomeCustomerId,
@@ -2444,13 +2447,12 @@ const seatDataCacheResolver = ({
 async function fetchSeatDataRecord(args: {
   metronomeCustomerId: string;
   contractId: string;
-}): Promise<Record<string, SeatData>> {
+}): Promise<Result<Record<string, SeatData>, Error>> {
   const seatDataResult = await buildSeatDataByUserId(args);
-  // Throw at the cache boundary so a transient fetch failure is not cached.
   if (seatDataResult.isErr()) {
-    throw seatDataResult.error;
+    return new Err(seatDataResult.error);
   }
-  return Object.fromEntries(seatDataResult.value);
+  return new Ok(Object.fromEntries(seatDataResult.value));
 }
 
 // At most one Metronome fan-out in flight per contract fleet-wide: concurrent
@@ -2458,10 +2460,11 @@ async function fetchSeatDataRecord(args: {
 // their own contract + per-subscription seat reads. Best-effort past the
 // distributed lock's 5s TTL: a fan-out slower than that lets a second fetcher
 // start, so the bound is "a couple in flight", never a storm.
-export const getCachedSeatDataByUserId = cacheWithRedis(
+export const getCachedSeatDataByUserId = cacheWithRedisResult(
   fetchSeatDataRecord,
   seatDataCacheResolver,
   {
+    cacheId: fetchSeatDataRecord.name,
     ttlMs: SEAT_DATA_CACHE_TTL_MS,
     useDistributedLock: true,
     skipIfLocked: true,
@@ -2472,4 +2475,43 @@ const invalidateCachedSeatDataByUserId = bestEffortInvalidateCacheWithRedis(
   fetchSeatDataRecord,
   seatDataCacheResolver,
   "members-usage seat data"
+);
+
+const SEAT_BALANCES_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const seatBalancesCacheResolver = ({
+  metronomeCustomerId,
+  metronomeContractId,
+  seatIds,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  seatIds: string[];
+}) =>
+  `${metronomeCustomerId}-${metronomeContractId}-${[...seatIds].sort().join(",")}`;
+
+async function fetchSeatBalances(args: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  seatIds: string[];
+}): Promise<Result<MetronomeSeatBalance[], Error>> {
+  const balancesResult = await listMetronomeSeatBalances(args);
+  if (balancesResult.isErr()) {
+    return new Err(balancesResult.error);
+  }
+  return new Ok(balancesResult.value);
+}
+
+// Same fleet-wide single-flight rationale as `getCachedSeatDataByUserId`: concurrent
+// misses on other processes get null (callers degrade) instead of each firing their
+// own Metronome seat-balances fan-out for the same page of members.
+export const getCachedSeatBalances = cacheWithRedisResult(
+  fetchSeatBalances,
+  seatBalancesCacheResolver,
+  {
+    cacheId: fetchSeatBalances.name,
+    ttlMs: SEAT_BALANCES_CACHE_TTL_MS,
+    useDistributedLock: true,
+    skipIfLocked: true,
+  }
 );

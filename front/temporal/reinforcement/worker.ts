@@ -9,7 +9,10 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import {
+  createTemporalWorker,
+  getWorkflowConfig,
+} from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/reinforcement/activities";
 import { isDevelopment } from "@app/types/shared/env";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -19,7 +22,6 @@ import {
   OpenTelemetryActivityInboundInterceptor,
   OpenTelemetryActivityOutboundInterceptor,
 } from "@temporalio/interceptors-opentelemetry/lib/worker";
-import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 
@@ -35,7 +37,7 @@ export async function runReinforcementWorker() {
 
   const spanExporter = new NoopSpanExporter();
 
-  const worker = await Worker.create({
+  const worker = await createTemporalWorker({
     ...getWorkflowConfig({
       workerName: "reinforcement",
       getWorkflowsPath: () => require.resolve("./workflows"),

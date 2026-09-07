@@ -1,7 +1,6 @@
 import type { GetProvisioningStatusResponseBody } from "@app/lib/api/workspace";
 import {
   ADMIN_GROUP_NAME,
-  BUILDER_GROUP_NAME,
   GroupResource,
   MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
@@ -21,7 +20,6 @@ app.get("/", async (ctx): HandlerResult<GetProvisioningStatusResponseBody> => {
   return ctx.json({
     hasAdminGroup: groups.some((g) => g.name === ADMIN_GROUP_NAME),
     hasManagerGroup: groups.some((g) => g.name === MANAGER_GROUP_NAME),
-    hasBuilderGroup: groups.some((g) => g.name === BUILDER_GROUP_NAME),
   });
 });
 

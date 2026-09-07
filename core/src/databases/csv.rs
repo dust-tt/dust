@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use cloud_storage::Object;
 use csv_async::AsyncReaderBuilder;
 use futures::stream::StreamExt;
 use lazy_static::lazy_static;
@@ -12,7 +11,7 @@ use tokio_util::compat::TokioAsyncReadCompatExt;
 use tracing::info;
 use unicode_normalization::UnicodeNormalization;
 
-use crate::{databases::table::Row, utils};
+use crate::{databases::table::Row, gcs_client::gcs_client, utils};
 
 pub struct GoogleCloudStorageCSVContent {
     pub bucket: String,
@@ -33,7 +32,7 @@ impl GoogleCloudStorageCSVContent {
         let path = &self.bucket_csv_path;
 
         // Check file size before downloading to prevent OOM issues.
-        let metadata = Object::read(bucket, path).await?;
+        let metadata = gcs_client().await?.object().read(bucket, path).await?;
         if metadata.size > MAX_CSV_FILE_SIZE_BYTES {
             info!(
                 bucket = bucket,
@@ -51,7 +50,7 @@ impl GoogleCloudStorageCSVContent {
 
         // This is not the most efficient as we download the entire file here but we will
         // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
-        let content = Object::download(bucket, path).await?;
+        let content = gcs_client().await?.object().download(bucket, path).await?;
         // csv_async only accepts UTF-8; transcode UTF-16 (BOM-based) and detected single-byte
         // encodings (e.g. Windows-1252 produced by Excel's default "Save as CSV").
         let content = Self::decode_to_utf8(content)?;

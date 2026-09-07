@@ -44,7 +44,7 @@ app.patch(
       : null;
 
     if (file.useCase === "project_context") {
-      if (!space || !space.canWrite(auth)) {
+      if (!space || !auth.can("write", space)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {

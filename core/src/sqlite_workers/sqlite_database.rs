@@ -4,10 +4,10 @@ use crate::{
         transient_database::get_transient_database_unique_table_names,
     },
     databases_store::{gcs::GoogleCloudStorageDatabasesStore, store::DatabasesStore},
+    gcs_client::gcs_client,
     utils,
 };
 use anyhow::{anyhow, Result};
-use cloud_storage::Object;
 use futures::future::try_join_all;
 use parking_lot::Mutex;
 use rayon::prelude::*;
@@ -331,11 +331,14 @@ async fn create_in_memory_sqlite_db_with_csv(
             }
 
             async move {
-                let mut stream = Object::download_streamed(
-                    &GoogleCloudStorageDatabasesStore::get_bucket()?,
-                    &GoogleCloudStorageDatabasesStore::get_csv_storage_file_path(&table.table),
-                )
-                .await?;
+                let mut stream = gcs_client()
+                    .await?
+                    .object()
+                    .download_streamed(
+                        &GoogleCloudStorageDatabasesStore::get_bucket()?,
+                        &GoogleCloudStorageDatabasesStore::get_csv_storage_file_path(&table.table),
+                    )
+                    .await?;
                 let mut temp_file = NamedTempFile::new()?;
 
                 // Buffer bytes to avoid writing one byte at a time

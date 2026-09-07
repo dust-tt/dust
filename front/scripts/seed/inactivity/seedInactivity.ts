@@ -21,31 +21,35 @@ import {
 /** Old enough to sit well before any cutoff the allowed thresholds can produce. */
 const LONG_AGO = new Date(Date.now() - 90 * ONE_DAY_MS);
 
-const PICTURE_URL =
-  "https://dust.tt/static/systemavatar/claude_avatar_full.png";
-
-function agentAsset(name: string, description: string): AgentAsset {
+function agentAsset(
+  name: string,
+  description: string,
+  // Droid avatar variant (1 to 8), so each seeded agent gets a different picture.
+  avatarNumber: number
+): AgentAsset {
   return {
     name,
     description,
     instructions: `You are ${name}, seeded to exercise inactive-agent archival.`,
-    pictureUrl: PICTURE_URL,
+    pictureUrl: `https://dust.tt/static/droidavatar/Droid_Sky_${avatarNumber}.jpg`,
   };
 }
 
 // At a 30-day threshold: "Idle Agent" and "Edited Agent" are archivable, the other three are each
 // spared by a different rule.
 const AGENTS: AgentAsset[] = [
-  agentAsset("Idle Agent", "Old and never mentioned: archivable."),
-  agentAsset("Recently Used Agent", "Old but mentioned yesterday."),
+  agentAsset("Idle Agent", "Old and never mentioned: archivable.", 1),
+  agentAsset("Recently Used Agent", "Old but mentioned yesterday.", 2),
   agentAsset(
     "Scheduled Agent",
-    "Old and unmentioned, but a schedule drives it."
+    "Old and unmentioned, but a schedule drives it.",
+    3
   ),
-  agentAsset("Fresh Agent", "Created today, so too young to be disused."),
+  agentAsset("Fresh Agent", "Created today, so too young to be disused.", 4),
   agentAsset(
     "Edited Agent",
-    "First version is old; editing must not postpone archival."
+    "First version is old; editing must not postpone archival.",
+    5
   ),
 ];
 

@@ -1,9 +1,11 @@
+import { DegradedModelsDialog } from "@app/components/poke/DegradedModelsDialog";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { KillSwitchType } from "@app/lib/poke/types";
-import { KILL_SWITCH_TYPES } from "@app/lib/poke/types";
+import { isLegacyKillSwitchType, KILL_SWITCH_TYPES } from "@app/lib/poke/types";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import { usePokeDegradedModels } from "@app/poke/swr/degraded_models";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
 import {
   usePokeSandboxKillImages,
@@ -14,7 +16,9 @@ import {
   AlertCircle,
   AnthropicLogo,
   Button,
+  Chip,
   CloudArrowLeftRight,
+  Cube01,
   Fire,
   OpenaiLogo,
   PauseCircle,
@@ -62,13 +66,6 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
     icon: Fire,
   },
-  global_dust_agents_fallback: {
-    title: "Dust Agents Fallback Provider",
-    description:
-      "Force Dust and Deep Dive agents to use non-Anthropic providers.",
-    note: "Use only when the latest Sonnet or Opus models are down.",
-    icon: RefreshCw02,
-  },
   pause_upsert_queue: {
     title: "Upsert Queue",
     description:
@@ -84,6 +81,12 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     icon: RefreshCw02,
   },
 };
+
+// Kills a whole provider at once, with a message that is not explicit.
+const LEGACY_KILL_SWITCH_NOTE =
+  "Replaced by the degraded models section. It was not explicit to the users that " +
+  " providers were down. This also blocked all calls to affected provider, not just the " +
+  "Auto models.";
 
 const PANEL_HEADING_CLASSES =
   "flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-foreground";
@@ -112,6 +115,8 @@ export function KillPage() {
     useState<KillSwitchType | null>(null);
   const sendNotification = useSendNotification();
   const enabledKillSwitches = new Set(killSwitches);
+  const { endpoints, mutateDegradedModels } = usePokeDegradedModels();
+  const degradedEndpoints = endpoints.filter((endpoint) => endpoint.degraded);
 
   const { images, isImagesLoading } = usePokeSandboxKillImages();
   const requestSandboxKill = useRequestSandboxKill();
@@ -226,6 +231,7 @@ export function KillPage() {
 
               const isEnabled = enabledKillSwitches.has(type);
               const isUpdating = updatingKillSwitch === type;
+              const isLegacy = isLegacyKillSwitchType(type);
 
               return (
                 <div
@@ -239,11 +245,20 @@ export function KillPage() {
                     <h3 className="flex items-center gap-3 text-sm font-medium text-foreground">
                       <Icon className="h-4 w-4 text-foreground" />
                       <span>{title}</span>
+                      {isLegacy && (
+                        <Chip size="mini" color="primary" label="Legacy" />
+                      )}
                     </h3>
 
                     <p className="text-sm leading-6 text-muted-foreground">
                       {description}
                     </p>
+
+                    {isLegacy && (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {LEGACY_KILL_SWITCH_NOTE}
+                      </p>
+                    )}
 
                     {note && (
                       <p className="text-xs leading-5 text-muted-foreground">
@@ -266,6 +281,46 @@ export function KillPage() {
                 </div>
               );
             })}
+
+            <div
+              className={cn(
+                "grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
+                "border-t border-border"
+              )}
+            >
+              <div className="space-y-1">
+                <h3 className="flex items-center gap-3 text-sm font-medium text-foreground">
+                  <Cube01 className="h-4 w-4 text-foreground" />
+                  <span>Degraded Models</span>
+                </h3>
+
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Flag the model endpoints hit by a provider incident, one
+                  switch per model and host.
+                  {degradedEndpoints.length > 0 &&
+                    ` Currently degraded: ${degradedEndpoints
+                      .map(
+                        (endpoint) => `${endpoint.modelId} (${endpoint.host})`
+                      )
+                      .join(", ")}.`}
+                </p>
+
+                <p className="text-xs leading-5 text-muted-foreground">
+                  The Basic, Standard and Premium streams skip a model as soon
+                  as one of its endpoints is degraded and pick the next
+                  candidate in their pool; agents and users pinned to it keep
+                  running on it. Takes up to 60s to apply on each pod, as stream
+                  resolution reads the degraded models from an in-process cache.
+                </p>
+              </div>
+
+              <DegradedModelsDialog
+                endpoints={endpoints}
+                onSaved={async () => {
+                  await mutateDegradedModels();
+                }}
+              />
+            </div>
           </div>
         )}
       </section>

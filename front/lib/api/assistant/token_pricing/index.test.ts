@@ -4,9 +4,16 @@ import {
 } from "@app/lib/api/assistant/token_pricing";
 import { EU_UPLIFT_MODEL_IDS } from "@app/lib/api/assistant/token_pricing/eu";
 import {
+  GEMINI_3_1_PRO_MODEL_ID,
+  GEMINI_3_PRO_MODEL_ID,
+} from "@app/types/assistant/models/google_ai_studio";
+import {
   GPT_5_4_MODEL_ID,
   GPT_5_5_MODEL_ID,
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
+  GPT_5_6_TERRA_MODEL_ID,
   GPT_5_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import {
@@ -229,6 +236,116 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
 
     expect(globalCostMicroUsd).toBe(846_004);
     expect(euCostMicroUsd).toBeCloseTo(globalCostMicroUsd * 1.1, 6);
+  });
+
+  it("uses standard Sol pricing through 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        promptTokens: 272_000,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(1_108_000);
+  });
+
+  it("uses Sol long-context pricing above 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        promptTokens: 272_001,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(2_206_008);
+  });
+
+  it("uses standard base Terra pricing through 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_6_TERRA_MODEL_ID,
+        promptTokens: 272_000,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(556_000);
+  });
+
+  it("uses base Terra long-context pricing above 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_6_TERRA_MODEL_ID,
+        promptTokens: 272_001,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(1_106_004);
+  });
+
+  it("uses standard Luna pricing through 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        promptTokens: 272_000,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBeCloseTo(55_600, 6);
+  });
+
+  it("uses Luna long-context pricing above 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        promptTokens: 272_001,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBeCloseTo(110_600.4, 6);
+  });
+
+  it("uses standard Gemini 3 Pro pricing through 200k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GEMINI_3_PRO_MODEL_ID,
+        promptTokens: 200_000,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(412_000);
+  });
+
+  it("uses Gemini 3 Pro long-context pricing above 200k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GEMINI_3_PRO_MODEL_ID,
+        promptTokens: 200_001,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(818_004);
+  });
+
+  it("uses standard Gemini 3.1 Pro pricing through 200k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GEMINI_3_1_PRO_MODEL_ID,
+        promptTokens: 200_000,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(412_000);
+  });
+
+  it("uses Gemini 3.1 Pro long-context pricing above 200k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GEMINI_3_1_PRO_MODEL_ID,
+        promptTokens: 200_001,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(818_004);
   });
 
   it("uses long-context Grok 4.5 pricing at 200k prompt tokens", () => {

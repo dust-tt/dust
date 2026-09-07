@@ -1,10 +1,31 @@
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Worker } from "@temporalio/worker";
 import { readFileSync } from "fs";
 import path from "path";
 
 import type { WorkerName } from "./worker_registry";
+
+// Webpack is per Worker.create(workflowsPath). Running those in parallel
+// re-walks the same graph ~30 times and saturates disk. Queue creates in
+// dev; worker.run() still overlaps once each bundle is ready.
+let workflowBundleQueue: Promise<void> = Promise.resolve();
+
+export function createTemporalWorker(
+  ...args: Parameters<typeof Worker.create>
+): ReturnType<typeof Worker.create> {
+  if (!isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true") {
+    return Worker.create(...args);
+  }
+
+  const worker = workflowBundleQueue.then(() => Worker.create(...args));
+  workflowBundleQueue = worker.then(
+    () => undefined,
+    () => undefined
+  );
+  return worker;
+}
 
 /**
  * Returns the workflow configuration for a worker.

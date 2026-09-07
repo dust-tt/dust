@@ -14,7 +14,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
-import { useState } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
@@ -118,15 +117,17 @@ function WakeUpEntry({ wakeUp }: WakeUpEntryProps) {
 
 interface PokeConversationWakeUpsInspectorProps {
   conversationId: string;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   owner: LightWorkspaceType;
 }
 
 export function PokeConversationWakeUpsInspector({
   conversationId,
+  isOpen,
+  onOpenChange,
   owner,
 }: PokeConversationWakeUpsInspectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
   const { wakeUps, isWakeUpsError, isWakeUpsLoading } =
     usePokeConversationWakeUps({
       conversationId,
@@ -137,17 +138,17 @@ export function PokeConversationWakeUpsInspector({
   return (
     <Collapsible
       open={isOpen}
-      onOpenChange={setIsOpen}
+      onOpenChange={onOpenChange}
       className="overflow-hidden rounded-xl border border-border bg-background"
     >
-      <CollapsibleTrigger className="min-h-11 w-full justify-between gap-3 p-4 text-left">
-        <div className="min-w-0">
+      <CollapsibleTrigger className="min-h-11 w-full gap-2 p-4 text-left">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center">
             <span className="text-sm font-semibold text-foreground">
               Wake-ups
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground xl:whitespace-nowrap">
             Agent-scheduled wake-ups for this conversation, in any status.
           </p>
         </div>

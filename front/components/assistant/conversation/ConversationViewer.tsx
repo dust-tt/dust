@@ -1056,7 +1056,7 @@ export const ConversationViewer = ({
             break;
           case "plan_updated": {
             // The acting client already updates via the per-message plan tool action; this handles
-            // cross-client propagation (e.g. another viewer) and is a backstop. PlanCard opens/closes
+            // cross-client propagation (e.g. another viewer) and is a backstop. PlanPanelChip opens/closes
             // the panel in reaction to the content change.
             const planKey = planFileKey({
               workspaceId: owner.sId,

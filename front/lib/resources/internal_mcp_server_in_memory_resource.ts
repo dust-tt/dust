@@ -136,7 +136,7 @@ export class InternalMCPServerInMemoryResource {
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    if (!systemSpace.canAdministrate(auth)) {
+    if (!auth.can("admin", systemSpace)) {
       throw new DustError(
         "unauthorized",
         "The user is not authorized to create an internal MCP server"

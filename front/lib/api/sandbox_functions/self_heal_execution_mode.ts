@@ -39,6 +39,13 @@ export async function selfHealSandboxFunctionExecutionMode(
     );
     return;
   }
+  if (sandboxFunction.frame) {
+    logger.error(
+      { sandboxFunctionId, invocationId, frameId: sandboxFunction.frame.sId },
+      "Refusing to mutate an immutable Frame publication function"
+    );
+    return;
+  }
 
   const madeDurable = await sandboxFunction.makeDurable(auth);
   if (!madeDurable) {

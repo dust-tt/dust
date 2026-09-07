@@ -67,6 +67,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
 
   it("lets the editor move their own trigger back to their own pool", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "user",
     });
@@ -92,6 +93,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
 
   it("rejects a member without the workspace pool permission", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "user",
     });

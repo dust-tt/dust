@@ -2,6 +2,7 @@ import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/K
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SkillDescriptionReadOnlyEditor } from "@app/components/editor/SkillDescriptionEditor";
+import { RedactedSkillMessage } from "@app/components/skills/RedactedSkillMessage";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import {
   getMcpServerViewDescription,
@@ -13,13 +14,14 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
-import { useSpaces } from "@app/lib/swr/spaces";
+import { useSpaces, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   AttachmentChip,
   Chip,
@@ -62,8 +64,23 @@ export function SkillInfoTab({
     kinds: ["global", "regular", "project"],
     disabled: !shouldLoadSpaces || !!spaces,
   });
+  // A redacted skill (admin, see `canRead`) requests spaces the caller is not a member of, which
+  // the member listing above does not return: resolve them through the admin listing.
+  const { spaces: spacesAsAdmin } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: !isAdmin(owner) || skill.canRead || !shouldLoadSpaces || !!spaces,
+  });
 
-  const resolvedSpaces = spaces ?? spacesFromHook;
+  const resolvedSpaces = useMemo(
+    () =>
+      spaces ??
+      Array.from(
+        new Map(
+          [...spacesFromHook, ...spacesAsAdmin].map((s) => [s.sId, s])
+        ).values()
+      ),
+    [spaces, spacesFromHook, spacesAsAdmin]
+  );
 
   const sortedMCPServerViews = useMemo(
     () => sortBy(skill.tools.map(renderMCPServerView), "title"),
@@ -114,6 +131,10 @@ export function SkillInfoTab({
           {skill.userFacingDescription}
         </div>
       ) : null}
+
+      {/* The API redacts the private fields of the skills an admin cannot read and flags it with
+          `canRead: false`; only admins ever get such a skill. */}
+      {!skill.canRead && <RedactedSkillMessage skill={skill} owner={owner} />}
 
       {showSeparator ? <Separator /> : null}
 

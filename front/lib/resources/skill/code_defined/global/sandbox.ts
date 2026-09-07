@@ -21,8 +21,10 @@ import { Ok } from "@app/types/shared/result";
 
 function buildSandboxInstructionProse({
   hasDsbxTools,
+  hasFramesV2,
 }: {
   hasDsbxTools: boolean;
+  hasFramesV2: boolean;
 }): string {
   const instructions = [
     'The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. Always call this environment "the Computer" in any text you send to the user.',
@@ -38,6 +40,12 @@ function buildSandboxInstructionProse({
       "For very large argument values, write the value to a file in the sandbox and pass the path with a `__file__:` prefix (e.g. `--query __file__:/tmp/q.txt`) instead of inlining the value on the command line. Any value starting with `__file__:` is read from the file (UTF-8, max 100 MB) and used as the value for that key. File contents that are a JSON object or array are parsed into structured data (e.g. `--files __file__:/tmp/files.json` for a tool expecting an array), exactly as if the same JSON had been passed inline; any other content is used as a string. The file must already exist in the sandbox filesystem.",
       "Pass `--json` (before the server and tool names, e.g. `dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...`) to get the tool result as structured JSON (`{ content, isError }`) instead of plain text, which is easier to parse programmatically. Placed after the positional arguments it is treated as a tool argument instead."
     );
+
+    if (!hasFramesV2) {
+      instructions.push(
+        "For any Frame task, enable the `Create Frames` skill and use its interactive-content tools; publish or republish with `publish_interactive_content_file`. Never use `dsbx frame`."
+      );
+    }
   }
 
   return instructions.join(" ");
@@ -327,12 +335,23 @@ function buildToolDetailsSection(
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
-  { hasDsbxTools, isProject }: { hasDsbxTools: boolean; isProject: boolean }
+  {
+    hasDsbxTools,
+    hasFramesV2,
+    isProject,
+  }: {
+    hasDsbxTools: boolean;
+    hasFramesV2: boolean;
+    isProject: boolean;
+  }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const environmentVariablesSection = buildEnvironmentVariablesSection();
   const filesSection = buildFilesSection({ hasPod: isProject });
-  const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
+  const sandboxInstructions = buildSandboxInstructionProse({
+    hasDsbxTools,
+    hasFramesV2,
+  });
 
   let toolsResult;
 
@@ -409,17 +428,19 @@ export const sandboxSkill = {
     const providerId = agentLoopData?.modelInfo.endpoint.modelConfig.providerId;
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = isComputerFeatureEnabled(flags);
+    const hasFramesV2 = flags.includes("frames_v2");
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
 
     return buildSandboxInstructions(auth, providerId, {
       hasDsbxTools,
+      hasFramesV2,
       isProject,
     });
   },
   mcpServers: [{ name: "sandbox" }],
-  version: 1,
+  version: 2,
   icon: "TerminalSquareIcon",
   // Auto-enabled for dust-like agents, which are heavy users of it.
   // This allows adding the bash tool eagerly, as it's used for a wide variety of use cases and deferring it would

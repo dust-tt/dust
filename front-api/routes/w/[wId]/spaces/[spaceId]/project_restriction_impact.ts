@@ -28,7 +28,7 @@ app.get(
 
     // Only editors can flip the visibility toggle this warning belongs to, and the counts
     // aggregate other members' usage.
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

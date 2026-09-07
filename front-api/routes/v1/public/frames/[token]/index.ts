@@ -11,7 +11,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import {
-  isInteractiveContentType,
+  isFrameContentType,
   isWorkspaceVisibleShareScope,
 } from "@app/types/files";
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
@@ -78,11 +78,8 @@ app.get(
       });
     }
 
-    // Only allow conversation Frame files.
-    if (
-      !file.isInteractiveContent ||
-      !isInteractiveContentType(file.contentType)
-    ) {
+    // Only allow Frame files.
+    if (!isFrameContentType(file.contentType)) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -202,7 +199,8 @@ app.get(
     const spaceId = file.useCaseMetadata?.spaceId;
     const space =
       spaceId && auth ? await SpaceResource.fetchById(auth, spaceId) : null;
-    const canRead = space && space.isProject() && auth && space.canRead(auth);
+    const canRead =
+      space && space.isProject() && auth && auth.can("read", space);
     // Standing of the viewer in the Pod hosting the Frame, mirroring what pod hosts thread into
     // the frame identity (podInfo.isMember / podInfo.isEditor). Display-only: invocations
     // re-authorize server-side.
@@ -216,7 +214,7 @@ app.get(
       space &&
       space.isProject() &&
       auth &&
-      space.canAdministrate(auth)
+      auth.can("admin", space)
     );
     // The share token this viewer used is a workspace member's capability to invoke the frame's
     // app's functions. For invite-only frames, a member only reaches this point with an active

@@ -5,7 +5,7 @@ import { makeInitialMessageStreamState } from "@app/components/assistant/convers
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { LightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -273,6 +273,26 @@ describe("AgentMessage compact UI view", () => {
         screen.queryByRole("button", { name: "Frames" })
       ).not.toBeInTheDocument();
       expect(screen.getByText("My Frame")).toBeVisible();
+    });
+
+    it("renders a Frames v2 generated file once with the Frame card", () => {
+      const frameV2File = {
+        title: "My Frames v2 app",
+        contentType: frameV2ContentType,
+        fileId: "fil_frame_v2",
+        filePath: undefined,
+      };
+      vi.mocked(useAutoOpenSidePanel).mockReturnValue({
+        interactiveFiles: [frameV2File],
+      });
+
+      renderAgentMessage({
+        uiView: "standard",
+        agentMessageOverrides: { generatedFiles: [frameV2File] },
+      });
+
+      expect(screen.getAllByText("My Frames v2 app")).toHaveLength(1);
+      expect(screen.getByText("Frames")).toBeVisible();
     });
   });
 

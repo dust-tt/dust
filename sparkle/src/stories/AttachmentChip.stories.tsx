@@ -154,7 +154,7 @@ export const AsLink: Story = {
       secondaryIcon: NotionLogo,
       size: "sm",
     },
-    href: "https://notion.so",
+    href: "https://app.notion.com",
     target: "_blank",
   },
   decorators: [

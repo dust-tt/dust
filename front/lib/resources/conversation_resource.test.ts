@@ -1785,7 +1785,6 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         isSSO: false,
         workspaceId: workspace.sId,
         organizationId: workspace.workOSOrganizationId ?? undefined,
-        region: "us-central1",
       },
       workspace.sId
     );
@@ -1857,7 +1856,6 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         isSSO: false,
         workspaceId: workspace.sId,
         organizationId: workspace.workOSOrganizationId ?? undefined,
-        region: "us-central1",
       },
       workspace.sId
     );
@@ -1974,10 +1972,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     assert(updateResult.isOk(), "Failed to enable private conversation URLs");
 
     const apiKey = await KeyFactory.regular(globalGroup);
-    const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-      apiKey,
-      workspace.sId
-    );
+    const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
     const conversation = await ConversationFactory.create(apiKeyAuth, {
       agentConfigurationId: agents[0].sId,
@@ -2086,7 +2081,6 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         isSSO: false,
         workspaceId: workspace.sId,
         organizationId: workspace.workOSOrganizationId ?? undefined,
-        region: "us-central1",
       },
       workspace.sId
     );

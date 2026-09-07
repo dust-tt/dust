@@ -9,7 +9,6 @@ import {
   pauseAllLabsWorkflows,
   unpauseAllLabsWorkflows,
 } from "@app/lib/api/labs";
-import { invalidateWorkspaceRegionCache } from "@app/lib/api/regions/lookup";
 import {
   deleteWorkspace,
   isWorkspaceRelocationDone,
@@ -22,6 +21,7 @@ import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
 import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { invalidateRelocatedWorkspaceCaches } from "@app/scripts/relocation/cache";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
 import type { CellType } from "@app/types/cell";
 import { isCellType, SUPPORTED_CELLS } from "@app/types/cell";
@@ -46,7 +46,6 @@ function assertCurrentCell(cell: CellType) {
 }
 
 async function invalidateLookupCache(workspaceId: string) {
-  await invalidateWorkspaceRegionCache(workspaceId);
   await invalidateWorkspaceCellCache(workspaceId);
 }
 
@@ -94,6 +93,15 @@ makeScript(
     if (sourceCell === destinationCell) {
       logger.error("Source and destination cells must be different.");
       return;
+    }
+
+    // Relocation writes directly to the destination database, bypassing the
+    // Resource mutation paths that normally invalidate these caches. Clear
+    // them before building the authenticator so it cannot retain the
+    // synthetic FREE subscription produced while the copy was incomplete.
+    if (execute && step === "resume-in-destination") {
+      assertCurrentCell(destinationCell);
+      await invalidateRelocatedWorkspaceCaches(workspaceId);
     }
 
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);

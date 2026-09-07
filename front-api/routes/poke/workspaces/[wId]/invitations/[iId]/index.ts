@@ -21,16 +21,7 @@ app.patch(
   async (ctx): HandlerResult<HandleMembershipInvitationResult> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-    const user = auth.user();
-    if (!user) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
-      });
-    }
+    const user = auth.toPokeUserJSON();
 
     const { iId: invitationId } = ctx.req.valid("param");
 
@@ -71,7 +62,7 @@ app.patch(
       workspaceAdminAuth,
       {
         owner,
-        user: user.toJSON(),
+        user,
         subscription,
         invitationRequests: [
           { email: invitation.inviteEmail, role: invitation.initialRole },

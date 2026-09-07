@@ -34,7 +34,7 @@
   },
   "include": [
     "src",
-    "../front"
+    "../front",
   ],
   "exclude": [
     "node_modules",

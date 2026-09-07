@@ -26,6 +26,7 @@ type AgentMessageConsumptionAnalyticsDocumentMetadata = Pick<
   | "conversation_id"
   | "message_version"
   | "normalized_origin"
+  | "parent_message_id"
   | "run_usage_id"
   | "space_id"
   | "step_index"
@@ -77,6 +78,7 @@ export function makeBaseDocument(
     conversation_id: metadata.conversationId,
     message_version: metadata.messageVersion.toString(),
     normalized_origin: normalizeOrigin(metadata.contextOrigin),
+    parent_message_id: metadata.parentMessageId,
     run_usage_id: runUsageModelId.toString(),
     space_id: metadata.spaceId,
     step_index: stepIndex,

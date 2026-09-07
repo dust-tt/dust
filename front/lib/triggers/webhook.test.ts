@@ -24,9 +24,11 @@ const { mockIsApiBlocked, mockCheckWebhookRequestForRateLimit } = vi.hoisted(
   })
 );
 
-vi.mock("@app/lib/metronome/user_block", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@app/lib/metronome/user_block")>()),
-  isApiBlocked: mockIsApiBlocked,
+vi.mock("@app/lib/api/credits/access_control", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@app/lib/api/credits/access_control")
+  >()),
+  isPoolDepleted: mockIsApiBlocked,
 }));
 
 vi.mock("@app/lib/triggers/rate_limits", async (importOriginal) => ({

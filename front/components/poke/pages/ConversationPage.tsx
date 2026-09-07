@@ -1,9 +1,9 @@
 import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
+import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
+import { useConversationInspectorPanels } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import type { AgentMessageCreditsToolBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { makeSandboxConnectCommand } from "@app/lib/poke/sandbox";
@@ -22,7 +22,11 @@ import type {
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
 import type { PokeAgentMessageType } from "@app/types/poke";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -51,7 +55,7 @@ import {
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { ComponentProps, ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
@@ -109,20 +113,20 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 function getProviderPassthroughEntries(
   contents: PokeAgentMessageType["contents"]
 ): ProviderPassthroughEntry[] {
-  return contents.flatMap(({ content, step }, contentIndex) => {
-    if (content.type !== "provider_passthrough") {
-      return [];
-    }
+  return removeNulls(
+    contents.map(({ content, step }, contentIndex) => {
+      if (content.type !== "provider_passthrough") {
+        return null;
+      }
 
-    return [
-      {
+      return {
         block: content.value.block,
         key: `${step}-${contentIndex}`,
         provider: content.value.provider,
         step,
-      },
-    ];
-  });
+      };
+    })
+  );
 }
 
 function getToolSearchResultSummary(content: unknown): string | null {
@@ -322,14 +326,12 @@ function getActionStatus(
 
 interface ToolActionViewProps {
   action: PokeAgentMessageType["actions"][number];
-  cost?: AgentMessageCreditsToolBreakdown;
   isExpanded: boolean;
   onToggle: () => void;
 }
 
 function ToolActionContent({
   action,
-  cost,
   isExpanded,
   onToggle,
 }: ToolActionViewProps) {
@@ -376,15 +378,21 @@ function ToolActionContent({
         <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
           Step {action.step}
         </span>
-        <span
-          className="min-w-0 truncate text-sm font-medium text-foreground"
-          title={
-            actionLabel === action.functionCallName
-              ? action.functionCallName
-              : `${actionLabel} (${action.functionCallName})`
-          }
-        >
-          {actionLabel}
+        <span className="flex min-w-0 flex-col">
+          <span
+            className="truncate text-sm font-medium text-foreground"
+            title={actionLabel}
+          >
+            {actionLabel}
+          </span>
+          {actionLabel !== action.functionCallName && (
+            <span
+              className="truncate font-mono text-xs text-muted-foreground"
+              title={action.functionCallName}
+            >
+              {action.functionCallName}
+            </span>
+          )}
         </span>
         {actionStatus && (
           <Chip
@@ -392,15 +400,6 @@ function ToolActionContent({
             label={actionStatus.label}
             size="xs"
           />
-        )}
-        {cost && (
-          <span title={`${cost.toolCostCategory} tool cost category`}>
-            <Chip
-              color="primary"
-              label={cost.free ? "free" : `${cost.awu} AWU`}
-              size="xs"
-            />
-          </span>
         )}
       </span>
       <span className="w-16 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
@@ -423,12 +422,7 @@ function ToolActionContent({
   );
 }
 
-function ToolActionView({
-  action,
-  cost,
-  isExpanded,
-  onToggle,
-}: ToolActionViewProps) {
+function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
   return (
     <div>
       <div
@@ -441,7 +435,6 @@ function ToolActionView({
       >
         <ToolActionContent
           action={action}
-          cost={cost}
           isExpanded={isExpanded}
           onToggle={onToggle}
         />
@@ -461,46 +454,6 @@ function ToolActionView({
           </CodeBlock>
         </div>
       )}
-    </div>
-  );
-}
-
-interface CostBreakdownViewProps {
-  message: PokeAgentMessageType;
-}
-
-function CostBreakdownView({ message }: CostBreakdownViewProps) {
-  const breakdown = message.costBreakdown;
-  if (!breakdown) {
-    return null;
-  }
-
-  const stored = message.costCredits;
-  const mismatch = stored != null && stored !== breakdown.totalAwu;
-
-  return (
-    <div className="mt-2 rounded-md border border-separator bg-muted-background px-2 py-1.5">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span className="shrink-0 text-sm font-medium text-foreground">
-          Cost
-        </span>
-        <MetadataItem label="stored" mono>
-          {stored != null ? `${formatCredits(stored)} AWU` : "—"}
-        </MetadataItem>
-        <MetadataItem label="analytics" mono>
-          {`${formatCredits(breakdown.totalAwu)} AWU`}
-        </MetadataItem>
-        <MetadataItem label="llm / tools" mono>
-          {`${formatCredits(breakdown.llmAwu)} / ${formatCredits(breakdown.toolAwu)}`}
-        </MetadataItem>
-        {message.subAgentCostCredits != null &&
-          message.subAgentCostCredits > 0 && (
-            <MetadataItem label="sub-agents" mono>
-              {`${formatCredits(message.subAgentCostCredits)} AWU`}
-            </MetadataItem>
-          )}
-        {mismatch && <Chip color="warning" label="mismatch" size="xs" />}
-      </div>
     </div>
   );
 }
@@ -636,14 +589,24 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 };
 
 interface AgentMessageViewProps {
+  conversationId: string;
+  isConsumptionOpen: boolean;
   message: PokeAgentMessageType;
+  onConsumptionOpenChange: (open: boolean) => void;
+  onConsumptionPanelExitComplete: () => void;
+  onConsumptionPanelRefChange: (element: HTMLDivElement | null) => void;
   useMarkdown: boolean;
   owner: LightWorkspaceType;
   langfuseUiBaseUrl: string | null;
 }
 
 const AgentMessageView = ({
+  conversationId,
+  isConsumptionOpen,
   message,
+  onConsumptionOpenChange,
+  onConsumptionPanelExitComplete,
+  onConsumptionPanelRefChange,
   useMarkdown,
   owner,
   langfuseUiBaseUrl,
@@ -682,10 +645,18 @@ const AgentMessageView = ({
   const providerPassthroughEntries = getProviderPassthroughEntries(
     message.contents
   );
-
-  const costByActionId = new Map<string, AgentMessageCreditsToolBreakdown>(
-    message.costBreakdown?.byTool.map((t) => [t.actionId, t]) ?? []
-  );
+  const toolExecutionTimelineEntries = [
+    ...providerPassthroughEntries.map((entry) => ({
+      type: "provider_passthrough" as const,
+      entry,
+      step: entry.step,
+    })),
+    ...message.actions.map((action) => ({
+      type: "action" as const,
+      action,
+      step: action.step,
+    })),
+  ].sort((a, b) => a.step - b.step);
 
   return (
     <div className="w-full">
@@ -759,26 +730,44 @@ const AgentMessageView = ({
             )}
           </div>
         </div>
-        <CostBreakdownView message={message} />
-        {providerPassthroughEntries.map((entry) => (
-          <ProviderPassthroughView
-            key={entry.key}
-            entry={entry}
-            isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
-            onToggle={() => toggleProviderPassthroughEntry(entry.key)}
-          />
-        ))}
-        {message.actions.map((a) => {
-          const isExpanded = expandedActions.has(a.sId);
-          return (
-            <ToolActionView
-              key={a.sId}
-              action={a}
-              cost={costByActionId.get(a.sId)}
-              isExpanded={isExpanded}
-              onToggle={() => toggleAction(a.sId)}
-            />
-          );
+        <PokeMessageConsumptionInspector
+          billedCredits={message.costCredits}
+          conversationId={conversationId}
+          isOpen={isConsumptionOpen}
+          messageId={message.sId}
+          onOpenChange={onConsumptionOpenChange}
+          onPanelExitComplete={onConsumptionPanelExitComplete}
+          onPanelRefChange={onConsumptionPanelRefChange}
+          subAgentBilledCredits={message.subAgentCostCredits}
+          workspaceId={owner.sId}
+        />
+        {toolExecutionTimelineEntries.map((timelineEntry) => {
+          switch (timelineEntry.type) {
+            case "provider_passthrough": {
+              const { entry } = timelineEntry;
+              return (
+                <ProviderPassthroughView
+                  key={`provider-passthrough-${entry.key}`}
+                  entry={entry}
+                  isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
+                  onToggle={() => toggleProviderPassthroughEntry(entry.key)}
+                />
+              );
+            }
+            case "action": {
+              const { action } = timelineEntry;
+              return (
+                <ToolActionView
+                  key={`action-${action.sId}`}
+                  action={action}
+                  isExpanded={expandedActions.has(action.sId)}
+                  onToggle={() => toggleAction(action.sId)}
+                />
+              );
+            }
+            default:
+              return assertNever(timelineEntry);
+          }
         })}
       </ConversationMessage>
     </div>
@@ -924,6 +913,38 @@ export function ConversationPage() {
   const [showRenderControls, setShowRenderControls] = useState(false);
   const [isCopiedJSON, copyJSON] = useCopyToClipboard();
   const [isCopiedSandboxCommand, copySandboxCommand] = useCopyToClipboard();
+  const activeMessagePanelRef = useRef<HTMLDivElement | null>(null);
+  const stickyInspectorsRef = useRef<HTMLElement | null>(null);
+  const {
+    activeMessageId,
+    completeMessagePanelExit,
+    isConversationOpen,
+    isMessageRailTakeover,
+    isWakeUpsOpen,
+    setConversationOpen,
+    setMessageOpen,
+    setWakeUpsOpen,
+  } = useConversationInspectorPanels({
+    activeMessagePanelRef,
+    stickyInspectorsRef,
+  });
+  function handleMessagePanelRefChange(
+    messageId: string,
+    element: HTMLDivElement | null
+  ) {
+    if (element && messageId === activeMessageId) {
+      activeMessagePanelRef.current = element;
+      return;
+    }
+
+    if (
+      !element &&
+      activeMessagePanelRef.current?.dataset.messageConsumptionPanelId ===
+        messageId
+    ) {
+      activeMessagePanelRef.current = null;
+    }
+  }
 
   const { copyTestCase, isLoading: isTestCaseLoading } =
     useCopyReinforcementTestCase({ owner, conversationId });
@@ -1294,16 +1315,40 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          <div className="grid w-full grid-cols-1 gap-6 py-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start">
-              <PokeConversationConsumptionInspector
-                conversationId={conversationId}
-                workspaceId={owner.sId}
-              />
-              <PokeConversationWakeUpsInspector
-                conversationId={conversationId}
-                owner={owner}
-              />
+          <div
+            className={cn(
+              "grid w-full grid-cols-1 gap-6 py-4",
+              "[--poke-inspector-width:28rem]",
+              "xl:grid-cols-[minmax(0,1fr)_var(--poke-inspector-width)]"
+            )}
+          >
+            <aside
+              ref={stickyInspectorsRef}
+              className="z-20 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start"
+            >
+              <div
+                aria-hidden={isMessageRailTakeover}
+                className={cn(
+                  "flex flex-col gap-4",
+                  "transition-[opacity,visibility] duration-150 ease-out motion-reduce:transition-none",
+                  isMessageRailTakeover
+                    ? "invisible opacity-0"
+                    : "visible opacity-100"
+                )}
+              >
+                <PokeConversationConsumptionInspector
+                  conversationId={conversationId}
+                  isOpen={isConversationOpen}
+                  onOpenChange={setConversationOpen}
+                  workspaceId={owner.sId}
+                />
+                <PokeConversationWakeUpsInspector
+                  conversationId={conversationId}
+                  isOpen={isWakeUpsOpen}
+                  onOpenChange={setWakeUpsOpen}
+                  owner={owner}
+                />
+              </div>
             </aside>
             <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
               {conversation.content.map((messages, i) => {
@@ -1315,7 +1360,18 @@ export function ConversationPage() {
                           return (
                             <AgentMessageView
                               key={`message-${i}-${j}`}
+                              conversationId={conversationId}
+                              isConsumptionOpen={activeMessageId === m.sId}
                               message={m}
+                              onConsumptionOpenChange={(open) =>
+                                setMessageOpen(m.sId, open)
+                              }
+                              onConsumptionPanelExitComplete={() =>
+                                completeMessagePanelExit(m.sId)
+                              }
+                              onConsumptionPanelRefChange={(element) =>
+                                handleMessagePanelRefChange(m.sId, element)
+                              }
                               useMarkdown={useMarkdown}
                               owner={owner}
                               langfuseUiBaseUrl={langfuseUiBaseUrl}

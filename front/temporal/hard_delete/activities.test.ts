@@ -2,6 +2,7 @@ import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configur
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import {
@@ -70,7 +71,22 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     const agent = await AgentConfigurationModel.findOne({
       where: { sId, workspaceId: workspace.id },
     });
-    const editorGroupId = await getEditorGroupId(agent!.id, workspace.id);
+    if (!agent) {
+      throw new Error("Pending agent was not created");
+    }
+    const editorGroupId = await getEditorGroupId(agent.id, workspace.id);
+    const grantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        authenticator,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: agent.agentId,
+        }
+      );
+    if (!grantGroup) {
+      throw new Error("Agent editor grant was not created");
+    }
 
     // Advance time past the retention threshold.
     vi.advanceTimersByTime(PAST_THRESHOLD_MS);
@@ -86,7 +102,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     // Editor group should be deleted too.
     const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
       authenticator,
-      [editorGroupId]
+      [editorGroupId, grantGroup.id]
     );
     expect(groupsAfter).toHaveLength(0);
   });

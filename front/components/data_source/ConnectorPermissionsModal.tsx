@@ -13,7 +13,7 @@ import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataU
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   CONNECTOR_UI_CONFIGURATIONS,
@@ -34,6 +34,7 @@ import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { CellInfo } from "@app/types/cell";
 import type {
   ConnectorPermission,
   ContentNode,
@@ -48,7 +49,6 @@ import type {
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
-import type { RegionInfo } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
@@ -70,6 +70,7 @@ import {
   DialogTrigger,
   Hoverable,
   Icon,
+  InfoCircle,
   Lock01,
   Page,
   Sheet,
@@ -81,7 +82,6 @@ import {
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
-import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type React from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -104,7 +104,7 @@ async function handleUpdatePermissions(
   owner: LightWorkspaceType,
   extraConfig: Record<string, string>,
   sendNotification: (notification: NotificationType) => void,
-  regionInfo: RegionInfo | null
+  cellInfo: CellInfo | null
 ) {
   const provider = connector.type;
 
@@ -112,7 +112,7 @@ async function handleUpdatePermissions(
     owner,
     provider,
     extraConfig,
-    regionInfo,
+    cellInfo,
   });
   if (connectionRes.isErr()) {
     sendNotification({
@@ -380,7 +380,7 @@ function UpdateConnectionOAuthModal({
                 size="md"
                 variant="warning"
                 title="Migration required"
-                icon={InformationCircleIcon}
+                icon={InfoCircle}
               >
                 You are using a legacy way to connect your Slack workspace to
                 Dust. Starting December 2025, all Slack connections require
@@ -406,7 +406,7 @@ function UpdateConnectionOAuthModal({
           {isDataSourceOwner && (
             <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
               <div className="flex items-center gap-2 font-medium text-info-800">
-                <Icon visual={InformationCircleIcon} />
+                <Icon visual={InfoCircle} />
                 Important
               </div>
               <div className="copy-sm p-4 text-info-900">
@@ -462,7 +462,7 @@ function UpdateConnectionOAuthModal({
               size="md"
               variant="warning"
               title="You are not the owner of this connection."
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
             >
               Editing permission rights with a different account will likely
               break the existing data structure in Dust and Agents using them.
@@ -507,7 +507,7 @@ function UpdateConnectionOAuthModal({
                 <ContentMessage
                   title="Editing permissions is temporarily disabled"
                   variant="info"
-                  icon={InformationCircleIcon}
+                  icon={InfoCircle}
                 >
                   <ReactMarkdown>
                     {permissionsConfigurable.placeholder ?? ""}
@@ -626,7 +626,7 @@ function DataSourceDeletionModal({
           {isDeletable ? (
             <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
               <div className="flex items-center gap-2 font-medium text-info-800">
-                <Icon visual={InformationCircleIcon} />
+                <Icon visual={InfoCircle} />
                 Important
               </div>
               <div className="p-4 text-sm text-info-900">
@@ -638,7 +638,7 @@ function DataSourceDeletionModal({
               className="mb-4 mt-8"
               title="Connection removal requires support"
               variant="warning"
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
             >
               Removing a connection permanently deletes its synced data and may
               break agents or spaces that rely on it. Contact{" "}
@@ -745,7 +745,7 @@ export function ConnectorPermissionsModal({
   readOnly,
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   const confirm = useContext(ConfirmContext);
   const [selectedNodes, setSelectedNodes] = useState<
@@ -1052,7 +1052,7 @@ export function ConnectorPermissionsModal({
                     <ContentMessage
                       title="Editing permissions is temporarily disabled"
                       variant="info"
-                      icon={InformationCircleIcon}
+                      icon={InfoCircle}
                     >
                       <ReactMarkdown>
                         {permissionsConfigurable.placeholder ?? ""}
@@ -1219,7 +1219,7 @@ export function ConnectorPermissionsModal({
                     owner,
                     extraConfig,
                     sendNotification,
-                    regionContext.regionInfo
+                    cellContext.cellInfo
                   );
                   closeModal(false);
                 }}

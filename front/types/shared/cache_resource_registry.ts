@@ -114,8 +114,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     resolverKeyPattern: "workos-orgs-*",
   },
   {
-    id: "workspace_region",
-    label: "Workspace region",
+    id: "workspace_cell",
+    label: "Workspace cell",
     fnName: "_lookupWorkspaceUncached",
     params: [
       {
@@ -125,8 +125,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
         placeholder: "e.g. abc123",
       },
     ],
-    buildResolverKey: (p) => `workspace-region:${p.wId}`,
-    resolverKeyPattern: "workspace-region:*",
+    buildResolverKey: (p) => `workspace-cell:${p.wId}`,
+    resolverKeyPattern: "workspace-cell:*",
   },
   {
     id: "provider_status",

@@ -66,7 +66,7 @@ makeScript(
         fullName: user.fullName(),
       },
       role: auth.role(),
-      groupIds: auth.groupIds(),
+      groupIds: groups.map((group) => group.sId),
       groups: groups.map((group) => ({
         sId: group.sId,
         name: group.name,

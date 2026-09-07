@@ -221,6 +221,7 @@ describe("fetchAutomationTriggers webhook source display", () => {
 
   it("shows the name for a webhook source in an accessible space", async () => {
     const { workspace, authenticator, globalSpace } = await createResourceTest({
+      plan: "creditPriced",
       role: "manager",
     });
     const agent =
@@ -253,6 +254,7 @@ describe("fetchAutomationTriggers webhook source display", () => {
 
   it("labels a webhook source in a space the caller can't access as restricted", async () => {
     const { workspace, authenticator } = await createResourceTest({
+      plan: "creditPriced",
       role: "manager",
     });
     const agent =

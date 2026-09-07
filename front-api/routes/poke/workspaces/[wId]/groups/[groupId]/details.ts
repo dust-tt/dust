@@ -1,6 +1,6 @@
 import type { PokeGetGroupDetails } from "@app/lib/api/poke/groups";
+import { fetchPokeGroupById } from "@app/lib/api/poke/groups";
 import { getGroupMembersWithWorkspaces } from "@app/lib/api/workspace";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -21,8 +21,8 @@ app.get(
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");
 
-    const groupRes = await GroupResource.fetchById(auth, groupId);
-    if (groupRes.isErr()) {
+    const group = await fetchPokeGroupById(auth, groupId);
+    if (!group) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -32,7 +32,6 @@ app.get(
       });
     }
 
-    const group = groupRes.value;
     const members = await getGroupMembersWithWorkspaces(auth, group);
 
     return ctx.json({

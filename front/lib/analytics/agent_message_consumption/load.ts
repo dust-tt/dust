@@ -14,6 +14,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -41,7 +42,6 @@ import {
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 
 export type BilledRunUsage = RunUsageWithRunKeyType & {
@@ -58,6 +58,7 @@ export type ConsumptionAnalyticsMessageMetadata = {
   messageStatus: AgentMessageStatus;
   messageVersion: number;
   model: AgentMessageAnalyticsModel | null;
+  parentMessageId: string | null;
   spaceId: string | null;
   triggerId: string | null;
   user: AgentMessageConsumptionAnalyticsUser | null;
@@ -135,13 +136,13 @@ async function loadAgentTagIds(
 }
 
 async function loadAnalyticsUser({
+  auth,
   completedAt,
   userId,
-  workspace,
 }: {
+  auth: Authenticator;
   completedAt: Date;
   userId: string | null;
-  workspace: LightWorkspaceType;
 }): Promise<AgentMessageConsumptionAnalyticsUser | null> {
   if (userId === null) {
     return null;
@@ -153,16 +154,26 @@ async function loadAnalyticsUser({
     "Triggering user is missing while loading consumption analytics"
   );
 
-  const groups = await GroupResource.listUserGroupsInWorkspace({
-    user,
-    workspace,
-    groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
-    at: completedAt,
-  });
+  const workspace = auth.getNonNullableWorkspace();
+
+  const [groups, seatType] = await Promise.all([
+    GroupResource.listUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+      at: completedAt,
+    }),
+    MembershipResource.getActiveSeatTypeForUserModelId({
+      workspace,
+      userModelId: user.id,
+      at: completedAt,
+    }),
+  ]);
 
   return {
     id: user.sId,
     group_ids: groups.map((group) => group.sId).sort(),
+    seat_type: seatType,
   };
 }
 
@@ -270,9 +281,9 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   });
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
   const user = await loadAnalyticsUser({
+    auth,
     completedAt: agentMessage.completedAt,
     userId: triggeringUserMessage.userId,
-    workspace,
   });
 
   const resolvedModel = resolvedModelFromAgentMessageRow({
@@ -312,6 +323,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
           resolution_method: agentMessage.modelResolutionMethod,
         }
       : null,
+    parentMessageId: triggeringUserMessage.agenticOriginMessageId ?? null,
     runs,
     skills,
     spaceId:

@@ -5,6 +5,7 @@ import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   expireRateLimiterKey,
   getRateLimiterCount,
+  getRateLimiterCounts,
   getRateLimiterTimestamps,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
@@ -110,6 +111,7 @@ export type PremiumModelMessageUsage = {
   nextRefill?: { availableAt: string; messages: number } | null;
   // Optional for compatibility with clients deployed before the daily breakdown was added.
   dailyUsage?: { date: string; usedMessages: number }[];
+  refillSchedule?: { date: string; messages: number }[];
 };
 
 function getNextPremiumModelRefill({
@@ -134,6 +136,24 @@ function getNextPremiumModelRefill({
     availableAt: new Date(oldestTimestampMs + windowMs).toISOString(),
     messages,
   };
+}
+
+function getPremiumModelRefillSchedule({
+  timestampsMs,
+  windowMs,
+}: {
+  timestampsMs: number[];
+  windowMs: number;
+}): { date: string; messages: number }[] {
+  const messagesByRefillDay = new Map<string, number>();
+  for (const timestampMs of timestampsMs) {
+    const date = new Date(timestampMs + windowMs).toISOString().slice(0, 10);
+    messagesByRefillDay.set(date, (messagesByRefillDay.get(date) ?? 0) + 1);
+  }
+
+  return Array.from(messagesByRefillDay.entries())
+    .map(([date, messages]) => ({ date, messages }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function getUtcDayStartMs(timestampMs: number): number {
@@ -203,7 +223,33 @@ export async function getPremiumModelMessageUsage({
       windowStartMs,
       windowEndMs,
     }),
+    refillSchedule: getPremiumModelRefillSchedule({ timestampsMs, windowMs }),
   };
+}
+
+export async function getPremiumModelMessageUsedCountsByUser({
+  workspace,
+  users,
+}: {
+  workspace: Pick<LightWorkspaceType, "id">;
+  users: Pick<UserType, "id" | "sId">[];
+}): Promise<Map<string, number>> {
+  const keyByUserId = new Map(
+    users.map((user) => [
+      user.sId,
+      makePremiumModelMessageRateLimitKeyForUser(workspace, user),
+    ])
+  );
+
+  const result = await getRateLimiterCounts({
+    keys: Array.from(keyByUserId.values()),
+    timeframeSeconds: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+  });
+  const countByKey = result.isOk() ? result.value : new Map<string, number>();
+
+  return new Map(
+    Array.from(keyByUserId, ([sId, key]) => [sId, countByKey.get(key) ?? 0])
+  );
 }
 
 // Fixed-window counter backing the admin-configured per-user spend cap. Always
@@ -229,6 +275,31 @@ export const makeSpendLimitCycleWindowBounds = (
   return {
     label: `cycle-${cycleStart.getTime()}`,
     windowEndMs: cycleEnd.getTime(),
+  };
+};
+
+// Fixed-window counter backing the free-seat *lifetime* spend allowance.
+// Distinct base key from the per-cycle spend-cap key above: free seats carry a
+// lifetime credit balance (not a per-cycle cap), so their counter never rolls
+// over. Paired with `makeSpendLimitLifetimeWindowBounds` (a stable, non-cycle
+// label), it is a single per-user key that accumulates for the seat's lifetime.
+export const makeFreeSeatLifetimeAwuCreditsRateLimitKeyForUser = (
+  owner: LightWorkspaceType,
+  user: UserType
+) => {
+  return `workspace:${owner.id}:user:${user.id}:free_seat_lifetime_awu_microcredit_count`;
+};
+
+// Never-rolling fixed-window bounds for the free-seat lifetime counter. The
+// label is stable (not cycle-derived) so the counter is a single lasting key,
+// and `windowEndMs` is far in the future so it never expires under the
+// PEXPIREAT grace. Mirror of `makeSpendLimitCycleWindowBounds` for the lifetime
+// dimension.
+const FREE_SEAT_LIFETIME_WINDOW_END_MS = Date.UTC(2100, 0, 1);
+export const makeSpendLimitLifetimeWindowBounds = (): FixedWindowBounds => {
+  return {
+    label: "lifetime",
+    windowEndMs: FREE_SEAT_LIFETIME_WINDOW_END_MS,
   };
 };
 

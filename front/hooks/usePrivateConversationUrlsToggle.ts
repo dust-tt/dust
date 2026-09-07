@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { arePrivateConversationUrlsDefault } from "@app/lib/workspace_policies";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
@@ -14,7 +15,7 @@ export function usePrivateConversationUrlsToggle({
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
-    owner.metadata?.privateConversationUrlsByDefault === true
+    arePrivateConversationUrlsDefault(owner)
   );
 
   const doTogglePrivateConversationUrls = async () => {

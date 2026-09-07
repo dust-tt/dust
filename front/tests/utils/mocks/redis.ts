@@ -100,14 +100,16 @@ class RedisMock {
         async (
           key: string,
           value: string,
-          opts?: { EX?: number; PX?: number }
+          opts?: { EX?: number; NX?: boolean; PX?: number }
         ) => {
-          // The "OK" return matters: distributedLock treats anything else as acquisition failure,
-          // and a mock that returns undefined spins executeWithLock's acquire loop until its 30s
-          // timeout in every suite that takes a lock. NX is deliberately NOT enforced: tests run
-          // sequentially, so mutual exclusion never needs to hold, and enforcing it would break
-          // consumers that legitimately re-set a live key (and require the unlock Lua script to
-          // really delete).
+          const existing = this.stringStore.get(key);
+          if (
+            opts?.NX &&
+            existing &&
+            (existing.expiresAtMs === 0 || existing.expiresAtMs > Date.now())
+          ) {
+            return null;
+          }
           const expiresAtMs = opts?.EX
             ? Date.now() + opts.EX * 1000
             : opts?.PX
@@ -152,7 +154,23 @@ class RedisMock {
       subscribe: vi.fn().mockResolvedValue(undefined),
       unsubscribe: vi.fn().mockResolvedValue(undefined),
       ping: vi.fn().mockResolvedValue("PONG"),
-      eval: vi.fn().mockResolvedValue(1),
+      eval: vi.fn(
+        async (
+          script: string,
+          { keys, arguments: args }: { keys: string[]; arguments: string[] }
+        ) => {
+          if (!script.includes('redis.call("del", KEYS[1])')) {
+            return 1;
+          }
+          const [key] = keys;
+          const [expectedValue] = args;
+          if (key && this.stringStore.get(key)?.value === expectedValue) {
+            this.stringStore.delete(key);
+            return 1;
+          }
+          return 0;
+        }
+      ),
       exists: vi.fn(async (key: string) => {
         const entry = this.stringStore.get(key);
         if (!entry) {

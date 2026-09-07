@@ -74,7 +74,7 @@ interface TBaseData {
 }
 
 interface ColumnBreakpoint {
-  [columnId: string]: "xs" | "sm" | "md" | "lg" | "xl";
+  [columnId: string]: keyof typeof breakpoints;
 }
 
 function shouldRenderColumn(

@@ -2,6 +2,10 @@ import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
@@ -25,7 +29,16 @@ export interface AgentAsset {
   responseFormat?: string;
   // Defaults to "visible" (published). "hidden" makes the agent visible to its editors only.
   scope?: Exclude<AgentConfigurationScope, "global">;
+  // Either a predefined model (resolved to a concrete model at message time) or a pinned model.
+  // Defaults to "standard".
+  model?: AgentAssetModel;
 }
+
+export type AgentAssetModel =
+  | "basic"
+  | "standard"
+  | "premium"
+  | { providerId: ModelProviderIdType; modelId: ModelIdType };
 
 export interface UserAsset {
   sId: string;

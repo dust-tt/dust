@@ -3,6 +3,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -26,7 +27,7 @@ async function setupTest(role: MembershipRoleType = "admin") {
     workspace.sId
   );
 
-  return { workspace, requestUserAuth, skillOwnerAuth };
+  return { workspace, requestUserAuth, skillOwner, skillOwnerAuth };
 }
 
 function archiveSkills(workspace: { sId: string }, skillIds: string[]) {
@@ -62,6 +63,33 @@ describe("POST /api/w/:wId/skills/archive", () => {
       "archived",
       "archived",
     ]);
+  });
+
+  it("lets an admin archive a skill built on a space they cannot read", async () => {
+    const { workspace, requestUserAuth, skillOwner, skillOwnerAuth } =
+      await setupTest();
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(requestUserAuth, {
+      userIds: [skillOwner.sId],
+    });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      availability: "editors",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    // The admin cannot read the skill through the regular fetch.
+    expect(
+      await SkillResource.fetchByIds(requestUserAuth, [restrictedSkill.sId])
+    ).toEqual([]);
+
+    const response = await archiveSkills(workspace, [restrictedSkill.sId]);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ archived: 1 });
+    const [archived] = await SkillResource.fetchByIds(skillOwnerAuth, [
+      restrictedSkill.sId,
+    ]);
+    expect(archived.status).toBe("archived");
   });
 
   it("denies a caller who cannot administrate every skill", async () => {

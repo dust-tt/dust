@@ -287,6 +287,77 @@ describe("GET /api/w/:wId/spaces/:spaceId/search_conversations", () => {
     expect(data.conversations[2].sId).toBe(conv2.sId);
   });
 
+  it("excludes sub-conversations (depth > 0)", async () => {
+    const { workspace, auth, globalGroup, projectSpace } =
+      await setupProjectSpaceWithMember();
+
+    const { mockDataSourceId } = await setupDataSourceMocks(
+      workspace,
+      globalGroup
+    );
+    await createDataSourceAndConnectorForProject(auth, projectSpace);
+
+    const rootConv = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+      spaceId: projectSpace.id,
+    });
+    const subConv = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+      spaceId: projectSpace.id,
+      depth: 1,
+    });
+
+    const mockDocuments: CoreAPIDocument[] = [
+      {
+        data_source_id: mockDataSourceId,
+        created: Date.now(),
+        document_id: "doc-sub",
+        parents: [],
+        parent_id: null,
+        timestamp: Date.now(),
+        tags: [`conversation:${subConv.sId}`],
+        hash: "hash-sub",
+        text_size: 100,
+        chunk_count: 1,
+        chunks: [{ text: "test", hash: "chunk-hash", offset: 0, score: 0.9 }],
+        title: "Doc sub",
+        mime_type: null,
+      },
+      {
+        data_source_id: mockDataSourceId,
+        created: Date.now(),
+        document_id: "doc-root",
+        parents: [],
+        parent_id: null,
+        timestamp: Date.now(),
+        tags: [`conversation:${rootConv.sId}`],
+        hash: "hash-root",
+        text_size: 100,
+        chunk_count: 1,
+        chunks: [{ text: "test", hash: "chunk-hash", offset: 0, score: 0.7 }],
+        title: "Doc root",
+        mime_type: null,
+      },
+    ];
+
+    vi.spyOn(CoreAPI.prototype, "bulkSearchDataSources").mockResolvedValue(
+      new Ok({
+        documents: mockDocuments,
+      })
+    );
+
+    const response = await search(workspace, projectSpace.sId, {
+      query: "test query",
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.conversations).toHaveLength(1);
+    expect(data.conversations[0].sId).toBe(rootConv.sId);
+  });
+
   it("returns empty array when no conversations found", async () => {
     const { workspace, auth, globalGroup, projectSpace } =
       await setupProjectSpaceWithMember();

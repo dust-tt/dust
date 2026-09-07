@@ -8,6 +8,7 @@ import type {
 } from "@app/lib/api/analytics/consumption/scope";
 import {
   buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
   DEFAULT_CONSUMPTION_METRIC,
@@ -21,6 +22,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -29,7 +31,7 @@ import { resolveDimensionDisplayNames } from "./labels";
 export { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/schema";
 
 export type ConsumptionGranularity = "day" | "week" | "month";
-export type ConsumptionTimeseriesMode = "daily" | "cumulative";
+export type ConsumptionTimeseriesMode = "period" | "cumulative";
 
 export const TOTAL_GROUP_KEY = "total";
 
@@ -44,6 +46,7 @@ export type ConsumptionTimeseriesGroup = {
 
 export type ConsumptionTimeseriesPoint = {
   timestamp: number;
+  activeUsers: number;
   values: Record<string, number>;
 };
 
@@ -54,7 +57,9 @@ export type ConsumptionTimeseries = {
   granularity: ConsumptionGranularity;
   mode: ConsumptionTimeseriesMode;
   metric: ConsumptionMetric;
+  timezone: string;
   breakdownBy: ConsumptionBreakdownDimension | null;
+  workspaceMemberCount: number | null;
   // In rank order, highest consumption first, with "others" last when present.
   groups: ConsumptionTimeseriesGroup[];
   points: ConsumptionTimeseriesPoint[];
@@ -62,15 +67,22 @@ export type ConsumptionTimeseries = {
 
 export type GetConsumptionTimeseriesResponse = ConsumptionTimeseries;
 
+type ConsumptionTimeseriesData = Omit<
+  ConsumptionTimeseries,
+  "workspaceMemberCount"
+>;
+
 type ConsumptionTimeseriesScope = {
   period: ConsumptionPeriod;
   granularity: ConsumptionGranularity;
   mode: ConsumptionTimeseriesMode;
   metric: ConsumptionMetric;
+  timezone: string;
 };
 
 type DateBucket = {
   key: number;
+  active_users?: estypes.AggregationsCardinalityAggregate;
   metric?: estypes.AggregationsSumAggregate;
   by_group?: estypes.AggregationsMultiBucketAggregateBase<ConsumptionGroupBucket>;
 };
@@ -81,6 +93,7 @@ type TimeseriesAggs = {
 
 type ConsumptionMetricBucket = {
   timestamp: number;
+  activeUsers: number;
   total: number;
   // Empty unless the search was given a breakdown, in which case the keys are a
   // subset of the ones it was restricted to.
@@ -102,6 +115,8 @@ export async function fetchConsumptionTimeseries(
     breakdownBy,
     breakdownCount = DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
     filter,
+    timezone = "UTC",
+    includeWorkspaceContext = true,
   }: {
     period: ConsumptionPeriod;
     granularity: ConsumptionGranularity;
@@ -110,6 +125,8 @@ export async function fetchConsumptionTimeseries(
     breakdownBy?: ConsumptionBreakdownDimension | null;
     breakdownCount?: number;
     filter?: ConsumptionScopeFilter;
+    timezone?: string;
+    includeWorkspaceContext?: boolean;
   }
 ): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
@@ -118,15 +135,32 @@ export async function fetchConsumptionTimeseries(
     endDate: period.endDate,
     filter,
   });
-  const scope = { period, granularity, mode, metric };
-
+  const scope = { period, granularity, mode, metric, timezone };
+  let timeseriesResult: Result<ConsumptionTimeseriesData, ElasticsearchError>;
   if (!breakdownBy) {
-    return fetchTimeseries(query, scope);
+    timeseriesResult = await fetchTimeseries(query, scope);
+  } else {
+    timeseriesResult = await fetchTimeseriesBreakdown(auth, query, scope, {
+      breakdownBy,
+      breakdownCount,
+    });
   }
 
-  return fetchTimeseriesBreakdown(auth, query, scope, {
-    breakdownBy,
-    breakdownCount,
+  if (timeseriesResult.isErr()) {
+    return timeseriesResult;
+  }
+
+  let workspaceMemberCount: number | null = null;
+  if (includeWorkspaceContext && auth.isManager()) {
+    workspaceMemberCount =
+      await MembershipResource.countActiveMembersForWorkspace({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+  }
+
+  return new Ok({
+    ...timeseriesResult.value,
+    workspaceMemberCount,
   });
 }
 
@@ -134,10 +168,11 @@ async function fetchTimeseries(
   query: estypes.QueryDslQueryContainer,
   scope: ConsumptionTimeseriesScope,
   breakdownBy: ConsumptionBreakdownDimension | null = null
-): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+): Promise<Result<ConsumptionTimeseriesData, ElasticsearchError>> {
   const bucketsResult = await fetchMetricTimeseries(query, {
     period: scope.period,
     granularity: scope.granularity,
+    timezone: scope.timezone,
     metric: scope.metric,
     breakdown: null,
   });
@@ -147,6 +182,7 @@ async function fetchTimeseries(
 
   const points = bucketsResult.value.map((bucket) => ({
     timestamp: bucket.timestamp,
+    activeUsers: bucket.activeUsers,
     values: { [TOTAL_GROUP_KEY]: bucket.total },
   }));
 
@@ -169,7 +205,7 @@ async function fetchTimeseriesBreakdown(
     breakdownBy: ConsumptionBreakdownDimension;
     breakdownCount: number;
   }
-): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+): Promise<Result<ConsumptionTimeseriesData, ElasticsearchError>> {
   const field = CONSUMPTION_DIMENSION_FIELDS[breakdownBy];
 
   const rankingResult = await fetchTopDimensions(query, {
@@ -189,6 +225,7 @@ async function fetchTimeseriesBreakdown(
   const bucketsResult = await fetchMetricTimeseries(query, {
     period: scope.period,
     granularity: scope.granularity,
+    timezone: scope.timezone,
     metric: scope.metric,
     breakdown: { field, groupKeys: topDimensionKeys },
   });
@@ -231,11 +268,13 @@ async function fetchMetricTimeseries(
   {
     period,
     granularity,
+    timezone,
     metric,
     breakdown,
   }: {
     period: ConsumptionPeriod;
     granularity: ConsumptionGranularity;
+    timezone: string;
     metric: ConsumptionMetric;
     breakdown: ConsumptionBreakdown | null;
   }
@@ -248,7 +287,7 @@ async function fetchMetricTimeseries(
           date_histogram: {
             field: COMPLETED_AT_FIELD,
             calendar_interval: granularity,
-            time_zone: "UTC",
+            time_zone: timezone,
             min_doc_count: 0,
             extended_bounds: {
               min: new Date(period.startDate).getTime(),
@@ -258,6 +297,12 @@ async function fetchMetricTimeseries(
             },
           },
           aggs: {
+            active_users: {
+              cardinality: {
+                field: CONSUMPTION_DIMENSION_FIELDS.user,
+                precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+              },
+            },
             ...metricSubAgg(metric),
             ...(breakdown
               ? {
@@ -289,6 +334,7 @@ async function fetchMetricTimeseries(
   return new Ok(
     buckets.map((bucket) => ({
       timestamp: bucket.key,
+      activeUsers: Math.round(bucket.active_users?.value ?? 0),
       total: metricValue(metric, bucket.metric),
       valueByGroupKey: new Map(
         bucketsToArray<ConsumptionGroupBucket>(bucket.by_group?.buckets).map(
@@ -326,7 +372,11 @@ function buildBreakdownPoints(
     if (hasOthers) {
       values[OTHERS_GROUP_KEY] = otherValues[index];
     }
-    return { timestamp: bucket.timestamp, values };
+    return {
+      timestamp: bucket.timestamp,
+      activeUsers: bucket.activeUsers,
+      values,
+    };
   });
 
   return { points, hasOthers };
@@ -362,6 +412,7 @@ function finalizePoints(
     if (point.timestamp > nowMs) {
       return {
         ...point,
+        activeUsers: 0,
         values: Object.fromEntries(groupKeys.map((key) => [key, 0])),
       };
     }

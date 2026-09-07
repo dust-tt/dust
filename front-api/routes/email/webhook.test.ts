@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   EMAIL_WEBHOOK_RELAY_HEADER,
   EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
@@ -59,7 +60,7 @@ const RELAY_AUTH_HEADERS = {
   [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
 };
 
-function buildSendgridForm(senderEmail: string): FormData {
+function buildSendgridForm(senderEmail: string, messageId: string): FormData {
   const senderDomain = senderEmail.split("@")[1];
   const form = new FormData();
   form.set("subject", "Hello agent");
@@ -72,6 +73,7 @@ function buildSendgridForm(senderEmail: string): FormData {
     "envelope",
     JSON.stringify({ from: senderEmail, to: ["some-agent@dust.team"] })
   );
+  form.set("headers", `Message-ID: ${messageId}`);
   return form;
 }
 
@@ -80,11 +82,12 @@ function buildSendgridForm(senderEmail: string): FormData {
 // not derive them from a FormData body.
 const postWebhook = async (
   senderEmail: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  messageId = `<${randomUUID()}@example.com>`
 ): Promise<Response> => {
   const encoded = new Request("http://localhost/", {
     method: "POST",
-    body: buildSendgridForm(senderEmail),
+    body: buildSendgridForm(senderEmail, messageId),
   });
   const rawBody = Buffer.from(await encoded.arrayBuffer());
 
@@ -129,6 +132,50 @@ describe("POST /api/email/webhook", () => {
         "email_agents_disabled"
       );
       // No bounce from the source region once the relay succeeded.
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("ignores a relayed email with the same Message-ID", async () => {
+    const messageId = `<${randomUUID()}@example.com>`;
+
+    const firstResponse = await postWebhook(
+      "unknown-sender@example.com",
+      RELAY_AUTH_HEADERS,
+      messageId
+    );
+    expect(firstResponse.status).toBe(200);
+    await vi.waitFor(() =>
+      expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+    );
+
+    const secondResponse = await postWebhook(
+      "unknown-sender@example.com",
+      RELAY_AUTH_HEADERS,
+      messageId
+    );
+    expect(secondResponse.status).toBe(200);
+    expect(sendEmailToRecipients).toHaveBeenCalledOnce();
+  });
+
+  it("retries transient relay failures", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(user.email, {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
       expect(sendEmailToRecipients).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllGlobals();

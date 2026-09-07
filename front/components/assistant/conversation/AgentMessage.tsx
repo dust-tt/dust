@@ -89,7 +89,7 @@ import {
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
-  isInteractiveContentType,
+  isFrameContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -1058,7 +1058,7 @@ export function AgentMessage({
         )}
         {parentAgent && (
           <Chip
-            label={`handoff from @${parentAgent.name}`}
+            label={`handoff from ${parentAgent.name}`}
             size="xs"
             className="ml-1"
             color="primary"
@@ -1444,7 +1444,7 @@ function AgentMessageContent({
   const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
-      !isInteractiveContentType(file.contentType) &&
+      !isFrameContentType(file.contentType) &&
       (file.filePath === undefined || !referencedFilePaths.has(file.filePath))
   );
 

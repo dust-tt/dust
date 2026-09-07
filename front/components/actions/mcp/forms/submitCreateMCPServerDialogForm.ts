@@ -6,18 +6,19 @@ import type {
   CreateMCPServerResponseBody,
   MCPServerType,
   MCPServerViewNameConflict,
+  MCPServerViewNameConflictDetails,
 } from "@app/lib/api/mcp";
 import { isMCPServerViewNameConflict } from "@app/lib/api/mcp";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
 import { isMCPCreateServerError } from "@app/lib/swr/mcp_servers";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
+import type { CellInfo } from "@app/types/cell";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import {
   getHostDerivedMcpServerUrl,
   getHostDerivedOAuthExtraConfig,
 } from "@app/types/oauth/lib";
-import type { RegionInfo } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
@@ -38,6 +39,7 @@ type CreateMCPServerDialogSubmitResult =
   | {
       type: "name_conflict";
       name: string;
+      conflictDetails?: MCPServerViewNameConflictDetails;
       oauthConnectionId: string | null;
       remoteMCPServerOAuthDiscoveryDone: boolean;
     };
@@ -126,7 +128,7 @@ interface SubmitCreateMCPServerDialogFormParams {
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
   onBeforeCreateServer: () => void;
-  regionInfo: RegionInfo | null;
+  cellInfo: CellInfo | null;
 }
 
 export async function submitCreateMCPServerDialogForm({
@@ -141,7 +143,7 @@ export async function submitCreateMCPServerDialogForm({
   createWithURL,
   createInternalMCPServer,
   onBeforeCreateServer,
-  regionInfo,
+  cellInfo,
 }: SubmitCreateMCPServerDialogFormParams): Promise<
   Result<CreateMCPServerDialogSubmitResult, Error>
 > {
@@ -254,7 +256,7 @@ export async function submitCreateMCPServerDialogForm({
           ...(values.authCredentials ?? {}),
           ...(effectiveScope ? { scope: effectiveScope } : {}),
         },
-        regionInfo,
+        cellInfo,
       });
 
       if (cRes.isErr()) {
@@ -361,6 +363,7 @@ export async function submitCreateMCPServerDialogForm({
         return new Ok({
           type: "name_conflict",
           name: err.nameConflict,
+          conflictDetails: err.conflictDetails,
           oauthConnectionId: oauthConnection?.connectionId ?? null,
           remoteMCPServerOAuthDiscoveryDone:
             nextRemoteMCPServerOAuthDiscoveryDone,

@@ -1,11 +1,11 @@
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { loadActiveFrameUiBundle } from "@app/lib/api/frames/publication_storage";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { frameContentType, isConversationFileUseCase } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
@@ -72,7 +72,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  * /api/w/{wId}/files/{fileId}:
  *   get:
  *     summary: Get or download a file
- *     description: View or download a file. Skill attachments require read access to their associated skill. Feature-flagged Frames v2 return the active published UI bundle when viewed. Use query parameters `version` (original, processed, public) and `action` (view, download).
+ *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).
  *     tags:
  *       - Private Files
  *     parameters:
@@ -223,8 +223,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
     if (file.isFrameV2 && (await hasFeatureFlag(auth, "frames_v2"))) {
-      const uiBundle = await loadActiveFrameUiBundle(auth, { frame: file });
-      if (uiBundle.isErr()) {
+      const owner = renderLightWorkspaceType({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      const uiBundle = await file.getRenderableContent(owner);
+      if (!uiBundle) {
         return apiError(ctx, {
           status_code: 404,
           api_error: {
@@ -234,7 +237,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
         });
       }
 
-      return ctx.body(uiBundle.value, 200, {
+      return ctx.body(uiBundle, 200, {
         "Content-Type": frameContentType,
       });
     }
@@ -279,7 +282,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const isFileAuthor = file.userId === auth.user()?.id;
   const isUploadUseCase =
     file.useCase === "upsert_table" || file.useCase === "folders_document";
-  const canWriteInSpace = space ? space.canWrite(auth) : false;
+  const canWriteInSpace = space ? auth.can("write", space) : false;
 
   if (
     isUploadUseCase &&
@@ -359,7 +362,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const isFileAuthor = file.userId === auth.user()?.id;
   const isUploadUseCase =
     file.useCase === "upsert_table" || file.useCase === "folders_document";
-  const canWriteInSpace = space ? space.canWrite(auth) : false;
+  const canWriteInSpace = space ? auth.can("write", space) : false;
 
   if (
     isUploadUseCase &&
@@ -530,7 +533,7 @@ async function checkFileAccess(
     file.useCase === "folders_document" ||
     file.useCase === "project_context"
   ) {
-    if (!space || !space.canRead(auth)) {
+    if (!space || !auth.can("read", space)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },

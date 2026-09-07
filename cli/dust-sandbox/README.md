@@ -55,7 +55,7 @@ Functions are self-contained Bun bundles in `$DUST_FUNCTIONS_DIR`, named
 - `dsbx function get <name>` — prints `{name, description, userIdentity,
   input_schema, output_schema}` (JSON Schema).
 
-Functions may require a current member of their Pod's workspace:
+Set `schema.userIdentity` when a function needs a caller identity:
 
 ```ts
 export const schema = {
@@ -65,10 +65,21 @@ export const schema = {
 };
 ```
 
-Omitting `userIdentity` keeps the function callable without a user.
-Use `interactive_workspace_user_required` when the function must be called
-directly from a logged-in member's live Dust session, rather than by an agent,
-schedule, or API client acting on that member's behalf.
+- `optional` (or omit the field): no user is required.
+- `workspace_user_required`: require a current workspace member.
+- `interactive_workspace_user_required`: require a workspace member calling
+  directly from a live Dust session, rather than through an agent, schedule, or
+  API client acting on that member's behalf.
+- `pod_member_required`: require membership in the owning Pod. Retained for
+  legacy Pod Functions.
+- `frame_author_required`: for Frame v2 functions, require write access to the
+  Frame's source files.
+
+Adding a policy requires a runner-first rollout. Publish a `dsbx` release that
+parses the policy, then update `DSBX_CLI_VERSION` in
+`front/lib/api/sandbox/image/registry.ts` before exposing the policy to Frame
+authors. During a mixed-version rollout, servers deny unknown persisted
+policies, so invocation fails closed until all revisions understand the policy.
 
 ### Unprivileged execution
 

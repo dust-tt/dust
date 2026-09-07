@@ -1,5 +1,6 @@
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -10,8 +11,10 @@ import type {
   AgentMessageSuccessEvent,
 } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { ApplicationFailure } from "@temporalio/common";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  finalizeCancellation,
   processEventForDatabase,
   updateAgentMessageDBAndMemory,
 } from "./common";
@@ -1255,5 +1258,103 @@ describe("late terminal events after finalization", () => {
       },
     });
     expect(dbMessage?.status).toBe("succeeded");
+  });
+});
+
+describe("finalizeCancellation", () => {
+  it("marks the agent message as cancelled", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    await finalizeCancellation(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    const dbMessage = await AgentMessageModel.findOne({
+      where: {
+        id: agentMessage.agentMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(dbMessage?.status).toBe("cancelled");
+  });
+
+  it("throws a non-retryable failure when the selected model is gone", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    await AgentConfigurationModel.update(
+      {
+        // @ts-expect-error retired EAP ids are no longer ModelIdType
+        modelId: "claude-smores-eap",
+      },
+      { where: { sId: agentConfig.sId, workspaceId: workspace.id } }
+    );
+
+    await expect(
+      finalizeCancellation(auth.toJSON(), {
+        agentMessageId: agentMessage.sId,
+        agentMessageVersion: agentMessage.version,
+        conversationId: conversation.sId,
+        conversationTitle: conversation.title,
+        userMessageId: userMessage.sId,
+        userMessageVersion: userMessage.version,
+        userMessageOrigin: userMessage.context.origin,
+      })
+    ).rejects.toSatisfy((error: unknown): boolean => {
+      return (
+        error instanceof ApplicationFailure &&
+        error.nonRetryable === true &&
+        error.type === "ModelNotFound"
+      );
+    });
   });
 });

@@ -23,7 +23,7 @@ import {
   getWorkspaceInfos,
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
-import { Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import type { CustomAttributeKey } from "@app/lib/iam/users";
 import {
@@ -34,7 +34,6 @@ import {
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
   ADMIN_GROUP_NAME,
-  BUILDER_GROUP_NAME,
   GroupResource,
   MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
@@ -127,9 +126,8 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
   ) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    const featureFlags = await getFeatureFlagsForWorkspace(workspace);
     const plan = subscription?.getPlan();
-    if (!plan || !isSCIMEnabled(plan, featureFlags)) {
+    if (!plan || !isSCIMEnabled(plan)) {
       logger.warn(
         { workspaceId: workspace.sId, organizationId },
         "SCIM event received but neither the workspace plan nor a feature flag allows SCIM, skipping"
@@ -217,19 +215,6 @@ async function handleRoleAssignmentForGroup(
     directoryId?: string;
   }
 ) {
-  // The `dust-builders` provisioning group no longer grants the deprecated builder role. Mirror
-  // the membership into the workspace's manual "Builders" group when it exists; if the group has
-  // not been created, ignore it (provisioning never creates it).
-  if (group.name === BUILDER_GROUP_NAME) {
-    await GroupResource.syncBuilderGroupMembership({
-      workspace,
-      user,
-      isBuilder: action === "add",
-      createIfMissing: false,
-    });
-    return;
-  }
-
   if (group.name !== ADMIN_GROUP_NAME && group.name !== MANAGER_GROUP_NAME) {
     // Not a special group, no role assignment needed.
     return;
@@ -249,7 +234,7 @@ async function handleRoleAssignmentForGroup(
   }
 
   if (action === "add") {
-    const newRole = await determineUserRoleFromGroups(workspace, user);
+    const newRole = await determineUserRoleFromGroups(auth, user);
 
     if (newRole !== currentMembership.role) {
       const updateResult = await MembershipResource.updateMembershipRole({
@@ -297,7 +282,7 @@ async function handleRoleAssignmentForGroup(
       });
     }
   } else if (action === "remove") {
-    const newRole = await determineUserRoleFromGroups(workspace, user);
+    const newRole = await determineUserRoleFromGroups(auth, user);
 
     if (newRole !== currentMembership.role) {
       const updateResult = await MembershipResource.updateMembershipRole({
@@ -707,7 +692,10 @@ async function handleGroupUpsert(
   const { data: eventData } = event;
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const groupByName = await GroupResource.fetchByName(auth, eventData.name);
+  const groupByName = await GroupResource.dangerouslyFetchByName(
+    auth,
+    eventData.name
+  );
   if (groupByName && groupByName.workOSGroupId !== eventData.id) {
     // Conflict - another group with the same name already exists.
 
@@ -1334,9 +1322,9 @@ async function revokeWorkOSUserMembership(
   triggersDeleted: boolean
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const groups = await GroupResource.listUserGroupsInWorkspace({
+  const groups = await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+    auth,
     user,
-    workspace,
     groupKinds: GROUP_KINDS.filter((k) => k !== "system" && k !== "global"),
   });
 

@@ -18,14 +18,26 @@ interface RelocationStorageOptions {
   fileName?: string;
 }
 
+export function getRelocationStoragePath({
+  workspaceId,
+  type,
+  operation,
+  fileName,
+}: RelocationStorageOptions & { fileName: string }): string {
+  return `${RELOCATION_PATH_PREFIX}/${workspaceId}/${type}/${operation}/${fileName}.json`;
+}
+
 // In prod, we use pod annotations to set the service account.
 export async function writeToRelocationStorage(
   data: unknown,
   { workspaceId, type, operation, fileName }: RelocationStorageOptions
 ): Promise<string> {
-  const timestamp = Date.now();
-  // default to timestamp if custom fileName if not provided
-  const path = `${RELOCATION_PATH_PREFIX}/${workspaceId}/${type}/${operation}/${fileName ?? timestamp}.json`;
+  const path = getRelocationStoragePath({
+    workspaceId,
+    type,
+    operation,
+    fileName: fileName ?? Date.now().toString(),
+  });
 
   const relocationBucket = getBucketInstance(config.getGcsRelocationBucket(), {
     useServiceAccount: isDevelopment(),

@@ -21,6 +21,8 @@ import downgrade from "./downgrade";
 import dsync from "./dsync";
 import features from "./features";
 import files from "./files";
+import frames from "./frames";
+import governancePermissions from "./governance_permissions";
 import groupPermissions from "./group_permissions";
 import groups from "./groups";
 import invitations from "./invitations";
@@ -28,7 +30,8 @@ import llmTraces from "./llm-traces";
 import mcp from "./mcp";
 import mcpServerViews from "./mcp_server_views";
 import memberships from "./memberships";
-import observability from "./observability";
+import messagingApps from "./messaging_apps";
+import modelTiers from "./model_tiers";
 import projects from "./projects";
 import seatLimitsSchedule from "./seat_limits_schedule";
 import skillSuggestions from "./skill_suggestions";
@@ -54,8 +57,8 @@ export type SegmentWorkspaceResponseBody = {
 const app = pokeApp();
 
 // `auth-context` runs without `withPokeWorkspace` because it needs to handle
-// the missing-workspace case (cross-region redirect). It owns its own
-// session-based auth flow internally. Must be mounted before the
+// the missing-workspace case (cross-region redirect). It re-scopes the
+// unscoped poke Authenticator itself. Must be mounted before the
 // `withPokeWorkspace` middleware below.
 app.route("/auth-context", authContext);
 
@@ -94,6 +97,8 @@ app.route("/downgrade", downgrade);
 app.route("/dsync", dsync);
 app.route("/features", features);
 app.route("/files", files);
+app.route("/frames", frames);
+app.route("/governance_permissions", governancePermissions);
 app.route("/group_permissions", groupPermissions);
 app.route("/groups", groups);
 app.route("/invitations", invitations);
@@ -101,7 +106,8 @@ app.route("/llm-traces", llmTraces);
 app.route("/mcp", mcp);
 app.route("/mcp_server_views", mcpServerViews);
 app.route("/memberships", memberships);
-app.route("/observability", observability);
+app.route("/messaging_apps", messagingApps);
+app.route("/model_tiers", modelTiers);
 app.route("/projects", projects);
 app.route("/seat_limits_schedule", seatLimitsSchedule);
 app.route("/skill_suggestions", skillSuggestions);

@@ -44,7 +44,6 @@ import {
   DustLogoSquare,
   FilterFunnel01,
   Icon,
-  MOTION_DURATIONS,
   MOTION_EASINGS,
   Pagination,
   SearchInput,
@@ -60,7 +59,6 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import type { Transition, Variants } from "framer-motion";
 import {
   AnimatePresence,
   domMax,
@@ -69,7 +67,7 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import type { ComponentType, Dispatch, ReactNode, SetStateAction } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
   AttributionRowData,
   ConsumptionAttributionRowsTableProps,
@@ -80,7 +78,6 @@ import type {
   ConsumptionDimension,
 } from "./consumptionDimensions";
 import {
-  CONSUMPTION_ATTRIBUTION_DIMENSIONS,
   CONSUMPTION_DIMENSION_CONFIG,
   consumptionAttributionDimensionLabel,
   DEFAULT_CONSUMPTION_DIMENSION,
@@ -99,51 +96,6 @@ const ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS = new Set([
   "credits",
   "costShare",
 ]);
-
-type AttributionTransitionDirection = -1 | 0 | 1;
-
-interface AttributionTransition {
-  target: ConsumptionAttributionDimension | null;
-  direction: AttributionTransitionDirection;
-}
-
-const ATTRIBUTION_BODY_TRANSITION = {
-  duration: MOTION_DURATIONS.exit,
-  ease: MOTION_EASINGS.enter,
-} satisfies Transition;
-
-const ATTRIBUTION_BODY_VARIANTS: Variants = {
-  initial: (direction: number) => ({
-    opacity: direction === 0 ? 1 : 0,
-    x: direction * 4,
-  }),
-  animate: {
-    opacity: 1,
-    x: 0,
-    transition: ATTRIBUTION_BODY_TRANSITION,
-  },
-  exit: (direction: number) => ({
-    opacity: direction === 0 ? 1 : 0,
-    pointerEvents: "none",
-    transition: direction === 0 ? { duration: 0 } : ATTRIBUTION_BODY_TRANSITION,
-    x: direction * -4,
-  }),
-};
-
-function getAttributionTransitionDirection(
-  currentDimension: ConsumptionAttributionDimension,
-  nextDimension: ConsumptionAttributionDimension
-): AttributionTransitionDirection {
-  const currentIndex =
-    CONSUMPTION_ATTRIBUTION_DIMENSIONS.indexOf(currentDimension);
-  const nextIndex = CONSUMPTION_ATTRIBUTION_DIMENSIONS.indexOf(nextDimension);
-
-  if (currentIndex === nextIndex) {
-    return 0;
-  }
-
-  return nextIndex > currentIndex ? 1 : -1;
-}
 
 function AttributionTooltipCard({
   row,
@@ -186,16 +138,8 @@ function growthPercent(
     : null;
 }
 
-function VsPrevCell({
-  credits,
-  previousCredits,
-}: {
-  credits: number;
-  previousCredits: number | null;
-}) {
-  const growth = growthPercent(credits, previousCredits);
-
-  if (growth === null) {
+function PercentageChangeCell({ percentage }: { percentage: number | null }) {
+  if (percentage === null) {
     return (
       <DataTable.CellContent className="w-full justify-end text-right">
         <Tooltip
@@ -211,15 +155,84 @@ function VsPrevCell({
     <div
       className={cn(
         "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
-        growth > 100 ? "text-highlight-600" : "text-muted-foreground"
+        percentage > 100 ? "text-highlight-600" : "text-muted-foreground"
       )}
     >
       <Icon
-        visual={growth >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
+        visual={percentage >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
         size="xs"
       />
-      <span>{Math.round(Math.abs(growth))}%</span>
+      <span>{Math.round(Math.abs(percentage))}%</span>
     </div>
+  );
+}
+
+function VsPrevCell({
+  credits,
+  previousCredits,
+}: {
+  credits: number;
+  previousCredits: number | null;
+}) {
+  return (
+    <PercentageChangeCell
+      percentage={growthPercent(credits, previousCredits)}
+    />
+  );
+}
+
+function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
+  if (percentage === null) {
+    return (
+      <DataTable.CellContent className="w-full justify-end text-right">
+        <Tooltip
+          label="Not enough data to compute"
+          tooltipTriggerAsChild
+          trigger={<span className="text-sm text-muted-foreground">--</span>}
+        />
+      </DataTable.CellContent>
+    );
+  }
+
+  const roundedPercentage = Math.round(percentage);
+  const sign = roundedPercentage > 0 ? "+" : "";
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-center justify-end text-right text-sm tabular-nums",
+        percentage > 100 ? "text-highlight-600" : "text-muted-foreground"
+      )}
+    >
+      <span>
+        {sign}
+        {roundedPercentage}%
+      </span>
+    </div>
+  );
+}
+
+function usageDifferenceFromAveragePercent({
+  credits,
+  activeMembers,
+  totalCredits,
+  totalActiveMembers,
+}: {
+  credits: number;
+  activeMembers: number | undefined;
+  totalCredits: number;
+  totalActiveMembers: number;
+}): number | null {
+  if (!activeMembers || totalCredits <= 0 || totalActiveMembers <= 0) {
+    return null;
+  }
+
+  const groupAverageCredits = credits / activeMembers;
+  const overallAverageCredits = totalCredits / totalActiveMembers;
+
+  return (
+    ((groupAverageCredits - overallAverageCredits) / overallAverageCredits) *
+    100
   );
 }
 
@@ -229,6 +242,7 @@ function buildColumns({
   isAvatarRounded,
   avgLabel,
   totalCredits,
+  totalActiveMembers,
   isDark,
   expandedRowId,
   selectedIdSet,
@@ -238,6 +252,7 @@ function buildColumns({
   isAvatarRounded: boolean;
   avgLabel: string;
   totalCredits: number;
+  totalActiveMembers: number;
   isDark: boolean;
   expandedRowId: string | null;
   selectedIdSet: Set<string>;
@@ -342,24 +357,73 @@ function buildColumns({
         );
       },
     },
-    {
-      id: "costShare",
-      // Same denominator (totalCredits) for every row, so ranking by cost
-      // share is the same order as ranking by credits
-      accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
-      header: "Consumption share",
-      enableSorting: true,
-      meta: { className: "w-36", sizeRatio: 20, headerAlign: "left" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
-          <CostShareCell
-            share={
-              totalCredits > 0 ? info.row.original.credits / totalCredits : 0
-            }
-          />
-        </DataTable.CellContent>
-      ),
-    },
+    ...(dimension === "group"
+      ? ([
+          {
+            id: "activeMembers",
+            header: "Active / total members",
+            enableSorting: false,
+            meta: { sizeRatio: 18, headerAlign: "right" },
+            cell: (info) => (
+              <DataTable.BasicCellContent
+                className="justify-end text-right tabular-nums"
+                label={
+                  info.row.original.activeMembers !== undefined &&
+                  info.row.original.totalMembers !== undefined
+                    ? `${info.row.original.activeMembers.toLocaleString(
+                        "en-US"
+                      )} / ${info.row.original.totalMembers.toLocaleString(
+                        "en-US"
+                      )}`
+                    : "--"
+                }
+              />
+            ),
+          },
+          {
+            id: "usageVsAverage",
+            header: "Vs workspace avg",
+            enableSorting: false,
+            meta: { sizeRatio: 22, headerAlign: "right" },
+            cell: (info) => {
+              const usagePercent = usageDifferenceFromAveragePercent({
+                credits: info.row.original.credits,
+                activeMembers: info.row.original.activeMembers,
+                totalCredits,
+                totalActiveMembers,
+              });
+
+              return <UsageVsAverageCell percentage={usagePercent} />;
+            },
+          },
+        ] satisfies ColumnDef<AttributionRowData>[])
+      : ([
+          {
+            id: "costShare",
+            // Same denominator (totalCredits) for every row, so ranking by cost
+            // share is the same order as ranking by credits
+            accessorFn: (row) =>
+              totalCredits > 0 ? row.credits / totalCredits : 0,
+            header: "Consumption share",
+            enableSorting: true,
+            meta: {
+              className: "w-36",
+              sizeRatio: 20,
+              headerAlign: "left",
+            },
+            cell: (info) => (
+              <DataTable.CellContent className="w-full justify-start">
+                <CostShareCell
+                  share={
+                    totalCredits > 0
+                      ? info.row.original.credits / totalCredits
+                      : 0
+                  }
+                />
+              </DataTable.CellContent>
+            ),
+          },
+        ] satisfies ColumnDef<AttributionRowData>[])),
     {
       id: "credits",
       accessorKey: "credits",
@@ -480,6 +544,7 @@ export interface ConsumptionAttributionRowsProps {
 export interface ConsumptionAttributionRowsData {
   rows: ConsumptionTopRow[];
   totalCredits: number;
+  totalActiveMembers: number;
   totalCount: number;
   isTopLoading: boolean;
   isTopError: boolean;
@@ -556,6 +621,7 @@ export function ConsumptionAttributionRowsView({
   data: {
     rows,
     totalCredits,
+    totalActiveMembers,
     totalCount,
     isTopLoading,
     isTopError,
@@ -582,6 +648,7 @@ export function ConsumptionAttributionRowsView({
         isAvatarRounded: dimension === "user",
         avgLabel,
         totalCredits,
+        totalActiveMembers,
         isDark,
         expandedRowId,
         selectedIdSet,
@@ -591,6 +658,7 @@ export function ConsumptionAttributionRowsView({
       dimension,
       avgLabel,
       totalCredits,
+      totalActiveMembers,
       isDark,
       expandedRowId,
       selectedIdSet,
@@ -684,7 +752,9 @@ export function ConsumptionAttributionRowsView({
       <div>
         {rows.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            {search.trim() ? `No match for "${search.trim()}".` : emptyMessage}
+            {search.trim()
+              ? `No results for "${search.trim()}". Only items with usage data appear here.`
+              : emptyMessage}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -735,6 +805,7 @@ function WorkspaceConsumptionAttributionRows(
   const {
     rows,
     totalCredits,
+    totalActiveMembers,
     totalCount,
     isTopLoading,
     isTopError,
@@ -758,6 +829,7 @@ function WorkspaceConsumptionAttributionRows(
       data={{
         rows,
         totalCredits,
+        totalActiveMembers,
         totalCount,
         isTopLoading,
         isTopError: Boolean(isTopError),
@@ -835,17 +907,6 @@ export function ConsumptionAttributionTableView({
       : dimension;
   const attributionDimension: ConsumptionAttributionDimension =
     isPersonal && isConversationSelected ? "conversation" : activeDimension;
-  const pendingPointerDimension =
-    useRef<ConsumptionAttributionDimension | null>(null);
-  const [transition, setTransition] = useState<AttributionTransition>({
-    target: null,
-    direction: 0,
-  });
-  const shouldReduceMotion = useReducedMotion();
-  const effectiveTransitionDirection =
-    shouldReduceMotion || transition.target !== attributionDimension
-      ? 0
-      : transition.direction;
   const visibleDimensions = getConsumptionAttributionDimensions(analyticsScope);
 
   const exportBody: ConsumptionExportBody = {
@@ -872,17 +933,6 @@ export function ConsumptionAttributionTableView({
             value={attributionDimension}
             onValueChange={(value) => {
               if (isConsumptionAttributionDimension(value)) {
-                setTransition({
-                  target: value,
-                  direction:
-                    pendingPointerDimension.current === value
-                      ? getAttributionTransitionDirection(
-                          attributionDimension,
-                          value
-                        )
-                      : 0,
-                });
-                pendingPointerDimension.current = null;
                 if (value === "conversation") {
                   setIsConversationSelected(true);
                 } else {
@@ -901,15 +951,6 @@ export function ConsumptionAttributionTableView({
                   className={
                     tabDimension === "conversation" ? "ml-auto" : undefined
                   }
-                  onPointerDown={() => {
-                    pendingPointerDimension.current = tabDimension;
-                  }}
-                  onPointerCancel={() => {
-                    pendingPointerDimension.current = null;
-                  }}
-                  onKeyDown={() => {
-                    pendingPointerDimension.current = null;
-                  }}
                 />
               ))}
             </TabsList>
@@ -924,52 +965,37 @@ export function ConsumptionAttributionTableView({
             />
           )}
           <LazyMotion features={domMax}>
-            <div className="relative overflow-hidden">
-              <AnimatePresence
-                initial={false}
-                mode="popLayout"
-                custom={effectiveTransitionDirection}
-              >
-                <m.div
-                  key={attributionDimension}
-                  custom={effectiveTransitionDirection}
-                  variants={ATTRIBUTION_BODY_VARIANTS}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                >
-                  {/* Reset table state whenever its dataset or local search changes. */}
-                  {attributionDimension === "conversation" ? (
-                    <ConsumptionConversationAttribution
-                      workspaceId={workspaceId}
-                      period={period}
-                      filter={filter}
-                      disabled={disabled}
-                      onNavigate={onConversationNavigate}
-                    />
-                  ) : (
-                    <AttributionRowsComponent
-                      key={JSON.stringify({
-                        period,
-                        filter,
-                        search: debouncedValue,
-                      })}
-                      workspaceId={workspaceId}
-                      dimension={attributionDimension}
-                      period={period}
-                      filter={filter}
-                      analyticsScope={analyticsScope}
-                      disabled={disabled}
-                      onAddFilter={handleAddFilter}
-                      onAgentClick={onAgentClick}
-                      onRemoveFilter={onRemoveFilter}
-                      onSkillClick={onSkillClick}
-                      search={debouncedValue}
-                      onViewAll={onViewAll}
-                    />
-                  )}
-                </m.div>
-              </AnimatePresence>
+            <div key={attributionDimension}>
+              {/* Reset table state whenever its dataset or local search changes. */}
+              {attributionDimension === "conversation" ? (
+                <ConsumptionConversationAttribution
+                  workspaceId={workspaceId}
+                  period={period}
+                  filter={filter}
+                  disabled={disabled}
+                  onNavigate={onConversationNavigate}
+                />
+              ) : (
+                <AttributionRowsComponent
+                  key={JSON.stringify({
+                    period,
+                    filter,
+                    search: debouncedValue,
+                  })}
+                  workspaceId={workspaceId}
+                  dimension={attributionDimension}
+                  period={period}
+                  filter={filter}
+                  analyticsScope={analyticsScope}
+                  disabled={disabled}
+                  onAddFilter={handleAddFilter}
+                  onAgentClick={onAgentClick}
+                  onRemoveFilter={onRemoveFilter}
+                  onSkillClick={onSkillClick}
+                  search={debouncedValue}
+                  onViewAll={onViewAll}
+                />
+              )}
             </div>
           </LazyMotion>
         </div>

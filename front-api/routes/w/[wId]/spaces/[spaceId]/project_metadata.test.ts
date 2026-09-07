@@ -1,22 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const {
-  mockLaunchOrSignalProjectTodoWorkflow,
-  mockStartImmediateProjectTodoWorkflowOnce,
-  mockStopProjectTodoWorkflow,
-} = vi.hoisted(() => ({
-  mockLaunchOrSignalProjectTodoWorkflow: vi.fn(),
-  mockStartImmediateProjectTodoWorkflowOnce: vi.fn(),
-  mockStopProjectTodoWorkflow: vi.fn(),
-}));
-
-vi.mock("@app/temporal/project_task/client", () => ({
-  launchOrSignalProjectTodoWorkflow: mockLaunchOrSignalProjectTodoWorkflow,
-  startImmediateProjectTodoWorkflowOnce:
-    mockStartImmediateProjectTodoWorkflowOnce,
-  stopProjectTodoWorkflow: mockStopProjectTodoWorkflow,
-}));
-
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -25,11 +6,11 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameContentType } from "@app/types/files";
 import {
-  DEFAULT_POD_FRAME_TAB_ICON,
+  DEFAULT_POD_FILE_TAB_ICON,
   normalizeTabsOrder,
-} from "@app/types/pod_frame_tab";
-
+} from "@app/types/pod_file_tab";
 import { honoApp } from "@front-api/app";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 function getMetadata(workspace: { sId: string }, spaceId: string) {
   return honoApp.request(
@@ -127,7 +108,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     expect(response.status).toBe(403);
   });
 
-  it("stops project tasks workflow when archiving a project", async () => {
+  it("archives a project", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -143,14 +124,11 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockStopProjectTodoWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockStopProjectTodoWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({ spaceId: projectSpace.sId })
-    );
-    expect(mockLaunchOrSignalProjectTodoWorkflow).not.toHaveBeenCalled();
+    const data = await response.json();
+    expect(data.projectMetadata.archivedAt).not.toBeNull();
   });
 
-  it("updates tasks generation opt-in", async () => {
+  it("ignores tasks generation opt-in and returns hardcoded false", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -167,9 +145,8 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.projectMetadata.todoGenerationEnabled).toBe(true);
-    expect(mockLaunchOrSignalProjectTodoWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockStartImmediateProjectTodoWorkflowOnce).toHaveBeenCalledTimes(1);
+    expect(data.projectMetadata.todoGenerationEnabled).toBe(false);
+    expect(data.projectMetadata.lastTodoAnalysisAt).toBeNull();
   });
 
   it("sets, returns, replaces, and clears default skills (custom + global)", async () => {
@@ -230,7 +207,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
-  it("allows removing a frame tab when another tab has a stale path", async () => {
+  it("allows removing a file tab when another tab has a stale path", async () => {
     const { workspace, auth, user } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -264,12 +241,12 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
         {
           path: stalePath,
           title: "Activity",
-          icon: DEFAULT_POD_FRAME_TAB_ICON,
+          icon: DEFAULT_POD_FILE_TAB_ICON,
         },
         {
           path: validPath,
           title: "My View",
-          icon: DEFAULT_POD_FRAME_TAB_ICON,
+          icon: DEFAULT_POD_FILE_TAB_ICON,
         },
       ],
       tabsOrder: normalizeTabsOrder([stalePath, validPath], framePaths),
@@ -280,7 +257,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
         {
           path: stalePath,
           title: "Activity",
-          icon: DEFAULT_POD_FRAME_TAB_ICON,
+          icon: DEFAULT_POD_FILE_TAB_ICON,
         },
       ],
       tabsOrder: normalizeTabsOrder([stalePath], [stalePath]),
@@ -291,12 +268,12 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
       {
         path: stalePath,
         title: "Activity",
-        icon: DEFAULT_POD_FRAME_TAB_ICON,
+        icon: DEFAULT_POD_FILE_TAB_ICON,
       },
     ]);
   });
 
-  it("restarts project tasks workflow when unarchiving a project", async () => {
+  it("unarchives a project", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -312,10 +289,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockLaunchOrSignalProjectTodoWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockLaunchOrSignalProjectTodoWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({ spaceId: projectSpace.sId })
-    );
-    expect(mockStopProjectTodoWorkflow).not.toHaveBeenCalled();
+    const data = await response.json();
+    expect(data.projectMetadata.archivedAt).toBeNull();
   });
 });

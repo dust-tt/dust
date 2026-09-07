@@ -16,5 +16,6 @@ describe("Frames v2 FileResource", () => {
 
     expect(frame.isFrameV2).toBe(true);
     expect(frame.isInteractiveContent).toBe(false);
+    expect(frame.isShareableFrame).toBe(true);
   });
 });

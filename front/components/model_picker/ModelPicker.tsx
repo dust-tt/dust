@@ -1,3 +1,4 @@
+import { DegradedModelIcon } from "@app/components/model_picker/DegradedModelIcon";
 import { ModelPickerContent } from "@app/components/model_picker/ModelPickerContent";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
@@ -9,39 +10,43 @@ import {
   trackModelPickerSelect,
 } from "@app/components/model_picker/modelPickerTracking";
 import type {
-  MakerGroup,
+  ModelPickerSelectionModel,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
   buildModelSelection,
   buildTierSelection,
+  getDegradedModelTooltip,
   getInitialEffort,
   getModelTier,
   getModelWithReasoningEffortLabel,
+  getReasoningEffortLabel,
   getTierLockReason,
   isPremiumModel,
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
+import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
+import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
-import { useModels } from "@app/lib/swr/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
-  ModelMakerIdType,
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  DropdownMenu,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -53,6 +58,9 @@ export interface ModelPickerProps {
   buttonVariant: "outline" | "ghost-secondary";
   buttonSize: "xs" | "sm";
   showLabel: boolean;
+  // Appends the dropdown chevron to the trigger. Only meaningful alongside
+  // `showLabel`: icon-only triggers stay a single glyph.
+  showDropdownArrow?: boolean;
   // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
   // active conversation (input bar pinned to the bottom), "bottom" on the new
   // conversation screen where there is room below.
@@ -75,6 +83,9 @@ export interface ModelPickerProps {
   // surface. Consumers that don't pass it (e.g. the agent builder) are not
   // tracked.
   trackingSurface?: ModelPickerSurface;
+  // Degradation badges warn about picking a model to chat with right now; the
+  // agent builder configures a durable default, so it turns them off.
+  showDegradations?: boolean;
 }
 
 export function ModelPicker({
@@ -85,6 +96,7 @@ export function ModelPicker({
   buttonVariant,
   buttonSize,
   showLabel,
+  showDropdownArrow = false,
   side = "top",
   disabled,
   selectionRef,
@@ -94,30 +106,24 @@ export function ModelPicker({
   commitApiRef,
   openApiRef,
   trackingSurface,
+  showDegradations = true,
 }: ModelPickerProps) {
-  const { hasFeature } = useFeatureFlags();
   const clientType = useClientType();
-  const { subscription } = useAuth();
-  const canSelectPremiumModels =
-    isCreditPricedPlan(subscription.plan) ||
-    subscription.plan.hasAdvancedModelAccess ||
-    hasFeature("claude_4_5_opus_feature");
-  const lockPremiumEfforts = !canSelectPremiumModels;
 
   const { isDark } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
-
-  // Inline-expansion state, only used on width-constrained clients.
-  const [moreModelsExpanded, setMoreModelsExpanded] = useState(false);
-  const [expandedMaker, setExpandedMaker] = useState<ModelMakerIdType | null>(
-    null
-  );
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const { models, streams } = useModels({ owner });
+  const {
+    modelProps,
+    models,
+    streamModels,
+    lockPremiumEfforts,
+    degradedModelIds,
+  } = useModelPickerModels({ owner, showDegradations });
+  const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
   const { shown: baseSelection, agentDefault } = useMemo(
     () =>
@@ -153,41 +159,6 @@ export function ModelPicker({
   }
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
-
-  // Concrete, selectable models (meta-models are surfaced as tiers instead).
-  const allModels = useMemo<ModelConfigurationType[]>(
-    () =>
-      models.filter(
-        (model) => !isModelStreamId(model.modelId) && model.isSelectable
-      ),
-    [models]
-  );
-
-  // Meta-models backing the tier rows: their `isSelectable` tells whether the
-  // member's model-tier cap allows the stream at all.
-  const streamModels = useMemo(
-    () => models.filter((model) => isModelStreamId(model.modelId)),
-    [models]
-  );
-
-  // Group models by maker, preserving first-seen order of both makers and
-  // models within each maker.
-  const makerGroups = useMemo<MakerGroup[]>(() => {
-    const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
-    for (const model of allModels) {
-      const makerId = getModelMaker(model);
-      const existing = groups.get(makerId);
-      if (existing) {
-        existing.push(model);
-      } else {
-        groups.set(makerId, [model]);
-      }
-    }
-    return Array.from(groups.entries()).map(([makerId, makerModels]) => ({
-      makerId,
-      models: makerModels,
-    }));
-  }, [allModels]);
 
   const commit = (
     selection: Selection,
@@ -227,9 +198,7 @@ export function ModelPicker({
   // through here rather than touching `setIsOpen` directly.
   const openMenu = () => {
     setIsOpen(true);
-    setSearch("");
-    setMoreModelsExpanded(false);
-    setExpandedMaker(null);
+    resetMenu();
     if (trackingSurface) {
       trackModelPickerOpen({ surface: trackingSurface, clientType });
     }
@@ -238,17 +207,6 @@ export function ModelPicker({
   if (openApiRef) {
     openApiRef.current = openMenu;
   }
-
-  // Picking a concrete model (or nudging its effort slider) must keep the menu
-  // and its open submenus visible so the effort can still be adjusted. The
-  // click briefly moves focus/pointer in a way Radix treats as an
-  // interaction-outside and dismisses the (sub)menu; we record the pick time
-  // and veto the close that immediately follows it (see `onOpenChange` and the
-  // submenu guards in `ModelPickerMoreModels`).
-  const lastModelInteractionAtMsRef = useRef(0);
-
-  const shouldBlockDismiss = () =>
-    Date.now() - lastModelInteractionAtMsRef.current < 300;
 
   const onSelectTier = (tierId: ModelTierId) => {
     if (getTierLockReason(tierId, { lockPremiumEfforts, streamModels })) {
@@ -267,7 +225,6 @@ export function ModelPicker({
     if (isPremiumModel(model, { lockPremiumEfforts })) {
       return;
     }
-    lastModelInteractionAtMsRef.current = Date.now();
     const effort = getInitialEffort(model, { lockPremiumEfforts });
     commit(
       {
@@ -282,7 +239,6 @@ export function ModelPicker({
     if (shown.display.kind !== "model") {
       return;
     }
-    lastModelInteractionAtMsRef.current = Date.now();
     const { model } = shown.display;
     if (
       lockPremiumEfforts &&
@@ -314,26 +270,42 @@ export function ModelPicker({
     }
   };
 
+  const selection: ModelPickerSelectionModel = {
+    selected: [shown.display],
+    agentDefault: agentDefault.display,
+    onRevert: canRevert ? onRevert : undefined,
+  };
+
   const buttonIcon =
     shown.display.kind === "tier"
       ? MODEL_TIER_ICON[shown.display.tierId]
       : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
 
-  const label =
+  const degradedModelTooltip =
+    shown.display.kind === "model" &&
+    degradedModelIds.has(shown.display.model.modelId)
+      ? getDegradedModelTooltip(shown.display.model.displayName)
+      : null;
+
+  // Model name and reasoning effort read as one string for the tooltip and the
+  // accessible name, but the visible trigger splits the effort into its own
+  // chip so it reads as a modifier rather than part of the model's name.
+  const label = getModelWithReasoningEffortLabel(shown.display);
+
+  const triggerLabel =
     shown.display.kind === "tier"
       ? getModelTier(shown.display.tierId).name
-      : getModelWithReasoningEffortLabel(shown.display);
+      : shown.display.model.displayName;
+
+  const effortLabel =
+    shown.display.kind === "model"
+      ? getReasoningEffortLabel(shown.display.effort)
+      : null;
 
   return (
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        // Ignore the dismissal that a model/effort pick triggers, so the menu
-        // stays open. The window is short enough not to swallow a genuine
-        // click-outside a moment later.
-        if (!open && shouldBlockDismiss()) {
-          return;
-        }
         if (open) {
           openMenu();
         } else {
@@ -346,35 +318,40 @@ export function ModelPicker({
           className="px-2"
           variant={buttonVariant}
           size={buttonSize}
-          icon={buttonIcon}
-          label={showLabel ? label : undefined}
-          tooltip={showLabel ? undefined : `Model picker: ${label}`}
+          icon={
+            degradedModelTooltip !== null ? (
+              <DegradedModelIcon icon={buttonIcon} surface="composer" />
+            ) : (
+              buttonIcon
+            )
+          }
+          label={showLabel ? triggerLabel : undefined}
+          iconRight={
+            showLabel && effortLabel ? (
+              <Chip
+                size="mini"
+                label={effortLabel}
+                className="bg-primary-150"
+              />
+            ) : undefined
+          }
+          isSelect={showLabel && showDropdownArrow}
+          tooltip={
+            degradedModelTooltip ??
+            (showLabel ? undefined : `Model picker: ${label}`)
+          }
+          aria-label={`Model picker: ${label}`}
           disabled={disabled}
         />
       </DropdownMenuTrigger>
       <ModelPickerContent
+        {...modelProps}
+        {...menuStateProps}
         side={side}
-        shouldBlockDismiss={shouldBlockDismiss}
-        shown={shown}
-        agentDefault={agentDefault}
-        canRevert={canRevert}
-        lockPremiumEfforts={lockPremiumEfforts}
-        makerGroups={makerGroups}
-        allModels={allModels}
-        streamModels={streamModels}
-        streams={streams}
-        search={search}
-        onSearchChange={setSearch}
-        moreModelsExpanded={moreModelsExpanded}
-        onToggleMoreModels={() => setMoreModelsExpanded((v) => !v)}
-        expandedMaker={expandedMaker}
-        onToggleMaker={(makerId) =>
-          setExpandedMaker((current) => (current === makerId ? null : makerId))
-        }
+        selection={selection}
         onSelectTier={onSelectTier}
         onSelectModel={onSelectModel}
-        onChangeEffort={onChangeEffort}
-        onRevert={onRevert}
+        onChangeEffort={(_, effort) => onChangeEffort(effort)}
       />
     </DropdownMenu>
   );

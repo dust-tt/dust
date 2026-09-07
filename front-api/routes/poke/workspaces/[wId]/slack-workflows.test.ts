@@ -14,6 +14,7 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -79,8 +80,9 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
     expect(whitelist).not.toHaveBeenCalled();
   });
 
-  it("lists the allowed workflows with their group names", async () => {
-    const { workspace, globalGroup } = await setupTest();
+  it("lists the allowed workflows with their spaces", async () => {
+    const { workspace, globalSpace } = await setupTest();
+    const space = await SpaceFactory.regular(workspace);
     vi.spyOn(
       ConnectorsAPI.prototype,
       "getSlackBotSummoningWhitelist"
@@ -89,7 +91,7 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
         bots: [
           {
             botName: BOT_NAME,
-            groupIds: [globalGroup.sId],
+            spaceIds: [globalSpace.sId, space.sId],
             createdAt: CREATED_AT,
           },
         ],
@@ -106,7 +108,7 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
       workflows: [
         {
           botName: BOT_NAME,
-          groups: [{ sId: globalGroup.sId, name: globalGroup.name }],
+          spaces: [{ sId: space.sId, name: space.name }],
           createdAt: CREATED_AT,
         },
       ],

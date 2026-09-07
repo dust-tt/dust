@@ -188,19 +188,19 @@ export abstract class ResourceWithSpace<
   }
 
   canAdministrate(auth: Authenticator) {
-    return this.space.canAdministrate(auth);
+    return auth.can("admin", this);
   }
 
   canReadOrAdministrate(auth: Authenticator) {
-    return this.space.canReadOrAdministrate(auth);
+    return auth.can("read", this) || auth.can("admin", this);
   }
 
   canRead(auth: Authenticator) {
-    return this.space.canRead(auth);
+    return auth.can("read", this);
   }
 
   canWrite(auth: Authenticator) {
-    return this.space.canWrite(auth);
+    return auth.can("write", this);
   }
 
   // This method determines if the authenticated user can fetch data, based on workspace ownership.

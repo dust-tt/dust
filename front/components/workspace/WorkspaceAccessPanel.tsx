@@ -45,9 +45,9 @@ export default function WorkspaceAccessPanel({
   const { addDomainLink, domains, isDomainsLoading } = useWorkspaceDomains({
     owner,
   });
-  const { featureFlags, hasFeature } = useFeatureFlags();
+  const { hasFeature } = useFeatureFlags();
   const workspace = useWorkspace();
-  const scimEnabled = isSCIMEnabled(plan, featureFlags);
+  const scimEnabled = isSCIMEnabled(plan);
   const hasAuditLogsAccess =
     plan.isAuditLogsAllowed || hasFeature("audit_logs");
   const showAuditLogs =

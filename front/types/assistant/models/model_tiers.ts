@@ -2,6 +2,7 @@ import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS } from "@app/types/assistant/models/static_model_reasoning_efforts";
 import type {
+  ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
@@ -136,6 +137,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   },
   "gpt-5.5": {
     none: "balanced",
+    light: "premium",
+    medium: "premium",
+    high: "premium",
+  },
+  "gpt-6-astra": {
     light: "premium",
     medium: "premium",
     high: "premium",
@@ -358,6 +364,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "balanced",
     high: "premium",
   },
+  "gemini-3.8-flash": {
+    light: "balanced",
+    medium: "balanced",
+    high: "premium",
+  },
   "deepseek-chat": {
     none: "cost_efficient",
   },
@@ -405,6 +416,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   },
   "accounts/fireworks/models/glm-5p2": {
     high: "balanced",
+  },
+  "accounts/fireworks/models/glm-5p3-flash": {
+    light: "cost_efficient",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "accounts/fireworks/models/inkling": {
     light: "balanced",
@@ -486,4 +502,28 @@ export function getTierForModel(
     return "premium";
   }
   return STATIC_MODEL_TIERS[modelId][reasoningEffort] ?? null;
+}
+
+// A stored selection can carry a reasoning effort its model maps to no tier
+// (e.g. an effort kept from a previous model after switching to a stream);
+// fall back to the model's default effort rather than resolving no effort.
+export function getTieredReasoningEffort(
+  model: ModelConfigurationType,
+  reasoningEffort?: ReasoningEffort
+): ReasoningEffort {
+  if (reasoningEffort && getTierForModel(model.modelId, reasoningEffort)) {
+    return reasoningEffort;
+  }
+
+  return model.defaultReasoningEffort;
+}
+
+export function getTierForModelConfiguration(
+  model: ModelConfigurationType,
+  reasoningEffort?: ReasoningEffort
+): ModelsTierName | null {
+  return getTierForModel(
+    model.modelId,
+    getTieredReasoningEffort(model, reasoningEffort)
+  );
 }

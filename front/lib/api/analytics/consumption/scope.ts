@@ -54,10 +54,18 @@ export function uniqueMessagesCardinalityAgg(): estypes.AggregationsAggregationC
   };
 }
 
+// The scope dimensions plus the two that can be ranked but not filtered on, and
+// are therefore not scope dimensions: conversation, and the agent tag a
+// document inherits from the agent that produced it.
+export const CONSUMPTION_TOP_DIMENSIONS = [
+  ...CONSUMPTION_SCOPE_DIMENSIONS,
+  "conversation",
+  "tag",
+  "reasoning_effort",
+] as const;
+
 export type ConsumptionTopDimension =
-  | ConsumptionScopeDimension
-  | "conversation"
-  | "reasoning_effort";
+  (typeof CONSUMPTION_TOP_DIMENSIONS)[number];
 
 export const CONSUMPTION_DIMENSION_FIELDS: Record<
   ConsumptionScopeDimension,
@@ -75,12 +83,16 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   source: "normalized_origin",
 };
 
+export const AGENT_TAG_IDS_FIELD = "agent.tag_ids";
+
 export const CONSUMPTION_TOP_DIMENSION_FIELDS: Record<
   ConsumptionTopDimension,
   string
 > = {
   ...CONSUMPTION_DIMENSION_FIELDS,
   conversation: CONVERSATION_ID_FIELD,
+  // Multi-valued: an agent can carry several tags at once.
+  tag: AGENT_TAG_IDS_FIELD,
   reasoning_effort: "model.reasoning_effort",
 };
 
@@ -106,8 +118,27 @@ export const CONSUMPTION_TOP_DIMENSION_UNIT: Record<
 > = {
   ...CONSUMPTION_DIMENSION_UNIT,
   conversation: "message",
+  tag: "message",
   reasoning_effort: "message",
 };
+
+export const CONSUMPTION_TOP_RANK_BY = ["credits", "count"] as const;
+
+export type ConsumptionTopRankBy = (typeof CONSUMPTION_TOP_RANK_BY)[number];
+
+export const CONSUMPTION_MESSAGE_DIMENSIONS = [
+  "agent",
+  "user",
+  "api_key",
+  "group",
+  "model",
+  "source",
+  "conversation",
+  "tag",
+  "reasoning_effort",
+] as const;
+
+export const CONSUMPTION_INVOCATION_DIMENSIONS = ["tool", "skill"] as const;
 
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 
@@ -199,6 +230,7 @@ export function buildConsumptionScopeQuery({
       )
     );
   }
+  filters.push(...termFilter(AGENT_TAG_IDS_FIELD, filter.tags));
 
   return { bool: { filter: [...filters, ...extraFilters] } };
 }

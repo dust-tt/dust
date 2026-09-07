@@ -14,8 +14,6 @@ import moment from "moment-timezone";
 
 type VersionMarker = { version: string; timestamp: number };
 
-type SourceBucket = { origin: string; count: number };
-
 export function isUserMessageOrigin(
   origin?: string | null
 ): origin is AnalyticsVisibleOrigin {
@@ -55,37 +53,6 @@ export function getIndexedBaseColor(
 ): string {
   const idx = allLabels.indexOf(label);
   return INDEXED_BASE_COLORS[(idx >= 0 ? idx : 0) % INDEXED_BASE_COLORS.length];
-}
-
-export function buildSourceChartData(buckets: SourceBucket[], total: number) {
-  // Aggregate by label so origins sharing the same display name are merged.
-  const aggregatedByLabel = new Map<
-    string,
-    { origin: AnalyticsVisibleOrigin; count: number }
-  >();
-
-  for (const b of buckets) {
-    if (!isUserMessageOrigin(b.origin)) {
-      continue;
-    }
-
-    const label = USER_MESSAGE_ORIGIN_LABELS[b.origin].label;
-    const existing = aggregatedByLabel.get(label);
-    if (existing) {
-      existing.count += b.count;
-    } else {
-      aggregatedByLabel.set(label, { origin: b.origin, count: b.count });
-    }
-  }
-
-  return Array.from(aggregatedByLabel.entries()).map(
-    ([label, { origin, count }]) => ({
-      origin,
-      label,
-      count,
-      percent: total > 0 ? Math.round((count / total) * 100) : 0,
-    })
-  );
 }
 
 function truncateToMidnightUTC(timestamp: number): number {

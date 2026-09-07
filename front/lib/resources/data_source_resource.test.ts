@@ -270,10 +270,10 @@ describe("DataSourceResource cross-workspace fetch", () => {
     await MembershipFactory.associate(workspaceB, superUser, {
       role: "admin",
     });
-    const authB = await Authenticator.fromUserIdAndWorkspaceId(
-      superUser.sId,
-      workspaceB.sId
-    );
+    const authB = await Authenticator.fromDustSuperUser({
+      user: superUser,
+      wId: workspaceB.sId,
+    });
 
     const dataSource = await DataSourceResource.unsafeFetchByDustAPIProjectId(
       authB,

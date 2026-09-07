@@ -244,6 +244,7 @@ const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
 const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalActiveMembers: 8,
   totalCount: 1,
   hasMore: false,
   groups: [
@@ -251,6 +252,8 @@ const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
       groupId: "group1",
       name: "Engineering",
       credits: 200,
+      activeMembers: 3,
+      totalMembers: 5,
       previousCredits: null,
       messageCount: 4,
       avgCreditsPerMessage: 50,

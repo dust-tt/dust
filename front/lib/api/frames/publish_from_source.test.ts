@@ -1,9 +1,11 @@
 // @vitest-environment node
 
+import { getFrameSourceLockName } from "@app/lib/api/frames/operation_lock";
 import {
   publishFrameFromSource,
   publishFrameV2FromSource,
 } from "@app/lib/api/frames/publish_from_source";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -11,15 +13,19 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
-import { getFramePublicationSourcePath } from "@app/types/api/frame_storage";
+import {
+  FRAME_MANIFEST_FILE,
+  FrameManifestSchema,
+} from "@app/types/api/frame_manifest";
+import { FramePublicationDescriptorSchema } from "@app/types/api/frame_publication";
+import { getFramePublicationDescriptorPath } from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
 } from "@app/types/mount_path";
 import assert from "assert";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const manifest = JSON.stringify({
   version: 1,
@@ -28,7 +34,11 @@ const manifest = JSON.stringify({
 });
 const uiSource = "export default function Status() { return <p>Ready</p>; }";
 
-async function setup() {
+async function setup({
+  uiContentType = "text/typescript",
+}: {
+  uiContentType?: string;
+} = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
   });
@@ -62,7 +72,7 @@ async function setup() {
           name,
           metadata: {
             contentType: name.endsWith(".tsx")
-              ? "text/typescript"
+              ? uiContentType
               : frameV2ContentType,
             size: String(Buffer.byteLength(content)),
           },
@@ -141,8 +151,8 @@ describe("publishFrameFromSource", () => {
       workspace.sId
     );
     assert(viewerAuth);
-    expect(space.canRead(viewerAuth)).toBe(true);
-    expect(space.canWrite(viewerAuth)).toBe(false);
+    expect(viewerAuth.can("read", space)).toBe(true);
+    expect(viewerAuth.can("write", space)).toBe(false);
 
     const conversation = await ConversationFactory.create(viewerAuth, {
       agentConfigurationId: "test-agent",
@@ -178,9 +188,15 @@ describe("publishFrameFromSource", () => {
 });
 
 describe("publishFrameV2FromSource", () => {
-  it("snapshots the source folder and activates one publication", async () => {
-    const { auth, conversation, frame, manifestPath, workspace } =
-      await setup();
+  it("publishes artifacts without copying source and activates one publication", async () => {
+    const {
+      auth,
+      conversation,
+      frame,
+      gcsSourceDirectoryPath,
+      manifestPath,
+      workspace,
+    } = await setup();
 
     const result = await publishFrameV2FromSource(auth, {
       conversation,
@@ -194,27 +210,40 @@ describe("publishFrameV2FromSource", () => {
       frameId: frame.sId,
       publicationId: result.value.publicationId,
     };
+    const storedPublication = fileStorageMock.getObject(
+      getFramePublicationDescriptorPath(identity)
+    );
+    assert(storedPublication);
+    const publication = FramePublicationDescriptorSchema.parse(
+      JSON.parse(storedPublication)
+    );
+    expect(publication.manifest).toEqual(
+      FrameManifestSchema.parse(JSON.parse(manifest))
+    );
     expect(
-      fileStorageMock.getObject(
-        getFramePublicationSourcePath({
-          ...identity,
-          relativePath: FRAME_MANIFEST_FILE,
-        })
+      fileStorageMock.saveFileCalls.some(({ filePath }) =>
+        filePath.startsWith(`${gcsSourceDirectoryPath}/`)
       )
-    ).toBe(manifest);
-    expect(
-      fileStorageMock.getObject(
-        getFramePublicationSourcePath({
-          ...identity,
-          relativePath: "index.tsx",
-        })
-      )
-    ).toBe(uiSource);
+    ).toBe(false);
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       result.value.publicationId
     );
+  });
+
+  it("infers TSX source content type from its extension", async () => {
+    const { auth, conversation, frame, manifestPath } = await setup({
+      uiContentType: "application/x-tiled-tsx",
+    });
+
+    const result = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath,
+    });
+
+    expect(result.isOk()).toBe(true);
   });
 
   it("rejects a path that does not match the Frame identity", async () => {
@@ -232,6 +261,66 @@ describe("publishFrameV2FromSource", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
+  it("revalidates the Frame source path after acquiring the source lock", async () => {
+    const { auth, conversation, frame, manifestPath, workspace } =
+      await setup();
+    const staleFrame = await FileResource.fetchById(auth, frame.sId);
+    assert(staleFrame);
+    const movedManifestPath = `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}Moved/${FRAME_MANIFEST_FILE}`;
+    await frame.updateMount({
+      destFileName: FRAME_MANIFEST_FILE,
+      destMountFilePath: movedManifestPath,
+      destUseCase: "conversation",
+      destUseCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const result = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame: staleFrame,
+      manifestPath,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_source",
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("does not write when another source operation holds the lock", async () => {
+    const { auth, conversation, frame, manifestPath } = await setup();
+    const lockKey = `lock:${getFrameSourceLockName(frame.sId)}`;
+    const redisClient = await getRedisStreamClient({ origin: "lock" });
+    await redisClient.set(lockKey, "held-by-test", {
+      NX: true,
+      PX: 60_000,
+    });
+    vi.useFakeTimers();
+
+    try {
+      const publicationPromise = publishFrameV2FromSource(auth, {
+        conversation,
+        frame,
+        manifestPath,
+      });
+      await vi.runAllTimersAsync();
+      const published = await publicationPromise;
+
+      expect(published.isErr() && published.error).toMatchObject({
+        code: "publish_conflict",
+        message:
+          "Another source operation is in progress for this Frame; retry shortly.",
+      });
+      expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+      expect(fileStorageMock.writeStreamCalls).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+      await redisClient.del(lockKey);
+    }
+  });
+
   it("rejects publication from a read-only Pod", async () => {
     const {
       authenticator: auth,
@@ -246,8 +335,8 @@ describe("publishFrameV2FromSource", () => {
       workspace.sId
     );
     assert(viewerAuth);
-    expect(space.canRead(viewerAuth)).toBe(true);
-    expect(space.canWrite(viewerAuth)).toBe(false);
+    expect(viewerAuth.can("read", space)).toBe(true);
+    expect(viewerAuth.can("write", space)).toBe(false);
 
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",

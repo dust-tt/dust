@@ -15,6 +15,7 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -102,35 +103,7 @@ describe("stable agent identities", () => {
     expect([...agentModelIds][0]).not.toBeNull();
   });
 
-  it("creates and attaches an identity when updating a legacy agent", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const firstVersion =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    await AgentConfigurationModel.update(
-      { agentId: null },
-      { where: { sId: firstVersion.sId, workspaceId: workspace.id } }
-    );
-    await AgentModel.destroy({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
-    });
-
-    await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      firstVersion.sId
-    );
-
-    const versions = await AgentConfigurationModel.findAll({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
-      attributes: ["agentId"],
-    });
-    expect(versions).toHaveLength(2);
-    expect(versions.every((version) => version.agentId !== null)).toBe(true);
-    expect(new Set(versions.map((version) => version.agentId)).size).toBe(1);
-  });
-
-  it("deletes the identity only after its last version is deleted", async () => {
+  it("deletes the identity and grants only after its last version is deleted", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -140,6 +113,25 @@ describe("stable agent identities", () => {
       authenticator,
       firstVersion.sId
     );
+    const agentResource = await AgentResource.fetchByAgentConfiguration(
+      authenticator,
+      firstVersion
+    );
+    if (agentResource.id === null) {
+      throw new Error("Agent identity was not created");
+    }
+    const grantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        authenticator,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: agentResource.id,
+        }
+      );
+    if (!grantGroup) {
+      throw new Error("Agent editor grant was not created");
+    }
 
     await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
     expect(
@@ -147,6 +139,11 @@ describe("stable agent identities", () => {
         where: { sId: firstVersion.sId, workspaceId: workspace.id },
       })
     ).not.toBeNull();
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        grantGroup.id,
+      ])
+    ).toHaveLength(1);
 
     await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
     expect(
@@ -154,6 +151,11 @@ describe("stable agent identities", () => {
         where: { sId: firstVersion.sId, workspaceId: workspace.id },
       })
     ).toBeNull();
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        grantGroup.id,
+      ])
+    ).toHaveLength(0);
   });
 });
 
@@ -162,6 +164,8 @@ describe("createAgentConfiguration with pending agent", () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
 
     // Create a pending agent using the helper function
     const pendingAgentRes =
@@ -170,6 +174,36 @@ describe("createAgentConfiguration with pending agent", () => {
       throw pendingAgentRes.error;
     }
     const { sId: pendingId } = pendingAgentRes.value;
+
+    const pendingAgent = await AgentConfigurationModel.findOne({
+      where: { sId: pendingId, workspaceId: workspace.id },
+    });
+    if (!pendingAgent) {
+      throw new Error("Pending agent was not created");
+    }
+    const pendingAgentResource =
+      AgentResource.fromAgentConfigurationModel(pendingAgent);
+    if (!pendingAgentResource.id) {
+      throw new Error("Pending agent identity was not created");
+    }
+    const pendingGrantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        authenticator,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: pendingAgentResource.id,
+        }
+      );
+    expect(pendingGrantGroup).not.toBeNull();
+    if (!pendingGrantGroup) {
+      throw new Error("Pending agent editor grant was not created");
+    }
+    expect(
+      (await pendingGrantGroup.getActiveMembers(authenticator)).map(
+        (editor) => editor.sId
+      )
+    ).toEqual([user.sId]);
 
     // Convert the pending agent to active by passing its sId as agentConfigurationId
     const result = await createAgentConfiguration(authenticator, {
@@ -189,7 +223,7 @@ describe("createAgentConfiguration with pending agent", () => {
       templateId: null,
       requestedSpaceIds: [],
       tags: [],
-      editors: [user.toJSON()],
+      editors: [user.toJSON(), newEditor.toJSON()],
       authorId: user.id,
     });
 
@@ -205,9 +239,27 @@ describe("createAgentConfiguration with pending agent", () => {
       where: { sId: pendingId, workspaceId: workspace.id },
     });
     expect(agent).not.toBeNull();
-    expect(agent!.status).toBe("active");
-    expect(agent!.name).toBe("My New Agent");
-    expect(agent!.version).toBe(0); // Version should remain 0 (updated in place)
+    if (!agent) {
+      throw new Error("Pending agent was not converted");
+    }
+    expect(agent.status).toBe("active");
+    expect(agent.name).toBe("My New Agent");
+    expect(agent.version).toBe(0); // Version should remain 0 (updated in place)
+
+    expect(
+      new Set(
+        (await pendingGrantGroup.getActiveMembers(authenticator)).map(
+          (editor) => editor.sId
+        )
+      )
+    ).toEqual(new Set([user.sId, newEditor.sId]));
+
+    await AgentConfigurationFactory.updateTestAgent(authenticator, pendingId);
+    expect(
+      (await pendingGrantGroup.getActiveMembers(authenticator)).map(
+        (editor) => editor.sId
+      )
+    ).toEqual([user.sId]);
   });
 
   it("creates new agent if agentConfigurationId does not exist", async () => {
@@ -972,6 +1024,7 @@ describe("updateAgentConfigurationsScope", () => {
 
   it("disables triggers of non-editors when transitioning visible → hidden", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
+      plan: "creditPriced",
       role: "admin",
     });
 

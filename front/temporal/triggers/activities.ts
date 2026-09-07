@@ -10,6 +10,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -53,7 +54,7 @@ async function createConversationForAgentConfiguration({
   let spaceModelId: ModelId | null = null;
   if (trigger.spaceId) {
     const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
-    if (pod && pod.isProject() && pod.canRead(auth)) {
+    if (pod && pod.isProject() && auth.can("read", pod)) {
       spaceModelId = pod.id;
     } else {
       logger.warn(
@@ -158,6 +159,25 @@ async function createConversationForAgentConfiguration({
   });
 
   if (messageRes.isErr()) {
+    const { type: errorType } = messageRes.error.api_error;
+    if (
+      errorType === "plan_message_limit_exceeded" ||
+      errorType === "credits_exhausted" ||
+      errorType === "user_cap_reached" ||
+      errorType === "rate_limit_error" ||
+      errorType === "no_seat"
+    ) {
+      PostHogServerSideTracking.trackEvent({
+        distinctId: auth.getNonNullableUser().sId,
+        event: "trigger_blocked",
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        extra: {
+          trigger_id: trigger.sId,
+          error_type: errorType,
+        },
+      });
+    }
+
     logger.error(
       {
         agentConfigurationId: trigger.agentConfigurationId,

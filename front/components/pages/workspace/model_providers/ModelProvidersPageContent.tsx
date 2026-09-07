@@ -6,7 +6,7 @@ import { RegionalModelsOnlyToggle } from "@app/components/pages/workspace/model_
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useAppRouter } from "@app/lib/platform";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type {
@@ -38,7 +38,7 @@ export function ModelProvidersPageContent({
   const { subscription } = useAuth();
   const { plan } = subscription;
   const { featureFlags } = useFeatureFlags();
-  const { regionInfo } = useRegionContext();
+  const { cellInfo } = useCellContext();
   const router = useAppRouter();
 
   // Filter models based on feature flags and build modelProviders dynamically
@@ -50,7 +50,7 @@ export function ModelProvidersPageContent({
         featureFlags,
         plan,
         regionalModelsOnly: workspace.regionalModelsOnly,
-        region: regionInfo.name,
+        region: cellInfo.region,
       })
   );
 

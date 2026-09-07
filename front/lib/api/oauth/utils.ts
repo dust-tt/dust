@@ -10,7 +10,7 @@ export function finalizeUriForProvider(provider: OAuthProvider): string {
       return devBaseUrl + `/oauth/${provider}/finalize`;
     }
   }
-  return config.getAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`;
+  return config.getOAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`;
 }
 
 export function getStringFromQuery(

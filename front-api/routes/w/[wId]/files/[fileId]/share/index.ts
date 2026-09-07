@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { checkFrameShareScopePermission } from "@app/lib/api/share/frame_sharing";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import {
   buildShareFileResponse,
@@ -16,7 +17,6 @@ import type { APIErrorResponse } from "@app/types/error";
 import {
   fileShareScopeSchema,
   isConversationFileUseCase,
-  isInteractiveContentType,
   isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -41,7 +41,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/files/:fileId/share.
 const app = workspaceApp();
 
-// Register `/grants` BEFORE the bare `/` handlers — see [API2] for ordering
+// Register `/grants` BEFORE the bare `/` handlers — see [directory-route-mounts] for ordering
 // rules around literal vs. param siblings (though they are different routes,
 // keeping mounts before leaf handlers matches the convention used elsewhere).
 app.route("/grants", grants);
@@ -86,25 +86,15 @@ app.post(
 
     const { shareScope } = ctx.req.valid("json");
 
-    if (shareScope === "public") {
-      const workspace = auth.getNonNullableWorkspace();
-      const publicSharingAllowedByPolicy =
-        workspace.sharingPolicy === "all_scopes";
-      const canPublish =
-        publicSharingAllowedByPolicy &&
-        (await auth.hasWorkspacePermission("publish", "frame"));
-
-      if (!canPublish) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: publicSharingAllowedByPolicy
-              ? "You do not have permission to share this frame publicly."
-              : "Public sharing is disabled for this workspace.",
-          },
-        });
-      }
+    const permission = await checkFrameShareScopePermission(auth, shareScope);
+    if (permission.isErr()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: permission.error.message,
+        },
+      });
     }
 
     await file.setShareScope(auth, shareScope);
@@ -160,7 +150,7 @@ app.post(
   }
 );
 
-// Returns the file when it exists, is interactive, and (if linked to a
+// Returns the file when it exists, is a Frame, and (if linked to a
 // conversation) the caller can access it. Otherwise returns a `Response` for
 // the handler to short-circuit on.
 async function fetchShareableFile(
@@ -192,10 +182,7 @@ async function fetchShareableFile(
     }
   }
 
-  if (
-    !file.isInteractiveContent ||
-    !isInteractiveContentType(file.contentType)
-  ) {
+  if (!file.isShareableFrame) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {

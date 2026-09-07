@@ -1,5 +1,10 @@
 import config from "@dust-tt/front/lib/api/config";
 import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
+import {
+  getUserMenuModalRoute,
+  isUserMenuModal,
+  USER_MENU_GOTO_QUERY_PARAM,
+} from "@dust-tt/front/lib/user_menu";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -8,7 +13,11 @@ function getWorkspaceRedirectPath(
   workspaceId: string,
   searchParams: URLSearchParams
 ): string {
-  const goto = searchParams.get("goto");
+  const goto = searchParams.get(USER_MENU_GOTO_QUERY_PARAM);
+
+  if (isUserMenuModal(goto)) {
+    return getUserMenuModalRoute(workspaceId, goto);
+  }
 
   if (goto === "subscription") {
     return `/w/${workspaceId}/subscription/manage`;

@@ -23,7 +23,7 @@ import type { EmailProviderType } from "@app/lib/utils/email_provider_detection"
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
-import type { GroupKind } from "@app/types/groups";
+import type { UserVisibleGroupKind } from "@app/types/groups";
 import type {
   MembershipOriginType,
   MembershipRoleType,
@@ -306,14 +306,9 @@ async function resolveRoleFilterUserIds({
   workspace: LightWorkspaceType;
   role: ActiveRoleType;
 }): Promise<string[]> {
-  // `builder` is deprecated and surfaced to end users as a regular member, so
-  // filtering on `user` must include both.
-  const roles: ActiveRoleType[] =
-    role === "user" ? ["user", "builder"] : [role];
-
   const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
-    roles,
+    roles: [role],
   });
 
   // The query's filter make sure `user` is never null, so nothing
@@ -326,7 +321,7 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
-    groupKind?: Exclude<GroupKind, "system">;
+    groupKind?: UserVisibleGroupKind;
     role?: ActiveRoleType;
   },
   paginationParams: SearchMembersPaginationParams
@@ -407,8 +402,8 @@ export async function searchMembers(
 
       if (options.groupKind) {
         const groupsResult = await GroupResource.listUserGroupsInWorkspace({
+          auth,
           user: u,
-          workspace: owner,
           groupKinds: [options.groupKind],
         });
 
@@ -821,7 +816,6 @@ export type GetWorkspaceVerifiedDomainsResponseBody = {
 export type GetProvisioningStatusResponseBody = {
   hasAdminGroup: boolean;
   hasManagerGroup: boolean;
-  hasBuilderGroup: boolean;
 };
 
 export type GetWelcomeResponseBody = {

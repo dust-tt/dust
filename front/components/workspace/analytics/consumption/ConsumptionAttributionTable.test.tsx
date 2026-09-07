@@ -283,6 +283,60 @@ describe("ConsumptionAttributionTable", () => {
     expect(screen.getByRole("tab", { name: "Groups" })).toBeInTheDocument();
   });
 
+  it("shows active members and per-member usage for groups", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [
+        {
+          id: "engineering",
+          name: "Engineering",
+          pictureUrl: null,
+          description: null,
+          icon: null,
+          modelId: null,
+          modelDisplayName: null,
+          credits: 500,
+          avgCredits: 100,
+          activeMembers: 2,
+          totalMembers: 5,
+          previousCredits: null,
+        },
+      ],
+      totalCredits: 1_000,
+      totalActiveMembers: 10,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="group"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Active / total members" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Vs workspace avg" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Consumption share" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("2 / 5")).toBeInTheDocument();
+    const usagePercentage = screen.getByText("+150%");
+    expect(usagePercentage.parentElement).toHaveClass("text-highlight-600");
+    expect(usagePercentage.parentElement?.querySelector("svg")).toBeNull();
+  });
+
   it("caps the available pages and fetches the selected fixed-size page", async () => {
     const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,

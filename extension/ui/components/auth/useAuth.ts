@@ -1,11 +1,11 @@
 import { setDefaultInitResolver } from "@app/lib/api/config";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { useRegionContext } from "@extension/shared/context/RegionContext";
 import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,

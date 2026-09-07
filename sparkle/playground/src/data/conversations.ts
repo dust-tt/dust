@@ -1031,6 +1031,7 @@ I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topn
       citations: [
         { id: "table", icon: "table", title: "Scene-by-scene pacing map" },
         { id: "notion", icon: "notion", title: "Alternate endings draft" },
+        { id: "frame", icon: "frame", title: "Season 8 pacing dashboard" },
       ],
     },
     {
@@ -1264,74 +1265,19 @@ I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topn
         },
       },
       markdown: exampleDeliverables,
-    },
-    {
-      kind: "message",
-      id: "agent-created-task-suggestions",
-      content:
-        "I created the first tasks from the breakdown. I also found a few related tasks you may want to add.",
-      timestamp: new Date(conv2Start.getTime() + 51 * 60 * 1000),
-      ownerId: agent2.id,
-      ownerType: "agent",
-      type: "agent",
-      group: {
-        id: "group-agent-task-suggestions",
-        type: "agent",
-        name: agent2.name,
-        timestamp: "11:08",
-        completionStatus: "Completed in 8 sec",
-        avatar: {
-          emoji: agent2.emoji,
-          backgroundColor: agent2.backgroundColor,
-        },
-      },
-      taskSuggestionBoxes: [
+      citations: [
         {
-          id: "product-review-created-tasks",
-          title: "Tasks created",
-          variant: "created",
-          items: [
-            {
-              id: "created-search-ux",
-              groupTitle: "Santiago Martínez",
-              groupUserId: user3.id,
-              text: "Move search to the top navigation and add inline suggestions.",
-            },
-            {
-              id: "created-empty-state",
-              groupTitle: "Mia Jensen",
-              groupUserId: locutorId,
-              text: "Build the guided empty state with example queries.",
-            },
-            {
-              id: "created-analytics",
-              groupTitle: "Santiago Martínez",
-              groupUserId: user3.id,
-              text: "Define success metrics for suggestion ranking.",
-            },
-          ],
+          id: "search-revamp-dashboard",
+          icon: "frame",
+          title: "Search revamp dashboard",
         },
         {
-          id: "product-review-suggested-tasks",
-          title: "Suggestions",
-          variant: "suggestions",
-          items: [
-            {
-              id: "suggested-copy-review",
-              groupTitle: "Mia Jensen",
-              groupUserId: locutorId,
-              text: "Review the empty-state copy with Support before implementation.",
-            },
-            {
-              id: "suggested-instrumentation",
-              groupTitle: "Santiago Martínez",
-              groupUserId: user3.id,
-              text: "Add tracking for accepted and dismissed inline suggestions.",
-            },
-          ],
+          id: "search-rollout-plan",
+          icon: "document",
+          title: "Rollout plan",
         },
       ],
-    } as ConversationMessage,
+    },
   ];
 
   const conversation2: Conversation = {

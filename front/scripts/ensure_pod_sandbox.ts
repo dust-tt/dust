@@ -101,7 +101,7 @@ makeScript(
       }
     }
 
-    if (!pod.canRead(auth)) {
+    if (!auth.can("read", pod)) {
       logger.error(
         { podId: pod.sId, userEmail },
         "User has no read access to this pod — pass a pod they are an editor of, or a fresh --name to create one"

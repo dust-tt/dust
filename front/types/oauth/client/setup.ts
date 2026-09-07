@@ -1,5 +1,5 @@
 import config from "@app/lib/api/config";
-import type { RegionInfo } from "@app/types/region";
+import type { CellInfo } from "@app/types/cell";
 import type {
   OAuthConnectionType,
   OAuthCredentials,
@@ -17,13 +17,13 @@ export async function setupOAuthConnection({
   provider,
   useCase,
   extraConfig,
-  regionInfo,
+  cellInfo,
 }: {
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
   extraConfig: OAuthCredentials;
-  regionInfo: RegionInfo | null;
+  cellInfo: CellInfo | null;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
     const oauthBaseUrl = config.getAppUrl();
@@ -33,9 +33,9 @@ export async function setupOAuthConnection({
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
     }
-    // Pass region so the OAuth popup's RegionContext initializes with the correct API URL.
-    if (regionInfo) {
-      url += `&region=${encodeURIComponent(regionInfo.name)}`;
+    // Pass region so the OAuth popup's CellContext initializes with the correct API URL.
+    if (cellInfo) {
+      url += `&cell=${encodeURIComponent(cellInfo.name)}`;
     }
     const oauthPopup = window.open(url);
     let authComplete = false;

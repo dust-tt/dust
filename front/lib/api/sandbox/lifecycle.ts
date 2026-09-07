@@ -1,9 +1,10 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { setupPodStateOnColdStart } from "@app/lib/api/sandbox/db";
+import { setupSandboxStateOnColdStart } from "@app/lib/api/sandbox/db";
 import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
 } from "@app/lib/api/sandbox/egress";
+import { frameSandboxOnlyMounts } from "@app/lib/api/sandbox/frame_mounts";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordSandboxStartupTotal,
@@ -15,6 +16,9 @@ import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationSandboxScope } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import type { FileResource } from "@app/lib/resources/file_resource";
+import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type {
   EnsureSandboxResult,
@@ -25,6 +29,7 @@ import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -55,6 +60,18 @@ type SandboxReadyConfig<TScope> = {
     egressPolicyPodId?: string;
   };
 };
+
+function sandboxOwnerHasPersistentState(owner: SandboxRuntimeOwner): boolean {
+  switch (owner.kind) {
+    case "conversation":
+      return false;
+    case "frame":
+    case "pod":
+      return true;
+    default:
+      assertNever(owner);
+  }
+}
 
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
 // the owner adapter directly, otherwise the GCS FUSE mount and egress forwarder bring-up will be
@@ -173,14 +190,13 @@ async function ensureOwnerSandboxReady<TScope>(
         }
       }
 
-      // Pod state bring-up must run strictly AFTER the mounts (restore reads
+      // Durable SQLite bring-up must run strictly AFTER the mounts (restore reads
       // through the replica mount) and is awaited: `invoke` awaits
-      // ensurePodSandboxReady, which is what guarantees no function runs
-      // before the restore + daemon start completed. Only runs for pod
-      // owners.
-      if (freshlyCreated && runtimeOwner.kind === "pod") {
-        const podStateResult = await setupPodStateOnColdStart(auth, sandbox);
-        if (podStateResult.isErr()) {
+      // the owner-specific ready helper, which guarantees no function runs
+      // before restore and daemon startup complete. Conversation sandboxes do not own state.
+      if (freshlyCreated && sandboxOwnerHasPersistentState(runtimeOwner)) {
+        const stateResult = await setupSandboxStateOnColdStart(auth, sandbox);
+        if (stateResult.isErr()) {
           // status=running was already committed by ensureActive, and this
           // block only runs when freshlyCreated — a plain Err would make the
           // NEXT call take the warm path and happily serve a half-initialized
@@ -188,12 +204,12 @@ async function ensureOwnerSandboxReady<TScope>(
           // kill instead: ensureActive's kill-requested branch destroys and
           // recreates on the next access, re-running this setup from scratch.
           logger.error(
-            { err: podStateResult.error, sandboxId: sandbox.sId },
-            "Pod state cold start failed — requesting sandbox kill so the next access recreates it."
+            { err: stateResult.error, sandboxId: sandbox.sId },
+            "Sandbox SQLite state cold start failed — requesting sandbox kill so the next access recreates it."
           );
           await sandbox.requestKill();
           status = "error";
-          return podStateResult;
+          return stateResult;
         }
       }
 
@@ -286,6 +302,32 @@ export async function ensurePodSandboxReady(
         spaceId: pod.sId,
       },
       egressPolicyOwnerId: pod.sId,
+    }),
+  });
+}
+
+export async function ensureFrameSandboxReady(
+  auth: Authenticator,
+  frame: FileResource,
+  { requireRunning = false }: { requireRunning?: boolean } = {}
+): Promise<
+  Result<EnsureSandboxReadyWithScopeResult<FrameSandboxScope>, Error>
+> {
+  return ensureOwnerSandboxReady(auth, {
+    ensureActive: () =>
+      FrameSandboxAdapter.ensureSandboxActive(auth, frame, { requireRunning }),
+    deriveConfig: (scope) => ({
+      getFileSystem: () =>
+        DustFileSystem.forFrameSandboxProvisioning(auth, frame, {
+          sandboxOnlyMounts: frameSandboxOnlyMounts(frame),
+        }),
+      runtimeOwner: {
+        kind: "frame",
+        frameId: frame.sId,
+        spaceId: scope.spaceId,
+      },
+      egressPolicyOwnerId: frame.sId,
+      egressPolicyPodId: scope.spaceId ?? undefined,
     }),
   });
 }

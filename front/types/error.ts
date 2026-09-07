@@ -2,10 +2,10 @@
 
 import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
 import type { CoreAPIError } from "@app/types/core/core_api";
-import type { RegionType } from "@app/types/region";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { ConnectorsAPIError } from "@dust-tt/client";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type { CellInfo } from "./cell";
 
 const API_ERROR_TYPES = [
   "not_authenticated",
@@ -37,7 +37,8 @@ const API_ERROR_TYPES = [
   "provider_not_found",
   "dataset_not_found",
   "workspace_not_found",
-  "workspace_in_different_region",
+  "workspace_in_different_region", // TODO(single-tenant): remove this once we have fully migrated to cell.
+  "workspace_in_different_cell",
   "workspace_auth_error",
   "workspace_can_use_product_required_error",
   "workspace_user_not_found",
@@ -57,6 +58,7 @@ const API_ERROR_TYPES = [
   "connector_oauth_connection_not_found",
   "connector_oauth_target_mismatch",
   "connector_oauth_user_missing_rights",
+  "connector_oauth_user_must_be_admin",
   "connector_provider_not_supported",
   "connector_credentials_error",
   "connector_credentials_not_found",
@@ -167,6 +169,7 @@ const API_ERROR_TYPES = [
   "skill_github_repository_not_found",
   "sandbox_function_not_found",
   "sandbox_function_invocation_not_found",
+  "frame_runtime_unavailable",
   "fast_function_called_tools",
   // Projects
   "project_metadata_not_found",
@@ -176,18 +179,16 @@ const API_ERROR_TYPES = [
   "wakeup_not_found",
 ] as const;
 
-export type RegionRedirectError = {
-  region: RegionType;
-  url: string;
-};
+export type RegionRedirectError = CellInfo;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];
 
 // Error types that are expected outcomes of normal operation rather than
-// failures (e.g. a region redirect). Callers can use this to log them at a
+// failures (e.g. a cell redirect). Callers can use this to log them at a
 // lower level so they don't pollute error monitoring.
 export const EXPECTED_API_ERROR_TYPES: ReadonlySet<APIErrorType> = new Set([
-  "workspace_in_different_region",
+  "workspace_in_different_region", // TODO(single-tenant): remove this once we have fully migrated to cell.
+  "workspace_in_different_cell",
 ]);
 
 export type APIError = {
@@ -197,7 +198,7 @@ export type APIError = {
   run_error?: CoreAPIError;
   app_error?: CoreAPIError;
   connectors_error?: ConnectorsAPIError;
-  redirect?: RegionRedirectError;
+  redirect?: CellInfo;
   unverifiableRefs?: string[];
 };
 

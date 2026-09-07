@@ -130,12 +130,11 @@ async function getWorkspaceMaxAllowedTierName(
 async function getExplicitWorkspaceTierNames(
   auth: Authenticator
 ): Promise<ModelsTierName[]> {
-  const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-    auth.getNonNullableWorkspace().id
-  );
-  if (!globalGroup) {
+  const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+  if (globalGroupRes.isErr()) {
     return [];
   }
+  const globalGroup = globalGroupRes.value;
 
   const grants = await GroupPermissionResource.listForGroups(
     auth.getNonNullableWorkspace(),

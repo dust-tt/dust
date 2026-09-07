@@ -63,7 +63,7 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
 
   declare sId: string;
   declare version: number;
-  declare agentId: ForeignKey<AgentModel["id"]> | null;
+  declare agentId: ForeignKey<AgentModel["id"]>;
 
   declare status: AgentStatus;
   declare scope: Exclude<AgentConfigurationScope, "global">;
@@ -124,7 +124,7 @@ AgentConfigurationModel.init(
     },
     agentId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
     },
     status: {
       type: DataTypes.STRING,
@@ -243,6 +243,7 @@ AgentConfigurationModel.init(
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
       { fields: ["agentId"], concurrently: true },
+      { fields: ["agentId", "version"], unique: true, concurrently: true },
       { fields: ["workspaceId", "authorId", "sId"] },
       {
         name: "agent_configuration_unique_active_name",
@@ -258,11 +259,11 @@ AgentConfigurationModel.init(
 );
 
 AgentModel.hasMany(AgentConfigurationModel, {
-  foreignKey: { name: "agentId", allowNull: true },
+  foreignKey: { name: "agentId", allowNull: false },
   onDelete: "RESTRICT",
 });
 AgentConfigurationModel.belongsTo(AgentModel, {
-  foreignKey: { name: "agentId", allowNull: true },
+  foreignKey: { name: "agentId", allowNull: false },
   onDelete: "RESTRICT",
 });
 

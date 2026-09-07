@@ -20,6 +20,7 @@ export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
   "workspace_user_required",
   "interactive_workspace_user_required",
   "pod_member_required",
+  "frame_author_required",
 ] as const;
 
 export type SandboxFunctionUserIdentityPolicy =
@@ -126,7 +127,10 @@ export const SANDBOX_FUNCTION_SLUG_REGEX = new RegExp(
 // Mirrors DB_NAME_REGEX in cli/dust-sandbox/functions-runner/types/db.ts. Regex values cannot
 // be type-checked and front cannot runtime-import cli code; equality is asserted in
 // build_on_sandbox.test.ts.
-export const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+export const SANDBOX_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+
+// Pod databases and Frame databases share the dsbx runtime naming contract.
+export const POD_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
 
 export function isValidSandboxFunctionSlug(value: unknown): value is string {
   return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);

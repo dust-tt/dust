@@ -161,6 +161,7 @@ export function useUserIdentity(): UseUserIdentityResult {
       error: result.error,
       isAuthenticated: false,
       isWorkspaceMember: false,
+      isFrameAuthor: false,
       isPodEditor: false,
       isPodMember: false,
       isLoading: !result.error,

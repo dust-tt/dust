@@ -3,10 +3,10 @@ import {
   emitAuditLogEvent,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
+import { config as cellsConfig } from "@app/lib/api/cells/config";
+import { checkUserCellAffinity } from "@app/lib/api/cells/lookup";
 import config from "@app/lib/api/config";
 import { performLogin } from "@app/lib/api/login";
-import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
-import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { authenticateWithWorkOSCode } from "@app/lib/api/workos/authenticate";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionCookie } from "@app/lib/api/workos/user";
@@ -24,8 +24,7 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { RegionType } from "@app/types/region";
-import { SUPPORTED_REGIONS } from "@app/types/region";
+import { type CellInfo, isCellType, SUPPORTED_CELLS } from "@app/types/cell";
 import { isDevelopment } from "@app/types/shared/env";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -419,10 +418,6 @@ async function handleCallback(ctx: Context) {
       sessionData: sealedSession,
       organizationId,
       authenticationMethod,
-      region:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        decodedPayload["https://dust.tt/region"] ||
-        multiRegionsConfig.getCurrentRegion(),
       workspaceId: decodedPayload["https://dust.tt/workspaceId"],
     };
 
@@ -433,10 +428,12 @@ async function handleCallback(ctx: Context) {
       ttl: 0,
     });
 
-    const currentRegion = multiRegionsConfig.getCurrentRegion();
-    let targetRegion: RegionType | null = "us-central1";
+    const currentCell = cellsConfig.getCurrentCell();
+    let targetCell: CellInfo = cellsConfig.getCellInfo("cell-00000");
 
-    const userSessionRegion = sessionCookie.region;
+    const cellClaim = decodedPayload["https://dust.tt/cell"];
+    const userSessionCellName =
+      isString(cellClaim) && isCellType(cellClaim) ? cellClaim : null;
     const validatedReturnTo = validateRelativePath(stateObj.returnTo);
     const sanitizedReturnTo = validatedReturnTo.valid
       ? validatedReturnTo.sanitizedPath
@@ -459,38 +456,37 @@ async function handleCallback(ctx: Context) {
     }
 
     if (invite) {
-      targetRegion = currentRegion;
-    } else if (userSessionRegion) {
-      targetRegion = userSessionRegion;
+      targetCell = currentCell;
+    } else if (userSessionCellName) {
+      targetCell = cellsConfig.getCellInfo(userSessionCellName);
     } else {
-      const regionWithAffinityRes = await checkUserRegionAffinity({
+      const cellWithAffinityRes = await checkUserCellAffinity({
         email: user.email,
         email_verified: true,
       });
-      if (regionWithAffinityRes.isErr()) {
-        throw regionWithAffinityRes.error;
+      if (cellWithAffinityRes.isErr()) {
+        throw cellWithAffinityRes.error;
       }
-      if (regionWithAffinityRes.value.hasAffinity) {
-        targetRegion = regionWithAffinityRes.value.region;
+      if (cellWithAffinityRes.value) {
+        targetCell = cellWithAffinityRes.value;
       } else {
-        targetRegion = multiRegionsConfig.getCurrentRegion();
+        targetCell = cellsConfig.getCurrentCell();
       }
     }
 
-    if (targetRegion && !SUPPORTED_REGIONS.includes(targetRegion)) {
+    if (targetCell && !SUPPORTED_CELLS.includes(targetCell.name)) {
       logger.error(
-        { targetRegion, currentRegion },
-        "Invalid target region during WorkOS callback"
+        { targetCell: targetCell, currentCell: currentCell },
+        "Invalid target cell during WorkOS callback"
       );
-      targetRegion = multiRegionsConfig.getCurrentRegion();
+      targetCell = cellsConfig.getCurrentCell();
     }
 
-    if (targetRegion !== currentRegion) {
+    if (targetCell !== currentCell) {
       logger.info(
-        { targetRegion, currentRegion },
-        "Redirecting to correct region"
+        { targetCell: targetCell, currentCell: currentCell },
+        "Redirecting to correct cell"
       );
-      const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
       const params = new URLSearchParams();
       const returnTo = sanitizedReturnTo ?? "/api/login";
       params.set("returnTo", returnTo);
@@ -499,7 +495,7 @@ async function handleCallback(ctx: Context) {
       }
       return redirect(
         ctx,
-        `${targetRegionInfo.url}/api/workos/login?${params.toString()}`
+        `${targetCell.url}/api/workos/login?${params.toString()}`
       );
     }
 
@@ -550,7 +546,6 @@ async function handleCallback(ctx: Context) {
     const loginSession: SessionWithUser = {
       type: "workos",
       sessionId: decodedPayload.sid ?? "",
-      region: sessionCookie.region,
       user: {
         email: user.email,
         email_verified: user.emailVerified,

@@ -19,6 +19,7 @@ const {
   runModelAndCreateActionsActivity,
   runModelAndCreateActionsActivityWithExplicitCancellation,
   publishDeferredEventsActivity,
+  workflowLogError,
 } = vi.hoisted(() => ({
   deprecatePatch: vi.fn(),
   patched: vi.fn(),
@@ -32,6 +33,7 @@ const {
   runModelAndCreateActionsActivity: vi.fn(),
   runModelAndCreateActionsActivityWithExplicitCancellation: vi.fn(),
   publishDeferredEventsActivity: vi.fn(),
+  workflowLogError: vi.fn(),
 }));
 
 vi.mock("@temporalio/workflow", () => {
@@ -54,6 +56,9 @@ vi.mock("@temporalio/workflow", () => {
     },
     defineSignal: (name: string) => name,
     deprecatePatch,
+    log: {
+      error: workflowLogError,
+    },
     patched,
     proxyActivities: (options: {
       cancellationType?: unknown;
@@ -190,7 +195,7 @@ describe("runSandboxChildToolWorkflow", () => {
   it.each([
     "no_retry",
     "retry_on_interrupt",
-  ] as const)("finalizes and propagates terminal activity failures for %s", async (retryPolicy) => {
+  ] as const)("finalizes terminal activity failures without failing the workflow for %s", async (retryPolicy) => {
     const error = new Error("activity attempts exhausted");
     const runActivity =
       retryPolicy === "retry_on_interrupt"
@@ -204,6 +209,36 @@ describe("runSandboxChildToolWorkflow", () => {
         agentLoopArgs,
         authType,
         retryPolicy,
+        step: 1,
+      })
+    ).resolves.toBeUndefined();
+
+    expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledWith(
+      authType,
+      { actionModelId: 123 }
+    );
+    expect(workflowLogError).toHaveBeenCalledWith(
+      "Sandbox child tool activity failed.",
+      {
+        actionModelId: 123,
+        error,
+      }
+    );
+  });
+
+  it("preserves terminal activity failure propagation when replaying without the completion patch", async () => {
+    const error = new Error("activity attempts exhausted");
+    runToolActivity.mockRejectedValue(error);
+    patched.mockImplementation(
+      (patchId) => patchId === "sandbox-child-tool-retry-policy"
+    );
+
+    await expect(
+      runSandboxChildToolWorkflow({
+        actionModelId: 123,
+        agentLoopArgs,
+        authType,
+        retryPolicy: "no_retry",
         step: 1,
       })
     ).rejects.toBe(error);

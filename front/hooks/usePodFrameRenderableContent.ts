@@ -20,12 +20,17 @@ export function usePodFrameRenderableContent({
 }) {
   const isDisabled = disabled || !framePath;
 
-  const { fileId, isFileIdLoading, isFileIdNotFound, fileIdError } =
-    useFileIdFromPath({
-      owner,
-      filePath: framePath,
-      disabled: isDisabled,
-    });
+  const {
+    fileId,
+    fileContentType,
+    isFileIdLoading,
+    isFileIdNotFound,
+    fileIdError,
+  } = useFileIdFromPath({
+    owner,
+    filePath: framePath,
+    disabled: isDisabled,
+  });
 
   const {
     fileContent,
@@ -39,6 +44,7 @@ export function usePodFrameRenderableContent({
 
   return {
     fileId,
+    fileContentType,
     fileContent: fileContent ?? null,
     isLoading:
       !isDisabled && (isFileIdLoading || (!!fileId && isFileContentLoading)),

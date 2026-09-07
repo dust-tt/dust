@@ -13,26 +13,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   frames_v2: {
     description: "Enable Frames v2",
-    stage: "dust_only",
+    stage: "self_serve",
     owner: "fontanierh",
   },
-  allow_sso: {
+  analytics_conversation_panel: {
     description:
-      "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
-    stage: "self_serve",
-    owner: "tdraier",
-  },
-  allow_scim: {
-    description:
-      "Allow this workspace to configure SCIM user provisioning, independently of the plan's isSCIMAllowed flag. Enable on demand.",
-    stage: "self_serve",
-    owner: "tdraier",
-  },
-  live_speech_to_text: {
-    description:
-      "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
+      "Enable the Ask @analyst conversation panel on the Analytics page",
     stage: "dust_only",
-    owner: "adrsimon",
+    owner: "achilleburah",
   },
   advanced_notion_management: {
     description:
@@ -194,12 +182,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
     stage: "self_serve",
     owner: "flvndvd",
-  },
-  usage_page_read_only: {
-    description:
-      "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
-    stage: "self_serve",
-    owner: "tdraier",
   },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
@@ -389,15 +371,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   pod_frame_tabs: {
     description:
-      "Allow adding frames from the pod file system as custom tabs (title, icon, order) on the pod.",
+      "Allow adding previewable Pod files (frames, markdown, and other previews) as custom tabs (title, icon, order) on the pod.",
     stage: "dust_only",
     owner: "Fraggle",
-  },
-  pod_applications: {
-    description:
-      "Enable the Pod Apps UI: browse, import, clone, export and delete the apps published on a Pod.",
-    stage: "dust_only",
-    owner: "davidebbo",
   },
   group_permissions_shadow: {
     description:
@@ -420,7 +396,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   enforce_user_spend_limit_rate_cap: {
     description:
       "Enable the Redis fixed-window spend-cap backups (per-user, per-API-key, programmatic, and workspace usage cap): record AWU usage into the counters and enforce them at message send. When off, usage is neither recorded nor enforced.",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "tdraier",
   },
   enforce_premium_model_message_limit: {
@@ -453,11 +429,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "achilleburah",
   },
-  metronome_aggregated_usage_event: {
+  legacy_trigger_limits: {
     description:
-      "Ingest a single aggregated Metronome usage event (LLM + tools) instead of the legacy per-model llm_usage_v3 and per-tool tool_use_v3 events.",
-    stage: "dust_only",
-    owner: "tdraier",
+      "Keep the legacy trigger limits: automations may still be charged to personal credits on a non credit-priced plan.",
+    stage: "self_serve",
+    owner: "adrsimon",
+  },
+  message_export_from_consumption_index: {
+    description:
+      "Use the consumption analytics ES index instead of the message analytics index for message exports.",
+    stage: "ask_owner",
+    owner: "sylvain",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

@@ -3,7 +3,9 @@ import { createHash } from "node:crypto";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import {
   getDatabaseSchemaOnSandbox,
+  listDatabasesOnReadySandbox,
   listDatabasesOnSandbox,
+  reconcileDatabaseOnReadySandbox,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -159,5 +161,116 @@ describe("non-staging db commands", () => {
       return;
     }
     expect(result.value).toEqual([]);
+  });
+});
+
+describe("listDatabasesOnReadySandbox", () => {
+  it("parses the `dsbx db list` envelope against the supplied owner sandbox", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: true,
+          databases: [
+            { name: "chat", size_bytes: 8192 },
+            { name: "notes", size_bytes: 4096 },
+          ],
+        }),
+        stderr: "",
+      })
+    );
+
+    const result = await listDatabasesOnReadySandbox(authenticator, sandbox);
+
+    expect(result.isOk() && result.value).toEqual([
+      { name: "chat", sizeBytes: 8192 },
+      { name: "notes", sizeBytes: 4096 },
+    ]);
+  });
+
+  it("returns an Err when the sandbox reports a db error", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: false,
+          error: { kind: "internal", message: "boom" },
+        }),
+        stderr: "",
+      })
+    );
+
+    const result = await listDatabasesOnReadySandbox(authenticator, sandbox);
+
+    expect(result.isErr()).toBe(true);
+  });
+});
+
+describe("reconcileDatabaseOnReadySandbox", () => {
+  it("reconciles an unprefixed database on the supplied owner sandbox", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: true,
+          created: true,
+          statements: ['CREATE TABLE "tasks" (...)'],
+        }),
+        stderr: "",
+      })
+    );
+
+    const result = await reconcileDatabaseOnReadySandbox(authenticator, {
+      sandbox,
+      database: "tasks",
+      schemaFileSandboxPath: "/tmp/frame/databases/tasks.db.ts",
+    });
+
+    expect(result.isOk() && result.value).toEqual({
+      database: "tasks",
+      created: true,
+      statements: ['CREATE TABLE "tasks" (...)'],
+    });
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      authenticator,
+      expect.stringContaining(
+        "db reconcile -- 'tasks' '/tmp/frame/databases/tasks.db.ts'"
+      ),
+      expect.objectContaining({
+        envVars: expect.objectContaining({ DUST_POD_DATABASE_PREFIX: "" }),
+        user: "agent-proxied",
+      })
+    );
+  });
+
+  it("returns a typed blocked error for destructive schema changes", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: false,
+          error: {
+            kind: "destructive_change",
+            message: "Dropping columns is not allowed.",
+          },
+        }),
+        stderr: "",
+      })
+    );
+
+    const result = await reconcileDatabaseOnReadySandbox(authenticator, {
+      sandbox,
+      database: "tasks",
+      schemaFileSandboxPath: "/tmp/frame/databases/tasks.db.ts",
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "reconcile_blocked",
+      message: expect.stringContaining("Dropping columns is not allowed."),
+    });
   });
 });

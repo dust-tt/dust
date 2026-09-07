@@ -78,8 +78,7 @@ export function ChangeMemberModal({
   const hasActiveRoleProvisioningGroups = () => {
     return (
       roleProvisioningStatus.hasAdminGroup ||
-      roleProvisioningStatus.hasManagerGroup ||
-      roleProvisioningStatus.hasBuilderGroup
+      roleProvisioningStatus.hasManagerGroup
     );
   };
 

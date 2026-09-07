@@ -25,7 +25,11 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
-import type { GroupKind, GroupType } from "@app/types/groups";
+import type {
+  GroupKind,
+  GroupType,
+  UserVisibleGroupKind,
+} from "@app/types/groups";
 import {
   AGENT_GROUP_PREFIX,
   CAP_ELIGIBLE_GROUP_KINDS,
@@ -52,15 +56,10 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { col, fn, Op, QueryTypes, UniqueConstraintError } from "sequelize";
+import { col, fn, Op, QueryTypes } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
-export const BUILDER_GROUP_NAME = "dust-builders";
 export const MANAGER_GROUP_NAME = "dust-managers";
-// User-facing name of the manual builders group synced from the builder role (see
-// syncBuilderGroupMembership). Distinct from BUILDER_GROUP_NAME: workspaces provisioning
-// builders via SCIM keep their "dust-builders" IdP group alongside this one.
-export const MANUAL_BUILDERS_GROUP_NAME = "Builders";
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -569,8 +568,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    // TODO(governance) group can be accessed if agent can be read
-    const [group] = groups.filter((g) => g.canRead(auth));
+    const [group] = groups;
     if (!group) {
       return new Err(
         new DustError("group_not_found", "Editor group not found for agent.")
@@ -626,11 +624,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    // TODO(governance) group can be accessed if agent can be read
-    const accessibleGroups = groups.filter((group) => group.canRead(auth));
     const groupMap: Record<ModelId, GroupResource> = {};
-
-    for (const group of accessibleGroups) {
+    for (const group of groups) {
       groupMap[group.id] = group;
     }
 
@@ -659,30 +654,40 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(r);
   }
 
-  static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
+  static async makeDefaultsForWorkspace(
+    workspace: LightWorkspaceType,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
     const existingGroups = (
       await GroupModel.findAll({
         where: {
           workspaceId: workspace.id,
         },
+        transaction,
       })
     ).map((group) => new this(GroupModel, group.get()));
     const systemGroup =
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingGroups.find((v) => v.kind === "system") ||
-      (await GroupResource.makeNew({
-        name: "System",
-        kind: "system",
-        workspaceId: workspace.id,
-      }));
+      (await GroupResource.makeNew(
+        {
+          name: "System",
+          kind: "system",
+          workspaceId: workspace.id,
+        },
+        { transaction }
+      ));
     const globalGroup =
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingGroups.find((v) => v.kind === "global") ||
-      (await GroupResource.makeNew({
-        name: "Workspace",
-        kind: "global",
-        workspaceId: workspace.id,
-      }));
+      (await GroupResource.makeNew(
+        {
+          name: "Workspace",
+          kind: "global",
+          workspaceId: workspace.id,
+        },
+        { transaction }
+      ));
     return {
       systemGroup,
       globalGroup,
@@ -923,7 +928,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: auth.getNonNullableWorkspace().sId,
           unreadableGroupIds: unreadableGroups.map((g) => g.sId),
           authRole: auth.role(),
-          authGroupIds: auth.groupIds(),
         },
         "[GroupResource.fetchByIds] User cannot read some groups"
       );
@@ -969,7 +973,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     return !!group;
   }
 
-  static async fetchByName(
+  // Fetches a group by name across every kind, without an ACL check: the result
+  // may be a group the caller cannot read, so never use it to grant access.
+  // Only for name-conflict handling, where (workspaceId, name) being unique
+  // forces us to see the colliding row whatever its kind.
+  // Prefer groupExistsByName when a boolean is enough.
+  static async dangerouslyFetchByName(
     auth: Authenticator,
     name: string
   ): Promise<GroupResource | null> {
@@ -978,9 +987,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         name,
       },
     });
-    if (group && !group.canRead(auth)) {
-      return null;
-    }
 
     return group ?? null;
   }
@@ -1070,34 +1076,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const [group] = groups;
-
-    // TODO(governance) group can be accessed if agent can be read
-    if (!group.canRead(auth)) {
-      return null;
-    }
-
     return group;
-  }
-
-  // Fetches the system group without any ACL check. Only used in scripts and
-  // system-flow plumbing — the system group is deny-all in `getAccessControlLists`
-  // and must never be exposed to interactive callers.
-  static async dangerouslyFetchWorkspaceSystemGroup(
-    auth: Authenticator
-  ): Promise<Result<GroupResource, DustError>> {
-    const [group] = await this.baseFetch(auth, {
-      where: {
-        kind: "system",
-      },
-    });
-
-    if (!group) {
-      return new Err(
-        new DustError("group_not_found", "System group not found")
-      );
-    }
-
-    return new Ok(group);
   }
 
   static async fetchWorkspaceGlobalGroup(
@@ -1122,10 +1101,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async listAllWorkspaceGroups(
     auth: Authenticator,
-    options: { groupKinds?: GroupKind[] } = {}
+    options: { groupKinds?: UserVisibleGroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    // Default to user-visible kinds only. Internal kinds (regular_auto, system,
-    // agent_editors) must be requested explicitly.
     const { groupKinds = [...USER_VISIBLE_GROUP_KINDS] } = options;
     const groups = await this.baseFetch(auth, {
       where: {
@@ -1148,14 +1125,14 @@ export class GroupResource extends BaseResource<GroupModel> {
   private static async listUserGroupModelIdsInWorkspace({
     user,
     workspace,
-    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    groupKinds,
     transaction,
     dangerouslySkipMembershipCheck = false,
     at = new Date(),
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
-    groupKinds?: Exclude<GroupKind, "system">[];
+    groupKinds: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
     dangerouslySkipMembershipCheck?: boolean;
     at?: Date;
@@ -1226,48 +1203,61 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Warning, this function can be very memory hungry if there are a lot of groups (such as a workspace with a lot of agents and editors groups).
   // If you can, just use the listUserGroupModelIdsInWorkspace instead that returns only the ids of the groups.
-  static async listUserGroupsInWorkspace({
+  static async listUserGroupsInWorkspace(params: {
+    auth: Authenticator;
+    user: UserResource;
+    groupKinds: UserVisibleGroupKind[];
+    transaction?: Transaction;
+    at?: Date;
+  }): Promise<GroupResource[]> {
+    const groups = await this.dangerouslyListAllUserGroupsInWorkspace(params);
+
+    return groups.filter((group) => group.canRead(params.auth));
+  }
+
+  /**
+   * Same as `listUserGroupsInWorkspace`, but also accepts the internal kinds that are never
+   * surfaced to users. Reserved for system flows that must act on a user's whole membership
+   * set, such as directory-sync deprovisioning.
+   */
+  static async dangerouslyListAllUserGroupsInWorkspace({
+    auth,
     user,
-    workspace,
-    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    groupKinds,
     transaction,
     at,
   }: {
+    auth: Authenticator;
     user: UserResource;
-    workspace: LightWorkspaceType;
-    groupKinds?: Exclude<GroupKind, "system">[];
+    groupKinds: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
     at?: Date;
   }): Promise<GroupResource[]> {
     const { groupModelIds } = await this.listUserGroupModelIdsInWorkspace({
       user,
-      workspace,
+      workspace: auth.getNonNullableWorkspace(),
       groupKinds,
       transaction,
       at,
     });
 
-    const groups = await GroupModel.findAll({
-      where: {
-        id: {
-          [Op.in]: groupModelIds,
-        },
-        workspaceId: workspace.id,
-      },
+    if (groupModelIds.length === 0) {
+      return [];
+    }
+
+    return this.dangerouslyFetchByModelIds(auth, groupModelIds, {
       transaction,
     });
-
-    return groups.map((group) => new this(GroupModel, group.get()));
   }
 
   static async listGroupNamesByUserModelIdInWorkspace({
-    workspace,
+    auth,
     userModelIds,
-    groupKinds = ["regular_auto", "provisioned"],
+    groupKinds,
   }: {
-    workspace: LightWorkspaceType;
+    auth: Authenticator;
     userModelIds: ModelId[];
-    groupKinds?: Exclude<GroupKind, "system">[];
+    groupKinds: UserVisibleGroupKind[];
   }): Promise<Map<ModelId, string[]>> {
     const result = new Map<ModelId, string[]>();
     if (userModelIds.length === 0) {
@@ -1277,7 +1267,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const now = new Date();
     const memberships = await GroupMembershipModel.findAll({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
         userId: userModelIds,
         status: "active",
         startAt: { [Op.lte]: now },
@@ -1289,14 +1279,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const groupModelIds = [...new Set(memberships.map((m) => m.groupId))];
-    const groups = await GroupModel.findAll({
+    const groups = await this.baseFetch(auth, {
       where: {
         id: groupModelIds,
-        workspaceId: workspace.id,
         kind: groupKinds,
       },
     });
-    const nameByGroupId = new Map(groups.map((g) => [g.id, g.name]));
+    const readableGroups = groups.filter((group) => group.canRead(auth));
+    const nameByGroupId = new Map(readableGroups.map((g) => [g.id, g.name]));
 
     for (const m of memberships) {
       const name = nameByGroupId.get(m.groupId);
@@ -1323,8 +1313,12 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Users with no matching membership are absent from the map. Restricting the
    * query to the caller's group ids keeps this to a single row-bounded query
    * regardless of how many groups the workspace has.
+   *
+   * Dangerous: deliberately skips the `canRead` check on the groups — a space's
+   * grants mix regular_auto and non-regular_auto groups and the caller needs
+   * membership for both, so it authorizes the owning space instead.
    */
-  static async listGroupModelIdsByUserModelIdInWorkspace({
+  static async dangerouslyListGroupModelIdsByUserModelIdInWorkspace({
     workspace,
     userModelIds,
     groupModelIds,
@@ -1368,14 +1362,19 @@ export class GroupResource extends BaseResource<GroupModel> {
   // capped group are absent from the map (the caller falls back to the workspace
   // default). Used to resolve the "max(group caps)" term of a user's effective
   // spend limit.
-  static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+  static async listMaxPoolCapGroupByUserModelIdInWorkspace({
     workspace,
     userModelIds,
   }: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
-  }): Promise<Map<ModelId, number>> {
-    const result = new Map<ModelId, number>();
+  }): Promise<
+    Map<ModelId, { capAwuCredits: number; groupName: string; groupId: ModelId }>
+  > {
+    const result = new Map<
+      ModelId,
+      { capAwuCredits: number; groupName: string; groupId: ModelId }
+    >();
     if (userModelIds.length === 0) {
       return result;
     }
@@ -1403,22 +1402,45 @@ export class GroupResource extends BaseResource<GroupModel> {
         poolCapAwuCredits: { [Op.ne]: null },
       },
     });
-    const capByGroupId = new Map(
-      groups.map((g) => [g.id, g.poolCapAwuCredits])
-    );
+    const groupById = new Map(groups.map((g) => [g.id, g]));
 
     for (const m of memberships) {
-      const cap = capByGroupId.get(m.groupId);
-      if (cap === undefined || cap === null) {
+      const group = groupById.get(m.groupId);
+      const cap = group?.poolCapAwuCredits;
+      if (group === undefined || cap === undefined || cap === null) {
         continue;
       }
       const existing = result.get(m.userId);
-      if (existing === undefined || cap > existing) {
-        result.set(m.userId, cap);
+      // Tie-break on groupId so the pick is stable regardless of the
+      // memberships query's row order.
+      if (
+        existing === undefined ||
+        cap > existing.capAwuCredits ||
+        (cap === existing.capAwuCredits && group.id < existing.groupId)
+      ) {
+        result.set(m.userId, {
+          capAwuCredits: cap,
+          groupName: group.name,
+          groupId: group.id,
+        });
       }
     }
 
     return result;
+  }
+
+  static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace(args: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+  }): Promise<Map<ModelId, number>> {
+    const groupByUserModelId =
+      await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace(args);
+    return new Map(
+      [...groupByUserModelId].map(([userModelId, { capAwuCredits }]) => [
+        userModelId,
+        capAwuCredits,
+      ])
+    );
   }
 
   static async getMemberCountsForGroups(
@@ -1531,7 +1553,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const users = await UserResource.fetchByModelIds(
-      memberships.map((m) => m.userId)
+      memberships.map((m) => m.userId),
+      { transaction }
     );
 
     const { memberships: workspaceMemberships } =
@@ -1649,7 +1672,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userIds = users.map((u) => u.sId);
-    const userResources = await UserResource.fetchByIds(userIds);
+    const userResources = await UserResource.fetchByIds(userIds, {
+      transaction,
+    });
 
     if (userResources.length !== userIds.length) {
       return new Err(
@@ -1664,6 +1689,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await MembershipResource.getActiveMemberships({
         users: userResources,
         workspace: owner,
+        transaction,
       });
 
     if (
@@ -1792,7 +1818,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userIds = users.map((u) => u.sId);
-    const userResources = await UserResource.fetchByIds(userIds);
+    const userResources = await UserResource.fetchByIds(userIds, {
+      transaction,
+    });
     if (userResources.length !== userIds.length) {
       return new Err(
         new DustError(
@@ -1804,6 +1832,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const { total } = await MembershipResource.getActiveMemberships({
       users: userResources,
       workspace: owner,
+      transaction,
     });
 
     if (total !== userIds.length) {
@@ -1817,17 +1846,23 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Check if the users are already a member of the group.
-    const activeMembers = await this.getActiveMembers(auth);
-    const activeMembersIds = activeMembers.map((m) => m.sId);
-    const notActiveUserIds = userIds.filter(
-      (userId) => !activeMembersIds.includes(userId)
-    );
-    if (notActiveUserIds.length > 0) {
+    // Check if all requested users are active members of the group.
+    const groupMembershipCount = await GroupMembershipModel.count({
+      where: {
+        groupId: this.id,
+        userId: userResources.map((user) => user.id),
+        workspaceId: owner.id,
+        status: "active",
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+      transaction,
+    });
+    if (groupMembershipCount !== userIds.length) {
       return new Err(
         new DustError(
           "user_not_member",
-          notActiveUserIds.length === 1
+          userIds.length === 1
             ? "Cannot remove: user is not a member of the group"
             : "Cannot remove: users are not members of the group"
         )
@@ -1895,67 +1930,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Allows the authenticated user to leave the group.
-   *
-   * Unlike removeMembers(), this method does not require admin/editor permissions.
-   * Users can always remove themselves from groups they are members of.
-   *
-   * Only works for "regular_auto" groups.
-   * TODO(remy): Replace this with dangerouslyRemoveMembers once available
-   */
-  async leaveGroup(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<
-    Result<undefined, DustError<"user_not_member" | "system_or_global_group">>
-  > {
-    const user = auth.getNonNullableUser();
-    const workspace = auth.getNonNullableWorkspace();
-
-    if (!this.isRegularAuto()) {
-      return new Err(
-        new DustError(
-          "system_or_global_group",
-          "Users can only leave regular groups."
-        )
-      );
-    }
-
-    const now = new Date();
-
-    const [updatedCount] = await GroupMembershipModel.update(
-      { endAt: now },
-      {
-        where: {
-          groupId: this.id,
-          userId: user.id,
-          workspaceId: workspace.id,
-          startAt: { [Op.lte]: now },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-        },
-        transaction,
-      }
-    );
-
-    if (updatedCount === 0) {
-      return new Err(
-        new DustError("user_not_member", "User is not a member of this group.")
-      );
-    }
-
-    const userId = user.id;
-    const workspaceId = workspace.id;
-    invalidateCacheAfterCommit(transaction, async () => {
-      await GroupResource.invalidateGroupIdsCacheForUser({
-        user: { id: userId },
-        workspace: { id: workspaceId },
-      });
-    });
-
-    return new Ok(undefined);
-  }
-
-  /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
   async dangerouslySetMembers(
@@ -2018,11 +1992,21 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Suspends all active members of this group.
    * Returns array of affected user ModelIds.
+   *
+   * Only regular_auto group members can be suspended: it is how a space keeps its
+   * manual members on record while it runs in group management mode.
+   *
+   * Dangerous: no permission check — the owning space authorizes the
+   * management-mode switch.
    */
-  async suspendMembers(
+  async dangerouslySuspendMembers(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ModelId[]> {
+    assert(
+      this.isRegularAuto(),
+      `You can't suspend members of ${this.kind} groups.`
+    );
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const affectedMemberships = await GroupMembershipModel.findAll({
@@ -2079,8 +2063,12 @@ export class GroupResource extends BaseResource<GroupModel> {
    * user already has an active membership.
    *
    * Returns the number of group memberships restored.
+   *
+   * Dangerous: deliberately skips the `canRead` check on the groups — it
+   * restores regular_auto memberships together with provisioned and manual
+   * ones, so no per-group check applies.
    */
-  static async restoreGroupMembershipsRevokedWith({
+  static async dangerouslyRestoreGroupMembershipsRevokedWith({
     user,
     workspace,
     revokedAt,
@@ -2181,11 +2169,19 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Restores all suspended members of this group.
    * Returns array of affected user ModelIds.
+   *
+   * Counterpart of `dangerouslySuspendMembers`, so regular_auto only, and
+   * dangerous for the same reason: no permission check, the owning space
+   * authorizes the switch.
    */
-  async restoreMembers(
+  async dangerouslyRestoreMembers(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ModelId[]> {
+    assert(
+      this.isRegularAuto(),
+      `You can't restore members of ${this.kind} groups.`
+    );
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const affectedMemberships = await GroupMembershipModel.findAll({
@@ -2577,30 +2573,29 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    // TODO(governance) remove this case once agent_editors are gone away
-    if (this.kind === "agent_editors") {
+    // TODO(2026-09-03 regular-auto-acl): temporary probe, remove once regular_auto stops
+    // granting permissions. These groups are only reachable through the resource that owns
+    // them, so no caller should be permission-checking one; the stack tells us where to look
+    // if any does.
+    if (this.isRegularAuto()) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          groupId: this.sId,
+          authRole: auth.role(),
+          isKey: auth.isKey(),
+          stack_trace: new Error().stack,
+        },
+        "[GroupResource.getAccessControlLists] Permission checked on a regular_auto group"
+      );
+
       return [
         {
-          groups: [
-            {
-              id: this.id,
-              permissions: ["read", "write", "admin"],
-            },
-          ],
           roles: [
-            { role: "admin", permissions: ["read", "admin"] },
-            {
-              role: "manager",
-              permissions: ["read"],
-            },
-            {
-              role: "user",
-              permissions: ["read"],
-            },
-            {
-              role: "builder",
-              permissions: ["read"],
-            },
+            { role: "admin", permissions: ["read"] },
+            { role: "manager", permissions: ["read"] },
+            { role: "user", permissions: ["read"] },
+            { role: "builder", permissions: ["read"] },
           ],
           workspaceId: this.workspaceId,
         },
@@ -2622,9 +2617,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    // global, provisioned, regular_auto: read-only for every workspace member.
-    // Write/admin are gated through the associated resource (space/agent).
-    if (this.isGlobal() || this.isProvisioned() || this.isRegularAuto()) {
+    if (this.isGlobal() || this.isProvisioned()) {
       return [
         {
           roles: [
@@ -2681,9 +2674,8 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Checks if dust-admins, dust-managers and dust-builders groups exist and are actively
-   * provisioned in the workspace. This indicates that role management should be restricted
-   * in the UI.
+   * Checks if dust-admins, dust-managers groups exist and are actively provisioned in the workspace.
+   * This indicates that role management should be restricted in the UI.
    */
   static async listRoleProvisioningGroupsForWorkspace(
     auth: Authenticator
@@ -2699,149 +2691,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         kind: "provisioned",
         name: {
-          [Op.in]: [ADMIN_GROUP_NAME, MANAGER_GROUP_NAME, BUILDER_GROUP_NAME],
+          [Op.in]: [ADMIN_GROUP_NAME, MANAGER_GROUP_NAME],
         },
       },
     });
 
-    return provisionedGroups;
-  }
+    const readableGroups = provisionedGroups.filter((group) =>
+      group.canRead(auth)
+    );
 
-  /**
-   * Transitional — builder role deprecation, see
-   * https://github.com/dust-tt/tasks/issues/9459.
-   *
-   * Keeps a per-workspace "Builders" group (`regular_manual`) in sync with the `builder`
-   * role so that when the role is removed, the group can be granted the builders' governance
-   * capabilities (create agents / skills) and former builders keep their rights. Until then
-   * the role is the source of truth: the group is created lazily and manual edits may be
-   * undone by the sync. Once the role is removed, the sync goes away and the group becomes
-   * fully admin-managed.
-   *
-   * The group is deliberately independent from SCIM provisioning: provisioned
-   * "dust-builders" groups proved unreliable (drifted membership, stale groups after
-   * deprovisioning). Workspaces provisioning builders get both groups — IdP changes flow
-   * through role assignment, which keeps this group in sync automatically.
-   *
-   * Idempotent ensure-state semantics: after the call, the user's active membership in the
-   * group matches `isBuilder`.
-   *
-   * Callers must invoke this after every membership write that can involve the builder role
-   * (role change, membership creation, revocation) — see the `lib/api/membership.ts`
-   * wrappers.
-   */
-  static async syncBuilderGroupMembership({
-    workspace,
-    user,
-    isBuilder,
-    createIfMissing = true,
-  }: {
-    workspace: LightWorkspaceType;
-    user: UserResource;
-    isBuilder: boolean;
-    // When false, the group is never created: if it doesn't exist yet the sync is a no-op. Used
-    // by provisioning, which mirrors `dust-builders` membership into an existing manual group but
-    // must not create one.
-    createIfMissing?: boolean;
-  }): Promise<void> {
-    const existingGroup =
-      await GroupResource.fetchManualBuildersGroup(workspace);
-
-    if (!existingGroup && (!isBuilder || !createIfMissing)) {
-      // Nothing to revoke from a group that doesn't exist yet, and we won't create it.
-      return;
-    }
-
-    const groupId = existingGroup
-      ? existingGroup.id
-      : (await GroupResource.fetchOrCreateManualBuildersGroup(workspace)).id;
-
-    const now = new Date();
-    // Served by the (userId, groupId) index.
-    const activeMembershipWhere = {
-      groupId,
-      userId: user.id,
-      workspaceId: workspace.id,
-      status: "active",
-      startAt: { [Op.lte]: now },
-      [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-    };
-    const activeMembership = await GroupMembershipModel.findOne({
-      where: activeMembershipWhere,
-    });
-
-    if (isBuilder) {
-      if (activeMembership) {
-        return;
-      }
-      await GroupMembershipModel.create({
-        groupId,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: now,
-        status: "active",
-      });
-    } else {
-      if (!activeMembership) {
-        return;
-      }
-      // End every matching row, not just the one fetched: concurrent adds can leave
-      // duplicate active rows.
-      await GroupMembershipModel.update(
-        { endAt: now },
-        { where: activeMembershipWhere }
-      );
-    }
-
-    await GroupResource.batchInvalidateGroupIdsCacheForUsers([
-      [{ user: { id: user.id }, workspace: { id: workspace.id } }],
-    ]);
-  }
-
-  /**
-   * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME) if it has
-   * already been created, without creating it.
-   */
-  static async fetchManualBuildersGroup(
-    workspace: LightWorkspaceType
-  ): Promise<GroupResource | null> {
-    const existing = await GroupModel.findOne({
-      where: { workspaceId: workspace.id, name: MANUAL_BUILDERS_GROUP_NAME },
-    });
-    return existing ? new this(GroupModel, existing.get()) : null;
-  }
-
-  /**
-   * Fetches the workspace's manual "Builders" group (MANUAL_BUILDERS_GROUP_NAME), creating it
-   * empty if it doesn't exist yet. Governance capability seeding may need to grant a capability
-   * to this group before any builder-role member has ever been synced into it — normally the
-   * group is created lazily by `syncBuilderGroupMembership` on the first such sync.
-   */
-  static async fetchOrCreateManualBuildersGroup(
-    workspace: LightWorkspaceType
-  ): Promise<GroupResource> {
-    const existing = await GroupResource.fetchManualBuildersGroup(workspace);
-    if (existing) {
-      return existing;
-    }
-
-    try {
-      return await GroupResource.makeNew({
-        name: MANUAL_BUILDERS_GROUP_NAME,
-        kind: "regular_manual",
-        workspaceId: workspace.id,
-      });
-    } catch (err) {
-      // Two concurrent callers can race on the group creation (this method, or a concurrent
-      // syncBuilderGroupMembership call); the (workspaceId, name) unique index makes the loser
-      // land here. Fall through to the winner's group.
-      if (!(err instanceof UniqueConstraintError)) {
-        throw err;
-      }
-      const winner = await GroupResource.fetchManualBuildersGroup(workspace);
-      assert(winner, "Builders group missing after unique constraint error");
-      return winner;
-    }
+    return readableGroups;
   }
 
   /**

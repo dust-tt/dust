@@ -1,5 +1,3 @@
-import type { RegionType } from "@app/types/region";
-
 export interface ExternalUser {
   email: string;
   email_verified: boolean;
@@ -22,7 +20,6 @@ export type SessionWithUser = {
   type: "workos";
   sessionId: string;
   user: ExternalUser;
-  region: RegionType;
   workspaceId?: string;
   organizationId?: string;
   isSSO: boolean;

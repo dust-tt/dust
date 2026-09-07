@@ -5,7 +5,11 @@ import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purcha
 import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type {
+  AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleHistoryResponseBody,
+  AwuPoolSummaryResponseBody,
+} from "@app/types/api/credits/awu_pool_summary";
 import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
 import type { GetMyTopConversationsResponseBody } from "@app/types/api/credits/my_top_conversations";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
@@ -258,6 +262,57 @@ export function useAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+export function useAwuPoolCurrentCycle({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const awuFetcher: Fetcher<AwuPoolCurrentCycleResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/awu-pool-current-cycle`,
+    awuFetcher,
+    { disabled }
+  );
+
+  return {
+    awuPoolCurrentCycle: data ?? null,
+    isAwuPoolCurrentCycleLoading: !error && !data && !disabled,
+    isAwuPoolCurrentCycleError: error,
+    isAwuPoolCurrentCycleValidating: isValidating,
+    mutateAwuPoolCurrentCycle: mutate,
+  };
+}
+
+export function useAwuPoolCycleHistory({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const awuFetcher: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/awu-pool-cycle-history`,
+    awuFetcher,
+    { disabled }
+  );
+
+  return {
+    cycleBreakdown: data?.cycleBreakdown ?? emptyArray(),
+    excessCycleBreakdown: data?.excessCycleBreakdown ?? emptyArray(),
+    isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
+    isAwuPoolCycleHistoryError: error,
+    isAwuPoolCycleHistoryValidating: isValidating,
+    mutateAwuPoolCycleHistory: mutate,
   };
 }
 

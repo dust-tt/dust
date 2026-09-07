@@ -6,6 +6,7 @@ import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { createNamespace } from "@app/tests/utils/test_cls";
+import type { Result } from "@app/types/shared/result";
 import { cleanup } from "@testing-library/react";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
@@ -28,6 +29,19 @@ vi.mock("@app/lib/utils/cache", () => ({
         return async function (...args: Args): Promise<JsonSerializable<T>> {
           const result = await fn(...args);
           return result;
+        };
+      }
+    ),
+  cacheWithRedisResult: vi
+    .fn()
+    .mockImplementation(
+      <T, E, Args extends unknown[]>(
+        fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>
+      ): ((...args: Args) => Promise<Result<JsonSerializable<T>, E>>) => {
+        return async function (
+          ...args: Args
+        ): Promise<Result<JsonSerializable<T>, E>> {
+          return fn(...args);
         };
       }
     ),

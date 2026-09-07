@@ -40,6 +40,7 @@ export type KnownModelLLMId =
   | "gpt-5.2"
   | "gpt-5.4"
   | "gpt-5.5"
+  | "gpt-6-astra"
   | "gpt-5.6-sol"
   | "gpt-5.6-terra"
   | "gpt-5.6-terra-long-context"
@@ -89,6 +90,7 @@ export type KnownModelLLMId =
   | "gemini-3.5-flash-lite"
   | "gemini-3.6-flash"
   | "gemini-3.7-flash"
+  | "gemini-3.8-flash"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
@@ -101,6 +103,7 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
   | "accounts/fireworks/models/glm-5p2" // fireworks
+  | "accounts/fireworks/models/glm-5p3-flash" // fireworks
   | "accounts/fireworks/models/inkling" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
@@ -158,6 +161,8 @@ const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
   | "connector_update_error"
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
+  | "connector_oauth_user_missing_rights"
+  | "connector_oauth_user_must_be_admin"
   | "connector_oauth_error"
   | "slack_channel_not_found"
   | "connector_rate_limit_error"
@@ -741,8 +746,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_force_nudge"
   | "admin_controlled_pods"
   | "advanced_notion_management"
-  | "allow_scim"
-  | "allow_sso"
+  | "analytics_conversation_panel"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "archive_inactive_agents"
@@ -773,6 +777,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "legacy_trigger_limits"
+  | "message_export_from_consumption_index"
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -788,7 +794,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_billing"
   | "plan_mode"
   | "pod_frame_tabs"
-  | "pod_applications"
   | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
@@ -803,7 +808,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "stateful_conversation_window"
   | "run_tools_from_prompt"
   | "usage_data_api"
-  | "usage_page_read_only"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
@@ -813,7 +817,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_dust_keys"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
-  | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"
   | "user_memory"
@@ -823,7 +826,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
   | "disable_fair_use_awu_limit"
-  | "metronome_aggregated_usage_event"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2374,6 +2376,14 @@ export const GetWorkspaceFeatureFlagsResponseSchema = z.object({
 
 export type GetWorkspaceFeatureFlagsResponseType = z.infer<
   typeof GetWorkspaceFeatureFlagsResponseSchema
+>;
+
+export const GetAutoGroupIdsForSpacesResponseSchema = z.object({
+  groupIds: z.string().array(),
+});
+
+export type GetAutoGroupIdsForSpacesResponseType = z.infer<
+  typeof GetAutoGroupIdsForSpacesResponseSchema
 >;
 
 export const PublicPostMessagesRequestBodySchema = z.intersection(

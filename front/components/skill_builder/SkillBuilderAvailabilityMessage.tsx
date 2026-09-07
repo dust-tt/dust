@@ -18,18 +18,18 @@ function getAvailabilityItems(
   switch (availability) {
     case "editors":
       return [
-        "Only editors can find it via the input bar and agent builder",
+        "Only editors can find it via the composer and agent builder",
         "The skill remains available through agents and skills that use it",
       ];
     case "workspace_users":
       // When restricted, "All members" contradicts the space gate above, so we
       // refer back to the gated members with "They can all".
       return [
-        `${restricted ? "They can all" : "All members can"} find it via the input bar and agent builder`,
+        `${restricted ? "They can all" : "All members can"} find it via the composer and agent builder`,
       ];
     case "users_and_agents":
       return [
-        "All members can find it via the input bar and agent builder",
+        "All members can find it via the composer and agent builder",
         "Agents with Discover Skills can use it automatically",
       ];
     default:

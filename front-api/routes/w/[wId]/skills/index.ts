@@ -191,6 +191,9 @@ app.get(
       withInstructions: false,
       withTools: false,
       withFileAttachments: false,
+      permissionFiltering: bypassEditorVisibility
+        ? "redact_unreadable"
+        : "strict",
     });
     const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
     let favoriteSkillIds = new Set<string>();

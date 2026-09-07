@@ -11,7 +11,7 @@ import type { Credentials } from "@app/lib/model_constructors/types/credentials"
 import { MISTRAL_HOST } from "@app/lib/model_constructors/types/hosts";
 import { MISTRAL_LAB } from "@app/lib/model_constructors/types/labs";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Mistral } from "@mistralai/mistralai";
 import type {
@@ -145,12 +145,12 @@ export abstract class MistralBatch extends WithMistralAIInputConverter(
       const { custom_id, response, error } = parsed.data;
       if (error || !response) {
         batchResult.set(custom_id, [
-          buildErrorEvent({
-            errorSource: "provider",
+          buildHttpStatusErrorEvent({
             metadata: this.metadata(),
-            type: "server_error",
-            message:
-              error?.message ?? `No response for custom_id ${custom_id}.`,
+            status: response?.status_code,
+            provider: "Mistral",
+            detail: error?.message ?? `No response for custom_id ${custom_id}.`,
+            originalError: error,
           }),
         ]);
         continue;

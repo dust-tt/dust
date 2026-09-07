@@ -62,6 +62,7 @@ const ORIGIN_WEIGHTS: { origin: UserMessageOrigin; weight: number }[] = [
   { origin: "web", weight: 40 },
   { origin: "triggered", weight: 22 },
   { origin: "slack", weight: 12 },
+  { origin: "slack_workflow", weight: 5 },
   { origin: "triggered_programmatic", weight: 8 },
   { origin: "api", weight: 7 },
   { origin: "extension", weight: 5 },
@@ -187,6 +188,7 @@ async function loadConsumptionPools(
     users: catalog.user.map((entry) => ({
       id: entry.value,
       group_ids: [...(groupIdsByUserId.get(entry.value) ?? [])].sort(),
+      seat_type: "pro",
     })),
     models: removeNulls(
       catalog.model.map((entry) => getModelConfigByModelId(entry.value) ?? null)
@@ -305,6 +307,7 @@ type SeedConsumptionBaseFields = Pick<
   | "message_version"
   | "model"
   | "normalized_origin"
+  | "parent_message_id"
   | "run_usage_id"
   | "space_id"
   | "status"
@@ -344,6 +347,7 @@ function makeBaseFields(
       resolution_method: "agent",
     },
     normalized_origin: normalizeOrigin(message.origin),
+    parent_message_id: null,
     run_usage_id: consumptionKey,
     space_id: null,
     status: "succeeded",
@@ -375,6 +379,7 @@ function makeLlmDocument(
     }),
     consumption_type: "llm",
     credit_micro: creditMicro,
+    micro_usd: creditMicro,
     gross_credit_micro: {
       system: systemCreditMicro,
       input:
@@ -425,6 +430,7 @@ function makeToolDocument(
     }),
     consumption_type: "tool",
     credit_micro: creditMicro,
+    micro_usd: null,
     gross_credit_micro: {
       system: 0,
       input: null,

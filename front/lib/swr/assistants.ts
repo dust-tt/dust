@@ -4,7 +4,6 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
-import type { GetFeedbackDistributionResponse } from "@app/lib/api/assistant/observability/feedback_distribution";
 import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observability/version_markers";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
@@ -28,7 +27,7 @@ import {
   PreviewInactiveAgentsResponseBodySchema,
 } from "@app/types/api/assistant/configuration";
 import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
-import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
+import type { GetAgentFeedbackDistributionResponseBody } from "@app/types/api/assistant/observability/feedback-distribution";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/user_relation";
 import type { GetMemberResponseBody } from "@app/types/api/user";
@@ -45,35 +44,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
-
-export function useAgentMcpConfigurations({
-  workspaceId,
-  agentConfigurationId,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const mcpConfigurationsFetcher: Fetcher<GetAgentMcpConfigurationsResponseBody> =
-    fetcher;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/mcp_configurations`,
-    mcpConfigurationsFetcher,
-    { disabled }
-  );
-
-  return {
-    configurations: data?.configurations ?? emptyArray(),
-    isAgentMcpConfigurationsLoading: !error && !data && !disabled,
-    isAgentMcpConfigurationsError: error,
-    isAgentMcpConfigurationsValidating: isValidating,
-  };
-}
 
 export function useAssistantTemplates() {
   const { fetcher } = useFetcher();
@@ -1089,7 +1059,7 @@ export function useAgentFeedbackDistribution({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetFeedbackDistributionResponse> = fetcher;
+  const fetcherFn: Fetcher<GetAgentFeedbackDistributionResponseBody> = fetcher;
   const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/feedback-distribution?days=${days}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(

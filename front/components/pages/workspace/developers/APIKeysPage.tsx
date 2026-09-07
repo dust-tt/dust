@@ -1,3 +1,4 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
@@ -15,12 +16,10 @@ import { formatCredits } from "@app/lib/client/credits";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
-import { useKeyScopableGroups } from "@app/lib/swr/groups";
+import { useKeyScopableSpaces } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
-import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
-import type { ModelId } from "@app/types/shared/model_id";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
@@ -83,7 +82,7 @@ function APIKeysOverview({
 
   const activeKeyCount = keys.filter((key) => key.status === "active").length;
   const cappedKeyCount = keys.filter(
-    (key) => key.status === "active" && key.creditState === "capped"
+    (key) => key.status === "active" && key.isSpendCapped
   ).length;
   const revokedKeyCount = keys.length - activeKeyCount;
 
@@ -124,18 +123,9 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
   const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
 
   const { isKeysError, isKeysLoading, keys } = useKeys(owner);
-  const { groups, isGroupsError, isGroupsLoading } = useKeyScopableGroups({
+  const { spaces, isSpacesError, isSpacesLoading } = useKeyScopableSpaces({
     owner,
   });
-  const isDataLoading = isKeysLoading || isGroupsLoading;
-  const isDataError = !!isKeysError || isGroupsError;
-
-  const groupsById = useMemo(() => {
-    return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
-      acc[group.id] = group;
-      return acc;
-    }, {});
-  }, [groups]);
 
   const sendNotification = useSendNotification();
 
@@ -143,13 +133,13 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
     useSubmitFunction(
       async ({
         name,
-        groups: selectedGroups,
+        spaceIds,
         monthlyCapMicroUsd,
         monthlyCapAwuCredits,
         role,
       }: {
         name: string;
-        groups: GroupType[];
+        spaceIds: string[];
         monthlyCapMicroUsd: number | null;
         monthlyCapAwuCredits: number | null;
         role: KeyRole;
@@ -161,7 +151,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
           },
           body: JSON.stringify({
             name,
-            group_ids: selectedGroups.map((g) => g.sId),
+            space_ids: spaceIds,
             monthly_cap_micro_usd: monthlyCapMicroUsd,
             monthly_cap_awu_credits: monthlyCapAwuCredits,
             role,
@@ -280,7 +270,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
       <Page.Vertical align="stretch" gap="xl">
         <Page.Horizontal align="right">
           <Button
-            label="API reference"
+            label="API Reference"
             size="sm"
             variant="outline"
             icon={BookOpen01}
@@ -289,8 +279,8 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
             rel="noreferrer"
           />
           <NewAPIKeyDialog
-            groups={groups}
-            disabled={isGroupsLoading || isGroupsError}
+            spaces={spaces}
+            disabled={isSpacesLoading || isSpacesError}
             isGenerating={isGenerating}
             isRevoking={isRevoking}
             onCreate={handleGenerate}
@@ -309,10 +299,9 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
           keys={keys}
           workspaceId={owner.sId}
           period={period}
-          groupsById={groupsById}
-          isLoading={isDataLoading}
-          isError={isDataError}
-          showAnalyticsConsumption
+          isLoading={isKeysLoading}
+          isError={!!isKeysError}
+          showAnalyticsConsumption={showCreditMonthlyCap}
           isRevoking={isRevoking}
           isGenerating={isGenerating}
           onRevoke={handleRevoke}
@@ -350,25 +339,27 @@ export function APIKeysPage() {
   );
 
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <Page.Header
-        title={
-          <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
-            <div className="flex max-w-2xl flex-col gap-1">
-              <Page.H variant="h3">API Keys</Page.H>
-              <Page.P variant="secondary">
-                Create and manage API keys, track what they consume, and control
-                their monthly spend.
-              </Page.P>
+    <AdminPageContainer>
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title={
+            <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
+              <div className="flex max-w-2xl flex-col gap-1">
+                <Page.H variant="h3">Dust API Keys</Page.H>
+                <Page.P variant="secondary">
+                  Create and manage keys to access the Dust API, track their
+                  usage, and control their monthly spend.
+                </Page.P>
+              </div>
+              <ConsumptionPeriodSelector
+                period={period}
+                onPeriodChange={setPeriod}
+              />
             </div>
-            <ConsumptionPeriodSelector
-              period={period}
-              onPeriodChange={setPeriod}
-            />
-          </div>
-        }
-      />
-      <APIKeysPageContent owner={owner} period={period} />
-    </Page.Vertical>
+          }
+        />
+        <APIKeysPageContent owner={owner} period={period} />
+      </Page.Vertical>
+    </AdminPageContainer>
   );
 }

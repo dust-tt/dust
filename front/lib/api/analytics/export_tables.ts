@@ -32,6 +32,7 @@ import {
 } from "@app/lib/api/analytics/users_export";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -577,12 +578,18 @@ async function exportMessages({
   timezone: string;
   owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
+  const useConsumptionIndex = await hasFeatureFlag(
+    auth,
+    "message_export_from_consumption_index"
+  );
+
   const result = await fetchMessageExportRows({
     auth,
     owner,
     startDate,
     endDate,
     timezone,
+    useConsumptionIndex,
   });
 
   if (result.isErr()) {

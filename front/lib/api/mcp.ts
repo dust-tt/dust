@@ -38,12 +38,44 @@ export type MCPToolRetryPolicyType =
 export const DEFAULT_MCP_TOOL_RETRY_POLICY =
   "no_retry" as const satisfies MCPToolRetryPolicyType;
 
-export type MCPServerViewNameConflict = { nameConflict: string };
+export type MCPServerViewNameConflictDetails = {
+  // Effective (display) name of the existing tool/connection the new server
+  // collides with.
+  conflictingServerName: string;
+  // Model-facing tool name that both servers resolve to once the server-name
+  // prefix is truncated to fit the tool-name length budget. Undefined when the
+  // collision is a plain display-name match rather than a cropped tool name.
+  conflictingToolName?: string;
+};
+
+export type MCPServerViewNameConflict = {
+  nameConflict: string;
+  conflictDetails?: MCPServerViewNameConflictDetails;
+};
 
 export function isMCPServerViewNameConflict(
   input: Error | MCPServerViewNameConflict
 ): input is MCPServerViewNameConflict {
   return !(input instanceof Error) && typeof input.nameConflict === "string";
+}
+
+// Build the user-facing message for a name conflict. When the collision comes
+// from a cropped tool name, name the existing connection and the shared
+// model-facing tool name so the cause is diagnosable without diffing every
+// other connection's tool list.
+export function getMCPServerViewNameConflictMessage({
+  nameConflict,
+  conflictDetails,
+}: MCPServerViewNameConflict): string {
+  if (conflictDetails?.conflictingToolName) {
+    return (
+      `The name "${nameConflict}" produces the tool ` +
+      `"${conflictDetails.conflictingToolName}", which already exists on the ` +
+      `connection "${conflictDetails.conflictingServerName}". Enter a ` +
+      `different name.`
+    );
+  }
+  return `An existing Tool is already using the name "${nameConflict}".`;
 }
 
 export function getRetryPolicyFromToolConfiguration(

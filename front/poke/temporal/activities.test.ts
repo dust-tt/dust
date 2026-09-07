@@ -1,10 +1,14 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentModel } from "@app/lib/models/agent/agent";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { deleteSpacesActivity } from "@app/poke/temporal/activities";
+import {
+  deleteAgentsActivity,
+  deleteSpacesActivity,
+} from "@app/poke/temporal/activities";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -26,6 +30,22 @@ vi.mock("@app/lib/api/data_sources", async (importOriginal) => {
       }
     ),
   };
+});
+
+describe("deleteAgentsActivity", () => {
+  it("deletes stable agent identities left by a partial previous run", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    await AgentModel.create({
+      sId: "agent-test",
+      workspaceId: workspace.id,
+    });
+
+    await deleteAgentsActivity({ workspaceId: workspace.sId });
+
+    await expect(
+      AgentModel.count({ where: { workspaceId: workspace.id } })
+    ).resolves.toBe(0);
+  });
 });
 
 describe("deleteSpacesActivity", () => {

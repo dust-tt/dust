@@ -393,8 +393,6 @@ app.post(
         ? validatedTrigger.executionPerDayLimitOverride
         : null;
 
-      const executionMode = validatedTrigger.executionMode ?? "user_pool";
-
       const spaceIdRes = await resolveTriggerSpaceId(
         auth,
         validatedTrigger.spaceId
@@ -421,7 +419,7 @@ app.post(
         editor: auth.getNonNullableUser().id,
         webhookSourceViewId,
         executionPerDayLimitOverride: executionPerDay,
-        executionMode,
+        executionMode: validatedTrigger.executionMode,
         origin: "user",
         spaceId: spaceIdRes.value,
       });

@@ -10,6 +10,7 @@ import type {
 } from "@app/types/api/sandbox_functions";
 import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { getSandboxFunctionInvocationErrorStatusCode } from "@front-api/lib/api/sandbox_function_invocation_errors";
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -58,7 +59,7 @@ const app = workspaceApp();
  * /api/w/{wId}/sandbox-functions/{functionId}/invocations/{invocationId}/events:
  *   get:
  *     summary: Stream sandbox function invocation events
- *     description: Stream real-time events for a sandbox function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.
+ *     description: Stream real-time events for a Pod function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.
  *     tags:
  *       - Private Events
  *     parameters:
@@ -71,7 +72,7 @@ const app = workspaceApp();
  *       - in: path
  *         name: functionId
  *         required: true
- *         description: ID of the sandbox function
+ *         description: ID of the Pod function
  *         schema:
  *           type: string
  *       - in: path
@@ -130,7 +131,9 @@ app.post(
     if (invocationResult.isErr()) {
       if (isSandboxFunctionInvocationError(invocationResult.error)) {
         return apiError(ctx, {
-          status_code: 401,
+          status_code: getSandboxFunctionInvocationErrorStatusCode(
+            invocationResult.error.code
+          ),
           api_error: {
             type: invocationResult.error.code,
             message: invocationResult.error.message,
@@ -182,7 +185,8 @@ app.post(
     const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER),
+      { allowInactiveFramePublication: true }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
@@ -250,7 +254,8 @@ app.post(
     const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER),
+      { allowInactiveFramePublication: true }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {

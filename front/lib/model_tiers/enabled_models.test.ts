@@ -198,10 +198,11 @@ describe("resolveStreamModel", () => {
 
   async function resolveStreamForAuth(
     auth: Authenticator,
-    streamId: ModelStreamIdType
+    streamId: ModelStreamIdType,
+    degradedModelIds: ReadonlySet<string> = new Set()
   ) {
     const models = await getEnabledModelsForAuth(auth);
-    return resolveStreamModel(models, streamId);
+    return resolveStreamModel(models, streamId, degradedModelIds);
   }
 
   it("routes the Auto stream to its first available candidate + effort", async () => {
@@ -264,10 +265,43 @@ describe("resolveStreamModel", () => {
     const resolved = resolveStreamModel(
       // Nothing is selectable, so no stream candidate can match.
       models.map((m) => ({ ...m, isSelectable: false })),
-      "auto_complex"
+      "auto_complex",
+      new Set()
     );
 
     expect(resolved.fromPool).toBe(false);
     expect(resolved.model.isSelectable).toBe(true);
+  });
+
+  it("skips a degraded candidate and takes the next one in the pool", async () => {
+    const resolved = await resolveStreamForAuth(
+      adminAuth,
+      "auto",
+      new Set([GPT_5_6_LUNA_MODEL_ID])
+    );
+
+    expect(resolved.fromPool).toBe(true);
+    expect(resolved.model.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+    expect(resolved.reasoningEffort).toBe("medium");
+  });
+
+  it("keeps a degraded model out of the last-resort fallback", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+    // Luna is the only selectable model, so it is both the stream's first
+    // candidate and what the preferred-large-model fallback would land on --
+    // and it is degraded, so neither may pick it.
+    const resolved = resolveStreamModel(
+      models.map((m) => ({
+        ...m,
+        isSelectable: m.modelId === GPT_5_6_LUNA_MODEL_ID,
+      })),
+      "auto",
+      new Set([GPT_5_6_LUNA_MODEL_ID])
+    );
+
+    expect(resolved.fromPool).toBe(false);
+    expect(resolved.model.modelId).not.toBe(GPT_5_6_LUNA_MODEL_ID);
   });
 });

@@ -1,4 +1,5 @@
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import type { Result } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // In-memory cache that replaces the global no-op mock, so we can
@@ -24,6 +25,19 @@ vi.mock("@app/lib/utils/cache", () => ({
           const result = await fn(...args);
           inMemoryCache.set(key, JSON.stringify(result));
           return result;
+        };
+      }
+    ),
+  cacheWithRedisResult: vi
+    .fn()
+    .mockImplementation(
+      <T, E, Args extends unknown[]>(
+        fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>
+      ) => {
+        return async (
+          ...args: Args
+        ): Promise<Result<JsonSerializable<T>, E>> => {
+          return fn(...args);
         };
       }
     ),
@@ -78,14 +92,17 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import {
   KeyResource,
   MARK_AS_USED_MIN_INTERVAL_MS,
 } from "@app/lib/resources/key_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 
 function toCacheKey(secret: string): string {
@@ -207,8 +224,10 @@ describe("KeyResource", () => {
 
     it("is idempotent when removing a group the key doesn't have", async () => {
       const key = await KeyFactory.regular(globalGroup);
-      const otherGroup =
-        await GroupResource.fetchOrCreateManualBuildersGroup(workspace);
+      const otherGroup = await GroupFactory.regularAuto(
+        workspace,
+        "other-group"
+      );
 
       await key.setGroupMembership({ group: otherGroup, isMember: false });
 
@@ -230,6 +249,65 @@ describe("KeyResource", () => {
       const fetched = await KeyResource.fetchBySecret(key.secret);
       expect(fetched).not.toBeNull();
       expect(fetched!.monthlyCapMicroUsd).toBe(500_000);
+    });
+  });
+
+  describe("toJSONWithSpaces", () => {
+    it("returns the spaces the key's groups grant access to", async () => {
+      const space = await SpaceFactory.regular(
+        authenticator.getNonNullableWorkspace()
+      );
+      const spaceGroups = await SpaceResource.listRegularAutoGroupsForSpaces(
+        authenticator,
+        [space]
+      );
+      const key = await KeyFactory.regular([globalGroup, ...spaceGroups]);
+
+      const [json] = await KeyResource.toJSONWithSpaces(
+        authenticator,
+        [key],
+        authenticator.getNonNullableUser().id
+      );
+
+      expect(json.spaces.map((s) => s.sId)).toEqual([space.sId]);
+    });
+
+    it("lists a space once when several of the key's groups grant on it", async () => {
+      // A pod has both a member and an editor group, each with its own grant on the space, so an
+      // admin key scoped to it carries two groups pointing at the same space.
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      const podGroups = await SpaceResource.listRegularAutoGroupsForSpaces(
+        authenticator,
+        [pod]
+      );
+      expect(podGroups).toHaveLength(2);
+
+      const key = await KeyFactory.regular([globalGroup, ...podGroups]);
+
+      const [json] = await KeyResource.toJSONWithSpaces(
+        authenticator,
+        [key],
+        authenticator.getNonNullableUser().id
+      );
+
+      expect(json.spaces.map((s) => s.sId)).toEqual([pod.sId]);
+    });
+
+    it("ignores the workspace global group", async () => {
+      // Every key carries the global group, which reads every open space: mapping it would list
+      // most of the workspace on every key.
+      await SpaceFactory.regular(authenticator.getNonNullableWorkspace());
+      const key = await KeyFactory.regular(globalGroup);
+
+      const [json] = await KeyResource.toJSONWithSpaces(
+        authenticator,
+        [key],
+        authenticator.getNonNullableUser().id
+      );
+
+      expect(json.spaces).toEqual([]);
     });
   });
 

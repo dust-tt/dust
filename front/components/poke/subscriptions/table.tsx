@@ -456,6 +456,23 @@ function PlanLimitValue({ value, isOverridden }: PlanLimitValueProps) {
   );
 }
 
+interface PlanFlagValueProps {
+  label: string;
+  value: boolean;
+  isOverridden: boolean;
+}
+
+function PlanFlagValue({ label, value, isOverridden }: PlanFlagValueProps) {
+  return (
+    <span>
+      {label} {value ? "✅" : "❌"}
+      {isOverridden && (
+        <span className="text-warning-500 pl-1 font-bold">(overridden)</span>
+      )}
+    </span>
+  );
+}
+
 interface PlanLimitationsTableProps {
   subscription: SubscriptionType;
   planLimitOverride: PlanLimitOverride | null;
@@ -483,10 +500,16 @@ export function PlanLimitationsTable({
               <PokeTableRow>
                 <PokeTableCell>SSO/SCIM features</PokeTableCell>
                 <PokeTableCell>
-                  {activePlan.limits.users.isSSOAllowed ? "SSO ✅" : "SSO ❌"}
-                  {activePlan.limits.users.isSCIMAllowed
-                    ? " SCIM ✅"
-                    : " SCIM ❌"}
+                  <PlanFlagValue
+                    label="SSO"
+                    value={activePlan.limits.users.isSSOAllowed}
+                    isOverridden={planLimitOverride?.isSSOAllowed != null}
+                  />{" "}
+                  <PlanFlagValue
+                    label="SCIM"
+                    value={activePlan.limits.users.isSCIMAllowed}
+                    isOverridden={planLimitOverride?.isSCIMAllowed != null}
+                  />
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>

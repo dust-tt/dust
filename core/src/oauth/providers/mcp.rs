@@ -24,6 +24,7 @@ use super::utils::ProviderHttpRequestError;
 /// When a server returns a refresh_token but no expires_in, the access token likely expires
 /// server-side. This default ensures proactive refresh instead of waiting for a 401.
 const DEFAULT_TOKEN_EXPIRY_SECONDS: u64 = 3600;
+const MCP_OAUTH_USER_AGENT: &str = "dust/oauth";
 
 /// Compute the access_token_expiry timestamp in milliseconds.
 /// Uses `saturating_sub` to avoid underflow if `expires_in` < `PROVIDER_TIMEOUT_SECONDS`.
@@ -159,6 +160,7 @@ impl MCPConnectionProvider {
         let mut req = client
             .post(token_endpoint)
             .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("User-Agent", MCP_OAUTH_USER_AGENT)
             .form(&form_data);
 
         if use_basic_auth {
@@ -287,6 +289,7 @@ impl Provider for MCPConnectionProvider {
         let mut req = client
             .post(metadata.token_endpoint)
             .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("User-Agent", MCP_OAUTH_USER_AGENT)
             .form(&form_data);
 
         if use_basic_auth {
@@ -546,10 +549,45 @@ impl Provider for MCPConnectionProvider {
 mod tests {
     use super::{MCPConnectionMetadata, MCPConnectionProvider};
     use crate::oauth::{
-        connection::{ConnectionProvider, Provider, ProviderError},
+        connection::{Connection, ConnectionProvider, ConnectionStatus, Provider, ProviderError},
+        credential::{Credential, CredentialMetadata, CredentialProvider},
+        encryption::seal_str,
         providers::utils::ProviderHttpRequestError,
     };
-    use serde_json::json;
+    use axum::{
+        http::{header::USER_AGENT, HeaderMap, StatusCode},
+        routing::post,
+        Json, Router,
+    };
+    use axum_test::TestServer;
+    use serde_json::{json, Value};
+
+    async fn token_endpoint_requiring_user_agent(headers: HeaderMap) -> (StatusCode, Json<Value>) {
+        if headers
+            .get(USER_AGENT)
+            .and_then(|value| value.to_str().ok())
+            != Some("dust/oauth")
+        {
+            return (
+                StatusCode::FORBIDDEN,
+                Json(json!({ "error": "missing user agent" })),
+            );
+        }
+
+        (
+            StatusCode::OK,
+            Json(json!({ "access_token": "access-token" })),
+        )
+    }
+
+    fn token_endpoint_server() -> TestServer {
+        let app = Router::new().route("/token", post(token_endpoint_requiring_user_agent));
+
+        TestServer::builder()
+            .http_transport()
+            .build(app)
+            .expect("test token endpoint should start")
+    }
 
     fn test_client() -> Option<reqwest::Client> {
         reqwest::Client::builder()
@@ -628,6 +666,79 @@ mod tests {
             MCPConnectionProvider::client_for_builders(false, true, || None, || None, || None);
 
         assert!(client.is_err());
+    }
+
+    #[tokio::test]
+    async fn refresh_request_includes_dust_oauth_user_agent() {
+        let server = token_endpoint_server();
+        let token_endpoint = server
+            .server_url("/token")
+            .expect("test token endpoint should have a URL");
+
+        let result = MCPConnectionProvider::new()
+            .execute_refresh_request(
+                &reqwest::Client::new(),
+                token_endpoint.as_str(),
+                "refresh-token",
+                "client-id",
+                None,
+                false,
+                None,
+                None,
+            )
+            .await;
+
+        assert!(result.is_ok(), "token request was rejected: {result:?}");
+    }
+
+    #[tokio::test]
+    async fn finalize_request_includes_dust_oauth_user_agent() {
+        let server = token_endpoint_server();
+        let token_endpoint = server
+            .server_url("/token")
+            .expect("test token endpoint should have a URL");
+        let connection = Connection::new(
+            "connection-id".to_string(),
+            0,
+            ConnectionProvider::Mcp,
+            ConnectionStatus::Pending,
+            json!({
+                "client_id": "client-id",
+                "token_endpoint": token_endpoint,
+                "authorization_endpoint": "https://example.com/oauth/authorize",
+                "code_verifier": "verifier",
+                "code_challenge": "challenge"
+            }),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        let credential_content = json!({ "client_id": "client-id" });
+        let credential = Credential::new(
+            "credential-id".to_string(),
+            0,
+            CredentialProvider::Mcp,
+            CredentialMetadata {
+                workspace_id: "workspace-id".to_string(),
+                user_id: "user-id".to_string(),
+            },
+            seal_str(&credential_content.to_string()).expect("credential content should seal"),
+        );
+
+        let result = MCPConnectionProvider::new()
+            .finalize(
+                &connection,
+                Some(credential),
+                "authorization-code",
+                "https://dust.example.com/oauth/mcp/finalize",
+            )
+            .await;
+
+        assert!(result.is_ok(), "token request was rejected: {result:?}");
     }
 
     #[test]

@@ -44,6 +44,11 @@ export function isRoleType(role: string): role is RoleType {
   return ROLES.includes(role as RoleType);
 }
 
+// `ROLES` is ordered from most to least privileged.
+export function lowestRole(a: RoleType, b: RoleType): RoleType {
+  return ROLES.indexOf(a) >= ROLES.indexOf(b) ? a : b;
+}
+
 export const ActiveRoleSchema = z.enum(ACTIVE_ROLES);
 
 export type ActiveRoleType = z.infer<typeof ActiveRoleSchema>;
@@ -59,9 +64,8 @@ export function isAssignableRoleType(role: string): role is AssignableRoleType {
 }
 
 // Roles that can be assigned through the API (invitations, membership role updates). The
-// deprecated `builder` role is rejected here — it is granted only through the `dust-builders`
-// provisioning group — while remaining a valid role value elsewhere (existing memberships, role
-// display, and legacy/pending invitations).
+// deprecated `builder` role is rejected here while remaining a valid role value elsewhere
+// (existing memberships, role display, and legacy/pending invitations).
 function isAssignableRole(role: RoleType): boolean {
   return role !== "builder" && role !== "none";
 }

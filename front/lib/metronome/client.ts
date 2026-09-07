@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import config from "@app/lib/api/config";
 import type { ContractCreditType } from "@app/lib/metronome/constants";
 import {
@@ -22,7 +24,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import Metronome, { BadRequestError, ConflictError } from "@metronome/sdk";
+import Metronome, {
+  BadRequestError,
+  ConflictError,
+  UnprocessableEntityError,
+} from "@metronome/sdk";
 import type { Commit, ContractV2, Credit, V1 } from "@metronome/sdk/resources";
 import type { ContractRetrieveRateScheduleResponse } from "@metronome/sdk/resources/v1/contracts/contracts";
 import type { ProductListResponse } from "@metronome/sdk/resources/v1/contracts/products";
@@ -1549,6 +1555,19 @@ export async function getMetronomeSeatActiveSince({
 // Metronome rejects any single contracts.edit carrying more than 1000 seat IDs.
 const MAX_SEAT_IDS_PER_EDIT = 1000;
 
+// A retried contracts.edit that reuses an already-consumed `uniqueness_key` is
+// rejected with a 422 `UnprocessableEntityError` whose message is "Uniqueness
+// key already exists: <key>" (despite the docs implying a 409). We also accept
+// the 409 `ConflictError` defensively in case the API's status ever changes.
+// The message guard keeps this from swallowing an unrelated 422 validation
+// error (e.g. a genuinely malformed edit body).
+function isDuplicateUniquenessKeyError(err: unknown): boolean {
+  return (
+    (err instanceof UnprocessableEntityError || err instanceof ConflictError) &&
+    /uniqueness key already exists/i.test(err.message)
+  );
+}
+
 export async function updateSubscriptionSeats({
   metronomeCustomerId,
   contractId,
@@ -1650,13 +1669,40 @@ export async function updateSubscriptionSeats({
       continue;
     }
 
+    // Seat updates are cumulative DELTAS (`add/remove_seat_ids`,
+    // `add/remove_unassigned_seats`), and the edit endpoint returns 504s that
+    // still apply server-side — so the SDK's retry-on-5xx (client maxRetries: 5)
+    // would blindly re-send the delta and stack it (an add of 137 unassigned
+    // landing 4× → 548). A fresh per-edit `uniqueness_key` makes the retry safe:
+    // Metronome rejects a duplicate key, so a retry of an already-applied edit
+    // is a no-op we treat as success — the edit becomes idempotent against
+    // retries instead of stacking. The rejection surfaces as a 422
+    // `UnprocessableEntityError` ("Uniqueness key already exists"), NOT the 409
+    // the docs suggest — see `isDuplicateUniquenessKeyError`.
+    const uniquenessKey = randomUUID();
     try {
       await getMetronomeClient().v2.contracts.edit({
         customer_id: metronomeCustomerId,
         contract_id: contractId,
         update_subscriptions: updateSubscriptions,
+        uniqueness_key: uniquenessKey,
       });
     } catch (err) {
+      if (isDuplicateUniquenessKeyError(err)) {
+        // Duplicate uniqueness_key → this exact edit already landed (a retry
+        // after a 504 that applied server-side). Idempotent success.
+        logger.info(
+          {
+            metronomeCustomerId,
+            contractId,
+            fromSubscriptionId,
+            toSubscriptionId,
+            uniquenessKey,
+          },
+          "[Metronome] Subscription seat edit already applied (duplicate uniqueness_key) — treating as success"
+        );
+        continue;
+      }
       const error = normalizeError(err);
       logger.error(
         {
@@ -2281,13 +2327,43 @@ export async function listMetronomeDraftInvoices(
   }
 }
 
+export async function listMetronomeFinalizedInvoices(
+  metronomeCustomerId: string,
+  { limit }: { limit: number }
+): Promise<Result<Invoice[], Error>> {
+  try {
+    const invoices: Invoice[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.invoices.list({
+      customer_id: metronomeCustomerId,
+      status: "FINALIZED",
+      sort: "date_desc",
+      skip_zero_qty_line_items: true,
+    })) {
+      invoices.push(entry);
+      if (invoices.length >= limit) {
+        break;
+      }
+    }
+    return new Ok(invoices);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to list finalized invoices"
+    );
+    return new Err(error);
+  }
+}
+
 export async function listMetronomeBalances(
   metronomeCustomerId: string,
   {
     includeArchived = false,
     coveringDate = new Date(),
     effectiveBefore,
+    startingAt,
     onlyPoolCredits = true,
+    includeLedgers = false,
   }: {
     // Pass `null` to drop the `covering_date` filter and return balances of any
     // date (including expired and, depending on `effectiveBefore`, future ones).
@@ -2295,9 +2371,12 @@ export async function listMetronomeBalances(
     // Restrict to balances with any access before this date — used to hide
     // future-dated balances while still returning expired ones.
     effectiveBefore?: Date;
+    startingAt?: Date;
     includeArchived?: boolean;
     // Restrict to balances related to pool credits
     onlyPoolCredits?: boolean;
+    // Include each entry's full transaction ledger.
+    includeLedgers?: boolean;
   } = {}
 ): Promise<Result<MetronomeBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
@@ -2318,7 +2397,11 @@ export async function listMetronomeBalances(
       ...(effectiveBefore !== undefined
         ? { effective_before: effectiveBefore.toISOString() }
         : {}),
+      ...(startingAt !== undefined
+        ? { starting_at: startingAt.toISOString() }
+        : {}),
       ...(includeArchived ? { include_archived: true } : {}),
+      ...(includeLedgers ? { include_ledgers: true } : {}),
     })) {
       // Mirror the pool balance alert filter for credits: include only
       // credits explicitly tagged DUST_CONTRACT_CREDIT_TYPE=pool. Excess
@@ -3769,18 +3852,27 @@ export async function adjustSeatCreditBalances({
   );
 
   try {
-    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
-      id: creditId,
-      customer_id: metronomeCustomerId,
-      contract_id: metronomeContractId,
-      segment_id: segmentId,
-      amount: totalAmount,
-      per_group_amounts: perSeatAmounts,
-      reason,
-      timestamp: alignToHour
-        ? floorToHourISO(timestamp)
-        : timestamp.toISOString(),
-    });
+    // A manual ledger entry is a cumulative DELTA and the endpoint 504s while
+    // still applying server-side — so an SDK retry would post the entry twice and
+    // over-adjust the balance. Unlike `contracts.edit`, `addManualBalanceEntry`
+    // has no `uniqueness_key`, so we can't dedup a retry; `maxRetries: 0` is the
+    // mitigation. On failure callers get `Err` and retry at their own (bounded,
+    // spaced) level instead.
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry(
+      {
+        id: creditId,
+        customer_id: metronomeCustomerId,
+        contract_id: metronomeContractId,
+        segment_id: segmentId,
+        amount: totalAmount,
+        per_group_amounts: perSeatAmounts,
+        reason,
+        timestamp: alignToHour
+          ? floorToHourISO(timestamp)
+          : timestamp.toISOString(),
+      },
+      { maxRetries: 0 }
+    );
     logger.info(
       {
         metronomeCustomerId,

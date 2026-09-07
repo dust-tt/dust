@@ -1,9 +1,9 @@
 import {
   getFrameBasePath,
+  getFrameDatabaseReplicaBasePath,
+  getFrameDatabaseReplicasBasePath,
+  getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
-  getFramePublicationFunctionSchemaPath,
-  getFramePublicationManifestPath,
-  getFramePublicationSourcePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { describe, expect, it } from "vitest";
@@ -17,16 +17,8 @@ const IDS = {
 describe("Frames v2 GCS paths", () => {
   it("keeps publications under the Frame identity", () => {
     expect(getFrameBasePath(IDS)).toBe("w/w_123/frames/fil_456/");
-    expect(getFramePublicationManifestPath(IDS)).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/manifest.json"
-    );
-    expect(
-      getFramePublicationSourcePath({
-        ...IDS,
-        relativePath: "src/index.tsx",
-      })
-    ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/source/src/index.tsx"
+    expect(getFramePublicationDescriptorPath(IDS)).toBe(
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/publication.json"
     );
     expect(getFramePublicationUiBundlePath(IDS)).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/ui/bundle.js"
@@ -37,25 +29,24 @@ describe("Frames v2 GCS paths", () => {
         functionName: "add-task",
       })
     ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task/bundle.js"
-    );
-    expect(
-      getFramePublicationFunctionSchemaPath({
-        ...IDS,
-        functionName: "add-task",
-      })
-    ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task/schema.json"
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.ts"
     );
   });
 
-  it("rejects path traversal and unsafe identity segments", () => {
-    expect(() =>
-      getFramePublicationSourcePath({
-        ...IDS,
-        relativePath: "../secret",
+  it("keeps SQLite replica state outside publications", () => {
+    expect(getFrameDatabaseReplicasBasePath(IDS)).toBe(
+      "w/w_123/frames/fil_456/state/databases/"
+    );
+    expect(
+      getFrameDatabaseReplicaBasePath({
+        workspaceId: IDS.workspaceId,
+        frameId: IDS.frameId,
+        databaseName: "task_store",
       })
-    ).toThrow("Invalid relative source path");
+    ).toBe("w/w_123/frames/fil_456/state/databases/task_store.db/");
+  });
+
+  it("rejects path traversal and unsafe identity segments", () => {
     expect(() =>
       getFrameBasePath({ workspaceId: "../other", frameId: IDS.frameId })
     ).toThrow("Invalid workspaceId");
@@ -65,5 +56,12 @@ describe("Frames v2 GCS paths", () => {
         functionName: "../other",
       })
     ).toThrow("Invalid functionName");
+    expect(() =>
+      getFrameDatabaseReplicaBasePath({
+        workspaceId: IDS.workspaceId,
+        frameId: IDS.frameId,
+        databaseName: "../other",
+      })
+    ).toThrow("Invalid databaseName");
   });
 });

@@ -33,6 +33,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { frameV2ContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -1328,6 +1329,44 @@ describe("listGeneratedFilesForConversation", () => {
         pictureUrl: agentConfig.pictureUrl,
       },
     });
+  });
+
+  it("uses the Frame name for a Frames v2 generated file", async () => {
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 42,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+        frameName: "Hello Frame",
+      },
+    });
+
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    assert(action);
+
+    const outputRes = await action.createOutputItems(auth, [
+      {
+        content: { type: "text", text: "generated" },
+        fileId: frame.id,
+      },
+    ]);
+    expect(outputRes.isOk()).toBe(true);
+
+    const result =
+      await AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
+        conversationId: conversation.id,
+      });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.title).toBe("Hello Frame");
   });
 
   it("respects upToRank when filtering generated files", async () => {

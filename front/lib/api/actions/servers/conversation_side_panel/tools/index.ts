@@ -9,9 +9,12 @@ import {
   SET_FILES_SIDE_PANEL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
+import { DustFileSystem } from "@app/lib/api/file_system";
+import { fetchLinkedFileResource } from "@app/lib/api/files/file_system_ops";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { isInteractiveContentType } from "@app/types/files";
+import { getFileDisplayName, isFrameContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 function buildFilesSidePanelControlNotification(
   progressToken: string | number,
@@ -40,7 +43,7 @@ function buildFilesSidePanelControlNotification(
 
 const handlers: ToolHandlers<typeof CONVERSATION_SIDE_PANEL_TOOLS_METADATA> = {
   [OPEN_FRAME_TOOL_NAME]: async (
-    { file_id },
+    { file_id, path },
     { auth, sendNotification, _meta, runContext }
   ) => {
     if (!isAgentLoopRunContext(runContext)) {
@@ -51,17 +54,55 @@ const handlers: ToolHandlers<typeof CONVERSATION_SIDE_PANEL_TOOLS_METADATA> = {
       );
     }
 
-    const fileResource = await FileResource.fetchById(auth, file_id);
-    if (!fileResource) {
+    if ((file_id && path) || (!file_id && !path)) {
       return new Err(
-        new MCPError(`File not found: ${file_id}`, { tracked: false })
+        new MCPError("Provide exactly one of `file_id` or `path`.", {
+          tracked: false,
+        })
       );
     }
 
-    if (!isInteractiveContentType(fileResource.contentType)) {
+    let fileResource: FileResource | undefined;
+    if (file_id) {
+      fileResource = (await FileResource.fetchById(auth, file_id)) ?? undefined;
+    } else if (path) {
+      const pathWithoutMountPrefix = path.startsWith("/files/")
+        ? path.slice("/files/".length)
+        : path;
+      const scopedPath = DustFileSystem.normalizeScopedPath(
+        pathWithoutMountPrefix
+      );
+      if (!scopedPath) {
+        return new Err(
+          new MCPError(`Invalid Frame path: ${path}`, { tracked: false })
+        );
+      }
+
+      const fsResult = await DustFileSystem.fromScopedPath(auth, scopedPath);
+      if (fsResult.isErr()) {
+        return new Err(
+          new MCPError(fsResult.error.message, { tracked: false })
+        );
+      }
+
+      fileResource = await fetchLinkedFileResource(
+        auth,
+        fsResult.value,
+        scopedPath
+      );
+    }
+
+    const fileReference = file_id ?? path;
+    if (!fileResource) {
+      return new Err(
+        new MCPError(`File not found: ${fileReference}`, { tracked: false })
+      );
+    }
+
+    if (!isFrameContentType(fileResource.contentType)) {
       return new Err(
         new MCPError(
-          `File '${file_id}' is not a Frame (content type: ${fileResource.contentType}).`,
+          `File '${fileReference}' is not a Frame (content type: ${fileResource.contentType}).`,
           { tracked: false }
         )
       );
@@ -77,12 +118,19 @@ const handlers: ToolHandlers<typeof CONVERSATION_SIDE_PANEL_TOOLS_METADATA> = {
       );
     }
 
+    const title = getFileDisplayName(fileResource);
     return new Ok([
       {
-        type: "text",
-        text:
-          `Opened Frame '${fileResource.sId}' (${fileResource.fileName}) ` +
-          "in the side panel.",
+        type: "resource",
+        resource: {
+          contentType: fileResource.contentType,
+          fileId: fileResource.sId,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+          snippet: fileResource.snippet,
+          text: `Opened Frame '${fileResource.sId}' (${title}) in the side panel.`,
+          title,
+          uri: fileResource.getPublicUrl(auth),
+        },
       },
     ]);
   },

@@ -20,9 +20,11 @@ const TIMESERIES: GetConsumptionTimeseriesResponse = {
     endDate: "2026-08-01T00:00:00.000Z",
   },
   granularity: "day",
-  mode: "daily",
+  mode: "period",
   metric: "credit_micro",
+  timezone: "UTC",
   breakdownBy: null,
+  workspaceMemberCount: 10,
   groups: [{ groupKey: "total", name: "Total" }],
   points: [],
 };
@@ -68,6 +70,21 @@ describe("POST /api/w/:wId/analytics/consumption/timeseries", () => {
     expect(vi.mocked(fetchConsumptionTimeseries)).not.toHaveBeenCalled();
   });
 
+  it("includes workspace context in the manager workspace view", async () => {
+    vi.mocked(fetchConsumptionTimeseries).mockResolvedValue(new Ok(TIMESERIES));
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+
+    const response = await postTimeseriesRequest(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionTimeseries)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ includeWorkspaceContext: true })
+    );
+  });
+
   it("lets members read only their own timeseries", async () => {
     vi.mocked(fetchConsumptionTimeseries).mockResolvedValue(new Ok(TIMESERIES));
     const { workspace, user } = await createPrivateApiMockRequest({
@@ -85,6 +102,7 @@ describe("POST /api/w/:wId/analytics/consumption/timeseries", () => {
       expect.anything(),
       expect.objectContaining({
         filter: { users: [user.sId], models: ["model-1"] },
+        includeWorkspaceContext: false,
       })
     );
   });
@@ -125,6 +143,7 @@ describe("POST /api/w/:wId/analytics/consumption/timeseries", () => {
       expect.anything(),
       expect.objectContaining({
         filter: { agents: [agent.sId], models: ["model-1"] },
+        includeWorkspaceContext: false,
       })
     );
   });

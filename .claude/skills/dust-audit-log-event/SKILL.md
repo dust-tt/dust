@@ -31,7 +31,7 @@ Rules:
 - additional targets describe the affected entities, such as `user`, `space`, `trigger`, `tool`,
   `agent`, or `api_key`
 - `metadata` is optional, but every metadata value must be declared as `"string"`
-- use snake_case metadata keys (see `[AUDIT9]`)
+- use snake_case metadata keys (see `[audit-snake-case-metadata-keys]`)
 
 Example shape:
 
@@ -154,4 +154,4 @@ Check all of the following:
 
 - `front/lib/api/audit/workos_audit.ts`
 - `front/admin/audit_log_schemas/`
-- `front/CODING_RULES.md` entries `[AUDIT1]` through `[AUDIT10]`
+- `front/CONTRACTS` entries with the `audit-` ID prefix

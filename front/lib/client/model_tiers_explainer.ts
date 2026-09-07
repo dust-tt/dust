@@ -40,12 +40,15 @@ function formatEffortsLabel(
   return inTierEfforts.join(" · ");
 }
 
-export function getModelTierExplainer(): ModelTierExplainerTier[] {
+export function getModelTierExplainer(
+  availableModelIds: Set<string>
+): ModelTierExplainerTier[] {
   return MODELS_TIERS.map((tier) => {
     const models: ModelTierExplainerEntry[] = [];
 
     for (const config of USED_MODEL_CONFIGS) {
       if (
+        !availableModelIds.has(config.modelId) ||
         HIDDEN_PROVIDER_IDS.has(config.providerId) ||
         isModelStreamId(config.modelId) ||
         !isStaticModelId(config.modelId)

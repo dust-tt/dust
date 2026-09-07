@@ -622,7 +622,7 @@ function TriggersTableBody({
     return (
       <div className="text-sm text-muted-foreground">
         {search.trim()
-          ? `No match for "${search.trim()}".`
+          ? `No results for "${search.trim()}". Only items with usage data appear here.`
           : "No automation ran over this period."}
       </div>
     );

@@ -6,7 +6,11 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { TestWorkspacePlan } from "@app/tests/utils/WorkspaceFactory";
+import {
+  WorkspaceFactory,
+  workspaceForPlan,
+} from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -17,10 +21,12 @@ export const createResourceTest: ({
   role,
   isSuperUser,
   isByok,
+  plan,
 }: {
   role?: MembershipRoleType;
   isSuperUser?: boolean;
   isByok?: boolean;
+  plan?: TestWorkspacePlan;
 }) => Promise<{
   workspace: LightWorkspaceType;
   user: UserResource;
@@ -35,14 +41,16 @@ export const createResourceTest: ({
   role = "user",
   isSuperUser = false,
   isByok = false,
+  plan = "basic",
 }: {
   role?: MembershipRoleType;
   isSuperUser?: boolean;
   isByok?: boolean;
+  plan?: TestWorkspacePlan;
 }) => {
   const workspace = isByok
     ? await WorkspaceFactory.byok()
-    : await WorkspaceFactory.basic();
+    : await workspaceForPlan(plan);
   const user: UserResource = await (isSuperUser
     ? UserFactory.superUser()
     : UserFactory.basic());

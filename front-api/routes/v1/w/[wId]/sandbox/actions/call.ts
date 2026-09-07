@@ -51,6 +51,17 @@ app.post(
       // could read that invocation's token out of /proc. That grants nothing the pod owner could
       // not get by publishing as durable, and the tool call still needs its usual approval.
       if (claims.noTools) {
+        if (claims.frameId) {
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "fast_function_called_tools",
+              message:
+                "This Frame function was published as fast, which cannot call tools, so this " +
+                "call was refused. Republish the Frame with executionMode `durable`.",
+            },
+          });
+        }
         // The declaration was wrong, and only this refusal reveals it. Record the function as
         // durable so the next invocation works, without holding up the refusal this one gets.
         void selfHealSandboxFunctionExecutionMode(auth, {
@@ -83,7 +94,7 @@ app.post(
       const result = await createSandboxFunctionMCPAction(auth, {
         sandboxFunctionId: claims.sandboxFunctionId,
         invocationId: claims.invocationId,
-        podSpaceId: claims.spaceId,
+        runtimeSpaceId: claims.spaceId,
         serverViewId,
         toolName,
         rawInputs: toolArgs ?? {},

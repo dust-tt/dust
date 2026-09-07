@@ -49,7 +49,8 @@ export function WebhookSourceDetailsPage() {
     );
   }
 
-  const { webhookSource, views, triggers, requestStats } = details;
+  const { webhookSource, views, triggers, requestStats, payloadsGcsUrl } =
+    details;
 
   return (
     <>
@@ -70,6 +71,12 @@ export function WebhookSourceDetailsPage() {
                   <PokeTableRow>
                     <PokeTableHead>sId</PokeTableHead>
                     <PokeTableCellWithCopy label={webhookSource.sId} />
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Id</PokeTableHead>
+                    <PokeTableCellWithCopy
+                      label={webhookSource.id.toString()}
+                    />
                   </PokeTableRow>
                   <PokeTableRow>
                     <PokeTableHead>Name</PokeTableHead>
@@ -121,6 +128,18 @@ export function WebhookSourceDetailsPage() {
                     <PokeTableHead>OAuth Connection</PokeTableHead>
                     <PokeTableCell>
                       {webhookSource.oauthConnectionId ?? "-"}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Payloads (GCS)</PokeTableHead>
+                    <PokeTableCell>
+                      <LinkWrapper
+                        href={payloadsGcsUrl}
+                        target="_blank"
+                        className="text-xs text-highlight-400"
+                      >
+                        Open bucket
+                      </LinkWrapper>
                     </PokeTableCell>
                   </PokeTableRow>
                   <PokeTableRow>

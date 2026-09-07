@@ -19,9 +19,9 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
-// Notion content can be reached through several domains: the classic notion.so,
-// published sites on notion.site, and the newer notion.com (e.g. app.notion.com).
-const VALID_NOTION_HOSTS = ["notion.so", "notion.site", "notion.com"];
+// Notion content can be reached through the legacy app domain, the current app domain,
+// and published sites.
+const VALID_NOTION_HOSTS = ["notion.so", "notion.site", "app.notion.com"];
 
 function isValidNotionUrl(url: string): boolean {
   if (!URL.canParse(url)) {
@@ -320,7 +320,7 @@ export function AdvancedNotionManagement({
 
         <div className="p-1">
           <Input
-            placeholder="https://www.notion.so/..."
+            placeholder="https://app.notion.com/p/..."
             value={statusUrl}
             onChange={(e) => setStatusUrl(e.target.value)}
             className="w-full"
@@ -416,7 +416,7 @@ export function AdvancedNotionManagement({
         Enter up to 10 Notion URLs to sync (one per line)
       </div>
       <TextArea
-        placeholder="https://www.notion.so/..."
+        placeholder="https://app.notion.com/p/..."
         value={urls.join("\n")}
         onChange={(e) => {
           setUrls(e.target.value.split("\n").map((url) => url.trim()));

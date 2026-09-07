@@ -51,6 +51,15 @@ export type GetWorkspaceAllowedModelTiersResponseBody = z.infer<
   typeof GetWorkspaceAllowedModelTiersResponseBodySchema
 >;
 
+export const GetPokeAllowedModelTiersResponseBodySchema = z.object({
+  users: z.array(UserAllowedModelTiersSchema),
+  groups: z.array(GroupAllowedModelTiersSchema),
+  maxTierName: ModelsTierNameSchema,
+});
+export type GetPokeAllowedModelTiersResponseBody = z.infer<
+  typeof GetPokeAllowedModelTiersResponseBodySchema
+>;
+
 export const AllowedModelTierBodySchema = z.object({
   tierName: ModelsTierNameSchema,
 });

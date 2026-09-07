@@ -1,6 +1,14 @@
 import type { SupportedCurrency } from "@app/types/currency";
 
-export type AwuPoolSummaryResponseBody = {
+export type AwuPoolCycleBreakdown = {
+  cycleStartMs: number | null;
+  cycleEndMs: number | null;
+  consumedCredits: number;
+};
+
+// Current-cycle figures only — cheap to compute (bounded ledger lookup),
+// meant to render before cycle history is available.
+export type AwuPoolCurrentCycleResponseBody = {
   totalRemainingCredits: number;
   totalActiveCredits: number;
   /**
@@ -13,4 +21,20 @@ export type AwuPoolSummaryResponseBody = {
   overageAmountCents: number | null;
   /** Invoice currency — needed to format `overageAmountCents`. */
   overageCurrency: SupportedCurrency | null;
+  currentCycleConsumedCredits: number | null;
+  currentCycleStartMs: number | null;
+  currentCycleEndMs: number | null;
+  // PAYG credits
+  excessConsumedCredits: number | null;
+  programmaticConsumedCredits: number | null;
+  otherConsumedCredits: number | null;
 };
+
+export type AwuPoolCycleHistoryResponseBody = {
+  // Per-cycle pool consumption, most recent first
+  cycleBreakdown: AwuPoolCycleBreakdown[];
+  excessCycleBreakdown: AwuPoolCycleBreakdown[];
+};
+
+export type AwuPoolSummaryResponseBody = AwuPoolCurrentCycleResponseBody &
+  AwuPoolCycleHistoryResponseBody;

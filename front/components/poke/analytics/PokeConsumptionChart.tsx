@@ -4,6 +4,7 @@ import {
   CONSUMPTION_CHART_BREAKDOWN_COUNT,
   ConsumptionDailyChart,
 } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
+import { consumptionGranularityLabel } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTimeseriesMode } from "@app/lib/api/analytics/consumption/timeseries";
 import {
   usePokeConsumptionOverview,
@@ -24,11 +25,12 @@ function PokeConsumptionDailyChart({
   filter,
   additionalControls,
 }: PokeConsumptionDailyChartProps) {
+  const showActiveUsers = filter?.users?.length !== 1;
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     usePokeConsumptionTimeseries({
       workspaceId,
       period,
-      mode: "daily",
+      mode: "period",
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
@@ -48,6 +50,7 @@ function PokeConsumptionDailyChart({
           : "No consumption over this period."
       }
       additionalControls={additionalControls}
+      showActiveUsers={showActiveUsers}
     />
   );
 }
@@ -110,13 +113,13 @@ export function PokeConsumptionChart({
   dimension,
   filter,
 }: ConsumptionChartProps) {
-  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
+  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("period");
   const modeSelector = (
     <ButtonsSwitchList value={mode} size="xs">
       <ButtonsSwitch
-        value="daily"
-        label="Daily"
-        onClick={() => setMode("daily")}
+        value="period"
+        label={consumptionGranularityLabel("day")}
+        onClick={() => setMode("period")}
       />
       <ButtonsSwitch
         value="cumulative"

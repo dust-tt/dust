@@ -100,6 +100,7 @@ import chunk from "lodash/chunk";
 import { Op } from "sequelize";
 
 const logger = mainLogger.child({ provider: "notion" });
+const NOTION_APP_URL = "https://app.notion.com/p";
 
 // Connector ID hashes for which deletion should be skipped during garbage collection.
 const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
@@ -2579,7 +2580,7 @@ export async function renderAndUpsertPageFromCache({
             mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
             sourceUrl:
               parentDb.notionUrl ??
-              `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
+              `${NOTION_APP_URL}/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
             allowEmptySchema: true,
           })
         );
@@ -3166,7 +3167,7 @@ export async function upsertDatabaseStructuredDataFromCache({
       mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
       sourceUrl:
         dbModel.notionUrl ??
-        `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
+        `${NOTION_APP_URL}/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
       allowEmptySchema: true,
     })
   );
@@ -3213,7 +3214,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         },
         documentUrl:
           dbModel.notionUrl ??
-          `https://www.notion.so/${databaseId.replace(/-/g, "")}`,
+          `${NOTION_APP_URL}/${databaseId.replace(/-/g, "")}`,
         // TODO: see if we actually want to use the Notion last edited time of the database
         // we currently don't have it because we don't fetch the DB object from notion.
         timestampMs: upsertAt.getTime(),

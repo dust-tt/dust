@@ -1,14 +1,17 @@
-import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionTopDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
@@ -16,6 +19,7 @@ import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import capitalize from "lodash/capitalize";
 
 /**
  * Resolve display names / labels (and pictureUrl where applicable)
@@ -30,6 +34,8 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
  * - "tool": MCP server names
  * - "skill": skill sIds
  * - "source": origin slugs
+ * - "conversation": conversation sIds
+ * - "tag": agent tag sIds
  */
 
 export type DimensionLabel = {
@@ -47,6 +53,8 @@ export type DimensionLabel = {
   scope?: AgentConfigurationScope;
   maker?: ModelMakerIdType;
   tier?: ModelsTierName;
+  // Only groups have one; this is the current active membership count.
+  memberCount?: number;
 };
 
 function labelsFromNames(
@@ -62,7 +70,7 @@ function labelsFromNames(
 
 export async function resolveDimensionLabels(
   auth: Authenticator,
-  dimension: ConsumptionScopeDimension,
+  dimension: ConsumptionTopDimension,
   keys: string[]
 ): Promise<Map<string, DimensionLabel>> {
   if (keys.length === 0) {
@@ -115,9 +123,29 @@ export async function resolveDimensionLabels(
       const groups = await GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
       });
-      const namesById = new Map(groups.map((group) => [group.sId, group.name]));
-      return labelsFromNames(
-        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
+      const keySet = new Set(keys);
+      const groupsToResolve = groups.filter((group) => keySet.has(group.sId));
+      const groupsWithMemberCounts = await GroupResource.toJSONWithMemberCounts(
+        auth,
+        groupsToResolve
+      );
+      const groupsById = new Map(
+        groupsWithMemberCounts.map((group) => [group.sId, group])
+      );
+
+      return new Map(
+        keys.map((key) => {
+          const group = groupsById.get(key);
+          return [
+            key,
+            {
+              name: group?.name ?? key,
+              pictureUrl: null,
+              description: null,
+              memberCount: group?.memberCount ?? 0,
+            },
+          ];
+        })
       );
     }
 
@@ -188,6 +216,36 @@ export async function resolveDimensionLabels(
         new Map(keys.map((key) => [key, sourceLabelForOrigin(key) ?? key]))
       );
 
+    case "conversation": {
+      const conversations = await ConversationResource.fetchByIds(auth, keys, {
+        includeDeleted: true,
+      });
+      const titlesById = new Map(
+        conversations.map((conversation) => [
+          conversation.sId,
+          getConversationDisplayTitle({
+            created: conversation.createdAt.getTime(),
+            forkingData: conversation.forkingData,
+            title: conversation.title,
+          }),
+        ])
+      );
+      return labelsFromNames(titlesById);
+    }
+
+    case "tag": {
+      const tags = await TagResource.fetchByIds(auth, keys);
+      const namesById = new Map(tags.map((tag) => [tag.sId, tag.name]));
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
+      );
+    }
+
+    case "reasoning_effort":
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, capitalize(key)]))
+      );
+
     default:
       assertNever(dimension);
   }
@@ -195,7 +253,7 @@ export async function resolveDimensionLabels(
 
 export async function resolveDimensionDisplayNames(
   auth: Authenticator,
-  dimension: ConsumptionScopeDimension,
+  dimension: ConsumptionTopDimension,
   groupKeys: string[]
 ): Promise<Map<string, string>> {
   const labels = await resolveDimensionLabels(auth, dimension, groupKeys);

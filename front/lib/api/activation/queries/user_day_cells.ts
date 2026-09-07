@@ -1,8 +1,8 @@
 import { INTERACTIVE_CONTENT_SERVER_NAME } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { TOOL_COST_CATEGORY_AWU_WEIGHTS } from "@app/lib/metronome/events";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -14,15 +14,18 @@ import chunk from "lodash/chunk";
 // Elasticsearch query: per-(user, day) activity facts.
 // ---------------------------------------------------------------------------
 //
-// One composite aggregation over agent_message_analytics_2 returning, per
-// (user, day): whether the user was a daily active user, and whether they had a
-// high-value use case signal (≥1 succeeded tool call that is either
+// One composite aggregation over agent_message_consumption_analytics returning,
+// per (user, day): whether the user was a daily active user, and whether they
+// had a high-value use case signal (≥1 succeeded tool call that is either
 // advanced-cost, a frame touch (interactive_content), or run_agent).
 
 // Origins that make a day count as a daily active user day: human-initiated
 // organic ("user") origins, with `triggered` deliberately EXCLUDED.
 const DAILY_ACTIVE_USER_ORIGINS = USER_USAGE_ORIGINS.filter(
   (origin) => origin !== "triggered"
+);
+const ADVANCED_TOOL_CREDIT_AMOUNT_MICRO = roundCreditsToMicroCredits(
+  TOOL_COST_CATEGORY_AWU_WEIGHTS.advanced
 );
 
 // Hard cap on users per Elasticsearch call. Larger sets are fetched in
@@ -142,58 +145,51 @@ async function fetchUserDayCellsBatch({
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
-        // Reuse the workspace-scoped analytics query so this aggregation can
-        // never search documents from another workspace.
-        buildAgentAnalyticsBaseQuery({
-          workspaceId,
-          userIds,
-          // Include only known human/user origins rather than excluding
-          // programmatic ones with a costly must_not clause.
-          contextOrigin: USER_USAGE_ORIGINS,
-        }),
+        { term: { workspace_id: workspaceId } },
+        { terms: { "user.id": userIds } },
+        // Include only known human/user origins rather than excluding
+        // programmatic ones with a costly must_not clause.
+        { terms: { context_origin: USER_USAGE_ORIGINS } },
         {
           range: {
-            timestamp: {
+            completed_at: {
               gte: windowStart.toISOString(),
               lt: windowEnd.toISOString(),
             },
           },
         },
-        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
       ],
     },
   };
 
   // HVUC signal: ≥1 succeeded tool call that is advanced-cost, a frame touch, or
   // run_agent.
-  const hvucNestedQuery: estypes.QueryDslQueryContainer = {
-    nested: {
-      path: "tools_used",
-      query: {
-        bool: {
-          filter: [{ term: { "tools_used.status": "succeeded" } }],
-          should: [
-            {
-              range: {
-                "tools_used.cost_awu": {
-                  gte: TOOL_COST_CATEGORY_AWU_WEIGHTS.advanced,
-                },
-              },
+  const hvucQuery: estypes.QueryDslQueryContainer = {
+    bool: {
+      filter: [
+        { term: { consumption_type: "tool" } },
+        { term: { status: "succeeded" } },
+      ],
+      should: [
+        {
+          range: {
+            "gross_credit_micro.direct": {
+              gte: ADVANCED_TOOL_CREDIT_AMOUNT_MICRO,
             },
-            {
-              term: {
-                "tools_used.server_name": INTERACTIVE_CONTENT_SERVER_NAME,
-              },
-            },
-            {
-              term: {
-                "tools_used.server_name": RUN_AGENT_SERVER_NAME,
-              },
-            },
-          ],
-          minimum_should_match: 1,
+          },
         },
-      },
+        {
+          term: {
+            "tool.server_name": INTERACTIVE_CONTENT_SERVER_NAME,
+          },
+        },
+        {
+          term: {
+            "tool.server_name": RUN_AGENT_SERVER_NAME,
+          },
+        },
+      ],
+      minimum_should_match: 1,
     },
   };
 
@@ -202,11 +198,11 @@ async function fetchUserDayCellsBatch({
     const composite: estypes.AggregationsCompositeAggregation = {
       size: COMPOSITE_PAGE_SIZE,
       sources: [
-        { user_id: { terms: { field: "user_id" } } },
+        { user_id: { terms: { field: "user.id" } } },
         {
           day: {
             date_histogram: {
-              field: "timestamp",
+              field: "completed_at",
               calendar_interval: "1d",
               time_zone: "UTC",
             },
@@ -216,22 +212,35 @@ async function fetchUserDayCellsBatch({
       ...(afterKey ? { after: afterKey } : {}),
     };
 
-    const result = await searchAnalytics<never, UserDayCellsAggs>(query, {
-      size: 0,
-      aggregations: {
-        by_user_day: {
-          composite,
-          aggregations: {
-            dau: {
-              filter: {
-                terms: { context_origin: DAILY_ACTIVE_USER_ORIGINS },
+    const result = await searchConsumptionAnalytics<never, UserDayCellsAggs>(
+      query,
+      {
+        size: 0,
+        aggregations: {
+          by_user_day: {
+            composite,
+            aggregations: {
+              dau: {
+                filter: {
+                  bool: {
+                    filter: [
+                      { term: { consumption_type: "llm" } },
+                      {
+                        terms: {
+                          context_origin: DAILY_ACTIVE_USER_ORIGINS,
+                        },
+                      },
+                      { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+                    ],
+                  },
+                },
               },
+              hvuc_signal: { filter: hvucQuery },
             },
-            hvuc_signal: { filter: hvucNestedQuery },
           },
         },
-      },
-    });
+      }
+    );
 
     if (result.isErr()) {
       return new Err(new Error(result.error.message));

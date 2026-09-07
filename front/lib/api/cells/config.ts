@@ -15,9 +15,12 @@ const CELLS: Record<CellType, CellInfo> = Object.fromEntries(
           {
             name: cell,
             region: "us-central1",
-            url:
-              EnvironmentConfig.getOptionalEnvVariable("DUST_US_URL") ??
-              "https://dust.tt",
+            // Local poke/dev talks to the single local front-api, even when
+            // production cell public URLs are configured in the environment.
+            url: isDevelopment()
+              ? "http://localhost:3000"
+              : (EnvironmentConfig.getOptionalEnvVariable("DUST_US_URL") ??
+                "https://dust.tt"),
           },
         ];
       // EU Global
@@ -27,9 +30,24 @@ const CELLS: Record<CellType, CellInfo> = Object.fromEntries(
           {
             name: cell,
             region: "europe-west1",
-            url:
-              EnvironmentConfig.getOptionalEnvVariable("DUST_EU_URL") ??
-              "https://eu.dust.tt",
+            url: isDevelopment()
+              ? "http://localhost:3000"
+              : (EnvironmentConfig.getOptionalEnvVariable("DUST_EU_URL") ??
+                "https://eu.dust.tt"),
+          },
+        ];
+      // EU 2
+      case "cell-00002":
+        return [
+          cell,
+          {
+            name: cell,
+            region: "europe-west1",
+            url: isDevelopment()
+              ? "http://localhost:3000"
+              : (EnvironmentConfig.getOptionalEnvVariable(
+                  "DUST_CELL_00002_URL"
+                ) ?? "https://eu2.dust.tt"),
           },
         ];
       default:
@@ -56,20 +74,17 @@ export const config = {
     return CELLS[cell];
   },
   getCellUrl(cell: CellType): string {
-    if (isDevelopment()) {
-      return "http://localhost:3000";
-    }
-
     return this.getCellInfo(cell).url;
+  },
+  getAllCells(): CellInfo[] {
+    return SUPPORTED_CELLS.map((cell) => this.getCellInfo(cell));
   },
   isMainCell(): boolean {
     return this.getCurrentCell().name === MAIN_CELL;
   },
   getOtherCells(): CellInfo[] {
     const currentCell = this.getCurrentCell();
-    return Object.values(CELLS).filter(
-      (cell) => cell.name !== currentCell.name
-    );
+    return this.getAllCells().filter((cell) => cell.name !== currentCell.name);
   },
   getDustCellSyncEnabled: (): boolean => {
     return (

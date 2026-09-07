@@ -128,7 +128,7 @@ describe("createSpaceAndGroup", () => {
         expect(space.name).toBe("Test Regular Space");
         expect(space.kind).toBe("regular");
         expect(space.managementMode).toBe("manual");
-        expect(await space.isOpen(adminAuth)).toBe(false);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify the space has a group
         const groups = await space.fetchGroupResources(adminAuth);
@@ -189,7 +189,7 @@ describe("createSpaceAndGroup", () => {
         expect(space.name).toBe("Test Group Space");
         expect(space.kind).toBe("regular");
         expect(space.managementMode).toBe("group");
-        expect(await space.isOpen(adminAuth)).toBe(false);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify groups were associated (from the space's group_permissions grants).
         const reloadedSpace = await SpaceResource.fetchById(
@@ -311,14 +311,14 @@ describe("createSpaceAndGroup", () => {
         ).toBe(true);
 
         const staleAuth = await Authenticator.fromJSON(staleAuthJson);
-        expect(pod.canAdministrate(staleAuth)).toBe(false);
+        expect(staleAuth.can("admin", pod)).toBe(false);
         expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
 
         await staleAuth.refresh();
         expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
 
         const refreshedPod = await SpaceResource.fetchById(staleAuth, pod.sId);
-        expect(refreshedPod?.canAdministrate(staleAuth)).toBe(true);
+        expect(staleAuth.can("admin", refreshedPod!)).toBe(true);
       }
 
       createConnectorSpy.mockRestore();
@@ -361,7 +361,7 @@ describe("createSpaceAndGroup", () => {
         // above, which has to call refresh() itself).
         expect(userAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
         expect(userAuth.getGrantedVerbs("space", pod.id)).toContain("admin");
-        expect(pod.canAdministrate(userAuth)).toBe(true);
+        expect(userAuth.can("admin", pod)).toBe(true);
       }
 
       createConnectorSpy.mockRestore();
@@ -419,7 +419,7 @@ describe("createSpaceAndGroup", () => {
           space.sId
         );
         expect(reloadedSpace).not.toBeNull();
-        expect(await reloadedSpace!.isOpen(adminAuth)).toBe(true);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
         // Verify global group was added (from the space's group_permissions grants).
         const associatedGroupIds = (
@@ -462,14 +462,14 @@ describe("createSpaceAndGroup", () => {
         result.value.sId
       );
 
-      expect(await asMember!.isOpen(memberAuth)).toBe(true);
+      expect(await asMember!.isRestricted(memberAuth)).toBe(false);
 
       // The member group confers write; the global group's `reader` grant only confers read.
-      expect(asMember!.canRead(memberAuth)).toBe(true);
-      expect(asMember!.canWrite(memberAuth)).toBe(true);
+      expect(memberAuth.can("read", asMember!)).toBe(true);
+      expect(memberAuth.can("write", asMember!)).toBe(true);
 
-      expect(asNonMember!.canRead(nonMemberAuth)).toBe(true);
-      expect(asNonMember!.canWrite(nonMemberAuth)).toBe(false);
+      expect(nonMemberAuth.can("read", asNonMember!)).toBe(true);
+      expect(nonMemberAuth.can("write", asNonMember!)).toBe(false);
     });
 
     it("should create a restricted space without global group", async () => {
@@ -484,7 +484,7 @@ describe("createSpaceAndGroup", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        expect(await space.isOpen(adminAuth)).toBe(false);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify global group was NOT added (from the space's group_permissions grants).
         const associatedGroupIds = (await space.fetchGrantReferences()).map(
@@ -932,7 +932,7 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           space.sId
         );
-        expect(await reloadedSpace!.isOpen(adminAuth)).toBe(true);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
         // Verify the global group holds a reader grant on the space (open regular space).
         const grants = await GroupPermissionResource.listForResource(
@@ -967,7 +967,7 @@ describe("createSpaceAndGroup", () => {
           space.sId
         );
         expect(reloadedSpace!.kind).toBe("project");
-        expect(await reloadedSpace!.isOpen(adminAuth)).toBe(true);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
         // Verify the global group holds a reader grant on the project (attached as viewer).
         const grants = await GroupPermissionResource.listForResource(
@@ -1519,6 +1519,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       const skill = await SkillFactory.create(adminAuth, {
         name: "Test Skill With Tool And Additional Space",
         requestedSpaceIds: [toolSpace!.id, additionalSpace!.id],
+        // Only the additional space was picked by hand; the tool space comes from the server view.
+        manuallyRequestedSpaceIds: [additionalSpace!.id],
         mcpServerViews: [serverView],
       });
 
@@ -1533,6 +1535,87 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(skillAfter).not.toBeNull();
       expect(skillAfter!.requestedSpaceIds).not.toContain(toolSpace!.id);
       expect(skillAfter!.requestedSpaceIds).toEqual([additionalSpace!.id]);
+    });
+
+    it("should preserve a nested skill's spaces when deleting a dependency space", async () => {
+      // The parent requests two spaces for two different reasons: a tool of its own, and a child
+      // skill it references. Deleting the tool's space must not drop the child's.
+      const toolSpaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Parent Tool",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(toolSpaceResult.isOk()).toBe(true);
+      const toolSpace = toolSpaceResult.isOk() ? toolSpaceResult.value : null;
+
+      const childSpaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Child Tool",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(childSpaceResult.isOk()).toBe(true);
+      const childSpace = childSpaceResult.isOk()
+        ? childSpaceResult.value
+        : null;
+
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "Test Server",
+      });
+      const parentServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        toolSpace!
+      );
+      const childServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        childSpace!
+      );
+
+      const { parentSkill } = await SkillFactory.createWithNestedSkill(
+        adminAuth,
+        {
+          childOverrides: {
+            name: "Nested Child Skill",
+            requestedSpaceIds: [childSpace!.id],
+            mcpServerViews: [childServerView],
+          },
+          parentOverrides: {
+            name: "Nested Parent Skill",
+            requestedSpaceIds: [toolSpace!.id, childSpace!.id],
+            mcpServerViews: [parentServerView],
+          },
+        }
+      );
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        toolSpace!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      const parentAfter = await SkillResource.fetchById(
+        adminAuth,
+        parentSkill.sId
+      );
+      expect(parentAfter).not.toBeNull();
+      expect(parentAfter!.requestedSpaceIds).not.toContain(toolSpace!.id);
+      // Requested through the child skill reference, not by hand.
+      expect(parentAfter!.requestedSpaceIds).toContain(childSpace!.id);
+      expect(parentAfter!.manuallyRequestedSpaceIds).toEqual([]);
     });
 
     it("should only remove deleted space from agent requestedSpaceIds, keeping other spaces", async () => {

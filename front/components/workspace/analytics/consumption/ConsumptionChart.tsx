@@ -4,8 +4,13 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
 import {
+  consumptionGranularityLabel,
+  DEFAULT_CONSUMPTION_GRANULARITY,
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
@@ -16,16 +21,21 @@ import type {
   ConsumptionTimeseriesPoint,
   GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
-import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import {
+  formatCredits,
+  formatCreditsCompact,
+  formatCreditValue,
+} from "@app/lib/client/credits";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
-  BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Line,
   ReferenceLine,
   Tooltip,
   XAxis,
@@ -36,23 +46,23 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ConsumptionBurnUpChart } from "./ConsumptionBurnUpChart";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
-const TODAY_PARTIAL_LABEL = "Today (partial)";
+const CURRENT_BUCKET_LABELS: Record<ConsumptionGranularity, string> = {
+  day: "Today",
+  week: "This week",
+  month: "This month",
+};
 
 // Renders the reference line's label as a pill with the same fill as the
 // line itself, since the default text-only label has no background.
-interface TodayPartialLabelProps {
-  viewBox?: RechartsLabelProps["viewBox"];
-}
-
-function TodayPartialLabel({ viewBox }: TodayPartialLabelProps) {
+function PartialLabel({ viewBox, value }: RechartsLabelProps) {
   const textRef = useRef<SVGTextElement>(null);
   const [textWidth, setTextWidth] = useState(0);
 
   useLayoutEffect(() => {
-    if (textRef.current) {
+    if (value !== undefined && textRef.current) {
       setTextWidth(textRef.current.getComputedTextLength());
     }
-  }, []);
+  }, [value]);
 
   if (!viewBox || !("x" in viewBox)) {
     return null;
@@ -86,14 +96,18 @@ function TodayPartialLabel({ viewBox }: TodayPartialLabelProps) {
         dominantBaseline="central"
         className="fill-background text-xs"
       >
-        {TODAY_PARTIAL_LABEL}
+        {value}
       </text>
     </g>
   );
 }
 
-// The bucket in progress (if mapped to today) is drawn faded across every series.
+// The bucket in progress is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
+
+const ACTIVE_USERS_COLOR = "text-golden-500";
+// Leave 20% headroom so the line does not visually sit on top of the bars.
+const ACTIVE_USERS_MAX_HEIGHT_RATIO = 0.8;
 
 const CONSUMPTION_CHART_COLORS = [
   "text-blue-900",
@@ -108,6 +122,35 @@ const CONSUMPTION_CHART_COLORS = [
 // endpoint adds an aggregate "Others" category.
 export const CONSUMPTION_CHART_BREAKDOWN_COUNT =
   CONSUMPTION_CHART_COLORS.length - 1;
+
+function ActiveUsersAxisLabel({
+  angle = 0,
+  className,
+  offset = 5,
+  value,
+  viewBox,
+}: RechartsLabelProps) {
+  if (!viewBox || !("x" in viewBox)) {
+    return null;
+  }
+
+  const { x = 0, y = 0, width = 0, height = 0 } = viewBox;
+  const labelX = x + width - offset;
+  const labelY = y + height / 2;
+
+  return (
+    <text
+      x={labelX}
+      y={labelY}
+      textAnchor="middle"
+      dominantBaseline="central"
+      transform={`rotate(${angle} ${labelX} ${labelY})`}
+      className={className}
+    >
+      {value}
+    </text>
+  );
+}
 
 function getConsumptionChartColor(index: number): string {
   return CONSUMPTION_CHART_COLORS[
@@ -133,6 +176,9 @@ interface ConsumptionDailyTooltipProps
   groups: ConsumptionTimeseriesGroup[];
   colorByGroupKey: Map<string, string>;
   partialTimestamp: number | undefined;
+  currentBucketLabel: string;
+  showActiveUsers: boolean;
+  totalUsers: number | null;
 }
 
 function ConsumptionDailyTooltip({
@@ -141,14 +187,17 @@ function ConsumptionDailyTooltip({
   groups,
   colorByGroupKey,
   partialTimestamp,
+  currentBucketLabel,
+  showActiveUsers,
+  totalUsers,
 }: ConsumptionDailyTooltipProps) {
   const datum = payload?.[0]?.payload;
   if (!active || !isConsumptionTimeseriesPoint(datum)) {
     return null;
   }
 
-  // The partialTimestamp points to the bucket in progress (if mapped to today).
-  // So every buckets after that are in the future, and are expected to be empty,
+  // The partialTimestamp points to the bucket in progress. Every bucket after
+  // that is in the future and expected to be empty,
   // hence nothing to show.
   if (partialTimestamp !== undefined && datum.timestamp > partialTimestamp) {
     return null;
@@ -168,21 +217,39 @@ function ConsumptionDailyTooltip({
 
   const totalCredits = rows.reduce((sum, row) => sum + row.credits, 0);
   const isPartial = datum.timestamp === partialTimestamp;
+  const { activeUsers } = datum;
 
   return (
     <ChartTooltipCard
       title={formatConsumptionDate(datum.timestamp)}
-      rows={rows.map((row) => ({
-        key: row.key,
-        label: row.label,
-        value: formatCredits(row.credits),
-        colorClassName: row.colorClassName,
-      }))}
+      rows={[
+        ...(showActiveUsers
+          ? [
+              {
+                key: "activeUsers",
+                label: "Active users",
+                value: activeUsers,
+                colorClassName: ACTIVE_USERS_COLOR,
+                percent:
+                  totalUsers !== null && totalUsers > 0
+                    ? Math.round((activeUsers / totalUsers) * 100)
+                    : null,
+              },
+            ]
+          : []),
+        ...rows.map((row) => ({
+          key: row.key,
+          label: row.label,
+          value: formatCredits(row.credits),
+          colorClassName: row.colorClassName,
+        })),
+      ]}
       footer={
         isPartial
-          ? `${formatCredits(totalCredits)} so far today`
-          : `${formatCredits(totalCredits)} total`
+          ? `${formatCreditValue(totalCredits)} so far ${currentBucketLabel.toLowerCase()}`
+          : `${formatCreditValue(totalCredits)} total`
       }
+      separatorAfterKey="activeUsers"
     />
   );
 }
@@ -192,6 +259,7 @@ interface ConsumptionDailyChartProps {
   isTimeseriesLoading: boolean;
   isTimeseriesError: boolean;
   emptyMessage: string;
+  showActiveUsers: boolean;
   additionalControls?: ReactNode;
 }
 
@@ -200,9 +268,11 @@ export function ConsumptionDailyChart({
   isTimeseriesLoading,
   isTimeseriesError,
   emptyMessage,
+  showActiveUsers,
   additionalControls,
 }: ConsumptionDailyChartProps) {
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
+  const totalUsers = timeseries?.workspaceMemberCount ?? null;
   const chartData = useMemo(() => timeseries?.points ?? [], [timeseries]);
 
   const orderedGroups = useMemo(() => {
@@ -238,6 +308,10 @@ export function ConsumptionDailyChart({
     () => findPartialTimestamp(chartData),
     [chartData]
   );
+  const currentBucketLabel =
+    CURRENT_BUCKET_LABELS[
+      timeseries?.granularity ?? DEFAULT_CONSUMPTION_GRANULARITY
+    ];
 
   const renderTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
@@ -246,37 +320,58 @@ export function ConsumptionDailyChart({
         groups={orderedGroups}
         colorByGroupKey={colorByGroupKey}
         partialTimestamp={partialTimestamp}
+        currentBucketLabel={currentBucketLabel}
+        showActiveUsers={showActiveUsers}
+        totalUsers={totalUsers}
       />
     ),
-    [orderedGroups, colorByGroupKey, partialTimestamp]
+    [
+      orderedGroups,
+      colorByGroupKey,
+      partialTimestamp,
+      currentBucketLabel,
+      showActiveUsers,
+      totalUsers,
+    ]
   );
 
-  const legendItems: LegendItem[] = orderedGroups.map((group) => ({
-    key: group.groupKey,
-    label: group.name,
-    colorClassName: colorByGroupKey.get(group.groupKey) ?? "",
-  }));
+  const hasActiveUsers =
+    showActiveUsers && chartData.some(({ activeUsers }) => activeUsers);
+  const legendItems: LegendItem[] = [
+    ...orderedGroups.map((group) => ({
+      key: group.groupKey,
+      label: group.name,
+      colorClassName: colorByGroupKey.get(group.groupKey) ?? "",
+    })),
+    ...(hasActiveUsers
+      ? [
+          {
+            key: "activeUsers",
+            label: "Active users",
+            colorClassName: ACTIVE_USERS_COLOR,
+            isTrailing: true,
+          },
+        ]
+      : []),
+  ];
 
-  const hasConsumption = chartData.some((datum) =>
+  const hasCredits = chartData.some((datum) =>
     Object.values(datum.values).some((credits) => credits > 0)
   );
+  const hasData = hasCredits || hasActiveUsers;
   return (
     <ChartContainer
-      title="Daily consumption"
       additionalControls={additionalControls}
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
       }
-      emptyMessage={
-        !isTimeseriesLoading && !hasConsumption ? emptyMessage : undefined
-      }
+      emptyMessage={!isTimeseriesLoading && !hasData ? emptyMessage : undefined}
       height={CHART_HEIGHT}
       legendItems={legendItems}
       legendAlignment="center"
-      showHeaderDivider
     >
-      <BarChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
+      <ComposedChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
         <CartesianGrid
           vertical={false}
           strokeDasharray="4 4"
@@ -299,7 +394,35 @@ export function ConsumptionDailyChart({
           axisLine={false}
           tickMargin={8}
           tickFormatter={formatCreditsCompact}
+          label={{
+            value: "Credits",
+            angle: -90,
+            position: "insideLeft",
+            className: "fill-muted-foreground text-xs",
+          }}
         />
+        {hasActiveUsers && (
+          <YAxis
+            yAxisId="activeUsers"
+            orientation="right"
+            className="text-xs text-faint"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            allowDecimals={false}
+            domain={[
+              0,
+              (dataMax: number) =>
+                Math.max(1, dataMax / ACTIVE_USERS_MAX_HEIGHT_RATIO),
+            ]}
+            label={{
+              value: "Active users",
+              angle: 90,
+              content: ActiveUsersAxisLabel,
+              className: "fill-muted-foreground text-xs",
+            }}
+          />
+        )}
         <Tooltip
           cursor={false}
           content={renderTooltip}
@@ -333,16 +456,49 @@ export function ConsumptionDailyChart({
             </Bar>
           );
         })}
+        {hasActiveUsers && (
+          <Line
+            yAxisId="activeUsers"
+            type="linear"
+            dataKey={(datum: ConsumptionTimeseriesPoint) =>
+              partialTimestamp !== undefined &&
+              datum.timestamp > partialTimestamp
+                ? null
+                : datum.activeUsers
+            }
+            name="Active users"
+            className={ACTIVE_USERS_COLOR}
+            stroke="currentColor"
+            strokeWidth={2}
+            dot={{ r: 3, fill: "currentColor", strokeWidth: 0 }}
+            activeDot={{
+              className: cn(
+                ACTIVE_USERS_COLOR,
+                "origin-center animate-in zoom-in-90 duration-75 ease-out motion-reduce:animate-none [transform-box:fill-box]"
+              ),
+              r: 3.75,
+              fill: "white",
+              stroke: "currentColor",
+              strokeWidth: 1.5,
+            }}
+            connectNulls={false}
+            isAnimationActive={false}
+          />
+        )}
         {partialTimestamp !== undefined && (
           <ReferenceLine
             x={partialTimestamp}
             stroke="var(--color-primary)"
             strokeDasharray="5 5"
-            label={{ position: "top", content: TodayPartialLabel }}
+            label={{
+              position: "top",
+              value: `${currentBucketLabel} (partial)`,
+              content: PartialLabel,
+            }}
             ifOverflow="extendDomain"
           />
         )}
-      </BarChart>
+      </ComposedChart>
     </ChartContainer>
   );
 }
@@ -350,6 +506,7 @@ export function ConsumptionDailyChart({
 export interface ConsumptionChartProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  granularity?: ConsumptionGranularity;
   dimension: ConsumptionDimension;
   filter?: ConsumptionScopeFilter;
   analyticsScope?: ConsumptionAnalyticsScope;
@@ -360,29 +517,34 @@ export interface ConsumptionChartProps {
 function WorkspaceConsumptionDailyChart({
   workspaceId,
   period,
+  granularity = DEFAULT_CONSUMPTION_GRANULARITY,
   dimension,
   filter,
   analyticsScope,
   disabled,
 }: ConsumptionChartProps) {
+  const showActiveUsers =
+    (analyticsScope === undefined || analyticsScope.kind === "workspace") &&
+    filter?.users?.length !== 1;
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
       workspaceId,
       period,
-      mode: "daily",
+      granularity,
+      mode: "period",
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
       analyticsScope,
       disabled,
     });
-
   return (
     <ConsumptionDailyChart
       timeseries={timeseries}
       isTimeseriesLoading={isTimeseriesLoading}
       isTimeseriesError={Boolean(isTimeseriesError)}
       emptyMessage="No consumption over this period."
+      showActiveUsers={showActiveUsers}
     />
   );
 }
@@ -393,6 +555,7 @@ interface WorkspaceConsumptionBurnUpChartProps
 function WorkspaceConsumptionBurnUpChart({
   workspaceId,
   period,
+  granularity = DEFAULT_CONSUMPTION_GRANULARITY,
   filter,
   analyticsScope,
   disabled,
@@ -407,10 +570,6 @@ function WorkspaceConsumptionBurnUpChart({
   const isFiltered = Object.values(filter ?? {}).some(
     (values) => values.length > 0
   );
-  // A cap only exists on a billing cycle, when there's no filter. Gating on the
-  // selection rather than on the response alone keeps a previous cycle's cap —
-  // kept around by `keepPreviousData` while the new request lands — from drawing
-  // a target over a period that has none.
   const capCredits =
     period.kind === "cycle" && !isFiltered
       ? (overview?.creditUsage?.capCredits ?? null)
@@ -420,6 +579,7 @@ function WorkspaceConsumptionBurnUpChart({
     useConsumptionTimeseries({
       workspaceId,
       period,
+      granularity,
       mode: "cumulative",
       filter,
       analyticsScope,
@@ -440,13 +600,14 @@ function WorkspaceConsumptionBurnUpChart({
 export function ConsumptionChart({
   workspaceId,
   period,
+  granularity = DEFAULT_CONSUMPTION_GRANULARITY,
   dimension,
   filter,
   analyticsScope,
   disabled,
   onModeChange,
 }: ConsumptionChartProps) {
-  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
+  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("period");
 
   const handleModeChange = (nextMode: ConsumptionTimeseriesMode) => {
     onModeChange?.(nextMode);
@@ -459,9 +620,9 @@ export function ConsumptionChart({
         <h2 className="text-base font-semibold text-foreground">Consumption</h2>
         <ButtonsSwitchList value={mode} size="xs">
           <ButtonsSwitch
-            value="daily"
-            label="Daily"
-            onClick={() => handleModeChange("daily")}
+            value="period"
+            label={consumptionGranularityLabel(granularity)}
+            onClick={() => handleModeChange("period")}
           />
           <ButtonsSwitch
             value="cumulative"
@@ -474,6 +635,7 @@ export function ConsumptionChart({
         <WorkspaceConsumptionBurnUpChart
           workspaceId={workspaceId}
           period={period}
+          granularity={granularity}
           filter={filter}
           analyticsScope={analyticsScope}
           disabled={disabled}
@@ -482,6 +644,7 @@ export function ConsumptionChart({
         <WorkspaceConsumptionDailyChart
           workspaceId={workspaceId}
           period={period}
+          granularity={granularity}
           dimension={dimension}
           filter={filter}
           analyticsScope={analyticsScope}

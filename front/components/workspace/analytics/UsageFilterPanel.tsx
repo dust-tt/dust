@@ -2,6 +2,7 @@ import { FilterCategoryNav } from "@app/components/workspace/analytics/filterPan
 import { FilterFooter } from "@app/components/workspace/analytics/filterPanel/FilterFooter";
 import { FilterOptionCheckboxList } from "@app/components/workspace/analytics/filterPanel/FilterOptionCheckboxList";
 import { FilterSelectionSummary } from "@app/components/workspace/analytics/filterPanel/FilterSelectionSummary";
+import { filterOptionMatchesSearch } from "@app/components/workspace/analytics/filterPanel/filterState";
 import type {
   ConsumptionFacetOptions,
   UsageFilter,
@@ -230,7 +231,6 @@ export function UsageFilterPanelView({
 
   const activeOptions = categoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
-    const search = searchText.trim().toLowerCase();
     const selectedGroupMemberIds =
       activeCategory === "member" && selectedGroups.items.length > 0
         ? new Set(selectedGroups.items.flatMap((group) => group.memberIds))
@@ -247,7 +247,7 @@ export function UsageFilterPanelView({
       if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
         return false;
       }
-      return !search || option.name.toLowerCase().includes(search);
+      return filterOptionMatchesSearch(option.name, searchText);
     });
   }, [
     activeOptions,

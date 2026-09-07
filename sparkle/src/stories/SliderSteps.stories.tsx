@@ -11,7 +11,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `A stepped slider for choosing one of a few ordered levels, from the same family as **SliderToggle** (same track, fill and knob). Dots mark the available positions, hovering past the knob previews the fill up to the step it would snap to, and **lockedSteps** are rendered with a padlock and skipped when snapping.
+        component: `A stepped slider for choosing one of a few ordered levels, from the same family as **SliderToggle** (same track, fill and knob). Dots mark the available positions, hovering past the knob previews the fill up to the step it would snap to, and unselectable steps are skipped when snapping. Use **lockedSteps** for access-gated steps and **unavailableSteps** for unsupported steps.
 
 **When to use**
 - For a setting with a small ordered scale that applies immediately (e.g. reasoning effort levels).
@@ -31,7 +31,7 @@ type Story = StoryObj<typeof meta>;
 const THIRD_STEP_TOOLTIP = "This step requires a higher plan.";
 const FOURTH_STEP_TOOLTIP = "This step requires the highest plan.";
 
-async function expectLockedStepTooltips(canvasElement: HTMLElement) {
+async function expectStepTooltips(canvasElement: HTMLElement) {
   const slider = within(canvasElement).getByRole("slider");
   const root = slider.parentElement?.parentElement;
   if (!root) {
@@ -95,22 +95,23 @@ export const Default: Story = {
 };
 
 /**
- * Steps listed in `lockedSteps` render a padlock and are skipped when the
- * knob snaps — e.g. levels gated behind a higher plan.
- * @summary Slider with locked (gated) steps.
+ * Locked steps render a padlock; unavailable steps render a slash. Both are
+ * skipped when the knob snaps.
+ * @summary Slider with unselectable steps.
  */
-export const WithLockedSteps: Story = {
+export const WithUnselectableSteps: Story = {
   args: {
     stepCount: 4,
     value: 1,
-    lockedSteps: [2, 3],
+    lockedSteps: [2],
+    unavailableSteps: [3],
     stepTooltips: [null, null, THIRD_STEP_TOOLTIP, FOURTH_STEP_TOOLTIP],
     ariaLabel: "Level",
     onChange: fn(),
   },
   render: ControlledSliderSteps,
   play: async ({ canvasElement }) => {
-    await expectLockedStepTooltips(canvasElement);
+    await expectStepTooltips(canvasElement);
   },
 };
 
@@ -131,6 +132,6 @@ export const Disabled: Story = {
   },
   render: ControlledSliderSteps,
   play: async ({ canvasElement }) => {
-    await expectLockedStepTooltips(canvasElement);
+    await expectStepTooltips(canvasElement);
   },
 };

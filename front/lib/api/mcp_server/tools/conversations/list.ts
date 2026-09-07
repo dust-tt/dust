@@ -44,7 +44,11 @@ export function registerConversationsListTool(server: McpServer) {
 
       if (podId) {
         const pod = await SpaceResource.fetchById(auth, podId);
-        if (!pod || !pod.isProject() || !pod.canReadOrAdministrate(auth)) {
+        if (
+          !pod ||
+          !pod.isProject() ||
+          (!auth.can("read", pod) && !auth.can("admin", pod))
+        ) {
           return mcpError("Pod not found or you do not have access.");
         }
 

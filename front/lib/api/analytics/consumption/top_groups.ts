@@ -13,16 +13,19 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
 /**
- * Groups ranked by the credits consumed by their members over the period,
- * averaged per message. A member can belong to several groups, in which case
- * their consumption is attributed to each group they belonged to when the
- * message completed.
+ * Groups ranked by the credits consumed by their members over the period, with
+ * distinct active-member and message counts. A member can belong to several
+ * groups, in which case their consumption is attributed to each group they
+ * belonged to when the message completed.
  */
 
 export type ConsumptionTopGroupRow = {
   groupId: string;
   name: string;
   credits: number;
+  activeMembers: number;
+  // Current active group membership count.
+  totalMembers: number;
   previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
@@ -31,6 +34,7 @@ export type ConsumptionTopGroupRow = {
 export type ConsumptionTopGroups = {
   period: ConsumptionPeriod;
   totalCredits: number;
+  totalActiveMembers: number;
   hasMore: boolean;
   totalCount: number;
   // Highest credits first.
@@ -69,19 +73,28 @@ export async function fetchConsumptionTopGroups(
   if (result.isErr()) {
     return result;
   }
-  const { groups, hasMore, totalCount, totalCredits } = result.value;
+  const {
+    groups,
+    hasMore,
+    totalCount,
+    totalCredits,
+    totalActiveMembers = 0,
+  } = result.value;
 
   const rows = await resolveConsumptionGroupLabels(auth, "group", groups);
 
   return new Ok({
     period,
     totalCredits,
+    totalActiveMembers,
     hasMore,
     totalCount,
     groups: rows.map((row) => ({
       groupId: row.key,
       name: row.name,
       credits: row.credits,
+      activeMembers: row.activeMembers ?? 0,
+      totalMembers: row.memberCount ?? 0,
       previousCredits: row.previousCredits,
       messageCount: row.count,
       avgCreditsPerMessage: row.avgCredits,

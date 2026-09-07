@@ -1,3 +1,4 @@
+/*
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -51,3 +52,4 @@ makeScript({}, async ({ execute }, logger) => {
     await backfillApiKeys(workspace, logger, execute);
   });
 });
+*/

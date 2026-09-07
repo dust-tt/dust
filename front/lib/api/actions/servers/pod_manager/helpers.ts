@@ -143,7 +143,7 @@ export async function getPod(
     // membership, so a caller passing an arbitrary pod id could otherwise read its members,
     // conversations, documents and tasks. Report unreadable pods as not-found so this cannot
     // probe which pod sIds exist.
-    if (!pod.canRead(auth)) {
+    if (!auth.can("read", pod)) {
       return new Err(
         new MCPError(`Pod not found: ${podId}`, { tracked: false })
       );
@@ -192,7 +192,7 @@ function checkWritePermission(
   auth: Authenticator,
   space: SpaceResource
 ): Result<void, MCPError> {
-  if (!space.canWrite(auth)) {
+  if (!auth.can("write", space)) {
     return new Err(
       new MCPError("You do not have write permissions for this Pod", {
         tracked: false,

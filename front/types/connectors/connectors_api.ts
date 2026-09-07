@@ -126,7 +126,7 @@ export type ProviderVisibility = "public" | "private";
  * own. This is because the Microsoft API does not allow to query a document or
  * list its children using its id alone. We compute an internal id that contains all
  * information. More details here:
- * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
+ * https://app.notion.com/p/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
   childrenCount: number;
@@ -151,7 +151,7 @@ export interface ContentNodeWithParent extends ContentNode {
 
 export type WhitelistedSlackBotType = {
   botName: string;
-  groupIds: string[];
+  spaceIds: string[];
   createdAt: number;
 };
 
@@ -588,11 +588,11 @@ export class ConnectorsAPI {
   async whitelistSlackBotToSummon({
     connectorId,
     botName,
-    groupIds,
+    spaceIds,
   }: {
     connectorId: string;
     botName: string;
-    groupIds: string[];
+    spaceIds: string[];
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await this._fetchWithError(
       `${this._url}/slack/bots/summoning_whitelist`,
@@ -602,7 +602,7 @@ export class ConnectorsAPI {
         body: JSON.stringify({
           connector_id: connectorId,
           bot_name: botName,
-          group_ids: groupIds,
+          space_ids: spaceIds,
         }),
       }
     );

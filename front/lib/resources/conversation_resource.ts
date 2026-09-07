@@ -79,6 +79,7 @@ import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
+  onlyRootConversations?: boolean; // Exclude sub-conversations (depth > 0)
   dangerouslySkipPermissionFiltering?: boolean;
   includeForkingData?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
@@ -139,6 +140,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     triggerModelId: ModelId | null;
   };
   triggeringUserMessage: {
+    agenticOriginMessageId: string | null;
     apiKeyModelId: ModelId | null;
     origin: UserMessageOrigin;
     userId: string | null;
@@ -577,8 +579,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspace = auth.getNonNullableWorkspace();
 
     // Check if the user has access to the space.
-    // Note, using canRead because spaces members do not have write access to the space as write is tied with datasources.
-    if (space && !space.canRead(auth)) {
+    // Use read because space members do not have write access to the space; write is tied to data
+    // sources.
+    if (space && !auth.can("read", space)) {
       throw new Error(
         "Cannot create conversation in a space you do not have access to."
       );
@@ -892,6 +895,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         triggerModelId: conversation.triggerId,
       },
       triggeringUserMessage: {
+        agenticOriginMessageId:
+          triggeringUserMessage.agenticOriginMessageId ?? null,
         apiKeyModelId: triggeringUserMessage.userContextApiKeyId,
         origin: triggeringUserMessage.userContextOrigin,
         userId: triggeringUserMessage.user?.sId ?? null,
@@ -1038,6 +1043,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where.updatedAt = { [Op.gte]: new Date(options.updatedSince) };
     }
 
+    if (options?.onlyRootConversations) {
+      where.depth = { [Op.eq]: 0 };
+    }
+
     return {
       where,
     };
@@ -1121,11 +1130,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // further restrict who can open the conversation — they remain a runtime/scope
     // concern, not a conjunctive ACL. Missing/deleted project spaces deny access.
     const accessiblePodConversations: ConversationResource[] = podConversations
-      .filter(
-        (c) =>
-          spaceIdToSpaceMap.has(c.spaceId) &&
-          spaceIdToSpaceMap.get(c.spaceId)!.canRead(auth)
-      )
+      .filter((c) => {
+        const space = spaceIdToSpaceMap.get(c.spaceId);
+        return space ? auth.can("read", space) : false;
+      })
       .map((c) => this.fromModel(c, spaceIdToSpaceMap.get(c.spaceId) ?? null));
 
     // If there are no regular conversations, return the accessible pod conversations immediately.
@@ -1274,7 +1282,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       const spaces = await SpaceResource.fetchByModelIds(auth, [
         conversation.spaceId,
       ]);
-      return spaces.length > 0 && spaces[0].canRead(auth)
+      return spaces.length > 0 && auth.can("read", spaces[0])
         ? "allowed"
         : "conversation_access_restricted";
     }
@@ -2739,6 +2747,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       pagination,
       extraWhereClause: {
         title: { [Op.iLike]: `%${query}%` },
+        depth: { [Op.eq]: 0 }, // Only fetch root conversations
       },
     });
   }

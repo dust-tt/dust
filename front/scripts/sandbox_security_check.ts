@@ -826,7 +826,12 @@ export function assertRootInvokedHelpersSafe(output: string): void {
 const POD_STATE_DIR_EXPECTATIONS = [
   { path: "/pod-state", owner: "root:root", mode: "755" },
   { path: "/pod-state/databases", owner: "dust-state:agent", mode: "2770" },
-  { path: "/pod-state/replica", owner: "dust-state:dust-state", mode: "700" },
+  { path: "/sandbox-state", owner: "root:root", mode: "755" },
+  {
+    path: "/sandbox-state/replica",
+    owner: "dust-state:dust-state",
+    mode: "700",
+  },
 ] as const;
 
 export function assertPodStateDirsSafe(output: string): void {
@@ -1184,12 +1189,12 @@ rm -f "$proof"
     providerId,
     `
 set -euo pipefail
-if ls /pod-state/replica >/dev/null 2>&1; then
-  echo "CRITICAL: workload user can list /pod-state/replica"
+if ls /sandbox-state/replica >/dev/null 2>&1; then
+  echo "CRITICAL: workload user can list /sandbox-state/replica"
   exit 1
 fi
-if touch /pod-state/replica/dust-security-proof 2>/dev/null; then
-  echo "CRITICAL: workload user can write /pod-state/replica"
+if touch /sandbox-state/replica/dust-security-proof 2>/dev/null; then
+  echo "CRITICAL: workload user can write /sandbox-state/replica"
   exit 1
 fi
 if [ -w /opt/bin/litestream ]; then

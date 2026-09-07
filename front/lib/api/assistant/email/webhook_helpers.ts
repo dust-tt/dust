@@ -20,7 +20,9 @@ import {
   isSendgridParseFormRequest,
 } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
 import apiConfig from "@app/lib/api/config";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import { withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -44,6 +46,10 @@ const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
   "x-dust-email-webhook-source-error";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
+
+const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
+const EMAIL_RELAY_DEDUPE_TTL_SECONDS = 5 * 60;
+const HTTP_SERVER_ERROR_STATUS_MIN = 500;
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
@@ -165,6 +171,26 @@ export function hasValidRelayAuthorization(
   );
 }
 
+function makeEmailRelayKey(messageId: string): string {
+  return `${EMAIL_RELAY_KEY_PREFIX}:${messageId}`;
+}
+
+export async function recordEmailRelay(
+  messageId: string | null
+): Promise<boolean> {
+  if (!messageId) {
+    return true;
+  }
+
+  const redis = await getRedisStreamClient({ origin: "email_context" });
+  const result = await redis.set(makeEmailRelayKey(messageId), "1", {
+    NX: true,
+    EX: EMAIL_RELAY_DEDUPE_TTL_SECONDS,
+  });
+
+  return result === "OK";
+}
+
 export async function relayEmailToOtherRegion(
   email: InboundEmail,
   { sourceError }: { sourceError: EmailTriggerError }
@@ -193,22 +219,50 @@ export async function relayEmailToOtherRegion(
       );
     }
 
-    const response = await fetch(`${url}/api/email/webhook`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
-        [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
-        [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
-          regionsConfig.getCurrentRegion(),
-        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
-      },
-      body: formData,
-    });
+    const responseRes = await withRetry(
+      async () => {
+        const response = await fetch(`${url}/api/email/webhook`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+            [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+            [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
+              regionsConfig.getCurrentRegion(),
+            [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
+          },
+          body: formData,
+        });
 
-    if (!response.ok) {
+        if (response.status >= HTTP_SERVER_ERROR_STATUS_MIN) {
+          throw new Error(
+            `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+          );
+        }
+        return response;
+      },
+      {
+        shouldRetry: (error) => {
+          logger.warn(
+            {
+              error: normalizeError(error),
+              senderEmail: email.sender.email,
+              sourceRegion: regionsConfig.getCurrentRegion(),
+              targetRegion: name,
+            },
+            "[email] Retrying inbound email relay"
+          );
+          return true;
+        },
+      }
+    );
+
+    if (responseRes.isErr()) {
+      return responseRes;
+    }
+    if (!responseRes.value.ok) {
       return new Err(
         new Error(
-          `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+          `Relay to ${name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
         )
       );
     }

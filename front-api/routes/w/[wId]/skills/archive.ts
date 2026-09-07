@@ -42,8 +42,11 @@ app.post(
       });
     }
 
+    // Admins can archive the skills built on spaces they are not a member of (listed to them
+    // redacted), so those are fetched too.
     const skills = await SkillResource.fetchByIds(auth, skillIds, {
       onlyActive: true,
+      permissionFiltering: auth.isAdmin() ? "redact_unreadable" : "strict",
     });
     const foundSkillIds = new Set(skills.map((skill) => skill.sId));
     const missingSkillIds = skillIds.filter(

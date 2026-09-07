@@ -49,6 +49,17 @@ export function isMyPodTriggeredConversation(
   );
 }
 
+export function isTriggeredConversation(conversation: Conversation): boolean {
+  if (isMyPodTriggeredConversation(conversation)) {
+    return true;
+  }
+  let hash = 0;
+  for (let i = 0; i < conversation.id.length; i++) {
+    hash = (hash + conversation.id.charCodeAt(i)) % 997;
+  }
+  return hash % 4 === 0;
+}
+
 export function matchesMyPodConversationFilter(
   conversation: Conversation,
   filter: MyPodConversationFilter,

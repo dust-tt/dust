@@ -284,7 +284,7 @@ export async function createAndTrackMembership({
 
   if (prevRevokedAt) {
     const restoredCount =
-      await GroupResource.restoreGroupMembershipsRevokedWith({
+      await GroupResource.dangerouslyRestoreGroupMembershipsRevokedWith({
         user,
         workspace: w,
         revokedAt: prevRevokedAt,

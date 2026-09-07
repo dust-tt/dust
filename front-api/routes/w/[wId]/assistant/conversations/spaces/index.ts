@@ -103,7 +103,10 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
     conversationsBySpace,
     lastUserActivityBySpace
   );
-  const enriched = await SpaceResource.batchToJSONEnriched(auth, sortedSpaces);
+  const enriched = await SpaceResource.enrichSpacesWithAccess(
+    auth,
+    sortedSpaces
+  );
   return ctx.json({
     summary: sortedSpaces.map((space, i) => ({
       space: {
@@ -112,7 +115,7 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
         // We excluded archived projects and we only list projects where the user is a member.
         archivedAt: null,
         isMember: true,
-        isEditor: space.canAdministrate(auth),
+        isEditor: auth.can("admin", space),
         isStarred: starredSpaceModelIds.has(space.id),
       },
       unreadConversations:

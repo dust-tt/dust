@@ -3,8 +3,11 @@ import {
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import {
+  getTieredReasoningEffort,
   getTierForModel,
+  getTierForModelConfiguration,
   getTierForSelection,
   MODELS_TIERS,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
@@ -19,6 +22,7 @@ import {
   GPT_5_5_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
+  GPT_6_ASTRA_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
@@ -26,6 +30,16 @@ import { GROK_4_6_MODEL_ID } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
 
 describe("model_tiers", () => {
+  it("keeps Astra premium at every supported reasoning effort", () => {
+    const efforts = getAvailableReasoningEfforts(
+      STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[GPT_6_ASTRA_MODEL_ID]
+    );
+    expect(efforts).toEqual(["light", "medium", "high"]);
+    for (const effort of efforts) {
+      expect(getTierForModel(GPT_6_ASTRA_MODEL_ID, effort)).toBe("premium");
+    }
+  });
+
   it("lists tier definitions without selections", () => {
     expect(MODELS_TIERS.map((tier) => tier.id)).toEqual([1, 2, 3]);
     expect(MODELS_TIERS.every((tier) => tier.description.length > 0)).toBe(
@@ -134,5 +148,59 @@ describe("model_tiers", () => {
         reasoningEffort: "high",
       })
     ).toBe("premium");
+  });
+
+  describe("getTierForModelConfiguration", () => {
+    const getConfig = (modelId: ModelIdType) => {
+      const config = SUPPORTED_MODEL_CONFIGS.find((c) => c.modelId === modelId);
+      if (!config) {
+        throw new Error(`No supported model config for ${modelId}`);
+      }
+      return config;
+    };
+
+    it("resolves the tier for a mapped reasoning effort", () => {
+      expect(
+        getTierForModelConfiguration(
+          getConfig(CLAUDE_SONNET_5_MODEL_ID),
+          "high"
+        )
+      ).toBe("premium");
+    });
+
+    it("falls back to the default effort when none is given", () => {
+      const config = getConfig(CLAUDE_SONNET_5_MODEL_ID);
+
+      expect(getTierForModelConfiguration(config)).toBe(
+        getTierForModel(config.modelId, config.defaultReasoningEffort)
+      );
+    });
+
+    it("falls back to the default effort for a stale unmapped effort", () => {
+      // The auto stream only maps "none"; a stale "medium" kept from a
+      // previous model must resolve to the stream's own tier, not to no tier.
+      expect(getTierForModelConfiguration(AUTO_MODEL_CONFIG, "medium")).toBe(
+        "balanced"
+      );
+    });
+  });
+
+  describe("getTieredReasoningEffort", () => {
+    it("keeps a mapped effort and replaces a stale one", () => {
+      const sonnet = SUPPORTED_MODEL_CONFIGS.find(
+        (c) => c.modelId === CLAUDE_SONNET_5_MODEL_ID
+      );
+      if (!sonnet) {
+        throw new Error("No supported model config for sonnet");
+      }
+
+      expect(getTieredReasoningEffort(sonnet, "high")).toBe("high");
+      expect(getTieredReasoningEffort(sonnet)).toBe(
+        sonnet.defaultReasoningEffort
+      );
+      expect(getTieredReasoningEffort(AUTO_MODEL_CONFIG, "medium")).toBe(
+        "none"
+      );
+    });
   });
 });

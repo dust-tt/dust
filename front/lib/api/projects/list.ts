@@ -215,13 +215,16 @@ export async function enrichProjectsWithMetadata(
     metadatas.map((m) => [m.spaceId, m])
   );
 
-  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(auth, spaces);
+  const enrichedSpaces = await SpaceResource.enrichSpacesWithAccess(
+    auth,
+    spaces
+  );
 
   return spaces.map((space, i) => ({
     ...enrichedSpaces[i],
     description: metadataMap.get(space.id)?.description ?? null,
     isMember: space.isMember(auth),
-    isEditor: space.canAdministrate(auth),
+    isEditor: auth.can("admin", space),
     archivedAt: metadataMap.get(space.id)?.archivedAt?.getTime() ?? null,
   }));
 }
@@ -275,7 +278,7 @@ export async function listAllProjectsWithAdminMetadata(
   );
   const metadataMap = new Map(metadatas.map((m) => [m.spaceId, m]));
 
-  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(
+  const enrichedSpaces = await SpaceResource.enrichSpacesWithAccess(
     auth,
     projectSpaces
   );
@@ -286,7 +289,8 @@ export async function listAllProjectsWithAdminMetadata(
       ...enrichedSpaces[i],
       description: metadata?.description ?? null,
       archivedAt: metadata?.archivedAt?.getTime() ?? null,
-      todoGenerationEnabled: metadata?.todoGenerationEnabled ?? false,
+      // Automated task generation removed; keep field hardcoded for API compat.
+      todoGenerationEnabled: false,
     };
   });
 }

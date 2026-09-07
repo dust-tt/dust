@@ -1,4 +1,4 @@
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
@@ -6,7 +6,6 @@ import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { NoArchivedAgentsCTA } from "@app/components/assistant/manager/NoArchivedAgentsCTA";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
-import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import {
   useSetContentWidth,
@@ -17,7 +16,6 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useModels } from "@app/lib/swr/models";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -33,7 +31,6 @@ import {
   EmptyCTA,
   InfoCircle,
   Page,
-  Plus,
   SearchInput,
   Tabs,
   TabsList,
@@ -75,7 +72,6 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
-  const { models: enabledModels } = useModels({ owner });
   const { user, isAdmin } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
@@ -155,23 +151,25 @@ export function ManageAgentsPage() {
     const selectedModelIds = new Set(
       selectedModels.map((model) => model.modelId)
     );
+    const matchesFilters = (a: LightAgentConfigurationType) => {
+      if (
+        selectedTagIds.size > 0 &&
+        !a.tags.some((t) => selectedTagIds.has(t.sId))
+      ) {
+        return false;
+      }
+      if (selectedModelIds.size > 0 && !selectedModelIds.has(a.model.modelId)) {
+        return false;
+      }
+      return true;
+    };
+    const byName = (
+      a: LightAgentConfigurationType,
+      b: LightAgentConfigurationType
+    ) => a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
-      .filter((a) => {
-        if (
-          selectedTagIds.size > 0 &&
-          !a.tags.some((t) => selectedTagIds.has(t.sId))
-        ) {
-          return false;
-        }
-        if (
-          selectedModelIds.size > 0 &&
-          !selectedModelIds.has(a.model.modelId)
-        ) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      .filter(matchesFilters)
+      .sort(byName);
 
     const searchLower = assistantSearch.toLowerCase();
     const filteredList = (agents: LightAgentConfigurationType[]) => {
@@ -194,9 +192,7 @@ export function ManageAgentsPage() {
       editable_by_me: filteredList(allAgents.filter((a) => a.canEdit)),
       global: filteredList(allAgents.filter((a) => a.scope === "global")),
       archived: filteredList(
-        archivedAgentConfigurations.sort((a, b) =>
-          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-        )
+        archivedAgentConfigurations.filter(matchesFilters).sort(byName)
       ),
     };
   }, [
@@ -208,15 +204,27 @@ export function ManageAgentsPage() {
     isSearchActive,
   ]);
 
+  // Archived agents are filtered like the others, so both filters must offer
+  // what they are on too.
+  const listedAgents = useMemo(
+    () => [...agentConfigurations, ...archivedAgentConfigurations],
+    [agentConfigurations, archivedAgentConfigurations]
+  );
+
+  const usedModelIds = useMemo(
+    () => Array.from(new Set(listedAgents.map((a) => a.model.modelId))).sort(),
+    [listedAgents]
+  );
+
   const { uniqueTags } = useMemo(() => {
-    const tags = agentConfigurations.flatMap((a) => a.tags);
+    const tags = listedAgents.flatMap((a) => a.tags);
     // Remove duplicate tags by unique sId
     const uniqueTags = Array.from(
       new Map(tags.map((tag) => [tag.sId, tag])).values()
     ).sort((a, b) => a.name.localeCompare(b.name));
 
     return { uniqueTags };
-  }, [agentConfigurations]);
+  }, [listedAgents]);
 
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
 
@@ -309,7 +317,8 @@ export function ManageAgentsPage() {
             />
             <div className="flex gap-2">
               <ModelsFilterMenu
-                models={enabledModels}
+                owner={owner}
+                modelIds={usedModelIds}
                 selectedModels={selectedModels}
                 setSelectedModels={setSelectedModels}
                 isCompact={isMobile}
@@ -322,7 +331,7 @@ export function ManageAgentsPage() {
                 isCompact={isMobile}
               />
               {canCreateAgent && (
-                <CreateDropdown
+                <CreateAgentDropdown
                   owner={owner}
                   dataGtmLocation="assistantsWorkspace"
                   isCompact={isMobile}
@@ -433,12 +442,14 @@ export function ManageAgentsPage() {
             ) : (
               canCreateAgent && (
                 <div className="pt-2">
-                  <EmptyCallToAction
-                    href={`/w/${owner.sId}/builder/agents/create`}
-                    label="Create an agent"
-                    icon={Plus}
-                    data-gtm-label="assistantCreationButton"
-                    data-gtm-location="assistantsWorkspace"
+                  <EmptyCTA
+                    message="No agents yet."
+                    action={
+                      <CreateAgentDropdown
+                        owner={owner}
+                        dataGtmLocation="assistantsWorkspace"
+                      />
+                    }
                   />
                 </div>
               )

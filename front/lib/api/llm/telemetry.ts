@@ -5,10 +5,7 @@
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import type { ErrorSource } from "@app/lib/model_constructors/types/output/events";
 import { statsDMetrics } from "@app/lib/utils/statsd";
-import type {
-  ModelProviderIdType,
-  ReasoningEffort,
-} from "@app/types/assistant/models/types";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type LLMTelemetrySurface = "stream" | "batch";
@@ -88,21 +85,18 @@ export function emitLLMTimeToFirstTokenMs(
 }
 
 export function llmAttemptLogFields({
-  providerId,
   durationMs,
   timeToFirstEventMs,
   timeToFirstTokenMs,
   requestedReasoningEffort,
   surface,
 }: {
-  providerId: ModelProviderIdType;
   durationMs?: number;
   timeToFirstEventMs?: number;
   timeToFirstTokenMs?: number;
   requestedReasoningEffort: ReasoningEffort | null;
   surface: LLMTelemetrySurface;
 }): {
-  providerId: ModelProviderIdType;
   durationMs?: number;
   timeToFirstEventMs?: number;
   timeToFirstTokenMs?: number;
@@ -110,7 +104,6 @@ export function llmAttemptLogFields({
   surface: LLMTelemetrySurface;
 } {
   return {
-    providerId,
     ...(durationMs !== undefined ? { durationMs } : {}),
     ...(timeToFirstEventMs !== undefined ? { timeToFirstEventMs } : {}),
     ...(timeToFirstTokenMs !== undefined ? { timeToFirstTokenMs } : {}),

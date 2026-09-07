@@ -3,6 +3,7 @@ import {
   File06,
   Folder,
   GooglePdfLogo,
+  Image01,
   MicrosoftExcelLogo,
   MicrosoftPowerpointLogo,
   MicrosoftWordLogo,
@@ -293,6 +294,8 @@ function getIconForFileType(
     case "txt":
     case "md":
       return File06;
+    case "png":
+      return Image01;
     default:
       return GooglePdfLogo;
   }

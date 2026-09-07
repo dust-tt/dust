@@ -140,7 +140,7 @@ export async function updateActivationRecommendationForUser(
     ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
     : [];
   const canUpdate = rec.activationPodId
-    ? Boolean(space?.canAdministrate(auth))
+    ? Boolean(space && auth.can("admin", space))
     : rec.userId === auth.getNonNullableUser().id;
   if (!canUpdate) {
     return "not_found";

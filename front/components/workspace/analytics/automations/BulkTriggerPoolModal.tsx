@@ -1,4 +1,5 @@
 import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
+import { useTriggerExecutionModes } from "@app/hooks/useTriggerExecutionModes";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import { isTriggerExecutionMode } from "@app/types/assistant/triggers";
 import {
@@ -52,6 +53,7 @@ function BulkTriggerPoolForm({
   triggerCount,
   onValidate,
 }: BulkTriggerPoolFormProps) {
+  const { canUseExecutionMode } = useTriggerExecutionModes();
   const [executionMode, setExecutionMode] =
     useState<TriggerExecutionMode>("workspace_pool");
   const [isSaving, setIsSaving] = useState(false);
@@ -95,6 +97,7 @@ function BulkTriggerPoolForm({
               value={value}
               id={`bulk-trigger-pool-${value}`}
               label={label}
+              disabled={!canUseExecutionMode(value)}
             />
           ))}
         </RadioGroup>
@@ -108,7 +111,7 @@ function BulkTriggerPoolForm({
         rightButtonProps={{
           label: "Validate",
           variant: "primary",
-          disabled: isSaving,
+          disabled: isSaving || !canUseExecutionMode(executionMode),
           onClick: handleValidate,
         }}
       />

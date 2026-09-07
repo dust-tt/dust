@@ -14,6 +14,7 @@ import {
   formValuesToWebhookTriggerData,
   getWebhookFormDefaultValues,
 } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
+import { useCanUseSelectedExecutionMode } from "@app/hooks/useTriggerExecutionModes";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   useCreateTrigger,
@@ -259,6 +260,11 @@ export function useTriggerSheetState({
     setSelectedWebhookSourceView(null);
   }, [defaultValues, form, mode]);
 
+  const canUseSelectedExecutionMode = useCanUseSelectedExecutionMode({
+    control: form.control,
+    currentExecutionMode: editTrigger?.executionMode ?? null,
+  });
+
   const pageTitle = getPageTitle(
     currentPageId,
     editTrigger,
@@ -274,6 +280,7 @@ export function useTriggerSheetState({
     isEditor,
     isOnSelectionPage,
     pageTitle,
+    canUseSelectedExecutionMode,
     handleScheduleSelect,
     handleWebhookSelect,
     handleCancel,

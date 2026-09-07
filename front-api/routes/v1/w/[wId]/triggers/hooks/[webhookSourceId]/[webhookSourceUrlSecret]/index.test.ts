@@ -251,7 +251,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
   });
 
   it("stores payload when a matched trigger includes payload", async () => {
-    const { workspace } = await createPublicApiMockRequest();
+    const { workspace } = await createPublicApiMockRequest({
+      plan: "creditPriced",
+    });
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: true,
@@ -270,7 +272,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
   });
 
   it("does not store payload when matched triggers do not include payload", async () => {
-    const { workspace } = await createPublicApiMockRequest();
+    const { workspace } = await createPublicApiMockRequest({
+      plan: "creditPriced",
+    });
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: false,
@@ -289,7 +293,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
   });
 
   it("stores payload when no triggers match if a trigger includes payload", async () => {
-    const { workspace } = await createPublicApiMockRequest();
+    const { workspace } = await createPublicApiMockRequest({
+      plan: "creditPriced",
+    });
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: true,
@@ -309,7 +315,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
   });
 
   it("does not store payload when no enabled triggers include payload", async () => {
-    const { workspace } = await createPublicApiMockRequest();
+    const { workspace } = await createPublicApiMockRequest({
+      plan: "creditPriced",
+    });
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: false,

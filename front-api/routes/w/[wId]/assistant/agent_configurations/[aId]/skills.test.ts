@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -14,6 +15,21 @@ function getSkills(workspace: { sId: string }, aId: string) {
 }
 
 describe("GET /api/w/:wId/assistant/agent_configurations/:aId/skills", () => {
+  it("should return 404 for an unpublished agent the caller cannot read", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await getSkills(workspace, agent.sId);
+
+    expect(response.status).toBe(404);
+  });
+
   it("should return 200 with empty array when agent has no skills", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",

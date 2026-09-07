@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use async_std::stream::StreamExt;
-use cloud_storage::{ListRequest, Object};
+use cloud_storage::ListRequest;
 use futures::future::try_join_all;
 use std::collections::HashMap;
 use tracing::error;
@@ -13,6 +13,7 @@ use crate::{
         table_schema::TableSchema,
     },
     databases_store::gcs::write_rows_to_bucket,
+    gcs_client::gcs_client,
 };
 
 // This Store is used to pass upsert and delete call info from the APIs to the background worker
@@ -79,7 +80,11 @@ impl GoogleCloudStorageBackgroundProcessingStore {
             start_offset: None,
             versions: None,
         };
-        let stream = Object::list(&bucket, list_request).await?;
+        let stream = gcs_client()
+            .await?
+            .object()
+            .list(&bucket, list_request)
+            .await?;
 
         let mut pinned_stream = Box::pin(stream);
         let mut files = Vec::new();
@@ -148,10 +153,11 @@ impl GoogleCloudStorageBackgroundProcessingStore {
     pub async fn delete_files(files: &Vec<String>) -> Result<()> {
         // We delete the files concurrently to speed up the process
         let bucket = Self::get_bucket()?;
+        let client = gcs_client().await?;
         let delete_futures = files.iter().map(|file| {
             let bucket = bucket.clone();
             async move {
-                match Object::delete(&bucket, &file).await {
+                match client.object().delete(&bucket, file).await {
                     Ok(_) => Ok::<(), ()>(()),
                     Err(e) => {
                         error!("Failed to delete file {}: {}", file, e);

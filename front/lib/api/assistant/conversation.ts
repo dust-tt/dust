@@ -65,10 +65,16 @@ import {
   deriveAgentTriggerType,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import {
+  isApiKeyBlocked,
+  isPoolDepleted,
+  isProgrammaticApiBlocked,
+  isUserBlocked,
+} from "@app/lib/api/credits/access_control";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
-import { isProgrammaticSpendLimitRateCapReached } from "@app/lib/api/credits/programmatic_usage_limit";
+import { getProgrammaticRateLimiterCreditState } from "@app/lib/api/credits/programmatic_usage_limit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
-import { isApiKeySpendLimitRateCapReached } from "@app/lib/api/keys/spend_limit";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import {
   checkProgrammaticUsageLimits,
@@ -76,24 +82,20 @@ import {
 } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import {
-  isNonCreditPricedUserSpendLimitReached,
-  isUserSpendLimitRateCapReached,
-} from "@app/lib/api/users/spend_limit";
+import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
-import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
 import { isFreeOrigin } from "@app/lib/metronome/events";
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-  isUserBlocked,
 } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
@@ -202,11 +204,11 @@ const POOL_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
 };
 
 // Concurrency limits for programmatic API calls based on the workspace
-// programmatic monthly cap state. Same shape and intent as the pool limits:
+// programmatic monthly cap band, derived from the Redis rate-limiter counter
+// (cycle-to-date spend vs the cap). Same shape and intent as the pool limits:
 // once the workspace is close to its monthly cap, tighten in-flight
-// programmatic requests so concurrent calls can't overshoot before
-// Metronome debits settle. `depleted` is handled upstream by
-// `isProgrammaticApiBlocked`.
+// programmatic requests so concurrent calls can't overshoot before the spend
+// counter settles. `depleted` is handled upstream by `isProgrammaticApiBlocked`.
 const PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
   active: 1000,
   active_low_balance: 5,
@@ -590,7 +592,9 @@ export async function postUserMessage(
     // If the Pod is open and there is no user in the context (eg: slack bot message),
     // we allow the message to be posted.
     const skipMembershipCheck =
-      !auth.user() && doNotAssociateUser === true && (await pod.isOpen(auth));
+      !auth.user() &&
+      doNotAssociateUser === true &&
+      !(await pod.isRestricted(auth));
     if (!skipMembershipCheck && !pod.isMember(auth)) {
       return new Err({
         status_code: 403,
@@ -2541,7 +2545,7 @@ export async function checkMessagesLimit(
 
   // Credit-state + programmatic rate-limit gate. Two systems coexist:
   // - Credit-priced (Metronome) plans: workspace pool + per-user cap, cached in Redis.
-  //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
+  //   For API calls (no user), only the workspace pool applies via `isPoolDepleted`.
   //   Pool-balance concurrency limiting (`checkPoolCreditConcurrencyLimit`) prevents
   //   close-to-0 attacks where many requests overshoot the pool before debits settle.
   // - Legacy plans: a per-user credit limit checked from the Redis fixed-window
@@ -2556,9 +2560,12 @@ export async function checkMessagesLimit(
   );
 
   if (isCreditPricedWorkspace) {
+    // `isUserBlocked` / `isPoolDepleted` are flag-aware: with the rate-cap flag on
+    // the per-user cap comes from the Redis fixed-window counters, with it off
+    // from the Metronome credit state (see `user_block.ts`).
     const blockedReason = user
-      ? await isUserBlocked(owner, user)
-      : (await isApiBlocked(owner.sId))
+      ? await isUserBlocked(auth, user)
+      : (await isPoolDepleted(auth))
         ? ("credits_exhausted" as const)
         : null;
     if (blockedReason === "no_seat") {
@@ -2600,27 +2607,6 @@ export async function checkMessagesLimit(
           },
         });
       }
-      // Redis fixed-window per-user spend cap: a synchronous backup of the
-      // Metronome per-user cap over the current contract billing cycle. Only
-      // applies to real users (API keys are gated by pool / programmatic caps
-      // instead). Enforcement is gated behind a feature flag while we validate
-      // the counter; usage is recorded regardless (in credit_cost), so the flag
-      // only controls blocking.
-      if (user) {
-        const featureFlags = await getFeatureFlags(auth);
-        if (
-          featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
-          (await isUserSpendLimitRateCapReached(auth, { user }))
-        ) {
-          return new Err({
-            status_code: 403,
-            api_error: {
-              type: "user_cap_reached",
-              message: "You have reached your personal usage cap.",
-            },
-          });
-        }
-      }
       if (blockedReason === "credits_exhausted") {
         return new Err({
           status_code: 403,
@@ -2651,26 +2637,11 @@ export async function checkMessagesLimit(
 
     // Programmatic monthly cap: block programmatic calls when the cap is reached.
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-      // The Redis fixed-window backups are flag-gated while we validate the
-      // counters; usage is recorded regardless (in credit_cost), so the flag
-      // only controls blocking.
-      const featureFlags = await getFeatureFlags(auth);
-      const spendCapEnabled = featureFlags.includes(
-        "enforce_user_spend_limit_rate_cap"
-      );
-
-      // Per-API-key credit cap: block when this key's credit state is "capped"
-      // (driven by the Metronome per-key cap alert / reconcile), or when the
-      // Redis fixed-window backup reports the cap reached.
+      // Per-API-key credit cap. `isApiKeyBlocked` is flag-aware (rate-limiter
+      // counter when the flag is on, Metronome per-key credit state otherwise).
       const key = auth.key();
       if (key) {
-        const capReached =
-          (await isApiKeyCapped(owner.sId, key.id)) ||
-          (spendCapEnabled &&
-            (await isApiKeySpendLimitRateCapReached(auth, {
-              keyModelId: key.id,
-            })));
-        if (capReached) {
+        if (await isApiKeyBlocked(auth, { keyModelId: key.id })) {
           return new Err({
             status_code: 429,
             api_error: {
@@ -2682,13 +2653,10 @@ export async function checkMessagesLimit(
         }
       }
 
-      // Workspace programmatic monthly cap: the Metronome-driven state
-      // (`isProgrammaticApiBlocked`) OR the Redis fixed-window backup.
-      const programmaticBlocked =
-        (await isProgrammaticApiBlocked(owner.sId)) ||
-        (spendCapEnabled &&
-          (await isProgrammaticSpendLimitRateCapReached(auth)));
-      if (programmaticBlocked) {
+      // Workspace programmatic monthly cap. `isProgrammaticApiBlocked` is
+      // flag-aware (rate-limiter counter when the flag is on, Metronome
+      // programmatic credit state otherwise).
+      if (await isProgrammaticApiBlocked(auth)) {
         return new Err({
           status_code: 429,
           api_error: {
@@ -2809,7 +2777,7 @@ async function checkPoolCreditConcurrencyLimit(
 
   const maxConcurrent = POOL_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
-    // depleted / overage — handled by isUserBlocked / isApiBlocked upstream.
+    // depleted / overage — handled by isUserBlocked / isPoolDepleted upstream.
     return { isLimitReached: false, limitType: null };
   }
 
@@ -2853,7 +2821,13 @@ async function checkProgrammaticCreditConcurrencyLimit(
   auth: Authenticator
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
-  const status = await getWorkspaceProgrammaticCreditStatus(owner.sId);
+  // With the rate-cap flag on, the concurrency band comes from the Redis
+  // rate-limiter counter; with it off, from the Metronome programmatic credit
+  // state. Matches the flag-aware enforcement in access_control.
+  const featureFlags = await getFeatureFlags(auth);
+  const status = featureFlags.includes("enforce_user_spend_limit_rate_cap")
+    ? await getProgrammaticRateLimiterCreditState(auth)
+    : await getWorkspaceProgrammaticCreditStatus(owner.sId);
 
   const maxConcurrent = PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
@@ -3121,6 +3095,20 @@ async function isMessagesLimitReached(
       result.isOk() &&
       result.value >= roundCreditsToMicroCredits(maxAwuCredits)
     ) {
+      // One event per blocked attempt, so we can count the messages a
+      // fair-use-capped user could not send, and over how long.
+      PostHogServerSideTracking.trackEvent({
+        distinctId: user.sId,
+        event: "fair_use_limit_blocked",
+        workspaceId: owner.sId,
+        extra: {
+          limit_credits: maxAwuCredits,
+          timeframe: maxAwuCreditsTimeframe,
+          used_credits: microCreditsToCredits(result.value),
+          origin: context.origin,
+        },
+      });
+
       return {
         isLimitReached: true,
         limitType: "plan_message_limit_exceeded",

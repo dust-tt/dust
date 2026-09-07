@@ -1,6 +1,7 @@
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
 import {
   type GetMCPServersResponseBody,
+  getMCPServerViewNameConflictMessage,
   isMCPServerViewNameConflict,
 } from "@app/lib/api/mcp";
 import {
@@ -82,14 +83,17 @@ app.post("/", validate("json", PostBodySchema), async (ctx) => {
 
   if (result.isErr()) {
     if (isMCPServerViewNameConflict(result.error)) {
-      const { nameConflict } = result.error;
+      const { nameConflict, conflictDetails } = result.error;
       return ctx.json(
         {
           error: {
             type: "invalid_request_error",
-            message: `An existing Tool is already using the name "${nameConflict}"`,
+            message: getMCPServerViewNameConflictMessage(result.error),
           },
-          nameConflict: { name: nameConflict },
+          nameConflict: {
+            name: nameConflict,
+            ...(conflictDetails ? { conflictDetails } : {}),
+          },
         },
         400
       );

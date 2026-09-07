@@ -81,12 +81,18 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   selfImprovementCostsCapMicroUsd: z.number().nullable(),
   selfImprovementCostsCapAwuCredits: z.number().nullable(),
   requestedSpaceIds: z.array(z.string()),
+  // The subset of `requestedSpaceIds` picked by hand under "Data and access". Optional so older
+  // clients that do not send it back are still accepted.
+  manuallyRequestedSpaceIds: z.array(z.string()).optional(),
   fileAttachments: z.array(
     z.object({
       fileId: z.string(),
       fileName: z.string(),
     })
   ),
+  // False when the private fields (instructions, tools, files) were redacted: an admin listing a
+  // skill built on a space they are not a member of.
+  canRead: z.boolean(),
   canWrite: z.boolean(),
   canAdministrate: z.boolean(),
   // @deprecated Use availability instead. Kept while old clients still read it.

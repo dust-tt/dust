@@ -10,6 +10,8 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -35,7 +37,13 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
+
+export type AgentFeedbackDayPoint = {
+  day: Date;
+  positive: number;
+  negative: number;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -288,14 +296,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         // IMPORTANT: Necessary for global models who share ids across workspaces.
         workspaceId: workspace.id,
         createdAt: {
-          [Op.and]: [{ [Op.lt]: endDate }, { [Op.gt]: startDate }],
+          [Op.and]: [{ [Op.lt]: endDate }, { [Op.gte]: startDate }],
         },
       },
       include: [
         {
           model: UserResource.model,
           as: "user",
-          attributes: ["name", "email"],
+          attributes: ["sId", "name", "email"],
         },
       ],
       order: [["id", "ASC"]],
@@ -318,14 +326,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       conversations.map((c) => [c.id, c.sId])
     );
 
-    return feedbackRows
-      .filter((feedback) => Boolean(feedback.user))
-      .map((feedback) => {
-        return new this(this.model, feedback.get(), {
-          user: feedback.user,
-          conversationId: conversationIdByModelId.get(feedback.conversationId),
-        });
+    return feedbackRows.map((feedback) => {
+      return new this(this.model, feedback.get(), {
+        user: feedback.user ?? undefined,
+        conversationId: conversationIdByModelId.get(feedback.conversationId),
       });
+    });
   }
 
   static async getFeedbackCountForAssistants(
@@ -353,6 +359,28 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       agentConfigurationId: string;
       count: number;
     }[];
+  }
+
+  static async getFeedbackCountForAssistant(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    daysOld?: number
+  ): Promise<{ positive: number; negative: number }> {
+    const feedbackCounts = await this.getFeedbackCountForAssistants(
+      auth,
+      [agentConfigurationId],
+      daysOld
+    );
+
+    const positive = feedbackCounts
+      .filter((f) => f.thumbDirection === "up")
+      .reduce((sum, f) => sum + f.count, 0);
+
+    const negative = feedbackCounts
+      .filter((f) => f.thumbDirection === "down")
+      .reduce((sum, f) => sum + f.count, 0);
+
+    return { positive, negative };
   }
 
   /**
@@ -591,6 +619,52 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return feedbacks.map((feedback) => {
       return new this(this.model, feedback.get());
     });
+  }
+
+  static async getFeedbackDistributionForAssistantByDay(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    days: number
+  ): Promise<AgentFeedbackDayPoint[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const replicaDb = getFrontReplicaDbConnection();
+
+    // biome-ignore lint/plugin/noRawSql: Aggregation query with GROUP BY day
+    const rows = await replicaDb.query<{
+      day: string;
+      positive: string;
+      negative: string;
+    }>(
+      `
+      SELECT
+        "createdAt"::date AS day,
+        COUNT(*) FILTER (WHERE "thumbDirection" = 'up') AS positive,
+        COUNT(*) FILTER (WHERE "thumbDirection" = 'down') AS negative
+      FROM agent_message_feedbacks
+      WHERE "workspaceId" = :workspaceId
+        AND "agentConfigurationId" = :agentConfigurationId
+        AND "createdAt" >= :cutoffDate
+      GROUP BY 1
+      ORDER BY 1 ASC
+      `,
+      {
+        replacements: {
+          workspaceId: workspace.id,
+          agentConfigurationId,
+          cutoffDate: cutoffDate.toISOString(),
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    return rows.map((row) => ({
+      day: new Date(row.day),
+      positive: parseInt(row.positive, 10),
+      negative: parseInt(row.negative, 10),
+    }));
   }
 
   toJSON() {

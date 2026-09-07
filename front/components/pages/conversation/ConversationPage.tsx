@@ -3,6 +3,7 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAgentFromSearchParam } from "@app/hooks/useAgentFromSearchParam";
 import { useGoTemplateFromSearchParam } from "@app/hooks/useGoTemplateFromSearchParam";
 import { useOnboardingConversation } from "@app/hooks/useOnboardingConversation";
+import { useSkillFromSearchParam } from "@app/hooks/useSkillFromSearchParam";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useEffect } from "react";
@@ -41,6 +42,9 @@ export function ConversationPage() {
 
   // Consume ?go= param: fetch Contentful template, prefill composer, clean up URL.
   useGoTemplateFromSearchParam(owner.sId);
+
+  // Consume ?skill= param: fetch the skill, prefill the composer, clean up URL.
+  useSkillFromSearchParam(owner.sId);
 
   return (
     <ConversationContainerVirtuoso

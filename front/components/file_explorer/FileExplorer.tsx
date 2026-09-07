@@ -16,8 +16,10 @@ import type {
   FileExplorerMenuAction,
   FileExplorerPathEntry,
   FileExplorerSortMode,
+  FileExplorerVirtualScopeRoot,
   FileSystemTreeNode,
   FolderEntry,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import {
   buildFolderTree,
@@ -42,18 +44,21 @@ interface FileExplorerProps {
   emptyState?: React.ReactNode;
   hideBreadcrumbAtRoot?: boolean;
   currentFolderPath: string;
+  displayFramePackages?: boolean;
   files: FileExplorerPathEntry[];
   getFileUrl: (path: string) => string;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
   onCurrentFolderChange: (relativePath: string) => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
+  /** Restricts which entries get a Delete item when `onDelete` is set; all of them by default. */
+  canDelete?: (entry: FileExplorerEntry) => boolean;
   onFileDownload: (entry: FileEntry) => Promise<void>;
   onMoveFile?: (
     entry: FileEntry,
     parentRelativePath: string
   ) => Promise<Result<void, Error>>;
-  onOpenInteractive?: (entry: FileEntryWithId) => void;
+  onOpenInteractive?: (entry: FileEntryWithId | FramePackageEntry) => void;
   onOpenInPanel?: (entry: FileEntry) => boolean;
   onRename?: (entry: FileEntry | FolderEntry) => void;
   owner?: LightWorkspaceType;
@@ -61,13 +66,14 @@ interface FileExplorerProps {
     entry: FileExplorerEntry
   ) => FileExplorerMenuAction[];
   /** Top-level scope folders at the virtual root (e.g. `conversation`, `pod`). */
-  virtualScopeRoots?: readonly string[];
+  virtualScopeRoots?: readonly FileExplorerVirtualScopeRoot[];
 }
 
 export function FileExplorer({
   contentClassName,
   contentNodes = [],
   defaultViewMode = "grid",
+  displayFramePackages = false,
   emptyState,
   currentFolderPath,
   files,
@@ -77,6 +83,7 @@ export function FileExplorer({
   isLoading,
   onCurrentFolderChange,
   onDelete,
+  canDelete,
   onFileDownload,
   onMoveFile,
   onOpenInteractive,
@@ -109,6 +116,7 @@ export function FileExplorer({
       getFileExplorerPipeline({
         contentNodes,
         currentFolderPath,
+        displayFramePackages,
         files,
         searchQuery,
         activeFilter,
@@ -118,6 +126,7 @@ export function FileExplorer({
     [
       contentNodes,
       currentFolderPath,
+      displayFramePackages,
       files,
       searchQuery,
       activeFilter,
@@ -136,6 +145,29 @@ export function FileExplorer({
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
       const items: FileExplorerMenuAction[] =
         getExtraFileMenuItems?.(entry) ?? [];
+      if (entry.kind === "frame_package") {
+        items.push({
+          label: "View source",
+          icon: FolderOpen,
+          onClick: (e) => {
+            e.stopPropagation();
+            onCurrentFolderChange(entry.sourceFolderPath);
+            setActiveFilter("all");
+          },
+        });
+        if (onDelete && (canDelete?.(entry) ?? true)) {
+          items.push({
+            label: "Delete",
+            icon: Trash01,
+            variant: "warning",
+            onClick: (e) => {
+              e.stopPropagation();
+              void onDelete(entry);
+            },
+          });
+        }
+        return items;
+      }
       if (onRename && (entry.kind === "file" || entry.kind === "folder")) {
         items.push({
           label: "Rename",
@@ -162,7 +194,7 @@ export function FileExplorer({
           },
         });
       }
-      if (onDelete) {
+      if (onDelete && (canDelete?.(entry) ?? true)) {
         items.push({
           label: entry.kind === "node" ? "Remove" : "Delete",
           icon: Trash01,
@@ -175,7 +207,15 @@ export function FileExplorer({
       }
       return items;
     },
-    [getExtraFileMenuItems, onDelete, onMoveFile, onRename, totalFolderCount]
+    [
+      canDelete,
+      getExtraFileMenuItems,
+      onCurrentFolderChange,
+      onDelete,
+      onMoveFile,
+      onRename,
+      totalFolderCount,
+    ]
   );
 
   const handleMoveToFolder = useCallback(
@@ -241,6 +281,10 @@ export function FileExplorer({
     }
     setPreviewFile(entry);
     setShowPreviewSheet(true);
+  };
+
+  const handleFramePackageOpen = (entry: FramePackageEntry) => {
+    onOpenInteractive?.(entry);
   };
 
   const handleNodeOpen = (entry: ContentNodeEntry) => {
@@ -320,11 +364,16 @@ export function FileExplorer({
             fileDragEnabled={fileDragEnabled}
             onFolderNavigate={handleFolderNavigate}
             onFileOpen={handleFileOpen}
+            onFramePackageOpen={handleFramePackageOpen}
             onFileDownload={onFileDownload}
             onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             onNodeOpen={handleNodeOpen}
             getFileMenuItems={
-              onDelete || onRename || onMoveFile || getExtraFileMenuItems
+              displayFramePackages ||
+              onDelete ||
+              onRename ||
+              onMoveFile ||
+              getExtraFileMenuItems
                 ? getMenuItems
                 : undefined
             }

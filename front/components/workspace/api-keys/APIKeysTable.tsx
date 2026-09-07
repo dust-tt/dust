@@ -4,9 +4,8 @@ import { formatCredits } from "@app/lib/client/credits";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
-import type { GroupType } from "@app/types/groups";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
-import type { ModelId } from "@app/types/shared/model_id";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { RoleType, WorkspaceType } from "@app/types/user";
@@ -43,7 +42,6 @@ import type {
 import capitalize from "lodash/capitalize";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { prettifyGroupName } from "./utils";
 
 const API_KEYS_PAGE_SIZE = 10;
 const MAX_API_KEY_CONSUMPTION_ROWS = 100;
@@ -54,7 +52,6 @@ interface APIKeysTableProps {
   keys: KeyType[];
   workspaceId: WorkspaceType["sId"];
   period: ConsumptionPeriodSelection;
-  groupsById: Record<ModelId, GroupType>;
   isLoading: boolean;
   isError: boolean;
   showAnalyticsConsumption: boolean;
@@ -81,15 +78,6 @@ interface APIKeyRowData {
   menuItems: MenuItem[];
 }
 
-const getKeyGroups = (
-  key: KeyType,
-  groupsById: Record<ModelId, GroupType>
-): GroupType[] => {
-  return key.groupIds
-    .map((groupId) => groupsById[groupId])
-    .filter((group): group is GroupType => group !== undefined);
-};
-
 const formatKeyScope = (role: RoleType): string => {
   switch (role) {
     case "user":
@@ -111,7 +99,7 @@ function getKeyStatus(key: KeyType): APIKeyStatus {
   if (key.status !== "active") {
     return "revoked";
   }
-  return key.creditState === "capped" ? "capped" : "active";
+  return key.isSpendCapped ? "capped" : "active";
 }
 
 function formatMonthlyCap({
@@ -453,7 +441,6 @@ export function APIKeysTable({
   keys,
   workspaceId,
   period,
-  groupsById,
   isLoading,
   isError,
   showAnalyticsConsumption,
@@ -480,12 +467,12 @@ export function APIKeysTable({
   const { spaces: workspaceSpaces, isSpacesLoading } = useSpacesAsAdmin({
     workspaceId,
   });
-  const privateSpaceGroupIds = useMemo(
+  const restrictedSpaceIds = useMemo(
     () =>
       new Set(
         workspaceSpaces
           .filter((space) => space.isRestricted)
-          .flatMap((space) => space.groupIds)
+          .map((space) => space.sId)
       ),
     [workspaceSpaces]
   );
@@ -521,8 +508,12 @@ export function APIKeysTable({
   const rows = useMemo<APIKeyRowData[]>(
     () =>
       keys.map((key) => {
-        const keyGroups = getKeyGroups(key, groupsById);
-        const spaces = keyGroups.map((group) => prettifyGroupName(group));
+        // Every key reaches the global space, but `key.spaces` only echoes the spaces it was
+        // scoped to. The label is added here, as `NewAPIKeyDialog` does with its fixed chip.
+        const spaces = [
+          GLOBAL_SPACE_NAME,
+          ...key.spaces.map((space) => space.name),
+        ];
         const scope = formatKeyScope(key.role);
         const status = getKeyStatus(key);
         const creator = key.creator ?? "Unknown creator";
@@ -549,8 +540,8 @@ export function APIKeysTable({
           name: key.name || "Unnamed",
           creator,
           spaces,
-          hasPrivateSpace: keyGroups.some((group) =>
-            privateSpaceGroupIds.has(group.sId)
+          hasPrivateSpace: key.spaces.some((space) =>
+            restrictedSpaceIds.has(space.sId)
           ),
           scope,
           secret: key.secret,
@@ -568,11 +559,10 @@ export function APIKeysTable({
     [
       consumptionByName,
       consumptionError,
-      groupsById,
       hasMoreConsumptionRows,
       keys,
       onEditCap,
-      privateSpaceGroupIds,
+      restrictedSpaceIds,
       showAnalyticsConsumption,
       showCreditMonthlyCap,
       showLegacyUsdMonthlyCap,

@@ -44,6 +44,21 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");
+    expect(instructions).toContain("enable the `Create Frames` skill");
+    expect(instructions).toContain("`publish_interactive_content_file`");
+    expect(instructions).toContain("Never use `dsbx frame`");
+  });
+
+  it("allows the Frames CLI only when Frames v2 is enabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).not.toContain("Never use `dsbx frame`");
+    expect(instructions).not.toContain("`publish_interactive_content_file`");
   });
 
   it("hides dsbx tools instructions when computer is disabled", async () => {

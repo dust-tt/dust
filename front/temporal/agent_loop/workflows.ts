@@ -47,6 +47,7 @@ import {
   ActivityCancellationType,
   CancellationScope,
   deprecatePatch,
+  log,
   patched,
   proxyActivities,
   proxySinks,
@@ -599,6 +600,17 @@ export async function runSandboxChildToolWorkflow({
           actionModelId,
         })
       );
+
+      // Preserve the recorded failed outcome when replaying histories created before terminal
+      // activity failures became action results.
+      if (patched("sandbox-child-tool-terminal-failure-as-result")) {
+        log.error("Sandbox child tool activity failed.", {
+          actionModelId,
+          error,
+        });
+        return;
+      }
+
       throw error;
     }
   } else {

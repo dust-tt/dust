@@ -23,11 +23,13 @@ export function getImportMetaEnv(envPath: string): Record<string, string> {
 
   const usUrl = resolve("DUST_API_URL_US");
   const euUrl = resolve("DUST_API_URL_EU");
+  const cell00002Url = resolve("DUST_API_URL_CELL_00002");
 
   return {
     VITE_DUST_API_URL: usUrl,
     VITE_DUST_API_URL_US: usUrl,
     VITE_DUST_API_URL_EU: euUrl,
+    VITE_DUST_API_URL_CELL_00002: cell00002Url,
     VITE_DUST_REGION: "us-central1",
   };
 }

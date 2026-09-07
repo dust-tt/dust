@@ -1,4 +1,5 @@
 import { logOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_logging";
+import { openaiStreamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -19,16 +20,13 @@ import type {
 import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { APIConnectionError, APIError } from "openai";
 import type {
   Response as OpenAIResponse,
   ResponseCreatedEvent,
+  ResponseError,
   ResponseOutputItem,
   ResponseStreamEvent,
   ResponseUsage,
@@ -279,95 +277,83 @@ export function usageToTokenUsageEvent(
   };
 }
 
-function isApiConnectionError(err: unknown): err is APIConnectionError {
-  return err instanceof APIConnectionError;
-}
-
-function isApiError(err: unknown): err is APIError {
-  return err instanceof APIError;
-}
-
-// A stream error classified into the categories we surface. `APIConnectionError`
-// is checked before `APIError` since the former extends the latter.
-type ClassifiedStreamError =
-  | { kind: "connection"; error: APIConnectionError }
-  | { kind: "api"; error: APIError }
-  | { kind: "unknown" };
-
-function classifyStreamError(error: unknown): ClassifiedStreamError {
-  if (isApiConnectionError(error)) {
-    return { kind: "connection", error };
-  }
-  if (isApiError(error)) {
-    return { kind: "api", error };
-  }
-  return { kind: "unknown" };
-}
-
-// HTTP status is a number, not a union, so the 5xx range stays an `if` in the
-// default branch.
-function apiErrorToErrorEvent(
+// A failed Response is an in-band result, not a thrown transport error.
+// The provider's stable error code determines its type and fault domain.
+function responseErrorToErrorEvent(
   metadata: EndpointMetadata,
-  error: APIError
+  error: ResponseError | null
 ): ErrorEvent {
-  const status = error.status;
-  switch (status) {
-    case 400:
-    case 422:
+  if (error === null) {
+    return buildErrorEvent({
+      errorSource: "unknown",
+      metadata,
+      type: "unknown_error",
+      message: "Provider reported a failed response without error details.",
+    });
+  }
+
+  switch (error.code) {
+    case "server_error":
       return buildErrorEvent({
-        errorSource: "dust",
+        errorSource: "provider",
         metadata,
-        type: "invalid_request_error",
-        message: `Invalid request to OpenAI: ${error.message}`,
+        type: "server_error",
+        message: error.message,
         originalError: error,
       });
-    case 401:
+    case "vector_store_timeout":
       return buildErrorEvent({
-        errorSource: "dust",
+        errorSource: "provider",
         metadata,
-        type: "authentication_error",
-        message: `Authentication failed for OpenAI: ${error.message}`,
+        type: "timeout_error",
+        message: error.message,
         originalError: error,
       });
-    case 403:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "permission_error",
-        message: `Permission denied for OpenAI: ${error.message}`,
-        originalError: error,
-      });
-    case 404:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "not_found_error",
-        message: `Resource not found for OpenAI: ${error.message}`,
-        originalError: error,
-      });
-    case 429:
+    case "rate_limit_exceeded":
       return buildErrorEvent({
         errorSource: "dust",
         metadata,
         type: "rate_limit_error",
-        message: `Rate limit exceeded for OpenAI/${metadata.model}: ${error.message}`,
+        message: error.message,
+        originalError: error,
+      });
+    case "bio_policy":
+    case "image_content_policy_violation":
+      return buildErrorEvent({
+        errorSource: "unknown",
+        metadata,
+        type: "refusal_error",
+        message: error.message,
+        originalError: error,
+      });
+    case "invalid_prompt":
+    case "invalid_image":
+    case "invalid_image_format":
+    case "invalid_base64_image":
+    case "invalid_image_url":
+    case "image_too_large":
+    case "image_too_small":
+    case "image_parse_error":
+    case "invalid_image_mode":
+    case "image_file_too_large":
+    case "unsupported_image_media_type":
+    case "empty_image_file":
+    case "failed_to_download_image":
+    case "image_file_not_found":
+      return buildErrorEvent({
+        errorSource: "dust",
+        metadata,
+        type: "invalid_request_error",
+        message: error.message,
         originalError: error,
       });
     default:
-      if (status !== undefined && status >= 500 && status < 600) {
-        return buildErrorEvent({
-          errorSource: "provider",
-          metadata,
-          type: "server_error",
-          message: `Server error from OpenAI (${status}): ${error.message}`,
-          originalError: error,
-        });
-      }
+      assertNeverAndIgnore(error.code);
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "unknown",
         metadata,
         type: "unknown_error",
-        message: `Error from OpenAI (${status}): ${error.message}`,
+        message: error.message,
         originalError: error,
       });
   }
@@ -375,34 +361,14 @@ function apiErrorToErrorEvent(
 
 // Maps any error thrown by the OpenAI SDK while streaming into a unified
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
-export function streamErrorToErrorEvent(
-  metadata: EndpointMetadata,
-  error: unknown
-): ErrorEvent {
-  const classified = classifyStreamError(error);
-  switch (classified.kind) {
-    case "connection":
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "network_error",
-        message: `Network error connecting to OpenAI: ${classified.error.message}`,
-        originalError: error,
-      });
-    case "api":
-      return apiErrorToErrorEvent(metadata, classified.error);
-    case "unknown":
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "unknown_error",
-        message: `Unknown error from OpenAI`,
-        originalError: error,
-      });
-    default:
-      assertNever(classified);
-  }
+export function makeStreamErrorToErrorEvent(
+  providerName: string
+): OutputEventConverters["streamErrorToErrorEvent"] {
+  return (metadata, error) =>
+    openaiStreamErrorToErrorEvent(metadata, error, providerName);
 }
+
+export const streamErrorToErrorEvent = makeStreamErrorToErrorEvent("OpenAI");
 
 // -- Composite: a completed output item → unified events --
 
@@ -590,10 +556,7 @@ export async function* rawOutputToEvents(
         stopReason = event.response.status ?? null;
         break;
       case "response.failed":
-        yield converters.streamErrorToErrorEvent(
-          metadata,
-          event.response.error
-        );
+        yield responseErrorToErrorEvent(metadata, event.response.error);
         return;
       case "response.incomplete":
         yield buildErrorEvent({
@@ -711,7 +674,7 @@ export function responseToEvents(
 ): NonDeltaResponseEvent[] {
   // Terminal failure states surface as a single error event.
   if (response.status === "failed") {
-    return [converters.streamErrorToErrorEvent(metadata, response.error)];
+    return [responseErrorToErrorEvent(metadata, response.error)];
   }
   if (response.status === "incomplete") {
     return [

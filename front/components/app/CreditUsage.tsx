@@ -49,6 +49,22 @@ interface CreditUsageProps {
   onLearnMore?: () => void;
 }
 
+export function CreditUsageLearnMoreButton({
+  onClick,
+}: {
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      label={CREDIT_USAGE_LEARN_MORE_LABEL}
+      variant="outline"
+      size="sm"
+      className="w-full"
+      onClick={onClick}
+    />
+  );
+}
+
 function getUsageDescription(
   state: CreditUsageState,
   variant: CreditUsageCardVariant
@@ -88,13 +104,7 @@ export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
       {onLearnMore ? (
         <div className="flex flex-col gap-2">
           <span>{usageDescription}</span>
-          <Button
-            label={CREDIT_USAGE_LEARN_MORE_LABEL}
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={onLearnMore}
-          />
+          <CreditUsageLearnMoreButton onClick={onLearnMore} />
         </div>
       ) : (
         usageDescription

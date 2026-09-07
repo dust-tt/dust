@@ -124,7 +124,6 @@ describe("ProjectMetadataResource", () => {
         "conversations",
         "tasks",
         "files",
-        "apps",
         "connected_data",
       ]);
       expect(json.defaultSkillIds).toEqual([]);

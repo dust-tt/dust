@@ -1,8 +1,10 @@
 import { fetchUserDayCells } from "@app/lib/api/activation/queries/user_day_cells";
 import {
   ElasticsearchError,
-  searchAnalytics,
+  searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
+import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
   const actual =
     await importActual<typeof import("@app/lib/api/elasticsearch")>();
-  return { ...actual, searchAnalytics: vi.fn() };
+  return { ...actual, searchConsumptionAnalytics: vi.fn() };
 });
 
 function emptyEsResponse() {
@@ -59,7 +61,7 @@ describe("fetchUserDayCells", () => {
   const windowEnd = new Date("2026-07-29T00:00:00.000Z");
 
   beforeEach(() => {
-    vi.mocked(searchAnalytics).mockReset();
+    vi.mocked(searchConsumptionAnalytics).mockReset();
   });
 
   it("returns an empty map without querying Elasticsearch", async () => {
@@ -74,7 +76,103 @@ describe("fetchUserDayCells", () => {
     if (result.isOk()) {
       expect(result.value.size).toBe(0);
     }
-    expect(searchAnalytics).not.toHaveBeenCalled();
+    expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
+  });
+
+  it("queries completed consumption by user and day", async () => {
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(emptyEsResponse());
+
+    await fetchUserDayCells({
+      workspaceId: "ws",
+      userIds: ["user-1"],
+      windowStart,
+      windowEnd,
+    });
+
+    expect(searchConsumptionAnalytics).toHaveBeenCalledWith(
+      {
+        bool: {
+          filter: [
+            { term: { workspace_id: "ws" } },
+            { terms: { "user.id": ["user-1"] } },
+            { terms: { context_origin: USER_USAGE_ORIGINS } },
+            {
+              range: {
+                completed_at: {
+                  gte: windowStart.toISOString(),
+                  lt: windowEnd.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        size: 0,
+        aggregations: {
+          by_user_day: {
+            composite: {
+              size: 3100,
+              sources: [
+                { user_id: { terms: { field: "user.id" } } },
+                {
+                  day: {
+                    date_histogram: {
+                      field: "completed_at",
+                      calendar_interval: "1d",
+                      time_zone: "UTC",
+                    },
+                  },
+                },
+              ],
+            },
+            aggregations: {
+              dau: {
+                filter: {
+                  bool: {
+                    filter: [
+                      { term: { consumption_type: "llm" } },
+                      {
+                        terms: {
+                          context_origin: USER_USAGE_ORIGINS.filter(
+                            (origin) => origin !== "triggered"
+                          ),
+                        },
+                      },
+                      { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+                    ],
+                  },
+                },
+              },
+              hvuc_signal: {
+                filter: {
+                  bool: {
+                    filter: [
+                      { term: { consumption_type: "tool" } },
+                      { term: { status: "succeeded" } },
+                    ],
+                    should: [
+                      {
+                        range: {
+                          "gross_credit_micro.direct": { gte: 3_000_000 },
+                        },
+                      },
+                      {
+                        term: {
+                          "tool.server_name": "interactive_content",
+                        },
+                      },
+                      { term: { "tool.server_name": "run_agent" } },
+                    ],
+                    minimum_should_match: 1,
+                  },
+                },
+              },
+            },
+          },
+        },
+      }
+    );
   });
 
   it("splits users above the ES cap into multiple calls and merges facts", async () => {
@@ -83,7 +181,7 @@ describe("fetchUserDayCells", () => {
     const userIds = Array.from({ length: 239 }, (_, i) => `user-${i}`);
     const dayMs = Date.UTC(2026, 6, 15);
 
-    vi.mocked(searchAnalytics)
+    vi.mocked(searchConsumptionAnalytics)
       .mockResolvedValueOnce(esResponseWithBucket({ userId: "user-0", dayMs }))
       .mockResolvedValueOnce(
         esResponseWithBucket({ userId: "user-100", dayMs })
@@ -100,7 +198,7 @@ describe("fetchUserDayCells", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(searchAnalytics).toHaveBeenCalledTimes(3);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(3);
     if (result.isOk()) {
       expect(result.value.size).toBe(239);
       expect(result.value.get("user-0")).toEqual([
@@ -119,7 +217,7 @@ describe("fetchUserDayCells", () => {
   it("fails the whole call when a later batch errors", async () => {
     const userIds = Array.from({ length: 101 }, (_, i) => `user-${i}`);
 
-    vi.mocked(searchAnalytics)
+    vi.mocked(searchConsumptionAnalytics)
       .mockResolvedValueOnce(emptyEsResponse())
       .mockResolvedValueOnce(
         new Err(new ElasticsearchError("query_error", "es unavailable"))

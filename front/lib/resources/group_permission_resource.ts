@@ -151,6 +151,14 @@ interface UserGrantSpec {
   transaction?: Transaction;
 }
 
+interface UsersGrantSpec {
+  users: UserType[];
+  grantType: GrantType;
+  resourceType: GroupPermissionResourceType;
+  resourceId: number;
+  transaction?: Transaction;
+}
+
 interface EverybodyGrantSpec {
   grantType: GrantType;
   resourceType: GroupPermissionResourceType;
@@ -335,11 +343,34 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction?: Transaction;
     }
   ): Promise<GroupResource[]> {
+    return this.listRegularAutoGroupsForResources(auth, {
+      resourceType,
+      resourceIds: [resourceId],
+      transaction,
+    });
+  }
+
+  static async listRegularAutoGroupsForResources(
+    auth: Authenticator,
+    {
+      resourceType,
+      resourceIds,
+      transaction,
+    }: {
+      resourceType: GroupPermissionResourceType;
+      resourceIds: number[];
+      transaction?: Transaction;
+    }
+  ): Promise<GroupResource[]> {
+    if (resourceIds.length === 0) {
+      return [];
+    }
+
     const grants = await GroupPermissionModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         resourceType,
-        resourceId,
+        resourceId: [...new Set(resourceIds)],
       },
       transaction,
     });
@@ -422,6 +453,29 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
   ): Promise<Result<undefined, Error>> {
+    return this.grantToUsers(auth, {
+      users: [user],
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+  }
+
+  // Batched counterpart of grantToUser: one tuple lookup and one bulk membership write, while
+  // keeping repeat grants idempotent.
+  static async grantToUsers(
+    auth: Authenticator,
+    { users, grantType, resourceType, resourceId, transaction }: UsersGrantSpec
+  ): Promise<Result<undefined, Error>> {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const uniqueUsers = [
+      ...new Map(users.map((user) => [user.id, user])).values(),
+    ];
+
     return withTransaction(async (t) => {
       await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
 
@@ -450,12 +504,22 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         });
       }
 
-      const addResult = await group.dangerouslyAddMember(auth, {
-        user,
+      const activeMembers = await group.getActiveMembers(auth, {
         transaction: t,
       });
-      // Repeat grant for the same user: the desired end state already holds, stay idempotent.
-      if (addResult.isErr() && addResult.error.code !== "user_already_member") {
+      const activeMemberIds = new Set(activeMembers.map((member) => member.id));
+      const usersToAdd = uniqueUsers.filter(
+        (user) => !activeMemberIds.has(user.id)
+      );
+      if (usersToAdd.length === 0) {
+        return new Ok(undefined);
+      }
+
+      const addResult = await group.dangerouslyAddMembers(auth, {
+        users: usersToAdd,
+        transaction: t,
+      });
+      if (addResult.isErr()) {
         return addResult;
       }
 
@@ -470,6 +534,29 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
   ): Promise<Result<undefined, Error>> {
+    return this.revokeFromUsers(auth, {
+      users: [user],
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+  }
+
+  // Batched counterpart of revokeFromUser: one tuple lookup and one bulk membership write. If the
+  // removed users were the final members, the grant and its backing group are deleted.
+  static async revokeFromUsers(
+    auth: Authenticator,
+    { users, grantType, resourceType, resourceId, transaction }: UsersGrantSpec
+  ): Promise<Result<undefined, Error>> {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const uniqueUsers = [
+      ...new Map(users.map((user) => [user.id, user])).values(),
+    ];
+
     return withTransaction(async (t) => {
       await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
 
@@ -483,31 +570,48 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         return new Ok(undefined);
       }
 
-      const membership = await GroupMembershipModel.findOne({
+      const now = new Date();
+      const memberships = await GroupMembershipModel.findAll({
+        attributes: ["userId"],
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           groupId: group.id,
-          userId: user.id,
+          userId: uniqueUsers.map((user) => user.id),
           status: "active",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          startAt: { [Op.lte]: now },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
         },
         transaction: t,
       });
-      if (!membership) {
+      const memberIds = new Set(
+        memberships.map((membership) => membership.userId)
+      );
+      const usersToRemove = uniqueUsers.filter((user) =>
+        memberIds.has(user.id)
+      );
+      if (usersToRemove.length === 0) {
         return new Ok(undefined);
       }
 
-      const memberCount = await group.getMemberCount(auth);
-      const removeResult = await group.dangerouslyRemoveMember(auth, {
-        user,
+      const memberCount = await GroupMembershipModel.count({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          groupId: group.id,
+          status: "active",
+          startAt: { [Op.lte]: now },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        },
+        transaction: t,
+      });
+      const removeResult = await group.dangerouslyRemoveMembers(auth, {
+        users: usersToRemove,
         transaction: t,
       });
       if (removeResult.isErr()) {
         return removeResult;
       }
 
-      if (memberCount === 1) {
+      if (usersToRemove.length === memberCount) {
         await this.revoke(auth, {
           group,
           grantType,
@@ -531,10 +635,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { grantType, resourceType, resourceId, transaction }: EverybodyGrantSpec
   ): Promise<void> {
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      auth.getNonNullableWorkspace().id
-    );
-    assert(globalGroup, "Workspace is missing its global group.");
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroupRes.isOk(), "Workspace is missing its global group.");
+    const globalGroup = globalGroupRes.value;
 
     await this.grant(auth, {
       group: globalGroup,
@@ -550,10 +653,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { grantType, resourceType, resourceId, transaction }: EverybodyGrantSpec
   ): Promise<void> {
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      auth.getNonNullableWorkspace().id
-    );
-    assert(globalGroup, "Workspace is missing its global group.");
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroupRes.isOk(), "Workspace is missing its global group.");
+    const globalGroup = globalGroupRes.value;
 
     await this.revoke(auth, {
       group: globalGroup,
@@ -783,21 +885,46 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction?: Transaction;
     }
   ): Promise<number> {
+    return this.deleteAllForResources(auth, {
+      resourceType,
+      resourceIds: [resourceId],
+      transaction,
+    });
+  }
+
+  static async deleteAllForResources(
+    auth: Authenticator,
+    {
+      resourceType,
+      resourceIds,
+      transaction,
+    }: {
+      resourceType: GroupPermissionResourceType;
+      resourceIds: number[];
+      transaction?: Transaction;
+    }
+  ): Promise<number> {
+    const uniqueResourceIds = [...new Set(resourceIds)];
+    if (uniqueResourceIds.length === 0) {
+      return 0;
+    }
     assert(
-      resourceId > 0 && resourceId !== WHOLE_TYPE_RESOURCE_ID,
-      "deleteAllForResource targets a concrete resource; it must not clear type-wide grants."
+      uniqueResourceIds.every(
+        (resourceId) => resourceId > 0 && resourceId !== WHOLE_TYPE_RESOURCE_ID
+      ),
+      "deleteAllForResources targets concrete resources; it must not clear type-wide grants."
     );
 
     const workspaceId = auth.getNonNullableWorkspace().id;
     const groupModelIds = await this.listGroupModelIdsForGrants(
-      { workspaceId, resourceType, resourceId },
+      { workspaceId, resourceType, resourceId: uniqueResourceIds },
       transaction
     );
     const deleted = await GroupPermissionModel.destroy({
       where: {
         workspaceId,
         resourceType,
-        resourceId,
+        resourceId: uniqueResourceIds,
       },
       transaction,
     });
@@ -860,13 +987,15 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Every grant held by one group, across resource types and instances.
   static async listForGroup(
     auth: Authenticator,
-    group: GroupResource
+    group: GroupResource,
+    transaction?: Transaction
   ): Promise<GroupPermissionResource[]> {
     const rows = await GroupPermissionModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         groupId: group.id,
       },
+      transaction,
     });
 
     return rows.map((row) => new this(GroupPermissionModel, row.get()));
@@ -1066,9 +1195,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const globalGroup =
-      await GroupResource.internalFetchWorkspaceGlobalGroup(workspaceId);
-    assert(globalGroup, "Workspace is missing its global group.");
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroupRes.isOk(), "Workspace is missing its global group.");
+    const globalGroup = globalGroupRes.value;
 
     // One query: every type-wide (-1) row for the requested capabilities.
     const rows = await GroupPermissionModel.findAll({
@@ -1195,10 +1324,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     capability: CapabilitySpec,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      auth.getNonNullableWorkspace().id
-    );
-    assert(globalGroup, "Workspace is missing its global group.");
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroupRes.isOk(), "Workspace is missing its global group.");
+    const globalGroup = globalGroupRes.value;
 
     await withTransaction(async (t) => {
       await this.getGrantLock(

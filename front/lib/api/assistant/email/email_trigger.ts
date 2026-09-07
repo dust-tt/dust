@@ -5,13 +5,13 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
+import { config as cellsConfig } from "@app/lib/api/cells/config";
 import config from "@app/lib/api/config";
 import { sendEmail, sendEmailToRecipients } from "@app/lib/api/email";
 import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
@@ -1068,7 +1068,7 @@ export async function sendToolValidationEmail({
     : `Re: ${email.subject}`;
 
   const baseUrl = config.getAppUrl();
-  const currentRegion = regionsConfig.getCurrentRegion();
+  const currentCell = cellsConfig.getCurrentCell();
   const conversationUrl = getConversationRoute(
     workspace.sId,
     conversation.sId,
@@ -1083,11 +1083,11 @@ export async function sendToolValidationEmail({
 
     const approveUrl = new URL("/email/validation", baseUrl);
     approveUrl.searchParams.set("token", approveToken);
-    approveUrl.searchParams.set("region", currentRegion);
+    approveUrl.searchParams.set("cell", currentCell.name);
 
     const rejectUrl = new URL("/email/validation", baseUrl);
     rejectUrl.searchParams.set("token", rejectToken);
-    rejectUrl.searchParams.set("region", currentRegion);
+    rejectUrl.searchParams.set("cell", currentCell.name);
 
     const inputsJson = JSON.stringify(action.inputs, null, 2)
       .replace(/</g, "&lt;")

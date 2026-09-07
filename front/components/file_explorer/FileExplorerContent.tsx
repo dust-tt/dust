@@ -4,6 +4,7 @@ import {
   FileExplorerEmptyState,
   FileExplorerFileCard,
   FileExplorerFolderCard,
+  FileExplorerFramePackageCard,
 } from "@app/components/file_explorer/FileExplorerItem";
 import type {
   ContentNodeEntry,
@@ -12,6 +13,7 @@ import type {
   FileExplorerMenuAction,
   FileSystemTreeNode,
   FolderEntry,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import { isFileExplorerMovableFile } from "@app/components/file_explorer/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -31,6 +33,7 @@ interface FileExplorerContentProps {
   fileDragEnabled?: boolean;
   onFolderNavigate: (node: FileSystemTreeNode) => void;
   onFileOpen: (entry: FileEntry) => void;
+  onFramePackageOpen: (entry: FramePackageEntry) => void;
   onFileDownload: (entry: FileEntry) => Promise<void>;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   onNodeOpen: (entry: ContentNodeEntry) => void;
@@ -49,6 +52,7 @@ export function FileExplorerContent({
   fileDragEnabled,
   onFolderNavigate,
   onFileOpen,
+  onFramePackageOpen,
   onFileDownload,
   onMoveFileDrop,
   onNodeOpen,
@@ -57,13 +61,9 @@ export function FileExplorerContent({
 }: FileExplorerContentProps) {
   const items = sortedNodes.map((node) => {
     if (node.isDirectory) {
-      // TODO: FolderEntry.path is currently the relative path (scope prefix stripped).
-      // Refactor FileSystemTreeNode to carry the canonical scoped path so that callers
-      // (e.g. PodFileExplorer) can use entry.path directly for API calls without having
-      // to re-prepend the scope prefix.
       const folderEntry: FolderEntry = {
         kind: "folder",
-        path: node.path,
+        path: node.canonicalPath,
         name: node.name,
       };
       return (
@@ -105,6 +105,18 @@ export function FileExplorerContent({
             viewMode={viewMode}
             onOpen={onFileOpen}
             onDownload={onFileDownload}
+            extraMenuItems={getFileMenuItems?.(entry)}
+          />
+        );
+
+      case "frame_package":
+        return (
+          <FileExplorerFramePackageCard
+            key={`frame-package:${entry.sourceFolderPath}`}
+            entry={entry}
+            searchFolderPath={searchFolderPath}
+            viewMode={viewMode}
+            onOpen={onFramePackageOpen}
             extraMenuItems={getFileMenuItems?.(entry)}
           />
         );

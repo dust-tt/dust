@@ -98,6 +98,31 @@ ensure_elasticsearch_create_index_built() {
   fi
 }
 
+qdrant_create_collection_bin() {
+  echo "${DUST_REPO_ROOT}/core/target/debug/qdrant_create_collection"
+}
+
+ensure_qdrant_create_collection_built() {
+  local bin
+  bin="$(qdrant_create_collection_bin)"
+  if [ -x "$bin" ]; then
+    return 0
+  fi
+  if ! command -v cargo >/dev/null 2>&1; then
+    log "cargo not found on PATH; rebuild dev/Dockerfile or source dev/scripts/env.sh"
+    return 1
+  fi
+  log "Building qdrant_create_collection (core)..."
+  (
+    cd "${DUST_REPO_ROOT}/core"
+    cargo build --bin qdrant_create_collection
+  )
+  if [ ! -x "$bin" ]; then
+    log "qdrant_create_collection binary missing after cargo build"
+    return 1
+  fi
+}
+
 write_gcp_service_account_file() {
   if [ -n "${GCP_SERVICE_ACCOUNT:-}" ]; then
     printf '%s' "$GCP_SERVICE_ACCOUNT" >"${SERVICE_ACCOUNT:-/tmp/dust-dev-sa.json}"
@@ -177,15 +202,16 @@ export_local_dev_infra() {
   apply_local_overrides
 }
 
-# Install /root shell rc so interactive login shells get secrets + colored PS1.
-# Interactive bash does NOT load BASH_ENV — only non-interactive bash does — so
-# /root/.bashrc must source the materialized env directly.
+# Install /root shell rc so interactive login shells get secrets + prompt.
+# Interactive bash does NOT load BASH_ENV — only non-interactive bash does.
+# zsh never loads BASH_ENV. Both rc files source the materialized env directly.
+# Infra scripts stay bash; only interactive terminals are zsh.
 write_root_shell_rc() {
   cat >/root/.bashrc <<EOF
 # Dust shared dev container — kept in sync by materialize_dev_environment.
 export BASH_ENV=${DUST_SHELL_ENV_FILE}
 
-# Interactive shells skip BASH_ENV; load materialized 1Password + local overrides here.
+# Interactive bash skips BASH_ENV; load materialized 1Password + local overrides here.
 if [ -f ${DUST_SHELL_ENV_FILE} ]; then
   # shellcheck disable=SC1091
   . ${DUST_SHELL_ENV_FILE}
@@ -199,10 +225,25 @@ EOF
 
   # Prefer bash_profile for login shells that skip .profile.
   cat >/root/.bash_profile <<'EOF'
-# Dust shared dev container login shell.
+# Dust shared dev container login shell (bash).
 if [ -f ~/.bashrc ]; then
   # shellcheck disable=SC1091
   . ~/.bashrc
+fi
+EOF
+
+  cat >/root/.zshrc <<EOF
+# Dust shared dev container — kept in sync by materialize_dev_environment.
+export SHELL=/bin/zsh
+
+if [ -f ${DUST_SHELL_ENV_FILE} ]; then
+  # shellcheck disable=SC1091
+  . ${DUST_SHELL_ENV_FILE}
+fi
+
+if [ -f /workspace/dev/zshrc ]; then
+  # shellcheck disable=SC1091
+  . /workspace/dev/zshrc
 fi
 EOF
 }
@@ -233,15 +274,28 @@ materialize_dev_environment() {
       ensure_bash_env_global
       return 1
     fi
-    chmod 600 "$tmp"
-    mv "$tmp" "$DUST_OP_ENV_FILE"
-    log "Materialized 1Password env ($(wc -l <"$DUST_OP_ENV_FILE" | tr -d ' ') vars) -> ${DUST_OP_ENV_FILE}"
+    local sanitized
+    sanitized="$(mktemp /tmp/dust-op-env.XXXXXX)"
+    if ! python3 "${DUST_REPO_ROOT}/dev/scripts/sanitize-op-env.py" "$tmp" "$sanitized"; then
+      rm -f "$tmp" "$sanitized"
+      log "Failed to sanitize 1Password env for shell sourcing"
+      ensure_bash_env_global
+      return 1
+    fi
+    rm -f "$tmp"
+    chmod 600 "$sanitized"
+    mv "$sanitized" "$DUST_OP_ENV_FILE"
+    log "Materialized 1Password env ($(grep -c '^export ' "$DUST_OP_ENV_FILE" | tr -d ' ') vars) -> ${DUST_OP_ENV_FILE}"
+    set -a
+    # shellcheck disable=SC1090
+    . "$DUST_OP_ENV_FILE"
+    set +a
   else
     log "Skipping 1Password materialize (credentials missing); local overrides only"
     rm -f "$DUST_OP_ENV_FILE"
   fi
 
-  # Runtime secret → SA JSON file for Google clients (var itself stays as injected).
+  # 1Password (or host) JSON key → path Google clients actually read.
   write_gcp_service_account_file
   ensure_bash_env_global
   return 0

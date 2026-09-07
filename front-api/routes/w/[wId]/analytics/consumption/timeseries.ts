@@ -69,6 +69,7 @@ app.post(
       metric,
       breakdownBy,
       breakdownCount,
+      includeWorkspaceContext: userId === undefined && agentId === undefined,
       filter: {
         ...filter,
         ...(userId ? { users: [userId] } : {}),

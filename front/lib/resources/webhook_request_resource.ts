@@ -462,16 +462,30 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     };
   }
 
-  static getGcsPath({
+  static getGcsDirectory({
     workspaceId,
-    webhookSourceId,
-    webRequestId,
+    webhookSourceModelId,
   }: {
     workspaceId: string;
-    webhookSourceId: ModelId;
-    webRequestId: ModelId;
+    webhookSourceModelId: ModelId;
   }): string {
-    return `${workspaceId}/webhook_source_${webhookSourceId}/webhook_request_${webRequestId}.json`;
+    return `${workspaceId}/webhook_source_${webhookSourceModelId}`;
+  }
+
+  static getGcsPath({
+    workspaceId,
+    webhookSourceModelId,
+    webhookRequestModelId,
+  }: {
+    workspaceId: string;
+    webhookSourceModelId: ModelId;
+    webhookRequestModelId: ModelId;
+  }): string {
+    const directory = WebhookRequestResource.getGcsDirectory({
+      workspaceId,
+      webhookSourceModelId,
+    });
+    return `${directory}/webhook_request_${webhookRequestModelId}.json`;
   }
 
   private static async deleteMany(

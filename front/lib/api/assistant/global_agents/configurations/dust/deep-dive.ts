@@ -42,7 +42,6 @@ import {
 } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
-  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -355,12 +354,10 @@ function getEnabledModelConfig(
   auth: Authenticator,
   modelConfiguration: ModelConfigurationType,
   reasoningEffort: ReasoningEffort,
-  featureFlags: WhitelistableFeature[],
-  excludeProviders: ReadonlySet<ModelProviderIdType>
+  featureFlags: WhitelistableFeature[]
 ): ModelConfigWithReasoning | null {
   const model = selectEnabledModel(auth, [modelConfiguration], {
     featureFlags,
-    excludeProviders,
   });
 
   return model ? { modelConfiguration: model, reasoningEffort } : null;
@@ -368,10 +365,9 @@ function getEnabledModelConfig(
 
 function getLargeModelFallback(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  excludeProviders: ReadonlySet<ModelProviderIdType>
+  featureFlags: WhitelistableFeature[]
 ): ModelConfigWithReasoning | null {
-  const modelConfiguration = getLargeWhitelistedModel(auth, excludeProviders, {
+  const modelConfiguration = getLargeWhitelistedModel(auth, undefined, {
     featureFlags,
   });
   if (!modelConfiguration) {
@@ -385,15 +381,13 @@ function getLargeModelFallback(
 
 function getDeepDiveModelConfig(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  excludeProviders: ReadonlySet<ModelProviderIdType>
+  featureFlags: WhitelistableFeature[]
 ): ModelConfigWithReasoning | null {
   const primaryModelConfig = getEnabledModelConfig(
     auth,
     GPT_5_6_SOL_MODEL_CONFIG,
     "medium",
-    featureFlags,
-    excludeProviders
+    featureFlags
   );
   if (primaryModelConfig) {
     return primaryModelConfig;
@@ -405,61 +399,51 @@ function getDeepDiveModelConfig(
       ? CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG
       : CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
     "light",
-    featureFlags,
-    excludeProviders
+    featureFlags
   );
 
-  return (
-    fallbackModelConfig ??
-    getLargeModelFallback(auth, featureFlags, excludeProviders)
-  );
+  return fallbackModelConfig ?? getLargeModelFallback(auth, featureFlags);
 }
 
 function getDustTaskModelConfig(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  excludeProviders: ReadonlySet<ModelProviderIdType>
+  featureFlags: WhitelistableFeature[]
 ): ModelConfigWithReasoning | null {
   return (
     getEnabledModelConfig(
       auth,
       GPT_5_6_LUNA_MODEL_CONFIG,
       "high",
-      featureFlags,
-      excludeProviders
+      featureFlags
     ) ??
     getEnabledModelConfig(
       auth,
       CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
       "light",
-      featureFlags,
-      excludeProviders
+      featureFlags
     ) ??
-    getLargeModelFallback(auth, featureFlags, excludeProviders)
+    getLargeModelFallback(auth, featureFlags)
   );
 }
 
 function getPlanningModelConfig(
   auth: Authenticator,
-  featureFlags: WhitelistableFeature[],
-  excludeProviders: ReadonlySet<ModelProviderIdType>
+  featureFlags: WhitelistableFeature[]
 ): ModelConfigWithReasoning | null {
   return (
     getEnabledModelConfig(
       auth,
       GPT_5_6_SOL_MODEL_CONFIG,
       "high",
-      featureFlags,
-      excludeProviders
+      featureFlags
     ) ??
     getEnabledModelConfig(
       auth,
       CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
       "high",
-      featureFlags,
-      excludeProviders
+      featureFlags
     ) ??
-    getLargeModelFallback(auth, featureFlags, excludeProviders)
+    getLargeModelFallback(auth, featureFlags)
   );
 }
 
@@ -470,24 +454,18 @@ export function _getDeepDiveGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     hasSandbox,
-    excludeProviders,
     featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     hasSandbox?: boolean;
-    excludeProviders: ReadonlySet<ModelProviderIdType>;
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
-  const modelConfig = getDeepDiveModelConfig(
-    auth,
-    featureFlags,
-    excludeProviders
-  );
+  const modelConfig = getDeepDiveModelConfig(auth, featureFlags);
 
   const deepAgent: Omit<
     AgentConfigurationType,
@@ -633,13 +611,11 @@ export function _getDustTaskGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    excludeProviders,
     featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    excludeProviders: ReadonlySet<ModelProviderIdType>;
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
@@ -674,11 +650,7 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
-  const modelConfig = getDustTaskModelConfig(
-    auth,
-    featureFlags,
-    excludeProviders
-  );
+  const modelConfig = getDustTaskModelConfig(auth, featureFlags);
 
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
@@ -755,11 +727,9 @@ export function _getPlanningAgent(
   auth: Authenticator,
   {
     settings,
-    excludeProviders,
     featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
-    excludeProviders: ReadonlySet<ModelProviderIdType>;
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
@@ -794,11 +764,7 @@ export function _getPlanningAgent(
     canEdit: false,
   };
 
-  const modelConfig = getPlanningModelConfig(
-    auth,
-    featureFlags,
-    excludeProviders
-  );
+  const modelConfig = getPlanningModelConfig(auth, featureFlags);
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
       ...planningAgent,

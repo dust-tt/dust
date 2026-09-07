@@ -1,7 +1,11 @@
 import { EnvironmentConfig } from "@connectors/types";
 
-export const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
-export type RegionType = (typeof SUPPORTED_REGIONS)[number];
+export const SUPPORTED_CELLS = [
+  "cell-00000",
+  "cell-00001",
+  "cell-00002",
+] as const;
+export type CellType = (typeof SUPPORTED_CELLS)[number];
 
 export const connectorsConfig = {
   getDustTmpSyncBucketName: (): string => {
@@ -13,7 +17,7 @@ export const connectorsConfig = {
   getWebhookRouterConfigBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("GCP_WEBHOOK_ROUTER_CONFIG_BUCKET");
   },
-  getCurrentRegion: (): RegionType => {
-    return EnvironmentConfig.getEnvVariable("REGION") as RegionType;
+  getCurrentCell: (): CellType => {
+    return EnvironmentConfig.getEnvVariable("CELL") as CellType;
   },
 };

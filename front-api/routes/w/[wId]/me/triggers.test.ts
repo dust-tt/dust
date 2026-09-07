@@ -15,7 +15,9 @@ const EVERY_MONDAY_9AM = {
 
 describe("GET /api/w/:wId/me/triggers", () => {
   it("lists a trigger on a deprecated (model-only) global agent such as gemini-pro", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
+    });
 
     await TriggerFactory.schedule(auth, {
       name: "Weekly gemini digest",

@@ -291,7 +291,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
           )
         );
       }
-      if (!pod.canAdministrate(auth)) {
+      if (!auth.can("admin", pod)) {
         return new Err(
           new MCPError("Not authorized to manage work areas for this pod.")
         );
@@ -342,7 +342,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
           )
         );
       }
-      if (!pod.canAdministrate(auth)) {
+      if (!auth.can("admin", pod)) {
         return new Err(
           new MCPError("Not authorized to manage work areas for this pod.")
         );
@@ -385,7 +385,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       const [space] = activationPod
         ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
         : [];
-      if (!row || !space || !space.canAdministrate(auth)) {
+      if (!row || !space || !auth.can("admin", space)) {
         return new Err(new MCPError("Work area not found."));
       }
 

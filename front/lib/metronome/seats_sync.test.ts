@@ -87,6 +87,7 @@ function activeSchedule(minSeats: number, maxSeats: number | null = null) {
 // finally block — stub them so the test never touches Redis.
 vi.mock("@app/lib/utils/cache", () => ({
   cacheWithRedis: (fn: unknown) => fn,
+  cacheWithRedisResult: (fn: unknown) => fn,
   invalidateCacheWithRedis: () => async () => {},
   bestEffortInvalidateCacheWithRedis: () => async () => {},
 }));

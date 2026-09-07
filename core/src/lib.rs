@@ -51,6 +51,7 @@ pub mod databases {
     pub mod transient_database;
 }
 pub mod gcp_auth;
+pub mod gcs_client;
 pub mod project;
 pub mod run;
 pub mod search_filter;

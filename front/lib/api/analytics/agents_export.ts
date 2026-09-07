@@ -155,7 +155,8 @@ export async function fetchAgentExportRows(
   const scopeFilter = (alias: string) =>
     includeHiddenAgents ? "" : `AND ${alias}."scope" != 'hidden'`;
 
-  // TODO(BACK5): Migrate to AgentConfigurationResource when a suitable method exists.
+  // TODO(business-functions-use-resources): Migrate to AgentConfigurationResource when a suitable
+  // method exists.
   const readReplica = getFrontReplicaDbConnection();
   // biome-ignore lint/plugin/noRawSql: Matches existing Activity Report query pattern.
   const agents = await readReplica.query<AgentMetadataRow>(

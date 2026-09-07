@@ -2,7 +2,9 @@ import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { GrantFreeCreditsButton } from "@app/components/poke/credits/GrantFreeCreditsButton";
 import { MemberConsumptionExportButton } from "@app/components/poke/credits/MemberConsumptionExportButton";
+import { RateLimiterStateChip } from "@app/components/poke/credits/RateLimiterStateChip";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
+import { ResetFairUseButton } from "@app/components/poke/credits/ResetFairUseButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
@@ -396,11 +398,30 @@ function makeColumns({
       },
     },
     {
+      accessorKey: "rateLimiterState",
+      header: "Rate limiter state",
+      enableSorting: false,
+      cell: ({ row }) => {
+        return (
+          <RateLimiterStateChip
+            rateLimiterState={row.original.rateLimiterState}
+          />
+        );
+      },
+    },
+    {
       id: "actions",
       header: () => null,
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-2">
+          {row.original.fairUse && row.original.email && (
+            <ResetFairUseButton
+              owner={owner}
+              userEmail={row.original.email}
+              onReset={onReconciled}
+            />
+          )}
           {row.original.seatType === "free" && (
             <GrantFreeCreditsButton
               owner={owner}

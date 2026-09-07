@@ -22,10 +22,10 @@ const DEFAULT_REASONING_EFFORT = "high";
 // describes thinking mode as designed for deep multi-tool reasoning. Calling it
 // `medium` would imply a deeper tier exists, which it does not.
 //
-// No converter override is needed: `toReasoningEffortParam` already maps
-// `none` -> "none" (verified live: zero reasoning content) and `high` ->
-// "high". The product still offers light/medium, so the llms layer folds them
-// onto `high` with the `mapNonNoneReasoningToHigh` config parser.
+// No converter override is needed: `reasoningToOpenAIResponsesReasoning`
+// already maps `none` -> "none" (verified live: zero reasoning content) and
+// `high` -> "high". The product still offers light/medium, so the llms layer
+// folds them onto `high` with the `mapNonNoneReasoningToHigh` config parser.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(["none", "high"]) })

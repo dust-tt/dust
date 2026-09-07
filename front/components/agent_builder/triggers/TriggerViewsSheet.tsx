@@ -18,6 +18,7 @@ import {
 } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useCanUseSelectedExecutionMode } from "@app/hooks/useTriggerExecutionModes";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -110,6 +111,11 @@ export function TriggerViewsSheet({
     defaultValues,
     resolver: zodResolver(TriggerViewsSheetFormSchema),
     mode: "onSubmit",
+  });
+
+  const canUseSelectedExecutionMode = useCanUseSelectedExecutionMode({
+    control: form.control,
+    currentExecutionMode: editTrigger?.executionMode ?? null,
   });
 
   const handleSheetClose = useCallback(() => {
@@ -315,6 +321,7 @@ export function TriggerViewsSheet({
           rightButton={{
             label: "Save",
             variant: "primary",
+            disabled: !canUseSelectedExecutionMode,
             onClick: form.handleSubmit(handleFormSubmit),
           }}
         />

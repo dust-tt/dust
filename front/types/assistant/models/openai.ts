@@ -18,6 +18,7 @@ export const GPT_5_1_MODEL_ID = "gpt-5.1" as const;
 export const GPT_5_2_MODEL_ID = "gpt-5.2" as const;
 export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
 export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
+export const GPT_6_ASTRA_MODEL_ID = "gpt-6-astra" as const;
 export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
 export const GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID =
@@ -437,6 +438,47 @@ export const GPT_5_5_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": true,
   },
 };
+// Verified 2026-09-05: https://developers.openai.com/api/docs/models/gpt-6-astra
+// Dust caps the native 1,050,000-token context at GPT-5.6's 272,000 tokens.
+export const GPT_6_ASTRA_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_6_ASTRA_MODEL_ID,
+  displayName: "GPT 6 Astra",
+  contextSize: 272_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's GPT 6 Astra model for complex reasoning, coding, and agentic tasks (272k context).",
+  shortDescription: "OpenAI's latest flagship model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  availableIfOneOf: {
+    creditPricedPlan: true,
+    plansWithAdvancedModels: true,
+    featureFlag: "claude_4_5_opus_feature",
+  },
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
 // https://openai.com/index/previewing-gpt-5-6-sol/
 // gpt-5.6-sol adds xhigh/max reasoning levels upstream; we map onto the codebase's
 // none/light/medium/high abstraction exactly like gpt-5.5.
@@ -450,9 +492,9 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "OpenAI's GPT 5.6 Sol model for complex reasoning, coding, and agentic tasks (272k context).",
-  shortDescription: "OpenAI's latest flagship model.",
+  shortDescription: "OpenAI's GPT 5.6 flagship model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportedReasoningEfforts: {

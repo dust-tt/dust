@@ -18,6 +18,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
 import { expect } from "vitest";
@@ -180,5 +181,20 @@ export class WorkspaceFactory {
     });
 
     return workspaceType;
+  }
+}
+
+export type TestWorkspacePlan = "basic" | "creditPriced";
+
+export async function workspaceForPlan(
+  plan: TestWorkspacePlan
+): Promise<WorkspaceType> {
+  switch (plan) {
+    case "basic":
+      return WorkspaceFactory.basic();
+    case "creditPriced":
+      return WorkspaceFactory.creditPriced();
+    default:
+      assertNever(plan);
   }
 }

@@ -174,7 +174,7 @@ export const batchUpdateMembersPlugin = createPlugin({
       return { status: "ok", user: users[0] };
     };
 
-    const author = auth.user()?.toJSON() ?? "no-author";
+    const author = auth.toPokeUserJSON();
 
     // Run `fn` for every identifier, reporting `user_not_found` for identifiers
     // that do not resolve to a user and `ambiguous_email` for emails shared by

@@ -183,6 +183,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
       "whether they are published, and who can edit them.",
     schema: listAgentsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing agents",
       done: "Listed agents",
@@ -195,9 +196,12 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     description:
       "Return an agent's full configuration: name, description, scope, model, " +
       "equipped skills and capabilities, and its complete system prompt and " +
-      "instructions. Use this to inspect what an agent actually does.",
+      "instructions. Use this to inspect what an agent actually does. Admins " +
+      "get every agent of the workspace, but for the ones they cannot read " +
+      "the instructions, skills, tools and knowledge are withheld.",
     schema: getAgentDetailsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving agent details",
       done: "Retrieved agent details",
@@ -212,6 +216,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
       "and who can reach them.",
     schema: listSkillsSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing skills",
       done: "Listed skills",
@@ -227,6 +232,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
       "instructions private, so those come back empty.",
     schema: getSkillSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Retrieving skill",
       done: "Retrieved skill",
@@ -241,6 +247,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
       "Admin and manager only.",
     schema: listWorkspaceMembersSchema,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing workspace members",
       done: "Workspace members listed",

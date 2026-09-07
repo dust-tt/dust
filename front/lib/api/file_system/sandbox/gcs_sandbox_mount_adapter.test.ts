@@ -5,6 +5,7 @@ import {
   buildMountCommand,
   GCSSandboxMountAdapter,
 } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
+import { frameSandboxOnlyMounts } from "@app/lib/api/sandbox/frame_mounts";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
@@ -91,6 +92,20 @@ function createPodSandboxAdapter(): GCSSandboxMountAdapter {
   return adapter;
 }
 
+function createFrameSandboxAdapter(): GCSSandboxMountAdapter {
+  const backend = new GCSFileSystemBackend("ws1", "test-private-uploads");
+  const adapter = backend.createSandboxAdapter(
+    [],
+    frameSandboxOnlyMounts({ sId: "fil_frame" })
+  );
+
+  if (!(adapter instanceof GCSSandboxMountAdapter)) {
+    throw new Error("expected a GCSSandboxMountAdapter");
+  }
+
+  return adapter;
+}
+
 describe("buildMountCommand", () => {
   test("workload profile disables caches for shared mutable files", () => {
     const command = renderRootCommand(
@@ -133,16 +148,38 @@ describe("buildMountCommand", () => {
     expect(command).toContain("--token-url http://127.0.0.1:987/token/mount-1");
   });
 
-  test("pod_state_replica profile mounts as dust-state without allow_other or list caching", () => {
+  test("Frame publication profile is read-only and uncached", () => {
+    const command = renderRootCommand(
+      buildMountCommand({
+        bucket: "bucket-x",
+        target: workloadTarget({
+          gcsPrefix: "w/ws1/frames/fil_frame/publications",
+          sandboxMountPoint: "/frames/fil_frame/publications",
+          legacySandboxMountPoint: null,
+          readOnly: true,
+          mountProfile: "frame_publications",
+        }),
+      })
+    );
+
+    expect(command).toContain("-o allow_other,ro");
+    expect(command).toContain("--kernel-list-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-negative-ttl-secs=0");
+    expect(command).toContain("--only-dir w/ws1/frames/fil_frame/publications");
+    expect(command).toContain("bucket-x /frames/fil_frame/publications");
+  });
+
+  test("sandbox state replica mounts as dust-state without allow_other or list caching", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
         target: {
           gcsPrefix: "w/ws1/pods/spc1/state",
-          sandboxMountPoint: "/pod-state/replica",
+          sandboxMountPoint: "/sandbox-state/replica",
           legacySandboxMountPoint: null,
           readOnly: false,
-          mountProfile: "pod_state_replica",
+          mountProfile: "sandbox_state_replica",
         },
       })
     );
@@ -161,7 +198,7 @@ describe("buildMountCommand", () => {
     expect(command).toContain("--dir-mode=700");
     expect(command).toContain("--only-dir w/ws1/pods/spc1/state");
     expect(command).toContain("--enable-hns=false");
-    expect(command).toContain("bucket-x /pod-state/replica");
+    expect(command).toContain("bucket-x /sandbox-state/replica");
   });
 });
 
@@ -232,6 +269,27 @@ describe("pod sandbox mount wiring", () => {
     expect(podFunctionsCommand).toContain(
       "--metadata-cache-negative-ttl-secs=0"
     );
+  });
+});
+
+describe("Frame sandbox mount wiring", () => {
+  beforeAll(() => {
+    process.env.GOOGLE_CLOUD_PROJECT_ID ??= "test-project";
+    process.env.DUST_PRIVATE_UPLOADS_BUCKET ??= "test-private-uploads";
+  });
+
+  test("grants only stable Frame publication and state prefixes", () => {
+    const rules = createFrameSandboxAdapter().getAccessBoundaryRules();
+
+    expect(rules).toHaveLength(2);
+    expect(rules.every((tokenRules) => tokenRules.length === 3)).toBe(true);
+    const serializedRules = JSON.stringify(rules);
+    expect(serializedRules).toContain("w/ws1/frames/fil_frame/publications/");
+    expect(serializedRules).toContain(
+      "w/ws1/frames/fil_frame/state/databases/"
+    );
+    expect(serializedRules).not.toContain("/conversations/");
+    expect(serializedRules).not.toContain("/pods/");
   });
 });
 

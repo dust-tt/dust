@@ -1,11 +1,11 @@
 // @vitest-environment node
 
-import { ZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
+import { DeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v4_pro_global_fireworks";
 import { describe, expect, it } from "vitest";
 
 describe("FireworksStream", () => {
   it("includes names when replaying parallel tool results", () => {
-    const endpoint = new ZAiGlmFiveDotTwoGlobalFireworksStream({
+    const endpoint = new DeepSeekDeepSeekV4ProGlobalFireworksStream({
       FIREWORKS_API_KEY: "test",
     });
     const payload = endpoint.buildRequestPayload(
@@ -54,7 +54,7 @@ describe("FireworksStream", () => {
           ],
         },
       },
-      ZAiGlmFiveDotTwoGlobalFireworksStream.configSchema.parse({})
+      DeepSeekDeepSeekV4ProGlobalFireworksStream.configSchema.parse({})
     );
 
     expect(payload.messages).toContainEqual({
@@ -69,5 +69,44 @@ describe("FireworksStream", () => {
       tool_call_id: "call_2",
       content: "second result",
     });
+  });
+
+  it("preserves optional tool parameters", () => {
+    const endpoint = new DeepSeekDeepSeekV4ProGlobalFireworksStream({
+      FIREWORKS_API_KEY: "test",
+    });
+    const inputSchema = {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        nextPageCursor: { type: "string" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    };
+    const payload = endpoint.buildRequestPayload(
+      { conversation: { system: [], messages: [] } },
+      DeepSeekDeepSeekV4ProGlobalFireworksStream.configSchema.parse({
+        tools: [
+          {
+            name: "search",
+            description: "Search documents",
+            inputSchema,
+          },
+        ],
+      })
+    );
+
+    expect(payload.tools).toEqual([
+      {
+        type: "function",
+        function: {
+          name: "search",
+          description: "Search documents",
+          strict: true,
+          parameters: inputSchema,
+        },
+      },
+    ]);
   });
 });

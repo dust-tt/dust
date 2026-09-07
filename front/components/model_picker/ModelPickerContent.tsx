@@ -1,17 +1,17 @@
-import { ModelPickerMoreModels } from "@app/components/model_picker/ModelPickerMoreModels";
+import { ModelPickerMakersView } from "@app/components/model_picker/ModelPickerMakersView";
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   MakerGroup,
+  ModelPickerSelectionModel,
+  ModelTierDefinition,
   ModelTierId,
-  Selection,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
   getModelLockTooltip,
   getTierLockReason,
   getTierResolvedModelLabel,
-  isTierDisplayed,
-  MODEL_TIERS,
+  isTierSelected,
 } from "@app/components/model_picker/modelPickerUtils";
 import type {
   EnabledModelConfigurationType,
@@ -23,6 +23,9 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
+  Button,
+  ChevronDown,
+  ChevronRight,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -33,65 +36,67 @@ import {
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
-  // Vetoes the interaction-outside dismissal that a model/effort pick triggers
-  // on the open submenus, so they stay reachable after a pick.
-  shouldBlockDismiss: () => boolean;
-  shown: Selection;
-  agentDefault: Selection;
-  canRevert: boolean;
+  selection: ModelPickerSelectionModel;
   lockPremiumEfforts: boolean;
+  ignoreTierRestrictions: boolean;
+  tiers: ModelTierDefinition[];
+  degradedModelIds: ReadonlySet<string>;
   makerGroups: MakerGroup[];
-  allModels: ModelConfigurationType[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
-  search: string;
-  onSearchChange: (value: string) => void;
-  moreModelsExpanded: boolean;
-  onToggleMoreModels: () => void;
-  expandedMaker: ModelMakerIdType | null;
+  isMakersExpanded: boolean;
+  onToggleMakers: () => void;
+  expandedMakerId: ModelMakerIdType | null;
   onToggleMaker: (makerId: ModelMakerIdType) => void;
   onSelectTier: (tierId: ModelTierId) => void;
   onSelectModel: (model: ModelConfigurationType) => void;
-  onChangeEffort: (effort: ReasoningEffort) => void;
-  onRevert: () => void;
+  onChangeEffort?: (
+    model: ModelConfigurationType,
+    effort: ReasoningEffort
+  ) => void;
+  // The action closing a menu that only stages a selection (the bulk "Set
+  // model" dropdown); menus that apply their picks immediately pass none.
+  confirm?: {
+    label: string;
+    disabled?: boolean;
+    onClick: () => void;
+  };
 }
 
 export function ModelPickerContent({
   side,
-  shouldBlockDismiss,
-  shown,
-  agentDefault,
-  canRevert,
+  selection,
   lockPremiumEfforts,
+  ignoreTierRestrictions,
+  tiers,
+  degradedModelIds,
   makerGroups,
-  allModels,
   streamModels,
   streams,
-  search,
-  onSearchChange,
-  moreModelsExpanded,
-  onToggleMoreModels,
-  expandedMaker,
+  isMakersExpanded,
+  onToggleMakers,
+  expandedMakerId,
   onToggleMaker,
   onSelectTier,
   onSelectModel,
   onChangeEffort,
-  onRevert,
+  confirm,
 }: ModelPickerContentProps) {
   return (
     <DropdownMenuContent
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
-      align="start"
+      align="end"
       side={side}
     >
-      <DropdownMenuLabel label="Recommendations" className="text-sm" />
+      {tiers.length > 0 && (
+        <DropdownMenuLabel label="Recommendations" className="text-sm" />
+      )}
 
-      {MODEL_TIERS.map((tier) => {
-        const isSelected = isTierDisplayed(tier.id, shown.display);
-        const lockReason = getTierLockReason(tier.id, {
-          lockPremiumEfforts,
-          streamModels,
-        });
+      {tiers.map((tier) => {
+        const isSelected = isTierSelected(tier.id, selection);
+        const lockReason = ignoreTierRestrictions
+          ? null
+          : getTierLockReason(tier.id, { lockPremiumEfforts, streamModels });
         if (lockReason) {
           return (
             <DropdownMenuItem
@@ -124,8 +129,7 @@ export function ModelPickerContent({
                 </span>
                 {isSelected && (
                   <ModelPickerSelectionIndicator
-                    canRevert={canRevert}
-                    onRevert={onRevert}
+                    onRevert={selection.onRevert}
                     size="xs"
                   />
                 )}
@@ -137,26 +141,50 @@ export function ModelPickerContent({
         );
       })}
 
-      <DropdownMenuSeparator />
+      {tiers.length > 0 && <DropdownMenuSeparator />}
 
-      <ModelPickerMoreModels
-        shouldBlockDismiss={shouldBlockDismiss}
-        makerGroups={makerGroups}
-        allModels={allModels}
-        shown={shown}
-        agentDefault={agentDefault}
-        canRevert={canRevert}
-        lockPremiumEfforts={lockPremiumEfforts}
-        search={search}
-        onSearchChange={onSearchChange}
-        isExpanded={moreModelsExpanded}
-        onToggleExpanded={onToggleMoreModels}
-        expandedMaker={expandedMaker}
-        onToggleMaker={onToggleMaker}
-        onSelectModel={onSelectModel}
-        onChangeEffort={onChangeEffort}
-        onRevert={onRevert}
+      <DropdownMenuItem
+        label="More models"
+        endComponent={
+          <Icon
+            visual={isMakersExpanded ? ChevronDown : ChevronRight}
+            size="xs"
+            className="text-muted-foreground"
+          />
+        }
+        onClick={onToggleMakers}
+        onSelect={(e) => e.preventDefault()}
       />
+
+      {isMakersExpanded && (
+        <ModelPickerMakersView
+          makerGroups={makerGroups}
+          selection={selection}
+          ignoreTierRestrictions={ignoreTierRestrictions}
+          lockPremiumEfforts={lockPremiumEfforts}
+          degradedModelIds={degradedModelIds}
+          expandedMakerId={expandedMakerId}
+          onToggleMaker={onToggleMaker}
+          onSelectModel={onSelectModel}
+          onChangeEffort={onChangeEffort}
+        />
+      )}
+
+      {confirm && (
+        <>
+          <DropdownMenuSeparator />
+          <div className="p-1">
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full"
+              label={confirm.label}
+              disabled={confirm.disabled}
+              onClick={confirm.onClick}
+            />
+          </div>
+        </>
+      )}
     </DropdownMenuContent>
   );
 }

@@ -8,6 +8,9 @@
 //   3002 → base + 2 (connectors)
 //   3006 → base + 6 (oauth)
 //   3007 → base + 7 (viz)
+//   3010 → base + 10 (front-spa-poke)
+//   3011 → base + 11 (front-spa-app)
+//   6006 → base + 8 (storybook)
 
 import type { Socket } from "bun";
 import { FORWARDER_MAPPINGS } from "./lib/forwarderConfig";

@@ -25,7 +25,7 @@ import type {
   PatchMCPServerViewBody,
   PatchMCPServerViewResponseBody,
 } from "@app/lib/api/mcp/views";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   GetConnectionsResponseBody,
@@ -433,7 +433,12 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         if (body.nameConflict?.name) {
-          return new Err({ nameConflict: body.nameConflict.name });
+          return new Err({
+            nameConflict: body.nameConflict.name,
+            ...(body.nameConflict.conflictDetails
+              ? { conflictDetails: body.nameConflict.conflictDetails }
+              : {}),
+          });
         }
         return new Err(
           new MCPCreateServerError(
@@ -763,7 +768,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     owner,
     connectionType: "personal",
   });
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   const createPersonalConnection = async ({
     mcpServerId,
@@ -820,7 +825,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         provider,
         useCase,
         extraConfig,
-        regionInfo: regionContext.regionInfo,
+        cellInfo: cellContext.cellInfo,
       });
 
       if (cRes.isErr()) {
@@ -1209,14 +1214,6 @@ export function useJITMCPServerViewsFromSpaces(
     isError: error,
     mutateServerViews: mutate,
   };
-}
-
-export function useManualMCPServerViewsFromSpaces(
-  owner: LightWorkspaceType,
-  spaces: SpaceType[],
-  swrOptions?: SWRConfiguration & { disabled?: boolean }
-) {
-  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"], swrOptions);
 }
 
 export function useMCPServerViewsWithPersonalConnections({

@@ -9,6 +9,7 @@ import type {
   FileSystemDirectoryEntry,
   FileSystemEntry,
 } from "@app/types/api/file_system/types";
+import { getFrameDatabaseReplicasBasePath } from "@app/types/api/frame_storage";
 import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import {
   DustFileSystemError,
@@ -711,14 +712,23 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   private sandboxOnlyMountGCSPrefix(mount: SandboxOnlyMount): string {
     switch (mount.kind) {
+      case "frame_publications":
+        return `w/${this.workspaceId}/frames/${mount.frameId}/publications`;
+
+      case "frame_state":
+        return getFrameDatabaseReplicasBasePath({
+          workspaceId: this.workspaceId,
+          frameId: mount.frameId,
+        }).replace(/\/$/, "");
+
       case "pod_sandbox_functions":
-        return `w/${this.workspaceId}/pods/${mount.id}/sandbox-functions`;
+        return `w/${this.workspaceId}/pods/${mount.podId}/sandbox-functions`;
 
       case "pod_state":
-        return `w/${this.workspaceId}/pods/${mount.id}/state`;
+        return `w/${this.workspaceId}/pods/${mount.podId}/state`;
 
       default:
-        assertNever(mount.kind);
+        assertNever(mount);
     }
   }
 
@@ -726,14 +736,20 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     mount: SandboxOnlyMount
   ): GCSMountTarget["mountProfile"] {
     switch (mount.kind) {
+      case "frame_publications":
+        return "frame_publications";
+
+      case "frame_state":
+        return "sandbox_state_replica";
+
       case "pod_sandbox_functions":
         return "pod_sandbox_functions";
 
       case "pod_state":
-        return "pod_state_replica";
+        return "sandbox_state_replica";
 
       default:
-        assertNever(mount.kind);
+        assertNever(mount);
     }
   }
 }

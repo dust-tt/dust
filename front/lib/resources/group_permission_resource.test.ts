@@ -6,11 +6,14 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { grantKey } from "@app/types/group_permissions";
 import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 import type { QueryOptions } from "sequelize";
+import { Transaction } from "sequelize";
 import type { AbstractQuery } from "sequelize/types/dialects/abstract/query";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -698,6 +701,58 @@ describe("GroupPermissionResource", () => {
     });
   });
 
+  describe("grantToUsers / revokeFromUsers", () => {
+    it("uses the explicit transaction for every membership read and write", async () => {
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const namespace = getNamespace("test-namespace");
+      assert(namespace);
+      const transaction = namespace.get("transaction");
+      assert(transaction instanceof Transaction);
+      const AGENT_ID = 7;
+      const spec = {
+        grantType: "editor" as const,
+        resourceType: "agent" as const,
+        resourceId: AGENT_ID,
+        transaction,
+      };
+
+      // Production has no CLS transaction. Reads outside the explicit transaction cannot see
+      // these uncommitted fixtures, exposing missing propagation without exhausting the pool.
+      namespace.set("transaction", null);
+      try {
+        const grantResult = await GroupPermissionResource.grantToUsers(auth, {
+          ...spec,
+          users: [user.toJSON()],
+        });
+        expect(grantResult.isOk()).toBe(true);
+
+        const group =
+          await GroupPermissionResource.findRegularAutoGroupForGrant(
+            auth,
+            spec
+          );
+        assert(group);
+        const members = await group.getActiveMembers(auth, { transaction });
+        expect(members.map((member) => member.id)).toEqual([user.id]);
+
+        const revokeResult = await GroupPermissionResource.revokeFromUsers(
+          auth,
+          {
+            ...spec,
+            users: [user.toJSON()],
+          }
+        );
+        expect(revokeResult.isOk()).toBe(true);
+        expect(
+          await GroupPermissionResource.findRegularAutoGroupForGrant(auth, spec)
+        ).toBeNull();
+      } finally {
+        namespace.set("transaction", transaction);
+      }
+    });
+  });
+
   describe("grantToUser / revokeFromUser", () => {
     it("creates a regular_auto group, grants access, and adds the user", async () => {
       const user = await UserFactory.basic();
@@ -711,26 +766,13 @@ describe("GroupPermissionResource", () => {
       });
       expect(result.isOk()).toBe(true);
 
-      const grants = await GroupPermissionResource.listForGroups(
-        auth.getNonNullableWorkspace(),
-        {
-          groupModelIds: (
-            await GroupResource.listAllWorkspaceGroups(auth, {
-              groupKinds: ["regular_auto"],
-            })
-          ).map((group) => group.id),
-          grantType: "reader",
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
           resourceType: "space",
           resourceId: 42,
-        }
-      );
-      expect(grants).toHaveLength(1);
-
-      const group = await GroupResource.dangerouslyFetchByModelIds(auth, [
-        grants[0].groupId,
-      ]);
-      expect(group[0].kind).toBe("regular_auto");
-      expect(await group[0].isMember(user)).toBe(true);
+        });
+      expect(groups).toHaveLength(1);
+      expect(await groups[0].isMember(user)).toBe(true);
     });
 
     it("is idempotent for a repeat grant to the same user", async () => {
@@ -747,26 +789,13 @@ describe("GroupPermissionResource", () => {
       const repeat = await GroupPermissionResource.grantToUser(auth, spec);
       expect(repeat.isOk()).toBe(true);
 
-      const grants = await GroupPermissionResource.listForGroups(
-        auth.getNonNullableWorkspace(),
-        {
-          groupModelIds: (
-            await GroupResource.listAllWorkspaceGroups(auth, {
-              groupKinds: ["regular_auto"],
-            })
-          ).map((group) => group.id),
-          grantType: "reader",
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
           resourceType: "space",
           resourceId: 42,
-        }
-      );
-      expect(grants).toHaveLength(1);
-
-      const [backingGroup] = await GroupResource.dangerouslyFetchByModelIds(
-        auth,
-        [grants[0].groupId]
-      );
-      expect(await backingGroup.getMemberCount(auth)).toBe(1);
+        });
+      expect(groups).toHaveLength(1);
+      expect(await groups[0].getMemberCount(auth)).toBe(1);
     });
 
     it("reuses the existing regular_auto group for a second user", async () => {
@@ -788,27 +817,14 @@ describe("GroupPermissionResource", () => {
         resourceId: 7,
       });
 
-      const autoGroups = await GroupResource.listAllWorkspaceGroups(auth, {
-        groupKinds: ["regular_auto"],
-      });
-      const grantGroups = [];
-      for (const group of autoGroups) {
-        const grants = await GroupPermissionResource.listForGroups(
-          auth.getNonNullableWorkspace(),
-          {
-            groupModelIds: [group.id],
-            grantType: "editor",
-            resourceType: "agent",
-            resourceId: 7,
-          }
-        );
-        if (grants.length > 0) {
-          grantGroups.push(group);
-        }
-      }
-      expect(grantGroups).toHaveLength(1);
-      expect(await grantGroups[0].isMember(user1)).toBe(true);
-      expect(await grantGroups[0].isMember(user2)).toBe(true);
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
+          resourceType: "agent",
+          resourceId: 7,
+        });
+      expect(groups).toHaveLength(1);
+      expect(await groups[0].isMember(user1)).toBe(true);
+      expect(await groups[0].isMember(user2)).toBe(true);
     });
 
     it("revokes access and deletes the group when the last member is removed", async () => {
@@ -822,6 +838,13 @@ describe("GroupPermissionResource", () => {
         resourceId: 99,
       });
 
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
+          resourceType: "skill",
+          resourceId: 99,
+        });
+      expect(groups).toHaveLength(1);
+
       const result = await GroupPermissionResource.revokeFromUser(auth, {
         user: user.toJSON(),
         grantType: "editor",
@@ -830,19 +853,12 @@ describe("GroupPermissionResource", () => {
       });
       expect(result.isOk()).toBe(true);
 
-      const autoGroups = await GroupResource.listAllWorkspaceGroups(auth, {
-        groupKinds: ["regular_auto"],
-      });
-      const grants = await GroupPermissionResource.listForGroups(
-        auth.getNonNullableWorkspace(),
-        {
-          groupModelIds: autoGroups.map((group) => group.id),
-          grantType: "editor",
+      const resultGroups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
           resourceType: "skill",
           resourceId: 99,
-        }
-      );
-      expect(grants).toHaveLength(0);
+        });
+      expect(resultGroups).toHaveLength(0);
     });
 
     it("keeps the group when other members remain", async () => {
@@ -872,26 +888,14 @@ describe("GroupPermissionResource", () => {
       });
       expect(result.isOk()).toBe(true);
 
-      const grants = await GroupPermissionResource.listForGroups(
-        auth.getNonNullableWorkspace(),
-        {
-          groupModelIds: (
-            await GroupResource.listAllWorkspaceGroups(auth, {
-              groupKinds: ["regular_auto"],
-            })
-          ).map((group) => group.id),
-          grantType: "reader",
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
           resourceType: "space",
           resourceId: 5,
-        }
-      );
-      expect(grants).toHaveLength(1);
-
-      const [group] = await GroupResource.dangerouslyFetchByModelIds(auth, [
-        grants[0].groupId,
-      ]);
-      expect(await group.isMember(user1)).toBe(false);
-      expect(await group.isMember(user2)).toBe(true);
+        });
+      expect(groups).toHaveLength(1);
+      expect(await groups[0].isMember(user1)).toBe(false);
+      expect(await groups[0].isMember(user2)).toBe(true);
     });
   });
 
@@ -1110,12 +1114,12 @@ describe("GroupPermissionResource", () => {
 
   describe("grantToEverybody / revokeFromEverybody", () => {
     it("grants and revokes an instance-level permission on the global group", async () => {
-      const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-        workspace.id
-      );
-      if (!globalGroup) {
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(auth);
+      if (globalGroupRes.isErr()) {
         throw new Error("global group should exist");
       }
+      const globalGroup = globalGroupRes.value;
 
       await GroupPermissionResource.grantToEverybody(auth, {
         grantType: "reader",

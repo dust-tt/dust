@@ -2,6 +2,7 @@ import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retenti
 import { EMPTY_PLAN_LIMIT_OVERRIDE } from "@app/lib/plans/plan_limit_overrides";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { getNamespace } from "@app/tests/utils/test_cls";
+import type { Result } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -65,6 +66,19 @@ vi.mock("@app/lib/utils/cache", () => ({
       };
     }
   ),
+  cacheWithRedisResult: vi
+    .fn()
+    .mockImplementation(
+      <T, E, Args extends unknown[]>(
+        fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>
+      ) => {
+        return async (
+          ...args: Args
+        ): Promise<Result<JsonSerializable<T>, E>> => {
+          return fn(...args);
+        };
+      }
+    ),
   invalidateCacheWithRedis: vi.fn().mockImplementation(
     <T, Args extends unknown[]>(
       fn: CacheableFunction<JsonSerializable<T>, Args>,
@@ -149,6 +163,7 @@ vi.mock("@app/lib/resources/kill_switch_resource", () => ({
   },
 }));
 
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -263,6 +278,59 @@ describe("WorkspaceResource", () => {
           "openai",
           "anthropic",
         ]);
+      });
+
+      // A v3 snapshot exactly as the previous deploy wrote it. Guards two things: entries written
+      // before a deploy must keep parsing (the cache has no TTL), and the fixture's key set must
+      // match the model's attributes. When the keys assertion fails, the model changed shape and
+      // WORKSPACE_CACHE_KEY_VERSION must be bumped along with this fixture.
+      it("parses snapshots written by the previous deploy", async () => {
+        const v3Snapshot = {
+          id: 987654321,
+          sId: "ws_fixture_v3",
+          name: "fixture-workspace",
+          description: null,
+          segmentation: null,
+          ssoEnforced: false,
+          regionalModelsOnly: false,
+          workOSOrganizationId: null,
+          whiteListedProviders: ["openai", "anthropic"],
+          defaultEmbeddingProvider: null,
+          metadata: { fixtureKey: "fixtureValue" },
+          sharingPolicy: "all_scopes",
+          conversationsRetentionDays: null,
+          metronomeCustomerId: null,
+          poolCreditState: "active",
+          programmaticCreditState: "active",
+          createdAt: 1755000000000,
+          updatedAt: 1755000000000,
+        };
+        inMemoryCache.set(
+          getCacheKeyForWorkspace(v3Snapshot.sId),
+          JSON.stringify(v3Snapshot)
+        );
+
+        const resource = await WorkspaceResource.fetchById(v3Snapshot.sId);
+
+        expect(Object.keys(v3Snapshot).sort()).toEqual(
+          Object.keys(WorkspaceModel.getAttributes()).sort()
+        );
+        expect(resource?.name).toBe("fixture-workspace");
+        expect(resource?.whiteListedProviders).toEqual(["openai", "anthropic"]);
+        expect(resource?.metadata).toEqual({ fixtureKey: "fixtureValue" });
+        expect(resource?.createdAt).toEqual(new Date(1755000000000));
+        expect(resource?.updatedAt).toEqual(new Date(1755000000000));
+      });
+
+      it("serves the same attributes from the cache as from the database", async () => {
+        await WorkspaceResource.fetchById(workspace.sId);
+
+        const cachedFetch = await WorkspaceResource.fetchById(workspace.sId);
+        const [databaseFetch] = await WorkspaceResource.fetchByIds([
+          workspace.sId,
+        ]);
+
+        expect(cachedFetch?.blob).toEqual(databaseFetch?.blob);
       });
     });
 
@@ -710,6 +778,17 @@ describe("WorkspaceResource", () => {
       expect(result).not.toContain("openai");
       expect(result).toContain("anthropic");
       expect(result).toContain("mistral");
+    });
+
+    it("applies provider kill switches on uncached fetch paths", async () => {
+      workspace = await WorkspaceFactory.basic({
+        whiteListedProviders: ["openai", "anthropic"],
+      });
+      listEnabledKillSwitches.mockResolvedValue(["global_blacklist_openai"]);
+
+      const [resource] = await WorkspaceResource.fetchByIds([workspace.sId]);
+
+      expect(resource?.whiteListedProviders).toEqual(["anthropic"]);
     });
   });
 

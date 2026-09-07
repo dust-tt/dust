@@ -3,7 +3,7 @@ import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { ProvisionedGroupDialog } from "@app/components/groups/ProvisionedGroupDialog";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
@@ -129,8 +129,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
 
   const router = useAppRouter();
   const { subscription } = useAuth();
-  const { featureFlags } = useFeatureFlags();
-  const isScimAllowed = isSCIMEnabled(subscription.plan, featureFlags);
+  const isScimAllowed = isSCIMEnabled(subscription.plan);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,

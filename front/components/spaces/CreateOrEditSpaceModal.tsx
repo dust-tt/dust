@@ -2,7 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
@@ -72,8 +72,7 @@ export function CreateOrEditSpaceModal({
     useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
 
-  const { featureFlags } = useFeatureFlags();
-  const scimEnabled = isSCIMEnabled(plan, featureFlags);
+  const scimEnabled = isSCIMEnabled(plan);
   const { user } = useAuth();
 
   useEffect(() => {

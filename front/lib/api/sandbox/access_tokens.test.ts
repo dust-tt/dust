@@ -216,8 +216,8 @@ describe("sandbox access tokens", () => {
       sandbox,
       sandboxFunction: {
         sId: "sfn_test",
-        space: { sId: pod.sId },
       },
+      owner: { kind: "pod", spaceId: pod.sId },
       conversationId: "conv_test",
       invocationId: "test-invocation-id",
       execId: "test-exec-id",
@@ -237,8 +237,41 @@ describe("sandbox access tokens", () => {
     expect(payload.sbId).toBe(sandbox.sId);
     expect(payload.execId).toBe("test-exec-id");
     expect(payload.spaceId).toBe(pod.sId);
+    expect(payload.frameId).toBeUndefined();
     expect(payload.sandboxFunctionId).toBe("sfn_test");
     expect(payload.invocationId).toBe("test-invocation-id");
+  });
+
+  it("binds a Frame invocation token to its Frame and runtime space", async () => {
+    const { auth, sandbox } = await setupTest();
+    const runtimeSpace = await SpaceFactory.regular(
+      auth.getNonNullableWorkspace()
+    );
+
+    const token = await generateSandboxFunctionInvocationToken(auth, {
+      noTools: false,
+      sandbox,
+      sandboxFunction: { sId: "sfn_frame" },
+      owner: {
+        kind: "frame",
+        frameId: "fil_frame",
+        spaceId: runtimeSpace.sId,
+      },
+      invocationId: "frame-invocation-id",
+      execId: "frame-exec-id",
+    });
+
+    const payload = await verifySandboxExecToken(token);
+
+    expect(payload && isSandboxFunctionInvocationTokenPayload(payload)).toBe(
+      true
+    );
+    if (!payload || !isSandboxFunctionInvocationTokenPayload(payload)) {
+      return;
+    }
+    expect(payload.frameId).toBe("fil_frame");
+    expect(payload.spaceId).toBe(runtimeSpace.sId);
+    expect(payload.sandboxFunctionId).toBe("sfn_frame");
   });
 
   it("round-trips a filesystem token with its exact roots", async () => {

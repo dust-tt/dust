@@ -1,3 +1,8 @@
+import {
+  isUserAwuWarned,
+  isUserBlocked,
+  isWorkspaceProgrammaticWarningReached,
+} from "@app/lib/api/credits/access_control";
 import { getUpgradeRequestAvailabilityForUser } from "@app/lib/api/credits/upgrade_requests";
 import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -8,10 +13,7 @@ import type {
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
-  isUserAwuWarned,
-  isUserBlocked,
   isWorkspaceBalanceThresholdReached,
-  isWorkspaceProgrammaticWarningReached,
 } from "@app/lib/metronome/user_block";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -60,14 +62,17 @@ app.get(
       balanceThresholdReached,
     ] = await Promise.all([
       getWorkspaceCreditPoolStatus(workspace.sId),
-      isUserBlocked(workspace, user),
+      isUserBlocked(auth, user),
       getWorkspaceProgrammaticCreditStatus(workspace.sId),
-      isWorkspaceProgrammaticWarningReached(workspace.sId),
+      isWorkspaceProgrammaticWarningReached(auth),
       isWorkspaceBalanceThresholdReached(workspace.sId),
     ]);
 
+    // `isUserAwuWarned` is flag-aware: the Redis rate-limiter warning (80% of
+    // the effective cap) when the flag is on, the Metronome near-limit flag
+    // otherwise.
     const userNearCreditLimit =
-      !userBlockedReason && (await isUserAwuWarned(workspace.sId, user.sId));
+      !userBlockedReason && (await isUserAwuWarned(auth, { user }));
 
     const programmaticCreditStatus: ProgrammaticCreditStatus =
       programmaticState === "depleted" ? "depleted" : "active";

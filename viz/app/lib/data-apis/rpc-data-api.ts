@@ -44,6 +44,7 @@ export class RPCDataAPI implements VisualizationDataAPI {
       return {
         isAuthenticated: false as const,
         isWorkspaceMember: false as const,
+        isFrameAuthor: false as const,
         isPodEditor: false as const,
         isPodMember: false as const,
         user: null,
@@ -51,6 +52,7 @@ export class RPCDataAPI implements VisualizationDataAPI {
     }
     return {
       ...identity,
+      isFrameAuthor: identity.isFrameAuthor === true,
       isPodEditor: identity.isPodEditor === true,
       isPodMember: identity.isPodMember === true,
     };

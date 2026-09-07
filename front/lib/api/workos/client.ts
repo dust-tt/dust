@@ -1,6 +1,10 @@
 import config from "@app/lib/api/config";
 import { WorkOS } from "@workos-inc/node";
 
+// SDK default is 60s, which is too long for request-path WorkOS calls
+// (workspace creation, domain flows, membership sync). Keep this bounded.
+const WORKOS_API_TIMEOUT_MS = 10_000;
+
 let workos: WorkOS | null = null;
 
 export function getWorkOS() {
@@ -9,17 +13,16 @@ export function getWorkOS() {
     workos = new WorkOS(config.getWorkOSApiKey(), {
       clientId: config.getWorkOSClientId(),
       apiHostname: "auth-api.dust.tt",
+      timeout: WORKOS_API_TIMEOUT_MS,
     });
   }
 
   return workos;
 }
 
-// The WorkOS SDK defaults to a 60s request timeout. Session resolution runs
-// synchronously on every request, so a WorkOS outage would otherwise add up
-// to 60s of latency before falling back to a locally cached session. This
-// client is dedicated to that path so it can fail fast; other call sites
-// (admin scripts, migrations, background sync) keep the default client.
+// Session resolution runs synchronously on every request, so a WorkOS outage
+// would otherwise add the full API timeout before falling back to a locally
+// cached session. This client is dedicated to that path so it can fail faster.
 const SESSION_AUTH_TIMEOUT_MS = 5_000;
 
 let workosForSessionAuth: WorkOS | null = null;

@@ -13,6 +13,7 @@ import type {
   AgentConfigurationType,
   AgentFetchVariant,
   AgentModelConfigurationType,
+  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 
@@ -188,4 +189,24 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   }
 
   return agentConfigurationTypes;
+}
+
+/**
+ * Admins can list every agent of the workspace but the prompt, skills and knowledge of the agents
+ * they cannot read (unpublished, or built on spaces they are not a member of) stay private. Tools
+ * live in `actions` alongside knowledge, so all actions are dropped for now. `canRead` is set to
+ * false so clients can tell the details were redacted. A light fetch is enough as input: the
+ * fields that only the full variant carries are the redacted ones.
+ */
+export function redactPrivateAgentConfigurationFields(
+  agent: LightAgentConfigurationType
+): AgentConfigurationType {
+  return {
+    ...agent,
+    instructions: null,
+    instructionsHtml: null,
+    actions: [],
+    skills: [],
+    canRead: false,
+  };
 }

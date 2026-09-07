@@ -7,6 +7,7 @@ import {
   hasRelations,
   isDustProvidedSkill,
 } from "@app/lib/skill";
+import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type {
   SkillRelations,
@@ -15,6 +16,7 @@ import type {
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
+  Chip,
   ContentMessage,
   ContentMessageAction,
   InfoCircle,
@@ -141,12 +143,23 @@ export function SkillDetailsHeader({
     });
 
   const SkillAvatar = getSkillAvatarIcon(skill);
+  const availabilityDisplay = SKILL_AVAILABILITY_DISPLAY[skill.availability];
 
   return (
     <div className="flex flex-col items-center gap-4 pt-4">
       <div className="relative flex items-center justify-center">
-        {/* eslint-disable-next-line react-hooks/static-components */}
-        <SkillAvatar name="Skill avatar" size="xl" />
+        <div className="relative flex flex-col items-center gap-2">
+          {/* eslint-disable-next-line react-hooks/static-components */}
+          <SkillAvatar name="Skill avatar" size="xl" />
+          {skill.status === "active" && (
+            <Chip
+              size="mini"
+              color={availabilityDisplay.color}
+              label={availabilityDisplay.label}
+              className="absolute -bottom-3 shadow-sm"
+            />
+          )}
+        </div>
       </div>
 
       {/* Title and edit info */}

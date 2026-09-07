@@ -4,7 +4,7 @@ import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_sou
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import {
   CONNECTOR_CONFIGURATIONS,
   isConnectionIdRequiredForProvider,
@@ -24,6 +24,7 @@ import {
   withTracking,
 } from "@app/lib/tracking";
 import type { PostDataSourceRequestBody } from "@app/types/api/data_sources";
+import type { CellInfo } from "@app/types/cell";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -33,7 +34,6 @@ import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthUseCase } from "@app/types/oauth/lib";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import type { PlanType } from "@app/types/plan";
-import type { RegionInfo } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -74,13 +74,13 @@ export async function setupConnection({
   provider,
   useCase = "connection",
   extraConfig,
-  regionInfo,
+  cellInfo,
 }: {
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
   useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
-  regionInfo: RegionInfo | null;
+  cellInfo: CellInfo | null;
 }): Promise<
   Result<{ connectionId: string; relatedCredentialId?: string }, Error>
 > {
@@ -94,7 +94,7 @@ export async function setupConnection({
     provider,
     useCase,
     extraConfig,
-    regionInfo,
+    cellInfo,
   });
   if (!cRes.isOk()) {
     return cRes;
@@ -135,7 +135,7 @@ export const AddConnectionMenu = ({
   const { isDark } = useTheme();
   const { featureFlags } = useFeatureFlags();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   const handleOnClose = useCallback(
     () =>
@@ -245,7 +245,7 @@ export const AddConnectionMenu = ({
         owner,
         provider,
         extraConfig,
-        regionInfo: regionContext.regionInfo,
+        cellInfo: cellContext.cellInfo,
       });
       if (connectionRes.isErr()) {
         throw connectionRes.error;

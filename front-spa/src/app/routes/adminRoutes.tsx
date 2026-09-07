@@ -4,10 +4,6 @@ import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 
-const AnalyticsPage = withSuspense(
-  () => import("@dust-tt/front/components/pages/workspace/AnalyticsPage"),
-  "AnalyticsPage"
-);
 const AnalyticsConsumptionPage = withSuspense(
   () =>
     import(
@@ -117,9 +113,11 @@ export const adminRoutes: RouteObject[] = [
     element: <RequireRoleLayout requiredRole="manager" />,
     children: [
       { path: "members", element: <MembersPage /> },
-      // Legacy analytics page, kept for direct access but intentionally absent
-      // from the admin sidebar.
-      { path: "analytics", element: <AnalyticsPage /> },
+      // Legacy analytics page, now superseded by consumption analytics.
+      {
+        path: "analytics",
+        element: <Navigate to="../analytics/consumption" replace />,
+      },
       {
         path: "analytics/consumption",
         element: <AnalyticsConsumptionPage />,

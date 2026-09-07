@@ -71,6 +71,7 @@ const EXTENSION_WHITELIST = [
   ".avdl", // Apache Avro IDL definition
   ".lkml", // Looker LookML model/view files
   ".lookml", // Looker legacy dashboard files
+  ".feature", // Cucumber/Gherkin feature files (BDD tests)
 
   ".item", // Talend files, a data integration/ETL platform.
 

@@ -1,6 +1,8 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
+import path from "node:path";
+
 import config from "@app/lib/api/config";
 import {
   SCOPED_PREFIX_CONVERSATION,
@@ -12,7 +14,10 @@ import {
   getProcessedContentType,
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
+import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
+import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
+import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import {
   getDefaultFrameShareScope,
   sendFrameSharedEmail,
@@ -33,9 +38,13 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   AuthorizedFileAccessModel,
@@ -44,6 +53,8 @@ import {
   ShareableFileModel,
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
+import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
+import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -53,6 +64,12 @@ import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import {
+  getFrameBasePath,
+  getFramePublicationUiBundlePath,
+  getFramesBasePath,
+} from "@app/types/api/frame_storage";
 import { CoreAPI } from "@app/types/core/core_api";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -72,8 +89,10 @@ import {
   frameSlideshowContentType,
   frameV2ContentType,
   isConversationFileUseCase,
+  isFrameContentType,
   isInteractiveContentType,
   isSandboxFunctionContentType,
+  isWorkspaceVisibleShareScope,
 } from "@app/types/files";
 import type { FrameScopedPathContext } from "@app/types/mount_path";
 import {
@@ -102,6 +121,7 @@ import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
+  InferAttributes,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -118,6 +138,7 @@ const FRAME_CONTENT_TYPES = new Set([
 ]);
 
 const BATCH_DESTROY_SIZE = 10_000;
+const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
 
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
@@ -151,14 +172,18 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">,
+    { transaction }: { transaction?: Transaction } = {}
   ) {
-    const key = await FileResource.model.create({
-      ...blob,
-      fileName: sanitizeFileSystemName(blob.fileName),
-      status: "created",
-      version: 0,
-    });
+    const key = await FileResource.model.create(
+      {
+        ...blob,
+        fileName: sanitizeFileSystemName(blob.fileName),
+        status: "created",
+        version: 0,
+      },
+      { transaction }
+    );
 
     return new this(FileResource.model, key.get());
   }
@@ -188,6 +213,78 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     return blobs.map((blob) => new this(this.model, blob.get()));
+  }
+
+  /** Cross-workspace lookup for the sandbox reaper only. */
+  static async dangerouslyFetchFrameV2ByModelIds(
+    ids: ModelId[]
+  ): Promise<FileResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const frames = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified: the sandbox reaper operates across workspaces and the ids come from workspace-scoped owner links.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        contentType: frameV2ContentType,
+        id: { [Op.in]: ids },
+      },
+    });
+    return frames.map((frame) => new this(this.model, frame.get()));
+  }
+
+  /**
+   * Poke's workspace Frames list. Keyset paginated on `updatedAt` (epoch ms in `lastValue`),
+   * backed by the partial index on ("workspaceId", "updatedAt" DESC) for this content type.
+   */
+  static async listFrameV2ForWorkspacePaginated(
+    auth: Authenticator,
+    {
+      limit,
+      offset,
+      orderDirection,
+      hasSandbox = false,
+    }: {
+      limit: number;
+      offset: number;
+      orderDirection: "asc" | "desc";
+      hasSandbox?: boolean;
+    }
+  ): Promise<{ frames: FileResource[]; totalCount: number }> {
+    const where: WhereOptions<InferAttributes<FileModel>> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      contentType: frameV2ContentType,
+    };
+
+    const { rows, count } = await this.model.findAndCountAll({
+      where,
+      // A Frame has at most one sandbox owner link (unique index), so the inner join never
+      // duplicates rows. `subQuery: false` keeps the join out of the LIMIT subquery.
+      include: hasSandbox
+        ? [
+            {
+              model: SandboxOwnerModel,
+              as: "sandboxOwnerLinks",
+              required: true,
+              attributes: [],
+            },
+          ]
+        : [],
+      subQuery: false,
+      // `id` breaks ties so a row cannot drift between pages as the offset moves.
+      order: [
+        ["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"],
+        ["id", "DESC"],
+      ],
+      limit,
+      offset,
+    });
+
+    return {
+      frames: rows.map((row) => new this(this.model, row.get())),
+      totalCount: count,
+    };
   }
 
   static override async fetchByModelId(
@@ -229,6 +326,12 @@ export class FileResource extends BaseResource<FileModel> {
     return file ?? null;
   }
 
+  /** Re-fetch this stable identity and keep only a Frames v2 resource. */
+  async fetchFreshFrameV2(auth: Authenticator): Promise<FileResource | null> {
+    const fresh = await FileResource.fetchByModelIdWithAuth(auth, this.id);
+    return fresh?.isFrameV2 ? fresh : null;
+  }
+
   static async fetchByShareTokenWithContent(token: string): Promise<{
     file: FileResource;
     content: string;
@@ -242,11 +345,7 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    // Serve what renders: a published frame's bundle (processed), else the source.
-    const content = await r.value.file.getFileContent(
-      r.value.workspace,
-      r.value.file.getRenderableVersion()
-    );
+    const content = await r.value.file.getRenderableContent(r.value.workspace);
     if (!content) {
       return null;
     }
@@ -434,31 +533,64 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  static async fetchFrameV2Descendants(
+    auth: Authenticator,
+    parent: FileResource
+  ): Promise<FileResource[]> {
+    if (!parent.mountFilePath) {
+      return [];
+    }
+    const owner = auth.getNonNullableWorkspace();
+    const directoryPrefix = parent.mountFilePath.slice(
+      0,
+      parent.mountFilePath.lastIndexOf("/") + 1
+    );
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        contentType: frameV2ContentType,
+        status: "ready",
+        mountFilePath: { [Op.startsWith]: directoryPrefix },
+      },
+    });
+
+    return files
+      .map((file) => new this(this.model, file.get()))
+      .filter((file) => file.id !== parent.id);
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const owner = auth.getNonNullableWorkspace();
+    const workspaceModelId = owner.id;
+
+    await FrameSandboxAdapter.deleteAllForWorkspace(auth);
+    await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
+    await getPrivateUploadBucket().deleteByPrefix(
+      getFramesBasePath({ workspaceId: owner.sId })
+    );
 
     await AuthorizedFileAccessModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete external viewer sessions before shareable files (FK constraint).
     await ExternalViewerSessionModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete sharing grants before shareable files (FK constraint).
     await SharingGrantModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete authorized file accesses before shareable files (FK constraint).
     await this.authorizedFileAccessModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
-      where: { workspaceId },
+      where: { workspaceId: workspaceModelId },
     });
 
     return this.batchDestroyAllForWorkspace(auth);
@@ -501,6 +633,71 @@ export class FileResource extends BaseResource<FileModel> {
     return deletedCount;
   }
 
+  private static async deleteFrameFunctionModelIds(
+    workspaceModelId: ModelId,
+    sandboxFunctionModelIds: ModelId[]
+  ): Promise<number> {
+    if (sandboxFunctionModelIds.length === 0) {
+      return 0;
+    }
+
+    await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
+      { workspaceModelId, sandboxFunctionModelIds }
+    );
+
+    return SandboxFunctionModel.destroy({
+      where: {
+        id: sandboxFunctionModelIds,
+        workspaceId: workspaceModelId,
+      },
+    });
+  }
+
+  private static async deleteAllFrameFunctionsForWorkspace(
+    workspaceModelId: ModelId
+  ): Promise<void> {
+    for (;;) {
+      const sandboxFunctions = await SandboxFunctionModel.findAll({
+        attributes: ["id"],
+        where: {
+          workspaceId: workspaceModelId,
+          publicationId: { [Op.ne]: null },
+        },
+        limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
+      });
+      if (sandboxFunctions.length === 0) {
+        return;
+      }
+
+      await this.deleteFrameFunctionModelIds(
+        workspaceModelId,
+        sandboxFunctions.map(({ id }) => id)
+      );
+    }
+  }
+
+  private async deleteFrameFunctions(auth: Authenticator): Promise<void> {
+    assert(this.isFrameV2, "Frame function cleanup requires a Frames v2 file.");
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    assert(
+      this.workspaceId === workspaceModelId,
+      "The Frame must belong to the authenticated workspace."
+    );
+
+    const sandboxFunctions = await SandboxFunctionModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: workspaceModelId,
+        fileId: this.id,
+        publicationId: { [Op.ne]: null },
+      },
+    });
+    await FileResource.deleteFrameFunctionModelIds(
+      workspaceModelId,
+      sandboxFunctions.map(({ id }) => id)
+    );
+  }
+
   static async deleteAllForUser(
     auth: Authenticator,
     user: UserType,
@@ -533,26 +730,42 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+  private async deleteAfterSandboxCleanup(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
     try {
+      if (this.isFrameV2) {
+        await this.deleteFrameFunctions(auth);
+        await getPrivateUploadBucket().deleteByPrefix(
+          getFrameBasePath({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            frameId: this.sId,
+          })
+        );
+      }
+
       if (this.isReady) {
         await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
 
-        // Delete mount file copies if set.
-        await this.deleteMountFileCopies();
+        // Frames v2 source is the package folder deleted before sandbox cleanup. It has no
+        // canonical original/processed/public objects.
+        if (!this.isFrameV2) {
+          // Delete mount file copies if set.
+          await this.deleteMountFileCopies();
 
-        await this.getBucketForVersion("original")
-          .file(this.getCloudStoragePath(auth, "original"))
-          .delete();
+          await this.getBucketForVersion("original")
+            .file(this.getCloudStoragePath(auth, "original"))
+            .delete();
 
-        // Delete the processed file if it exists.
-        await this.getBucketForVersion("processed")
-          .file(this.getCloudStoragePath(auth, "processed"))
-          .delete({ ignoreNotFound: true });
-        // Delete the public file if it exists.
-        await this.getBucketForVersion("public")
-          .file(this.getCloudStoragePath(auth, "public"))
-          .delete({ ignoreNotFound: true });
+          // Delete the processed file if it exists.
+          await this.getBucketForVersion("processed")
+            .file(this.getCloudStoragePath(auth, "processed"))
+            .delete({ ignoreNotFound: true });
+          // Delete the public file if it exists.
+          await this.getBucketForVersion("public")
+            .file(this.getCloudStoragePath(auth, "public"))
+            .delete({ ignoreNotFound: true });
+        }
 
         // Delete sharing grants and access snapshots before shareable file (FK constraint).
         const shareableFile = await FileResource.shareableFileModel.findOne({
@@ -595,6 +808,144 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
+  private async deleteFrameV2(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+    if (this.workspaceId !== owner.id) {
+      return new Err(
+        new Error("The Frame must belong to the authenticated workspace.")
+      );
+    }
+
+    const manifestPath = this.toScopedPath(auth);
+    if (!manifestPath) {
+      return new Err(new Error("Frame source path not found."));
+    }
+    const sourceDirectory = DustFileSystem.normalizeScopedPath(
+      path.posix.dirname(manifestPath)
+    );
+    if (
+      !sourceDirectory ||
+      !sourceDirectory.includes("/") ||
+      path.posix.basename(manifestPath) !== FRAME_MANIFEST_FILE
+    ) {
+      return new Err(
+        new Error("Frame deletion requires its source folder under /files.")
+      );
+    }
+
+    const fileSystemResult = await DustFileSystem.fromScopedPath(
+      auth,
+      manifestPath
+    );
+    if (fileSystemResult.isErr()) {
+      return new Err(fileSystemResult.error);
+    }
+    const dustFileSystem = fileSystemResult.value;
+    if (!dustFileSystem.isGCSBacked()) {
+      return new Err(
+        new Error(
+          "Frames v2 deletion does not yet support the database-backed filesystem."
+        )
+      );
+    }
+    const writeAccess = dustFileSystem.checkWriteAccess(sourceDirectory);
+    if (writeAccess.isErr()) {
+      return new Err(writeAccess.error);
+    }
+
+    return withFramePublishLock(this.sId, async () => {
+      const frame = await this.fetchFreshFrameV2(auth);
+      if (!frame || frame.toScopedPath(auth) !== manifestPath) {
+        return new Err(
+          new Error(
+            "The Frame source changed while it was being deleted; retry from its current path."
+          )
+        );
+      }
+
+      const descendantFrames = await FileResource.fetchFrameV2Descendants(
+        auth,
+        frame
+      );
+      if (descendantFrames.length > 0) {
+        return new Err(
+          new Error(
+            "Delete nested Frames before deleting their parent package."
+          )
+        );
+      }
+
+      let projectSpace: SpaceResource | null = null;
+      let projectMetadata: ProjectMetadataResource | null = null;
+      if (frame.useCase === "project_context") {
+        const spaceId = frame.useCaseMetadata?.spaceId;
+        projectSpace = spaceId
+          ? await SpaceResource.fetchById(auth, spaceId)
+          : null;
+        if (!projectSpace?.isProject()) {
+          return new Err(new Error("Frame source Pod not found."));
+        }
+        projectMetadata = await ProjectMetadataResource.fetchBySpace(
+          auth,
+          projectSpace
+        );
+      }
+
+      const sourceResult = await dustFileSystem.delete(sourceDirectory, {
+        ignoreNotFound: true,
+      });
+      if (sourceResult.isErr()) {
+        return sourceResult;
+      }
+
+      try {
+        if (projectSpace) {
+          await projectMetadata?.removeFramePath(manifestPath);
+          await cleanupProjectFileFragments({
+            fileModelId: frame.id,
+            spaceModelId: projectSpace.id,
+            workspaceModelId: owner.id,
+          });
+          requestDustProjectIncrementalSync(auth, projectSpace);
+        }
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+
+      const deleteResult = await FrameSandboxAdapter.deleteSandbox(
+        auth,
+        frame,
+        {
+          afterSandboxCleanup: () => frame.deleteAfterSandboxCleanup(auth),
+        }
+      );
+      if (deleteResult.isOk()) {
+        logger.info(
+          {
+            activePublicationId:
+              frame.useCaseMetadata?.activePublicationId ?? "",
+            frameId: frame.sId,
+            source: "api",
+            sourceDirectoryPath: sourceDirectory,
+            workspaceId: owner.sId,
+          },
+          "Deleted Frame v2"
+        );
+      }
+      return deleteResult;
+    });
+  }
+
+  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (this.isFrameV2) {
+      return this.deleteFrameV2(auth);
+    }
+
+    return this.deleteAfterSandboxCleanup(auth);
+  }
+
   get sId(): string {
     return FileResource.modelIdToSId({
       id: this.id,
@@ -629,22 +980,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     const updateResult = await this.update({ status: "ready" });
 
-    // For Interactive Content conversation files, automatically create a ShareableFileModel with
-    // a default scope based on the workspace sharing policy.
-    if (this.isInteractiveContent) {
-      const defaultScope = getDefaultFrameShareScope(
-        auth.getNonNullableWorkspace().sharingPolicy
-      );
-
-      await FileResource.shareableFileModel.upsert({
-        fileId: this.id,
-        shareScope: defaultScope,
-        sharedBy: this.userId ?? null,
-        workspaceId: this.workspaceId,
-        sharedAt: new Date(),
-        token: crypto.randomUUID(),
-      });
-    }
+    await this.ensureShareableFrame(auth);
 
     await this.resolveAndSetMountFilePath(auth);
 
@@ -655,15 +991,20 @@ export class FileResource extends BaseResource<FileModel> {
    * Mark a Frames v2 manifest that already exists at its mount path as ready.
    * Unlike markAsReady(), this must not copy from the canonical upload path.
    */
-  async markFrameV2AsReadyFromMount() {
+  async markFrameV2AsReadyFromMount(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
     assert(this.isFrameV2, "Only Frames v2 can be adopted from a mount path");
     assert(this.mountFilePath, "A mounted Frames v2 manifest requires a path");
+
+    await this.ensureShareableFrame(auth, { transaction });
 
     if (this.status === "ready") {
       return;
     }
 
-    return this.update({ status: "ready" });
+    return this.update({ status: "ready" }, transaction);
   }
 
   get isReady(): boolean {
@@ -686,13 +1027,58 @@ export class FileResource extends BaseResource<FileModel> {
     return this.contentType === frameV2ContentType;
   }
 
-  async setActiveFramePublication(publicationId: string) {
-    return this.update({
-      useCaseMetadata: {
-        ...this.useCaseMetadata,
-        activePublicationId: publicationId,
+  get isShareableFrame(): boolean {
+    return isFrameContentType(this.contentType);
+  }
+
+  async ensureShareableFrame(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (!this.isShareableFrame) {
+      return;
+    }
+
+    const defaultScope = getDefaultFrameShareScope(
+      auth.getNonNullableWorkspace().sharingPolicy
+    );
+
+    await FileResource.shareableFileModel.findOrCreate({
+      where: {
+        fileId: this.id,
+        workspaceId: this.workspaceId,
       },
+      defaults: {
+        fileId: this.id,
+        shareScope: defaultScope,
+        sharedBy: this.userId ?? null,
+        workspaceId: this.workspaceId,
+        sharedAt: new Date(),
+        token: crypto.randomUUID(),
+      },
+      transaction,
     });
+  }
+
+  async setActiveFramePublication(
+    {
+      publicationId,
+      name,
+      description,
+    }: { publicationId: string; name: string; description: string },
+    transaction?: Transaction
+  ) {
+    return this.update(
+      {
+        useCaseMetadata: {
+          ...this.useCaseMetadata,
+          activePublicationId: publicationId,
+          frameName: name,
+          frameDescription: description,
+        },
+      },
+      transaction
+    );
   }
 
   // Content access logic.
@@ -741,6 +1127,43 @@ export class FileResource extends BaseResource<FileModel> {
       return "processed";
     }
     return "original";
+  }
+
+  async getRenderableContent(
+    owner: LightWorkspaceType
+  ): Promise<string | null> {
+    if (!this.isFrameV2) {
+      return this.getFileContent(owner, this.getRenderableVersion());
+    }
+
+    const publicationId = this.useCaseMetadata?.activePublicationId;
+    if (!publicationId || owner.id !== this.workspaceId) {
+      return null;
+    }
+
+    try {
+      return await getPrivateUploadBucket().fetchFileContent(
+        getFramePublicationUiBundlePath({
+          workspaceId: owner.sId,
+          frameId: this.sId,
+          publicationId,
+        })
+      );
+    } catch (error) {
+      if (!isGCSNotFoundError(error)) {
+        throw error;
+      }
+      logger.error(
+        {
+          err: normalizeError(error),
+          fileId: this.sId,
+          publicationId,
+          workspaceId: owner.sId,
+        },
+        "getRenderableContent failed"
+      );
+      return null;
+    }
   }
 
   /**
@@ -1526,31 +1949,30 @@ export class FileResource extends BaseResource<FileModel> {
     shareableFileToken: string;
   }): string {
     assert(
-      this.isInteractiveContent,
-      "getShareUrlForShareableFile called on non-interactive content file"
+      this.isShareableFrame,
+      "getShareUrlForShareableFile called on a non-Frame file"
     );
 
-    if (isInteractiveContentType(this.contentType)) {
-      return `${config.getAppUrl()}/share/frame/${shareableFileToken}`;
-    }
-
-    return `${config.getAppUrl()}/share/file/${shareableFileToken}`;
+    return `${config.getAppUrl()}/share/frame/${shareableFileToken}`;
   }
 
   async setShareScope(
     auth: Authenticator,
-    scope: FileShareScope
+    scope: FileShareScope,
+    transaction?: Transaction
   ): Promise<void> {
-    // Only Interactive Content files can be shared.
-    if (!this.isInteractiveContent) {
-      throw new Error("Only Interactive Content files can be shared");
+    if (!this.isShareableFrame) {
+      throw new Error("Only Frame files can be shared");
     }
+
+    await this.ensureShareableFrame(auth);
 
     const user = auth.getNonNullableUser();
 
     // Always update the existing ShareableFileModel record (never delete).
     const existingShare = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
+      transaction,
     });
 
     assert(
@@ -1558,11 +1980,14 @@ export class FileResource extends BaseResource<FileModel> {
       `ShareableFileModel record not found for file ${this.sId}`
     );
 
-    await existingShare.update({
-      shareScope: scope,
-      sharedBy: user.id,
-      sharedAt: new Date(),
-    });
+    await existingShare.update(
+      {
+        shareScope: scope,
+        sharedBy: user.id,
+        sharedAt: new Date(),
+      },
+      { transaction }
+    );
   }
 
   async getShareInfo(): Promise<{
@@ -1570,7 +1995,7 @@ export class FileResource extends BaseResource<FileModel> {
     sharedAt: number;
     shareUrl: string;
   } | null> {
-    if (!this.isInteractiveContent) {
+    if (!this.isShareableFrame) {
       return null;
     }
 
@@ -1589,6 +2014,49 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     return null;
+  }
+
+  /**
+   * Whether the current workspace member holds the Frame's use right. Source-path access is an
+   * authoring concern and deliberately does not participate here.
+   */
+  async canCurrentUserUseFrame(auth: Authenticator): Promise<boolean> {
+    if (
+      !this.isFrameV2 ||
+      this.workspaceId !== auth.getNonNullableWorkspace().id ||
+      !auth.isUser()
+    ) {
+      return false;
+    }
+
+    const user = auth.user();
+    if (!user) {
+      return false;
+    }
+    const shareableFile = await FileResource.shareableFileModel.findOne({
+      where: { fileId: this.id, workspaceId: this.workspaceId },
+    });
+    if (!shareableFile) {
+      return false;
+    }
+
+    if (
+      shareableFile.shareScope === "public" ||
+      isWorkspaceVisibleShareScope(shareableFile.shareScope) ||
+      this.userId === user.id
+    ) {
+      return true;
+    }
+
+    return (
+      (await FileResource.getActiveGrantForEmail(
+        auth.getNonNullableWorkspace(),
+        {
+          email: user.email,
+          shareableFileId: shareableFile.id,
+        }
+      )) !== null
+    );
   }
 
   static async revokePublicSharingInWorkspace(
@@ -1682,7 +2150,7 @@ export class FileResource extends BaseResource<FileModel> {
         auth,
         file.useCaseMetadata.spaceId
       );
-      if (!space || !space.canRead(auth)) {
+      if (!space || !auth.can("read", space)) {
         return { verified: false };
       }
     }
@@ -1963,14 +2431,17 @@ export class FileResource extends BaseResource<FileModel> {
     };
   }
 
-  private async getShareableFile(): Promise<ShareableFileModel> {
+  private async getShareableFile(
+    transaction?: Transaction
+  ): Promise<ShareableFileModel> {
     assert(
-      this.isInteractiveContent,
-      `Shareable file access requires interactive content (file: ${this.sId})`
+      this.isShareableFrame,
+      `Shareable file access requires a Frame (file: ${this.sId})`
     );
 
     const shareableFile = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
+      transaction,
     });
 
     assert(
@@ -2013,9 +2484,12 @@ export class FileResource extends BaseResource<FileModel> {
 
   async persistAuthorizedFileAccess(
     computed: ComputedAuthorizedFileAccess,
-    allowedAt: Date = new Date()
+    {
+      allowedAt = new Date(),
+      transaction,
+    }: { allowedAt?: Date; transaction?: Transaction } = {}
   ): Promise<void> {
-    const shareableFile = await this.getShareableFile();
+    const shareableFile = await this.getShareableFile(transaction);
 
     const baseRow = {
       workspaceId: this.workspaceId,
@@ -2049,10 +2523,13 @@ export class FileResource extends BaseResource<FileModel> {
         shareableFileId: shareableFile.id,
         workspaceId: this.workspaceId,
       },
+      transaction,
     });
 
     if (rows.length > 0) {
-      await FileResource.authorizedFileAccessModel.bulkCreate(rows);
+      await FileResource.authorizedFileAccessModel.bulkCreate(rows, {
+        transaction,
+      });
     }
   }
 
@@ -2091,24 +2568,27 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Sharing grants logic.
 
-  private async getShareableFileId(): Promise<ModelId> {
-    return (await this.getShareableFile()).id;
+  private async getShareableFileId(
+    transaction?: Transaction
+  ): Promise<ModelId> {
+    return (await this.getShareableFile(transaction)).id;
   }
 
-  async addSharingGrants(
+  async addSharingGrantsAndGetCreatedEmails(
     auth: Authenticator,
-    { emails }: { emails: string[] }
-  ): Promise<SharingGrantType[]> {
+    { emails }: { emails: string[] },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<string[]> {
     assert(
-      this.isInteractiveContent,
-      "addSharingGrants requires interactive content file"
+      this.isShareableFrame,
+      "addSharingGrantsAndGetCreatedEmails requires a Frame file"
     );
     const user = auth.getNonNullableUser();
-    const shareableFileId = await this.getShareableFileId();
+    const shareableFileId = await this.getShareableFileId(transaction);
 
-    const normalizedEmails = emails.map((e) => e.toLowerCase().trim());
-
-    // Find existing active grants for these emails.
+    const normalizedEmails = [
+      ...new Set(emails.map((email) => email.toLowerCase().trim())),
+    ];
     const existingGrants = await SharingGrantModel.findAll({
       where: {
         workspaceId: this.workspaceId,
@@ -2116,54 +2596,84 @@ export class FileResource extends BaseResource<FileModel> {
         email: { [Op.in]: normalizedEmails },
         revokedAt: null,
       },
+      transaction,
     });
+    const existingEmails = new Set(existingGrants.map((grant) => grant.email));
+    const createdEmails = normalizedEmails.filter(
+      (email) => !existingEmails.has(email)
+    );
 
-    const existingEmails = new Set(existingGrants.map((g) => g.email));
-
-    const newEmails = normalizedEmails.filter((e) => !existingEmails.has(e));
-
-    if (newEmails.length > 0) {
-      await SharingGrantModel.bulkCreate(
-        newEmails.map((email) => ({
-          workspaceId: this.workspaceId,
-          shareableFileId,
-          email,
-          grantedBy: user.id,
-          grantedAt: new Date(),
-        }))
-      );
-
-      const shareInfo = await this.getShareInfo();
-      if (shareInfo) {
-        const sharedByName = user.toJSON().fullName;
-        const frameUrl = shareInfo.shareUrl;
-        const shareToken = frameUrl.split("/").at(-1) ?? "";
-
-        // Fire-and-forget: don't block grant creation on email delivery.
-        // TODO: Consider moving email delivery to a dedicated worker/queue  to avoid unbounded
-        // parallelism and improve reliability/retry handling.
-        void Promise.all(
-          newEmails.map((email) =>
-            sendFrameSharedEmail({
-              to: email,
-              sharedByName,
-              frameUrl,
-              shareToken,
-            }).catch(() => {
-              // Silently ignore, email failures should not affect grant creation.
-              logger.info(
-                {
-                  email,
-                  fileId: this.sId,
-                  workspaceId: this.workspaceId,
-                },
-                "Failed to send sharing notification email"
-              );
-            })
-          )
-        );
-      }
+    if (createdEmails.length === 0) {
+      return [];
     }
+
+    await SharingGrantModel.bulkCreate(
+      createdEmails.map((email) => ({
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        email,
+        grantedBy: user.id,
+        grantedAt: new Date(),
+      })),
+      { transaction }
+    );
+
+    const sendNotifications = async () => {
+      const shareInfo = await this.getShareInfo();
+      if (!shareInfo) {
+        return;
+      }
+      const frameUrl = shareInfo.shareUrl;
+      const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+      for (const email of createdEmails) {
+        void sendFrameSharedEmail({
+          to: email,
+          sharedByName: user.toJSON().fullName,
+          frameUrl,
+          shareToken,
+        }).catch((error) => {
+          logger.info(
+            {
+              email,
+              error: normalizeError(error),
+              fileId: this.sId,
+              workspaceId: this.workspaceId,
+            },
+            "Failed to send sharing notification email"
+          );
+        });
+      }
+    };
+    const scheduleNotifications = () => {
+      void sendNotifications().catch((error) => {
+        logger.error(
+          {
+            error: normalizeError(error),
+            fileId: this.sId,
+            workspaceId: this.workspaceId,
+          },
+          "Failed to send Frame sharing notifications"
+        );
+      });
+    };
+
+    if (transaction) {
+      transaction.afterCommit(scheduleNotifications);
+    } else {
+      scheduleNotifications();
+    }
+
+    return createdEmails;
+  }
+
+  async addSharingGrants(
+    auth: Authenticator,
+    { emails }: { emails: string[] }
+  ): Promise<SharingGrantType[]> {
+    assert(this.isShareableFrame, "addSharingGrants requires a Frame file");
+    await this.ensureShareableFrame(auth);
+    await this.addSharingGrantsAndGetCreatedEmails(auth, { emails });
 
     return this.listActiveSharingGrants();
   }
@@ -2173,10 +2683,7 @@ export class FileResource extends BaseResource<FileModel> {
   }: {
     grantId: ModelId;
   }): Promise<Result<{ email: string }, DustError>> {
-    assert(
-      this.isInteractiveContent,
-      "revokeSharingGrant requires interactive content file"
-    );
+    assert(this.isShareableFrame, "revokeSharingGrant requires a Frame file");
     const shareableFileId = await this.getShareableFileId();
 
     const grant = await SharingGrantModel.findOne({
@@ -2224,8 +2731,8 @@ export class FileResource extends BaseResource<FileModel> {
 
   async listActiveSharingGrants(): Promise<SharingGrantType[]> {
     assert(
-      this.isInteractiveContent,
-      "listActiveSharingGrants requires interactive content file"
+      this.isShareableFrame,
+      "listActiveSharingGrants requires a Frame file"
     );
     const shareableFileId = await this.getShareableFileId();
 
@@ -2246,10 +2753,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   async listAllSharingGrants(): Promise<SharingGrantType[]> {
-    assert(
-      this.isInteractiveContent,
-      "listAllSharingGrants requires interactive content file"
-    );
+    assert(this.isShareableFrame, "listAllSharingGrants requires a Frame file");
     const shareableFileId = await this.getShareableFileId();
 
     const grants = await SharingGrantModel.findAll({

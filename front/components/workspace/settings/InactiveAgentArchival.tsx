@@ -14,6 +14,10 @@ import { getInactiveAgentArchivalThresholdDays } from "@app/types/user";
 import { cn, InputWithSave, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+export const INACTIVE_AGENT_ARCHIVAL_LABEL = "Archive unused agents";
+export const INACTIVE_AGENT_ARCHIVAL_DESCRIPTION =
+  "Automatically archive unused agents";
+
 interface InactiveAgentArchivalProps {
   owner: WorkspaceType;
 }
@@ -63,10 +67,10 @@ export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
   return (
     <>
       <GovernanceSettingRowLayout
-        label="Archive unused agents"
+        label={INACTIVE_AGENT_ARCHIVAL_LABEL}
         description={
           <>
-            Automatically archive unused agents. Or{" "}
+            {INACTIVE_AGENT_ARCHIVAL_DESCRIPTION}. Or{" "}
             <button
               type="button"
               className="underline"

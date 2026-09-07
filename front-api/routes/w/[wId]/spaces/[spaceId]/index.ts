@@ -17,7 +17,7 @@ import type {
   PatchSpaceResponseBody,
 } from "@app/types/api/spaces";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
-import { normalizeTabsOrder, sortPodFrameTabs } from "@app/types/pod_frame_tab";
+import { normalizeTabsOrder, sortPodFileTabs } from "@app/types/pod_file_tab";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -314,7 +314,7 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
 
-    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+    const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(auth, [
       space,
     ]);
 
@@ -322,17 +322,18 @@ app.get(
       space: {
         ...enrichedSpace,
         categories,
-        canWrite: space.canWrite(auth),
-        canRead: space.canRead(auth),
+        canWrite: auth.can("write", space),
+        canRead: auth.can("read", space),
         isMember: space.isMember(auth),
-        isEditor: space.canAdministrate(auth),
+        isEditor: auth.can("admin", space),
         members: currentMembers,
         description: meta?.description ?? null,
         archivedAt: meta?.archivedAt?.getTime() ?? null,
-        todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
-        lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
+        // Automated task generation removed; keep fields hardcoded for API compat.
+        todoGenerationEnabled: false,
+        lastTodoAnalysisAt: null,
         pinnedFramePath: meta?.pinnedFramePath ?? null,
-        frameTabs: sortPodFrameTabs(meta?.frameTabs ?? []),
+        frameTabs: sortPodFileTabs(meta?.frameTabs ?? []),
         tabsOrder: normalizeTabsOrder(
           meta?.tabsOrder ?? [],
           (meta?.frameTabs ?? []).map((tab) => tab.path)
@@ -351,7 +352,7 @@ app.patch(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -442,7 +443,7 @@ app.delete(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

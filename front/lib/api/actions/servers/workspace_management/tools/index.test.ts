@@ -89,15 +89,17 @@ async function callToolLines(
   return (await callTool(name, params, auth)).split("\n");
 }
 
+// An authenticator for a freshly created regular member of the workspace.
+async function createOtherMemberAuth(workspace: LightWorkspaceType) {
+  const agentOwner = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
+  return Authenticator.fromUserIdAndWorkspaceId(agentOwner.sId, workspace.sId);
+}
+
 // Creates, as another workspace member, one published agent, one unpublished agent the caller
 // does not edit, and one published agent requesting a space the caller cannot read.
 async function setupOtherMembersAgents(workspace: LightWorkspaceType) {
-  const agentOwner = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
-  const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    agentOwner.sId,
-    workspace.sId
-  );
+  const agentOwnerAuth = await createOtherMemberAuth(workspace);
 
   const restrictedSpace = await SpaceFactory.regular(
     agentOwnerAuth.getNonNullableWorkspace()
@@ -309,6 +311,74 @@ describe("workspace_management tools", () => {
       );
 
       expect(text).toContain("No agent found");
+    });
+
+    it("redacts the private fields of an unpublished agent for a non-editor admin", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const agentOwnerAuth = await createOtherMemberAuth(workspace);
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        agentOwnerAuth,
+        { name: "Unpublished Agent", scope: "hidden" }
+      );
+
+      const text = await callTool(
+        "get_agent_details",
+        { agentId: agent.sId },
+        authenticator
+      );
+
+      expect(text).toContain("Unpublished Agent");
+      expect(text).toContain(`Description: ${agent.description}`);
+      expect(text).toContain("private");
+      expect(text).not.toContain("Test Instructions");
+    });
+
+    it("redacts the private fields of an agent built on a space the admin cannot read", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const agentOwnerAuth = await createOtherMemberAuth(workspace);
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        agentOwnerAuth,
+        {
+          name: "Restricted Space Agent",
+          scope: "visible",
+          requestedSpaceIds: [restrictedSpace.id],
+        }
+      );
+
+      const text = await callTool(
+        "get_agent_details",
+        { agentId: agent.sId },
+        authenticator
+      );
+
+      expect(text).toContain("Restricted Space Agent");
+      expect(text).toContain("private");
+      expect(text).not.toContain("Test Instructions");
+    });
+
+    it("does not reveal an unpublished agent to a non-editor member", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "user",
+      });
+      const agentOwnerAuth = await createOtherMemberAuth(workspace);
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        agentOwnerAuth,
+        { name: "Unpublished Agent", scope: "hidden" }
+      );
+
+      const text = await callTool(
+        "get_agent_details",
+        { agentId: agent.sId },
+        authenticator
+      );
+
+      expect(text).toContain("No agent found");
+      expect(text).not.toContain("Unpublished Agent");
     });
   });
 

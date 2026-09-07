@@ -125,7 +125,7 @@ async function restoreWorkspaceSkillEditors(
       continue;
     }
 
-    const restoredUserIds = await group.restoreMembers(auth);
+    const restoredUserIds = await group.dangerouslyRestoreMembers(auth);
     membershipsRestored += restoredUserIds.length;
 
     logger.info(

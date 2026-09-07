@@ -11,9 +11,9 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { Request, Response } from "express";
 
-// Notion content can be reached through several domains: the classic notion.so,
-// published sites on notion.site, and the newer notion.com (e.g. app.notion.com).
-const VALID_NOTION_HOSTS = ["notion.so", "notion.site", "notion.com"];
+// Notion content can be reached through the legacy app domain, the current app domain,
+// and published sites.
+const VALID_NOTION_HOSTS = ["notion.so", "notion.site", "app.notion.com"];
 
 function isValidNotionUrl(url: string): boolean {
   if (!URL.canParse(url)) {

@@ -1,3 +1,4 @@
+import type { RelocationStatement } from "@app/temporal/relocation/activities/types";
 import { isArrayOfPlainObjects } from "@app/temporal/relocation/activities/types";
 
 const DEFAULT_CHUNK_SIZE = 250;
@@ -30,7 +31,7 @@ export function generateParameterizedInsertStatements(
     onConflict?: "ignore" | "update";
     chunkSize?: number;
   }
-): { sql: string; params: any[] }[] {
+): RelocationStatement[] {
   if (rows.length === 0) {
     return [];
   }
@@ -39,7 +40,7 @@ export function generateParameterizedInsertStatements(
   const columns = Object.keys(rows[0]);
   const quotedColumns = columns.map((col) => `"${col}"`);
 
-  const out: { sql: string; params: any[] }[] = [];
+  const out: RelocationStatement[] = [];
 
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
@@ -86,7 +87,7 @@ export function generateParameterizedInsertStatements(
     }
     sql += ";";
 
-    out.push({ sql, params });
+    out.push({ columns, sql, params });
   }
 
   return out;

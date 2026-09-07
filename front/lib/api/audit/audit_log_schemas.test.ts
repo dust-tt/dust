@@ -108,7 +108,7 @@ describe("audit log schemas", () => {
     ).toEqual([]);
   });
 
-  it("all schema metadata keys are snake_case per [AUDIT9]", () => {
+  it("all schema metadata keys are snake_case per [audit-snake-case-metadata-keys]", () => {
     // snake_case = lowercase letters, digits, and underscores only, must start
     // with a letter. Rejects camelCase, PascalCase, kebab-case, and
     // SCREAMING_SNAKE_CASE.
@@ -131,7 +131,7 @@ describe("audit log schemas", () => {
     }
     expect(
       violations,
-      `Non-snake_case metadata keys (per [AUDIT9]):\n${violations.join("\n")}`
+      `Non-snake_case metadata keys (per [audit-snake-case-metadata-keys]):\n${violations.join("\n")}`
     ).toEqual([]);
   });
 });

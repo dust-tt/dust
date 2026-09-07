@@ -4,8 +4,10 @@ import { pokeAuth } from "@front-api/middlewares/poke_auth";
 import admin from "./admin";
 import authContext from "./auth-context";
 import cache from "./cache";
+import cells from "./cells";
 import connectors from "./connectors";
 import coupons from "./coupons";
+import degradedModels from "./degraded_models";
 import featureFlags from "./feature-flags";
 import globalAgentFeedbacks from "./global-agent-feedbacks";
 import kill from "./kill";
@@ -13,7 +15,6 @@ import metronome from "./metronome";
 import plans from "./plans";
 import plugins from "./plugins";
 import productionChecks from "./production-checks";
-import region from "./region";
 import sandboxKill from "./sandbox_kill";
 import search from "./search";
 import stripe from "./stripe";
@@ -21,7 +22,8 @@ import templates from "./templates";
 import workspaces from "./workspaces";
 
 // Mounted at /api/poke. Every route below inherits pokeAuth, which resolves
-// the super-user Authenticator and stashes it on the context.
+// a super-user Authenticator (Cloudflare Access JWT, or WorkOS session
+// fallback) and stashes it on the context.
 const app = pokeApp();
 
 app.use("*", pokeAuth);
@@ -29,8 +31,10 @@ app.use("*", pokeAuth);
 app.route("/admin", admin);
 app.route("/auth-context", authContext);
 app.route("/cache", cache);
+app.route("/cells", cells);
 app.route("/connectors", connectors);
 app.route("/coupons", coupons);
+app.route("/degraded_models", degradedModels);
 app.route("/feature-flags", featureFlags);
 app.route("/global-agent-feedbacks", globalAgentFeedbacks);
 app.route("/kill", kill);
@@ -38,7 +42,6 @@ app.route("/metronome", metronome);
 app.route("/plans", plans);
 app.route("/plugins", plugins);
 app.route("/production-checks", productionChecks);
-app.route("/region", region);
 app.route("/sandbox_kill", sandboxKill);
 app.route("/search", search);
 app.route("/stripe", stripe);

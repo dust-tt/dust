@@ -73,6 +73,21 @@ export function isAgentLoopDataSoftDeleteError(
   );
 }
 
+class AgentLoopDataModelNotFoundError extends Error {
+  readonly type = "model_not_found" as const;
+
+  constructor(modelId: string) {
+    super(`The selected model was not found ${modelId}.`);
+    this.name = "AgentLoopDataModelNotFoundError";
+  }
+}
+
+export function isAgentLoopDataModelNotFoundError(
+  error: Error
+): error is AgentLoopDataModelNotFoundError {
+  return error instanceof AgentLoopDataModelNotFoundError;
+}
+
 export type ConversationCaching =
   | { useCachedGetConversation: false }
   | { useCachedGetConversation: true; unicitySuffix: string; ttlMs: number };
@@ -511,9 +526,7 @@ async function buildAgentLoopRuntimeData(
 
   if (!endpoint) {
     return new Err(
-      new Error(
-        `The selected model was not found ${resolvedModelConfig.modelId}.`
-      )
+      new AgentLoopDataModelNotFoundError(resolvedModelConfig.modelId)
     );
   }
 

@@ -392,6 +392,7 @@ async function mintFunctionInvocationToken(
   const token = await generateSandboxFunctionInvocationToken(auth, {
     sandbox,
     sandboxFunction,
+    owner: { kind: "pod", spaceId: pod.sId },
     invocationId,
     execId,
     noTools: false,

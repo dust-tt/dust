@@ -26,7 +26,7 @@ app.get("/", async (ctx): HandlerResult<SpacesLookupResponseBody> => {
   const uniqueIds = Array.from(new Set(ids));
   const spaces = await SpaceResource.fetchByIds(auth, uniqueIds);
   const openProjects = spaces.filter(
-    (space) => space.isProject() && space.canRead(auth)
+    (space) => space.isProject() && auth.can("read", space)
   );
 
   const projectsWithDescriptions = await enrichProjectsWithMetadata(

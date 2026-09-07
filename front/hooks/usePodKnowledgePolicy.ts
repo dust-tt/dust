@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { isManualPodFilesManagementAllowed } from "@app/lib/workspace_policies";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
@@ -14,7 +15,7 @@ export function usePodKnowledgePolicy({ owner }: UsePodKnowledgePolicyProps) {
   const [
     allowManualPodKnowledgeManagement,
     setAllowManualPodKnowledgeManagement,
-  ] = useState(owner.metadata?.allowManualProjectKnowledgeManagement !== false);
+  ] = useState(isManualPodFilesManagementAllowed(owner));
 
   const doUpdatePodKnowledgePolicy = async (nextValue: boolean) => {
     setIsChanging(true);

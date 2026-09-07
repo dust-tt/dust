@@ -45,6 +45,7 @@ describe("POST /api/w/:wId/me/analytics/automations/triggers", () => {
 
   it("returns the caller's own triggers", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       role: "user",
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
@@ -74,6 +75,7 @@ describe("POST /api/w/:wId/me/analytics/automations/triggers", () => {
 
   it("applies filters and validates the request", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       role: "user",
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);

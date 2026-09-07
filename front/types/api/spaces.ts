@@ -1,9 +1,6 @@
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
-import {
-  PodFrameTabsSchema,
-  PodTabsOrderSchema,
-} from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
+import { PodFileTabsSchema, PodTabsOrderSchema } from "@app/types/pod_file_tab";
 import type { EnrichedSpaceType, PodType, SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
 import { z } from "zod";
@@ -45,7 +42,7 @@ export const PatchPodMetadataBodySchema = z.object({
   todoGenerationEnabled: z.boolean().optional(),
   initialTodoAnalysisLookback: z.enum(["now", "last_24h", "max"]).optional(),
   pinnedFramePath: z.string().nullable().optional(),
-  frameTabs: PodFrameTabsSchema.optional(),
+  frameTabs: PodFileTabsSchema.optional(),
   tabsOrder: PodTabsOrderSchema.optional(),
   defaultAgentId: z.string().nullable().optional(),
   defaultSkillIds: z.array(z.string()).optional(),
@@ -105,7 +102,7 @@ export type RichSpaceType = EnrichedSpaceType & {
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
-  frameTabs: PodFrameTab[];
+  frameTabs: PodFileTab[];
   tabsOrder: string[];
   /** Workspace admins control membership and connected data (project spaces only). */
   isAdminControlled: boolean;

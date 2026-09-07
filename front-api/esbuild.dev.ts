@@ -21,6 +21,8 @@ const WATCH_TARGET = BUILD_TARGETS[0];
 const SHUTDOWN_GRACE_MS = 2000;
 const UPSTREAM_READY_TIMEOUT_MS = 30_000;
 const UPSTREAM_PROBE_INTERVAL_MS = 75;
+// Avoid pegging CPU/ports if the child crash-loops on boot.
+const CRASH_RESTART_DELAY_MS = 750;
 const UPSTREAM_HOSTNAME = "127.0.0.1";
 
 // Public-facing dev port: clients always connect here. The watcher binds it
@@ -32,6 +34,11 @@ const PUBLIC_HOSTNAME = process.env.HOSTNAME ?? "localhost";
 let child: ChildProcess | null = null;
 let upstreamPort: number | null = null;
 let proxyServer: Server | null = null;
+// Module-scoped so the child `exit` handler can avoid bouncing during Ctrl+C.
+let shuttingDown = false;
+// True while any restart attempt is in flight (build-triggered or crash-triggered).
+let restarting = false;
+let pendingRestart = false;
 
 function waitForExit(proc: ChildProcess, graceMs: number): Promise<void> {
   return new Promise((resolve) => {
@@ -131,7 +138,10 @@ function handleProxyRequest(req: IncomingMessage, res: ServerResponse): void {
   const port = upstreamPort;
   if (port === null) {
     res.writeHead(503, { "Content-Type": "text/plain" });
-    res.end("front-api: no upstream ready yet (initial build in progress)\n");
+    const why = restarting
+      ? "upstream restart in progress"
+      : "no upstream (build pending or server crashed)";
+    res.end(`front-api: ${why}\n`);
     return;
   }
   const upstreamReq = httpRequest(
@@ -183,6 +193,17 @@ async function restartServer(target: BuildTarget) {
     if (next === child) {
       child = null;
       upstreamPort = null;
+      // Without this, the proxy keeps serving 503 forever until the next
+      // esbuild rebuild — the classic "stuck" front-api dev state.
+      if (!shuttingDown) {
+        console.error("[watch] live upstream died — scheduling restart");
+        void (async () => {
+          await new Promise((r) => setTimeout(r, CRASH_RESTART_DELAY_MS));
+          if (!shuttingDown && child === null) {
+            void scheduleRestart(target);
+          }
+        })();
+      }
     }
   });
 
@@ -193,6 +214,12 @@ async function restartServer(target: BuildTarget) {
       `[watch] new child not ready: ${String(err)} — keeping previous upstream`
     );
     next.kill("SIGKILL");
+    // First boot (or after a crash cleared the previous upstream): nothing to
+    // keep. Ask for another attempt so we don't sit on a permanent 503 until
+    // the next file save.
+    if (child === null && !shuttingDown) {
+      pendingRestart = true;
+    }
     return;
   }
 
@@ -216,10 +243,10 @@ async function restartServer(target: BuildTarget) {
 // bundle. We deliberately do not await `scheduleRestart` from `onEnd` — that
 // would block esbuild from starting the next build, which is the very signal
 // we need to coalesce on.
-let restarting = false;
-let pendingRestart = false;
-
 async function scheduleRestart(target: BuildTarget): Promise<void> {
+  if (shuttingDown) {
+    return;
+  }
   if (restarting) {
     pendingRestart = true;
     return;
@@ -229,7 +256,11 @@ async function scheduleRestart(target: BuildTarget): Promise<void> {
     do {
       pendingRestart = false;
       await restartServer(target);
-    } while (pendingRestart);
+      // Failed boot with nothing to fall back on: brief pause before retry.
+      if (pendingRestart && child === null && !shuttingDown) {
+        await new Promise((r) => setTimeout(r, CRASH_RESTART_DELAY_MS));
+      }
+    } while (pendingRestart && !shuttingDown);
   } finally {
     restarting = false;
   }
@@ -265,7 +296,6 @@ async function watchAndServe() {
 
   const ctx = await esbuild.context(getDevBuildOptions(WATCH_TARGET));
 
-  let shuttingDown = false;
   const shutdown = async () => {
     // Repeated SIGINT (mashing Ctrl+C) would otherwise re-enter and stack a new
     // close listener on the proxy server each time, eventually tripping Node's

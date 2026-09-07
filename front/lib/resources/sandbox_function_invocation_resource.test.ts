@@ -1,7 +1,10 @@
 import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/sandbox_functions/tools/inspect_invocations";
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import {
+  ensureFrameSandboxReady,
+  ensurePodSandboxReady,
+} from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type {
   NormalizedSandboxFunctionOutcome,
@@ -14,7 +17,10 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -26,12 +32,51 @@ import type {
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { sandboxFunctionContentType } from "@app/types/files";
+import {
+  frameV2ContentType,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const tracerMocks = vi.hoisted(() => {
+  const setTag = vi.fn();
+  return {
+    setTag,
+    trace: vi.fn(
+      (
+        _name: string,
+        optionsOrCallback: unknown,
+        maybeCallback?: (span: { setTag: typeof setTag }) => unknown
+      ) => {
+        const callback =
+          typeof optionsOrCallback === "function"
+            ? optionsOrCallback
+            : maybeCallback;
+        return callback?.({ setTag });
+      }
+    ),
+  };
+});
+
+vi.mock("@app/logger/tracer", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/logger/tracer")>();
+  return {
+    default: new Proxy(actual.default, {
+      get(target, property) {
+        if (property === "trace") {
+          return tracerMocks.trace;
+        }
+        const value = Reflect.get(target, property);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }),
+  };
+});
+
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
+  ensureFrameSandboxReady: vi.fn(),
   ensurePodSandboxReady: vi.fn(),
 }));
 
@@ -162,6 +207,99 @@ async function setupExecutionTest(
     sandboxFunction,
     sandbox,
     invocation,
+  };
+}
+
+async function setupFrameExecutionTest({
+  standalone = false,
+}: {
+  standalone?: boolean;
+} = {}) {
+  const { authenticator, globalSpace, workspace } = await createResourceTest({
+    role: "admin",
+  });
+  const space = await SpaceFactory.project(workspace);
+  const conversation = standalone
+    ? await ConversationFactory.create(authenticator, {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+      })
+    : null;
+  const publicationId = "publication-1";
+  const frame = await FileFactory.create(authenticator, null, {
+    contentType: frameV2ContentType,
+    fileName: "tasks.frame.json",
+    fileSize: 100,
+    status: "ready",
+    useCase: "conversation",
+    useCaseMetadata: {
+      ...(conversation
+        ? { conversationId: conversation.sId }
+        : { spaceId: space.sId }),
+      activePublicationId: publicationId,
+    },
+  });
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      authenticator,
+      {
+        frame,
+        publicationId,
+        functions: [
+          {
+            name: "add-task",
+            description: "Add a task.",
+            userIdentity: "optional",
+            executionMode: "durable",
+            defaultStake: "low",
+            bundleCode: "export default () => 'ok';",
+            inputSchema,
+            outputSchema,
+          },
+        ],
+      },
+      transaction
+    )
+  );
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchByFramePublicationAndSlug(
+      authenticator,
+      { frame, publicationId, slug: "add-task" }
+    );
+  if (!sandboxFunction) {
+    throw new Error("Expected the Frame function to exist.");
+  }
+  const sandbox = await SandboxResource.makeNew(authenticator, {
+    providerId: "test-frame-provider-id",
+    status: "running",
+    baseImage: "dust-base",
+    version: "0.0.0-test",
+  });
+  vi.mocked(ensureFrameSandboxReady).mockResolvedValue(
+    new Ok({
+      sandbox,
+      freshlyCreated: false,
+      scope: { spaceId: standalone ? null : space.sId },
+    })
+  );
+  vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
+    "sbt-frame-function-token"
+  );
+  const invocation = await SandboxFunctionInvocationResource.makeNew(
+    authenticator,
+    { sandboxFunction, input: { message: "hello" } }
+  );
+
+  return {
+    authenticator,
+    frame,
+    globalSpace,
+    invocation,
+    publicationId,
+    sandbox,
+    sandboxFunction,
+    space,
+    workspace,
   };
 }
 
@@ -684,6 +822,9 @@ describe("SandboxFunctionInvocationResource", () => {
     const { authenticator, space, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();
     const updateLastActivityAtSpy = vi.spyOn(sandbox, "updateLastActivityAt");
+    const loggerInfoSpy = vi
+      .spyOn(logger, "info")
+      .mockImplementation(() => undefined);
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
@@ -728,12 +869,32 @@ describe("SandboxFunctionInvocationResource", () => {
       {
         sandbox,
         sandboxFunction,
+        owner: { kind: "pod", spaceId: space.sId },
         invocationId: invocation.sId,
         execId: expect.any(String),
         noTools: false,
       }
     );
     expect(execSpy).toHaveBeenCalledTimes(1);
+    expect(tracerMocks.trace).toHaveBeenCalledWith(
+      "sandbox.function.execute",
+      { resource: "pod" },
+      expect.any(Function)
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith(
+      "function.owner_kind",
+      "pod"
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith("pod.space_id", space.sId);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionOwnerKind: "pod",
+        functionName: sandboxFunction.slug,
+        invocationId: invocation.sId,
+        spaceId: space.sId,
+      }),
+      "Sandbox function stdout result delivery"
+    );
 
     const execCall = execSpy.mock.calls[0];
     expect(execCall).toBeDefined();
@@ -754,6 +915,9 @@ describe("SandboxFunctionInvocationResource", () => {
       DUST_SANDBOX_TOKEN: "sbt-function-token",
       DUST_FUNCTION_WARM_ENABLED: "0",
     });
+    expect(opts?.envVars).not.toHaveProperty(
+      "DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH"
+    );
     expect(
       JSON.parse(opts?.envVars?.DUST_POD_USER_IDENTITY ?? "")
     ).toMatchObject({
@@ -785,6 +949,165 @@ describe("SandboxFunctionInvocationResource", () => {
       encoding: "utf8",
       bundleSha256: TEST_BUNDLE_SHA256,
     });
+  });
+
+  it("executes a Frame function from its exact immutable publication", async () => {
+    const {
+      authenticator,
+      frame,
+      invocation,
+      publicationId,
+      sandbox,
+      sandboxFunction,
+      space,
+    } = await setupFrameExecutionTest();
+    const execSpy = vi
+      .spyOn(sandbox, "exec")
+      .mockResolvedValue(
+        new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+      );
+    const loggerInfoSpy = vi
+      .spyOn(logger, "info")
+      .mockImplementation(() => undefined);
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    expect(ensureFrameSandboxReady).toHaveBeenCalledWith(authenticator, frame, {
+      requireRunning: false,
+    });
+    expect(ensurePodSandboxReady).not.toHaveBeenCalled();
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      authenticator,
+      expect.objectContaining({
+        sandbox,
+        sandboxFunction,
+        owner: {
+          kind: "frame",
+          frameId: frame.sId,
+          spaceId: space.sId,
+        },
+      })
+    );
+    const execOptions = execSpy.mock.calls[0]?.[2];
+    expect(execOptions?.envVars).toMatchObject({
+      DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH: `/frames/${frame.sId}/publications/${publicationId}/publication.json`,
+      DUST_POD_DATABASES_DIR: "/pod-state/databases",
+      DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
+      DUST_POD_DATABASE_PREFIX: "",
+      DUST_FUNCTIONS_DIR: `/frames/${frame.sId}/publications/${publicationId}/functions`,
+      DUST_SANDBOX_TOKEN: "sbt-frame-function-token",
+    });
+    expect(invocation.gcsPath).toBe(
+      `w/${authenticator.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${invocation.sId}`
+    );
+    expect(tracerMocks.trace).toHaveBeenCalledWith(
+      "sandbox.function.execute",
+      { resource: "frame" },
+      expect.any(Function)
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith("frame.id", frame.sId);
+    expect(tracerMocks.setTag).toHaveBeenCalledWith(
+      "frame.publication_id",
+      publicationId
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith(
+      "frame.source_scope",
+      "pod"
+    );
+    expect(tracerMocks.setTag).toHaveBeenCalledWith(
+      "frame.source_scope_id",
+      space.sId
+    );
+    expect(loggerInfoSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frameId: frame.sId,
+        frameSourceScope: "pod",
+        frameSourceScopeId: space.sId,
+        functionOwnerKind: "frame",
+        functionName: sandboxFunction.slug,
+        invocationId: invocation.sId,
+        publicationId,
+      }),
+      "Sandbox function stdout result delivery"
+    );
+  });
+
+  it("uses the lifecycle-locked Frame location for authorization and token scope", async () => {
+    const { authenticator, frame, invocation, sandbox, sandboxFunction } =
+      await setupFrameExecutionTest();
+    const movedSpace = await SpaceFactory.project(
+      authenticator.getNonNullableWorkspace()
+    );
+    vi.mocked(ensureFrameSandboxReady).mockResolvedValue(
+      new Ok({
+        sandbox,
+        freshlyCreated: false,
+        scope: { spaceId: movedSpace.sId },
+      })
+    );
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+    );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      authenticator,
+      expect.objectContaining({
+        sandboxFunction,
+        owner: {
+          kind: "frame",
+          frameId: frame.sId,
+          spaceId: movedSpace.sId,
+        },
+      })
+    );
+  });
+
+  it("uses the global space token scope for a standalone Frame", async () => {
+    const {
+      authenticator,
+      frame,
+      globalSpace,
+      invocation,
+      sandbox,
+      sandboxFunction,
+    } = await setupFrameExecutionTest({ standalone: true });
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+    );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      authenticator,
+      expect.objectContaining({
+        sandboxFunction,
+        owner: {
+          kind: "frame",
+          frameId: frame.sId,
+          spaceId: globalSpace.sId,
+        },
+      })
+    );
+  });
+
+  it("denies a userless Frame invocation before sandbox wakeup", async () => {
+    const { sandboxFunction, workspace } = await setupFrameExecutionTest();
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const result = await sandboxFunction.invoke(userlessAuth, {});
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("logged-in user");
+    }
+    expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
   });
 
   it("reads back a spilled result and delivers the full output", async () => {

@@ -1,13 +1,13 @@
-@CODING_RULES.md
-
-@AGENTS.local.md
+@CODE-CONTRACTS.md
 
 # Storybook MCP (Sparkle design system)
 
 When working on UI components, always use the `sparkle-storybook` MCP tools to access
 Storybook's component and documentation knowledge before answering or taking any action.
 (The server is served by the Sparkle Storybook dev server — `cd sparkle && npm run storybook`
-— and registered in `.mcp.json` at the repo root.)
+— and registered in `.mcp.json` at the repo root. If you use dust-hive locally, start it with
+`dust-hive restart <env> storybook` instead: the hive forwarder owns port 6006 and routes it to
+the forwarded env.)
 
 - **CRITICAL: Never hallucinate component properties!** Before using ANY property on a
   component from the design system (including common-sounding ones like `shadow`, etc.), you
@@ -41,3 +41,5 @@ sign-in page. Enter the email, continue, then enter the password.
 `front-spa` is a Vite SPA: every path returns HTTP 200 with the same HTML shell.
 `curl` status codes cannot tell you whether a client route exists. `/login` falls through
 to the React catch-all and renders a 404 page. Do not type `/login` in the address bar.
+
+@AGENTS.local.md

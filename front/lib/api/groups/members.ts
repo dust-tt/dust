@@ -44,8 +44,8 @@ export async function getMemberGroups(
   }
 
   const groups = await GroupResource.listUserGroupsInWorkspace({
+    auth,
     user,
-    workspace: auth.getNonNullableWorkspace(),
     groupKinds: [...MANAGEABLE_GROUP_KINDS],
   });
 

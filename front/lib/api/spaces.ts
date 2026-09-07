@@ -11,6 +11,7 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
+import { getReferencedSkillSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -33,10 +34,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import {
-  launchOrSignalProjectTodoWorkflow,
-  stopProjectTodoWorkflow,
-} from "@app/temporal/project_task/client";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
@@ -180,7 +177,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     "Cannot delete spaces that are not regular or project."
   );
   assert(
-    space.canAdministrate(auth),
+    auth.can("admin", space),
     "Only project editors or workspace admins can delete project spaces."
   );
 
@@ -383,23 +380,8 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
         );
 
-        // TODO(skills-manual-spaces): read `manuallyRequestedSpaceIds` here once every skill has
-        // been backfilled, and drop this inference.
-        const previousComputedRequestedSpaceIds =
-          await SkillResource.computeRequestedSpaceIds(auth, {
-            mcpServerViews: skill.mcpServerViews,
-            attachedKnowledge,
-          });
-        const previousComputedRequestedSpaceIdSet = new Set(
-          previousComputedRequestedSpaceIds
-        );
-        const additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
-          (spaceId) =>
-            spaceId !== space.id &&
-            !previousComputedRequestedSpaceIdSet.has(spaceId)
-        );
-
-        // A deleted space cannot stay a manual choice: nothing can grant access to it any more
+        // A deleted space cannot stay a manual choice: nothing can grant access to it any more,
+        // and an id pointing at a missing space would hide the skill from everyone.
         const manuallyRequestedSpaceIds =
           skill.manuallyRequestedSpaceIds.filter(
             (spaceId) => spaceId !== space.id
@@ -411,9 +393,25 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
             mcpServerViews: filteredMCPServerViews,
             attachedKnowledge: filteredAttachedKnowledge,
           });
+
+        // The skills this one references keep requesting their own spaces: deleting an unrelated
+        // space must not drop them. A child may still request the space being deleted and the
+        // cleanup order across skills is not guaranteed, so drop it here rather than let it come
+        // back through a reference.
+        const referencedSkillSpaceIds = (
+          await getReferencedSkillSpaceModelIds(
+            auth,
+            skill.instructions,
+            skill.sId
+          )
+        ).filter((spaceId) => spaceId !== space.id);
+
+        // Rebuilt from the same four reasons a skill requests a space as when it is saved, with
+        // the deleted space stripped from each of them.
         const requestedSpaceIds = uniq([
-          ...computedRequestedSpaceIds,
-          ...additionalRequestedSpaceIds,
+          ...computedRequestedSpaceIds, // Tools and attached knowledge.
+          ...referencedSkillSpaceIds, // Nested skills.
+          ...manuallyRequestedSpaceIds, // Picked by hand.
         ]);
 
         // Log an error if the deleted space is still in requestedSpaceIds.
@@ -508,14 +506,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   logger.info(logContext, "softDeleteSpace: scrub workflow launched");
 
-  if (space.isProject()) {
-    void stopProjectTodoWorkflow({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      spaceId: space.sId,
-      stopReason: "project deleted",
-    });
-  }
-
   return new Ok(undefined);
 }
 
@@ -606,14 +596,6 @@ export async function hardDeleteSpace(
       throw res.error;
     }
   });
-
-  if (space.isProject()) {
-    void stopProjectTodoWorkflow({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      spaceId: space.sId,
-      stopReason: "project hard deleted",
-    });
-  }
 
   return new Ok(undefined);
 }
@@ -789,7 +771,7 @@ export async function createSpaceAndGroup(
         // Seeding a regular space's members requires administering it. The member
         // group is a regular_auto group whose permissions are not checked directly,
         // so gate on the space instead.
-        if (!space.canAdministrate(auth)) {
+        if (!auth.can("admin", space)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -824,7 +806,7 @@ export async function createSpaceAndGroup(
         // For group-based spaces, we need to associate the selected groups with the space
         if (params.groupIds.length > 0) {
           // Associating groups requires administering the space.
-          if (!space.canAdministrate(auth)) {
+          if (!auth.can("admin", space)) {
             return new Err(
               new DustError(
                 "unauthorized",
@@ -918,11 +900,6 @@ export async function createSpaceAndGroup(
         // Don't fail space creation if connector creation fails
         // The connector can be created later if needed
       }
-
-      void launchOrSignalProjectTodoWorkflow({
-        workspaceId: owner.sId,
-        spaceId: space.sId,
-      });
     }
   }
   return result;

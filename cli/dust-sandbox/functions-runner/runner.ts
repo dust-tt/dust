@@ -90,7 +90,8 @@ function emitDbBadArgs(usage: string): number {
 }
 
 // The db helpers return Result; expected refusals are the Err branch. Unexpected throws are
-// bugs — we don't catch our own errors (ERR1); they surface as an internal error at the
+// bugs — we don't catch our own errors (no-catching-own-errors); they surface as an internal error
+// at the
 // front boundary (a runner that emits no envelope).
 async function dbReconcileHandler(args: string[]): Promise<number> {
   const [dbPath, schemaFile] = args;

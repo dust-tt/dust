@@ -54,6 +54,9 @@ app.get(
           includeDeleted: false,
           // Don't include test conversations
           excludeTest: true,
+          // Exclude sub-conversations so the connector GC deletes their
+          // already-indexed documents from the pod's data source.
+          onlyRootConversations: true,
         },
       });
 

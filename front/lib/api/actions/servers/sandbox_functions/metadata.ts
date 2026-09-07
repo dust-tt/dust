@@ -51,7 +51,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
       "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
       "`schema` with zod `input` and `output`. Set `schema.userIdentity` to `optional`, " +
       "`workspace_user_required`, `interactive_workspace_user_required`, or " +
-      "`pod_member_required`. It is bundled on the " +
+      "`pod_member_required`; Frame v2 functions may also use `frame_author_required`. It is bundled on the " +
       "pod sandbox (only `zod` is available to import), and its contract is extracted from the " +
       "`schema` export. The published slug is prefixed with the app the source lives in, so " +
       "re-publishing the same name from the same app replaces the previous version while another " +

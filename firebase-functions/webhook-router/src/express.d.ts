@@ -1,9 +1,9 @@
-import type { Region } from "./webhook-router-config.js";
+import type { Cell } from "./webhook-router-config.js";
 
 declare global {
   namespace Express {
     interface Request {
-      regions?: Region[];
+      cells?: Cell[];
     }
   }
 }

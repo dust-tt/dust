@@ -1,4 +1,5 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMCPServerViewNameConflictMessage } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -171,7 +172,7 @@ export async function updateNameAndDescriptionForMCPServerViews(
         [systemView],
         ["cachedTools"]
       );
-      const { hasConflict } =
+      const { hasConflict, conflictDetails } =
         await MCPServerViewResource.hasNameConflictInSpaceByName(
           auth,
           name,
@@ -184,7 +185,10 @@ export async function updateNameAndDescriptionForMCPServerViews(
         return new Err(
           new DustError(
             "name_conflict",
-            `An existing tool is already using the name "${name}".`
+            getMCPServerViewNameConflictMessage({
+              nameConflict: name,
+              ...(conflictDetails ? { conflictDetails } : {}),
+            })
           )
         );
       }

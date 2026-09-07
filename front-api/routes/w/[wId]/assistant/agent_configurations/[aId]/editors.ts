@@ -55,9 +55,12 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
+    // Admins can see and manage the editors of every agent of the workspace, including the ones
+    // built on spaces they are not a member of.
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "light",
+      dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
     if (!agent) {
       return apiError(ctx, {
@@ -113,16 +116,7 @@ app.get(
     }
 
     const editorGroup = editorGroupRes.value;
-    if (!editorGroup.canRead(auth)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "agent_group_permission_error",
-          message: "User is not authorized to read the agent editors.",
-        },
-      });
-    }
-
+    // Any workspace member can read the editors of an agent.
     const members = await editorGroup.getActiveMembers(auth);
     const memberUsers = members.map((m) => m.toJSON());
 
@@ -149,9 +143,12 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
+    // Admins can see and manage the editors of every agent of the workspace, including the ones
+    // built on spaces they are not a member of.
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "light",
+      dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
     if (!agent) {
       return apiError(ctx, {
@@ -207,7 +204,11 @@ app.patch(
     }
 
     const editorGroup = editorGroupRes.value;
-    if (!editorGroup.canAdministrate(auth)) {
+    // TODO(governance) replace by permission check on agent resource
+    if (
+      !auth.isAdmin() &&
+      !(await editorGroup.isMember(auth.getNonNullableUser()))
+    ) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

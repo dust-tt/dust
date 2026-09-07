@@ -41,6 +41,10 @@ pub enum SearchNodesError {
     CursorSortMismatch(String),
 }
 
+// Current version of each core-owned index. A version bump here must ship with the matching
+// indices/[name]_[version].settings.[region].json and indices/[name]_[version].mappings.json.
+pub const INDEX_VERSIONS: &[(&str, u32)] = &[("data_sources", 1), ("data_sources_nodes", 4)];
+
 const MAX_PAGE_SIZE: u64 = 1000;
 // Number of hits that is tracked exactly, above this value we only get a lower bound on the hit count.
 // Note: this is the default value.

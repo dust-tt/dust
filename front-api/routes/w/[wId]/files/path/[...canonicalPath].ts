@@ -14,6 +14,7 @@ import {
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
+  DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
   getFileFormat,
   normalizeMimeType,
@@ -161,6 +162,7 @@ async function handleHeadRequest(
   };
   if (linkedFileResource) {
     headers[DUST_FILE_ID_HEADER] = linkedFileResource.sId;
+    headers[DUST_FILE_CONTENT_TYPE_HEADER] = linkedFileResource.contentType;
   }
 
   return new Response(null, {

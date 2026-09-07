@@ -6,10 +6,12 @@ import {
   CreditsCell,
   EntityTooltipCard,
 } from "@app/components/workspace/analytics/creditsTableCells";
+import { useTriggerExecutionModes } from "@app/hooks/useTriggerExecutionModes";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import { TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Avatar,
@@ -225,6 +227,7 @@ export interface PoolRowFields {
 
 function PoolCell({ row }: { row: TriggerRowData & PoolRowFields }) {
   const { hasPermission } = useWorkspacePermissions();
+  const { canUseExecutionMode } = useTriggerExecutionModes();
   const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
   const canSetPool = hasPermission("use_workspace_pool", "trigger");
 
@@ -245,6 +248,12 @@ function PoolCell({ row }: { row: TriggerRowData & PoolRowFields }) {
           <DropdownMenuItem
             key={value}
             label={label}
+            disabled={!canUseExecutionMode(value)}
+            tooltip={
+              canUseExecutionMode(value)
+                ? undefined
+                : TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES[value]
+            }
             onClick={() => row.onSetExecutionMode(value)}
           />
         ))}

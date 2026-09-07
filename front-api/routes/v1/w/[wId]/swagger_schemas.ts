@@ -728,6 +728,13 @@
  *           items:
  *             type: string
  *           description: Space identifiers the skill needs access to
+ *         manuallyRequestedSpaceIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: >
+ *             Subset of requestedSpaceIds that was selected by hand rather than derived from the
+ *             skill's tools, knowledge or nested skills
  *         fileAttachments:
  *           type: array
  *           items:
@@ -739,6 +746,9 @@
  *               fileName:
  *                 type: string
  *                 description: Name of the attached file
+ *         canRead:
+ *           type: boolean
+ *           description: Whether the authenticated actor can read the skill's instructions, tools and files. False when they were redacted for a workspace admin who is not a member of every space the skill requires.
  *         canWrite:
  *           type: boolean
  *           description: Whether the authenticated actor can edit the skill
