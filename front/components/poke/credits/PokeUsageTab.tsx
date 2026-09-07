@@ -5,7 +5,9 @@ import { PokeApiKeysUsageTable } from "@app/components/poke/credits/PokeApiKeysU
 import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
+import { RateLimiterStateChip } from "@app/components/poke/credits/RateLimiterStateChip";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
+import type { RateLimiterState } from "@app/lib/api/credits/members_usage";
 import type {
   PokeCreditUsageConfig,
   PokeProgrammaticAlerts,
@@ -38,6 +40,8 @@ interface PokeUsageTabProps {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  spendLimitRateCapEnabled: boolean;
+  programmaticRateLimiterState: RateLimiterState | null;
   programmaticSpendLimitRateCapCount: number | null;
   programmaticEsConsumedAwuCredits: number | null;
   programmaticMetronomeConsumedAwuCredits: number | null;
@@ -106,6 +110,8 @@ interface PokeCreditStatesCardProps {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  spendLimitRateCapEnabled: boolean;
+  programmaticRateLimiterState: RateLimiterState | null;
   programmaticSpendLimitRateCapCount: number | null;
   programmaticEsConsumedAwuCredits: number | null;
   programmaticMetronomeConsumedAwuCredits: number | null;
@@ -119,6 +125,8 @@ function PokeCreditStatesCard({
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
+  spendLimitRateCapEnabled,
+  programmaticRateLimiterState,
   programmaticSpendLimitRateCapCount,
   programmaticEsConsumedAwuCredits,
   programmaticMetronomeConsumedAwuCredits,
@@ -144,13 +152,24 @@ function PokeCreditStatesCard({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Programmatic</span>
-          <Chip
-            size="xs"
-            color={creditStateChipColor(programmaticCreditState)}
-            label={programmaticCreditState}
-          />
-          {programmaticWarningReached && (
-            <Chip size="xs" color="warning" label="near limit" />
+          {spendLimitRateCapEnabled ? (
+            // Flag on: the rate-limiter is authoritative, so show its verdict
+            // and do not read the Metronome `programmaticCreditState`. The RL
+            // state already encodes near-limit, so no separate warning chip.
+            <RateLimiterStateChip
+              rateLimiterState={programmaticRateLimiterState}
+            />
+          ) : (
+            <>
+              <Chip
+                size="xs"
+                color={creditStateChipColor(programmaticCreditState)}
+                label={programmaticCreditState}
+              />
+              {programmaticWarningReached && (
+                <Chip size="xs" color="warning" label="near limit" />
+              )}
+            </>
           )}
           <span className="text-xs text-muted-foreground">
             cap:{" "}
@@ -344,6 +363,8 @@ export function PokeUsageTab({
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
+  spendLimitRateCapEnabled,
+  programmaticRateLimiterState,
   programmaticSpendLimitRateCapCount,
   programmaticEsConsumedAwuCredits,
   programmaticMetronomeConsumedAwuCredits,
@@ -384,6 +405,8 @@ export function PokeUsageTab({
         poolCreditState={poolCreditState}
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
+        spendLimitRateCapEnabled={spendLimitRateCapEnabled}
+        programmaticRateLimiterState={programmaticRateLimiterState}
         programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
         programmaticEsConsumedAwuCredits={programmaticEsConsumedAwuCredits}
         programmaticMetronomeConsumedAwuCredits={
