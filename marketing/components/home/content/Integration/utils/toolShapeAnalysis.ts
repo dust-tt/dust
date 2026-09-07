@@ -182,7 +182,7 @@ export function pickToolsForIntent(
       assertNever(intent);
   }
 
-  // Sort a copy to respect [GEN5] (no mutation of params).
+  // Sort a copy to respect [no-parameter-mutation] (no mutation of params).
   const sorted = [...source].sort(
     (a, b) => rankByTokens(a, tokens) - rankByTokens(b, tokens)
   );

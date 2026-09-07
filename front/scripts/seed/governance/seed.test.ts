@@ -86,6 +86,11 @@ describe("governance seed script integration test", () => {
     const alfredSkill = await seedSkill(ctx, assets.skills.alfredSkill, {
       owner: alfred,
     });
+    const alfredPrivateSpaceSkill = await seedSkill(
+      ctx,
+      assets.skills.alfredPrivateSpaceSkill,
+      { owner: alfred, spaces: privateSpace ? [privateSpace] : [] }
+    );
     const currentUserSkill = await seedSkill(
       ctx,
       assets.skills.currentUserSkill,
@@ -152,6 +157,24 @@ describe("governance seed script integration test", () => {
       new Set([user.sId, bob!.sId, alfred!.sId])
     );
     expect(spaceMembers.map((m) => m.sId)).not.toContain(alfred!.sId);
+
+    // Alfred's published skill requires the private space the current user is not a member of.
+    expect(alfredPrivateSpaceSkill).toBeDefined();
+    expect(alfredPrivateSpaceSkill!.requestedSpaceIds).toEqual([
+      privateSpace!.id,
+    ]);
+    expect(alfredPrivateSpaceSkill!.availability).toBe("workspace_users");
+
+    // Reseeding reuses the private-space skill even though the context user cannot read it.
+    expect(
+      await SkillResource.fetchById(authenticator, alfredPrivateSpaceSkill!.sId)
+    ).toBeNull();
+    const reseededPrivateSpaceSkill = await seedSkill(
+      ctx,
+      assets.skills.alfredPrivateSpaceSkill,
+      { owner: alfred, spaces: privateSpace ? [privateSpace] : [] }
+    );
+    expect(reseededPrivateSpaceSkill?.sId).toBe(alfredPrivateSpaceSkill!.sId);
 
     // Both skills are created with the availability from the assets.
     expect(alfredSkill).toBeDefined();

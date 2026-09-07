@@ -7,7 +7,7 @@ level: error
 
 Disallows `!important` inside string literals and template literals produced
 from JS/TS, which covers CSS-in-JS, inline styles, and runtime-injected
-stylesheets. See [GEN12] in `CODING_RULES.md`.
+stylesheets. See [no-css-important] in `CONTRACTS`.
 
 Narrow exceptions (third-party library overrides, dev tooling) are handled
 via per-file `includes` in `biome.json`, not by suppressing on a case-by-case

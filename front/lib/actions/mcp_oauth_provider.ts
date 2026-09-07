@@ -22,8 +22,15 @@ export class MCPOAuthProvider implements OAuthClientProvider {
   constructor(tokens?: OAuthTokens) {
     this.token = tokens;
   }
-  get redirectUrl(): undefined {
-    return undefined;
+  get redirectUrl(): string {
+    // Must return a concrete redirect URI. The MCP SDK (>=1.29) treats a falsy
+    // `redirectUrl` as a non-interactive (client_credentials) flow and calls
+    // `fetchToken()` with no authorization code and no `prepareTokenRequest`,
+    // throwing "Either provider.prepareTokenRequest() or authorizationCode is
+    // required" on any OAuth-gated server. Returning the URI keeps the
+    // interactive authorization-code path, where `saveCodeVerifier()` throws to
+    // cleanly signal that OAuth is required.
+    return finalizeUriForProvider("mcp");
   }
 
   get clientMetadata(): OAuthClientMetadata {

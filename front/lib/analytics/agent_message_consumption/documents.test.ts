@@ -211,7 +211,16 @@ async function buildDocuments(
   const input = await loadAgentMessageConsumptionAnalyticsInput(context.auth, {
     agentMessageId: context.agentMessage.sId,
   });
-  return input ? buildAgentMessageConsumptionAnalyticsDocuments(input) : null;
+  if (!input) {
+    return null;
+  }
+  const result = buildAgentMessageConsumptionAnalyticsDocuments(input);
+  if (result.isErr()) {
+    throw new Error(
+      `Consumption documents were not built: ${result.error.code}`
+    );
+  }
+  return result.value;
 }
 
 describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {

@@ -360,7 +360,7 @@ export type BaseAgentMessageType = {
   // (recursively) by this message, separate from `costCredits` (this message's own
   // intelligence + tools). Computed lazily on single-message fetches only, so it is
   // `null` everywhere else (e.g. conversation list rendering). Optional during
-  // rollout. See [BACK12].
+  // rollout. See [api-backward-compatibility].
   subAgentCostCredits?: number | null;
 };
 

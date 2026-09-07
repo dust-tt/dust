@@ -65,7 +65,8 @@ GroupPermissionModel.init(
     indexes: [
       // Dedupes grants and covers the "does this group have this grant" direction. A group belongs
       // to a single workspace, so groupId already scopes the workspace — no need for workspaceId
-      // here. Its leading groupId also serves as the FK index (BACK13) for group deletion.
+      // here. Its leading groupId also serves as the FK index (index-foreign-keys) for group
+      // deletion.
       {
         name: "group_permissions_group_gtype_rtype_rid_unique",
         unique: true,

@@ -33,4 +33,5 @@ export type KeyType = {
   monthlyCapMicroUsd: number | null;
   monthlyCapAwuCredits: number | null;
   creditState: ApiKeyCreditState;
+  isSpendCapped: boolean;
 };

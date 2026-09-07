@@ -23,7 +23,7 @@ CREATE TABLE "public"."group_permissions"
 
 -- Dedupes grants and covers the "does this group have this grant" direction. groupId already
 -- scopes the workspace (a group belongs to one workspace), so workspaceId is omitted; the leading
--- groupId also serves as the FK index (BACK13) for group deletion.
+-- groupId also serves as the FK index (index-foreign-keys) for group deletion.
 CREATE UNIQUE INDEX CONCURRENTLY "group_permissions_group_ptype_rtype_rid_unique"
   ON "public"."group_permissions" ("groupId", "permissionType", "resourceType", "resourceId");
 

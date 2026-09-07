@@ -111,7 +111,7 @@ describe("buildLlmConsumptionDocuments", () => {
     if (!input) {
       throw new Error("Consumption analytics input was not loaded");
     }
-    const allocation = buildLatestMessageConsumptionAllocation({
+    const allocationResult = buildLatestMessageConsumptionAllocation({
       actions: input.actions,
       billedCredits: input.billedCredits,
       dustRunIds: input.dustRunIds,
@@ -119,9 +119,12 @@ describe("buildLlmConsumptionDocuments", () => {
       runs: input.runs,
       usages: input.usages,
     });
-    if (!allocation) {
-      throw new Error("Consumption allocation was not built");
+    if (allocationResult.isErr()) {
+      throw new Error(
+        `Consumption allocation was not built: ${allocationResult.error.code}`
+      );
     }
+    const allocation = allocationResult.value;
 
     expect(buildLlmConsumptionDocuments(input, allocation)).toEqual([
       expect.objectContaining({

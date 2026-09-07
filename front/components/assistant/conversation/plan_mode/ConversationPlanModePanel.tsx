@@ -1,5 +1,6 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { extractPlanTitle } from "@app/components/assistant/conversation/plan_mode/utils";
+import { ConfirmContext } from "@app/components/Confirm";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   useClosePlan,
@@ -7,7 +8,8 @@ import {
 } from "@app/hooks/conversations/usePlanFile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Markdown, Spinner, Trash04, XClose } from "@dust-tt/sparkle";
+import { Archive, Button, Markdown, Spinner, XClose } from "@dust-tt/sparkle";
+import { useContext } from "react";
 
 interface ConversationPlanModePanelProps {
   conversation: ConversationWithoutContentType;
@@ -27,6 +29,21 @@ export function ConversationPlanModePanel({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
   });
+  const confirm = useContext(ConfirmContext);
+
+  // Sits next to the panel close button, so ask before archiving.
+  const archivePlan = async () => {
+    const confirmed = await confirm({
+      title: "Archive this plan?",
+      message:
+        "This will hide the current plan from the side panel, but keep it in the conversation's files. The agent can create a new one.",
+      validateLabel: "Archive plan",
+      validateVariant: "primary",
+    });
+    if (confirmed) {
+      await closePlan();
+    }
+  };
 
   const title = extractPlanTitle(content);
 
@@ -44,10 +61,10 @@ export function ConversationPlanModePanel({
               <Button
                 variant="ghost"
                 size="sm"
-                icon={Trash04}
-                tooltip="Close plan"
+                icon={Archive}
+                tooltip="Archive plan"
                 isLoading={isClosing}
-                onClick={() => void closePlan()}
+                onClick={() => void archivePlan()}
               />
             )}
             <Button

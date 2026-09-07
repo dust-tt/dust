@@ -1,19 +1,12 @@
-# [mobile] Coding Rules
-
-## GENERAL
-
-### [GEN1] Consistently bad is better than inconsistently good
-
+@cc [label:coding] reuse-mobile-patterns
 Favor re-using existing patterns (with broad refactors if necessary) over introducing new ones
 sporadically. Match the conventions already established in the codebase.
 
-### [GEN2] Simple but good is better than perfect but complex
-
+@cc [label:coding] prefer-simple-mobile-solutions
 Favor simple and easy to understand approaches vs overly optimized but complex ones.
 
-## SWIFT
-
-### [SWIFT1] Never use force unwrap (`!`) or force cast (`as!`)
+@cc [label:swift] no-force-unwrap-or-cast
+Never use force unwraps (`!`) or force casts (`as!`).
 
 Force unwraps and force casts crash at runtime. Instead:
 
@@ -31,7 +24,8 @@ guard let name = user.firstName else { return }
 guard let scene = connectedScenes.first as? UIWindowScene else { return }
 ```
 
-### [SWIFT2] Never use `try!` or `try?` silently
+@cc [label:swift] no-silent-try-failures
+Never use `try!` or silently discard errors with `try?`.
 
 `try!` crashes on failure. `try?` silently discards the error. Instead:
 
@@ -53,8 +47,7 @@ do {
 }
 ```
 
-### [SWIFT3] No magic values
-
+@cc [label:swift] named-domain-values
 Don't scatter raw literals (strings, numbers, etc.) across the code when they carry domain meaning
 or appear in multiple places. Extract them into named constants, enums, or defaulted properties.
 
@@ -73,10 +66,10 @@ struct TokenRefreshRequest: Encodable {
 }
 ```
 
-### [SWIFT4] Use `Encodable`/`Decodable` over `[String: Any]`
-
-Never use `[String: Any]` for JSON serialization. Define typed structs conforming to `Codable`
-and use `JSONEncoder`/`JSONDecoder`. This ensures compile-time safety and eliminates key typos.
+@cc [label:swift] typed-json-serialization
+JSON serialization must use typed `Encodable`/`Decodable` structs (`Codable` when both are
+needed), never `[String: Any]`. Use `JSONEncoder`/`JSONDecoder` to ensure compile-time safety
+and eliminate key typos.
 
 ```swift
 // BAD
@@ -91,8 +84,7 @@ struct TokenExchangeRequest: Encodable {
 request.httpBody = try encoder.encode(TokenExchangeRequest(code: code, codeVerifier: verifier))
 ```
 
-### [SWIFT5] Check Security framework return values
-
+@cc [label:swift] check-security-framework-results
 `SecRandomCopyBytes`, `SecItemAdd`, `SecItemDelete`, and similar Security framework functions
 return `OSStatus`. Always check the return value — never discard it with `_ =`.
 
@@ -107,12 +99,9 @@ guard status == errSecSuccess else {
 }
 ```
 
-## ARCHITECTURE
-
-### [ARCH1] Views receive data and closures, not view models
-
-Leaf views (views that don't own navigation) should receive data as plain values and actions as
-closures. Only container/root views should hold `@EnvironmentObject` or `@StateObject`
+@cc [label:architecture] views-receive-values-and-closures
+Leaf views (views that don't own navigation) should receive plain data values and action closures,
+not view models. Only container/root views should hold `@EnvironmentObject` or `@StateObject`
 references. This makes views testable, previewable, and decoupled from specific dependencies.
 
 ```swift
@@ -128,8 +117,7 @@ struct ProfileView: View {
 }
 ```
 
-### [ARCH2] Respect abstraction layers
-
+@cc [label:architecture] view-models-use-service-interfaces
 ViewModels should go through service interfaces, not reach into lower layers directly.
 If `AuthService` wraps `KeychainService`, callers should use `AuthService` — never import
 `KeychainService` from a ViewModel.
@@ -142,10 +130,9 @@ let token = KeychainService.load(.accessToken)
 let token = AuthService.loadTokens()?.accessToken
 ```
 
-### [ARCH3] No dead code or no-op branches
-
-Do not leave empty `if` blocks, commented-out logic, or branches that don't affect control flow.
-Either implement the intended behavior or remove the branch entirely.
+@cc [label:architecture] no-dead-code
+Do not leave dead code or no-op branches, including empty `if` blocks, commented-out logic, or
+branches that do not affect control flow. Implement the intended behavior or remove the code.
 
 ```swift
 // BAD
@@ -161,25 +148,21 @@ if !AuthService.isTokenExpired() {
 }
 ```
 
-## CONCURRENCY
-
-### [CONC1] Never call `DispatchQueue.main.sync` from the main thread
+@cc [label:concurrency] no-main-thread-sync-dispatch
+Never call `DispatchQueue.main.sync` from the main thread.
 
 This deadlocks. If you need to assert you're on the main thread, use `MainActor.assumeIsolated`.
 If you need to dispatch to main from a background thread, use `DispatchQueue.main.async` or
 `@MainActor`.
 
-### [CONC2] Clean up retained resources on all exit paths
+@cc [label:concurrency] release-retained-resources-on-exit
+Retained resources must be cleaned up on every terminal path (success, error, and cancellation).
+Objects such as `ASWebAuthenticationSession` retained by a view model must be set to `nil` on
+each of these paths.
 
-Objects like `ASWebAuthenticationSession` that are retained by the view model must be nil'd out
-on every terminal path (success, error, and cancellation) — not just the happy path.
-
-## LOGGING
-
-### [LOG1] Use `os.Logger` for all logging
-
-Do not use `print()` or `debugPrint()`. Use `os.Logger` with the app subsystem and an
-appropriate category. This ensures logs are filterable in Console.app and structured for
+@cc [label:logging] use-os-logger
+Use `os.Logger` for all logging, with the app subsystem and an appropriate category. Do not use
+`print()` or `debugPrint()`. This ensures logs are filterable in Console.app and structured for
 production diagnostics.
 
 ```swift

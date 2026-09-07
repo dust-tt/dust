@@ -7,6 +7,8 @@ import type {
   RunUsageWithRunKeyType,
 } from "@app/lib/resources/run_resource";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const FIRST_ATTRIBUTION_VERSION_WITH_TOOL_ROWS = 2;
 
@@ -21,6 +23,16 @@ export type MessageConsumptionAllocation<
   items: AgentMessageConsumptionItemResource[];
   messageUsages: TUsage[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
+};
+
+export type AllocationSkipReason = {
+  code:
+    | "no_billed_credits"
+    | "no_items_or_dust_run_ids"
+    | "no_message_usages"
+    | "incomplete_attribution"
+    | "reconciliation_failed";
+  context: Record<string, number | boolean>;
 };
 
 /**
@@ -208,9 +220,16 @@ function buildMessageConsumptionAllocationForVersion<
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
-}): MessageConsumptionAllocation<TUsage> | null {
+}): Result<MessageConsumptionAllocation<TUsage>, AllocationSkipReason> {
   if (items.length === 0 || dustRunIds.length === 0) {
-    return null;
+    return new Err({
+      code: "no_items_or_dust_run_ids",
+      context: {
+        attributionVersion,
+        dustRunIdCount: dustRunIds.length,
+        itemCount: items.length,
+      },
+    });
   }
 
   const dustRunIdSet = new Set(dustRunIds);
@@ -221,7 +240,16 @@ function buildMessageConsumptionAllocationForVersion<
     messageRunModelIds.has(usage.runModelId)
   );
   if (messageUsages.length === 0) {
-    return null;
+    return new Err({
+      code: "no_message_usages",
+      context: {
+        attributionVersion,
+        dustRunIdCount: dustRunIds.length,
+        runCount: runs.length,
+        matchedRunCount: messageRunModelIds.size,
+        totalUsageCount: usages.length,
+      },
+    });
   }
 
   const dustRunIdByRunModelId = new Map(
@@ -234,16 +262,27 @@ function buildMessageConsumptionAllocationForVersion<
     })
   );
 
-  if (
-    !hasCompleteModelAttribution(items, messageUsages) ||
-    (attributionVersion >= FIRST_ATTRIBUTION_VERSION_WITH_TOOL_ROWS &&
-      !hasCompleteToolAttribution({
-        actions,
-        items,
-        dustRunIdsWithUsage,
-      }))
-  ) {
-    return null;
+  const completeModel = hasCompleteModelAttribution(items, messageUsages);
+  const completeTool =
+    attributionVersion < FIRST_ATTRIBUTION_VERSION_WITH_TOOL_ROWS ||
+    hasCompleteToolAttribution({
+      actions,
+      items,
+      dustRunIdsWithUsage,
+    });
+
+  if (!completeModel || !completeTool) {
+    return new Err({
+      code: "incomplete_attribution",
+      context: {
+        attributionVersion,
+        completeModel,
+        completeTool,
+        itemCount: items.length,
+        messageUsageCount: messageUsages.length,
+        actionCount: actions.length,
+      },
+    });
   }
 
   const reconciledCreditAmounts = reconcileInputCredits({
@@ -251,15 +290,32 @@ function buildMessageConsumptionAllocationForVersion<
     billedCredits,
   });
   if (!reconciledCreditAmounts) {
-    return null;
+    const billedCreditAmountMicro = roundCreditsToMicroCredits(billedCredits);
+    const nonInputCreditAmountMicro = items.reduce(
+      (total, item) =>
+        item.itemType === "input"
+          ? total
+          : total + item.grossAttributedCreditAmountMicro,
+      0
+    );
+    return new Err({
+      code: "reconciliation_failed",
+      context: {
+        attributionVersion,
+        billedCreditAmountMicro,
+        nonInputCreditAmountMicro,
+        inputItemCount: items.filter((item) => item.itemType === "input")
+          .length,
+      },
+    });
   }
 
-  return {
+  return new Ok({
     attributionVersion,
     items,
     messageUsages,
     reconciledCreditAmounts,
-  };
+  });
 }
 
 /** Selects and allocates the newest self-consistent attribution stored for a message. */
@@ -279,9 +335,9 @@ export function buildLatestMessageConsumptionAllocation<
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
-}): MessageConsumptionAllocation<TUsage> | null {
+}): Result<MessageConsumptionAllocation<TUsage>, AllocationSkipReason> {
   if (billedCredits === null) {
-    return null;
+    return new Err({ code: "no_billed_credits", context: {} });
   }
 
   const itemsByAttributionVersion = new Map<
@@ -298,8 +354,9 @@ export function buildLatestMessageConsumptionAllocation<
   const attributionVersions = [...itemsByAttributionVersion.keys()].sort(
     (left, right) => right - left
   );
+  let lastSkipReason: AllocationSkipReason | undefined;
   for (const attributionVersion of attributionVersions) {
-    const allocation = buildMessageConsumptionAllocationForVersion({
+    const result = buildMessageConsumptionAllocationForVersion({
       actions,
       attributionVersion,
       billedCredits,
@@ -308,10 +365,16 @@ export function buildLatestMessageConsumptionAllocation<
       runs,
       usages,
     });
-    if (allocation) {
-      return allocation;
+    if (result.isOk()) {
+      return result;
     }
+    lastSkipReason = result.error;
   }
 
-  return null;
+  return new Err(
+    lastSkipReason ?? {
+      code: "no_items_or_dust_run_ids",
+      context: { itemCount: 0, dustRunIdCount: dustRunIds.length },
+    }
+  );
 }

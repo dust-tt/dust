@@ -1,10 +1,28 @@
 import { buildLlmConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/llm_documents";
 import type { AgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { buildToolConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/tool_documents";
+import type { AllocationSkipReason } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
-import logger from "@app/logger/logger";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
+export type ConsumptionDocumentsSkipReason =
+  | AllocationSkipReason
+  | {
+      code: "credit_mismatch";
+      context: {
+        attributionVersion: number;
+        indexedCreditMicro: number;
+        billedCreditMicro: number;
+        documentCount: number;
+      };
+    }
+  | {
+      code: "empty_documents";
+      context: Record<string, never>;
+    };
 
 /**
  * Projects one complete message attribution into the document grain of the consumption index:
@@ -23,8 +41,11 @@ import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/
  */
 export function buildAgentMessageConsumptionAnalyticsDocuments(
   input: AgentMessageConsumptionAnalyticsInput
-): AgentMessageConsumptionAnalyticsData[] | null {
-  const allocation = buildLatestMessageConsumptionAllocation({
+): Result<
+  AgentMessageConsumptionAnalyticsData[],
+  ConsumptionDocumentsSkipReason
+> {
+  const allocationResult = buildLatestMessageConsumptionAllocation({
     actions: input.actions,
     billedCredits: input.billedCredits,
     dustRunIds: input.dustRunIds,
@@ -32,9 +53,10 @@ export function buildAgentMessageConsumptionAnalyticsDocuments(
     runs: input.runs,
     usages: input.usages,
   });
-  if (!allocation) {
-    return null;
+  if (allocationResult.isErr()) {
+    return allocationResult;
   }
+  const allocation = allocationResult.value;
 
   const documents = [
     ...buildLlmConsumptionDocuments(input, allocation),
@@ -48,23 +70,18 @@ export function buildAgentMessageConsumptionAnalyticsDocuments(
 
   // This is the final safety check before indexing: every per-usage/action document must reconcile
   // exactly to the authoritative message charge.
-  // TODO(2026-08-07 OBSERVABILITY): Replace with an assert once done implementing.
   const billedCreditMicro = roundCreditsToMicroCredits(input.billedCredits);
   if (indexedCreditMicro !== billedCreditMicro) {
-    logger.warn(
-      {
-        workspaceId: input.workspaceId,
-        agentMessageId: input.agentMessageId,
+    return new Err({
+      code: "credit_mismatch",
+      context: {
         attributionVersion: allocation.attributionVersion,
         indexedCreditMicro,
         billedCreditMicro,
         documentCount: documents.length,
       },
-      "[ConsumptionAnalytics] Indexed credits do not match billed credits"
-    );
-
-    return null;
+    });
   }
 
-  return documents;
+  return new Ok(documents);
 }

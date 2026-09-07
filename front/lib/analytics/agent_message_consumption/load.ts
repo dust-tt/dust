@@ -14,6 +14,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -153,16 +154,26 @@ async function loadAnalyticsUser({
     "Triggering user is missing while loading consumption analytics"
   );
 
-  const groups = await GroupResource.listUserGroupsInWorkspace({
-    auth,
-    user,
-    groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
-    at: completedAt,
-  });
+  const workspace = auth.getNonNullableWorkspace();
+
+  const [groups, seatType] = await Promise.all([
+    GroupResource.listUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+      at: completedAt,
+    }),
+    MembershipResource.getActiveSeatTypeForUserModelId({
+      workspace,
+      userModelId: user.id,
+      at: completedAt,
+    }),
+  ]);
 
   return {
     id: user.sId,
     group_ids: groups.map((group) => group.sId).sort(),
+    seat_type: seatType,
   };
 }
 

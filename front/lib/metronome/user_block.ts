@@ -13,7 +13,7 @@
 //   - `metronome:pool_credit_status:<ws>`: fine-grained workspace pool state
 //     (mirrors `workspaces.poolCreditState`).
 //   - `metronome:pool_depleted:<ws>`: boolean shortcut for
-//     isUserBlockedByMetronome / isApiBlockedByMetronome hot paths (still
+//     isUserBlockedByMetronome / isPoolDepletedByMetronome hot paths (still
 //     maintained alongside pool_credit_status).
 //   - `metronome:programmatic_credit_status:<ws>` / `metronome:programmatic_depleted:<ws>`:
 //     programmatic (API) cap state.
@@ -627,7 +627,7 @@ export async function isProgrammaticApiBlockedByMetronome(
 }
 
 // Workspace-pool-only read for API calls (no per-user cap).
-export async function isApiBlockedByMetronome(
+export async function isPoolDepletedByMetronome(
   workspaceId: string
 ): Promise<boolean> {
   // getWorkspaceCreditPoolStatus has its own DB fallback and cache repopulation.

@@ -25,7 +25,8 @@ import { Client, NovuRequestHandler } from "@novu/framework";
 // We build the handler directly on `NovuRequestHandler` (Novu's documented
 // "custom serve" pattern) rather than `@novu/framework/next`: the Next adapter
 // imports `next/server` at module load, which would pull Next into the
-// standalone Hono server and violate [API9]. Novu only touches the standard
+// standalone Hono server and violate [requests-through-hono-context]. Novu only touches the
+// standard
 // Fetch `Request` surface at runtime, which `ctx.req.raw` already provides.
 // https://docs.novu.co/framework/endpoint#writing-a-custom-serve-function
 

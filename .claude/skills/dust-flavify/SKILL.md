@@ -71,8 +71,8 @@ If the target remains ambiguous, ask once and then default to the current branch
 Do not rely on rule-number ranges copied into this skill.
 
 - Read the applicable `AGENTS.md` files.
-- Read the repository-root `CODING_RULES.md`.
-- Read each touched workspace's `CODING_RULES.md`.
+- Read the repository-root `CONTRACTS`.
+- Read each touched workspace's `CONTRACTS`.
 - Treat those files as canonical even when they contain rules added after this skill was written.
 - Cite their current rule identifiers in findings.
 
@@ -239,7 +239,7 @@ missing context prevents review or hides operational risk.
   operational failure.
 - If evidence is incomplete, write an `OOC` question rather than asserting a defect.
 
-### 8. Run the final `[BACK10]` pass
+### 8. Run the final `[resource-identifier-naming]` pass
 
 Detection is zero-tolerance; severity is contextual.
 
@@ -304,7 +304,7 @@ Produce the report inline:
 ```
 
 Omit empty finding sections. Keep each finding to one to three sentences. Include a surgical
-`suggestion` block only when it is clearly correct and `[BACK10]`-compliant.
+`suggestion` block only when it is clearly correct and `[resource-identifier-naming]`-compliant.
 
 ## Voice
 
@@ -328,7 +328,7 @@ Scan in this order:
    limited?
 5. Is the code simpler without an IIFE, nested function, negated boolean, needless copy, or
    difficult return shape?
-6. Any `[BACK10]` identifier violation?
+6. Any `[resource-identifier-naming]` identifier violation?
 7. Any unsafe assertion, missing discriminated union, wrong exhaustive-switch variant, or missed
    library type?
 8. Any magic value, duplicated constant, mixed unit, or test value that should follow production?

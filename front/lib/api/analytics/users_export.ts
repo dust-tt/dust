@@ -139,7 +139,8 @@ export async function fetchUserExportRows({
     })
   );
 
-  // TODO(BACK5): Migrate to MembershipResource when it supports custom date range filters.
+  // TODO(business-functions-use-resources): Migrate to MembershipResource when it supports custom
+  // date range filters.
   const memberships = await MembershipModel.findAll({
     where: {
       workspaceId: owner.id,

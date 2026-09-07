@@ -8,7 +8,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -27,7 +26,6 @@ export type SessionCookie = {
   sessionData: string;
   organizationId?: string;
   authenticationMethod: WorkOSAuthenticationResponse["authenticationMethod"];
-  region: RegionType;
   workspaceId: string;
 };
 
@@ -107,8 +105,7 @@ export async function _getRefreshedCookie(
   session: ReturnType<WorkOS["userManagement"]["loadSealedSession"]>,
   organizationId: string | undefined,
   authenticationMethod: string | undefined,
-  workspaceId: string | undefined,
-  region: RegionType
+  workspaceId: string | undefined
 ): Promise<string | null> {
   if (await isWorkOSRefreshCircuitOpen()) {
     throw new WorkOSRefreshCircuitOpenError();
@@ -135,7 +132,6 @@ export async function _getRefreshedCookie(
         sessionData: r.sealedSession,
         organizationId,
         authenticationMethod,
-        region,
         workspaceId,
       },
       {
@@ -206,7 +202,6 @@ async function maybeProactiveRefresh({
   organizationId,
   authenticationMethod,
   workspaceId,
-  region,
 }: {
   accessToken: string;
   workOSSessionCookie: string;
@@ -214,7 +209,6 @@ async function maybeProactiveRefresh({
   organizationId: string | undefined;
   authenticationMethod: string | undefined;
   workspaceId: string | undefined;
-  region: RegionType;
 }): Promise<string | null> {
   const expSeconds = getAccessTokenExpirySeconds(accessToken);
   const nowSeconds = Math.floor(Date.now() / 1000);
@@ -235,8 +229,7 @@ async function maybeProactiveRefresh({
     session,
     organizationId,
     authenticationMethod,
-    workspaceId,
-    region
+    workspaceId
   );
 }
 
@@ -326,15 +319,10 @@ export async function getWorkOSSessionFromCookie(
   cookie: string | undefined;
   session: SessionWithUser | undefined;
 }> {
-  const {
-    sessionData,
-    organizationId,
-    authenticationMethod,
-    workspaceId,
-    region,
-  } = await unsealData<SessionCookie>(workOSSessionCookie, {
-    password: config.getWorkOSCookiePassword(),
-  });
+  const { sessionData, organizationId, authenticationMethod, workspaceId } =
+    await unsealData<SessionCookie>(workOSSessionCookie, {
+      password: config.getWorkOSCookiePassword(),
+    });
 
   if (!sessionData) {
     return {
@@ -361,8 +349,7 @@ export async function getWorkOSSessionFromCookie(
           session,
           organizationId,
           authenticationMethod,
-          workspaceId,
-          region
+          workspaceId
         )
       );
       if (refreshedCookie) {
@@ -400,7 +387,6 @@ export async function getWorkOSSessionFromCookie(
           organizationId,
           authenticationMethod,
           workspaceId,
-          region,
         })
     );
 

@@ -82,7 +82,7 @@ function APIKeysOverview({
 
   const activeKeyCount = keys.filter((key) => key.status === "active").length;
   const cappedKeyCount = keys.filter(
-    (key) => key.status === "active" && key.creditState === "capped"
+    (key) => key.status === "active" && key.isSpendCapped
   ).length;
   const revokedKeyCount = keys.length - activeKeyCount;
 
@@ -301,7 +301,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
           period={period}
           isLoading={isKeysLoading}
           isError={!!isKeysError}
-          showAnalyticsConsumption
+          showAnalyticsConsumption={showCreditMonthlyCap}
           isRevoking={isRevoking}
           isGenerating={isGenerating}
           onRevoke={handleRevoke}

@@ -1,6 +1,4 @@
-@CODING_RULES.md
-
-@AGENTS.local.md
+@CODE-CONTRACTS.md
 
 # Storybook MCP (Sparkle design system)
 
@@ -43,3 +41,5 @@ sign-in page. Enter the email, continue, then enter the password.
 `front-spa` is a Vite SPA: every path returns HTTP 200 with the same HTML shell.
 `curl` status codes cannot tell you whether a client route exists. `/login` falls through
 to the React catch-all and renders a 404 page. Do not type `/login` in the address bar.
+
+@AGENTS.local.md

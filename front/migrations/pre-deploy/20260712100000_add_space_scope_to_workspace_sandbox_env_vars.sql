@@ -55,7 +55,7 @@ CREATE UNIQUE INDEX CONCURRENTLY sandbox_env_vars_pod_scope_name_idx ON public.w
 Statement 5
 
 User FKs are SET NULL on user deletion — without these indexes, scrubbing a
-user would scan the table (BACK13). Pre-existing gap on this table.
+user would scan the table (index-foreign-keys). Pre-existing gap on this table.
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;

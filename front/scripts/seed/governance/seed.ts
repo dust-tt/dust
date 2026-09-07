@@ -28,6 +28,7 @@ export interface Assets {
   skills: {
     alfredSkill: SkillAsset;
     currentUserSkill: SkillAsset;
+    alfredPrivateSpaceSkill: SkillAsset;
   };
 }
 
@@ -117,6 +118,13 @@ makeScript({}, async ({ execute }, logger) => {
   await seedSkill(ctx, skills.currentUserSkill, {
     editors: removeNulls([bob, alfred]),
     spaces: restrictedSpace ? [restrictedSpace] : [],
+  });
+  // Alfred's published skill requires the private space the current user is not a member of: the
+  // manage skills page only lists it behind "Show hidden skills", with its guidelines redacted.
+  logger.info("Seeding Alfred's private space skill...");
+  await seedSkill(ctx, skills.alfredPrivateSpaceSkill, {
+    owner: alfred,
+    spaces: privateSpace ? [privateSpace] : [],
   });
 
   // 6. Create an agent edited by the current user that uses Alfred's unpublished skill, plus three

@@ -188,6 +188,7 @@ async function loadConsumptionPools(
     users: catalog.user.map((entry) => ({
       id: entry.value,
       group_ids: [...(groupIdsByUserId.get(entry.value) ?? [])].sort(),
+      seat_type: "pro",
     })),
     models: removeNulls(
       catalog.model.map((entry) => getModelConfigByModelId(entry.value) ?? null)
@@ -378,6 +379,7 @@ function makeLlmDocument(
     }),
     consumption_type: "llm",
     credit_micro: creditMicro,
+    micro_usd: creditMicro,
     gross_credit_micro: {
       system: systemCreditMicro,
       input:
@@ -428,6 +430,7 @@ function makeToolDocument(
     }),
     consumption_type: "tool",
     credit_micro: creditMicro,
+    micro_usd: null,
     gross_credit_micro: {
       system: 0,
       input: null,

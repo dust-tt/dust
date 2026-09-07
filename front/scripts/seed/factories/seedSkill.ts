@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -17,6 +18,11 @@ interface SeedSkillOptions {
   spaces?: SpaceResource[];
 }
 
+/**
+ * @cc [label:product] seed-skill-idempotency
+ * If an active skill with the same name exists in the workspace, return it without creating another,
+ * even when the context user cannot read its required spaces.
+ */
 export async function seedSkill(
   ctx: SeedContext,
   skillAsset: SkillAsset,
@@ -24,10 +30,22 @@ export async function seedSkill(
 ): Promise<SkillResource | null> {
   const { auth, workspace, execute, logger } = ctx;
 
-  const existingSkills = await SkillResource.listByWorkspace(auth, {
-    status: "active",
+  // Looked up on the model rather than through the context user's view: seeded skills may require
+  // spaces the context user is not a member of, and a re-run must still find them (skill names are
+  // unique among a workspace's active skills).
+  const existingSkillRow = await SkillConfigurationModel.findOne({
+    attributes: ["id"],
+    where: {
+      workspaceId: workspace.id,
+      name: skillAsset.name,
+      status: "active",
+    },
   });
-  const existingSkill = existingSkills.find((s) => s.name === skillAsset.name);
+  const [existingSkill] = existingSkillRow
+    ? await SkillResource.fetchByModelIds(auth, [existingSkillRow.id], {
+        permissionFiltering: "dangerously_skip",
+      })
+    : [];
 
   if (existingSkill) {
     logger.info(

@@ -264,7 +264,7 @@ export async function conversationToContents(
   converters: ContentBlockConverters
 ): Promise<Content[]> {
   // User messages may fan out to external image fetches, so convert with
-  // bounded concurrency instead of an unbounded `Promise.all` ([BACK7]).
+  // bounded concurrency instead of an unbounded `Promise.all` ([bounded-promise-all]).
   const contents = removeNulls(
     await concurrentExecutor(
       conversation.messages,
