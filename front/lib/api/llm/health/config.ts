@@ -18,21 +18,12 @@ export const MIN_DEGRADED_DURATION_MS = 10 * 60 * 1000;
 // Consecutive synthetic probes that must all succeed to declare a recovery.
 export const PROBES_PER_RECOVERY = 3;
 
-// How often one endpoint may be evaluated, per pod. A breach can only begin
-// with an error write, and during an outage those land hundreds of times a
-// second on the same endpoint: evaluating every one would re-read the same
-// window, and hand Temporal a rejected duplicate start, hundreds of times to
-// learn the same thing.
+// How often one endpoint may be evaluated, per pod: during an outage error
+// writes land hundreds of times a second on the same endpoint.
 export const MIN_EVALUATION_INTERVAL_MS = 5_000;
 
-/**
- * The next instant the recovery workflow will probe, given when it started.
- *
- * Mirrors that workflow's loop -- sleep `MIN_DEGRADED_DURATION_MS`, probe,
- * repeat -- so probes land on this grid from its start time. Those are the only
- * moments an endpoint can stop being degraded, which makes the next one the
- * exact point for a detector to look again rather than guess an interval.
- */
+// The next instant the recovery workflow will probe, mirroring its
+// sleep-`MIN_DEGRADED_DURATION_MS`-then-probe loop from its start time.
 export function nextProbeAtMs(degradedSinceMs: number, nowMs: number): number {
   const elapsedRounds = Math.floor(
     (nowMs - degradedSinceMs) / MIN_DEGRADED_DURATION_MS
