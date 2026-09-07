@@ -183,5 +183,6 @@ describe("AgentResource", () => {
     expect(managerAuth.hasPermission("read", analyst)).toBe(true);
     expect(managerAuth.hasPermission("write", analyst)).toBe(false);
     expect(managerAuth.hasPermission("admin", analyst)).toBe(false);
+    expect(await helper.listEditors(testContext.authenticator)).toBeNull();
   });
 });

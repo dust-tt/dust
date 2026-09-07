@@ -1,5 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { shadowAgentEditors } from "@app/lib/api/assistant/editors";
+import { getAgentEditorsShadowed } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -120,7 +120,7 @@ export async function getAgentConfigurationContext(
   );
 
   if (editorsResult.isErr()) {
-    await shadowAgentEditors(
+    await getAgentEditorsShadowed(
       auth,
       agentConfiguration,
       [],
@@ -143,7 +143,7 @@ export async function getAgentConfigurationContext(
     });
   }
 
-  const editorUsers = await shadowAgentEditors(
+  const editorUsers = await getAgentEditorsShadowed(
     auth,
     agentConfiguration,
     await editorsResult.value.getActiveMembers(auth),

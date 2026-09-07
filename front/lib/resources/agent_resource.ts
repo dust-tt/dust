@@ -141,7 +141,7 @@ export class AgentResource implements WithAccessControl {
     });
     const agentById = new Map(agents.map((agent) => [agent.sId, agent]));
 
-    return configurations.map((configuration) => {
+    const resources = configurations.map((configuration) => {
       assert(configuration.scope !== "global");
       assert(
         configuration.versionAuthorId !== null,
@@ -150,33 +150,24 @@ export class AgentResource implements WithAccessControl {
       const agent = agentById.get(configuration.sId);
       assert(agent, "Unexpected: agent identity is missing");
 
-      return new AgentResource(
-        agent.id,
-        agent.sId,
-        agent.workspaceId,
-        "custom",
-        configuration.versionAuthorId,
-        configuration.scope
-      );
+      return this.fromAgentConfigurationModel({
+        agentId: agent.id,
+        authorId: configuration.versionAuthorId,
+        sId: agent.sId,
+        scope: configuration.scope,
+        workspaceId: agent.workspaceId,
+      });
     });
+
+    return resources;
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
-    if (this.kind === "global") {
-      return null;
-    }
-    assert(this.id !== null);
+    const editorsByAgentId = await AgentResource.batchListEditors(auth, [this]);
+    const editors = editorsByAgentId.get(this.sId);
+    assert(editors !== undefined);
 
-    const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
-      auth,
-      {
-        grantType: "editor",
-        resourceType: "agent",
-        resourceId: this.id,
-      }
-    );
-
-    return group ? group.getActiveMembers(auth) : [];
+    return editors;
   }
 
   static async batchListEditors(
@@ -219,6 +210,7 @@ export class AgentResource implements WithAccessControl {
     const userModelIds = [
       ...new Set(Object.values(membershipsByGroupId).flat()),
     ];
+    // The user and workspace-membership lookups below still query the DB for empty inputs.
     if (userModelIds.length === 0) {
       for (const agent of customAgents) {
         result.set(agent.sId, []);

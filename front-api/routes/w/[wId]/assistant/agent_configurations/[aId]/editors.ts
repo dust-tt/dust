@@ -2,7 +2,7 @@ import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
-import { shadowAgentEditors } from "@app/lib/api/assistant/editors";
+import { getAgentEditorsShadowed } from "@app/lib/api/assistant/editors";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -78,7 +78,7 @@ app.get(
       agent
     );
     if (editorGroupRes.isErr()) {
-      await shadowAgentEditors(auth, agent, [], "getAgentEditorsRoute");
+      await getAgentEditorsShadowed(auth, agent, [], "getAgentEditorsRoute");
       switch (editorGroupRes.error.code) {
         case "unauthorized":
           return apiError(ctx, {
@@ -119,7 +119,7 @@ app.get(
 
     const editorGroup = editorGroupRes.value;
     // Any workspace member can read the editors of an agent.
-    const members = await shadowAgentEditors(
+    const members = await getAgentEditorsShadowed(
       auth,
       agent,
       await editorGroup.getActiveMembers(auth),
@@ -172,7 +172,7 @@ app.patch(
       agent
     );
     if (editorGroupRes.isErr()) {
-      await shadowAgentEditors(auth, agent, [], "patchAgentEditorsRoute");
+      await getAgentEditorsShadowed(auth, agent, [], "patchAgentEditorsRoute");
       switch (editorGroupRes.error.code) {
         case "unauthorized":
           return apiError(ctx, {
@@ -354,7 +354,7 @@ app.patch(
       }
     }
 
-    const updatedMembers = await shadowAgentEditors(
+    const updatedMembers = await getAgentEditorsShadowed(
       auth,
       agent,
       await editorGroup.getActiveMembers(auth),

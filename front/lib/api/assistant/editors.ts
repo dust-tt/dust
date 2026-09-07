@@ -19,7 +19,7 @@ function sameModelIds(left: number[], right: number[]): boolean {
   );
 }
 
-export async function shadowAgentEditors(
+export async function getAgentEditorsShadowed(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
   legacyEditors: UserResource[],
@@ -70,12 +70,12 @@ export const getEditors = async (
   );
   if (editorGroupRes.isErr()) {
     // We could do better here but this is not a critical path.
-    await shadowAgentEditors(auth, agentConfiguration, [], "getEditors");
+    await getAgentEditorsShadowed(auth, agentConfiguration, [], "getEditors");
     return [];
   }
 
   const editorGroup = editorGroupRes.value;
-  const members = await shadowAgentEditors(
+  const members = await getAgentEditorsShadowed(
     auth,
     agentConfiguration,
     await editorGroup.getActiveMembers(auth),
@@ -91,7 +91,7 @@ async function shadowAgentEditorsBatch(
   legacyEditors: Record<string, UserType[]>
 ): Promise<void> {
   const customAgents = agents.filter((agent) => agent.scope !== "global");
-  const canonicalLegacy = customAgents
+  const normalizedLegacyEditors = customAgents
     .map(
       (agent) =>
         [agent.sId, sortedUserModelIds(legacyEditors[agent.sId] ?? [])] as const
@@ -100,7 +100,7 @@ async function shadowAgentEditorsBatch(
 
   await shadowCompare({
     auth,
-    legacy: canonicalLegacy,
+    legacy: normalizedLegacyEditors,
     candidate: async () => {
       const resources = await AgentResource.fetchByAgentConfigurations(
         auth,
@@ -111,7 +111,7 @@ async function shadowAgentEditorsBatch(
         resources
       );
 
-      return customAgents
+      const normalizedCandidateEditors = customAgents
         .map(
           (agent) =>
             [
@@ -120,6 +120,8 @@ async function shadowAgentEditorsBatch(
             ] as const
         )
         .sort(([left], [right]) => left.localeCompare(right));
+
+      return normalizedCandidateEditors;
     },
     context: {
       check: "agent_editors_batch",
