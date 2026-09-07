@@ -213,15 +213,8 @@ app.get(
     const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
     let favoriteSkillIds = new Set<string>();
     if (hasSkillFavorites) {
-      const favoriteSkills = await tracer.trace(
-        "skills.list.list_favorites",
-        { tags: traceTags },
-        async (span) => {
-          const skills = await SkillResource.listFavoritesForCurrentUser(auth);
-          span?.setTag("skills.count", skills.length);
-          return skills;
-        }
-      );
+      const favoriteSkills =
+        await SkillResource.listFavoritesForCurrentUser(auth);
       favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
     }
 
