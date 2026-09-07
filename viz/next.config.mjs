@@ -15,12 +15,22 @@ const DEV_FRAME_ANCESTORS = [
     .filter(Boolean),
 ];
 
-const PROD_FRAME_ANCESTORS =
-  "https://dust.tt https://app.dust.tt https://eu.dust.tt https://front-edge.dust.tt https://eu.front-edge.dust.tt https://*.preview.dust.tt chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn";
+const PROD_FRAME_ANCESTORS = [
+  "https://dust.tt",
+  "https://app.dust.tt",
+  "https://eu.dust.tt",
+  "https://front-edge.dust.tt",
+  "https://eu.front-edge.dust.tt",
+  "https://*.preview.dust.tt",
+  "chrome-extension://okjldflokifdjecnhbmkdanjjbnmlihg",
+  "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
+];
 
-const CONTENT_SECURITY_POLICIES = `connect-src 'self'; media-src 'self'; frame-ancestors 'self' https://app.frontapp.com ${
-  isDev ? [...new Set(DEV_FRAME_ANCESTORS)].join(" ") : PROD_FRAME_ANCESTORS
-} moz-extension:;`;
+const FRAME_ANCESTORS = [
+  ...new Set(isDev ? DEV_FRAME_ANCESTORS : PROD_FRAME_ANCESTORS),
+].join(" ");
+
+const CONTENT_SECURITY_POLICIES = `connect-src 'self'; media-src 'self'; frame-ancestors 'self' https://app.frontapp.com ${FRAME_ANCESTORS} moz-extension:;`;
 
 const nextConfig = {
   async headers() {
