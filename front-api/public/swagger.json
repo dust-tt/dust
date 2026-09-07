@@ -8081,7 +8081,8 @@
                 ],
                 "properties": {
                   "content": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Message text. Inline <tool> references enable the referenced MCP server views."
                   },
                   "mentions": {
                     "type": "array",
@@ -8715,7 +8716,8 @@
                     "type": "object",
                     "properties": {
                       "content": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Message text. Inline <tool> references enable the referenced MCP server views."
                       },
                       "mentions": {
                         "type": "array",

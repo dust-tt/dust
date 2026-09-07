@@ -10,6 +10,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
+import { extractToolTags } from "@app/lib/tools/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/assistant";
@@ -125,6 +126,7 @@ const app = workspaceApp();
  *             properties:
  *               content:
  *                 type: string
+ *                 description: Message text. Inline <tool> references enable the referenced MCP server views.
  *               mentions:
  *                 type: array
  *                 items:
@@ -327,10 +329,16 @@ app.post(
       }
     }
 
-    if (context.selectedMCPServerViewIds?.length) {
+    const selectedMCPServerViewIds = [
+      ...new Set([
+        ...(context.selectedMCPServerViewIds ?? []),
+        ...extractToolTags(content).map((tool) => tool.id),
+      ]),
+    ];
+    if (selectedMCPServerViewIds.length > 0) {
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
-        context.selectedMCPServerViewIds,
+        selectedMCPServerViewIds,
         { isRestrictedToSkills: false }
       );
 

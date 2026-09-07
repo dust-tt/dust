@@ -17,6 +17,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
+import { extractToolTags } from "@app/lib/tools/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { InternalPostConversationsRequestBodySchema } from "@app/types/api/assistant";
 import type {
@@ -138,6 +139,7 @@ const app = workspaceApp();
  *                 properties:
  *                   content:
  *                     type: string
+ *                     description: Message text. Inline <tool> references enable the referenced MCP server views.
  *                   mentions:
  *                     type: array
  *                     items:
@@ -422,10 +424,16 @@ app.post(
     if (message) {
       // If tools are enabled, we need to add the MCP server views to the
       // conversation before posting the message.
-      if (message.context.selectedMCPServerViewIds) {
+      const selectedMCPServerViewIds = [
+        ...new Set([
+          ...(message.context.selectedMCPServerViewIds ?? []),
+          ...extractToolTags(message.content).map((tool) => tool.id),
+        ]),
+      ];
+      if (selectedMCPServerViewIds.length > 0) {
         const mcpServerViews = await MCPServerViewResource.fetchByIds(
           auth,
-          message.context.selectedMCPServerViewIds,
+          selectedMCPServerViewIds,
           { isRestrictedToSkills: false }
         );
 

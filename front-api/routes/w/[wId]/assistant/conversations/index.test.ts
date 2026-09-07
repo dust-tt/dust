@@ -16,17 +16,77 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
 }));
 
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { serializeToolTag } from "@app/lib/tools/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 
 describe("POST /api/w/:wId/assistant/conversations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("enables inline tool references when creating a conversation", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const remoteServer = await RemoteMCPServerFactory.create(workspace);
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        remoteServer.sId
+      );
+    if (!systemView) {
+      throw new Error("Missing system view");
+    }
+    const { view } = await MCPServerViewResource.create(auth, {
+      systemView,
+      space: globalSpace,
+    });
+    const content = `Use ${serializeToolTag({ id: view.sId, name: "Tool", icon: null })}`;
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentFragments: [],
+          title: "Inline tools",
+          visibility: "unlisted",
+          message: {
+            content,
+            mentions: [],
+            context: { timezone: "Europe/Paris", profilePictureUrl: null },
+          },
+        }),
+      }
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      body.conversation.sId
+    );
+    if (!conversation) {
+      throw new Error("Missing conversation");
+    }
+    const relationships = await ConversationResource.fetchMCPServerViews(
+      auth,
+      conversation.toJSON()
+    );
+    expect(relationships).toHaveLength(1);
+    expect(relationships[0]).toMatchObject({
+      mcpServerViewId: view.id,
+      enabled: true,
+    });
   });
 
   it("creates a conversation with content fragments when private conversation URLs are enabled", async () => {

@@ -1,5 +1,6 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { serializeToolTag } from "@app/lib/tools/format";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -47,7 +48,11 @@ function getTools(workspace: { sId: string }, conversationId: string) {
 }
 
 describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
-  it("enables MCP server views when selectedMCPServerViewIds are provided", async () => {
+  it.each([
+    "legacy",
+    "inline",
+    "both",
+  ] as const)("enables MCP server views from %s references", async (source) => {
     const { workspace, conversation, auth, globalSpace, user } =
       await setupTest("admin");
 
@@ -67,12 +72,17 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
     expect((await toolsBefore.json()).tools).toEqual([]);
 
     const response = await postMessage(workspace, conversation.sId, {
-      content: "Message with conversation tools",
+      content:
+        source === "legacy"
+          ? "Message with conversation tools"
+          : `Use ${serializeToolTag({ id: mcpServerView.sId, name: "Tool", icon: null })}`,
       mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
       context: {
         timezone: "Europe/Paris",
         profilePictureUrl: user.imageUrl ?? null,
-        selectedMCPServerViewIds: [mcpServerView.sId],
+        ...(source !== "inline"
+          ? { selectedMCPServerViewIds: [mcpServerView.sId] }
+          : {}),
       },
       skipToolsValidation: true,
     });
