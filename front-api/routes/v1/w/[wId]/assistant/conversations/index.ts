@@ -11,8 +11,8 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isUserMessageContextOverflowing } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import {
-  isApiBlocked,
   isApiKeyBlocked,
+  isPoolDepleted,
   isProgrammaticApiBlocked,
 } from "@app/lib/api/credits/access_control";
 import {
@@ -156,7 +156,7 @@ app.post(
         const workspace = auth.getNonNullableWorkspace();
         const plan = auth.subscription()?.plan;
         if (plan && isCreditPricedPlan(plan)) {
-          if (workspace.metronomeCustomerId && (await isApiBlocked(auth))) {
+          if (workspace.metronomeCustomerId && (await isPoolDepleted(auth))) {
             return apiError(ctx, {
               status_code: 429,
               api_error: {
