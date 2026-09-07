@@ -4,6 +4,14 @@ import { DeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/model_const
 import { describe, expect, it } from "vitest";
 
 describe("FireworksStream", () => {
+  it("disables SDK retries so the agent loop owns retry attempts", () => {
+    const endpoint = new DeepSeekDeepSeekV4ProGlobalFireworksStream({
+      FIREWORKS_API_KEY: "test",
+    });
+
+    expect(Reflect.get(endpoint, "client")).toMatchObject({ maxRetries: 0 });
+  });
+
   it("includes names when replaying parallel tool results", () => {
     const endpoint = new DeepSeekDeepSeekV4ProGlobalFireworksStream({
       FIREWORKS_API_KEY: "test",

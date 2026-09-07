@@ -29,7 +29,12 @@ export abstract class MistralStream extends WithMistralAIInputConverter(
 
   constructor({ MISTRAL_API_KEY }: Credentials) {
     super();
-    this.client = new Mistral({ apiKey: MISTRAL_API_KEY });
+    this.client = new Mistral({
+      apiKey: MISTRAL_API_KEY,
+      // Keep the SDK's current single-attempt default explicit: the agent loop
+      // owns retries so every attempt gets its own Dust trace.
+      retryConfig: { strategy: "none" },
+    });
   }
 
   async *streamRaw(

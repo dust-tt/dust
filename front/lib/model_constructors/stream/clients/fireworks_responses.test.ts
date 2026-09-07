@@ -30,6 +30,14 @@ const TOOLS = [
 ];
 
 describe("FireworksResponsesStream", () => {
+  it("disables SDK retries so the agent loop owns retry attempts", () => {
+    const endpoint = new MoonshotAiKimiK3GlobalFireworksStream({
+      FIREWORKS_API_KEY: "test",
+    });
+
+    expect(Reflect.get(endpoint, "client")).toMatchObject({ maxRetries: 0 });
+  });
+
   it("replays reasoning and tool calls as Responses input items", () => {
     const endpoint = new MoonshotAiKimiK3GlobalFireworksStream({
       FIREWORKS_API_KEY: "test",
