@@ -8,7 +8,7 @@ sparkle/
 ├── src/
 │   ├── components/ # Hand-written components
 │   ├── hooks/, lib/ # Hand-written support code
-│   ├── icons/, logo/ # Generated SVG modules (~2,900 files, see build_icons.sh)
+│   ├── icons/, logo/ # Generated SVG modules (see Icons below and build_icons.sh)
 │   ├── stories/ # ALL Storybook stories live here — never colocate next to components
 │   └── styles/ # Tailwind 4 CSS config (theme.css holds the design tokens)
 ├── .storybook/ # Storybook config (main.ts, preview.ts, manager.ts)
@@ -18,6 +18,52 @@ sparkle/
 
 Stories must live in `src/stories/`, not next to components: `package.json` `files` publishes
 `src/` but excludes only `src/stories/`, so colocated stories would ship in the npm tarball.
+
+# Icons
+
+The design source of truth is the Figma file
+[Sparkle Icons](https://www.figma.com/design/VI4wJUjAzkaQ3EOanVGIW8/Sparkle-Icons). Only two of its
+six pages are relevant: `Custom Icons` (29 components) and `Shelve Icons` (189 components). Together
+they are canonical — every export in `src/icons/v2-stroke/index.ts` maps to a component on one of
+those two pages — so any export, sync or audit tooling must be scoped to them.
+
+Always ignore the `WIP` page. It holds drafts and explorations, and nine of its component names
+deliberately duplicate icons already published on `Custom Icons` / `Shelve Icons` (`list-select`,
+`shapes`, `tag-block`, `dot`, `fire`, `list-add`, `shapes-plus`, `intersect-dust`, `folder-table`),
+so including it yields duplicate names and draft artwork. Several of its names are also still
+off-convention (`actionStore`, `RobotIcon`, `folderOpen`). `Playground`, `OldIcons` and `Cover` hold
+no components at all.
+
+`src/icons/src/**` holds the SVG sources; `src/icons/**` holds the TSX modules SVGR generates from
+them. Never hand-edit a file under `src/icons/v2-stroke/` or `src/icons/actions/` — edit or add the
+SVG source and regenerate with `./build_icons.sh`.
+
+## Naming
+
+Names are kebab-case in Figma and stay kebab-case in the exported SVG filename. Casing is converted
+during the SVG → TSX step, so nothing needs renaming by hand at any point:
+
+```
+Figma layer      icon-name
+SVG source       src/icons/src/v2-stroke/icon-name.svg
+generated module src/icons/v2-stroke/IconName.tsx
+export           export { default as IconName } from "./IconName"
+```
+
+Two consequences worth knowing. Multi-word acronyms and single letters lose their intended casing —
+`t-shirt` becomes `TShirt` and `mail-ai` becomes `MailAi` — so name the Figma layer to produce the
+export you want rather than patching the output. And `container.svg` is re-exported as
+`ContainerIcon` because `Container` collides with an existing Sparkle component export; that
+exception lives in `svgr-v2-stroke-icon-template.js`.
+
+## Regenerating
+
+`./build_icons.sh` starts by deleting `src/icons/actions`, `src/icons/v2-stroke`,
+`src/logo/platforms` and `src/logo/dust`, then regenerates each from its SVG source directory and
+runs `biome check --write`. Any generated module without a matching SVG source is therefore
+destroyed by a build. Before running it, confirm every export in `src/icons/v2-stroke/index.ts` has
+a source file — several icons have historically been hand-written TSX with no SVG, and they must be
+exported from Figma first.
 
 # Storybook
 
