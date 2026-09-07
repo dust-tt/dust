@@ -2,6 +2,10 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -95,6 +99,30 @@ export async function deleteWebhookSource(
 
   // Delete the webhook source itself.
   await webhookSource.hardDelete(auth, { transaction });
+
+  logger.info(
+    {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      webhookSourceId: webhookSource.sId,
+      provider: webhookSource.provider,
+    },
+    "Deleted webhook source"
+  );
+
+  void emitAuditLogEvent({
+    auth,
+    action: "webhook_source.deleted",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("webhook_source", {
+        sId: webhookSource.sId,
+        name: webhookSource.name,
+      }),
+    ],
+    metadata: {
+      provider: webhookSource.provider ?? "none",
+    },
+  });
 
   return new Ok(undefined);
 }

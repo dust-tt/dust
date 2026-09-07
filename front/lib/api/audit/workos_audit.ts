@@ -174,6 +174,8 @@ export const AUDIT_ACTIONS = [
   // Slack workflows.
   "slack_workflow.allowed",
   "slack_workflow.revoked",
+
+  "webhook_source.deleted",
   // Files.
   "file.moved",
   "frame.authorized_files_updated",
@@ -434,7 +436,8 @@ type AuditTargetType =
   | "credential"
   | "mcp_connection"
   | "sandbox_env_var"
-  | "frame";
+  | "frame"
+  | "webhook_source";
 
 /**
  * Resource shape required for each audit target type.
