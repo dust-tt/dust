@@ -24,6 +24,9 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+// TODO(spend-limit-modal-rollout): remove `EditSpendLimitModal` and
+// `BulkEditSpendLimitModal` once the usage page has fully rolled onto this
+// component, so there's a single spend-limit editing implementation again.
 interface EditMemberSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,10 +34,6 @@ interface EditMemberSpendLimitModalProps {
   owner: LightWorkspaceType;
   groups: GroupType[];
   readOnly?: boolean;
-  onSavingChange?: (memberId: string, isSaving: boolean) => void;
-  // Fired once the spend limit has been persisted successfully (not on cancel
-  // or a load error). Used to resolve a linked upgrade request as approved.
-  onSaved?: () => void;
 }
 
 interface MemberSpendLimitFormProps {
@@ -43,8 +42,6 @@ interface MemberSpendLimitFormProps {
   groups: GroupType[];
   readOnly: boolean;
   onClose: () => void;
-  onSavingChange?: (memberId: string, isSaving: boolean) => void;
-  onSaved?: () => void;
 }
 
 function MemberSpendLimitForm({
@@ -53,8 +50,6 @@ function MemberSpendLimitForm({
   groups,
   readOnly,
   onClose,
-  onSavingChange,
-  onSaved,
 }: MemberSpendLimitFormProps) {
   const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
     workspaceId: owner.sId,
@@ -147,7 +142,6 @@ function MemberSpendLimitForm({
     }
 
     setIsSaving(true);
-    onSavingChange?.(member.sId, true);
     try {
       const tasks: Array<() => Promise<unknown>> = [];
       if (personalChanged) {
@@ -187,12 +181,10 @@ function MemberSpendLimitForm({
         concurrency: 8,
       });
       if (results.every((result) => result !== null)) {
-        onSaved?.();
         onClose();
       }
     } finally {
       setIsSaving(false);
-      onSavingChange?.(member.sId, false);
     }
   }
 
@@ -270,8 +262,6 @@ export function EditMemberSpendLimitModal({
   owner,
   groups,
   readOnly = false,
-  onSavingChange,
-  onSaved,
 }: EditMemberSpendLimitModalProps) {
   const lastMemberRef = useRef<MemberUsageType | null>(null);
   useEffect(() => {
@@ -298,8 +288,6 @@ export function EditMemberSpendLimitModal({
           groups={groups}
           readOnly={readOnly}
           onClose={onClose}
-          onSavingChange={onSavingChange}
-          onSaved={onSaved}
         />
       </DialogContent>
     </Dialog>
