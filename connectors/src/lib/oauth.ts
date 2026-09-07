@@ -6,10 +6,9 @@ import type { LoggerInterface } from "@dust-tt/client";
 
 /**
  * @cc [label:error-handling] oauth-access-token-or-error
- * Return the retrieved token and connection data on success. Revoked tokens, missing connections,
- * and recognized provider authorization failures, including platform-specific handling for
- * Confluence, Microsoft, Gong, and Google Drive, must throw `ExternalOAuthTokenError`. Other OAuth
- * failures must throw `Error` with the provider, error code, and message.
+ * Return the retrieved token and connection data from `oauth` on success. Generic `oauth` errors
+ * and well-known provider specific error codes throw `ExternalOAuthTokenError`. Other unrecognized
+ * OAuth failures throw regular `Error` (generally leading to retries).
  */
 export async function getOAuthConnectionAccessTokenWithThrow({
   logger,
@@ -39,6 +38,7 @@ export async function getOAuthConnectionAccessTokenWithThrow({
     );
 
     if (
+      // Generic oauth error codes
       tokRes.error.code === "token_revoked_error" ||
       tokRes.error.code === "connection_not_found" ||
       // Happens with confluence
