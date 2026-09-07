@@ -75,11 +75,10 @@ export type PokeWorkspaceInfo = {
   extensionConfig: ExtensionConfigurationType | null;
   hasDummyFeature: boolean;
   hasMetronomeFeature: boolean;
-  // Whether the premium-model message cap is enforced on this workspace. See
-  // the `enforce_premium_model_message_limit` feature flag.
+  // Whether the premium-model message cap is enforced on this workspace.
   hasEnforcePremiumModelMessageLimitFeature: boolean;
   // Whether the per-user fair-use AWU credit limit is disabled on this
-  // workspace. See the `disable_fair_use_awu_limit` feature flag.
+  // workspace.
   hasDisableFairUseAwuLimitFeature: boolean;
   membersCount: number;
   inactiveMembersCount: number;

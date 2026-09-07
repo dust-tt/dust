@@ -1257,9 +1257,7 @@ interface MembersUsageTableProps {
   hasPool?: boolean;
   isPremiumMessagePlan?: boolean;
   // Independently hide the premium-message / fair-use-credits columns even
-  // when `isPremiumMessagePlan` is true (e.g. driven by the
-  // `enforce_premium_model_message_limit` / `disable_fair_use_awu_limit`
-  // feature flags in Poke). Both default to `isPremiumMessagePlan`.
+  // when `isPremiumMessagePlan` is true.
   showPremiumMessageColumn?: boolean;
   showFairUseCreditsColumn?: boolean;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
