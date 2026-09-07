@@ -2,6 +2,7 @@ import {
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
 } from "./anthropic";
 import {
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
@@ -63,7 +64,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "anthropic",
-        modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+        modelId: CLAUDE_SONNET_5_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
@@ -110,7 +111,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "anthropic",
-        modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+        modelId: CLAUDE_SONNET_5_MODEL_ID,
         reasoningEffort: "light",
       },
       {
