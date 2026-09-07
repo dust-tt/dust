@@ -8,7 +8,9 @@
  * Drill into one active user's messages and daily Metronome usage:
  *   --workspaceId <wId> --userId <userId> --messageSampleLimit 30
  * Defaults to diagnosing the three largest Metronome mismatches. Use
- * --diagnosticUsers 0 for the aggregate-only check. This script is read-only.
+ * --diagnosticUsers 0 for the aggregate-only check. Add --diagnosticDate 2026-08-28
+ * for hourly metric buckets and the largest messages that day, including ES matches.
+ * This script is read-only; Metronome diagnostics are buckets, not message events.
  */
 import {
   ANALYTICS_ALIAS_NAME,
@@ -421,11 +423,31 @@ makeScript(
       type: "number" as const,
       default: 20,
     },
+    diagnosticDate: {
+      description:
+        "UTC date (YYYY-MM-DD) for hourly Metronome buckets and message samples, including ES matches.",
+      type: "string" as const,
+    },
   },
   async (
-    { workspaceId, userId, diagnosticUsers, messageSampleLimit },
+    {
+      workspaceId,
+      userId,
+      diagnosticUsers,
+      messageSampleLimit,
+      diagnosticDate,
+    },
     logger
   ) => {
+    if (diagnosticDate !== undefined) {
+      const date = new Date(`${diagnosticDate}T00:00:00.000Z`);
+      assert(
+        /^\d{4}-\d{2}-\d{2}$/.test(diagnosticDate) &&
+          Number.isFinite(date.getTime()) &&
+          date.toISOString().slice(0, 10) === diagnosticDate,
+        "--diagnosticDate must be a valid UTC date (YYYY-MM-DD)"
+      );
+    }
     assert(
       Number.isInteger(diagnosticUsers) &&
         diagnosticUsers >= 0 &&
@@ -694,6 +716,7 @@ makeScript(
           isFreeSeat: comparison.seatType === "free",
         },
         sampleLimit: messageSampleLimit,
+        diagnosticDate,
         logger,
         initialTotals: {
           legacy: comparison.legacyConsumerAwuCredits,

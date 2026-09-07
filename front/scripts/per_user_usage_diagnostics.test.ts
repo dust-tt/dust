@@ -5,6 +5,7 @@ import type { MessageUsageSlice } from "@app/scripts/per_user_usage_diagnostics"
 import {
   compareMessageUsage,
   dailyUsageComparison,
+  diagnosticDayBreakdown,
   fetchDiagnosticMessageMetadata,
   fetchDiagnosticSlices,
 } from "@app/scripts/per_user_usage_diagnostics";
@@ -195,6 +196,63 @@ describe("dailyUsageComparison", () => {
   });
 });
 
+describe("diagnosticDayBreakdown", () => {
+  it("includes ES matches, preserves outside-day counterparts, and separates hourly metric buckets", () => {
+    const ai: PerUserAwuUsageRow = {
+      userId: "user",
+      metric: "llm_provider_cost_awu",
+      usageType: "user",
+      toolCategory: null,
+      startingOn: "2026-08-26T12:00:00.000Z",
+      endingBefore: "2026-08-26T13:00:00.000Z",
+      awuCredits: 100,
+      value: 100,
+      awuWeight: 1,
+    };
+    const tool: PerUserAwuUsageRow = {
+      ...ai,
+      metric: "tool_invocations",
+      toolCategory: "advanced",
+      awuCredits: 6,
+      value: 2,
+      awuWeight: 3,
+    };
+    const result = diagnosticDayBreakdown({
+      scope,
+      date: "2026-08-26",
+      sampleLimit: 2,
+      legacy: [
+        slice("matching", 90),
+        slice("shifted", 10),
+        slice("free", 500, { seatType: "free" }),
+      ],
+      consumption: [
+        slice("matching", 90),
+        slice("shifted", 10, { timestamp: "2026-08-27T13:00:00.000Z" }),
+      ],
+      metronome: [ai, tool, { ...ai, startingOn: "2026-08-27T12:00:00.000Z" }],
+    });
+    expect(result.candidateMessages).toBe(2);
+    expect(result.messageSamples.map((sample) => sample.messageId)).toEqual([
+      "matching",
+      "shifted",
+    ]);
+    expect(result.messageSamples[1].consumption.timestamps).toEqual([
+      "2026-08-27T13:00:00.000Z",
+    ]);
+    expect(result.metronomeBuckets).toEqual([ai, tool]);
+    expect(result.hourlyUsage).toEqual([
+      {
+        date: "2026-08-26T12:00:00.000Z",
+        legacyAwuCredits: 100,
+        consumptionAwuCredits: 90,
+        metronomeAwuCredits: 106,
+        consumptionMetronomeAwuCreditsDifference: -16,
+      },
+    ]);
+  });
+});
+
 describe("fetchDiagnosticSlices", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -320,7 +378,9 @@ describe("fetchDiagnosticMessageMetadata", () => {
       completedAt: null,
       runCount: 2,
       conversationId: conversation.sId,
-      excludedByConsumptionStatusGate: true,
+      excludedByConsumptionStatusGate: false,
+      updatedAt: expect.any(Date),
+      triggeringUserMessage: null,
     });
     const other = await createResourceTest({ role: "admin" });
     const outsideWorkspace = await fetchDiagnosticMessageMetadata(

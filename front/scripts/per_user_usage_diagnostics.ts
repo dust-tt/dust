@@ -15,12 +15,10 @@ import {
   AgentMessageModel,
   ConversationModel,
   MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import type { Logger } from "@app/logger/logger";
-import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
-  isTerminalAgentMessageStatus,
-} from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import chunk from "lodash/chunk";
@@ -392,11 +390,13 @@ export function dailyUsageComparison({
   consumption,
   metronome,
   scope,
+  bucketSize = "day",
 }: {
   legacy: MessageUsageSlice[];
   consumption: MessageUsageSlice[];
   metronome: PerUserAwuUsageRow[];
   scope: Scope;
+  bucketSize?: "day" | "hour";
 }) {
   const days = new Map<
     string,
@@ -407,7 +407,10 @@ export function dailyUsageComparison({
     source: Source | "metronome",
     creditMicro: number
   ) => {
-    const day = date.slice(0, 10);
+    const day =
+      bucketSize === "day"
+        ? date.slice(0, 10)
+        : `${date.slice(0, 13)}:00:00.000Z`;
     const values = days.get(day) ?? { legacy: 0, consumption: 0, metronome: 0 };
     values[source] += creditMicro;
     days.set(day, values);
@@ -448,17 +451,89 @@ export function dailyUsageComparison({
     }));
 }
 
+// Include messages where the two indices agree: they can still disagree with Metronome.
+// Counterparts retain all dates so completion-time shifts remain visible.
+export function diagnosticDayBreakdown({
+  legacy,
+  consumption,
+  metronome,
+  scope,
+  date,
+  sampleLimit,
+}: {
+  legacy: MessageUsageSlice[];
+  consumption: MessageUsageSlice[];
+  metronome: PerUserAwuUsageRow[];
+  scope: Scope;
+  date: string;
+  sampleLimit: number;
+}) {
+  const legacyByMessage = groupByMessage(legacy);
+  const consumptionByMessage = groupByMessage(consumption);
+  const messageIds = new Set(
+    [...legacy, ...consumption]
+      .filter(
+        (slice) =>
+          slice.timestamp?.startsWith(date) &&
+          exclusionReasons(slice, scope).length === 0
+      )
+      .map((slice) => slice.messageId)
+  );
+  return {
+    date,
+    candidateMessages: messageIds.size,
+    hourlyUsage: dailyUsageComparison({
+      legacy,
+      consumption,
+      metronome,
+      scope,
+      bucketSize: "hour",
+    }).filter((bucket) => bucket.date.startsWith(date)),
+    // Keep raw metric values and weights as well as credits, to distinguish AI spend from tool counts.
+    metronomeBuckets: metronome.filter((row) =>
+      row.startingOn.startsWith(date)
+    ),
+    messageSamples: [...messageIds]
+      .map((messageId) => ({
+        messageId,
+        legacy: describeSlices(legacyByMessage.get(messageId) ?? [], scope),
+        consumption: describeSlices(
+          consumptionByMessage.get(messageId) ?? [],
+          scope
+        ),
+      }))
+      .sort(
+        (left, right) =>
+          Math.max(
+            right.legacy.selectedAwuCredits,
+            right.consumption.selectedAwuCredits
+          ) -
+          Math.max(
+            left.legacy.selectedAwuCredits,
+            left.consumption.selectedAwuCredits
+          )
+      )
+      .slice(0, sampleLimit),
+  };
+}
+
 // Script-only, batched metadata reads. Never loads message text or recomputes
 // attribution (the recompute helper writes to the database).
 type MessageMetadata = {
   messageStatus: string;
   completedAt: Date | null;
+  updatedAt: Date;
   costCredits: number | null;
   runCount: number;
   createdAt: Date;
   version: number;
   conversationId: string | undefined;
   excludedByConsumptionStatusGate: boolean;
+  triggeringUserMessage: {
+    agenticOriginMessageId: string | null;
+    origin: string;
+    hasUser: boolean;
+  } | null;
 };
 
 export async function fetchDiagnosticMessageMetadata(
@@ -469,13 +544,19 @@ export async function fetchDiagnosticMessageMetadata(
     return new Map();
   }
   const rows = await MessageModel.findAll({
-    attributes: ["sId", "createdAt", "version"],
+    attributes: ["sId", "createdAt", "version", "parentId"],
     where: { workspaceId: workspace.id, sId: { [Op.in]: messageIds } },
     include: [
       {
         model: AgentMessageModel,
         as: "agentMessage",
-        attributes: ["status", "completedAt", "costCredits", "runIds"],
+        attributes: [
+          "status",
+          "completedAt",
+          "updatedAt",
+          "costCredits",
+          "runIds",
+        ],
         required: true,
         where: { workspaceId: workspace.id },
       },
@@ -488,22 +569,50 @@ export async function fetchDiagnosticMessageMetadata(
       },
     ],
   });
+  const parents = await MessageModel.findAll({
+    attributes: ["id"],
+    where: {
+      workspaceId: workspace.id,
+      id: {
+        [Op.in]: rows.map((row) => row.parentId).filter((id) => id !== null),
+      },
+    },
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+        attributes: ["userId", "agenticOriginMessageId", "userContextOrigin"],
+        where: { workspaceId: workspace.id },
+      },
+    ],
+  });
+  const parentById = new Map(parents.map((row) => [row.id, row.userMessage]));
   return new Map(
     rows.map((row) => {
       const agent = row.agentMessage!;
+      const parent =
+        row.parentId === null ? null : parentById.get(row.parentId);
       return [
         row.sId,
         {
           messageStatus: agent.status,
           completedAt: agent.completedAt,
+          updatedAt: agent.updatedAt,
           costCredits: agent.costCredits,
           runCount: agent.runIds?.length ?? 0,
           createdAt: row.createdAt,
           version: row.version,
           conversationId: row.conversation?.sId,
           excludedByConsumptionStatusGate:
-            !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agent.status) ||
-            !isTerminalAgentMessageStatus(agent.status),
+            !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agent.status),
+          triggeringUserMessage: parent
+            ? {
+                agenticOriginMessageId: parent.agenticOriginMessageId ?? null,
+                origin: parent.userContextOrigin,
+                hasUser: parent.userId !== null,
+              }
+            : null,
         },
       ];
     })
@@ -517,6 +626,7 @@ export async function logUserUsageDiagnostics({
   sampleLimit,
   logger,
   initialTotals,
+  diagnosticDate,
 }: {
   workspace: LightWorkspaceType;
   metronomeCustomerId: string;
@@ -524,6 +634,7 @@ export async function logUserUsageDiagnostics({
   sampleLimit: number;
   logger: Logger;
   initialTotals: { legacy: number; consumption: number; metronome: number };
+  diagnosticDate?: string;
 }) {
   const startedAt = new Date().toISOString();
   logger.info(
@@ -674,4 +785,33 @@ export async function logUserUsageDiagnostics({
     },
     "Per-user usage diagnostic breakdown"
   );
+  if (diagnosticDate) {
+    const day = diagnosticDayBreakdown({
+      legacy,
+      consumption,
+      metronome,
+      scope,
+      date: diagnosticDate,
+      sampleLimit,
+    });
+    const dayMetadata = await fetchDiagnosticMessageMetadata(
+      workspace,
+      day.messageSamples.map((message) => message.messageId)
+    );
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        userId: scope.userId,
+        ...day,
+        messageSamples: day.messageSamples.map((message) => ({
+          ...message,
+          database: dayMetadata.get(message.messageId) ?? null,
+        })),
+        messageComparisonScope:
+          "legacy_and_consumption_candidates_including_matches",
+        metronomeComparisonScope: "hourly_usage_buckets_not_message_events",
+      },
+      "Per-user usage diagnostic day breakdown"
+    );
+  }
 }
