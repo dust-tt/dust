@@ -23,7 +23,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-interface MemberSpendLimitModalProps {
+interface EditMemberSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   member: MemberUsageType | null;
@@ -262,7 +262,7 @@ function MemberSpendLimitForm({
   );
 }
 
-export function MemberSpendLimitModal({
+export function EditMemberSpendLimitModal({
   isOpen,
   onClose,
   member,
@@ -271,7 +271,7 @@ export function MemberSpendLimitModal({
   readOnly = false,
   onSavingChange,
   onSaved,
-}: MemberSpendLimitModalProps) {
+}: EditMemberSpendLimitModalProps) {
   const lastMemberRef = useRef<MemberUsageType | null>(null);
   useEffect(() => {
     if (member) {

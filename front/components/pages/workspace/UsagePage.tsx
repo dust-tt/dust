@@ -12,7 +12,7 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
-import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
+import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
@@ -1431,7 +1431,7 @@ export function UsagePage() {
           onSaved={handleSeatMutationSaved}
         />
 
-        <EditSpendLimitModal
+        <EditMemberSpendLimitModal
           isOpen={editSpendLimitMember !== null}
           onClose={() => {
             setEditSpendLimitMember(null);
@@ -1439,6 +1439,7 @@ export function UsagePage() {
           }}
           member={editSpendLimitMember}
           owner={owner}
+          groups={groups}
           onSavingChange={handleUsagePendingChange}
           onSaved={handleApproveOnModalSaved}
         />

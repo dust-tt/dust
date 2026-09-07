@@ -4,7 +4,7 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
-import { MemberSpendLimitModal } from "@app/components/workspace/MemberSpendLimitModal";
+import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import {
@@ -437,7 +437,7 @@ export function PoolUsagePage() {
         onClose={() => setChangeSeatRecapMember(null)}
       />
 
-      <MemberSpendLimitModal
+      <EditMemberSpendLimitModal
         isOpen={!!spendLimitRecapMember}
         member={spendLimitRecapMember}
         owner={owner}

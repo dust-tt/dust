@@ -133,22 +133,23 @@ app.patch(
       }
     }
 
-    // When the user is upgrading their own seat, sync immediately so credits
-    // are available right away instead of waiting for the debounced workflow.
-    if (uId === auth.getNonNullableUser().sId) {
-      const syncResult = await syncMetronomeSeatCountForWorkspace({
-        workspace: auth.getNonNullableWorkspace(),
-      });
-      if (syncResult.isErr()) {
-        logger.warn(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            userId: uId,
-            err: syncResult.error.message,
-          },
-          "[SeatType] Immediate seat sync after self-upgrade failed; debounced workflow will retry"
-        );
-      }
+    // Sync this member's seat immediately (single-user scope) so their
+    // credits and credit state — and therefore whether they're still shown
+    // as blocked — are up to date right away, instead of waiting for the
+    // debounced workflow.
+    const syncResult = await syncMetronomeSeatCountForWorkspace({
+      workspace: auth.getNonNullableWorkspace(),
+      reconcileUserId: uId,
+    });
+    if (syncResult.isErr()) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          userId: uId,
+          err: syncResult.error.message,
+        },
+        "[SeatType] Immediate seat sync after seat change failed; debounced workflow will retry"
+      );
     }
 
     return ctx.json<PatchMemberSeatTypeResponseBody>({

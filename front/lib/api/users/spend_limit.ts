@@ -334,21 +334,28 @@ export async function setUserSpendLimit(
   }
 
   // Reconcile the user's credit state from live usage — same path as the
-  // poke reconcile button and the seat-sync reconcile.
+  // poke reconcile button and the seat-sync reconcile. Awaited so the
+  // response (and the members-table refetch it triggers) reflects whether
+  // the new limit actually unblocks the user, instead of the pre-update state.
   const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
   if (metronomeContractId) {
-    void reconcileUser({
+    const reconcileResult = await reconcileUser({
       auth,
       workspace: workspaceResource,
       metronomeCustomerId: workspace.metronomeCustomerId,
       userId: user.sId,
       execute: true,
-    }).catch((err) => {
+    });
+    if (reconcileResult.isErr()) {
       logger.warn(
-        { workspaceId: workspace.sId, userId: user.sId, err },
+        {
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          err: reconcileResult.error,
+        },
         "[Metronome PerUserCap] reconcileUser after spend-limit update failed; webhook will reconcile"
       );
-    });
+    }
   }
 
   void emitAuditLogEvent({
