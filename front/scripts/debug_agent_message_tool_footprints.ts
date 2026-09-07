@@ -7,6 +7,7 @@
  *   --workspaceId 8DpNy5tEUG \
  *   --agentMessageId Ut5LbnRe3M \
  *   --compareOpenAI \
+ *   --compareGemini \
  *   --execute
  */
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
@@ -36,6 +37,7 @@ import { makeScript } from "@app/scripts/helpers";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TiktokenTokenizerBase } from "@app/types/tokenizer";
+import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 const TOKENIZER_BASES = [
@@ -48,6 +50,7 @@ type TokenCounts = {
   configuredAdjustedInput: number;
   configuredAdjustedCall: number;
   configuredRawInput: number;
+  geminiInputTokensIncludingFraming?: number;
   openAIInputTokensIncludingFraming?: number;
   rawInputByTokenizerBase: Partial<Record<TiktokenTokenizerBase, number>>;
 };
@@ -101,6 +104,28 @@ async function countOpenAIInputTokens({
     .input_tokens;
 }
 
+async function countGeminiInputTokens({
+  client,
+  input,
+  modelId,
+}: {
+  client: GoogleGenAI;
+  input: string;
+  modelId: string;
+}): Promise<number> {
+  const response = await client.models.countTokens({
+    model: modelId,
+    contents: input,
+  });
+  if (response.totalTokens === undefined) {
+    throw new Error(
+      `Gemini input-token count returned no total for ${modelId}.`
+    );
+  }
+
+  return response.totalTokens;
+}
+
 async function tokenizeOrThrow({
   auth,
   model,
@@ -142,8 +167,20 @@ makeScript(
       description:
         "Send rendered tool-result text to OpenAI's input-token count endpoint; its count includes request framing.",
     },
+    compareGemini: {
+      type: "boolean",
+      default: false,
+      description:
+        "Send rendered tool-result text to Gemini's countTokens endpoint; its count includes request framing.",
+    },
   },
-  async ({ agentMessageId, compareOpenAI, execute, workspaceId }) => {
+  async ({
+    agentMessageId,
+    compareGemini,
+    compareOpenAI,
+    execute,
+    workspaceId,
+  }) => {
     if (!execute) {
       console.log("Read-only diagnostic. Pass --execute to run it.");
       return;
@@ -512,12 +549,37 @@ makeScript(
           openAIInputTokensIncludingFraming.push(tokensWithInput);
         }
       }
+      let geminiInputTokensIncludingFraming: number[] | undefined;
+      if (compareGemini && configuredModel.providerId === "google_ai_studio") {
+        const credentials = await getLlmCredentials(auth, {
+          skipEmbeddingApiKeyRequirement: true,
+        });
+        if (!credentials.GOOGLE_AI_STUDIO_API_KEY) {
+          throw new Error(
+            "GOOGLE_AI_STUDIO_API_KEY is required for --compareGemini."
+          );
+        }
+        const client = new GoogleGenAI({
+          apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
+        });
+        geminiInputTokensIncludingFraming = [];
+        for (const inputText of inputTexts) {
+          const tokensWithInput = await countGeminiInputTokens({
+            client,
+            input: inputText,
+            modelId,
+          });
+          geminiInputTokensIncludingFraming.push(tokensWithInput);
+        }
+      }
 
       modelInputs.forEach(({ action }, index) => {
         tokenCountsByActionModelId.set(action.id, {
           configuredAdjustedInput: configuredAdjustedInput[index],
           configuredAdjustedCall: configuredAdjustedCall[index],
           configuredRawInput: configuredRawInput[index],
+          geminiInputTokensIncludingFraming:
+            geminiInputTokensIncludingFraming?.[index],
           openAIInputTokensIncludingFraming:
             openAIInputTokensIncludingFraming?.[index],
           rawInputByTokenizerBase: Object.fromEntries(
@@ -678,6 +740,19 @@ makeScript(
             )
           )
         : null;
+      const geminiInputTokensIncludingFraming =
+        compareGemini &&
+        usageDiagnostics.every(
+          (diagnostic) =>
+            diagnostic.computed.geminiInputTokensIncludingFraming !== undefined
+        )
+          ? sum(
+              usageDiagnostics.map(
+                (diagnostic) =>
+                  diagnostic.computed.geminiInputTokensIncludingFraming
+              )
+            )
+          : null;
       const nextProviderNewInputTokens = nextUsage
         ? providerNewInputTokens(nextUsage)
         : null;
@@ -692,6 +767,10 @@ makeScript(
           openAIInputTokensIncludingFraming === null
             ? "n/a"
             : openAIInputTokensIncludingFraming,
+        gemini:
+          geminiInputTokensIncludingFraming === null
+            ? "n/a"
+            : geminiInputTokensIncludingFraming,
         nextRunUsageId: nextUsage?.runUsageModelId ?? "none",
         providerNewInput: nextProviderNewInputTokens ?? "none",
         storedMinusProvider:
