@@ -20,16 +20,18 @@ export function isBreaching(window: ModelHealthWindowType): boolean {
 }
 
 /**
- * What one evaluation established, mirroring `LaunchRecoveryOutcome` so the
- * caller can tell the two degraded outcomes apart: `recovery_started` anchors
- * the degradation at now, `already_degraded` says only that some other pod
- * anchored it at a time we cannot know.
+ * What one evaluation established.
+ *
+ * The two degraded outcomes carry `degradedSinceMs`, the recovery workflow's
+ * start time, because that alone pins when the endpoint could next change
+ * state. It is null only when the workflow is running but its start time could
+ * not be read.
  */
 export type EndpointEvaluationType =
-  | "not_breaching"
-  | "recovery_started"
-  | "already_degraded"
-  | "launch_failed";
+  | { outcome: "not_breaching" }
+  | { outcome: "recovery_started"; degradedSinceMs: number }
+  | { outcome: "already_degraded"; degradedSinceMs: number | null }
+  | { outcome: "launch_failed" };
 
 export async function evaluateEndpoint(
   endpoint: DegradedModelEndpointType,
@@ -37,7 +39,7 @@ export async function evaluateEndpoint(
 ): Promise<EndpointEvaluationType> {
   const window = await readEndpointWindow(endpoint, now);
   if (!isBreaching(window)) {
-    return "not_breaching";
+    return { outcome: "not_breaching" };
   }
 
   const launchRes = await launchModelHealthRecovery(endpoint);
@@ -51,17 +53,20 @@ export async function evaluateEndpoint(
       },
       "Failed to start the model health recovery workflow"
     );
-    return "launch_failed";
+    return { outcome: "launch_failed" };
   }
 
-  switch (launchRes.value) {
+  switch (launchRes.value.outcome) {
     case "started":
       logModelHealthTransition({ endpoint, transition: "degraded", window });
-      return "recovery_started";
+      return {
+        outcome: "recovery_started",
+        degradedSinceMs: launchRes.value.degradedSinceMs,
+      };
 
     case "already_degraded":
       // Not a state change: another pod already logged the transition.
-      return "already_degraded";
+      return launchRes.value;
 
     default:
       assertNever(launchRes.value);

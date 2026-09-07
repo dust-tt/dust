@@ -25,6 +25,7 @@ const ENDPOINT = {
 } as const;
 
 const NOW = new Date("2026-09-03T14:32:10Z");
+const DEGRADED_SINCE_MS = NOW.getTime();
 
 async function seedWindow({
   attempts,
@@ -65,13 +66,18 @@ describe("evaluateEndpoint", () => {
   beforeEach(() => {
     redisMock.reset();
     vi.clearAllMocks();
-    vi.mocked(launchModelHealthRecovery).mockResolvedValue(new Ok("started"));
+    vi.mocked(launchModelHealthRecovery).mockResolvedValue(
+      new Ok({ outcome: "started", degradedSinceMs: DEGRADED_SINCE_MS })
+    );
   });
 
   it("declares a breaching endpoint degraded", async () => {
     await seedWindow({ attempts: 250, providerErrors: 60 });
 
-    expect(await evaluateEndpoint(ENDPOINT, NOW)).toBe("recovery_started");
+    expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
+      outcome: "recovery_started",
+      degradedSinceMs: DEGRADED_SINCE_MS,
+    });
 
     expect(launchModelHealthRecovery).toHaveBeenCalledWith(ENDPOINT);
     expect(logModelHealthTransition).toHaveBeenCalledWith(
@@ -82,7 +88,9 @@ describe("evaluateEndpoint", () => {
   it("leaves a healthy endpoint alone", async () => {
     await seedWindow({ attempts: 250, providerErrors: 10 });
 
-    expect(await evaluateEndpoint(ENDPOINT, NOW)).toBe("not_breaching");
+    expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
+      outcome: "not_breaching",
+    });
 
     expect(launchModelHealthRecovery).not.toHaveBeenCalled();
     expect(logModelHealthTransition).not.toHaveBeenCalled();
@@ -92,11 +100,17 @@ describe("evaluateEndpoint", () => {
     // Another pod won the race: the workflow already exists, so this is not a
     // state change and must not show up as a second incident.
     vi.mocked(launchModelHealthRecovery).mockResolvedValue(
-      new Ok("already_degraded")
+      new Ok({
+        outcome: "already_degraded",
+        degradedSinceMs: DEGRADED_SINCE_MS,
+      })
     );
     await seedWindow({ attempts: 250, providerErrors: 60 });
 
-    expect(await evaluateEndpoint(ENDPOINT, NOW)).toBe("already_degraded");
+    expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
+      outcome: "already_degraded",
+      degradedSinceMs: DEGRADED_SINCE_MS,
+    });
 
     expect(launchModelHealthRecovery).toHaveBeenCalledTimes(1);
     expect(logModelHealthTransition).not.toHaveBeenCalled();
@@ -108,7 +122,9 @@ describe("evaluateEndpoint", () => {
     );
     await seedWindow({ attempts: 250, providerErrors: 60 });
 
-    expect(await evaluateEndpoint(ENDPOINT, NOW)).toBe("launch_failed");
+    expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
+      outcome: "launch_failed",
+    });
 
     expect(logModelHealthTransition).not.toHaveBeenCalled();
   });
