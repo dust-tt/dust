@@ -269,6 +269,96 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     ).rejects.toThrow("An attributed run usage is missing tool evidence");
   });
 
+  it("appends a late sandbox child after its parent evidence completed", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    const { action: parentAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "errored",
+      dustRunId: run.dustRunId,
+      functionCallName: "sandbox__bash",
+      toolName: "bash",
+      mcpServerName: "sandbox",
+      toolServerId: autoInternalMCPServerNameToSId({
+        name: "sandbox",
+        workspaceId: workspace.id,
+      }),
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const parentItem = (
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      )
+    ).find((item) => item.agentMCPActionId === parentAction.id);
+    expect(parentItem?.completedAt).toEqual(expect.any(Date));
+
+    const { action: childAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "errored",
+      functionCallName: "interactive_content__create_interactive_content_file",
+      toolName: "create_interactive_content_file",
+      mcpServerName: "interactive_content",
+      toolServerId: autoInternalMCPServerNameToSId({
+        name: "interactive_content",
+        workspaceId: workspace.id,
+      }),
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+      parentAction,
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(
+      items.find((item) => item.agentMCPActionId === childAction.id)
+    ).toMatchObject({
+      itemType: "tool",
+      runUsageId: parentItem?.runUsageId,
+      inputTokensCount: 0,
+      outputTokensCount: 0,
+      directCreditAmountMicro: 3_000_000,
+      grossAttributedCreditAmountMicro: 3_000_000,
+      completedAt: expect.any(Date),
+    });
+    expect(
+      items.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+  });
+
   it("writes a tool row per action and carves the tool output from the assistant output", async () => {
     const {
       auth,

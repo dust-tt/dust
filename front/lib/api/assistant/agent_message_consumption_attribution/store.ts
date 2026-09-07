@@ -95,13 +95,13 @@ function selectRunUsagesNeedingEvidence({
       }
       const parentItem = toolItemByActionModelId.get(parentAction.id);
 
-      // A sandbox bash can create another child after an earlier attribution pass while its own
-      // tool item is still pending. The child is direct-charge-only, so adding its zero-footprint
-      // pending row cannot change the run's already-stored model-token partition. Require the
-      // durable parent relationship and the exact same producing run before accepting this gap.
+      // A sandbox bash can create another child after an earlier attribution pass. The child is
+      // direct-charge-only, so adding its zero-footprint row cannot change the run's already-stored
+      // model-token partition, regardless of whether the parent's tool item is pending or complete.
+      // Require the durable parent relationship and the exact same producing run before accepting
+      // this gap; ordinary late model-visible actions must still fail the assertion below.
       return !(
-        parentItem?.completedAt === null &&
-        parentItem.runUsageId === usage.runUsageModelId &&
+        parentItem?.runUsageId === usage.runUsageModelId &&
         parentAction.stepContent.id === action.stepContent.id &&
         parentAction.stepContent.dustRunId === dustRunId
       );
