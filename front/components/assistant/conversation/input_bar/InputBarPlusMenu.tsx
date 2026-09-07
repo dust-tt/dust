@@ -8,37 +8,85 @@ import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
 } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type {
   ConversationWithoutContentType,
   SelectableConversationSpaceType,
 } from "@app/types/assistant/conversation";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Attachment01,
   Button,
+  ChevronRight,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
   Planet,
   Plus,
   ShapesPlus,
 } from "@dust-tt/sparkle";
-import { useRef, useState } from "react";
+import type { Transition, Variants } from "framer-motion";
+import {
+  AnimatePresence,
+  domAnimation,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
+import { useLayoutEffect, useRef, useState } from "react";
 
 const PLUS_BUTTON_CLASSNAME = cn(
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
   INPUT_BAR_PILL_HOVER_CLASSNAME
 );
 
-const MOBILE_PICKERS = ["capabilities", "attachments", "spaces"] as const;
-type MobilePicker = (typeof MOBILE_PICKERS)[number];
+const DRILL_IN_CHEVRON = (
+  <Icon size="xs" visual={ChevronRight} className="text-primary-400" />
+);
+
+const PANEL_SWAP_OFFSET_PX = 8;
+const PANEL_ENTER_TRANSITION: Transition = {
+  duration: MOTION_DURATIONS.quickEnter,
+  ease: MOTION_EASINGS.enter,
+};
+const PANEL_EXIT_TRANSITION: Transition = {
+  duration: MOTION_DURATIONS.quickExit,
+  ease: MOTION_EASINGS.enter,
+};
+
+const PAGE_VARIANTS: Variants = {
+  enter: (direction: number) => ({
+    opacity: 0,
+    transform: `translateX(${direction * PANEL_SWAP_OFFSET_PX}px)`,
+  }),
+  idle: {
+    opacity: 1,
+    transform: "translateX(0px)",
+    transition: PANEL_ENTER_TRANSITION,
+  },
+  exit: (direction: number) => ({
+    opacity: 0,
+    transform: `translateX(${-direction * PANEL_SWAP_OFFSET_PX}px)`,
+    transition: PANEL_EXIT_TRANSITION,
+  }),
+};
+
+type PlusMenuPage = "root" | "capabilities" | "attachments" | "spaces";
+
+interface MeasuredPanel {
+  height: number;
+  page: PlusMenuPage;
+}
 
 interface InputBarPlusMenuProps {
   owner: WorkspaceType;
@@ -63,8 +111,6 @@ interface InputBarPlusMenuProps {
   isSpacesLoading?: boolean;
   canDeselectSelectedSpaces?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onCapabilitiesPickerOpenChange?: (open: boolean) => void;
-  onAttachmentsPickerOpenChange?: (open: boolean) => void;
 }
 
 export function InputBarPlusMenu({
@@ -90,197 +136,243 @@ export function InputBarPlusMenu({
   isSpacesLoading,
   canDeselectSelectedSpaces,
   onOpenChange,
-  onCapabilitiesPickerOpenChange,
-  onAttachmentsPickerOpenChange,
 }: InputBarPlusMenuProps) {
-  const isMobile = useIsMobile();
+  const shouldReduceMotion = useReducedMotion();
   const [isOpen, setIsOpen] = useState(false);
-  const [hasHovered, setHasHovered] = useState(false);
-  const [openMobilePicker, setOpenMobilePicker] = useState<MobilePicker | null>(
+  const [page, setPage] = useState<PlusMenuPage>("root");
+  const [direction, setDirection] = useState(1);
+  const [skillIdForDetails, setSkillIdForDetails] = useState<string | null>(
     null
   );
-  // On mobile the pickers render as siblings of the menu (see below), so they
-  // would mount — and fire their SWR hooks — with every input bar. Wait for the
-  // menu to be opened once, which matches when desktop mounts them inside
-  // DropdownMenuContent.
-  const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
-  const plusButtonRef = useRef<HTMLDivElement>(null);
-  const shouldPrefetch = isOpen || hasHovered || openMobilePicker !== null;
+  const [serverViewForDetails, setServerViewForDetails] =
+    useState<MCPServerViewLightType | null>(null);
+  const [measuredPanel, setMeasuredPanel] = useState<MeasuredPanel | null>(
+    null
+  );
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const node = panelRef.current;
+    if (!node) {
+      return;
+    }
+
+    const measure = () => setMeasuredPanel({ height: node.offsetHeight, page });
+
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [page]);
 
   const hasAnyEntry = !hideCapabilities || !hideAttachments || spaces != null;
   if (!hasAnyEntry) {
     return null;
   }
 
-  const openPicker = (picker: MobilePicker) => {
+  const openPage = (nextPage: PlusMenuPage) => {
+    setDirection(1);
+    setPage(nextPage);
+  };
+
+  const goBack = () => {
+    setDirection(-1);
+    setPage("root");
+  };
+
+  const closeMenu = () => {
     setIsOpen(false);
     onOpenChange?.(false);
-    setOpenMobilePicker(picker);
   };
-
-  const closeMobilePicker = (picker: MobilePicker, open: boolean) => {
-    setOpenMobilePicker(open ? picker : null);
-  };
-
-  const spacesLabel = getSpacesPickerLabel(selectedSpaceIds);
-
-  const capabilitiesPicker = (
-    <CapabilitiesPicker
-      type={isMobile ? "dropdown" : "subdropdown"}
-      owner={owner}
-      user={user}
-      selectedMCPServerViews={selectedMCPServerViews}
-      onSelect={onMCPServerViewSelect}
-      onSkillSelect={onSkillSelect}
-      onSetupServer={onSetupServer}
-      onOpenChange={onCapabilitiesPickerOpenChange}
-      buttonSize={buttonSize}
-      disabled={disabled}
-      {...(isMobile
-        ? {
-            externalOpen: openMobilePicker === "capabilities",
-            onExternalOpenChange: (open: boolean) =>
-              closeMobilePicker("capabilities", open),
-            anchorRef: plusButtonRef,
-          }
-        : {})}
-    />
-  );
-
-  const attachmentsPicker = (
-    <InputBarAttachmentsPicker
-      type={isMobile ? "dropdown" : "subdropdown"}
-      owner={owner}
-      fileUploaderService={fileUploaderService}
-      isLoading={false}
-      onNodeSelect={onNodeSelect}
-      onNodeUnselect={onNodeUnselect}
-      attachedNodes={attachedNodes}
-      buttonSize={buttonSize}
-      onOpenChange={onAttachmentsPickerOpenChange}
-      toolFileUpload={{
-        useCase: "conversation",
-        useCaseMetadata: {
-          conversationId: conversation?.sId,
-        },
-      }}
-      spaceId={spaceId}
-      disabled={disabled}
-      prefetch={shouldPrefetch}
-      {...(isMobile
-        ? {
-            externalOpen: openMobilePicker === "attachments",
-            onExternalOpenChange: (open: boolean) =>
-              closeMobilePicker("attachments", open),
-            anchorRef: plusButtonRef,
-          }
-        : {})}
-    />
-  );
-
-  const spacesPicker = (
-    <InputBarSpacesPicker
-      type={isMobile ? "dropdown" : "subdropdown"}
-      canDeselectSelectedSpaces={canDeselectSelectedSpaces ?? true}
-      disabled={disabled}
-      isLoading={!!isSpacesLoading}
-      selectedSpaceIds={selectedSpaceIds}
-      onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
-      spaces={spaces ?? []}
-      {...(isMobile
-        ? {
-            externalOpen: openMobilePicker === "spaces",
-            onExternalOpenChange: (open: boolean) =>
-              closeMobilePicker("spaces", open),
-            anchorRef: plusButtonRef,
-          }
-        : {})}
-    />
-  );
-
-  const plusButton = (
-    <DropdownMenuTrigger asChild>
-      <Button
-        variant="ghost-secondary"
-        icon={Plus}
-        size={buttonSize}
-        disabled={disabled}
-        isRounded
-        tooltip="More"
-        className={PLUS_BUTTON_CLASSNAME}
-        onMouseEnter={() => setHasHovered(true)}
-        onFocus={() => setHasHovered(true)}
-      />
-    </DropdownMenuTrigger>
-  );
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     onOpenChange?.(open);
     if (open) {
-      setHasOpenedMenu(true);
+      setDirection(1);
+      setPage("root");
     }
   };
 
-  if (isMobile) {
-    return (
-      <>
-        {/* The wrapper is the anchor the pickers position against; it hugs the
-            "+" button because the menu itself renders in a portal. */}
-        <div ref={plusButtonRef} className="flex items-center">
-          <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
-            {plusButton}
-            <DropdownMenuContent align="start" className="w-64">
-              {!hideCapabilities && (
-                <DropdownMenuItem
-                  label="Capabilities"
-                  icon={ShapesPlus}
-                  disabled={disabled}
-                  onClick={() => openPicker("capabilities")}
-                />
-              )}
-              {!hideAttachments && (
-                <DropdownMenuItem
-                  label="Attach knowledge"
-                  icon={Attachment01}
-                  disabled={disabled}
-                  onClick={() => openPicker("attachments")}
-                />
-              )}
-              {spaces != null && (
-                <DropdownMenuItem
-                  label={spacesLabel}
-                  icon={Planet}
-                  disabled={disabled}
-                  onClick={() => openPicker("spaces")}
-                />
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+  const rootPage = (
+    <div className="w-full p-1">
+      {!hideCapabilities && (
+        <DropdownMenuItem
+          label="Capabilities"
+          icon={
+            <Icon
+              size="xs"
+              visual={ShapesPlus}
+              className="text-muted-foreground"
+            />
+          }
+          disabled={disabled}
+          endComponent={DRILL_IN_CHEVRON}
+          onSelect={(event) => {
+            event.preventDefault();
+            openPage("capabilities");
+          }}
+        />
+      )}
+      {!hideAttachments && (
+        <DropdownMenuItem
+          label="Attach knowledge"
+          icon={
+            <Icon
+              size="xs"
+              visual={Attachment01}
+              className="text-muted-foreground"
+            />
+          }
+          disabled={disabled}
+          endComponent={DRILL_IN_CHEVRON}
+          onSelect={(event) => {
+            event.preventDefault();
+            openPage("attachments");
+          }}
+        />
+      )}
+      {spaces != null && (
+        <DropdownMenuItem
+          label={getSpacesPickerLabel(selectedSpaceIds)}
+          icon={
+            <Icon size="xs" visual={Planet} className="text-muted-foreground" />
+          }
+          disabled={disabled}
+          endComponent={DRILL_IN_CHEVRON}
+          onSelect={(event) => {
+            event.preventDefault();
+            openPage("spaces");
+          }}
+        />
+      )}
+    </div>
+  );
 
-        {/* Siblings of the menu rather than children: a sub-menu opens beside
-            its parent, and `parent width + sub-menu width` does not fit a phone
-            viewport. */}
-        {hasOpenedMenu && (
-          <>
-            {!hideCapabilities && capabilitiesPicker}
-            {!hideAttachments && attachmentsPicker}
-            {spaces != null && spacesPicker}
-          </>
-        )}
-      </>
-    );
-  }
+  const renderPage = () => {
+    switch (page) {
+      case "capabilities":
+        return (
+          <CapabilitiesPicker
+            type="panel"
+            owner={owner}
+            user={user}
+            selectedMCPServerViews={selectedMCPServerViews}
+            onSelect={onMCPServerViewSelect}
+            onSkillSelect={onSkillSelect}
+            onSetupServer={onSetupServer}
+            onBack={goBack}
+            onClose={closeMenu}
+            onShowSkillDetails={setSkillIdForDetails}
+            onShowToolDetails={setServerViewForDetails}
+            buttonSize={buttonSize}
+            disabled={disabled}
+          />
+        );
+      case "attachments":
+        return (
+          <InputBarAttachmentsPicker
+            type="panel"
+            owner={owner}
+            fileUploaderService={fileUploaderService}
+            isLoading={false}
+            onNodeSelect={onNodeSelect}
+            onNodeUnselect={onNodeUnselect}
+            attachedNodes={attachedNodes}
+            buttonSize={buttonSize}
+            onBack={goBack}
+            onClose={closeMenu}
+            toolFileUpload={{
+              useCase: "conversation",
+              useCaseMetadata: {
+                conversationId: conversation?.sId,
+              },
+            }}
+            spaceId={spaceId}
+            disabled={disabled}
+          />
+        );
+      case "spaces":
+        return (
+          <InputBarSpacesPicker
+            canDeselectSelectedSpaces={canDeselectSelectedSpaces ?? true}
+            isLoading={!!isSpacesLoading}
+            onBack={goBack}
+            selectedSpaceIds={selectedSpaceIds}
+            onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
+            spaces={spaces ?? []}
+          />
+        );
+      case "root":
+        return rootPage;
+      default:
+        assertNeverAndIgnore(page);
+        return null;
+    }
+  };
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
-      {plusButton}
-      <DropdownMenuContent align="start" className="w-64">
-        {!hideCapabilities && capabilitiesPicker}
-        {!hideAttachments && attachmentsPicker}
-        {spaces != null && spacesPicker}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            icon={Plus}
+            size={buttonSize}
+            disabled={disabled}
+            isRounded
+            tooltip="More"
+            className={PLUS_BUTTON_CLASSNAME}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          collisionPadding={8}
+          className="w-80 max-w-[calc(100vw-1rem)] overflow-hidden p-0"
+        >
+          <div
+            className="relative w-full overflow-hidden transition-[height] duration-quick-enter ease-enter motion-reduce:transition-none"
+            style={
+              measuredPanel?.page === page
+                ? { height: measuredPanel.height }
+                : undefined
+            }
+          >
+            <div ref={panelRef}>
+              <LazyMotion features={domAnimation}>
+                <AnimatePresence
+                  initial={false}
+                  mode="popLayout"
+                  custom={direction}
+                >
+                  <m.div
+                    key={page}
+                    className="w-full"
+                    custom={direction}
+                    variants={shouldReduceMotion ? undefined : PAGE_VARIANTS}
+                    initial="enter"
+                    animate="idle"
+                    exit="exit"
+                  >
+                    {renderPage()}
+                  </m.div>
+                </AnimatePresence>
+              </LazyMotion>
+            </div>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <CapabilityDetailsSheets
+        owner={owner}
+        user={user}
+        selectedSkillId={skillIdForDetails}
+        selectedMCPServerView={serverViewForDetails}
+        onCloseSkill={() => setSkillIdForDetails(null)}
+        onCloseTool={() => setServerViewForDetails(null)}
+      />
+    </>
   );
 }

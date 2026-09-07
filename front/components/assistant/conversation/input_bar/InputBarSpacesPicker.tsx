@@ -1,12 +1,12 @@
-import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
 import { getSpaceIcon } from "@app/lib/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import {
-  DropdownMenu,
   DropdownMenuCheckboxItem,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPanel,
+  DropdownMenuPanelRoot,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -16,7 +16,6 @@ import {
   Planet,
   Spinner,
 } from "@dust-tt/sparkle";
-import type React from "react";
 import { useMemo, useState } from "react";
 
 export function getSpacesPickerLabel(selectedSpaceIds: string[]): string {
@@ -29,38 +28,30 @@ export function getSpacesPickerLabel(selectedSpaceIds: string[]): string {
 
 interface InputBarSpacesPickerProps {
   canDeselectSelectedSpaces: boolean;
-  disabled: boolean;
+  disabled?: boolean;
   isLoading: boolean;
+  onBack?: () => void;
   onOpenChange?: (open: boolean) => void;
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   selectedSpaceIds: string[];
   spaces: SelectableConversationSpaceType[];
-  type?: "dropdown" | "subdropdown";
-  externalOpen?: boolean;
-  onExternalOpenChange?: (open: boolean) => void;
-  anchorRef?: React.RefObject<HTMLElement | null>;
+  type?: "subdropdown" | "panel";
 }
 
 export function InputBarSpacesPicker({
   canDeselectSelectedSpaces,
-  disabled,
+  disabled = false,
   isLoading,
+  onBack,
   onOpenChange,
   onSelectedSpaceIdsChange,
   selectedSpaceIds,
   spaces,
-  type = "subdropdown",
-  externalOpen,
-  onExternalOpenChange,
-  anchorRef,
+  type = "panel",
 }: InputBarSpacesPickerProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isExternallyControlled = externalOpen !== undefined;
-  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
-  const setIsOpen = isExternallyControlled
-    ? (open: boolean) => onExternalOpenChange?.(open)
-    : setInternalOpen;
-
+  const isMobile = useIsMobile();
+  const isPanel = type === "panel";
+  const [isOpen, setIsOpen] = useState(false);
   const selectedSpaceIdsSet = useMemo(
     () => new Set(selectedSpaceIds),
     [selectedSpaceIds]
@@ -96,9 +87,8 @@ export function InputBarSpacesPicker({
     onSelectedSpaceIdsChange(selectedSpaceIds.filter((id) => id !== spaceId));
   };
 
-  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
-  const ContentWrapper =
-    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+  const Wrapper = isPanel ? DropdownMenuPanelRoot : DropdownMenuSub;
+  const ContentWrapper = isPanel ? DropdownMenuPanel : DropdownMenuSubContent;
 
   return (
     <Wrapper
@@ -111,9 +101,7 @@ export function InputBarSpacesPicker({
         onOpenChange?.(open);
       }}
     >
-      {type === "dropdown" ? (
-        <DropdownAnchorTrigger anchorRef={anchorRef} />
-      ) : (
+      {!isPanel && (
         <DropdownMenuSubTrigger
           label={label}
           icon={
@@ -128,18 +116,14 @@ export function InputBarSpacesPicker({
         />
       )}
       <ContentWrapper
-        className="w-80 max-w-[calc(100vw-1rem)]"
-        collisionPadding={8}
-        {...(type === "dropdown"
-          ? {
-              align: "end" as const,
-              onInteractOutside: () => setIsOpen(false),
-            }
-          : {})}
+        className={
+          isPanel ? "h-80 w-full xs:h-96" : "w-80 max-w-[calc(100vw-1rem)]"
+        }
+        {...(isPanel ? { title: label, onBack } : { collisionPadding: 8 })}
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
-              autoFocus
+              autoFocus={!isMobile}
               name="search-spaces"
               placeholder="Search Spaces"
               value={searchText}

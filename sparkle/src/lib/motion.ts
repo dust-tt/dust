@@ -7,6 +7,8 @@
 export const MOTION_DURATIONS = {
   enter: 0.2,
   exit: 0.16,
+  quickEnter: 0.14,
+  quickExit: 0.1,
   modalEnter: 0.3,
   modalExit: 0.24,
 } as const;
