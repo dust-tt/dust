@@ -38,11 +38,9 @@
   --font-sans: Geist, sans-serif;
   --font-mono: "Geist Mono", monospace;
 
-  /* Font weight overrides (shared by sparkle/front/marketing).
-     Geist readability-first spec (2026-09-07 test): 500 for labels/buttons,
-     600 for headings and strong. Previously 450 / 550. */
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
+  /* Font weight overrides (shared by sparkle/front/marketing). */
+  --font-weight-medium: 450;
+  --font-weight-semibold: 550;
 
   /* Font sizes — px scale with line-height + letter-spacing.
      Geist readability-first spec (2026-09-07 test), 16px root, mobile-first.
@@ -604,80 +602,80 @@
   font-size: var(--text-xs);
   line-height: var(--text-xs--line-height);
   letter-spacing: var(--text-xs--letter-spacing);
-  font-weight: 600;
+  font-weight: 550;
 }
 @utility heading-sm {
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
   letter-spacing: var(--text-sm--letter-spacing);
-  font-weight: 600;
+  font-weight: 550;
 }
 @utility heading-base {
   font-size: var(--text-base);
   line-height: var(--text-base--line-height);
   /* Spec ui-card-title: -0.01em; the base token itself stays at 0 for body. */
   letter-spacing: -0.16px;
-  font-weight: 600;
+  font-weight: 550;
 }
 @utility heading-lg {
   font-size: var(--text-lg);
   line-height: var(--text-lg--line-height);
   letter-spacing: var(--text-lg--letter-spacing);
-  font-weight: 600;
+  font-weight: 550;
 }
 @utility heading-xl {
   font-size: var(--text-xl);
   line-height: var(--text-xl--line-height);
   letter-spacing: var(--text-xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 550;
 }
 @utility heading-2xl {
   font-size: var(--text-2xl);
   line-height: var(--text-2xl--line-height);
   letter-spacing: var(--text-2xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 550;
 }
 @utility heading-3xl {
   font-size: var(--text-3xl);
   line-height: var(--text-3xl--line-height);
   letter-spacing: var(--text-3xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 550;
 }
 @utility heading-4xl {
   font-size: var(--text-4xl);
   line-height: var(--text-4xl--line-height);
   letter-spacing: var(--text-4xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 450;
 }
 @utility heading-5xl {
   font-size: var(--text-5xl);
   line-height: var(--text-5xl--line-height);
   letter-spacing: var(--text-5xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 450;
 }
 @utility heading-6xl {
   font-size: var(--text-6xl);
   line-height: var(--text-6xl--line-height);
   letter-spacing: var(--text-6xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 450;
 }
 @utility heading-7xl {
   font-size: var(--text-7xl);
   line-height: var(--text-7xl--line-height);
   letter-spacing: var(--text-7xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 450;
 }
 @utility heading-8xl {
   font-size: var(--text-8xl);
   line-height: var(--text-8xl--line-height);
   letter-spacing: var(--text-8xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 450;
 }
 @utility heading-9xl {
   font-size: var(--text-9xl);
   line-height: var(--text-9xl--line-height);
   letter-spacing: var(--text-9xl--letter-spacing);
-  font-weight: 600;
+  font-weight: 450;
 }
 
 @utility heading-mono-lg {
