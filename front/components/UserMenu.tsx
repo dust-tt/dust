@@ -14,6 +14,7 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useDevMode } from "@app/hooks/useDevMode";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
+import { useUserMenuModal } from "@app/hooks/useUserMenuModal";
 import { OPEN_USER_ANALYTICS_EVENT } from "@app/lib/analytics/events";
 import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -33,12 +34,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import {
-  isUserMenuModal,
-  USER_MENU_MODAL_QUERY_PARAM,
-} from "@app/lib/user_menu";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
@@ -48,7 +44,6 @@ import {
 } from "@app/types/extension";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
@@ -121,12 +116,9 @@ export function UserMenu({
 }: UserMenuProps) {
   const router = useAppRouter();
   const { featureFlags } = useFeatureFlags();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [automationsOpen, setAutomationsOpen] = useState(false);
-  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [userMenuModal, setUserMenuModal] = useUserMenuModal();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const userMenuModal = router.query[USER_MENU_MODAL_QUERY_PARAM];
+  const analyticsOpen = userMenuModal === "personal-usage";
 
   const isFirefox =
     typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
@@ -139,30 +131,11 @@ export function UserMenu({
     shouldShowExtensionMenu(extensionLastUsedAt?.value);
 
   useEffect(() => {
-    const openAnalytics = () => setAnalyticsOpen(true);
+    const openAnalytics = () => setUserMenuModal("personal-usage");
     window.addEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
     return () =>
       window.removeEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
-  }, []);
-
-  useEffect(() => {
-    if (!router.isReady || !isUserMenuModal(userMenuModal)) {
-      return;
-    }
-
-    switch (userMenuModal) {
-      case "personal-usage":
-        setAnalyticsOpen(true);
-        break;
-      case "personal-automations":
-        setAutomationsOpen(true);
-        break;
-      default:
-        assertNeverAndIgnore(userMenuModal);
-    }
-
-    void removeParamFromRouter(router, USER_MENU_MODAL_QUERY_PARAM);
-  }, [router, userMenuModal]);
+  }, [setUserMenuModal]);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -313,33 +286,44 @@ export function UserMenu({
   const handleCreditUsageLearnMore = () => {
     trackUserMenuEvent("credit_usage_learn_more");
     setUserMenuOpen(false);
-    setAnalyticsOpen(true);
+    setUserMenuModal("personal-usage");
   };
 
   return (
     <>
       <UserSettingsPopover
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
+        open={userMenuModal === "personal-settings"}
+        onOpenChange={(open) =>
+          setUserMenuModal(open ? "personal-settings" : undefined)
+        }
         owner={owner}
       />
       <UserToolsDialog
-        open={toolsOpen}
-        onOpenChange={setToolsOpen}
+        open={userMenuModal === "personal-tools"}
+        onOpenChange={(open) =>
+          setUserMenuModal(open ? "personal-tools" : undefined)
+        }
         owner={owner}
       />
       <UserAutomationsDialog
-        open={automationsOpen}
-        onOpenChange={setAutomationsOpen}
+        open={userMenuModal === "personal-automations"}
+        onOpenChange={(open) =>
+          setUserMenuModal(open ? "personal-automations" : undefined)
+        }
         owner={owner}
       />
-      <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
+      <Dialog
+        open={analyticsOpen}
+        onOpenChange={(open) =>
+          setUserMenuModal(open ? "personal-usage" : undefined)
+        }
+      >
         <DialogContent size="2xl" height="xl" grow>
           <UserAnalyticsPopover
             key={owner.sId}
             open={analyticsOpen}
             owner={owner}
-            onClose={() => setAnalyticsOpen(false)}
+            onClose={() => setUserMenuModal(undefined)}
           />
         </DialogContent>
       </Dialog>
@@ -529,7 +513,7 @@ export function UserMenu({
                 icon={User01}
                 onSelect={() => {
                   trackUserMenuEvent("personal_settings");
-                  setSettingsOpen(true);
+                  setUserMenuModal("personal-settings");
                 }}
               />
               <DropdownMenuItem
@@ -537,7 +521,7 @@ export function UserMenu({
                 icon={ShapesPlus}
                 onSelect={() => {
                   trackUserMenuEvent("tools");
-                  setToolsOpen(true);
+                  setUserMenuModal("personal-tools");
                 }}
               />
               <DropdownMenuItem
@@ -545,7 +529,7 @@ export function UserMenu({
                 icon={Clock}
                 onSelect={() => {
                   trackUserMenuEvent("automations");
-                  setAutomationsOpen(true);
+                  setUserMenuModal("personal-automations");
                 }}
               />
               {/* The credit usage action is the analytics entry point when shown; keep exactly one. */}
@@ -555,7 +539,7 @@ export function UserMenu({
                   icon={BarChart01}
                   onSelect={() => {
                     trackUserMenuEvent("analytics");
-                    setAnalyticsOpen(true);
+                    setUserMenuModal("personal-usage");
                   }}
                 />
               )}

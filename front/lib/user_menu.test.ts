@@ -7,10 +7,21 @@ import { describe, expect, it } from "vitest";
 
 describe("user menu links", () => {
   it.each([
-    ["personal-usage", "/w/workspace-id/conversation/new?modal=personal-usage"],
+    [
+      "personal-usage",
+      "/w/workspace-id/conversation/new#?modal=personal-usage",
+    ],
     [
       "personal-automations",
-      "/w/workspace-id/conversation/new?modal=personal-automations",
+      "/w/workspace-id/conversation/new#?modal=personal-automations",
+    ],
+    [
+      "personal-settings",
+      "/w/workspace-id/conversation/new#?modal=personal-settings",
+    ],
+    [
+      "personal-tools",
+      "/w/workspace-id/conversation/new#?modal=personal-tools",
     ],
   ] as const)("builds the %s modal route", (modal, expectedRoute) => {
     expect(getUserMenuModalRoute("workspace-id", modal)).toBe(expectedRoute);
@@ -19,6 +30,8 @@ describe("user menu links", () => {
   it("only accepts supported modal values", () => {
     expect(isUserMenuModal("personal-usage")).toBe(true);
     expect(isUserMenuModal("personal-automations")).toBe(true);
+    expect(isUserMenuModal("personal-settings")).toBe(true);
+    expect(isUserMenuModal("personal-tools")).toBe(true);
     expect(isUserMenuModal("apps")).toBe(false);
     expect(isUserMenuModal(["personal-usage"])).toBe(false);
   });
@@ -26,6 +39,8 @@ describe("user menu links", () => {
   it.each([
     ["personal-usage", "/?goto=personal-usage"],
     ["personal-automations", "/?goto=personal-automations"],
+    ["personal-settings", "/?goto=personal-settings"],
+    ["personal-tools", "/?goto=personal-tools"],
   ] as const)("builds the shareable %s route", (modal, expectedRoute) => {
     expect(getUserMenuModalShareRoute(modal)).toBe(expectedRoute);
   });
