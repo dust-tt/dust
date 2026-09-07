@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import fs from "fs";
 
-// The shared `front` `RegionContext` resolves the API base URL from
+// The shared `front` `CellContext` resolves the API base URL from
 // `import.meta.env.VITE_DUST_API_URL*`. Vite injects those in the SPA build, but
 // the extension is built with webpack, which only exposes `process.env.*`. As a
 // result `import.meta.env` is undefined in the extension bundle, the resolved
