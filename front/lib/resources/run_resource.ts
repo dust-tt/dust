@@ -3,10 +3,6 @@ import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/toke
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
-import {
-  USAGE_TYPE_PROGRAMMATIC,
-  USAGE_TYPE_USER,
-} from "@app/lib/metronome/constants";
 import type { UsageType } from "@app/lib/metronome/types";
 import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Region } from "@app/lib/model_constructors/types/regions";
@@ -293,40 +289,6 @@ export class RunResource extends BaseResource<RunModel> {
         where: {
           runId: { [Op.in]: runModelIds },
           usageType: null,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
-    );
-  }
-
-  // TEMP(self-heal): corrects rows misclassified "user" by the pre-fix live
-  // classifier for unattributed Slack messages (front/lib/api/programmatic_usage/common.ts's
-  // isProgrammaticUsageFromContext fallback landed after these runs were created).
-  // Only ever promotes user -> programmatic — the recomputed value passed in
-  // by the caller is the same one already used to bill Metronome for these
-  // runs, so this just brings our own ledger back in sync with what was
-  // actually billed. Scoped to exactly the runs the caller just reclassified,
-  // never a blanket overwrite.
-  // TODO(2026-09-21): remove once the stuck-activity backlog has drained
-  // (i.e. once no more emitMetronomeUsageEventsActivity retries land here) —
-  // this whole method and its call site in temporal/usage_queue/activities.ts.
-  static async selfHealSlackUsageTypeForRuns(
-    auth: Authenticator,
-    { runs, usageType }: { runs: RunResource[]; usageType: UsageType }
-  ): Promise<void> {
-    if (usageType !== USAGE_TYPE_PROGRAMMATIC) {
-      return;
-    }
-    const runModelIds = runs.map((run) => run.id);
-    if (runModelIds.length === 0) {
-      return;
-    }
-    await RunUsageModel.update(
-      { usageType: USAGE_TYPE_PROGRAMMATIC },
-      {
-        where: {
-          runId: { [Op.in]: runModelIds },
-          usageType: USAGE_TYPE_USER,
           workspaceId: auth.getNonNullableWorkspace().id,
         },
       }

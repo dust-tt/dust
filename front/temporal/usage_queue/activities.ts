@@ -466,11 +466,6 @@ export async function emitMetronomeUsageEventsActivity(
 
   await ingestMetronomeEvents(usageEvents);
 
-  // TEMP(self-heal): see RunResource.selfHealSlackUsageTypeForRuns for why
-  // this exists. Remove this call together with that method once the
-  // stuck-activity backlog has drained after release.
-  await RunResource.selfHealSlackUsageTypeForRuns(auth, { runs, usageType });
-
   // Per-key cap enforcement is pull-based: Metronome spend alerts can't
   // attribute spend by `api_key_name` (it's not the products' presentation
   // group key), so we reconcile the key's credit state from live usage instead
