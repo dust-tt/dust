@@ -40,8 +40,9 @@ const fieldVariants = cva(
     variants: {
       size: {
         xs: "h-6 rounded-lg text-xs",
-        sm: "h-8 rounded-xl text-sm tracking-[-0.28px]",
-        md: "h-10 rounded-[15px] text-sm tracking-[-0.28px]",
+        // 16px on small viewports so Mobile Safari does not zoom on focus.
+        sm: "h-8 rounded-xl text-base md:text-sm",
+        md: "h-10 rounded-[15px] text-base md:text-sm",
       },
       state: {
         default: cn(
@@ -76,8 +77,8 @@ const innerInputVariants = cva(
     variants: {
       size: {
         xs: "px-2 text-xs",
-        sm: "px-3 text-sm",
-        md: "px-3 text-sm",
+        sm: "px-3 text-base md:text-sm",
+        md: "px-3 text-base md:text-sm",
       },
     },
     defaultVariants: {
@@ -90,8 +91,8 @@ const labelVariants = cva("pb-0.5 font-medium text-foreground", {
   variants: {
     size: {
       xs: "text-xs",
-      sm: "text-sm tracking-[-0.28px]",
-      md: "text-sm tracking-[-0.28px]",
+      sm: "text-sm",
+      md: "text-sm",
     },
   },
   defaultVariants: {
