@@ -186,6 +186,42 @@ describe("isUserBlockedByMetronome", () => {
     expect(blocked).toBe("credits_exhausted");
   });
 
+  it("does not block a 'free' seat when the pool is depleted, even with a stale 'capped' state, once the rate cap clears", async () => {
+    // Regression: a free seat spends from its own lifetime allowance, never the
+    // pool. After a credit regrant the rate limiter clears
+    // (userCapBlockedOverride=false), but the webhook-driven creditState/pool
+    // status can still read stale ("capped"/"depleted"). The seat-type carve-out
+    // must unblock the free seat without waiting on the webhook.
+    mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
+      seatType: "free",
+    });
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
+
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlockedOverride: false,
+    });
+
+    expect(blocked).toBeNull();
+  });
+
+  it("still blocks a non-free pool seat when the pool is depleted (carve-out is scoped to free seats)", async () => {
+    // Contrast to the free-seat carve-out: a pool seat genuinely draws from the
+    // workspace pool, so pool depletion must still block it even when the rate
+    // cap is clear.
+    mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
+      seatType: "pro",
+    });
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
+
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlockedOverride: false,
+    });
+
+    expect(blocked).toBe("credits_exhausted");
+  });
+
   it("does not block a warned 'on_pool_low_balance' user when pool is active", async () => {
     redisValues.set(
       "metronome:user_credit_state:ws_test:u_test",
