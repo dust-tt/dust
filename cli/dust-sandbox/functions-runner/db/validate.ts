@@ -1,8 +1,8 @@
-// Pod database schema validation for `dsbx db reconcile`.
+// Sandbox database schema validation for `dsbx db reconcile`.
 //
-// A pod database is defined by a drizzle schema file (`databases/{db}.db.ts`, next to the
+// A sandbox database is defined by a drizzle schema file (`databases/{db}.db.ts`, next to the
 // function sources). This module imports such a file, collects its exported tables via
-// drizzle's `getTableConfig`, and validates the pod database rules (one named check per
+// drizzle's `getTableConfig`, and validates the sandbox database rules (one named check per
 // rule); only table and column NAMES come out — reconcile's destructive pre-check reads
 // them, nothing stores shapes. Build and publish never validate databases — the rules are
 // enforced where the agent acts, by the reconcile tool. Failures come back as Err, never
@@ -111,7 +111,7 @@ export async function extractDatabaseSchema(
 
 type TableConfig = ReturnType<typeof getTableConfig>;
 
-// One named check per pod database rule. Each returns the violation or null.
+// One named check per sandbox database rule. Each returns the violation or null.
 type TableRule = (
   where: string,
   config: TableConfig
@@ -155,7 +155,7 @@ function checkNoReservedNames(
     RESERVED_TABLE_PREFIXES.some((prefix) => config.name.startsWith(prefix))
   ) {
     return invalid(
-      `${where}: table name uses a reserved prefix (${RESERVED_TABLE_PREFIXES.join(", ")}) and is not allowed in pod databases`
+      `${where}: table name uses a reserved prefix (${RESERVED_TABLE_PREFIXES.join(", ")}) and is not allowed in sandbox databases`
     );
   }
   const names = [
@@ -166,7 +166,7 @@ function checkNoReservedNames(
   for (const name of names) {
     if (RESERVED_OBJECT_KEYS.has(name)) {
       return invalid(
-        `${where}: name "${name}" is reserved and not allowed in pod databases`
+        `${where}: name "${name}" is reserved and not allowed in sandbox databases`
       );
     }
   }
@@ -179,7 +179,7 @@ function checkNoForeignKeys(
 ): DatabaseSchemaError | null {
   if (config.foreignKeys.length > 0) {
     return invalid(
-      `${where}: foreign keys (.references() / foreignKey()) are not allowed in pod databases — enforce relational integrity in function code instead`
+      `${where}: foreign keys (.references() / foreignKey()) are not allowed in sandbox databases — enforce relational integrity in function code instead`
     );
   }
   return null;
@@ -191,7 +191,7 @@ function checkNoCheckConstraints(
 ): DatabaseSchemaError | null {
   if (config.checks.length > 0) {
     return invalid(
-      `${where}: CHECK constraints are not allowed in pod databases — validate values in function code instead`
+      `${where}: CHECK constraints are not allowed in sandbox databases — validate values in function code instead`
     );
   }
   return null;
@@ -206,13 +206,13 @@ function checkNoUniqueConstraints(
 ): DatabaseSchemaError | null {
   if (config.uniqueConstraints.length > 0) {
     return invalid(
-      `${where}: UNIQUE constraints are not allowed in pod databases (they cannot be added or removed later without a table rebuild) — use uniqueIndex() instead`
+      `${where}: UNIQUE constraints are not allowed in sandbox databases (they cannot be added or removed later without a table rebuild) — use uniqueIndex() instead`
     );
   }
   for (const column of config.columns) {
     if (columnProps(column).isUnique === true) {
       return invalid(
-        `${where}: column "${column.name}" uses .unique() — UNIQUE constraints are not allowed in pod databases (they cannot be added or removed later without a table rebuild), use uniqueIndex() instead`
+        `${where}: column "${column.name}" uses .unique() — UNIQUE constraints are not allowed in sandbox databases (they cannot be added or removed later without a table rebuild), use uniqueIndex() instead`
       );
     }
   }
