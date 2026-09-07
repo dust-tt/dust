@@ -244,16 +244,16 @@ export function SkillBuilderInstructionsReferenceSummary({
   // have min height to always keep space to show references so there is less content shift.
   return (
     <>
-        <div
-          ref={containerRef}
-          className={cn(!isExpand && "overflow-y-hidden max-h-14")}
-        >
-          <div ref={contentRef} className="flex flex-wrap gap-2">
-            {referenceItems.map((item) =>
-              renderReferenceSummaryItem({ item, onReferenceClick })
-            )}
-          </div>
+      <div
+        ref={containerRef}
+        className={cn(!isExpand && "overflow-y-hidden max-h-14")}
+      >
+        <div ref={contentRef} className="flex flex-wrap gap-2">
+          {referenceItems.map((item) =>
+            renderReferenceSummaryItem({ item, onReferenceClick })
+          )}
         </div>
+      </div>
       {isOverflow && (
         <div className="flex justify-end">
           <Button
