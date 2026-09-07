@@ -224,9 +224,9 @@ export const FontWeights: Story = {
       title="Font Weights"
       description={
         <p className="text-sm text-primary-600">
-          Geist follows the standard weight scale — medium is 500 and semibold
-          600. The semantic utilities already pick the right weight; these are
-          for manual composition.
+          Geist is tuned slightly lighter than the usual scale — medium is 450
+          and semibold 550. The semantic utilities already pick the right
+          weight; these are for manual composition.
         </p>
       }
     >
@@ -242,13 +242,13 @@ export const FontWeights: Story = {
             name: "font-medium",
             className: "text-xl font-medium",
             sample: "Aa",
-            description: "500 — labels and buttons (what label-* uses).",
+            description: "450 — labels and buttons (what label-* uses).",
           },
           {
             name: "font-semibold",
             className: "text-xl font-semibold",
             sample: "Aa",
-            description: "600 — headings (what heading-* uses).",
+            description: "550 — headings (what heading-* uses).",
           },
           {
             name: "font-bold",
@@ -297,7 +297,7 @@ export const Headings: Story = {
       title="Headings"
       description={
         <p className="text-sm text-primary-600">
-          Semibold (600) headings across the scale — size, line-height, and
+          Semibold (550) headings across the scale — size, line-height, and
           letter-spacing are packaged together. Sizes above 3xl are for
           marketing surfaces.
         </p>
@@ -393,7 +393,7 @@ export const Labels: Story = {
       title="Labels"
       description={
         <p className="text-sm text-primary-600">
-          Medium-weight (500) styles for interactive and compact UI text.
+          Medium-weight (450) styles for interactive and compact UI text.
         </p>
       }
     >
