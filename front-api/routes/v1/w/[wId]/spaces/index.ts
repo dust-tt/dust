@@ -91,7 +91,7 @@ app.get(
     });
 
     return ctx.json({
-      spaces: await SpaceResource.batchToJSONEnriched(auth, spaces),
+      spaces: await SpaceResource.enrichSpacesWithAccess(auth, spaces),
     });
   }
 );
