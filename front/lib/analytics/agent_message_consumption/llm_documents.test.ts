@@ -5,15 +5,17 @@ import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assi
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
 describe("buildLlmConsumptionDocuments", () => {
-  it("builds one additive document for a model run", async () => {
+  it("builds a model document with snapshotted skills even without tool calls", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -105,6 +107,28 @@ describe("buildLlmConsumptionDocuments", () => {
       pendingToolItems: [],
     });
 
+    const customSkill = await SkillFactory.create(auth);
+    const globalSkill = await SkillResource.fetchById(auth, "frames");
+    if (!globalSkill) {
+      throw new Error("Expected frames global skill");
+    }
+    await customSkill.enableForAgent(auth, {
+      agentConfiguration: agent,
+      conversation: conversationType,
+    });
+    await globalSkill.enableForAgent(auth, {
+      agentConfiguration: agent,
+      conversation: conversationType,
+    });
+    const snapshot = {
+      agentConfigurationId: agent.sId,
+      agentMessageId: agentMessageModelId,
+      conversationId: conversation.id,
+    };
+    await SkillResource.snapshotConversationSkillsForMessage(auth, snapshot);
+    // A finalization retry must not duplicate membership in the index.
+    await SkillResource.snapshotConversationSkillsForMessage(auth, snapshot);
+
     const input = await loadAgentMessageConsumptionAnalyticsInput(auth, {
       agentMessageId: agentMessage.sId,
     });
@@ -132,6 +156,7 @@ describe("buildLlmConsumptionDocuments", () => {
         completed_at: completedAt.toISOString(),
         consumption_key: `run-usage:${runUsageModelId}`,
         consumption_type: "llm",
+        skill_ids: expect.arrayContaining([customSkill.sId, globalSkill.sId]),
         credit_micro: 5_000_000,
         gross_credit_micro: {
           system: 500_000,
@@ -155,8 +180,10 @@ describe("buildLlmConsumptionDocuments", () => {
         user: {
           id: auth.getNonNullableUser().sId,
           group_ids: [],
+          seat_type: null,
         },
       }),
     ]);
+    expect(input.skillIds).toHaveLength(2);
   });
 });

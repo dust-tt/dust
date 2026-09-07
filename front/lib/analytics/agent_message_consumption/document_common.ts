@@ -28,6 +28,7 @@ type AgentMessageConsumptionAnalyticsDocumentMetadata = Pick<
   | "normalized_origin"
   | "parent_message_id"
   | "run_usage_id"
+  | "skill_ids"
   | "space_id"
   | "step_index"
   | "trigger_id"
@@ -51,6 +52,11 @@ export function modelForUsage(
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] message-skill-membership
+ * Every consumption document carries the message's snapshotted skill IDs, including skills
+ * that did not cause a tool call.
+ */
 export function makeBaseDocument(
   metadata: ConsumptionAnalyticsMessageMetadata,
   {
@@ -80,6 +86,7 @@ export function makeBaseDocument(
     normalized_origin: normalizeOrigin(metadata.contextOrigin),
     parent_message_id: metadata.parentMessageId,
     run_usage_id: runUsageModelId.toString(),
+    skill_ids: metadata.skillIds,
     space_id: metadata.spaceId,
     step_index: stepIndex,
     trigger_id: metadata.triggerId,

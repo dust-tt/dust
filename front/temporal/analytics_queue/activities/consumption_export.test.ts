@@ -81,6 +81,7 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
   },
   parent_message_id: null,
   run_usage_id: "123",
+  skill_ids: [],
   space_id: "space1",
   status: "succeeded",
   step_index: 0,

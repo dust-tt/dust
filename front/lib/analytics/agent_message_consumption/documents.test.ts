@@ -671,6 +671,11 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       },
     });
     expect(toolDocuments[0]?.tool?.attributed_skill_ids).toHaveLength(2);
+    for (const document of documents) {
+      expect(document.skill_ids).toEqual(
+        expect.arrayContaining([skillA.sId, skillB.sId])
+      );
+    }
     expect(
       documents.reduce((total, document) => total + document.credit_micro, 0)
     ).toBe(5_000_000);

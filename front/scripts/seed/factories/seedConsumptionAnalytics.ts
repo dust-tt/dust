@@ -309,6 +309,7 @@ type SeedConsumptionBaseFields = Pick<
   | "normalized_origin"
   | "parent_message_id"
   | "run_usage_id"
+  | "skill_ids"
   | "space_id"
   | "status"
   | "step_index"
@@ -349,6 +350,7 @@ function makeBaseFields(
     normalized_origin: normalizeOrigin(message.origin),
     parent_message_id: null,
     run_usage_id: consumptionKey,
+    skill_ids: [],
     space_id: null,
     status: "succeeded",
     step_index: stepIndex,

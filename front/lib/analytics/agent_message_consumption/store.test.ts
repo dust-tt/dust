@@ -57,6 +57,7 @@ function makeDocument(): AgentMessageConsumptionAnalyticsData {
     message_version: "2",
     model: null,
     run_usage_id: "1",
+    skill_ids: [],
     space_id: null,
     status: "succeeded",
     step_index: 0,

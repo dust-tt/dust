@@ -59,6 +59,7 @@ export type ConsumptionAnalyticsMessageMetadata = {
   messageVersion: number;
   model: AgentMessageAnalyticsModel | null;
   parentMessageId: string | null;
+  skillIds: string[];
   spaceId: string | null;
   triggerId: string | null;
   user: AgentMessageConsumptionAnalyticsUser | null;
@@ -325,6 +326,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       : null,
     parentMessageId: triggeringUserMessage.agenticOriginMessageId ?? null,
     runs,
+    skillIds: [...new Set(skills.map((skill) => skill.sId))],
     skills,
     spaceId:
       conversation.spaceModelId === null

@@ -260,6 +260,8 @@ interface AgentMessageConsumptionAnalyticsBaseData
   parent_message_id: string | null;
   model: AgentMessageAnalyticsModel | null;
   run_usage_id: string;
+  // Skills in the message's finalized snapshot, independently of tool attribution.
+  skill_ids: string[];
   space_id: string | null;
   status: string;
   step_index: number;
