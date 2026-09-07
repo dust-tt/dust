@@ -34,10 +34,10 @@ export function ConversationPlanModePanel({
   // Sits next to the panel close button, so ask before archiving.
   const archivePlan = async () => {
     const confirmed = await confirm({
-      title: "Archive plan?",
+      title: "Archive this plan?",
       message:
-        "The plan is removed from this conversation. The agent can create a new one if needed.",
-      validateLabel: "Archive",
+        "This plan will be moved to the conversation's archived files. You can still open it later, and the agent can create a new plan if needed.",
+      validateLabel: "Archive plan",
       validateVariant: "warning",
     });
     if (confirmed) {
