@@ -28,7 +28,7 @@ vi.mock("@app/lib/api/credits/access_control", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@app/lib/api/credits/access_control")
   >()),
-  isApiBlocked: mockIsApiBlocked,
+  isPoolDepleted: mockIsApiBlocked,
 }));
 
 vi.mock("@app/lib/triggers/rate_limits", async (importOriginal) => ({

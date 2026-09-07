@@ -23,7 +23,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { isApiKeyCappedByMetronome } from "@app/lib/metronome/api_key_block";
 import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import {
-  isApiBlockedByMetronome,
+  isPoolDepletedByMetronome,
   isProgrammaticApiBlockedByMetronome,
   isUserAwuWarnedByMetronome,
   isUserBlockedByMetronome,
@@ -43,8 +43,8 @@ async function spendLimitRateCapEnabled(auth: Authenticator): Promise<boolean> {
  * dimension, so this always reads the Metronome pool state; it lives here only
  * so access-control callers have a single, `auth`-based import site.
  */
-export async function isApiBlocked(auth: Authenticator): Promise<boolean> {
-  return isApiBlockedByMetronome(auth.getNonNullableWorkspace().sId);
+export async function isPoolDepleted(auth: Authenticator): Promise<boolean> {
+  return isPoolDepletedByMetronome(auth.getNonNullableWorkspace().sId);
 }
 
 /**

@@ -3,7 +3,7 @@ import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/con
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import {
-  isApiBlocked,
+  isPoolDepleted,
   isProgrammaticApiBlocked,
 } from "@app/lib/api/credits/access_control";
 import { getStreamLLM } from "@app/lib/api/llm";
@@ -730,7 +730,7 @@ export async function getReinforcementSettingsActivity({
       // Pool + programmatic cap. `isProgrammaticApiBlocked` is flag-aware (Redis
       // rate-limiter counter when the flag is on, Metronome state otherwise).
       programmaticUsageLimitReached =
-        (await isApiBlocked(auth)) || (await isProgrammaticApiBlocked(auth));
+        (await isPoolDepleted(auth)) || (await isProgrammaticApiBlocked(auth));
 
       // Both clamps fail-open on errors: the reinforcement cap stays the only
       // constraint.

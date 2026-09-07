@@ -66,8 +66,8 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import {
-  isApiBlocked,
   isApiKeyBlocked,
+  isPoolDepleted,
   isProgrammaticApiBlocked,
   isUserBlocked,
 } from "@app/lib/api/credits/access_control";
@@ -2544,7 +2544,7 @@ export async function checkMessagesLimit(
 
   // Credit-state + programmatic rate-limit gate. Two systems coexist:
   // - Credit-priced (Metronome) plans: workspace pool + per-user cap, cached in Redis.
-  //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
+  //   For API calls (no user), only the workspace pool applies via `isPoolDepleted`.
   //   Pool-balance concurrency limiting (`checkPoolCreditConcurrencyLimit`) prevents
   //   close-to-0 attacks where many requests overshoot the pool before debits settle.
   // - Legacy plans: a per-user credit limit checked from the Redis fixed-window
@@ -2559,12 +2559,12 @@ export async function checkMessagesLimit(
   );
 
   if (isCreditPricedWorkspace) {
-    // `isUserBlocked` / `isApiBlocked` are flag-aware: with the rate-cap flag on
+    // `isUserBlocked` / `isPoolDepleted` are flag-aware: with the rate-cap flag on
     // the per-user cap comes from the Redis fixed-window counters, with it off
     // from the Metronome credit state (see `user_block.ts`).
     const blockedReason = user
       ? await isUserBlocked(auth, user)
-      : (await isApiBlocked(auth))
+      : (await isPoolDepleted(auth))
         ? ("credits_exhausted" as const)
         : null;
     if (blockedReason === "no_seat") {
@@ -2776,7 +2776,7 @@ async function checkPoolCreditConcurrencyLimit(
 
   const maxConcurrent = POOL_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
-    // depleted / overage — handled by isUserBlocked / isApiBlocked upstream.
+    // depleted / overage — handled by isUserBlocked / isPoolDepleted upstream.
     return { isLimitReached: false, limitType: null };
   }
 

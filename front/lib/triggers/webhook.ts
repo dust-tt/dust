@@ -1,5 +1,5 @@
 import {
-  isApiBlocked,
+  isPoolDepleted,
   isProgrammaticApiBlocked,
 } from "@app/lib/api/credits/access_control";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
@@ -293,7 +293,7 @@ async function checkWorkspaceRateLimit({
   // depleted, no downstream message can be posted, so reject early instead of
   // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
   if (plan && isCreditPricedPlan(plan)) {
-    if (owner.metronomeCustomerId && (await isApiBlocked(auth))) {
+    if (owner.metronomeCustomerId && (await isPoolDepleted(auth))) {
       block = {
         status: "credits_exhausted",
         message:
