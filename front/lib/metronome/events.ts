@@ -58,6 +58,31 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
+/**
+ * A session/oauth-authenticated message always has a real Dust user
+ * attached, so a "user" usage type with no userId there is a genuine
+ * attribution bug — `buildUsageEvents` fails loudly on that case. Other auth
+ * methods (workspace API keys, the Slack/Teams/... system key) attribute the
+ * message to a Dust user via a best-effort email match against workspace
+ * membership, which can legitimately find no match — e.g. a Slack user
+ * without a Dust seat. Downgrade that case to programmatic usage instead of
+ * letting it hit the guard.
+ */
+export function downgradeUnattributedUserUsage(
+  usageType: UsageType,
+  { userId, authMethod }: { userId: string | null; authMethod: string | null }
+): UsageType {
+  if (
+    usageType === USAGE_TYPE_USER &&
+    !userId &&
+    authMethod !== "session" &&
+    authMethod !== "oauth"
+  ) {
+    return USAGE_TYPE_PROGRAMMATIC;
+  }
+  return usageType;
+}
+
 // Intelligence (AI compute) credits for a *single execution's* run usages.
 // Usages are grouped by (providerId, modelId) and converted per group before
 // summing — this mirrors the per-execution `buildUsageEvents` event so the

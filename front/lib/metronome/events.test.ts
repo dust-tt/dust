@@ -1,5 +1,8 @@
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
-import { buildUsageEvents } from "@app/lib/metronome/events";
+import {
+  buildUsageEvents,
+  downgradeUnattributedUserUsage,
+} from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
 
@@ -298,5 +301,63 @@ describe("Metronome aggregated usage event", () => {
       cost_awu: 0,
       usage_type: "free",
     });
+  });
+});
+
+describe("downgradeUnattributedUserUsage", () => {
+  it("downgrades unattributed user usage from a non-session/oauth auth method", () => {
+    // e.g. a Slack message whose sender's email didn't match a Dust workspace
+    // member: authenticated via the Slack connector's system API key, with no
+    // resolvable userId.
+    expect(
+      downgradeUnattributedUserUsage("user", {
+        userId: null,
+        authMethod: "system_api_key",
+      })
+    ).toBe("programmatic");
+  });
+
+  it("leaves session-authenticated user usage with no userId untouched", () => {
+    // A session always carries a real Dust user — a missing userId here is a
+    // genuine attribution bug that buildUsageEvents must still catch.
+    expect(
+      downgradeUnattributedUserUsage("user", {
+        userId: null,
+        authMethod: "session",
+      })
+    ).toBe("user");
+  });
+
+  it("leaves oauth-authenticated user usage with no userId untouched", () => {
+    expect(
+      downgradeUnattributedUserUsage("user", {
+        userId: null,
+        authMethod: "oauth",
+      })
+    ).toBe("user");
+  });
+
+  it("leaves attributed user usage untouched", () => {
+    expect(
+      downgradeUnattributedUserUsage("user", {
+        userId: "user",
+        authMethod: "system_api_key",
+      })
+    ).toBe("user");
+  });
+
+  it("leaves non-user usage types untouched", () => {
+    expect(
+      downgradeUnattributedUserUsage("programmatic", {
+        userId: null,
+        authMethod: "system_api_key",
+      })
+    ).toBe("programmatic");
+    expect(
+      downgradeUnattributedUserUsage("free", {
+        userId: null,
+        authMethod: "system_api_key",
+      })
+    ).toBe("free");
   });
 });

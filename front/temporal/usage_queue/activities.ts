@@ -10,6 +10,7 @@ import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   buildUsageEvents,
   computeRunKey,
+  downgradeUnattributedUserUsage,
   getUsageType,
 } from "@app/lib/metronome/events";
 import {
@@ -345,11 +346,14 @@ export async function emitMetronomeUsageEventsActivity(
   const isSubAgentMessage = userMessage?.agenticMessageType !== null;
 
   const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
-  const usageType = getUsageType(programmatic, userMessageOrigin);
   // Use updatedAt — this is when the agent message finished (not when it was created).
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
   const messageStatus = agentMessage.status ?? "unknown";
+  const usageType = downgradeUnattributedUserUsage(
+    getUsageType(programmatic, userMessageOrigin),
+    { userId, authMethod }
+  );
 
   // Attribute usage to the parent (triggering) agent only for *hidden helper*
   // sub-agents (e.g. the dust-task / dust-planning runs spawned by "go deep").
