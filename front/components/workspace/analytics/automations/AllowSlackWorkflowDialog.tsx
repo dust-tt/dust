@@ -107,8 +107,8 @@ export function AllowSlackWorkflowDialog({
                 onChange={(e) => setBotName(e.target.value)}
               />
               <span className="text-xs text-muted-foreground">
-                The sender name Slack shows on the workflow's messages. It has
-                to match exactly, spelling and capitalization included.
+                The sender name showed in Slack on the workflow's messages. It
+                has to match exactly, spelling and capitalization included.
               </span>
             </div>
             <div className="flex flex-col gap-2">

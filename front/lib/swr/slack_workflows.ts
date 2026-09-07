@@ -14,10 +14,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
-function slackWorkflowsUrl(workspaceId: string): string {
-  return `/api/w/${workspaceId}/slack-workflows`;
-}
-
 export function useSlackWorkflows({
   owner,
   disabled,
@@ -29,7 +25,7 @@ export function useSlackWorkflows({
   const workflowsFetcher: Fetcher<GetSlackWorkflowsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    slackWorkflowsUrl(owner.sId),
+    `/api/w/${owner.sId}/slack-workflows`,
     workflowsFetcher,
     { disabled }
   );
@@ -61,7 +57,7 @@ export function useAllowSlackWorkflow({
       spaceIds: string[];
     }): Promise<boolean> => {
       setIsAllowing(true);
-      const res = await clientFetch(slackWorkflowsUrl(owner.sId), {
+      const res = await clientFetch(`/api/w/${owner.sId}/slack-workflows`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ botName, spaceIds }),
@@ -107,7 +103,7 @@ export function useRevokeSlackWorkflow({
   const doRevokeSlackWorkflow = useCallback(
     async ({ botName }: { botName: string }): Promise<boolean> => {
       setIsRevoking(true);
-      const res = await clientFetch(slackWorkflowsUrl(owner.sId), {
+      const res = await clientFetch(`/api/w/${owner.sId}/slack-workflows`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ botName }),

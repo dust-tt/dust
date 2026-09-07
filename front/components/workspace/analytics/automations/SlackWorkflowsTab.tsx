@@ -75,7 +75,12 @@ function SlackWorkflowsOverview({
     useSlackWorkflowsOverview({ workspaceId: owner.sId, period });
 
   if (isOverviewLoading) {
-    return <LoadingBlock className="h-24 w-full rounded-xl" />;
+    return (
+      <div className="flex items-stretch gap-6">
+        <LoadingBlock className="h-24 w-full rounded-xl" />
+        <LoadingBlock className="h-24 w-full rounded-xl" />
+      </div>
+    );
   }
 
   if (isOverviewError || !overview) {
@@ -119,9 +124,8 @@ function SlackWorkflowsCard({
 }: SlackWorkflowsCardProps) {
   const confirm = useContext(ConfirmContext);
   const [isAllowDialogOpen, setIsAllowDialogOpen] = useState(false);
-  const { doRevokeSlackWorkflow, isRevoking } = useRevokeSlackWorkflow({
-    owner,
-  });
+  const [revokingBotName, setRevokingBotName] = useState<string | null>(null);
+  const { doRevokeSlackWorkflow } = useRevokeSlackWorkflow({ owner });
   const [search, setSearch] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -138,7 +142,9 @@ function SlackWorkflowsCard({
       });
 
       if (confirmed) {
+        setRevokingBotName(botName);
         await doRevokeSlackWorkflow({ botName });
+        setRevokingBotName(null);
       }
     },
     [confirm, doRevokeSlackWorkflow]
@@ -198,7 +204,7 @@ function SlackWorkflowsCard({
                 tooltip="Revoke workflow"
                 size="xs"
                 variant="ghost-secondary"
-                disabled={isRevoking}
+                disabled={revokingBotName === info.row.original.botName}
                 onClick={() => void handleRevoke(info.row.original.botName)}
               />
             </div>
@@ -206,7 +212,7 @@ function SlackWorkflowsCard({
         ),
       },
     ],
-    [handleRevoke, isRevoking]
+    [handleRevoke, revokingBotName]
   );
 
   const rows: SlackWorkflowRowData[] = useMemo(
@@ -220,8 +226,8 @@ function SlackWorkflowsCard({
   );
 
   return (
-    <div className="rounded-lg border border-border bg-panel-background p-4">
-      <div className="mb-4 flex items-center gap-2">
+    <div className="flex flex-col gap-4 rounded-lg border border-border bg-panel-background p-4">
+      <div className="flex items-center gap-2">
         <SearchInput
           name="slack-workflows-search"
           placeholder="Search…"
