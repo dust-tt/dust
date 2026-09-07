@@ -35,10 +35,7 @@ import type {
   AgentMessageStatus,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
-  isTerminalAgentMessageStatus,
-} from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -212,15 +209,17 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   if (!messageConversation) {
     throw new Error("Agent message conversation not found");
   }
-  if (
-    !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) ||
-    !isTerminalAgentMessageStatus(agentMessage.status)
-  ) {
+  if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status)) {
     return null;
   }
-  if (!agentMessage.completedAt) {
-    throw new Error("Settled agent message is missing completedAt");
-  }
+  // A tool-approval pause is still `created`, but its reported runs are already billed.
+  // Match billing's persisted message timestamp for that snapshot, never the backfill time.
+  // A later finalize upserts the same consumption keys with the new full-message snapshot.
+  const completedAt =
+    agentMessage.status === "created"
+      ? agentMessage.updatedAt
+      : agentMessage.completedAt;
+  assert(completedAt, "Settled agent message is missing completedAt");
 
   const dustRunIds = [...new Set(agentMessage.runIds ?? [])];
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
@@ -280,10 +279,16 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     parentAgentId: ancestorAgentIds.at(-1),
   });
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
+  let userId = triggeringUserMessage.userId;
+  if (userId === null && triggeringUserMessage.agenticOriginMessageId) {
+    userId = await ConversationResource.fetchOriginatingUserId(auth, {
+      agentMessageId,
+    });
+  }
   const user = await loadAnalyticsUser({
     auth,
-    completedAt: agentMessage.completedAt,
-    userId: triggeringUserMessage.userId,
+    completedAt,
+    userId,
   });
 
   const resolvedModel = resolvedModelFromAgentMessageRow({
@@ -307,7 +312,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentMessageId,
     apiKeyName,
     billedCredits: agentMessage.costCredits,
-    completedAt: agentMessage.completedAt,
+    completedAt,
     contextOrigin: triggeringUserMessage.origin,
     conversationId: conversation.conversationId,
     dustRunIds,
