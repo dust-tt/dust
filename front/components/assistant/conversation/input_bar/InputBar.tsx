@@ -14,7 +14,6 @@ import {
   INPUT_BAR_COMPACT_PILL_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
   useAddDeleteConversationTool,
   useConversationTools,
@@ -686,10 +685,6 @@ export const InputBar = React.memo(function InputBar({
       )}
     >
       <InputBarUsageBanner owner={owner} />
-      <PlanCard
-        conversationId={conversation?.sId ?? null}
-        workspaceId={owner.sId}
-      />
       <div
         onAnimationEnd={() => setIsShaking(false)}
         onClick={(e) => {

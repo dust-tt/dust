@@ -1,10 +1,13 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { extractPlanTitle } from "@app/components/assistant/conversation/plan_mode/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
+import {
+  useClosePlan,
+  usePlanFile,
+} from "@app/hooks/conversations/usePlanFile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Markdown, Spinner, XClose } from "@dust-tt/sparkle";
+import { Button, Markdown, Spinner, Trash04, XClose } from "@dust-tt/sparkle";
 
 interface ConversationPlanModePanelProps {
   conversation: ConversationWithoutContentType;
@@ -20,6 +23,10 @@ export function ConversationPlanModePanel({
     conversationId: conversation.sId,
     workspaceId: owner.sId,
   });
+  const { closePlan, isClosing } = useClosePlan({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+  });
 
   const title = extractPlanTitle(content);
 
@@ -32,12 +39,24 @@ export function ConversationPlanModePanel({
               Plan: {title}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={closePanel}
-            icon={XClose}
-          />
+          <div className="flex items-center gap-1">
+            {content && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Trash04}
+                tooltip="Close plan"
+                isLoading={isClosing}
+                onClick={() => void closePlan()}
+              />
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closePanel}
+              icon={XClose}
+            />
+          </div>
         </div>
       </AppLayoutTitle>
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
