@@ -2342,12 +2342,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  private async listActiveAgents<
-    K extends keyof Attributes<AgentConfigurationModel>,
-  >(
-    auth: Authenticator,
-    { attributes }: { attributes: K[] }
-  ): Promise<Pick<Attributes<AgentConfigurationModel>, K>[]> {
+  private async listActiveAgents(
+    auth: Authenticator
+  ): Promise<
+    Pick<
+      Attributes<AgentConfigurationModel>,
+      "id" | "sId" | "name" | "pictureUrl" | "requestedSpaceIds"
+    >[]
+  > {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -2365,7 +2367,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
 
     return AgentConfigurationModel.findAll({
-      attributes,
+      attributes: ["id", "sId", "name", "pictureUrl", "requestedSpaceIds"],
       where: {
         id: { [Op.in]: agentConfigIds },
         workspaceId: workspace.id,
@@ -2375,9 +2377,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
-    const agents = await this.listActiveAgents(auth, {
-      attributes: ["sId", "name", "pictureUrl"],
-    });
+    const agents = await this.listActiveAgents(auth);
 
     const sortedAgents = agents
       .map((agent) => ({
@@ -2416,9 +2416,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const agents = await this.listActiveAgents(auth, {
-      attributes: ["id", "requestedSpaceIds"],
-    });
+    const agents = await this.listActiveAgents(auth);
 
     if (agents.length === 0) {
       // No agents are using this skill, skip.
@@ -2430,7 +2428,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     const workspace = auth.getNonNullableWorkspace();
-    const agentIds = agents.map((a) => a.id);
+    const agentModelIds = agents.map((a) => a.id);
 
     let actionsByAgentModelId = new Map<
       ModelId,
@@ -2440,13 +2438,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     if (spaceIdsRemovedFromThisSkill.length > 0) {
       actionsByAgentModelId = await fetchMCPServerActionConfigurations(auth, {
-        configurationIds: agentIds,
+        configurationIds: agentModelIds,
         variant: "full",
       });
 
       const agentSkillModels = await AgentSkillModel.findAll({
         where: {
-          agentConfigurationId: { [Op.in]: agentIds },
+          agentConfigurationId: { [Op.in]: agentModelIds },
           workspaceId: workspace.id,
         },
       });
