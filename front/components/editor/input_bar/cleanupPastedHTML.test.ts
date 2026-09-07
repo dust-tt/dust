@@ -19,6 +19,22 @@ describe("cleanupPastedHTML", () => {
       expect(result).toContain("https://example.com");
       expect(result).toContain("Link");
     });
+
+    test.each([
+      "tool",
+      "skill",
+    ])("preserves %s reference metadata while removing unsafe attributes", (tag) => {
+      const html = `<p id="paragraph">Use <${tag} id="ref_123" name="Research &amp; analysis" icon="ActionBrainIcon" class="chip" style="color: red" onclick="alert(1)"></${tag}> here.</p>`;
+      expect(cleanupPastedHTML(html)).toBe(
+        `<p>Use <${tag} id="ref_123" name="Research &amp; analysis" icon="ActionBrainIcon"></${tag}> here.</p>`
+      );
+    });
+
+    test("preserves unavailable skill references", () => {
+      const html =
+        '<p><unavailable_skill id="skill_123"></unavailable_skill></p>';
+      expect(cleanupPastedHTML(html)).toBe(html);
+    });
   });
 
   describe("forbidden tags removal", () => {
