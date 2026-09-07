@@ -55,18 +55,36 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
     USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
 );
 
+const PROGRAMMATIC_FALLBACK_ORIGINS: ReadonlySet<UserMessageOrigin> =
+  new Set<UserMessageOrigin>(["slack"]);
+
+// The connector's auth method (e.g. Slack) when it posts a message on behalf
+// of a workspace member it couldn't attribute to a real Dust user.
+const SYSTEM_API_KEY_AUTH_METHOD = "system_api_key";
+
 export function isProgrammaticUsageFromContext({
   authMethod,
   userMessageOrigin,
+  userId,
+  messageAuthMethod,
 }: {
   // Persisted historical values predate the AuthMethodType union, so keep the input broad and
   // reproduce the live rule by recognizing the one auth method that changes classification.
   authMethod: string | null;
   userMessageOrigin: UserMessageOrigin;
+  // The triggering user message's own resolved user and auth method, when known. Used to fall
+  // back to programmatic for messages (e.g. Slack) that couldn't be attributed to a workspace
+  // member. Omit when this information isn't available (the fallback is then simply skipped —
+  // it never downgrades usage to user, only ever promotes an unattributed one to programmatic).
+  userId?: string | null;
+  messageAuthMethod?: string | null;
 }): boolean {
   return (
     authMethod === "api_key" ||
-    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic" ||
+    (userId === null &&
+      messageAuthMethod === SYSTEM_API_KEY_AUTH_METHOD &&
+      PROGRAMMATIC_FALLBACK_ORIGINS.has(userMessageOrigin))
   );
 }
 
@@ -101,8 +119,19 @@ export type UsageAggregations = {
 
 /**
  * Query-side mirror of isProgrammaticUsage: API-key requests, messages with no
- * context origin, or a listed programmatic origin. Single source of truth for
- * splitting analytics docs into programmatic vs user.
+ * context origin, a listed programmatic origin, or an unattributed message on
+ * a fallback origin (e.g. Slack) — same rule as isProgrammaticUsageFromContext,
+ * replicated over the fields already stored on each indexed document
+ * (`user_id` is indexed as the literal string "unknown" when unattributed, see
+ * temporal/analytics_queue/activities/agent_analytics.ts). Single source of
+ * truth for splitting analytics docs into programmatic vs user.
+ *
+ * TODO: only needed because the legacy analytics index has no stored
+ * usage_type field, unlike the newer consumption analytics index. Once that
+ * legacy index is retired, delete this (and getShouldTrackTokenUsageCostsESFilter)
+ * and repoint their remaining callers — daily_cap.ts, programmatic_cost.ts,
+ * programmatic_cost_export.ts, observability/credit_usage.ts — at a stored
+ * usage_type term query instead.
  */
 export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContainer {
   return {
@@ -111,6 +140,19 @@ export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContain
         { term: { auth_method: "api_key" } },
         { bool: { must_not: { exists: { field: "context_origin" } } } },
         { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
+        {
+          bool: {
+            must: [
+              {
+                terms: {
+                  context_origin: [...PROGRAMMATIC_FALLBACK_ORIGINS],
+                },
+              },
+              { term: { auth_method: SYSTEM_API_KEY_AUTH_METHOD } },
+              { term: { user_id: "unknown" } },
+            ],
+          },
+        },
       ],
       minimum_should_match: 1,
     },
@@ -122,7 +164,8 @@ export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContain
  * Matches messages that should be tracked for billing:
  * - API key requests
  * - Unspecified context origins
- * - Programmatic origins (api, zapier, make, slack, etc.)
+ * - Programmatic origins (api, zapier, make, etc.)
+ * - Unattributed messages on a fallback origin (e.g. Slack)
  */
 export function getShouldTrackTokenUsageCostsESFilter(
   auth: Authenticator

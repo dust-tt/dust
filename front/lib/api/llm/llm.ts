@@ -965,6 +965,8 @@ export abstract class LLM<
       isProgrammaticUsageFromContext({
         authMethod: this.authenticator.authMethod(),
         userMessageOrigin,
+        userId: this.context.userId,
+        messageAuthMethod: this.context.userMessageAuthMethod,
       }),
       userMessageOrigin
     );

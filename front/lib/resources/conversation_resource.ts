@@ -780,6 +780,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     status: AgentMessageStatus;
     runIds: string[] | null;
     triggeringUserMessageOrigin: UserMessageOrigin | null;
+    triggeringUserId: string | null;
+    triggeringUserMessageAuthMethod: string | null;
     // The total cost already stored (and already recorded to the usage
     // counters) by a prior finalize of this message. Used to record only the
     // newly-accrued delta on re-finalize.
@@ -800,15 +802,25 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
+    let triggeringUserId: string | null = null;
+    let triggeringUserMessageAuthMethod: string | null = null;
     if (messageRow.parentId !== null) {
       const parentRow = await MessageModel.findOne({
         where: { id: messageRow.parentId, workspaceId },
         include: [
-          { model: UserMessageModel, as: "userMessage", required: false },
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+            include: [{ model: UserModel, required: false }],
+          },
         ],
       });
       triggeringUserMessageOrigin =
         parentRow?.userMessage?.userContextOrigin ?? null;
+      triggeringUserId = parentRow?.userMessage?.user?.sId ?? null;
+      triggeringUserMessageAuthMethod =
+        parentRow?.userMessage?.userContextAuthMethod ?? null;
     }
 
     return {
@@ -816,6 +828,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       status: agentMessage.status,
       runIds: agentMessage.runIds,
       triggeringUserMessageOrigin,
+      triggeringUserId,
+      triggeringUserMessageAuthMethod,
       previousCostCredits: agentMessage.costCredits,
     };
   }

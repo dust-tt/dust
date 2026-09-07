@@ -113,6 +113,8 @@ export async function computeAndStoreAgentMessageCredits(
     status,
     runIds,
     triggeringUserMessageOrigin,
+    triggeringUserId,
+    triggeringUserMessageAuthMethod,
     previousCostCredits,
   } = creditContext;
 
@@ -142,7 +144,11 @@ export async function computeAndStoreAgentMessageCredits(
   await RunResource.setUsageTypeForRunsIfMissing(auth, {
     runs,
     usageType: getUsageType(
-      isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin }),
+      isProgrammaticUsage(auth, {
+        userMessageOrigin: messageOrigin,
+        userId: triggeringUserId,
+        messageAuthMethod: triggeringUserMessageAuthMethod,
+      }),
       messageOrigin
     ),
   });
