@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "code-contracts": {
+      "source": "spolu/code-contracts",
+      "sourceType": "github",
+      "skillPath": "skills/code-contracts/SKILL.md",
+      "computedHash": "7380cf04c823e8d8de872b96b6106ad06aef8fdf91ed019439ee832353ac6f96"
+    }
+  }
+}

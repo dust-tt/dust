@@ -2,6 +2,24 @@
 
 @AGENTS.local.md
 
+# Code Contracts
+
+Use the `code-contracts` skill for every code change and code review. Follow its contract discovery,
+writing, and enforcement procedures before submitting commits or pull requests.
+
+This code-base pre-existed code contracts and thefore can lack important contracts. When making, as
+part of a code change, an important assumptions about a component's or function's behavior that is
+not covered by an existing code contract, create a new code contract for that component and check
+that existing callers comply to the new contract.
+
+**Well-known labels:**
+
+- `coding`: general coding rules enforced at the repository or directory level, generally in
+  CONTRACTS files.
+- `product`: product and business logic related contracts.
+- `security`: contracts on which our security rely, whose enforcement is critical.
+- `performance`: performance and reliability related contracts.
+
 # Storybook MCP (Sparkle design system)
 
 When working on UI components, always use the `sparkle-storybook` MCP tools to access
