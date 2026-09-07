@@ -36,7 +36,7 @@ export function UnpublishAssistantsDialog({
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: null,
+      agentsGetView: "list", // Any view works; the concrete key is used to invalidate all views.
       disabled: true,
     });
 
