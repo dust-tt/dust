@@ -83,4 +83,42 @@ describe("SkillSearchDocumentResource", () => {
       )
     ).resolves.toBeNull();
   });
+  it("pages active skills by model ID", async () => {
+    const firstActiveSkill = await SkillFactory.create(
+      testContext.authenticator,
+      { name: "First active skill" }
+    );
+    await SkillFactory.create(testContext.authenticator, {
+      name: "Archived skill",
+      status: "archived",
+    });
+    const secondActiveSkill = await SkillFactory.create(
+      testContext.authenticator,
+      { name: "Second active skill" }
+    );
+
+    const firstPage =
+      await SkillSearchDocumentResource.listActiveSearchIndexSkillIds(
+        testContext.authenticator,
+        { afterSkillModelId: null, limit: 1 }
+      );
+    expect(firstPage).toEqual([
+      {
+        skillId: firstActiveSkill.sId,
+        skillModelId: firstActiveSkill.id,
+      },
+    ]);
+
+    const secondPage =
+      await SkillSearchDocumentResource.listActiveSearchIndexSkillIds(
+        testContext.authenticator,
+        { afterSkillModelId: firstPage[0].skillModelId, limit: 10 }
+      );
+    expect(secondPage).toEqual([
+      {
+        skillId: secondActiveSkill.sId,
+        skillModelId: secondActiveSkill.id,
+      },
+    ]);
+  });
 });

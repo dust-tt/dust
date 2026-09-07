@@ -19,6 +19,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import {
   continueAsNew,
   executeChild,
+  patched,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -320,6 +321,10 @@ export async function workspaceRelocateFrontEsIndexationWorkflow({
 
   // Recreate user search index.
   await destinationRegionActivities.recreateUserSearchIndex({ workspaceId });
+
+  if (patched("relocation-recreate-skill-search-index")) {
+    await destinationRegionActivities.recreateSkillSearchIndex({ workspaceId });
+  }
 }
 
 /**
