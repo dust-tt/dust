@@ -49,21 +49,28 @@ import type {
   GetSubscriptionTrialInfoResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/types/api/subscription";
+import type { CellInfo } from "@app/types/cell";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
-// Type guard to check if response is a region redirect
-export function isRegionRedirect(data: unknown): data is RegionRedirectError {
+export function isCellRedirectError(data: unknown): data is APIErrorResponse & {
+  error: {
+    redirect: CellInfo;
+  };
+} {
   return (
-    typeof data === "object" && data !== null && "redirect" in data
-    // typeof (data as RegionRedirectError).redirect === "object" &&
-    // (data as RegionRedirectError).redirect !== null &&
-    // "region" in (data as RegionRedirectError).redirect &&
-    // "url" in (data as RegionRedirectError).redirect
+    isAPIErrorResponse(data) &&
+    "redirect" in data.error &&
+    typeof data.error.redirect === "object" &&
+    data.error.redirect !== null &&
+    "name" in data.error.redirect &&
+    "region" in data.error.redirect &&
+    "url" in data.error.redirect
   );
 }
 
@@ -612,7 +619,7 @@ export function useAuthContext(
 ) {
   const { workspaceId, disabled } = options;
   const { fetcher } = useFetcher();
-  const { setCellInfo, cells } = useCellContext();
+  const { setCellInfo } = useCellContext();
 
   const url = workspaceId
     ? workspaceAuthContextUrl(workspaceId)
@@ -626,29 +633,24 @@ export function useAuthContext(
     disabled,
   });
 
-  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
-  const regionRedirect = isRegionRedirectResponse
+  const cellRedirect = isCellRedirectError(error)
     ? error.error.redirect
     : undefined;
   const isFetching = !error && !data && !disabled;
-  const isAuthenticated = !isRegionRedirectResponse && !!data?.user;
+  const isAuthenticated = !cellRedirect && !!data?.user;
 
-  // Handle region redirect.
+  // Handle cell redirect.
   useEffect(() => {
-    if (regionRedirect) {
-      setCellInfo(
-        // TODO(single-tenant): fix so that regionRedirect becomes cellRedirect.
-        // Fallback to first cell with a matching region.
-        cells.find((c) => c.region === regionRedirect.region) ?? cells[0]
-      );
+    if (cellRedirect) {
+      setCellInfo(cellRedirect);
       void mutate();
     }
-  }, [regionRedirect, mutate, setCellInfo, cells]);
+  }, [cellRedirect, mutate, setCellInfo]);
 
   return {
-    authContext: isRegionRedirectResponse ? undefined : data,
+    authContext: cellRedirect ? undefined : data,
     isAuthenticated,
-    isAuthContextLoading: isFetching || !!isRegionRedirectResponse,
+    isAuthContextLoading: isFetching || !!cellRedirect,
     authContextError: error,
     mutateAuthContext: mutate,
   };
@@ -755,7 +757,7 @@ export function useJoinData({
   conversationId: string | null;
 }) {
   const { fetcher } = useFetcher();
-  const { setCellInfo, cells } = useCellContext();
+  const { setCellInfo } = useCellContext();
   const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
 
   const params = new URLSearchParams();
@@ -770,28 +772,23 @@ export function useJoinData({
 
   const { data, error, mutate } = useSWRWithDefaults(url, joinFetcher);
 
-  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
-  const regionRedirect = isRegionRedirectResponse
+  const cellRedirect = isCellRedirectError(error)
     ? error.error.redirect
     : undefined;
 
-  // Handle region redirect.
+  // Handle cell redirect.
   useEffect(() => {
-    if (regionRedirect) {
-      setCellInfo(
-        // TODO(single-tenant): fix so that regionRedirect becomes cellRedirect.
-        // Fallback to first cell with a matching region.
-        cells.find((c) => c.region === regionRedirect.region) ?? cells[0]
-      );
+    if (cellRedirect) {
+      setCellInfo(cellRedirect);
       void mutate();
     }
-  }, [regionRedirect, mutate, setCellInfo, cells]);
+  }, [cellRedirect, mutate, setCellInfo]);
 
   // The join API returns { redirectUrl: "..." } (e.g. for invalid/expired
   // tokens). This is not a standard API error response, so the fetcher wraps
   // it in new Error(jsonText) — we parse it back out here.
   const redirectUrl = useMemo(() => {
-    if (!error || isRegionRedirectResponse || !(error instanceof Error)) {
+    if (!error || cellRedirect || !(error instanceof Error)) {
       return null;
     }
     const parsed = safeParseJSON(error.message);
@@ -799,13 +796,12 @@ export function useJoinData({
       return parsed.value.redirectUrl;
     }
     return null;
-  }, [error, isRegionRedirectResponse]);
+  }, [error, cellRedirect]);
 
   return {
     joinData: data ?? null,
     joinDataError: error ?? null,
-    isJoinDataLoading:
-      (!error && !data) || !!isRegionRedirectResponse || !!redirectUrl,
+    isJoinDataLoading: (!error && !data) || !!cellRedirect || !!redirectUrl,
     mutateJoinData: mutate,
     redirectUrl,
   };

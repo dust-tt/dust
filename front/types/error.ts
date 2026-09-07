@@ -37,7 +37,6 @@ const API_ERROR_TYPES = [
   "provider_not_found",
   "dataset_not_found",
   "workspace_not_found",
-  "workspace_in_different_region", // TODO(single-tenant): remove this once we have fully migrated to cell.
   "workspace_in_different_cell",
   "workspace_auth_error",
   "workspace_can_use_product_required_error",
@@ -187,7 +186,6 @@ export type APIErrorType = (typeof API_ERROR_TYPES)[number];
 // failures (e.g. a cell redirect). Callers can use this to log them at a
 // lower level so they don't pollute error monitoring.
 export const EXPECTED_API_ERROR_TYPES: ReadonlySet<APIErrorType> = new Set([
-  "workspace_in_different_region", // TODO(single-tenant): remove this once we have fully migrated to cell.
   "workspace_in_different_cell",
 ]);
 
