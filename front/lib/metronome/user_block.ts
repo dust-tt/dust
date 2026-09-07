@@ -462,8 +462,19 @@ export async function isUserBlockedByMetronome(
 
   // A user spending from their personal seat balance (`user_seat` /
   // `user_seat_low_balance`) still has their own credits, so workspace pool
-  // depletion must not block them — only their per-user cap can.
-  if (workspacePoolDepleted && isSpendingFromPersonalSeat(userCreditState)) {
+  // depletion must not block them — only their per-user cap can. A free seat is
+  // the same case: it spends from its own lifetime credit allowance (enforced by
+  // the per-user rate cap) and never from the workspace pool, so pool depletion
+  // must not block it either. Keying the free-seat carve-out on `seatType`
+  // (rather than the credit state) matters under the rate-cap flag: it keeps the
+  // free seat's blocking governed solely by the fresh rate-limiter counter, so a
+  // credit regrant unblocks immediately instead of waiting on the webhook that
+  // clears the stale `poolCreditState` / `creditState`.
+  if (
+    workspacePoolDepleted &&
+    (isSpendingFromPersonalSeat(userCreditState) ||
+      membership?.seatType === "free")
+  ) {
     workspacePoolDepleted = false;
   }
 

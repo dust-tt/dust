@@ -255,6 +255,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     expect(input?.user).toEqual({
       id: testContext.authenticator.getNonNullableUser().sId,
       group_ids: [group.sId],
+      seat_type: "workspace",
     });
   });
 

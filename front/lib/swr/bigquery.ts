@@ -20,6 +20,7 @@ export function useBigQueryLocations({
     }); // Serialize with body to ensure uniqueness.
   }, [url, credentials]);
 
+  const disabled = !credentials;
   const { data, error, mutate } = useSWRWithDefaults<
     string,
     PostCheckBigQueryLocationsResponseBody
@@ -32,12 +33,12 @@ export function useBigQueryLocations({
 
       return fetcherWithBody([url, { credentials }, "POST"]);
     },
-    { disabled: !credentials }
+    { disabled }
   );
 
   return {
     locations: data?.locations ?? undefined,
-    isLocationsLoading: !error && !data,
+    isLocationsLoading: !error && !data && !disabled,
     isLocationsError: !!error,
     error: error?.error,
     mutateLocations: mutate,

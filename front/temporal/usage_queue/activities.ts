@@ -344,12 +344,18 @@ export async function emitMetronomeUsageEventsActivity(
   const parentAgentMessageId = userMessage?.agenticOriginMessageId ?? null;
   const isSubAgentMessage = userMessage?.agenticMessageType !== null;
 
-  const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
-  const usageType = getUsageType(programmatic, userMessageOrigin);
   // Use updatedAt — this is when the agent message finished (not when it was created).
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
   const messageStatus = agentMessage.status ?? "unknown";
+  const usageType = getUsageType(
+    isProgrammaticUsage(auth, {
+      userMessageOrigin,
+      userId,
+      messageAuthMethod: authMethod,
+    }),
+    userMessageOrigin
+  );
 
   // Attribute usage to the parent (triggering) agent only for *hidden helper*
   // sub-agents (e.g. the dust-task / dust-planning runs spawned by "go deep").
@@ -459,6 +465,11 @@ export async function emitMetronomeUsageEventsActivity(
   });
 
   await ingestMetronomeEvents(usageEvents);
+
+  // TEMP(self-heal): see RunResource.selfHealSlackUsageTypeForRuns for why
+  // this exists. Remove this call together with that method once the
+  // stuck-activity backlog has drained after release.
+  await RunResource.selfHealSlackUsageTypeForRuns(auth, { runs, usageType });
 
   // Per-key cap enforcement is pull-based: Metronome spend alerts can't
   // attribute spend by `api_key_name` (it's not the products' presentation

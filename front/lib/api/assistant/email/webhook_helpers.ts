@@ -19,9 +19,9 @@ import {
   createBufferedRequestFromRawBody,
   isSendgridParseFormRequest,
 } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
+import { config as cellsConfig } from "@app/lib/api/cells/config";
 import apiConfig from "@app/lib/api/config";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { isSupportedFileContentType } from "@app/types/files";
@@ -41,8 +41,8 @@ import { readFile } from "fs/promises";
 export type EmailWebhookHeaders = Record<string, string | string[] | undefined>;
 
 export const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
-const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
-  "x-dust-email-webhook-source-region";
+const EMAIL_WEBHOOK_RELAY_SOURCE_CELL_HEADER =
+  "x-dust-email-webhook-source-cell";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
   "x-dust-email-webhook-source-error";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
@@ -75,7 +75,7 @@ function isRelayEligibleError(error: EmailTriggerError): boolean {
   return isRelayEligibleErrorType(error.type);
 }
 
-export function shouldRelayToOtherRegion({
+export function shouldRelayToOtherCells({
   headers,
   error,
 }: {
@@ -85,8 +85,8 @@ export function shouldRelayToOtherRegion({
   return isRelayEligibleError(error) && !isRelayedWebhookRequest(headers);
 }
 
-// Ordered from least to most informative: a user unknown in one region may still
-// exist in the other, and a user without an enabled workspace in one region may
+// Ordered from least to most informative: a user unknown in one cell may still
+// exist in the other, and a user without an enabled workspace in one cell may
 // still have one in the other.
 const RELAY_ERROR_INFORMATIVENESS: Record<RelayEligibleErrorType, number> = {
   user_not_found: 0,
@@ -95,10 +95,10 @@ const RELAY_ERROR_INFORMATIVENESS: Record<RelayEligibleErrorType, number> = {
 };
 
 /**
- * On a relayed request, both regions' lookups have failed and the relayed region
- * sends the error reply. The source region's error type (forwarded via header) may
+ * On a relayed request, cells' lookups have failed and the relayed cell's
+ * sends the error reply. The source cell's error type (forwarded via header) may
  * be more informative than the local one — e.g. the sender has a real account with
- * Email Agents disabled in the source region but no account locally; replying with
+ * Email Agents disabled in the source cell but no account locally; replying with
  * the local `user_not_found` ("please sign up") would be wrong.
  */
 export function resolveRelayedErrorReply({
@@ -167,7 +167,7 @@ export function hasValidRelayAuthorization(
 
   return (
     isRelayedWebhookRequest(headers) &&
-    authHeader.slice("Bearer ".length) === regionsConfig.getLookupApiSecret()
+    authHeader.slice("Bearer ".length) === cellsConfig.getLookupApiSecret()
   );
 }
 
@@ -191,95 +191,101 @@ export async function recordEmailRelay(
   return result === "OK";
 }
 
-export async function relayEmailToOtherRegion(
+export async function relayEmailToOtherCells(
   email: InboundEmail,
   { sourceError }: { sourceError: EmailTriggerError }
 ): Promise<Result<void, Error>> {
   try {
-    const { url, name } = regionsConfig.getOtherRegionInfo();
-    const formData = new FormData();
+    const cells = cellsConfig.getOtherCells();
 
-    formData.set("subject", email.subject);
-    formData.set("text", email.text);
-    formData.set("from", email.sender.full);
-    formData.set("SPF", email.auth.SPF);
-    formData.set("dkim", email.auth.dkimRaw);
-    formData.set("envelope", JSON.stringify(email.envelope));
+    const headers = {
+      Authorization: `Bearer ${cellsConfig.getLookupApiSecret()}`,
+      [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+      [EMAIL_WEBHOOK_RELAY_SOURCE_CELL_HEADER]:
+        cellsConfig.getCurrentCell().name,
+      [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
+    };
+
+    const body = new FormData();
+    body.set("subject", email.subject);
+    body.set("text", email.text);
+    body.set("from", email.sender.full);
+    body.set("SPF", email.auth.SPF);
+    body.set("dkim", email.auth.dkimRaw);
+    body.set("envelope", JSON.stringify(email.envelope));
 
     if (email.rawHeaders) {
-      formData.set("headers", email.rawHeaders);
+      body.set("headers", email.rawHeaders);
     }
 
     for (const [index, attachment] of email.attachments.entries()) {
       const buffer = await readFile(attachment.filepath);
-      formData.append(
+      body.append(
         `attachment_${index}`,
         new Blob([buffer], { type: attachment.contentType }),
         attachment.filename
       );
     }
 
-    const responseRes = await withRetry(
-      async () => {
-        const response = await fetch(`${url}/api/email/webhook`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
-            [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
-            [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
-              regionsConfig.getCurrentRegion(),
-            [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
-          },
-          body: formData,
-        });
+    for (const cell of cells) {
+      const responseRes = await withRetry(
+        async () => {
+          const response = await fetch(`${cell.url}/api/email/webhook`, {
+            method: "POST",
+            headers,
+            body,
+          });
 
-        if (response.status >= HTTP_SERVER_ERROR_STATUS_MIN) {
-          throw new Error(
-            `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
-          );
-        }
-        return response;
-      },
-      {
-        shouldRetry: (error) => {
-          logger.warn(
-            {
-              error: normalizeError(error),
-              senderEmail: email.sender.email,
-              sourceRegion: regionsConfig.getCurrentRegion(),
-              targetRegion: name,
-            },
-            "[email] Retrying inbound email relay"
-          );
-          return true;
+          if (response.status >= HTTP_SERVER_ERROR_STATUS_MIN) {
+            throw new Error(
+              `Relay to ${cell.name} failed with status ${response.status}: ${response.statusText}`
+            );
+          }
+          return response;
         },
-      }
-    );
-
-    if (responseRes.isErr()) {
-      return responseRes;
-    }
-    if (!responseRes.value.ok) {
-      return new Err(
-        new Error(
-          `Relay to ${name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
-        )
+        {
+          shouldRetry: (error) => {
+            logger.warn(
+              {
+                error: normalizeError(error),
+                senderEmail: email.sender.email,
+                sourceCell: cellsConfig.getCurrentCell().name,
+                targetCell: cell.name,
+              },
+              "[email] Retrying inbound email relay"
+            );
+            return true;
+          },
+        }
       );
+
+      if (responseRes.isErr()) {
+        return responseRes;
+      }
+      if (!responseRes.value.ok) {
+        return new Err(
+          new Error(
+            `Relay to ${cell.name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
+          )
+        );
+      }
+
+      logger.info(
+        {
+          senderEmail: email.sender.email,
+          targetCell: cell.name,
+          sourceCell: cellsConfig.getCurrentCell().name,
+        },
+        "[email] Relayed inbound email to other cell"
+      );
+
+      return new Ok(undefined);
     }
-
-    logger.info(
-      {
-        senderEmail: email.sender.email,
-        targetRegion: name,
-        sourceRegion: regionsConfig.getCurrentRegion(),
-      },
-      "[email] Relayed inbound email to other region"
-    );
-
-    return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
   }
+
+  return new Err(new Error("Failed to relay inbound email to other cells"));
 }
 
 function parseThreadingHeaders(rawHeaders: string | null) {

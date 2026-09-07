@@ -59,10 +59,11 @@ async function fetchLegacyEditors(
   const group = await GroupResource.fetchByAgentConfiguration({
     auth,
     agentConfiguration: configuration,
+    // Some legacy agents have no editor group; tolerate its absence as in deletion flows.
+    isDeletionFlow: true,
   });
-  assert(group, "Non-draft agent must have an editor group.");
 
-  return group.getActiveMembers(auth);
+  return group ? group.getActiveMembers(auth) : [];
 }
 
 async function fetchGrantEditors(

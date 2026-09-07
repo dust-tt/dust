@@ -35,6 +35,7 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -153,6 +154,7 @@ async function listAgentMessageRefs({
         as: "userMessage",
         attributes: ["userContextAuthMethod", "userContextOrigin"],
         required: true,
+        include: [{ model: UserModel, required: false }],
       },
     ],
   });
@@ -183,6 +185,8 @@ async function listAgentMessageRefs({
         isProgrammaticUsageFromContext({
           authMethod: triggeringUserMessage.userContextAuthMethod,
           userMessageOrigin: origin,
+          userId: triggeringUserMessage.user?.sId ?? null,
+          messageAuthMethod: triggeringUserMessage.userContextAuthMethod,
         }),
         origin
       ),

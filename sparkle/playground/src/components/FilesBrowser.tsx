@@ -20,7 +20,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   EmptyCTA,
-  File01,
   File02,
   Folder,
   Icon,
@@ -104,7 +103,7 @@ function CreateFilesMenu() {
         <Button variant="primary" icon={Plus} label="Create" isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem icon={File01} label="Doc" onClick={() => {}} />
+        <DropdownMenuItem icon={File02} label="Doc" onClick={() => {}} />
         <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
         <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
         <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />

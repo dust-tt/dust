@@ -2914,6 +2914,11 @@ describe("SkillResource", () => {
       const usageB = usageMap.get(skillB.sId)!;
       expect(usageB.count).toBe(1);
       expect(usageB.agents[0].name).toBe("Agent 1");
+
+      const singleUsageA = await skillA.fetchUsage(testContext.authenticator);
+      const singleUsageB = await skillB.fetchUsage(testContext.authenticator);
+      expect(singleUsageA).toEqual(usageA);
+      expect(singleUsageB).toEqual(usageB);
     });
 
     it("returns empty map for empty input", async () => {

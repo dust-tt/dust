@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { Button, EmptyCTA, EmptyCTAButton } from "@sparkle/components";
-import { DownloadCloud01, Plus } from "@sparkle/icons/v2-stroke";
+import { Download01, Plus } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof EmptyCTA> = {
   title: "Feedback & Status/EmptyCTA",
@@ -36,9 +36,7 @@ type Story = StoryObj<typeof meta>;
 export const WithMessage: Story = {
   args: {
     message: "You don't have any spaces yet.",
-    action: (
-      <EmptyCTAButton icon={DownloadCloud01} label="Create a new space" />
-    ),
+    action: <EmptyCTAButton icon={Download01} label="Create a new space" />,
   },
 };
 

@@ -15,6 +15,47 @@ import { describe, expect, it } from "vitest";
 const logger = baseLogger.child({}, { level: "silent" });
 
 describe("backfillAgentEditorGrants", () => {
+  it("treats a missing legacy editor group as empty through execute and rerun", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const legacyGroup = await GroupResource.findEditorGroupForAgent(
+      authenticator,
+      agent
+    );
+    assert(legacyGroup.isOk());
+    expect((await legacyGroup.value.delete(authenticator)).isOk()).toBe(true);
+
+    await expect(
+      backfillAgentEditorGrants({ execute: false, logger, workspace })
+    ).resolves.toMatchObject({
+      editorGrantsToRemove: 1,
+      mismatchedAgentCount: 1,
+    });
+
+    await expect(
+      backfillAgentEditorGrants({ execute: true, logger, workspace })
+    ).resolves.toMatchObject({
+      editorGrantsToRemove: 1,
+      mismatchedAgentCount: 0,
+    });
+    await expect(
+      backfillAgentEditorGrants({ execute: true, logger, workspace })
+    ).resolves.toMatchObject({
+      editorGrantsToAdd: 0,
+      editorGrantsToRemove: 0,
+      mismatchedAgentCount: 0,
+    });
+    const afterRerun = await GroupResource.findEditorGroupForAgent(
+      authenticator,
+      agent
+    );
+    assert(afterRerun.isErr());
+    expect(afterRerun.error.code).toBe("group_not_found");
+  });
+
   it("syncs archived agents from their latest legacy group", async () => {
     const {
       authenticator,

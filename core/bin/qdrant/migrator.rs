@@ -144,16 +144,28 @@ async fn set_shadow_write(
 
     let mut config = ds.config().clone();
 
-    config.qdrant_config = QdrantDataSourceConfig {
-        cluster: config.qdrant_config.cluster,
-        shadow_write_cluster: Some(QdrantCluster::from_str(cluster.as_str())?),
-    };
+    let shadow_write_cluster = QdrantCluster::from_str(cluster.as_str())?;
+    config.qdrant_config.shadow_write_cluster = Some(shadow_write_cluster);
 
-    // Create collection on shadow_write_cluster.
-    let shadow_write_qdrant_client = match ds.shadow_write_qdrant_client(&qdrant_clients) {
-        Some(client) => client,
-        None => unreachable!(),
-    };
+    // The shadow cluster's collection decides the data source's key there.
+    let shadow_write_qdrant_client = qdrant_clients.client(shadow_write_cluster);
+    match shadow_write_qdrant_client
+        .assign_shard_key(ds.embedder_config(), ds.internal_id())
+        .await?
+    {
+        Some(key) => {
+            config
+                .qdrant_config
+                .shard_keys
+                .insert(shadow_write_cluster, key);
+        }
+        None => {
+            config
+                .qdrant_config
+                .shard_keys
+                .remove(&shadow_write_cluster);
+        }
+    }
 
     utils::done(&format!(
         "Created data source on shadow_write_cluster: \
@@ -238,10 +250,13 @@ async fn clear_shadow_write(
     // Remove shadow_write_cluster from config.
     let mut config = ds.config().clone();
 
-    config.qdrant_config = QdrantDataSourceConfig {
-        cluster: config.qdrant_config.cluster,
-        shadow_write_cluster: None,
-    };
+    if let Some(shadow_write_cluster) = config.qdrant_config.shadow_write_cluster {
+        config
+            .qdrant_config
+            .shard_keys
+            .remove(&shadow_write_cluster);
+    }
+    config.qdrant_config.shadow_write_cluster = None;
 
     ds.update_config(store, &config).await?;
 
@@ -408,6 +423,7 @@ async fn commit_shadow_write(
         Some(cluster) => QdrantDataSourceConfig {
             cluster,
             shadow_write_cluster: Some(config.qdrant_config.cluster),
+            shard_keys: config.qdrant_config.shard_keys.clone(),
         },
         None => Err(anyhow!("No shadow write cluster to commit"))?,
     };
