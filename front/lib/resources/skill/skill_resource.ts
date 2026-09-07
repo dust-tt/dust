@@ -134,7 +134,7 @@ type SkillReferenceTarget = {
 
 type AgentUsageAttributes = Pick<
   Attributes<AgentConfigurationModel>,
-  "id" | "sId" | "name" | "pictureUrl"
+  "id" | "sId" | "name" | "pictureUrl" | "requestedSpaceIds"
 >;
 
 type ReplaceSkillReferenceTagsOptions = {
@@ -2344,12 +2344,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private async listActiveAgents(
     auth: Authenticator
-  ): Promise<
-    Pick<
-      Attributes<AgentConfigurationModel>,
-      "id" | "sId" | "name" | "pictureUrl" | "requestedSpaceIds"
-    >[]
-  > {
+  ): Promise<AgentUsageAttributes[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -2827,7 +2822,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...new Set(agentSkills.map((as) => as.agentConfigurationId)),
     ];
     const agentConfigs = await AgentConfigurationModel.findAll({
-      attributes: ["id", "sId", "name", "pictureUrl"],
+      attributes: ["id", "sId", "name", "pictureUrl", "requestedSpaceIds"],
       where: {
         id: { [Op.in]: uniqueAgentConfigIds },
         workspaceId: workspace.id,
