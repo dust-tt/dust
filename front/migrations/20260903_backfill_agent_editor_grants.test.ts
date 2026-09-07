@@ -15,12 +15,10 @@ import { describe, expect, it } from "vitest";
 const logger = baseLogger.child({}, { level: "silent" });
 
 describe("backfillAgentEditorGrants", () => {
-  it("recreates a missing legacy editor group with its author only on execute", async () => {
-    const {
-      authenticator,
-      user: author,
-      workspace,
-    } = await createResourceTest({ role: "admin" });
+  it("treats a missing legacy editor group as empty through execute and rerun", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const legacyGroup = await GroupResource.findEditorGroupForAgent(
@@ -33,41 +31,29 @@ describe("backfillAgentEditorGrants", () => {
     await expect(
       backfillAgentEditorGrants({ execute: false, logger, workspace })
     ).resolves.toMatchObject({
-      editorGrantsToRemove: 0,
-      mismatchedAgentCount: 0,
+      editorGrantsToRemove: 1,
+      mismatchedAgentCount: 1,
     });
-    const afterDryRun = await GroupResource.findEditorGroupForAgent(
-      authenticator,
-      agent
-    );
-    assert(afterDryRun.isErr());
-    expect(afterDryRun.error.code).toBe("group_not_found");
 
     await expect(
       backfillAgentEditorGrants({ execute: true, logger, workspace })
     ).resolves.toMatchObject({
+      editorGrantsToRemove: 1,
+      mismatchedAgentCount: 0,
+    });
+    await expect(
+      backfillAgentEditorGrants({ execute: true, logger, workspace })
+    ).resolves.toMatchObject({
+      editorGrantsToAdd: 0,
       editorGrantsToRemove: 0,
       mismatchedAgentCount: 0,
     });
-    const restoredGroup = await GroupResource.findEditorGroupForAgent(
-      authenticator,
-      agent
-    );
-    assert(restoredGroup.isOk());
-    expect(
-      (await restoredGroup.value.getActiveMembers(authenticator)).map(
-        ({ id }) => id
-      )
-    ).toEqual([author.id]);
-    await expect(
-      backfillAgentEditorGrants({ execute: true, logger, workspace })
-    ).resolves.toMatchObject({ editorGrantsToAdd: 0, mismatchedAgentCount: 0 });
     const afterRerun = await GroupResource.findEditorGroupForAgent(
       authenticator,
       agent
     );
-    assert(afterRerun.isOk());
-    expect(afterRerun.value.id).toBe(restoredGroup.value.id);
+    assert(afterRerun.isErr());
+    expect(afterRerun.error.code).toBe("group_not_found");
   });
 
   it("syncs archived agents from their latest legacy group", async () => {

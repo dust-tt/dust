@@ -3,7 +3,6 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -53,43 +52,18 @@ function userDifference(
   return left.filter(({ id }) => !rightIds.has(id));
 }
 
-async function prepareLegacyEditors(
+async function fetchLegacyEditors(
   auth: Authenticator,
-  configuration: AgentConfigurationModel,
-  { execute, logger, workspace }: BackfillSpec
+  configuration: AgentConfigurationModel
 ): Promise<UserResource[]> {
-  const groupResult = await GroupResource.findEditorGroupForAgent(
+  const group = await GroupResource.fetchByAgentConfiguration({
     auth,
-    configuration
-  );
-  if (groupResult.isOk()) {
-    return groupResult.value.getActiveMembers(auth);
-  }
-  if (groupResult.error.code !== "group_not_found") {
-    throw groupResult.error;
-  }
-
-  logger.warn(
-    { workspaceId: workspace.sId, agentId: configuration.sId, execute },
-    "Missing legacy editor group"
-  );
-  // A few legacy agents lack an editor group. Recreate it with the author, as on agent creation.
-  if (execute) {
-    const group = await withTransaction((transaction) =>
-      GroupResource.makeNewAgentEditorsGroup(auth, configuration, {
-        transaction,
-        authorId: configuration.authorId,
-      })
-    );
-    return group.getActiveMembers(auth);
-  }
-
-  const authors = await UserResource.fetchByModelIds([configuration.authorId]);
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users: authors,
-    workspace,
+    agentConfiguration: configuration,
+    // Some legacy agents have no editor group; tolerate its absence as in deletion flows.
+    isDeletionFlow: true,
   });
-  return memberships.length > 0 ? authors : [];
+
+  return group ? group.getActiveMembers(auth) : [];
 }
 
 async function fetchGrantEditors(
@@ -109,14 +83,13 @@ async function fetchGrantEditors(
   return group ? group.getActiveMembers(auth) : [];
 }
 
-async function prepareEditorState(
+async function fetchEditorState(
   auth: Authenticator,
   agent: AgentResource,
-  configuration: AgentConfigurationModel,
-  spec: BackfillSpec
+  configuration: AgentConfigurationModel
 ): Promise<EditorState> {
   const [legacyEditors, grantEditors] = await Promise.all([
-    prepareLegacyEditors(auth, configuration, spec),
+    fetchLegacyEditors(auth, configuration),
     fetchGrantEditors(auth, agent),
   ]);
 
@@ -188,12 +161,7 @@ async function backfillAgentGrants(
   spec: BackfillSpec
 ): Promise<AgentEditorGrantStats> {
   const agent = AgentResource.fromAgentConfigurationModel(configuration);
-  const initialState = await prepareEditorState(
-    auth,
-    agent,
-    configuration,
-    spec
-  );
+  const initialState = await fetchEditorState(auth, agent, configuration);
   const changes = {
     toAdd: userDifference(
       initialState.legacyEditors,
@@ -209,7 +177,7 @@ async function backfillAgentGrants(
   const hasChanges = changes.toAdd.length > 0 || changes.toRemove.length > 0;
   const finalState =
     spec.execute && hasChanges
-      ? await prepareEditorState(auth, agent, configuration, spec)
+      ? await fetchEditorState(auth, agent, configuration)
       : initialState;
 
   return {
