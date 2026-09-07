@@ -33,10 +33,7 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import {
-  isCreditPricedPlan,
-  isSubscriptionMetronomeBilled,
-} from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   AlertCircle,
   Button,
@@ -186,12 +183,15 @@ export function PoolUsagePage() {
 
   const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
   const activeSubscription = workspaceInfo?.activeSubscription;
-  const hasMetronomeContract =
-    !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
   const isLegacyPremiumMessagePlan =
     !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
+  // Whether the pool/Metronome columns apply is driven by the `legacy_billing`
+  // feature flag (`hasMetronomeFeature`) rather than the subscription's actual
+  // contract state, so this stays in sync with the flag immediately instead of
+  // trailing subscription/contract provisioning. Poke-only ("compact" variant);
+  // the customer-facing usage table doesn't use this flag.
   const isLegacyWithoutPoolOrMetronome =
-    isLegacyPremiumMessagePlan && !hasMetronomeContract;
+    isLegacyPremiumMessagePlan && !workspaceInfo?.hasMetronomeFeature;
   const showPoolSection =
     !!activeSubscription && !isLegacyWithoutPoolOrMetronome;
 
