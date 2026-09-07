@@ -165,19 +165,23 @@ export function useSkills({
 export function useSearchSkills({
   owner,
   searchTerm,
+  cursor,
+  limit,
   disabled,
   swrOptions,
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
+  cursor?: string;
+  limit?: number;
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
 }) {
   const { fetcher } = useFetcher();
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 
-  // The delayed value controls the external network request; search-result
-  // filtering and ordering remain derived synchronously by the caller.
+  // Debounce the external request. Never mix scores from the previous query
+  // with current-query tool scores while this timer or the request is pending.
   useEffect(() => {
     const timeout = setTimeout(
       () => setDebouncedSearchTerm(searchTerm),
@@ -189,6 +193,12 @@ export function useSearchSkills({
   const queryParams = new URLSearchParams({
     query: debouncedSearchTerm.slice(0, 200),
   });
+  if (cursor) {
+    queryParams.set("cursor", cursor);
+  }
+  if (limit !== undefined) {
+    queryParams.set("limit", String(limit));
+  }
   const skillsFetcher: Fetcher<SearchSkillsResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills/search?${queryParams.toString()}`,
@@ -196,16 +206,23 @@ export function useSearchSkills({
     {
       ...swrOptions,
       disabled,
-      keepPreviousData: true,
+      keepPreviousData: false,
     }
   );
 
   return {
     skills:
-      data?.skills ?? emptyArray<SearchSkillsResponseBody["skills"][number]>(),
+      searchTerm === debouncedSearchTerm && !disabled
+        ? (data?.skills ??
+          emptyArray<SearchSkillsResponseBody["skills"][number]>())
+        : emptyArray<SearchSkillsResponseBody["skills"][number]>(),
+    nextCursor:
+      searchTerm === debouncedSearchTerm ? (data?.nextCursor ?? null) : null,
     isSkillsError: !!error,
     isSkillsLoading:
-      searchTerm !== debouncedSearchTerm || (!error && (!data || isValidating)),
+      !disabled &&
+      (searchTerm !== debouncedSearchTerm ||
+        (!error && (!data || isValidating))),
   };
 }
 

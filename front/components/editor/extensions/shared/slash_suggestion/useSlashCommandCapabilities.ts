@@ -92,7 +92,8 @@ export function useInputBarSlashCommandCapabilities({
     () =>
       buildCapabilitySlashCommandItems({
         excludeSkillId,
-        query,
+        query: query.slice(0, 200),
+        useSearchRanking: true,
         skills,
         tools: serverViews,
         toolFilter: (serverView) =>

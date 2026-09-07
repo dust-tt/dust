@@ -6,13 +6,19 @@ import {
   getSkillSlashCommandItem,
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
+  MAX_RENDERED_CAPABILITY_ITEMS,
   searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import {
+  compareRankedSkills,
+  getSkillSearchScore,
+} from "@app/lib/skill_search/ranking";
 import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/skills/global_search_aliases";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export function filterSlashCommandItems(
   items: SlashCommand[],
@@ -41,6 +47,7 @@ export function buildCapabilitySlashCommandItems<
   skills,
   toolFilter,
   tools,
+  useSearchRanking = false,
 }: {
   excludeSkillId?: string | null;
   query: string;
@@ -48,41 +55,71 @@ export function buildCapabilitySlashCommandItems<
   skills: SlashCommandSkillSuggestion[];
   toolFilter?: (tool: SlashCommandToolSuggestion<V>) => boolean;
   tools: SlashCommandToolSuggestion<V>[];
+  useSearchRanking?: boolean;
 }): SlashCommand[] {
-  const matches = searchCapabilityIndex({
-    query,
-    items: [
-      ...skills
-        .filter((skill) => skill.sId !== excludeSkillId)
-        .filter((skill) => skillFilter?.(skill) ?? true)
-        .map((skill) => ({
-          isFavorite: skill.isFavorite ?? false,
-          kind: "skill" as const,
-          normalizedDescription: skill.userFacingDescription?.toLowerCase(),
-          searchAliases: GLOBAL_SKILL_SEARCH_ALIASES[skill.sId],
-          skill,
-          sortName: skill.name,
-        })),
-      ...tools
-        .filter((tool) => toolFilter?.(tool) ?? true)
-        .map((tool) => ({
-          kind: "tool" as const,
-          normalizedDescription:
-            getMcpServerViewDescription(tool)?.toLowerCase(),
-          tool,
-          sortName: getToolSlashCommandLabel(tool),
-        })),
-    ],
-  });
+  const items = [
+    ...skills
+      .filter((skill) => skill.sId !== excludeSkillId)
+      .filter((skill) => skillFilter?.(skill) ?? true)
+      .map((skill) => ({
+        isFavorite: skill.isFavorite ?? false,
+        score: skill.score,
+        sId: skill.sId,
+        description: skill.userFacingDescription,
+        kind: "skill" as const,
+        normalizedDescription: skill.userFacingDescription?.toLowerCase(),
+        searchAliases: GLOBAL_SKILL_SEARCH_ALIASES[skill.sId],
+        skill,
+        sortName: skill.name,
+      })),
+    ...tools
+      .filter((tool) => toolFilter?.(tool) ?? true)
+      .map((tool) => ({
+        kind: "tool" as const,
+        score: undefined,
+        sId: tool.sId,
+        description: getMcpServerViewDescription(tool),
+        searchAliases: undefined,
+        normalizedDescription: getMcpServerViewDescription(tool)?.toLowerCase(),
+        tool,
+        sortName: getToolSlashCommandLabel(tool),
+      })),
+  ];
 
-  return matches.map((match) => {
-    switch (match.kind) {
-      case "skill":
-        return getSkillSlashCommandItem(match.skill);
-      case "tool":
-        return getToolSlashCommandItem(match.tool);
-      default:
-        return assertNever(match);
-    }
-  });
+  // Search-backed skills keep their server scores. Tools use the same scoring
+  // rules; the legacy builder keeps its existing favorites/autocomplete order.
+  const matches = useSearchRanking
+    ? items
+        .map((item) => ({
+          item,
+          score:
+            item.score ??
+            getSkillSearchScore({
+              searchTerm: query,
+              name: item.sortName,
+              description: item.description ?? "",
+              aliases: item.searchAliases,
+            }),
+          name: item.sortName,
+          sId: item.sId,
+        }))
+        .filter((item) => item.score > 0)
+        .sort(compareRankedSkills)
+        .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
+        .map(({ item }) => item)
+    : searchCapabilityIndex({ query, items });
+
+  return removeNulls(
+    matches.map((match) => {
+      switch (match.kind) {
+        case "skill":
+          return getSkillSlashCommandItem(match.skill);
+        case "tool":
+          return getToolSlashCommandItem(match.tool);
+        default:
+          assertNeverAndIgnore(match);
+          return null;
+      }
+    })
+  );
 }
