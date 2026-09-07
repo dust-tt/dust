@@ -114,11 +114,6 @@ function PokeConsumptionBurnUpChart({
   );
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] selected-granularity
- * Both chart modes request the selected granularity, defaulting to daily, and
- * the period-mode label reflects that selection.
- */
 export function PokeConsumptionChart({
   workspaceId,
   period,
