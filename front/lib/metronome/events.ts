@@ -58,8 +58,8 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
-// Origins attributed via a best-effort email match rather than a session (`attributeUserFromWorkspaceAndEmail`), where a resulting missing userId is expected, not a caller bug.
-const BEST_EFFORT_USER_ATTRIBUTION_ORIGINS: ReadonlySet<UserMessageOrigin> =
+// Origins attributed via a best-effort email match rather than a session (`attributeUserFromWorkspaceAndEmail`): unattributed "user" usage from these is billed as programmatic instead of failing loudly.
+const PROGRAMMATIC_FALLBACK_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>(["slack"]);
 
 /**
@@ -75,7 +75,7 @@ export function resolveUsageTypeForAttribution(
   if (
     usageType === USAGE_TYPE_USER &&
     !userId &&
-    BEST_EFFORT_USER_ATTRIBUTION_ORIGINS.has(origin)
+    PROGRAMMATIC_FALLBACK_ORIGINS.has(origin)
   ) {
     return USAGE_TYPE_PROGRAMMATIC;
   }
