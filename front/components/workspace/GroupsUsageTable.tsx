@@ -1,12 +1,12 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
+import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
-import type { GroupSpendLimit } from "@app/types/api/groups/spend_limit";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, InputWithSave, Spinner, Users01 } from "@dust-tt/sparkle";
+import { DataTable, Spinner, Users01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
@@ -23,54 +23,6 @@ type GroupRowData = {
 };
 
 type GroupInfo = CellContext<GroupRowData, string>;
-
-interface GroupCapCellProps {
-  group: GroupRowData;
-  onSave: (group: GroupRowData, limit: GroupSpendLimit) => Promise<void>;
-}
-
-// Per-row editable cap cell. Empty input clears the cap (unlimited); 0 blocks
-// the group's pool access; a positive integer sets a custom limit. Reverts to
-// the current value when nothing is persisted.
-function GroupCapCell({ group, onSave }: GroupCapCellProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const current = group.poolCapAwuCredits;
-
-  const handleSave = async (newValue: string) => {
-    const trimmed = newValue.trim();
-    if (trimmed === "") {
-      if (current === null) {
-        return;
-      }
-      await onSave(group, { kind: "unlimited" });
-      return;
-    }
-    const parsed = Number(trimmed);
-    if (!Number.isInteger(parsed) || parsed < 0 || parsed === current) {
-      return;
-    }
-    await onSave(group, { kind: "limited", awuCredits: parsed });
-  };
-
-  return (
-    <div className="w-60">
-      <InputWithSave
-        inputMode="numeric"
-        pattern="[0-9]*"
-        placeholder="No limit"
-        value={current === null ? "" : current.toLocaleString()}
-        unit={current === null && !isEditing ? undefined : "credits/month"}
-        normalizeValue={(value) => value.replace(/[^\d]/g, "")}
-        formatValue={(value) =>
-          value ? Number(value).toLocaleString() : value
-        }
-        onSave={handleSave}
-        onFocus={() => setIsEditing(true)}
-        onBlur={() => setIsEditing(false)}
-      />
-    </div>
-  );
-}
 
 export function GroupsUsageTable({
   owner,
@@ -128,7 +80,7 @@ export function GroupsUsageTable({
               header: "Spend limit",
               meta: { className: "w-64" },
               cell: (info: GroupInfo) => (
-                <GroupCapCell
+                <GroupSpendLimitCell
                   group={info.row.original}
                   onSave={async (group, limit) => {
                     await doUpdateGroupSpendLimit({
