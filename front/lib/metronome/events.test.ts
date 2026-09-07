@@ -1,7 +1,7 @@
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import {
   buildUsageEvents,
-  downgradeUnattributedUserUsage,
+  resolveUsageTypeForAttribution,
 } from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
@@ -304,59 +304,49 @@ describe("Metronome aggregated usage event", () => {
   });
 });
 
-describe("downgradeUnattributedUserUsage", () => {
-  it("downgrades unattributed user usage from a non-session/oauth auth method", () => {
-    // e.g. a Slack message whose sender's email didn't match a Dust workspace
-    // member: authenticated via the Slack connector's system API key, with no
-    // resolvable userId.
+describe("resolveUsageTypeForAttribution", () => {
+  it("resolves unattributed Slack usage to programmatic", () => {
+    // e.g. a Slack message whose sender's email didn't match a Dust
+    // workspace member: attributeUserFromWorkspaceAndEmail found no user.
     expect(
-      downgradeUnattributedUserUsage("user", {
+      resolveUsageTypeForAttribution("user", {
         userId: null,
-        authMethod: "system_api_key",
+        origin: "slack",
       })
     ).toBe("programmatic");
   });
 
-  it("leaves session-authenticated user usage with no userId untouched", () => {
-    // A session always carries a real Dust user — a missing userId here is a
-    // genuine attribution bug that buildUsageEvents must still catch.
+  it("resolves attributed Slack usage to the matched user", () => {
     expect(
-      downgradeUnattributedUserUsage("user", {
-        userId: null,
-        authMethod: "session",
-      })
-    ).toBe("user");
-  });
-
-  it("leaves oauth-authenticated user usage with no userId untouched", () => {
-    expect(
-      downgradeUnattributedUserUsage("user", {
-        userId: null,
-        authMethod: "oauth",
-      })
-    ).toBe("user");
-  });
-
-  it("leaves attributed user usage untouched", () => {
-    expect(
-      downgradeUnattributedUserUsage("user", {
+      resolveUsageTypeForAttribution("user", {
         userId: "user",
-        authMethod: "system_api_key",
+        origin: "slack",
+      })
+    ).toBe("user");
+  });
+
+  it("leaves other unattributed user origins untouched (genuine attribution bug)", () => {
+    // web/extension/cli/... always carry a real Dust user — a missing
+    // userId there is a bug that buildUsageEvents must still catch.
+    expect(
+      resolveUsageTypeForAttribution("user", {
+        userId: null,
+        origin: "web",
       })
     ).toBe("user");
   });
 
   it("leaves non-user usage types untouched", () => {
     expect(
-      downgradeUnattributedUserUsage("programmatic", {
+      resolveUsageTypeForAttribution("programmatic", {
         userId: null,
-        authMethod: "system_api_key",
+        origin: "slack",
       })
     ).toBe("programmatic");
     expect(
-      downgradeUnattributedUserUsage("free", {
+      resolveUsageTypeForAttribution("free", {
         userId: null,
-        authMethod: "system_api_key",
+        origin: "slack",
       })
     ).toBe("free");
   });

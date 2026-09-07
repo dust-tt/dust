@@ -58,25 +58,31 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
+// Origins whose messages are created via a system/integration API key and
+// attribute the message to a Dust user through a best-effort email match
+// against workspace membership (`attributeUserFromWorkspaceAndEmail`) rather
+// than an authenticated session — that match can legitimately find no user
+// (e.g. a Slack user with no Dust seat). For these origins only, a "user"
+// usage type with no userId is an expected outcome, not a caller bug: it
+// must resolve to a specific user or be billed as programmatic usage, never
+// silently ship as user_id "unknown".
+const BEST_EFFORT_USER_ATTRIBUTION_ORIGINS: ReadonlySet<UserMessageOrigin> =
+  new Set<UserMessageOrigin>(["slack"]);
+
 /**
- * A session/oauth-authenticated message always has a real Dust user
- * attached, so a "user" usage type with no userId there is a genuine
- * attribution bug — `buildUsageEvents` fails loudly on that case. Other auth
- * methods (workspace API keys, the Slack/Teams/... system key) attribute the
- * message to a Dust user via a best-effort email match against workspace
- * membership, which can legitimately find no match — e.g. a Slack user
- * without a Dust seat. Downgrade that case to programmatic usage instead of
- * letting it hit the guard.
+ * Every other "user" origin (web, extension, cli, a real session/oauth
+ * request, ...) always carries a real Dust user, so a still-missing userId
+ * there is a genuine attribution bug — `buildUsageEvents` fails loudly on
+ * that case.
  */
-export function downgradeUnattributedUserUsage(
+export function resolveUsageTypeForAttribution(
   usageType: UsageType,
-  { userId, authMethod }: { userId: string | null; authMethod: string | null }
+  { userId, origin }: { userId: string | null; origin: UserMessageOrigin }
 ): UsageType {
   if (
     usageType === USAGE_TYPE_USER &&
     !userId &&
-    authMethod !== "session" &&
-    authMethod !== "oauth"
+    BEST_EFFORT_USER_ATTRIBUTION_ORIGINS.has(origin)
   ) {
     return USAGE_TYPE_PROGRAMMATIC;
   }

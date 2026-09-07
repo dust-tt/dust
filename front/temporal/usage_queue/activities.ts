@@ -10,8 +10,8 @@ import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   buildUsageEvents,
   computeRunKey,
-  downgradeUnattributedUserUsage,
   getUsageType,
+  resolveUsageTypeForAttribution,
 } from "@app/lib/metronome/events";
 import {
   AgentMessageModel,
@@ -350,9 +350,9 @@ export async function emitMetronomeUsageEventsActivity(
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
   const messageStatus = agentMessage.status ?? "unknown";
-  const usageType = downgradeUnattributedUserUsage(
+  const usageType = resolveUsageTypeForAttribution(
     getUsageType(programmatic, userMessageOrigin),
-    { userId, authMethod }
+    { userId, origin: userMessageOrigin }
   );
 
   // Attribute usage to the parent (triggering) agent only for *hidden helper*
