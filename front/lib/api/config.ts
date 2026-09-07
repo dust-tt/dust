@@ -114,16 +114,41 @@ const config = {
     return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
   // Cloudflare Access team domain used to validate poke JWTs
-  // (e.g. "https://dust.cloudflareaccess.com"). Optional: when unset, poke
-  // falls back to the WorkOS super-user session path.
+  // (e.g. "https://dust.cloudflareaccess.com"). Optional: defaults to the Dust
+  // team domain once an audience is configured.
   getCloudflareAccessTeamDomain: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "CLOUDFLARE_ACCESS_TEAM_DOMAIN"
     );
   },
-  // Cloudflare Access application Audience (AUD) tag for poke.
-  getCloudflareAccessAud: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("CLOUDFLARE_ACCESS_AUD");
+  // Cloudflare Access application Audience (AUD) tag for poke. Configuring it
+  // is what turns Cloudflare Access on for `/api/poke`.
+  getCloudflareAccessAudience: (): string | undefined => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("CLOUDFLARE_ACCESS_AUDIENCE") ??
+      EnvironmentConfig.getOptionalEnvVariable("CLOUDFLARE_ACCESS_AUD")
+    );
+  },
+  // HTTPS override for the Cloudflare Access JWKS endpoint. Defaults to
+  // <team domain>/cdn-cgi/access/certs.
+  getCloudflareAccessCertsUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "CLOUDFLARE_ACCESS_CERTS_URL"
+    );
+  },
+  // HTTPS override for the Cloudflare Access get-identity endpoint. Defaults to
+  // <team domain>/cdn-cgi/access/get-identity.
+  getCloudflareAccessIdentityUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "CLOUDFLARE_ACCESS_IDENTITY_URL"
+    );
+  },
+  // Whether a cross-checked get-identity response is mandatory. Fail closed:
+  // only the exact string "false" makes it optional.
+  getCloudflareAccessIdentityRequired: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "CLOUDFLARE_ACCESS_IDENTITY_REQUIRED"
+    );
   },
   // For the WorkOS callback, which must reach the API. Allows overriding the
   // redirect base URL separately from NEXT_PUBLIC_DUST_API_URL.
