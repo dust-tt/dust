@@ -21,7 +21,6 @@ import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_me
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
@@ -400,46 +399,38 @@ async function persistMessageConsumptionAttribution(
   }
 ): Promise<boolean> {
   // Store the evidence first, remove any terminal result footprint that never reached another model
-  // run, then materialize the newest complete allocation against the authoritative bill in the same
-  // transaction. An incomplete version keeps its evidence with null reconciliation and can be
-  // completed by a later finalize.
-  return withTransaction(async (transaction) => {
-    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
-      conversation,
-      agentMessageModelId,
-      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-      records,
-      pendingToolItems,
-      transaction,
-    });
-
-    const items =
-      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
-        auth,
-        {
-          agentMessageModelIds: [agentMessageModelId],
-          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-          transaction,
-        }
-      );
-    const allocation = buildLatestMessageConsumptionAllocation({
-      actions,
-      billedCredits,
-      dustRunIds,
-      items,
-      runs,
-      usages,
-    });
-    if (!allocation) {
-      return false;
-    }
-
-    await AgentMessageConsumptionItemResource.setReconciledCreditAmounts(auth, {
-      reconciledCreditAmountByItem: allocation.reconciledCreditAmounts.byItem,
-      transaction,
-    });
-    return true;
+  // run, then materialize the newest complete allocation against the authoritative bill. Every step
+  // is idempotent on persisted state, so none of them share a transaction. An incomplete version
+  // keeps its evidence with null reconciliation and can be completed by a later finalize.
+  await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+    conversation,
+    agentMessageModelId,
+    attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+    records,
+    pendingToolItems,
   });
+
+  const items =
+    await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+      agentMessageModelIds: [agentMessageModelId],
+      maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+    });
+  const allocation = buildLatestMessageConsumptionAllocation({
+    actions,
+    billedCredits,
+    dustRunIds,
+    items,
+    runs,
+    usages,
+  });
+  if (!allocation) {
+    return false;
+  }
+
+  await AgentMessageConsumptionItemResource.setReconciledCreditAmounts(auth, {
+    reconciledCreditAmountByItem: allocation.reconciledCreditAmounts.byItem,
+  });
+  return true;
 }
 
 /**

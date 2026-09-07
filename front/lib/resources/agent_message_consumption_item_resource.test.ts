@@ -305,6 +305,64 @@ describe("AgentMessageConsumptionItemResource", () => {
     });
   });
 
+  it("writes model buckets, final tools and blocked tools in a single pass", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const context = await setupMessageWithEvidence(auth, workspace);
+    const { action: blockedAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+    });
+    const findAllSpy = vi.spyOn(AgentMessageConsumptionItemModel, "findAll");
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation: context.conversation,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion: ATTRIBUTION_VERSION,
+      records: [
+        {
+          itemType: "input",
+          runUsageModelId: context.runUsageModelId,
+          inputTokensCount: 100,
+          grossAttributedCreditAmountMicro: 300_000,
+        },
+        completedTool(context.action, context.runUsageModelId),
+      ],
+      pendingToolItems: [pendingTool(blockedAction, context.runUsageModelId)],
+    });
+    expect(findAllSpy).not.toHaveBeenCalled();
+    findAllSpy.mockRestore();
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [context.agentMessageModelId],
+          maxAttributionVersion: ATTRIBUTION_VERSION,
+        }
+      );
+    expect(items).toHaveLength(3);
+    expect(
+      items.find(
+        (item) => item.itemKey === `run-usage:${context.runUsageModelId}:input`
+      )
+    ).toMatchObject({ inputTokensCount: 100, completedAt: expect.any(Date) });
+    expect(
+      items.find((item) => item.itemKey === `tool-action:${context.action.id}`)
+    ).toMatchObject({
+      inputTokensCount: 40,
+      directCreditAmountMicro: 1_000_000,
+      completedAt: expect.any(Date),
+    });
+    expect(
+      items.find((item) => item.itemKey === `tool-action:${blockedAction.id}`)
+    ).toMatchObject({
+      inputTokensCount: null,
+      directCreditAmountMicro: null,
+      completedAt: null,
+    });
+  });
+
   it("completes a tool that an earlier pass left pending, in place", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);

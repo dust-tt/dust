@@ -8,7 +8,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -273,9 +272,9 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   /**
-   * Bulk-inserts final tools, then resolves conflicts by completing pending rows or removing a
+   * Resolves the identities the insert did not create, by completing pending rows or removing a
    * terminal result footprint. The insert waits on concurrent writes to the unique action identity,
-   * so the following lookup sees settled state without a separate lock.
+   * so this lookup sees settled state without a separate lock.
    *
    * // TODO(2026-08-01 flav): Revisit based on how often it happens.
    * A resumed approval pass resubmits facts from earlier passes. PostgreSQL allocates sequence
@@ -284,49 +283,22 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
    * only after every tool awaiting approval has been approved, so parallel approvals produce one
    * resumed pass rather than one pass per tool.
    */
-  private static async insertOrCompleteToolRecords(
+  private static async completeExistingToolRecords(
     auth: Authenticator,
     {
-      conversationModelId,
       agentMessageModelId,
       attributionVersion,
       records,
       now,
       transaction,
     }: {
-      conversationModelId: ModelId;
       agentMessageModelId: ModelId;
       attributionVersion: number;
       records: CompletedToolConsumptionItem[];
       now: Date;
-      transaction: Transaction;
+      transaction?: Transaction;
     }
   ): Promise<void> {
-    const insertedRows = await this.model.bulkCreate(
-      records.map((record) =>
-        this.creationAttributes(auth, {
-          conversationModelId,
-          agentMessageModelId,
-          attributionVersion,
-          record,
-          now,
-        })
-      ),
-      {
-        ignoreDuplicates: true,
-        returning: ["id"],
-        transaction,
-        // Sequelize disables validation by default for bulkCreate.
-        validate: true,
-      }
-    );
-
-    // PostgreSQL returns an ID only for rows inserted by ON CONFLICT DO NOTHING. Most passes create
-    // final tools directly, so they finish without the conflict lookup below.
-    if (insertedRows.every((row) => Boolean(row.id))) {
-      return;
-    }
-
     const recordByActionModelId = new Map(
       records.map((record) => [record.action.id, record])
     );
@@ -427,17 +399,17 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   /**
-   * Writes one message's attribution breakdown for a single pass, idempotently and atomically.
-   * Callers pass the whole desired set and this reconciles it in one transaction, so the materializer
-   * never coordinates a read then separate inserts and updates.
+   * Writes one message's attribution breakdown for a single pass, idempotently. Callers pass the
+   * whole desired set and this reconciles it, so the materializer never coordinates a read then
+   * separate inserts and updates.
    *
-   * Four write shapes, one per lifecycle state:
-   * - Model buckets and already-final tools with no prior row are inserted.
-   * - A final tool is upserted on its (message, version, itemKey) identity only while the existing
-   *   row is pending. This completes an approval-spanning tool without changing a completed fact.
+   * The whole pass is one insert where first write wins on every identity, so a re-finalize neither
+   * disturbs an existing breakdown nor regresses a completed tool row to pending. Only two
+   * transitions cannot be expressed that way, and they are settled after the insert on the
+   * identities it did not create:
+   * - A final tool completes a row that is still pending, so an approval-spanning tool gains its
+   *   result footprint and direct charge without changing a completed fact.
    * - A terminal pass may remove a completed tool's result footprint. This transition is one-way.
-   * - A still-blocked tool is inserted pending and never overwrites an existing row, so a completed
-   *   row from a concurrent pass is not regressed to pending.
    */
   static async recordItemsIdempotently(
     auth: Authenticator,
@@ -478,67 +450,55 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     );
 
     const now = new Date();
-    const modelRecords = records.filter((record) => record.itemType !== "tool");
     const completedToolRecords = records.filter(
       (record) => record.itemType === "tool"
     );
 
-    await withTransaction(async (t) => {
-      if (modelRecords.length > 0) {
-        // Model buckets: first write wins, so a re-finalize does not disturb an existing breakdown.
-        await this.model.bulkCreate(
-          modelRecords.map((record) =>
-            this.creationAttributes(auth, {
-              conversationModelId: conversation.id,
-              agentMessageModelId,
-              attributionVersion,
-              record,
-              now,
-            })
-          ),
-          {
-            ignoreDuplicates: true,
-            returning: false,
-            transaction: t,
-            // Sequelize disables validation by default for bulkCreate.
-            validate: true,
-          }
-        );
+    const insertedRows = await this.model.bulkCreate(
+      [
+        ...records.map((record) =>
+          this.creationAttributes(auth, {
+            conversationModelId: conversation.id,
+            agentMessageModelId,
+            attributionVersion,
+            record,
+            now,
+          })
+        ),
+        ...pendingToolItems.map((item) =>
+          this.pendingToolCreationAttributes(auth, {
+            conversationModelId: conversation.id,
+            attributionVersion,
+            item,
+            now,
+          })
+        ),
+      ],
+      {
+        ignoreDuplicates: true,
+        returning: ["id"],
+        transaction,
+        // Sequelize disables validation by default for bulkCreate.
+        validate: true,
       }
+    );
 
-      if (completedToolRecords.length > 0) {
-        await this.insertOrCompleteToolRecords(auth, {
-          conversationModelId: conversation.id,
-          agentMessageModelId,
-          attributionVersion,
-          records: completedToolRecords,
-          now,
-          transaction: t,
-        });
-      }
+    // PostgreSQL returns an ID only for rows inserted by ON CONFLICT DO NOTHING. Most passes write
+    // every identity for the first time, so they finish without the conflict lookup below.
+    if (
+      completedToolRecords.length === 0 ||
+      insertedRows.every((row) => Boolean(row.id))
+    ) {
+      return;
+    }
 
-      if (pendingToolItems.length > 0) {
-        // Blocked tools: record the pending row only if none exists, never overwriting a completed
-        // one, so a racing final pass keeps precedence.
-        await this.model.bulkCreate(
-          pendingToolItems.map((item) =>
-            this.pendingToolCreationAttributes(auth, {
-              conversationModelId: conversation.id,
-              attributionVersion,
-              item,
-              now,
-            })
-          ),
-          {
-            ignoreDuplicates: true,
-            returning: false,
-            transaction: t,
-            // Sequelize disables validation by default for bulkCreate.
-            validate: true,
-          }
-        );
-      }
-    }, transaction);
+    await this.completeExistingToolRecords(auth, {
+      agentMessageModelId,
+      attributionVersion,
+      records: completedToolRecords,
+      now,
+      transaction,
+    });
   }
 
   static async setReconciledCreditAmounts(
