@@ -43,33 +43,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     if args.index_name.is_none() && (args.index_version.is_some() || args.remove_previous_alias) {
-        return Err(
-            anyhow::anyhow!("--index-version and --remove-previous-alias require --index-name")
-                .into(),
-        );
+        return Err(anyhow::anyhow!(
+            "--index-version and --remove-previous-alias require --index-name"
+        )
+        .into());
     }
 
     let targets: Vec<(String, u32)> = match &args.index_name {
         Some(index_name) => {
             let index_version = match args.index_version {
                 Some(v) => v,
-                None => {
-                    INDEX_VERSIONS
-                        .iter()
-                        .find(|(name, _)| name == index_name)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "Index '{}' is not configured in INDEX_VERSIONS. Available indices: {}",
-                                index_name,
-                                INDEX_VERSIONS
-                                    .iter()
-                                    .map(|(name, _)| *name)
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            )
-                        })?
-                        .1
-                }
+                None => registered_version(index_name)?,
             };
             vec![(index_name.clone(), index_version)]
         }
@@ -111,6 +95,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn registered_version(index_name: &str) -> Result<u32, Box<dyn std::error::Error>> {
+    match INDEX_VERSIONS.iter().find(|(name, _)| name == &index_name) {
+        Some((_, version)) => Ok(*version),
+        None => {
+            let available = INDEX_VERSIONS
+                .iter()
+                .map(|(name, _)| *name)
+                .collect::<Vec<_>>()
+                .join(", ");
+            Err(anyhow::anyhow!(
+                "Index '{}' is not configured in INDEX_VERSIONS. Available indices: {}",
+                index_name,
+                available
+            )
+            .into())
+        }
+    }
 }
 
 async fn create_index(
