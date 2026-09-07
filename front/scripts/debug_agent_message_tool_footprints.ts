@@ -41,12 +41,15 @@ import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_me
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { makeScript } from "@app/scripts/helpers";
+import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TiktokenTokenizerBase } from "@app/types/tokenizer";
 import { GoogleGenAI } from "@google/genai";
+import { tsToDate } from "@temporalio/common";
 import { z } from "zod";
 
 const TOKENIZER_BASES = [
@@ -168,6 +171,170 @@ function creditAmountMicroFromCostMicroUsd(costMicroUsd: number): number {
     (costMicroUsd * MICRO_CREDITS_PER_CREDIT) /
       MODEL_COST_MICRO_USD_PER_AWU_CREDIT
   );
+}
+
+async function printAttributionWorkflowHistory({
+  agentMessageId,
+  conversationId,
+  workspaceId,
+}: {
+  agentMessageId: string;
+  conversationId: string;
+  workspaceId: string;
+}): Promise<void> {
+  const workflowId = `${makeAgentMessageAnalyticsWorkflowId({
+    agentMessageId,
+    conversationId,
+    workspaceId,
+  })}-consumption-attribution-v3`;
+
+  try {
+    const client = await getTemporalClientForFrontNamespace();
+    const executions = [];
+    const eventRows = [];
+
+    for await (const execution of client.workflow.list({
+      query: `WorkflowId = ${JSON.stringify(workflowId)}`,
+    })) {
+      const handle = client.workflow.getHandle(workflowId, execution.runId);
+      const description = await handle.describe();
+      const history = await handle.fetchHistory();
+      const signalEvents = [];
+      const scheduledActivityByEventId = new Map<
+        string,
+        { activity: string; scheduledAt: string }
+      >();
+      let completedActivities = 0;
+      let failedActivities = 0;
+      let timedOutActivities = 0;
+
+      for (const event of history.events ?? []) {
+        const eventAt = event.eventTime
+          ? tsToDate(event.eventTime).toISOString()
+          : "n/a";
+        const signal = event.workflowExecutionSignaledEventAttributes;
+        if (signal) {
+          signalEvents.push(eventAt);
+          eventRows.push({
+            runId: execution.runId,
+            eventAt,
+            event: "signal",
+            detail: signal.signalName,
+          });
+        }
+
+        const scheduled = event.activityTaskScheduledEventAttributes;
+        if (scheduled) {
+          const eventId = String(event.eventId);
+          const activity = scheduled.activityType?.name ?? "unknown";
+          scheduledActivityByEventId.set(eventId, {
+            activity,
+            scheduledAt: eventAt,
+          });
+          eventRows.push({
+            runId: execution.runId,
+            eventAt,
+            event: "activity_scheduled",
+            detail:
+              `${activity}; queue=${scheduled.taskQueue?.name ?? "unknown"}; ` +
+              `useWorkflowBuildId=${scheduled.useWorkflowBuildId}`,
+          });
+        }
+
+        const workflowTaskCompleted =
+          event.workflowTaskCompletedEventAttributes;
+        if (workflowTaskCompleted) {
+          const workerVersion = workflowTaskCompleted.workerVersion;
+          const deploymentVersion = workflowTaskCompleted.deploymentVersion;
+          eventRows.push({
+            runId: execution.runId,
+            eventAt,
+            event: "workflow_task_completed",
+            detail:
+              `identity=${workflowTaskCompleted.identity}; ` +
+              `buildId=${workerVersion?.buildId ?? "none"}; ` +
+              `versioned=${workerVersion?.useVersioning ?? false}; ` +
+              `deployment=${deploymentVersion?.deploymentName ?? "none"}; ` +
+              `deploymentBuild=${deploymentVersion?.buildId ?? "none"}`,
+          });
+        }
+
+        const activityOutcome =
+          event.activityTaskCompletedEventAttributes ??
+          event.activityTaskFailedEventAttributes ??
+          event.activityTaskTimedOutEventAttributes ??
+          event.activityTaskCanceledEventAttributes;
+        if (activityOutcome) {
+          const scheduledEventId = String(activityOutcome.scheduledEventId);
+          const scheduledActivity =
+            scheduledActivityByEventId.get(scheduledEventId);
+          const outcome = event.activityTaskCompletedEventAttributes
+            ? "activity_completed"
+            : event.activityTaskFailedEventAttributes
+              ? "activity_failed"
+              : event.activityTaskTimedOutEventAttributes
+                ? "activity_timed_out"
+                : "activity_canceled";
+          if (outcome === "activity_completed") {
+            completedActivities++;
+          } else if (outcome === "activity_failed") {
+            failedActivities++;
+          } else if (outcome === "activity_timed_out") {
+            timedOutActivities++;
+          }
+          eventRows.push({
+            runId: execution.runId,
+            eventAt,
+            event: outcome,
+            detail: scheduledActivity?.activity ?? scheduledEventId,
+          });
+        }
+      }
+
+      const pendingActivity = description.raw.pendingActivities?.[0];
+      executions.push({
+        workflowId,
+        runId: execution.runId,
+        status: execution.status.name,
+        startTime: execution.startTime.toISOString(),
+        closeTime: execution.closeTime?.toISOString() ?? "running",
+        signals: signalEvents.length,
+        firstSignalAt: signalEvents[0] ?? "none",
+        lastSignalAt: signalEvents.at(-1) ?? "none",
+        scheduledActivities: scheduledActivityByEventId.size,
+        completedActivities,
+        failedActivities,
+        timedOutActivities,
+        pendingActivityState: pendingActivity?.state ?? "none",
+        pendingActivityAttempt: pendingActivity?.attempt ?? "none",
+        pendingLastWorker: pendingActivity?.lastWorkerIdentity || "none",
+        pendingUsesWorkflowBuild:
+          pendingActivity?.useWorkflowBuildId !== undefined,
+        pendingIndependentBuild:
+          pendingActivity?.lastIndependentlyAssignedBuildId || "none",
+        pendingLastWorkerBuild:
+          pendingActivity?.lastWorkerVersionStamp?.buildId || "none",
+        pendingFailureMessage: pendingActivity?.lastFailure?.message || "none",
+        pendingFailureType:
+          pendingActivity?.lastFailure?.applicationFailureInfo?.type || "none",
+        pendingFailureCause:
+          pendingActivity?.lastFailure?.cause?.message || "none",
+      });
+    }
+
+    console.log("\nTemporal attribution executions");
+    console.table(executions);
+    console.log("\nTemporal attribution event chronology");
+    console.table(eventRows);
+  } catch (error) {
+    console.log("\nTemporal attribution history unavailable");
+    console.table([
+      {
+        workflowId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    ]);
+  }
 }
 
 /** Mirrors the cache-naive rates used by attribution_builder.ts. */
@@ -381,6 +548,7 @@ makeScript(
     const actionByModelId = new Map(
       actions.map((action) => [action.id, action])
     );
+    const actionById = new Map(actions.map((action) => [action.sId, action]));
     const runByDustRunId = new Map(runs.map((run) => [run.dustRunId, run]));
     const runByModelId = new Map(runs.map((run) => [run.id, run]));
     const usageByModelId = new Map(
@@ -540,6 +708,19 @@ makeScript(
       const runUsages = run ? (usagesByRunModelId.get(run.id) ?? []) : [];
       const currentToolItem = currentToolItemByActionModelId.get(action.id);
       const diagnosticToolItem = toolItemByActionModelId.get(action.id);
+      const childInfo = action.stepContext.sandboxChildActionInfo;
+      const isSandboxChild = isSandboxChildActionInfo(childInfo);
+      const parentAction = isSandboxChild
+        ? actionById.get(childInfo.parentActionId)
+        : undefined;
+      const parentToolItem = parentAction
+        ? currentToolItemByActionModelId.get(parentAction.id)
+        : undefined;
+      const isToleratedLateChild =
+        parentAction !== undefined &&
+        parentToolItem?.runUsageId === runUsages[0]?.runUsageModelId &&
+        parentAction.stepContent.id === action.stepContent.id &&
+        parentAction.stepContent.dustRunId === dustRunId;
       const flags: string[] = [];
 
       if (!dustRunId) {
@@ -561,10 +742,16 @@ makeScript(
         actionId: action.sId,
         toolName: action.toolConfiguration.originalName,
         actionStatus: action.status,
+        actionCreatedAt: action.createdAt,
         actionUpdatedAt: action.updatedAt,
-        isSandboxChild: isSandboxChildActionInfo(
-          action.stepContext.sandboxChildActionInfo
-        ),
+        isSandboxChild,
+        parentActionId: parentAction?.sId,
+        parentToolItemState: parentToolItem
+          ? parentToolItem.completedAt === null
+            ? "pending"
+            : "complete"
+          : undefined,
+        isToleratedLateChild,
         dustRunId,
         runModelId: run?.id,
         runUsageModelIds: runUsages.map((usage) => usage.runUsageModelId),
@@ -612,6 +799,56 @@ makeScript(
         completedAt:
           analyticsContext?.agentMessage.completedAt?.toISOString() ?? "n/a",
         flags: coverageFlags.join(", ") || "none",
+      },
+    ]);
+    const sortedItemCreatedAts = diagnosticItems
+      .map((item) => item.createdAt)
+      .sort((left, right) => left.getTime() - right.getTime());
+    const sortedItemUpdatedAts = diagnosticItems
+      .map((item) => item.updatedAt)
+      .sort((left, right) => left.getTime() - right.getTime());
+    const sortedActionCreatedAts = actions
+      .map((action) => action.createdAt)
+      .sort((left, right) => left.getTime() - right.getTime());
+    const sortedActionUpdatedAts = actions
+      .map((action) => action.updatedAt)
+      .sort((left, right) => left.getTime() - right.getTime());
+    const sortedRunCreatedAts = runs
+      .map((run) => run.createdAt)
+      .sort((left, right) => left.getTime() - right.getTime());
+    const firstMissingAction = actionCoverage
+      .filter(
+        (coverage) => coverage.currentToolItemRunUsageModelId === undefined
+      )
+      .sort(
+        (left, right) =>
+          left.actionUpdatedAt.getTime() - right.actionUpdatedAt.getTime()
+      )[0];
+
+    console.log("\nEvidence lifecycle boundary");
+    console.table([
+      {
+        status: creditContext.status,
+        messageRunIds: dustRunIds.length,
+        firstRunAt: sortedRunCreatedAts[0]?.toISOString() ?? "none",
+        lastRunAt: sortedRunCreatedAts.at(-1)?.toISOString() ?? "none",
+        firstActionCreatedAt:
+          sortedActionCreatedAts[0]?.toISOString() ?? "none",
+        lastActionCreatedAt:
+          sortedActionCreatedAts.at(-1)?.toISOString() ?? "none",
+        lastActionUpdatedAt:
+          sortedActionUpdatedAts.at(-1)?.toISOString() ?? "none",
+        firstEvidenceCreatedAt:
+          sortedItemCreatedAts[0]?.toISOString() ?? "none",
+        lastEvidenceCreatedAt:
+          sortedItemCreatedAts.at(-1)?.toISOString() ?? "none",
+        lastEvidenceUpdatedAt:
+          sortedItemUpdatedAts.at(-1)?.toISOString() ?? "none",
+        firstMissingAction: firstMissingAction?.actionId ?? "none",
+        firstMissingActionUpdatedAt:
+          firstMissingAction?.actionUpdatedAt.toISOString() ?? "none",
+        completedAt:
+          analyticsContext.agentMessage.completedAt?.toISOString() ?? "none",
       },
     ]);
     console.log("\nItems by version");
@@ -886,7 +1123,12 @@ makeScript(
           action: coverage.actionId,
           tool: coverage.toolName,
           status: coverage.actionStatus,
+          createdAt: coverage.actionCreatedAt.toISOString(),
           updatedAt: coverage.actionUpdatedAt.toISOString(),
+          isSandboxChild: coverage.isSandboxChild,
+          parentAction: coverage.parentActionId ?? "none",
+          parentItem: coverage.parentToolItemState ?? "none",
+          toleratedLateChild: coverage.isToleratedLateChild,
           runUsageIds: coverage.runUsageModelIds.join(", "),
           inspectedItemRunUsageId:
             coverage.diagnosticToolItemRunUsageModelId ?? "missing",
@@ -1290,6 +1532,37 @@ makeScript(
         }))
       );
     }
+
+    await printAttributionWorkflowHistory({
+      agentMessageId,
+      conversationId: analyticsContext.conversation.conversationId,
+      workspaceId,
+    });
+
+    console.log("\nAssertion-triggering evidence gaps");
+    console.table(
+      actionCoverage
+        .filter(
+          (coverage) =>
+            coverage.currentToolItemRunUsageModelId === undefined &&
+            (!coverage.isSandboxChild || !coverage.isToleratedLateChild) &&
+            coverage.runUsageModelIds.some((runUsageModelId) =>
+              currentItems.some((item) => item.runUsageId === runUsageModelId)
+            )
+        )
+        .map((coverage) => ({
+          action: coverage.actionId,
+          tool: coverage.toolName,
+          status: coverage.actionStatus,
+          createdAt: coverage.actionCreatedAt.toISOString(),
+          updatedAt: coverage.actionUpdatedAt.toISOString(),
+          runUsageIds: coverage.runUsageModelIds.join(", "),
+          isSandboxChild: coverage.isSandboxChild,
+          parentAction: coverage.parentActionId ?? "none",
+          parentItem: coverage.parentToolItemState ?? "none",
+          toleratedLateChild: coverage.isToleratedLateChild,
+        }))
+    );
 
     console.log(
       `\nDone: ${creditContext.status}, ${runs.length} runs, ${usages.length} usages, ` +
