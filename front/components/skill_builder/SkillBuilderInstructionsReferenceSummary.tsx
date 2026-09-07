@@ -237,9 +237,13 @@ export function SkillBuilderInstructionsReferenceSummary({
     }
   }, [referenceItems.length, overflowThresholdHeight]);
 
+  if (referenceItems.length === 0) {
+    return null;
+  }
+
   // have min height to always keep space to show references so there is less content shift.
   return (
-    <div>
+    <>
       {referenceItems.length > 0 && (
         <div
           ref={containerRef}
@@ -263,6 +267,6 @@ export function SkillBuilderInstructionsReferenceSummary({
           />
         </div>
       )}
-    </div>
+    </>
   );
 }
