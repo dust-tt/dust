@@ -430,6 +430,12 @@ export function PoolUsagePage() {
                   showSpendLimit
                   hasPool={hasPool}
                   showPremiumMessageUsage={isLegacyWithoutPoolOrMetronome}
+                  showPremiumMessageColumn={
+                    !!workspaceInfo?.hasEnforcePremiumModelMessageLimitFeature
+                  }
+                  showFairUseCreditsColumn={
+                    !workspaceInfo?.hasDisableFairUseAwuLimitFeature
+                  }
                   readOnly
                   onChangeSeat={noopOnMember}
                   onOpenChangeSeatRecap={setChangeSeatRecapMember}

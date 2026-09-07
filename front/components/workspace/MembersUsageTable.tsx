@@ -1104,6 +1104,8 @@ function buildCreditPlanColumns({
   variant,
   hasPool,
   showPremiumMessageUsage,
+  showPremiumMessageColumn,
+  showFairUseCreditsColumn,
   premiumMessageWindowDays,
   fairUseWindowDays,
 }: {
@@ -1111,9 +1113,21 @@ function buildCreditPlanColumns({
   variant: MembersUsageTableVariant;
   hasPool: boolean;
   showPremiumMessageUsage: boolean;
+  // Whether to actually render the premium-message / fair-use-credits
+  // columns, independently of `showPremiumMessageUsage` (which also governs
+  // the seat-column swap below). Defaults to `showPremiumMessageUsage` so
+  // callers that don't pass them keep the previous coupled behavior.
+  showPremiumMessageColumn: boolean;
+  showFairUseCreditsColumn: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
 }): ColumnDef<RowData, string>[] {
+  const creditsUsageColumn = showPremiumMessageUsage
+    ? showPremiumMessageColumn
+      ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
+      : null
+    : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool);
+
   return [
     // Premium message plans have no seats: every member is billed per
     // message, so the seat columns have nothing to show.
@@ -1130,15 +1144,14 @@ function buildCreditPlanColumns({
               return [seatTypeColumn];
           }
         })()),
-    {
-      ...(showPremiumMessageUsage
-        ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
-        : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool)),
-      meta: { className: "w-56" },
-    },
+    ...(creditsUsageColumn
+      ? [{ ...creditsUsageColumn, meta: { className: "w-56" } }]
+      : []),
     // Premium message plans also carry a fixed AWU credit allowance for
     // usage on non-premium models, alongside the rolling message limit.
-    ...(showPremiumMessageUsage && fairUseWindowDays !== null
+    ...(showPremiumMessageUsage &&
+    showFairUseCreditsColumn &&
+    fairUseWindowDays !== null
       ? [buildFairUseCreditsColumn(fairUseWindowDays)]
       : []),
     ...(variant === "compact" && !showPremiumMessageUsage
@@ -1156,6 +1169,8 @@ function buildColumns({
   variant,
   hasPool,
   showPremiumMessageUsage,
+  showPremiumMessageColumn,
+  showFairUseCreditsColumn,
   premiumMessageWindowDays,
   fairUseWindowDays,
 }: {
@@ -1167,6 +1182,8 @@ function buildColumns({
   variant: MembersUsageTableVariant;
   hasPool: boolean;
   showPremiumMessageUsage: boolean;
+  showPremiumMessageColumn: boolean;
+  showFairUseCreditsColumn: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
 }): ColumnDef<RowData, string>[] {
@@ -1181,6 +1198,8 @@ function buildColumns({
           variant,
           hasPool,
           showPremiumMessageUsage,
+          showPremiumMessageColumn,
+          showFairUseCreditsColumn,
           premiumMessageWindowDays,
           fairUseWindowDays,
         })
@@ -1243,6 +1262,12 @@ interface MembersUsageTableProps {
   // "compact" (poke) variant's credit column header.
   hasPool?: boolean;
   showPremiumMessageUsage?: boolean;
+  // Independently hide the premium-message / fair-use-credits columns even
+  // when `showPremiumMessageUsage` is true (e.g. driven by the
+  // `enforce_premium_model_message_limit` / `disable_fair_use_awu_limit`
+  // feature flags in Poke). Both default to `showPremiumMessageUsage`.
+  showPremiumMessageColumn?: boolean;
+  showFairUseCreditsColumn?: boolean;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
   userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
   groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
@@ -1283,6 +1308,8 @@ export function MembersUsageTable({
   variant = "legacy",
   hasPool = true,
   showPremiumMessageUsage = false,
+  showPremiumMessageColumn = showPremiumMessageUsage,
+  showFairUseCreditsColumn = showPremiumMessageUsage,
   userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
   userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
   groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
@@ -1476,6 +1503,8 @@ export function MembersUsageTable({
         variant,
         hasPool,
         showPremiumMessageUsage,
+        showPremiumMessageColumn,
+        showFairUseCreditsColumn,
         premiumMessageWindowDays,
         fairUseWindowDays,
       }),
@@ -1489,6 +1518,8 @@ export function MembersUsageTable({
       hasPool,
       premiumMessageWindowDays,
       showPremiumMessageUsage,
+      showPremiumMessageColumn,
+      showFairUseCreditsColumn,
       fairUseWindowDays,
     ]
   );
