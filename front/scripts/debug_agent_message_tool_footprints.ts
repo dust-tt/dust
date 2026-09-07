@@ -19,12 +19,18 @@ import {
   getEnabledSkillInputTextByActionId,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { toolCallFootprintTexts } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
+import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  MICRO_CREDITS_PER_CREDIT,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { trustedFetch } from "@app/lib/egress/server";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import {
   OPENAI_EU_BASE_URL,
   OPENAI_GLOBAL_BASE_URL,
@@ -57,6 +63,11 @@ type TokenCounts = {
   openAIInputTokensIncludingFraming?: number;
   rawInputByTokenizerBase: Partial<Record<TiktokenTokenizerBase, number>>;
 };
+
+type AttributionPricedUsage = Pick<
+  RunUsageWithRunKeyType,
+  "completionTokens" | "isBatch" | "modelId" | "promptTokens"
+>;
 
 const OpenAIInputTokenCountResponseSchema = z.object({
   input_tokens: z.number().int().nonnegative(),
@@ -152,6 +163,49 @@ function providerNewInputTokens(usage: RunUsageWithRunKeyType): number {
   return usage.promptTokens - (usage.cachedTokens ?? 0);
 }
 
+function creditAmountMicroFromCostMicroUsd(costMicroUsd: number): number {
+  return Math.round(
+    (costMicroUsd * MICRO_CREDITS_PER_CREDIT) /
+      MODEL_COST_MICRO_USD_PER_AWU_CREDIT
+  );
+}
+
+/** Mirrors the cache-naive rates used by attribution_builder.ts. */
+function cacheNaiveAttributedCreditAmountMicro({
+  inputTokensCount,
+  outputTokensCount,
+  usage,
+}: {
+  inputTokensCount: number;
+  outputTokensCount: number;
+  usage: AttributionPricedUsage;
+}): number {
+  const promptTokensForRate = Math.max(usage.promptTokens, 1);
+  const completionTokensForRate = Math.max(usage.completionTokens, 1);
+  const inputCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+    modelId: usage.modelId,
+    promptTokens: promptTokensForRate,
+    completionTokens: 0,
+    cachedTokens: null,
+    cacheCreationTokens: null,
+    isBatch: usage.isBatch,
+  });
+  const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+    modelId: usage.modelId,
+    promptTokens: promptTokensForRate,
+    completionTokens: completionTokensForRate,
+    cachedTokens: null,
+    cacheCreationTokens: null,
+    isBatch: usage.isBatch,
+  });
+
+  return creditAmountMicroFromCostMicroUsd(
+    inputTokensCount * (inputCostMicroUsd / promptTokensForRate) +
+      outputTokensCount *
+        ((totalCostMicroUsd - inputCostMicroUsd) / completionTokensForRate)
+  );
+}
+
 makeScript(
   {
     workspaceId: {
@@ -189,7 +243,7 @@ makeScript(
       return;
     }
 
-    const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const creditContext =
       await ConversationResource.fetchAgentMessageCreditContext(auth, {
         agentMessageId,
@@ -202,6 +256,28 @@ makeScript(
         auth,
         { agentMessageId }
       );
+    if (!analyticsContext) {
+      throw new Error(
+        `Agent message ${agentMessageId} has no consumption analytics context.`
+      );
+    }
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      analyticsContext.conversation.conversationId,
+      {
+        dangerouslySkipPermissionFiltering: true,
+        includeDeleted: true,
+      }
+    );
+    if (!conversation) {
+      throw new Error(
+        `Conversation ${analyticsContext.conversation.conversationId} was not found.`
+      );
+    }
+    const capabilities = await getAttachmentCapabilityContext(
+      auth,
+      conversation
+    );
 
     const dustRunIds = [...new Set(creditContext.runIds ?? [])];
     const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
@@ -227,21 +303,52 @@ makeScript(
       runUsages: usages,
     });
     const runUsageAttemptRows: Array<Record<string, unknown>> = [];
-    for (const run of runs) {
+    const runUsageAttemptCountByRunModelId = new Map<ModelId, number>();
+    for (const run of [...runs].sort(
+      (left, right) =>
+        left.createdAt.getTime() - right.createdAt.getTime() ||
+        left.id - right.id
+    )) {
       const attempts = await run.listRunUsageAttempts(auth);
-      for (const attempt of attempts) {
+      runUsageAttemptCountByRunModelId.set(run.id, attempts.length);
+      for (const [attemptIndex, attempt] of attempts.entries()) {
+        const cacheNaiveCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+          modelId: attempt.modelId,
+          promptTokens: attempt.promptTokens,
+          completionTokens: attempt.completionTokens,
+          cachedTokens: null,
+          cacheCreationTokens: null,
+          isBatch: attempt.isBatch,
+          serviceTier: attempt.serviceTier,
+        });
         runUsageAttemptRows.push({
+          runOrder: runUsageAttemptRows.length + 1,
           dustRunId: run.dustRunId,
           runModelId: run.id,
+          runKey: run.runKey,
           runCreatedAt: run.createdAt.toISOString(),
+          attempt: `${attemptIndex + 1}/${attempts.length}`,
           usageId: attempt.runUsageModelId,
           state: attempt.usageState,
           provider: attempt.providerId,
+          inferenceProvider: attempt.inferenceProvider,
+          region: attempt.region,
           model: attempt.modelId,
           promptTokens: attempt.promptTokens,
           cachedTokens: attempt.cachedTokens,
+          newInputTokens: attempt.promptTokens - (attempt.cachedTokens ?? 0),
+          cachedPercent:
+            attempt.promptTokens === 0
+              ? 0
+              : Math.round(
+                  ((attempt.cachedTokens ?? 0) / attempt.promptTokens) * 10_000
+                ) / 100,
+          cacheCreationTokens: attempt.cacheCreationTokens,
           completionTokens: attempt.completionTokens,
+          reasoningTokens: attempt.reasoningTokens,
           providerCostMicroUsd: attempt.costMicroUsd,
+          cacheNaiveCostMicroUsd,
+          cacheSavingsMicroUsd: cacheNaiveCostMicroUsd - attempt.costMicroUsd,
         });
       }
     }
@@ -271,12 +378,42 @@ makeScript(
     const toolItemByActionModelId = new Map(
       diagnosticToolItems.map((item) => [item.agentMCPActionId, item])
     );
+    const actionByModelId = new Map(
+      actions.map((action) => [action.id, action])
+    );
     const runByDustRunId = new Map(runs.map((run) => [run.dustRunId, run]));
+    const runByModelId = new Map(runs.map((run) => [run.id, run]));
+    const usageByModelId = new Map(
+      usages.map((usage) => [usage.runUsageModelId, usage])
+    );
     const usagesByRunModelId = new Map<ModelId, RunUsageWithRunKeyType[]>();
     for (const usage of usages) {
       const runUsages = usagesByRunModelId.get(usage.runModelId) ?? [];
       runUsages.push(usage);
       usagesByRunModelId.set(usage.runModelId, runUsages);
+    }
+    const runOrderByModelId = new Map(
+      [...runs]
+        .sort(
+          (left, right) =>
+            left.createdAt.getTime() - right.createdAt.getTime() ||
+            left.id - right.id
+        )
+        .map((run, index) => [run.id, index])
+    );
+    const orderedUsages = [...usages].sort(
+      (left, right) =>
+        (runOrderByModelId.get(left.runModelId) ?? Number.MAX_SAFE_INTEGER) -
+          (runOrderByModelId.get(right.runModelId) ??
+            Number.MAX_SAFE_INTEGER) ||
+        left.runUsageModelId - right.runUsageModelId
+    );
+    const nextUsageByUsageModelId = new Map<ModelId, RunUsageWithRunKeyType>();
+    for (let index = 0; index < orderedUsages.length - 1; index++) {
+      nextUsageByUsageModelId.set(
+        orderedUsages[index].runUsageModelId,
+        orderedUsages[index + 1]
+      );
     }
 
     const itemCountByVersion: Record<string, Record<string, number>> = {};
@@ -327,6 +464,75 @@ makeScript(
       billedCreditAmountMicro === null
         ? null
         : billedCreditAmountMicro - diagnosticGrossNonInputCreditAmountMicro;
+    const attributionItemDecompositions = diagnosticItems.map((item) => {
+      const usage = usageByModelId.get(item.runUsageId);
+      const toolResultInputCreditAmountMicro =
+        item.itemType === "tool" && usage
+          ? cacheNaiveAttributedCreditAmountMicro({
+              usage,
+              inputTokensCount: item.inputTokensCount ?? 0,
+              outputTokensCount: 0,
+            })
+          : 0;
+      const modelInputCreditAmountMicro =
+        item.itemType === "input" || item.itemType === "system"
+          ? item.grossAttributedCreditAmountMicro
+          : toolResultInputCreditAmountMicro;
+      const fixedCreditAmountMicro =
+        item.grossAttributedCreditAmountMicro - modelInputCreditAmountMicro;
+      const directCreditAmountMicro = item.directCreditAmountMicro ?? 0;
+      const nonInputModelCreditAmountMicro =
+        fixedCreditAmountMicro - directCreditAmountMicro;
+      const flags: string[] = [];
+      if (item.itemType === "tool" && !usage) {
+        flags.push("missing_producing_usage");
+      }
+      if (fixedCreditAmountMicro < 0) {
+        flags.push("input_component_exceeds_gross");
+      }
+      if (nonInputModelCreditAmountMicro < 0) {
+        flags.push("direct_component_exceeds_fixed");
+      }
+
+      return {
+        item,
+        usage,
+        action:
+          item.agentMCPActionId === null
+            ? undefined
+            : actionByModelId.get(item.agentMCPActionId),
+        modelInputCreditAmountMicro,
+        toolResultInputCreditAmountMicro,
+        fixedCreditAmountMicro,
+        directCreditAmountMicro,
+        nonInputModelCreditAmountMicro,
+        flags,
+      };
+    });
+    const diagnosticModelInputCreditAmountMicro =
+      attributionItemDecompositions.reduce(
+        (total, item) => total + item.modelInputCreditAmountMicro,
+        0
+      );
+    const diagnosticToolResultInputCreditAmountMicro =
+      attributionItemDecompositions.reduce(
+        (total, item) => total + item.toolResultInputCreditAmountMicro,
+        0
+      );
+    const diagnosticFixedCreditAmountMicro =
+      attributionItemDecompositions.reduce(
+        (total, item) => total + item.fixedCreditAmountMicro,
+        0
+      );
+    const diagnosticNonInputModelCreditAmountMicro =
+      attributionItemDecompositions.reduce(
+        (total, item) => total + item.nonInputModelCreditAmountMicro,
+        0
+      );
+    const sharedInputBudgetCreditAmountMicro =
+      billedCreditAmountMicro === null
+        ? null
+        : billedCreditAmountMicro - diagnosticFixedCreditAmountMicro;
 
     const actionCoverage = actions.map((action) => {
       const dustRunId = action.stepContent.dustRunId;
@@ -434,6 +640,87 @@ makeScript(
         })
       )
     );
+    console.log("\nAttribution item decomposition");
+    console.table(
+      attributionItemDecompositions.map((decomposition) => ({
+        itemId: decomposition.item.id,
+        type: decomposition.item.itemType,
+        runUsageId: decomposition.item.runUsageId,
+        action: decomposition.action?.sId ?? "n/a",
+        grossCredits:
+          decomposition.item.grossAttributedCreditAmountMicro / 1_000_000,
+        modelInputCredits:
+          decomposition.modelInputCreditAmountMicro / 1_000_000,
+        toolResultInputCredits:
+          decomposition.toolResultInputCreditAmountMicro / 1_000_000,
+        nonInputModelCredits:
+          decomposition.nonInputModelCreditAmountMicro / 1_000_000,
+        directCredits: decomposition.directCreditAmountMicro / 1_000_000,
+        currentPolicy:
+          decomposition.item.itemType === "input"
+            ? "reconcile"
+            : "protect_gross",
+        reconciledCredits:
+          decomposition.item.reconciledCreditAmountMicro === null
+            ? "missing"
+            : decomposition.item.reconciledCreditAmountMicro / 1_000_000,
+        inputTokens: decomposition.item.inputTokensCount ?? "n/a",
+        outputTokens: decomposition.item.outputTokensCount ?? "n/a",
+        flags: decomposition.flags.join(", ") || "none",
+      }))
+    );
+    console.log("\nReconciliation arithmetic");
+    console.table([
+      {
+        quantity: "authoritative_bill",
+        credits:
+          billedCreditAmountMicro === null
+            ? "n/a"
+            : billedCreditAmountMicro / 1_000_000,
+        meaning: "Maximum reconciled total",
+      },
+      {
+        quantity: "direct_tool_charges",
+        credits: diagnosticDirectToolCreditAmountMicro / 1_000_000,
+        meaning: "Flat tool charges; not cache-sensitive",
+      },
+      {
+        quantity: "non_input_model_claims",
+        credits: diagnosticNonInputModelCreditAmountMicro / 1_000_000,
+        meaning: "Output, reasoning, and emitted tool calls",
+      },
+      {
+        quantity: "tool_result_input_claims",
+        credits: diagnosticToolResultInputCreditAmountMicro / 1_000_000,
+        meaning: "Input-priced portion currently protected inside tool rows",
+      },
+      {
+        quantity: "all_model_input_claims",
+        credits: diagnosticModelInputCreditAmountMicro / 1_000_000,
+        meaning: "Ordinary prompt input plus tool-result input",
+      },
+      {
+        quantity: "current_protected_non_input",
+        credits: diagnosticGrossNonInputCreditAmountMicro / 1_000_000,
+        meaning: "What allocation.ts subtracts before reconciling input",
+      },
+      {
+        quantity: "current_input_remainder",
+        credits:
+          reconciledInputCreditAmountMicro === null
+            ? "n/a"
+            : reconciledInputCreditAmountMicro / 1_000_000,
+        meaning: "Negative means current reconciliation must fail",
+      },
+      {
+        quantity: "input_budget_if_input_claims_shared",
+        credits:
+          sharedInputBudgetCreditAmountMicro === null
+            ? "n/a"
+            : sharedInputBudgetCreditAmountMicro / 1_000_000,
+        meaning: "Bill after only direct and non-input model claims",
+      },
+    ]);
     console.log("\nCanonical LLM billing lines");
     console.table(
       billingPlan.llm.map((line) => ({
@@ -450,6 +737,23 @@ makeScript(
         disposition: line.billingDisposition,
       }))
     );
+    console.log("\nCanonical LLM billed allocation by usage");
+    console.table(
+      billingPlan.llm.flatMap((line) =>
+        (line.usageAllocations ?? []).map((allocation) => ({
+          runKey: line.runKey,
+          runUsageId: allocation.usage.runUsageModelId,
+          runModelId: allocation.usage.runModelId,
+          promptTokens: allocation.usage.promptTokens,
+          cachedTokens: allocation.usage.cachedTokens,
+          newInputTokens: providerNewInputTokens(allocation.usage),
+          completionTokens: allocation.usage.completionTokens,
+          providerCostMicroUsd: allocation.usage.costMicroUsd,
+          allocatedBilledCredits:
+            allocation.allocatedBilledCreditMicro / 1_000_000,
+        }))
+      )
+    );
     console.log("\nCanonical tool billing lines");
     console.table(
       billingPlan.tools.map((line) => ({
@@ -463,6 +767,113 @@ makeScript(
     );
     console.log("\nCanonical billing totals");
     console.table([billingPlan.totals]);
+    const consumedToolResultsByUsageModelId = new Map<
+      ModelId,
+      {
+        actions: string[];
+        inputCreditAmountMicro: number;
+        inputTokensCount: number;
+      }
+    >();
+    for (const decomposition of attributionItemDecompositions) {
+      if (decomposition.item.itemType !== "tool") {
+        continue;
+      }
+      const consumingUsage = nextUsageByUsageModelId.get(
+        decomposition.item.runUsageId
+      );
+      if (!consumingUsage) {
+        continue;
+      }
+      const existing = consumedToolResultsByUsageModelId.get(
+        consumingUsage.runUsageModelId
+      ) ?? {
+        actions: [],
+        inputCreditAmountMicro: 0,
+        inputTokensCount: 0,
+      };
+      consumedToolResultsByUsageModelId.set(consumingUsage.runUsageModelId, {
+        actions: [
+          ...existing.actions,
+          decomposition.action?.sId ?? String(decomposition.item.id),
+        ],
+        inputCreditAmountMicro:
+          existing.inputCreditAmountMicro +
+          decomposition.toolResultInputCreditAmountMicro,
+        inputTokensCount:
+          existing.inputTokensCount +
+          (decomposition.item.inputTokensCount ?? 0),
+      });
+    }
+    console.log("\nReported usage chronology");
+    console.table(
+      orderedUsages.map((usage, index) => {
+        const run = runByModelId.get(usage.runModelId);
+        const consumedToolResults = consumedToolResultsByUsageModelId.get(
+          usage.runUsageModelId
+        );
+        return {
+          sequence: index + 1,
+          runUsageId: usage.runUsageModelId,
+          runModelId: usage.runModelId,
+          runKey: usage.runKey,
+          runCreatedAt: run?.createdAt.toISOString() ?? "n/a",
+          attempts: runUsageAttemptCountByRunModelId.get(usage.runModelId) ?? 0,
+          provider: usage.providerId,
+          model: usage.modelId,
+          promptTokens: usage.promptTokens,
+          cachedTokens: usage.cachedTokens,
+          newInputTokens: providerNewInputTokens(usage),
+          cachedPercent:
+            usage.promptTokens === 0
+              ? 0
+              : Math.round(
+                  ((usage.cachedTokens ?? 0) / usage.promptTokens) * 10_000
+                ) / 100,
+          completionTokens: usage.completionTokens,
+          providerCostMicroUsd: usage.costMicroUsd,
+          consumedToolActions:
+            consumedToolResults?.actions.join(", ") ?? "none",
+          consumedToolResultTokens: consumedToolResults?.inputTokensCount ?? 0,
+          consumedToolResultCredits:
+            (consumedToolResults?.inputCreditAmountMicro ?? 0) / 1_000_000,
+        };
+      })
+    );
+    console.log("\nCache and retry observations");
+    console.table(
+      orderedUsages
+        .filter(
+          (usage) =>
+            (usage.cachedTokens ?? 0) > 0 ||
+            consumedToolResultsByUsageModelId.has(usage.runUsageModelId)
+        )
+        .map((usage) => {
+          const consumedToolResults = consumedToolResultsByUsageModelId.get(
+            usage.runUsageModelId
+          );
+          const consumedResultTokens =
+            consumedToolResults?.inputTokensCount ?? 0;
+          const newInputTokens = providerNewInputTokens(usage);
+          const attemptCount =
+            runUsageAttemptCountByRunModelId.get(usage.runModelId) ?? 0;
+          const resultExceedsNewInput =
+            consumedResultTokens > 0 && consumedResultTokens > newInputTokens;
+
+          return {
+            runUsageId: usage.runUsageModelId,
+            attempts: attemptCount,
+            retryRows: attemptCount > 1 ? "yes" : "no",
+            cachedTokens: usage.cachedTokens ?? 0,
+            newInputTokens,
+            consumedToolResultTokens: consumedResultTokens,
+            resultMinusNewInput: consumedResultTokens - newInputTokens,
+            observation: resultExceedsNewInput
+              ? "tool_result_larger_than_uncached_input"
+              : "uncached_input_can_fit_tool_result",
+          };
+        })
+    );
     console.log("\nRun usage attempts");
     console.table(runUsageAttemptRows);
     const coverageGaps = actionCoverage.filter(
@@ -496,9 +907,6 @@ makeScript(
       });
     const actionResourceByModelId = new Map(
       modelVisibleActions.map((action) => [action.id, action])
-    );
-    const usageByModelId = new Map(
-      usages.map((usage) => [usage.runUsageModelId, usage])
     );
     const enabledSkillIdsByActionId = new Map(
       enrichedActions.map((action) => [
@@ -556,6 +964,7 @@ makeScript(
               action,
               functionCallArguments: actionResource.functionCallArguments,
             },
+            capabilities,
             enabledSkillInputTextByActionId.get(action.sId)
           ),
         },
@@ -673,30 +1082,6 @@ makeScript(
           ),
         });
       });
-    }
-
-    const runOrderByModelId = new Map(
-      [...runs]
-        .sort(
-          (left, right) =>
-            left.createdAt.getTime() - right.createdAt.getTime() ||
-            left.id - right.id
-        )
-        .map((run, index) => [run.id, index])
-    );
-    const orderedUsages = [...usages].sort(
-      (left, right) =>
-        (runOrderByModelId.get(left.runModelId) ?? Number.MAX_SAFE_INTEGER) -
-          (runOrderByModelId.get(right.runModelId) ??
-            Number.MAX_SAFE_INTEGER) ||
-        left.runUsageModelId - right.runUsageModelId
-    );
-    const nextUsageByUsageModelId = new Map<ModelId, RunUsageWithRunKeyType>();
-    for (let index = 0; index < orderedUsages.length - 1; index++) {
-      nextUsageByUsageModelId.set(
-        orderedUsages[index].runUsageModelId,
-        orderedUsages[index + 1]
-      );
     }
 
     const diagnostics = footprintInputs.flatMap(
