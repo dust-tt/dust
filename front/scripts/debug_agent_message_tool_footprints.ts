@@ -11,6 +11,7 @@
  *   --execute
  */
 
+import { TOOL_OUTPUT_OFFLOAD_META_KEY } from "@app/lib/actions/action_output_limits";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
@@ -41,9 +42,13 @@ import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_me
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import {
+  getTemporalClientForAgentNamespace,
+  getTemporalClientForFrontNamespace,
+} from "@app/lib/temporal";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { makeScript } from "@app/scripts/helpers";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -71,6 +76,63 @@ type AttributionPricedUsage = Pick<
   RunUsageWithRunKeyType,
   "completionTokens" | "isBatch" | "modelId" | "promptTokens"
 >;
+
+const ToolOutputOffloadDescriptorSchema = z.object({
+  contentType: z.string(),
+  fullContentPath: z.string(),
+  totalBytes: z.number().nonnegative(),
+});
+
+function sumStringCharacters(value: unknown): number {
+  if (typeof value === "string") {
+    return value.length;
+  }
+  if (Array.isArray(value)) {
+    return value.reduce((total, item) => total + sumStringCharacters(item), 0);
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.values(value).reduce(
+      (total, item) => total + sumStringCharacters(item),
+      0
+    );
+  }
+  return 0;
+}
+
+function summarizeStoredToolOutput(action: AgentMCPActionWithOutputType) {
+  const blocks = action.output ?? [];
+  let offloadedBlocks = 0;
+  let archivedBytes = 0;
+  let serializedBytesOver20KiB = 0;
+
+  for (const block of blocks) {
+    const serializedBytes = Buffer.byteLength(JSON.stringify(block), "utf8");
+    if (serializedBytes > 20 * 1024) {
+      serializedBytesOver20KiB += 1;
+    }
+
+    const metadata = "_meta" in block ? block._meta : undefined;
+    const descriptor = ToolOutputOffloadDescriptorSchema.safeParse(
+      metadata?.[TOOL_OUTPUT_OFFLOAD_META_KEY]
+    );
+    if (descriptor.success) {
+      offloadedBlocks += 1;
+      archivedBytes += descriptor.data.totalBytes;
+    }
+  }
+
+  return {
+    blocks: blocks.length,
+    blockTypes:
+      [...new Set(blocks.map((block) => block.type))].sort().join(", ") ||
+      "none",
+    storedJsonBytes: Buffer.byteLength(JSON.stringify(blocks), "utf8"),
+    storedStringCharacters: sumStringCharacters(blocks),
+    serializedBytesOver20KiB,
+    offloadedBlocks,
+    archivedBytes,
+  };
+}
 
 const OpenAIInputTokenCountResponseSchema = z.object({
   input_tokens: z.number().int().nonnegative(),
@@ -328,6 +390,96 @@ async function printAttributionWorkflowHistory({
     console.table(eventRows);
   } catch (error) {
     console.log("\nTemporal attribution history unavailable");
+    console.table([
+      {
+        workflowId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    ]);
+  }
+}
+
+async function printAgentLoopActivityAttempts({
+  agentMessageId,
+  conversationId,
+  workspaceId,
+}: {
+  agentMessageId: string;
+  conversationId: string;
+  workspaceId: string;
+}): Promise<void> {
+  const workflowId = makeAgentLoopWorkflowId({
+    agentMessageId,
+    conversationId,
+    workspaceId,
+  });
+
+  try {
+    const client = await getTemporalClientForAgentNamespace();
+    const handle = client.workflow.getHandle(workflowId);
+    const history = await handle.fetchHistory();
+    const scheduledActivityByEventId = new Map<string, string>();
+    const rows: Array<Record<string, unknown>> = [];
+
+    for (const event of history.events ?? []) {
+      const eventAt = event.eventTime
+        ? tsToDate(event.eventTime).toISOString()
+        : "n/a";
+      const scheduled = event.activityTaskScheduledEventAttributes;
+      if (scheduled) {
+        const activity = scheduled.activityType?.name ?? "unknown";
+        scheduledActivityByEventId.set(String(event.eventId), activity);
+        if (activity === "runModelAndCreateActionsActivity") {
+          rows.push({ eventAt, activity, event: "scheduled", attempt: "n/a" });
+        }
+      }
+
+      const started = event.activityTaskStartedEventAttributes;
+      if (started) {
+        const activity = scheduledActivityByEventId.get(
+          String(started.scheduledEventId)
+        );
+        if (activity === "runModelAndCreateActionsActivity") {
+          rows.push({
+            eventAt,
+            activity,
+            event: "started",
+            attempt: started.attempt,
+            worker: started.identity,
+          });
+        }
+      }
+
+      const outcome =
+        event.activityTaskCompletedEventAttributes ??
+        event.activityTaskFailedEventAttributes ??
+        event.activityTaskTimedOutEventAttributes ??
+        event.activityTaskCanceledEventAttributes;
+      if (outcome) {
+        const activity = scheduledActivityByEventId.get(
+          String(outcome.scheduledEventId)
+        );
+        if (activity === "runModelAndCreateActionsActivity") {
+          rows.push({
+            eventAt,
+            activity,
+            event: event.activityTaskCompletedEventAttributes
+              ? "completed"
+              : event.activityTaskFailedEventAttributes
+                ? "failed"
+                : event.activityTaskTimedOutEventAttributes
+                  ? "timed_out"
+                  : "canceled",
+            attempt: "n/a",
+          });
+        }
+      }
+    }
+
+    console.log("\nAgent-loop model activity attempts");
+    console.table(rows);
+  } catch (error) {
+    console.log("\nAgent-loop model activity history unavailable");
     console.table([
       {
         workflowId,
@@ -1332,6 +1484,7 @@ makeScript(
         if (!counts) {
           return [];
         }
+        const storedOutput = summarizeStoredToolOutput(action);
         const nextUsage = nextUsageByUsageModelId.get(usage.runUsageModelId);
         const nextProviderInputTokens = nextUsage?.promptTokens ?? null;
         const nextProviderNewInputTokens = nextUsage
@@ -1374,6 +1527,7 @@ makeScript(
             configuredTokenizer: getModelConfigByModelId(usage.modelId)
               ?.tokenizer,
             resultTextCharacters: texts.inputText.length,
+            storedOutput,
             storedResultTokens: item.inputTokensCount,
             storedCallTokens: item.outputTokensCount,
             storedDirectCreditAmountMicro: item.directCreditAmountMicro,
@@ -1563,6 +1717,45 @@ makeScript(
           toleratedLateChild: coverage.isToleratedLateChild,
         }))
     );
+
+    console.log("\nCompact run usage attempt trace");
+    console.table(
+      runUsageAttemptRows.map((attempt) => ({
+        runModelId: attempt.runModelId,
+        attempt: attempt.attempt,
+        usageId: attempt.usageId,
+        state: attempt.state,
+        provider: attempt.provider,
+        model: attempt.model,
+        promptTokens: attempt.promptTokens,
+        cachedTokens: attempt.cachedTokens,
+        cacheCreationTokens: attempt.cacheCreationTokens,
+        newInputTokens: attempt.newInputTokens,
+        completionTokens: attempt.completionTokens,
+        providerCostMicroUsd: attempt.providerCostMicroUsd,
+      }))
+    );
+
+    console.log("\nCompact tool output storage trace");
+    console.table(
+      diagnostics.map((diagnostic) => ({
+        action: diagnostic.actionId,
+        blocks: diagnostic.storedOutput.blocks,
+        blockTypes: diagnostic.storedOutput.blockTypes,
+        storedJsonBytes: diagnostic.storedOutput.storedJsonBytes,
+        storedStringChars: diagnostic.storedOutput.storedStringCharacters,
+        renderedTextChars: diagnostic.resultTextCharacters,
+        blocksOver20KiB: diagnostic.storedOutput.serializedBytesOver20KiB,
+        offloadedBlocks: diagnostic.storedOutput.offloadedBlocks,
+        archivedBytes: diagnostic.storedOutput.archivedBytes,
+      }))
+    );
+
+    await printAgentLoopActivityAttempts({
+      agentMessageId,
+      conversationId: analyticsContext.conversation.conversationId,
+      workspaceId,
+    });
 
     console.log(
       `\nDone: ${creditContext.status}, ${runs.length} runs, ${usages.length} usages, ` +
