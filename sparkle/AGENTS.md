@@ -34,9 +34,31 @@ so including it yields duplicate names and draft artwork. Several of its names a
 off-convention (`actionStore`, `RobotIcon`, `folderOpen`). `Playground`, `OldIcons` and `Cover` hold
 no components at all.
 
+Two icons on the canonical pages are deliberately **not** exported, so the canonical relationship
+only holds one way: every repo export has a Figma component, but not every Figma component has a
+repo export. `x` was retired in favour of `x-close` (same glyph, one unit larger on each extreme)
+and `fingerprint-04` in favour of `fingerprint-03`. Do not re-add either from Figma, and skip them
+when auditing or bulk re-exporting.
+
 `src/icons/src/**` holds the SVG sources; `src/icons/**` holds the TSX modules SVGR generates from
-them. Never hand-edit a file under `src/icons/v2-stroke/` or `src/icons/actions/` — edit or add the
-SVG source and regenerate with `./build_icons.sh`.
+them. Never hand-edit a file under `src/icons/v2-stroke/` — edit or add the SVG source and
+regenerate with `./build_icons.sh`.
+
+`src/icons/ActionIcons.ts` is the one exception: it is hand-authored and no build touches it. It
+maps the icons users can pick to label skills, and its keys are not component names but identifiers
+persisted in Postgres (`skill.icon`, `remote_mcp_server.icon`, `webhook_sources_view.icon`) and
+frozen into the public SDK enum `MCPInternalActionIconSchema`. Keys may only ever be added; renaming
+or removing one breaks stored rows and the public API. The values are ordinary v2-stroke components
+and are free to change. `resources_icons.tsx` in both `front` and `marketing` asserts at compile
+time that the map still covers every persisted name, so a dropped key fails their builds. This map
+replaced the retired filled `actions` icon set, which no longer exists.
+
+Keep that file `.ts`, never `.tsx`. `reactDocgen: "react-docgen-typescript"` in `.storybook/main.ts`
+only transforms `.tsx`, and on a `.tsx` file it appends `displayName` and `__docgenInfo` to the
+exported object. Anything iterating the map with `Object.entries` then hits those two extra keys and
+tries to render a string and an object as components. The Storybook vitest project does not run
+docgen, so the story tests pass while the dev server throws — the only reliable check is loading the
+story in a browser.
 
 ## Naming
 
@@ -58,8 +80,8 @@ exception lives in `svgr-v2-stroke-icon-template.js`.
 
 ## Regenerating
 
-`./build_icons.sh` starts by deleting `src/icons/actions`, `src/icons/v2-stroke`,
-`src/logo/platforms` and `src/logo/dust`, then regenerates each from its SVG source directory and
+`./build_icons.sh` starts by deleting `src/icons/v2-stroke`, `src/logo/platforms` and
+`src/logo/dust`, then regenerates each from its SVG source directory and
 runs `biome check --write`. Any generated module without a matching SVG source is therefore
 destroyed by a build. Before running it, confirm every export in `src/icons/v2-stroke/index.ts` has
 a source file — several icons have historically been hand-written TSX with no SVG, and they must be

@@ -38,7 +38,6 @@ import {
 } from "@sparkle/logo/platforms";
 
 import {
-  ActionCommand1Icon,
   ArrowDown,
   Upload01,
   Attachment01,
@@ -46,6 +45,7 @@ import {
   Button,
   MessagePlusCircle,
   Chip,
+  Command,
   Download01,
   Settings01,
   File02,
@@ -290,7 +290,7 @@ export const WithShortcuts: Story = {
           <DropdownMenuSeparator />
           <DropdownMenuLabel label="Actions" />
           <DropdownMenuItem
-            icon={ActionCommand1Icon}
+            icon={Command}
             label="Command Palette"
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+p" />}
           />

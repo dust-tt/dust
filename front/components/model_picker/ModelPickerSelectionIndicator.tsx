@@ -1,4 +1,4 @@
-import { Check, Icon, X } from "@dust-tt/sparkle";
+import { Check, Icon, XClose } from "@dust-tt/sparkle";
 
 interface ModelPickerSelectionIndicatorProps {
   // Passed only when the selection can be reverted (i.e. it differs from the
@@ -34,7 +34,7 @@ export function ModelPickerSelectionIndicator({
         className="group-hover/indicator:hidden"
       />
       <Icon
-        visual={X}
+        visual={XClose}
         size={size}
         className="hidden group-hover/indicator:block"
       />

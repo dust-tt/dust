@@ -18,7 +18,7 @@ import {
   Clock,
   CreditCard01,
   File04,
-  Fingerprint04,
+  Fingerprint03,
   FolderOpen,
   Globe01,
   IntersectDust,
@@ -294,7 +294,7 @@ export const subNavigationAdmin = ({
       {
         id: "identity_and_provisioning",
         label: "IT & Security",
-        icon: Fingerprint04,
+        icon: Fingerprint03,
         href: `/w/${owner.sId}/identity-and-provisioning`,
         current: isCurrent("identity_and_provisioning"),
         disabled: !canAdminSecurity,

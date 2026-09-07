@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   Robot,
-  X,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -151,7 +151,7 @@ export function AgentPicker({
                           className="group-hover:hidden"
                         />
                         <Icon
-                          visual={X}
+                          visual={XClose}
                           size="sm"
                           className="hidden group-hover:block"
                         />
