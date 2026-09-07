@@ -71,6 +71,7 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
   conversation_id: "conv1",
   credit_micro: 1_000_000,
   execution_time_ms: null,
+  micro_usd: 500_000,
   message_version: "1",
   model: {
     provider_id: "anthropic",
@@ -110,6 +111,7 @@ const TOOL_DOC: AgentMessageConsumptionAnalyticsToolData = {
   ...LLM_DOC,
   consumption_key: "action:1",
   consumption_type: "tool",
+  micro_usd: null,
   model: null,
   gross_credit_micro: {
     system: 0,

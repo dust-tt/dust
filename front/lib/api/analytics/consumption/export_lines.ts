@@ -56,6 +56,7 @@ type ConsumptionLineExportRow = {
   creditsReasoning: number;
   creditsDirect: number;
   totalCredits: number;
+  costMicroUsd: number;
   usageType: string;
   status: string;
   stepIndex: number;
@@ -100,6 +101,7 @@ const CONSUMPTION_LINE_EXPORT_HEADERS: (keyof ConsumptionLineExportRow)[] = [
   "creditsReasoning",
   "creditsDirect",
   "totalCredits",
+  "costMicroUsd",
   "usageType",
   "status",
   "stepIndex",
@@ -253,6 +255,7 @@ async function buildConsumptionLineExportRows(
         microCreditsToCredits(gross.direct ?? 0)
       ),
       totalCredits: roundToTwoDecimals(microCreditsToCredits(doc.credit_micro)),
+      costMicroUsd: doc.micro_usd ?? 0,
       usageType: doc.usage_type,
       status: doc.status,
       stepIndex: doc.step_index,

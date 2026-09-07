@@ -378,6 +378,7 @@ function makeLlmDocument(
     }),
     consumption_type: "llm",
     credit_micro: creditMicro,
+    micro_usd: creditMicro,
     gross_credit_micro: {
       system: systemCreditMicro,
       input:
@@ -428,6 +429,7 @@ function makeToolDocument(
     }),
     consumption_type: "tool",
     credit_micro: creditMicro,
+    micro_usd: null,
     gross_credit_micro: {
       system: 0,
       input: null,

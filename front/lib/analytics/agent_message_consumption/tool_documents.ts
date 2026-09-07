@@ -129,6 +129,7 @@ function buildToolConsumptionDocument({
     ...summarizeToolConsumptionItem({ allocation, item }),
     consumption_type: "tool",
     execution_time_ms: serializedAction.executionDurationMs,
+    micro_usd: null,
     model: modelForUsage(input.model, usage),
     status: serializedAction.status,
     tool: {
