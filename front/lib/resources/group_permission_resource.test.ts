@@ -6,11 +6,14 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { grantKey } from "@app/types/group_permissions";
 import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 import type { QueryOptions } from "sequelize";
+import { Transaction } from "sequelize";
 import type { AbstractQuery } from "sequelize/types/dialects/abstract/query";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -695,6 +698,58 @@ describe("GroupPermissionResource", () => {
           ],
         })
       ).rejects.toThrow(/regular_auto/);
+    });
+  });
+
+  describe("grantToUsers / revokeFromUsers", () => {
+    it("uses the explicit transaction for every membership read and write", async () => {
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const namespace = getNamespace("test-namespace");
+      assert(namespace);
+      const transaction = namespace.get("transaction");
+      assert(transaction instanceof Transaction);
+      const AGENT_ID = 7;
+      const spec = {
+        grantType: "editor" as const,
+        resourceType: "agent" as const,
+        resourceId: AGENT_ID,
+        transaction,
+      };
+
+      // Production has no CLS transaction. Reads outside the explicit transaction cannot see
+      // these uncommitted fixtures, exposing missing propagation without exhausting the pool.
+      namespace.set("transaction", null);
+      try {
+        const grantResult = await GroupPermissionResource.grantToUsers(auth, {
+          ...spec,
+          users: [user.toJSON()],
+        });
+        expect(grantResult.isOk()).toBe(true);
+
+        const group =
+          await GroupPermissionResource.findRegularAutoGroupForGrant(
+            auth,
+            spec
+          );
+        assert(group);
+        const members = await group.getActiveMembers(auth, { transaction });
+        expect(members.map((member) => member.id)).toEqual([user.id]);
+
+        const revokeResult = await GroupPermissionResource.revokeFromUsers(
+          auth,
+          {
+            ...spec,
+            users: [user.toJSON()],
+          }
+        );
+        expect(revokeResult.isOk()).toBe(true);
+        expect(
+          await GroupPermissionResource.findRegularAutoGroupForGrant(auth, spec)
+        ).toBeNull();
+      } finally {
+        namespace.set("transaction", transaction);
+      }
     });
   });
 

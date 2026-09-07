@@ -16,7 +16,7 @@ import assert from "assert";
 import { col, fn, Op } from "sequelize";
 
 const AGENT_CONCURRENCY = 8;
-const WORKSPACE_CONCURRENCY = 4;
+const WORKSPACE_CONCURRENCY = 2;
 
 const AgentConfigModel: ModelStaticWorkspaceAware<AgentConfigurationModel> =
   AgentConfigurationModel;
