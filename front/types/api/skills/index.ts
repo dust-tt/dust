@@ -19,10 +19,15 @@ export type SkillSearchResult = Pick<
   | "requestedSpaceIds"
   | "sId"
   | "userFacingDescription"
->;
+> & {
+  // Fixed relevance score shared with code-defined skills. Older clients may ignore it.
+  score?: number;
+};
 
 export type SearchSkillsResponseBody = {
   skills: SkillSearchResult[];
+  // Null means exhausted; optional for clients talking to an older server.
+  nextCursor?: string | null;
 };
 
 export type GetSkillsWithRelationsResponseBody = {

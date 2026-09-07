@@ -19,7 +19,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import {
   MAX_SKILL_SEARCH_RESULTS,
-  searchSkillDocuments,
+  prepareSkillSearchQuery,
+  searchSkillDocumentCandidates,
 } from "@app/lib/skill_search/search";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -28,6 +29,8 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
+import { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import assert from "assert";
 
@@ -56,9 +59,35 @@ function makeSkillDocument(
 function mockHits(documents: SkillSearchDocument[]) {
   mockClientSearch.mockResolvedValueOnce({
     hits: {
-      hits: documents.map((document) => ({ _source: document })),
+      hits: documents.map((document, index) => ({
+        _source: document,
+        sort: [1, document.name, String(document.skill_id), index],
+      })),
     },
   });
+}
+
+// Exercise one candidate batch with the real authorization path. The API tests
+// cover the cross-batch merge and cursor behavior.
+async function searchSkillDocuments(
+  auth: Authenticator,
+  { searchTerm, limit }: { searchTerm: string; limit: number }
+) {
+  const query = await prepareSkillSearchQuery(auth, searchTerm);
+  const result = await searchSkillDocumentCandidates(auth, {
+    query,
+    pitId: "test-pit",
+    searchAfter: null,
+    limit: Math.min(200, Math.max(50, limit * 3)),
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(
+    removeNulls(
+      result.value.candidates.map((candidate) => candidate.document)
+    ).slice(0, limit)
+  );
 }
 
 describe("skill_search/search", () => {
@@ -187,8 +216,9 @@ describe("skill_search/search", () => {
       expectedSkillIds
     );
     expect(mockClientSearch).toHaveBeenCalledOnce();
-    expect(mockClientSearch.mock.calls[0][0].query).toEqual({
+    expect(mockClientSearch.mock.calls[0][0].query.bool.must[0]).toEqual({
       bool: {
+        must: [{ constant_score: { filter: { match_all: {} }, boost: 1 } }],
         filter: [
           { term: { workspace_id: workspace.sId } },
           { term: { status: "active" } },
@@ -240,7 +270,8 @@ describe("skill_search/search", () => {
         ],
       },
     });
-    const filters = mockClientSearch.mock.calls[0][0].query.bool.filter;
+    const filters =
+      mockClientSearch.mock.calls[0][0].query.bool.must[0].bool.filter;
     const spaceTerms =
       filters.at(-1).bool.should[1].terms_set.non_pod_space_ids.terms;
     expect(spaceTerms).toHaveLength(4);
@@ -358,7 +389,7 @@ describe("skill_search/search", () => {
     expect(mockClientSearch).toHaveBeenCalledOnce();
     const request = mockClientSearch.mock.calls[0][0];
     expect(request).toMatchObject({
-      index: "front.skill_search",
+      pit: { id: "test-pit", keep_alive: "300s" },
       size: 50,
       sort: [
         { _score: { order: "desc" } },
@@ -366,38 +397,11 @@ describe("skill_search/search", () => {
         { skill_id: { order: "asc" } },
       ],
     });
-    expect(request.query.bool).toMatchObject({
-      minimum_should_match: 1,
-      should: [
-        {
-          multi_match: {
-            query: "summarize",
-            fields: ["name^4", "user_facing_description^2"],
-            type: "bool_prefix",
-          },
-        },
-        {
-          wildcard: {
-            "name.subsequence": {
-              value: "*s*u*m*m*a*r*i*z*e*",
-              case_insensitive: true,
-              boost: 4,
-            },
-          },
-        },
-        {
-          wildcard: {
-            "user_facing_description.subsequence": {
-              value: "*s*u*m*m*a*r*i*z*e*",
-              case_insensitive: true,
-              boost: 2,
-            },
-          },
-        },
-      ],
-    });
+    expect(
+      request.query.bool.must[0].bool.must[0].dis_max.queries
+    ).toHaveLength(6);
 
-    const filters = request.query.bool.filter;
+    const filters = request.query.bool.must[0].bool.filter;
     expect(filters).toEqual(
       expect.arrayContaining([
         { term: { workspace_id: workspace.sId } },
@@ -452,11 +456,12 @@ describe("skill_search/search", () => {
     await searchSkillDocuments(auth, { searchTerm: "   ", limit: 10 });
 
     const request = mockClientSearch.mock.calls[0][0];
-    expect(request.query.bool.filter[3]).toEqual({
+    expect(request.query.bool.must[0].bool.filter[3]).toEqual({
       term: { non_pod_space_count: 0 },
     });
-    expect(request.query.bool.should).toBeUndefined();
+    expect(request.query.bool.must[0].bool.should).toBeUndefined();
     expect(request.sort).toEqual([
+      { _score: { order: "desc" } },
       { "name.keyword": { order: "asc" } },
       { skill_id: { order: "asc" } },
     ]);
@@ -470,7 +475,7 @@ describe("skill_search/search", () => {
     await searchSkillDocuments(auth, { searchTerm: "skill", limit: 10 });
 
     const request = mockClientSearch.mock.calls[0][0];
-    expect(request.query.bool.filter[2]).toEqual({
+    expect(request.query.bool.must[0].bool.filter[2]).toEqual({
       bool: {
         should: [
           {
@@ -497,10 +502,16 @@ describe("skill_search/search", () => {
 
     await searchSkillDocuments(auth, { searchTerm: query, limit: 10 });
 
-    const should = mockClientSearch.mock.calls[0][0].query.bool.should;
-    expect(should[1].wildcard["name.subsequence"].value).toBe(pattern);
+    const matches =
+      mockClientSearch.mock.calls[0][0].query.bool.must[0].bool.must[0].dis_max
+        .queries;
     expect(
-      should[2].wildcard["user_facing_description.subsequence"].value
+      matches[3].constant_score.filter.wildcard["name.subsequence"].value
+    ).toBe(pattern);
+    expect(
+      matches[5].constant_score.filter.wildcard[
+        "user_facing_description.subsequence"
+      ].value
     ).toBe(pattern);
   });
 
@@ -706,13 +717,17 @@ describe("skill_search/search", () => {
     });
 
     expect(mockClientSearch).toHaveBeenCalledOnce();
-    expect(mockClientSearch.mock.calls[0][0].query.bool.filter).toEqual(
+    expect(
+      mockClientSearch.mock.calls[0][0].query.bool.must[0].bool.filter
+    ).toEqual(
       expect.arrayContaining([
         { term: { workspace_id: workspace.sId } },
         { term: { status: "active" } },
       ])
     );
-    expect(mockClientSearch.mock.calls[0][0].query.bool.filter).toHaveLength(3);
+    expect(
+      mockClientSearch.mock.calls[0][0].query.bool.must[0].bool.filter
+    ).toHaveLength(3);
     expect(
       SkillSearchDocumentResource.filterSearchDocumentsByCurrentState
     ).toHaveBeenCalledWith(auth, [editorsOnlySkill]);
