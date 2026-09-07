@@ -261,7 +261,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
   toolsAttributedToAgentWork?: ToolsAttributedToAgentWork;
   usages: RunUsageWithRunKeyType[];
 }): MessageConsumptionDetails | null {
-  const allocation = buildLatestMessageConsumptionAllocation({
+  const allocationResult = buildLatestMessageConsumptionAllocation({
     actions,
     billedCredits,
     dustRunIds,
@@ -269,13 +269,13 @@ export function buildLatestAvailableMessageConsumptionDetails({
     runs,
     usages,
   });
-  if (!allocation) {
+  if (allocationResult.isErr()) {
     return null;
   }
 
   return buildMessageConsumptionDetails({
     actions,
-    allocation,
+    allocation: allocationResult.value,
     toolDetailsOverridesByActionModelId,
     toolsAttributedToAgentWork,
   });
