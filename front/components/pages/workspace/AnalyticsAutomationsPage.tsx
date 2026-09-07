@@ -13,6 +13,7 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import { isCreditPricedPlan } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
   Page,
@@ -67,38 +68,66 @@ export function AnalyticsAutomationsPage() {
           }
         />
 
-        <Tabs
-          value={tab}
-          onValueChange={(value) =>
-            setTab(
-              value === "slack-workflows" ? "slack-workflows" : "triggers"
-            )
-          }
-        >
-          <TabsList className="mb-4">
-            <TabsTrigger value="triggers" label="Triggers" />
-            {canManageSlackWorkflows && (
+        {canManageSlackWorkflows ? (
+          <Tabs
+            value={tab}
+            onValueChange={(value) =>
+              setTab(
+                value === "slack-workflows" ? "slack-workflows" : "triggers"
+              )
+            }
+          >
+            <TabsList className="mb-4">
+              <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="slack-workflows" label="Slack workflows" />
-            )}
-          </TabsList>
-          <TabsContent value="triggers">
-            <div className="flex flex-col gap-4">
-              <AutomationsOverview owner={owner} period={period} />
-              <AutomationsTriggersTable
+            </TabsList>
+            <TabsContent value="triggers">
+              <TriggersSection
                 owner={owner}
                 period={period}
                 filter={filter}
                 onFilterChange={setFilter}
               />
-            </div>
-          </TabsContent>
-          {canManageSlackWorkflows && (
+            </TabsContent>
             <TabsContent value="slack-workflows">
               <SlackWorkflowsTab owner={owner} period={period} />
             </TabsContent>
-          )}
-        </Tabs>
+          </Tabs>
+        ) : (
+          <TriggersSection
+            owner={owner}
+            period={period}
+            filter={filter}
+            onFilterChange={setFilter}
+          />
+        )}
       </Page.Vertical>
     </AdminPageContainer>
+  );
+}
+
+interface TriggersSectionProps {
+  owner: LightWorkspaceType;
+  period: ConsumptionPeriodSelection;
+  filter: AutomationsFilter;
+  onFilterChange: (filter: AutomationsFilter) => void;
+}
+
+function TriggersSection({
+  owner,
+  period,
+  filter,
+  onFilterChange,
+}: TriggersSectionProps) {
+  return (
+    <div className="flex flex-col gap-4">
+      <AutomationsOverview owner={owner} period={period} />
+      <AutomationsTriggersTable
+        owner={owner}
+        period={period}
+        filter={filter}
+        onFilterChange={onFilterChange}
+      />
+    </div>
   );
 }
