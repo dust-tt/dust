@@ -1,22 +1,7 @@
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
-import { buildUsageEvents, getUsageType } from "@app/lib/metronome/events";
+import { buildUsageEvents } from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
-
-describe("getUsageType", () => {
-  it("classifies free origins as free regardless of the programmatic flag", () => {
-    expect(getUsageType(false, "agent_sidekick")).toBe("free");
-    expect(getUsageType(true, "agent_sidekick")).toBe("free");
-  });
-
-  it("classifies programmatic usage as programmatic", () => {
-    expect(getUsageType(true, "web")).toBe("programmatic");
-  });
-
-  it("classifies non-programmatic, non-free usage as user", () => {
-    expect(getUsageType(false, "web")).toBe("user");
-  });
-});
 
 function usage(overrides: Partial<RunUsageType>): RunUsageType {
   return {
