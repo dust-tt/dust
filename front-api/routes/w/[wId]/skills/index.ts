@@ -10,6 +10,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
@@ -106,6 +107,11 @@ function resolveRequestedAvailability({
 }
 
 // Mounted at /api/w/:wId/skills.
+/**
+ * @cc [owner:aubin-tchoi,label:logging] skills-list-tracing
+ * GET list fetches emit separate spans with fixed operation names; custom tags contain only
+ * validated list options and batch sizes.
+ */
 const app = workspaceApp();
 
 // Static sub-paths must be registered before the param sub-app.
@@ -183,23 +189,44 @@ app.get(
       });
     }
 
-    const allSkills = await SkillResource.listByWorkspace(auth, {
-      status: skillStatus,
-      globalSpaceOnly: globalSpaceOnly === "true",
-      onlyCustom: onlyCustom === "true",
-      availability,
-      withInstructions: false,
-      withTools: false,
-      withFileAttachments: false,
-      permissionFiltering: bypassEditorVisibility
-        ? "redact_unreadable"
-        : "strict",
-    });
+    const traceTags = {
+      "skills.status": skillStatus ?? "all",
+      "skills.with_relations": withRelations === "true",
+      "skills.with_message_count": withMessageCount,
+      "skills.bypass_editor_visibility": bypassEditorVisibility,
+    };
+    const allSkills = await tracer.trace(
+      "skills.list.list_by_workspace",
+      { tags: traceTags },
+      async (span) => {
+        const skills = await SkillResource.listByWorkspace(auth, {
+          status: skillStatus,
+          globalSpaceOnly: globalSpaceOnly === "true",
+          onlyCustom: onlyCustom === "true",
+          availability,
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+          permissionFiltering: bypassEditorVisibility
+            ? "redact_unreadable"
+            : "strict",
+        });
+        span?.setTag("skills.count", skills.length);
+        return skills;
+      }
+    );
     const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
     let favoriteSkillIds = new Set<string>();
     if (hasSkillFavorites) {
-      const favoriteSkills =
-        await SkillResource.listFavoritesForCurrentUser(auth);
+      const favoriteSkills = await tracer.trace(
+        "skills.list.list_favorites",
+        { tags: traceTags },
+        async (span) => {
+          const skills = await SkillResource.listFavoritesForCurrentUser(auth);
+          span?.setTag("skills.count", skills.length);
+          return skills;
+        }
+      );
       favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
     }
 
@@ -221,26 +248,42 @@ app.get(
         );
 
     if (withRelations === "true") {
-      const usageMap = await SkillResource.batchFetchUsage(auth, skills);
+      const batchTraceOptions = {
+        tags: { ...traceTags, "skills.count": skills.length },
+      };
+      const usageMap = await tracer.trace(
+        "skills.list.batch_fetch_usage",
+        batchTraceOptions,
+        () => SkillResource.batchFetchUsage(auth, skills)
+      );
       let messageCountMap: Map<string, number> | null = null;
       if (withMessageCount) {
-        messageCountMap = await SkillResource.batchFetchMessageCounts(
-          auth,
-          skills.filter((skill) => !skill.isSystemSkill)
+        const countedSkills = skills.filter((skill) => !skill.isSystemSkill);
+        messageCountMap = await tracer.trace(
+          "skills.list.batch_fetch_message_counts",
+          { tags: { ...traceTags, "skills.count": countedSkills.length } },
+          () => SkillResource.batchFetchMessageCounts(auth, countedSkills)
         );
       }
-      const editorsMap = await SkillResource.batchListEditors(auth, skills);
-      const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
-        auth,
-        skills
+      const editorsMap = await tracer.trace(
+        "skills.list.batch_list_editors",
+        batchTraceOptions,
+        () => SkillResource.batchListEditors(auth, skills)
       );
-      const childSkillsMap = await SkillResource.batchFetchChildSkills(
-        auth,
-        skills
+      const editedByUsersMap = await tracer.trace(
+        "skills.list.batch_fetch_edited_by_users",
+        batchTraceOptions,
+        () => SkillResource.batchFetchEditedByUsers(auth, skills)
       );
-      const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
-        auth,
-        skills
+      const childSkillsMap = await tracer.trace(
+        "skills.list.batch_fetch_child_skills",
+        batchTraceOptions,
+        () => SkillResource.batchFetchChildSkills(auth, skills)
+      );
+      const usedBySkillsMap = await tracer.trace(
+        "skills.list.batch_fetch_used_by_skills",
+        batchTraceOptions,
+        () => SkillResource.batchFetchUsedBySkills(auth, skills)
       );
 
       const skillsWithRelations = skills.map((sc) => {
