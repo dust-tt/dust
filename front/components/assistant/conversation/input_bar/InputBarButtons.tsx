@@ -79,7 +79,7 @@ interface InputBarButtonsProps {
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
-  selectedMCPServerViews: MCPServerViewLightType[];
+  selectedMCPServerViews: Pick<MCPServerViewLightType, "sId">[];
   selectedSpaceIds: string[];
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   spaces?: SelectableConversationSpaceType[];

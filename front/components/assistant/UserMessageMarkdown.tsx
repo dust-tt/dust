@@ -1,3 +1,4 @@
+import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import {
   CiteBlock,
   getCiteDirective,
@@ -23,6 +24,8 @@ import {
   getTaskDirectiveBlock,
   taskDirective,
 } from "@app/components/markdown/TaskDirectiveBlock";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -30,10 +33,12 @@ import {
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
 import { parseSkillTag, SKILL_TAG_REGEX } from "@app/lib/skills/format";
+import type { ToolDirectiveProps } from "@app/lib/tools/markdown";
+import { toolDirective } from "@app/lib/tools/markdown";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { Markdown } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -48,6 +53,8 @@ export const UserMessageMarkdown = ({
   message,
   isLastMessage,
 }: UserMessageMarkdownProps) => {
+  const { user } = useAuth();
+  const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
@@ -62,6 +69,13 @@ export const UserMessageMarkdown = ({
           skillIcon={skillIcon ?? null}
           skillId={skillId}
           skillName={skillName}
+        />
+      ),
+      tool: ({ toolId, toolIcon, toolName }: ToolDirectiveProps) => (
+        <ToolChip
+          title={toolName}
+          toolIcon={toolIcon ?? null}
+          onClick={() => setSelectedToolId(toolId)}
         />
       ),
       project_task: getTaskDirectiveBlock(owner),
@@ -79,6 +93,7 @@ export const UserMessageMarkdown = ({
       pastedAttachmentDirective,
       filePreviewDirective,
       skillDirective,
+      toolDirective,
     ],
     []
   );
@@ -99,14 +114,27 @@ export const UserMessageMarkdown = ({
   );
 
   return (
-    <Markdown
-      content={displayContent}
-      isStreaming={false}
-      isLastMessage={isLastMessage}
-      additionalMarkdownComponents={additionalMarkdownComponents}
-      additionalMarkdownPlugins={additionalMarkdownPlugins}
-      compactSpacing
-      canCopyQuotes={false}
-    />
+    <>
+      <Markdown
+        content={displayContent}
+        isStreaming={false}
+        isLastMessage={isLastMessage}
+        additionalMarkdownComponents={additionalMarkdownComponents}
+        additionalMarkdownPlugins={additionalMarkdownPlugins}
+        compactSpacing
+        canCopyQuotes={false}
+      />
+      {selectedToolId && (
+        <CapabilityDetailsSheets
+          owner={owner}
+          user={user}
+          selectedSkillId={null}
+          selectedMCPServerView={null}
+          selectedMCPServerViewId={selectedToolId}
+          onCloseSkill={() => {}}
+          onCloseTool={() => setSelectedToolId(null)}
+        />
+      )}
+    </>
   );
 };

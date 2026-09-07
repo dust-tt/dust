@@ -104,6 +104,67 @@ const mockMessage = {
 } as any;
 
 describe("UserMessageMarkdown - Integration Tests", () => {
+  it("renders inline tool references with literal names", () => {
+    const { container } = render(
+      <UserMessageMarkdown
+        owner={mockOwner}
+        message={{
+          ...mockMessage,
+          content:
+            'Use <tool id="tool_123" name="GitHub [Issues] &amp; PRs" icon="GithubLogo" /> here.',
+        }}
+        isLastMessage={false}
+      />
+    );
+    expect(screen.getByText("GitHub [Issues] & PRs")).toBeDefined();
+    expect(container.textContent).toBe("Use GitHub [Issues] & PRs here.");
+  });
+
+  it("preserves text following a tool reference at the start of a message", () => {
+    const { container } = render(
+      <UserMessageMarkdown
+        owner={mockOwner}
+        message={{
+          ...mockMessage,
+          content: '<tool id="tool_123" name="GitHub" /> find the issue.',
+        }}
+        isLastMessage={false}
+      />
+    );
+    expect(container.textContent).toBe("GitHub find the issue.");
+  });
+
+  it("preserves Markdown after a tool reference on its own line", () => {
+    const { container } = render(
+      <UserMessageMarkdown
+        owner={mockOwner}
+        message={{
+          ...mockMessage,
+          content: '<tool id="tool_123" name="GitHub" />\nFind **the issue**.',
+        }}
+        isLastMessage={false}
+      />
+    );
+    expect(container.textContent).toContain("Find the issue.");
+    expect(container.querySelector("strong")?.textContent).toBe("the issue");
+  });
+
+  it("keeps tool tags in code examples as literal text", () => {
+    render(
+      <UserMessageMarkdown
+        owner={mockOwner}
+        message={{
+          ...mockMessage,
+          content: '`<tool id="tool_123" name="GitHub" />`',
+        }}
+        isLastMessage={false}
+      />
+    );
+    expect(
+      screen.getByText('<tool id="tool_123" name="GitHub" />').tagName
+    ).toBe("CODE");
+  });
+
   describe("Basic Markdown Rendering", () => {
     it("renders plain text", () => {
       const message = { ...mockMessage, content: "Hello world" };

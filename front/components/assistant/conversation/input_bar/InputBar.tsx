@@ -14,12 +14,7 @@ import {
   INPUT_BAR_COMPACT_PILL_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import {
-  useAddDeleteConversationTool,
-  useConversationTools,
-} from "@app/hooks/conversations";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
-import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -28,6 +23,7 @@ import {
   useSelectableConversationSpaces,
 } from "@app/lib/swr/conversation_selected_spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { extractToolTags } from "@app/lib/tools/format";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {
@@ -258,32 +254,9 @@ export const InputBar = React.memo(function InputBar({
     !!conversation &&
     getConversationGeneratingMessages(conversation.sId).length > 0;
 
-  // Tools selection
-
-  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
-    MCPServerViewLightType[]
-  >([]);
   const [selectedSpacesState, setSelectedSpacesState] =
     useState<SelectedSpacesState | null>(null);
 
-  const { conversationTools } = useConversationTools({
-    conversationId: conversation?.sId,
-    workspaceId: owner.sId,
-  });
-
-  // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
-  useEffect(() => {
-    setSelectedMCPServerViews(conversationTools);
-  }, [conversationTools]);
-
-  const { addTool, deleteTool } = useAddDeleteConversationTool({
-    conversationId: conversation?.sId,
-    workspaceId: owner.sId,
-  });
-  const selectedMCPServerViewIds = useMemo(
-    () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
-    [selectedMCPServerViews]
-  );
   const spacesSelectionKey = conversation?.sId ?? `draft:${draftKey}`;
   const draftSelectedSpaceIds = useMemo(
     () => getDraft()?.selectedSpaceIds ?? [],
@@ -408,48 +381,6 @@ export const InputBar = React.memo(function InputBar({
     ? isConversationSelectableSpacesLoading
     : isWorkspaceSpacesLoading;
 
-  const handleMCPServerViewSelect = useCallback(
-    (serverView: MCPServerViewLightType) => {
-      if (selectedMCPServerViewIds.has(serverView.sId)) {
-        return;
-      }
-
-      setSelectedMCPServerViews((prev) =>
-        prev.some((sv) => sv.sId === serverView.sId)
-          ? prev
-          : [...prev, serverView]
-      );
-      void addTool(serverView.sId);
-    },
-    [addTool, selectedMCPServerViewIds]
-  );
-
-  const handleMCPServerViewDeselect = useCallback(
-    (serverView: MCPServerViewLightType) => {
-      if (!selectedMCPServerViewIds.has(serverView.sId)) {
-        return;
-      }
-
-      setSelectedMCPServerViews((prev) =>
-        prev.filter((sv) => sv.sId !== serverView.sId)
-      );
-      void deleteTool(serverView.sId);
-    },
-    [deleteTool, selectedMCPServerViewIds]
-  );
-
-  const clearSideChannelSelections = useCallback(async () => {
-    const serverViewIds = selectedMCPServerViews.map(
-      (serverView) => serverView.sId
-    );
-    setSelectedMCPServerViews([]);
-    setAttachedNodes([]);
-
-    await Promise.all(
-      serverViewIds.map((serverViewId) => deleteTool(serverViewId))
-    );
-  }, [deleteTool, selectedMCPServerViews]);
-
   const handleSelectedSpaceIdsChange = useCallback(
     async (spaceIds: string[]): Promise<string[] | null> => {
       if (!shouldShowSpacesAction) {
@@ -483,7 +414,7 @@ export const InputBar = React.memo(function InputBar({
         const persistedSpaceIds = response.selectedSpaces.map(
           (selectedSpace) => selectedSpace.sId
         );
-        await clearSideChannelSelections();
+        setAttachedNodes([]);
         setSelectedSpacesState({
           key: spacesSelectionKey,
           spaceIds: persistedSpaceIds,
@@ -492,7 +423,7 @@ export const InputBar = React.memo(function InputBar({
         return persistedSpaceIds;
       }
 
-      await clearSideChannelSelections();
+      setAttachedNodes([]);
       setSelectedSpacesState({
         key: spacesSelectionKey,
         spaceIds: nextSpaceIds,
@@ -501,7 +432,6 @@ export const InputBar = React.memo(function InputBar({
     },
     [
       addConversationSelectedSpaces,
-      clearSideChannelSelections,
       conversation?.sId,
       mutateSelectableSpaces,
       spacesSelectionKey,
@@ -536,6 +466,7 @@ export const InputBar = React.memo(function InputBar({
     onBeforeSubmit?.();
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
+    const tools = uniqBy(extractToolTags(markdown), "id");
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
@@ -556,7 +487,7 @@ export const InputBar = React.memo(function InputBar({
       extra: {
         conversation_id: conversation?.sId ?? "new",
         has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
-        has_tools: selectedMCPServerViews.length > 0,
+        has_tools: tools.length > 0,
         has_agents: mentionedAgents.length > 0,
         has_default_agent: mentionedAgents.some((a) => isGlobalAgentId(a.sId)),
         has_custom_agent: mentionedAgents.some((a) => !isGlobalAgentId(a.sId)),
@@ -564,8 +495,8 @@ export const InputBar = React.memo(function InputBar({
         agent_count: mentions.length,
         agent_ids: mentionedAgents.map((a) => a.sId).join(","),
         attachment_count: attachedNodes.length + uploadedFiles.length,
-        tool_count: selectedMCPServerViews.length,
-        tool_names: selectedMCPServerViews.map((t) => t.server.name).join(","),
+        tool_count: tools.length,
+        tool_names: tools.map((tool) => tool.name).join(","),
         message_length: markdown.length,
       },
     });
@@ -591,9 +522,8 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          // Only send the selectedMCPServerViewIds if we are creating a new conversation.
-          // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId),
+          // Keep sending IDs during rollout so older servers also enable inline tools.
+          tools.map((tool) => tool.id),
           selectedSpaceIds,
           modelSelectionRef.current
         );
@@ -629,9 +559,7 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          // Existing conversation: MCP server views are synced via the
-          // conversationTools hook.
-          undefined,
+          tools.map((tool) => tool.id),
           selectedSpaceIds,
           modelSelectionRef.current
         );
@@ -660,13 +588,6 @@ export const InputBar = React.memo(function InputBar({
 
   const handleNodesAttachmentRemove = (node: DataSourceViewContentNode) => {
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
-  };
-
-  const handleResetMCPServerViews = () => {
-    setSelectedMCPServerViews((prev) => {
-      prev.forEach((sv) => void deleteTool(sv.sId));
-      return [];
-    });
   };
 
   const handleShake = useCallback(() => {
@@ -780,16 +701,12 @@ export const InputBar = React.memo(function InputBar({
             }
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
-            selectedMCPServerViews={selectedMCPServerViews}
             selectedSpaceIds={selectedSpaceIds}
             selectableSpaces={selectableSpaces}
             shouldShowSpacesAction={shouldShowSpacesAction}
             isSelectableSpacesLoading={isSelectableSpacesLoading}
             onSelectedSpaceIdsChange={handleSelectedSpaceIdsChange}
-            onMCPServerViewSelect={handleMCPServerViewSelect}
             modelSelectionRef={modelSelectionRef}
-            onMCPServerViewDeselect={handleMCPServerViewDeselect}
-            onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}

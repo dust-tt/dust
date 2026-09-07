@@ -165,7 +165,7 @@ export function CapabilitiesPickerItemsList({
 interface CapabilitiesPickerProps {
   owner: WorkspaceType;
   user: UserType | null;
-  selectedMCPServerViews: MCPServerViewLightType[];
+  selectedMCPServerViews: Pick<MCPServerViewLightType, "sId">[];
   onSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   onSetupServer: (server: MCPServerType) => void;

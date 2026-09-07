@@ -39,7 +39,6 @@ import useCustomEditor, {
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
-import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   useCompactConversation,
@@ -57,6 +56,7 @@ import { useClientType } from "@app/lib/context/clientType";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
+import { extractToolTags } from "@app/lib/tools/format";
 import { classNames } from "@app/lib/utils";
 import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -105,7 +105,8 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import React, {
+import type React from "react";
+import {
   useCallback,
   useContext,
   useEffect,
@@ -232,12 +233,9 @@ export interface InputBarContainerProps {
   onVoiceActiveChange?: (active: boolean) => void;
   isSubmitting: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  onMCPServerViewDeselect: (serverView: MCPServerViewLightType) => void;
-  onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  onResetMCPServerViews: () => void;
   owner: WorkspaceType;
   saveDraft: (
     markdown: string,
@@ -246,7 +244,6 @@ export interface InputBarContainerProps {
   ) => void;
   pendingInputText: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
-  selectedMCPServerViews: MCPServerViewLightType[];
   selectedSpaceIds?: string[];
   selectableSpaces?: SelectableConversationSpaceType[];
   shouldShowSpacesAction?: boolean;
@@ -294,12 +291,8 @@ const InputBarContainer = ({
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
-  onMCPServerViewSelect,
   modelSelectionRef,
-  onMCPServerViewDeselect,
-  selectedMCPServerViews,
   selectedSpaceIds = EMPTY_SPACE_IDS,
-  onResetMCPServerViews,
   onSelectedSpaceIdsChange = acceptSelectedSpaceIds,
   selectableSpaces = EMPTY_SELECTABLE_SPACES,
   shouldShowSpacesAction = false,
@@ -397,6 +390,9 @@ const InputBarContainer = ({
   // Tracks internalIds of nodes that have a dataSourceLink chip in the editor,
   // so we only sync removal for nodes that were created via URL paste.
   const dataSourceLinkNodeIdsRef = useRef<Set<string>>(new Set());
+  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
+    Pick<MCPServerViewLightType, "sId">[]
+  >([]);
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
@@ -443,6 +439,9 @@ const InputBarContainer = ({
       modelSelectionRef.current = selection.toSend;
     }
   };
+  const [selectedToolIdForDetails, setSelectedToolIdForDetails] = useState<
+    string | null
+  >(null);
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -666,6 +665,18 @@ const InputBarContainer = ({
     }
   };
 
+  const handleToolSelect = (serverView: MCPServerViewLightType) => {
+    editorRef.current
+      ?.chain()
+      .focus()
+      .insertToolNode({
+        mcpServerViewId: serverView.sId,
+        toolName: getMcpServerViewDisplayName(serverView),
+        toolIcon: serverView.server.icon,
+      })
+      .run();
+  };
+
   const handleSkillSelect = ({
     sId: skillId,
     name: skillName,
@@ -730,7 +741,7 @@ const InputBarContainer = ({
         handleSkillSelect(item.data.skill);
         break;
       case SELECT_TOOL_SLASH_COMMAND_ACTION:
-        onMCPServerViewSelect(item.data.tool.view);
+        handleToolSelect(item.data.tool.view);
         break;
       default:
         assertNeverAndIgnore(item);
@@ -787,6 +798,7 @@ const InputBarContainer = ({
       onSelectRef,
       onDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
+      onToolDetails: setSelectedToolIdForDetails,
       selectedMCPServerViewIdsRef,
       slashCommandsRef,
       includeAttachKnowledgeRef,
@@ -1061,7 +1073,6 @@ const InputBarContainer = ({
     prevUserMentionedRef.current = userMentioned;
     if (startsWithUserMention && !wasUserMentioned) {
       setSelectedSingleAgent(null);
-      onResetMCPServerViews();
     }
   };
 
@@ -1083,6 +1094,9 @@ const InputBarContainer = ({
         selectedSpaceIdsRef.current
       );
     }
+    setSelectedMCPServerViews(
+      extractToolTags(markdown).map((tool) => ({ sId: tool.id }))
+    );
     const userMentioned = editorMentions.some((m) => m.type === "user");
 
     // Check if the very first content node in the editor is a user mention.
@@ -1607,8 +1621,12 @@ const InputBarContainer = ({
         user={user}
         selectedSkillId={selectedSkillIdForDetails}
         selectedMCPServerView={selectedServerViewForDetails}
+        selectedMCPServerViewId={selectedToolIdForDetails}
         onCloseSkill={() => setSelectedSkillIdForDetails(null)}
-        onCloseTool={() => setSelectedServerViewForDetails(null)}
+        onCloseTool={() => {
+          setSelectedServerViewForDetails(null);
+          setSelectedToolIdForDetails(null);
+        }}
       />
 
       {isCompact && (
@@ -1711,30 +1729,6 @@ const InputBarContainer = ({
             }}
           >
             <div className="mb-1 flex flex-wrap items-center px-3">
-              {selectedMCPServerViews.map((msv) => (
-                <React.Fragment key={msv.sId}>
-                  {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
-                  <Chip
-                    size="xs"
-                    label={getMcpServerViewDisplayName(msv)}
-                    icon={getIcon(msv.server.icon)}
-                    className="m-0.5 hidden bg-background text-foreground xs:flex"
-                    onClick={() => setSelectedServerViewForDetails(msv)}
-                    onRemove={() => {
-                      onMCPServerViewDeselect(msv);
-                    }}
-                  />
-                  <Chip
-                    size="xs"
-                    icon={getIcon(msv.server.icon)}
-                    className="m-0.5 flex bg-background text-foreground xs:hidden"
-                    onClick={() => setSelectedServerViewForDetails(msv)}
-                    onRemove={() => {
-                      onMCPServerViewDeselect(msv);
-                    }}
-                  />
-                </React.Fragment>
-              ))}
               {selectedSpaces.map((selectedSpace) => (
                 <Chip
                   key={selectedSpace.sId}
@@ -1782,7 +1776,7 @@ const InputBarContainer = ({
                       isInputDisabled={disableInput}
                       lastRequestedModel={lastRequestedModel}
                       onAgentRemove={handleAgentRemove}
-                      onMCPServerViewSelect={onMCPServerViewSelect}
+                      onMCPServerViewSelect={handleToolSelect}
                       modelSelectionRef={modelSelectionRef}
                       modelSelectionCommitRef={modelSelectionCommitRef}
                       onNodeSelect={onNodeSelect}

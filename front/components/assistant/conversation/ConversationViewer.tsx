@@ -1139,7 +1139,7 @@ export const ConversationViewer = ({
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      _selectedMCPServerViewIds?: string[],
+      selectedMCPServerViewIds?: string[],
       selectedSpaceIds?: string[],
       modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
@@ -1169,6 +1169,7 @@ export const ConversationViewer = ({
           clientSideMCPServerIds:
             clientSideMCPServerIds ??
             agentBuilderContext?.clientSideMCPServerIds,
+          selectedMCPServerViewIds,
           selectedSpaceIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
           modelSelection,

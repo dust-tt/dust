@@ -47,7 +47,7 @@ interface InputBarPlusMenuProps {
   disabled: boolean;
   hideCapabilities: boolean;
   hideAttachments: boolean;
-  selectedMCPServerViews: MCPServerViewLightType[];
+  selectedMCPServerViews: Pick<MCPServerViewLightType, "sId">[];
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   onSetupServer: (server: MCPServerType) => void;

@@ -10,6 +10,7 @@ import type { InputBarSlashCommand } from "@app/components/editor/extensions/inp
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
+import { ToolNode } from "@app/components/editor/extensions/input_bar/ToolNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
@@ -338,6 +339,7 @@ export interface CustomEditorProps {
     onSelectRef: React.RefObject<((item: SlashCommand) => void) | undefined>;
     onDetailsRef?: React.RefObject<((item: SlashCommand) => void) | undefined>;
     onSkillDetails?: (skillId: string) => void;
+    onToolDetails?: (mcpServerViewId: string) => void;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
@@ -476,6 +478,9 @@ export const buildEditorExtensions = ({
     SkillNode.configure({
       onSkillDetails: slashSuggestion?.onSkillDetails,
     }),
+    ToolNode.configure({
+      onToolDetails: slashSuggestion?.onToolDetails,
+    }),
     VoicePartialNode,
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
@@ -504,6 +509,8 @@ export const buildEditorExtensions = ({
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,
+        selectedMCPServerViewIdsRef:
+          slashSuggestion.selectedMCPServerViewIdsRef,
         onModelSelectRef: slashSuggestion.onModelSelectRef,
         onNodeSelectRef: slashSuggestion.onNodeSelectRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,

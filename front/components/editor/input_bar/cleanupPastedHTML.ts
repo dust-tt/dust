@@ -31,11 +31,13 @@ const SANITIZE_CONFIG: Config = {
     "h4",
     "h5",
     "h6",
+    "tool",
   ],
 
   // IMPORTANT: don't set ALLOWED_ATTR here.
   // Let DOMPurify use its safe defaults and explicitly allow data-* below.
   ALLOW_DATA_ATTR: true,
+  ADD_ATTR: ["icon"],
 
   // Strip dangerous containers entirely
   FORBID_TAGS: [
@@ -61,7 +63,7 @@ const SANITIZE_CONFIG: Config = {
   ],
 
   // Remove styling/identifiers
-  FORBID_ATTR: ["style", "class", "id"],
+  FORBID_ATTR: ["style", "class"],
 
   // Keep text if unexpected wrappers appear
   KEEP_CONTENT: true,
@@ -125,6 +127,11 @@ function addHookOnce() {
     const element = node;
     const style = element.getAttribute("style");
     const tagName = element.tagName.toLowerCase();
+
+    // Tool IDs are reference metadata; strip ordinary HTML identifiers.
+    if (tagName !== "tool") {
+      element.removeAttribute("id");
+    }
 
     // Convert <br class="Apple-interchange-newline"> to empty text node (Apple paste metadata)
     // We replace it with a <span> but DOMPurify will handle the output formatting

@@ -2,11 +2,13 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
+import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import useCustomEditor, {
   buildEditorExtensions,
 } from "@app/components/editor/input_bar/useCustomEditor";
 import type { WorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
+import { closeHistory } from "@tiptap/pm/history";
 import { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import {
@@ -192,6 +194,39 @@ describe("buildEditorExtensions", () => {
     expect(editor.getMarkdown()).toContain(
       '<skill id="skill_123" name="commit" icon="book_open" />'
     );
+  });
+
+  it("round-trips inline tools through drafts and sanitized HTML paste", () => {
+    const content =
+      'Use <tool id="tool_123" name="GitHub &amp; Issues" icon="GithubLogo" /> to find the issue.';
+    editor.commands.setContent(content, { contentType: "markdown" });
+    expect(editor.getMarkdown()).toBe(content);
+    expect(editor.getJSON().content?.[0].content?.[1]).toMatchObject({
+      type: "toolNode",
+      attrs: { mcpServerViewId: "tool_123", toolName: "GitHub & Issues" },
+    });
+
+    const pastedHtml = cleanupPastedHTML(editor.getHTML());
+    editor.commands.setContent(pastedHtml);
+    expect(editor.getMarkdown()).toBe(content);
+  });
+
+  it("inserts and removes an inline tool at the cursor", () => {
+    editor.commands.setContent("Find the issue.", { contentType: "markdown" });
+    editor.commands.setTextSelection(6);
+    editor.commands.insertToolNode({
+      mcpServerViewId: "tool_123",
+      toolName: "GitHub",
+      toolIcon: "GithubLogo",
+    });
+    expect(editor.getMarkdown()).toBe(
+      'Find <tool id="tool_123" name="GitHub" icon="GithubLogo" /> the issue.'
+    );
+    editor.view.dispatch(closeHistory(editor.state.tr));
+    editor.commands.deleteRange({ from: 6, to: 8 });
+    expect(editor.getMarkdown()).toBe("Find the issue.");
+    editor.commands.undo();
+    expect(editor.getMarkdown()).toContain('<tool id="tool_123"');
   });
 
   it("should handle bullet list with `*`", () => {
