@@ -1,4 +1,6 @@
 import { BigQueryCastKnownErrorsInterceptor } from "@connectors/connectors/bigquery/temporal/cast_known_errors";
+import { MicrosoftCastKnownErrorsInterceptor } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import { Context, type Info } from "@temporalio/activity";
 import {
   noopMetricMeter,
@@ -255,6 +257,47 @@ describe("ActivityInboundLogInterceptor", () => {
     }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
     const next = vi.fn((activityInput: ActivityExecuteInput) =>
       new BigQueryCastKnownErrorsInterceptor().execute(activityInput, activity)
+    ) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(interceptor.execute(input, next)).rejects.toThrow(
+      ThirdPartyConfigurationError
+    );
+
+    expect(mocks.syncFailed).toHaveBeenCalledWith(
+      42,
+      "third_party_internal_error"
+    );
+    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+      reason: "Stopped on ThirdPartyConfigurationError",
+    });
+  });
+
+  it("pauses Microsoft when its activity encounters blocked site access", async () => {
+    mocks.fetchById.mockResolvedValue({
+      dataSourceId: "data-source-id",
+      id: 42,
+      type: "microsoft",
+      workspaceId: "workspace-id",
+    });
+    const interceptor = new ActivityInboundLogInterceptor(
+      makeActivityContext("incrementalSyncWorkflowV2"),
+      logger,
+      "microsoft"
+    );
+    const error = new GraphError(
+      423,
+      "Access to this site has been blocked. Please contact the administrator to resolve this problem."
+    );
+    error.code = "notAllowed";
+    const input = {
+      args: [],
+      headers: {},
+    } satisfies ActivityExecuteInput;
+    const activity = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+    const next = vi.fn((activityInput: ActivityExecuteInput) =>
+      new MicrosoftCastKnownErrorsInterceptor().execute(activityInput, activity)
     ) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
     await expect(interceptor.execute(input, next)).rejects.toThrow(

@@ -110,6 +110,12 @@ export function isJSONParsingError(err: unknown): err is Error {
   );
 }
 
+/**
+ * @cc [label:error-handling] microsoft-error-classification
+ * Map recognized authentication and provider configuration failures to `ExternalOAuthTokenError`
+ * and `ThirdPartyConfigurationError`, respectively. Preserve provider-specified retry delays for
+ * throttling, return successful activity results, and rethrow unrecognized errors unchanged.
+ */
 export class MicrosoftCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -132,7 +138,7 @@ export class MicrosoftCastKnownErrorsInterceptor
       if (isMicrosoftSignInError(err)) {
         throw new ExternalOAuthTokenError(err);
       }
-      if (isMissingSharePointLicenseError(err)) {
+      if (isMissingSharePointLicenseError(err) || isAccessBlockedError(err)) {
         throw new ThirdPartyConfigurationError(err);
       }
       throw err;
