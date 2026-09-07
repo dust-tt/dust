@@ -4,6 +4,11 @@
  *
  * npx tsx migrations/20260904_compare_per_user_usage_indices.ts \
  *   --workspaceId <wId>
+ *
+ * Drill into one active user's messages and daily Metronome usage:
+ *   --workspaceId <wId> --userId <userId> --messageSampleLimit 30
+ * Defaults to diagnosing the three largest Metronome mismatches. Use
+ * --diagnosticUsers 0 for the aggregate-only check. This script is read-only.
  */
 import {
   ANALYTICS_ALIAS_NAME,
@@ -24,10 +29,12 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { logUserUsageDiagnostics } from "@app/scripts/per_user_usage_diagnostics";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 import chunk from "lodash/chunk";
+import assert from "assert";
 
 const COMPOSITE_PAGE_SIZE = 1_000;
 const USER_ID_BATCH_SIZE = 5_000;
@@ -398,8 +405,43 @@ makeScript(
       description: "Workspace sId to compare.",
       type: "string" as const,
     },
+    userId: {
+      description:
+        "Restrict the comparison and diagnostics to one active user sId.",
+      type: "string" as const,
+    },
+    diagnosticUsers: {
+      description:
+        "Number of largest Metronome mismatches to diagnose (0 disables, max 10).",
+      type: "number" as const,
+      default: 3,
+    },
+    messageSampleLimit: {
+      description: "Maximum message samples per diagnosed user (1-100).",
+      type: "number" as const,
+      default: 20,
+    },
   },
-  async ({ workspaceId }, logger) => {
+  async (
+    { workspaceId, userId, diagnosticUsers, messageSampleLimit },
+    logger
+  ) => {
+    assert(
+      Number.isInteger(diagnosticUsers) &&
+        diagnosticUsers >= 0 &&
+        diagnosticUsers <= 10,
+      "--diagnosticUsers must be an integer between 0 and 10"
+    );
+    assert(
+      Number.isInteger(messageSampleLimit) &&
+        messageSampleLimit >= 1 &&
+        messageSampleLimit <= 100,
+      "--messageSampleLimit must be an integer between 1 and 100"
+    );
+    logger.info(
+      { workspaceId, userId, diagnosticUsers },
+      "Starting per-user usage comparison"
+    );
     const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${workspaceId}`);
@@ -433,7 +475,11 @@ makeScript(
           ? { userId: user.sId, seatType: membership.seatType }
           : null;
       })
-    );
+    ).filter((user) => !userId || user.userId === userId);
+
+    if (userId && activeUsers.length === 0) {
+      throw new Error(`Active user not found in workspace: ${userId}`);
+    }
 
     if (activeUsers.length === 0) {
       logger.warn(
@@ -445,12 +491,17 @@ makeScript(
 
     const { cycleEnd, cycleStart } = periodResult.value;
     const userIds = activeUsers.map(({ userId }) => userId);
+    logger.info(
+      { comparedUsers: userIds.length },
+      "Reading legacy analytics usage"
+    );
     const legacyCreditsByUserId = await fetchLegacyUserCredits({
       cycleEnd,
       cycleStart,
       userIds,
       workspaceId: workspace.sId,
     });
+    logger.info("Reading consumption analytics usage");
     const consumptionCreditsByUserId = await fetchConsumptionUserCredits({
       cycleEnd,
       cycleStart,
@@ -462,6 +513,7 @@ makeScript(
         `No Metronome customer configured for workspace: ${workspaceId}`
       );
     }
+    logger.info("Reading Metronome usage");
     const metronomeCreditsByUserId = await fetchMetronomeUserCredits({
       activeUsers,
       metronomeCustomerId: workspace.metronomeCustomerId,
@@ -621,12 +673,34 @@ makeScript(
         summary,
         "Consumption analytics per-user usage differs from Metronome"
       );
-      return;
+    } else {
+      logger.info(
+        summary,
+        "Consumption analytics per-user usage matches Metronome"
+      );
     }
 
-    logger.info(
-      summary,
-      "Consumption analytics per-user usage matches Metronome"
-    );
+    const usersToDiagnose = userId
+      ? comparisons
+      : consumptionMetronomeMismatches;
+    for (const comparison of usersToDiagnose.slice(0, diagnosticUsers)) {
+      await logUserUsageDiagnostics({
+        workspace: authWorkspace,
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        scope: {
+          cycleStart,
+          cycleEnd,
+          userId: comparison.userId,
+          isFreeSeat: comparison.seatType === "free",
+        },
+        sampleLimit: messageSampleLimit,
+        logger,
+        initialTotals: {
+          legacy: comparison.legacyConsumerAwuCredits,
+          consumption: comparison.consumptionConsumerAwuCredits,
+          metronome: comparison.metronomeConsumerAwuCredits,
+        },
+      });
+    }
   }
 );
