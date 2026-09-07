@@ -58,16 +58,10 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
-// Origins attributed via a best-effort email match rather than a session (`attributeUserFromWorkspaceAndEmail`): unattributed "user" usage from these is billed as programmatic instead of failing loudly.
 const PROGRAMMATIC_FALLBACK_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>(["slack"]);
 
-/**
- * Every other "user" origin (web, extension, cli, a real session/oauth
- * request, ...) always carries a real Dust user, so a still-missing userId
- * there is a genuine attribution bug — `buildUsageEvents` fails loudly on
- * that case.
- */
+// For user_usage with no user check if we need to fallback to programmatic
 export function resolveUsageTypeForAttribution(
   usageType: UsageType,
   { userId, origin }: { userId: string | null; origin: UserMessageOrigin }
