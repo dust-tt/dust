@@ -2,16 +2,18 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useSearchParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef } from "react";
 
 /**
- * Reads the ?agent= search param, fetches the corresponding agent configuration,
- * sets it as the selected agent in the input bar, and cleans up the param from the
- * URL so it doesn't persist across manual agent changes or page refreshes.
+ * Reads the ?agent= search param, fetches the corresponding agent configuration, and
+ * sets it as the selected agent in the input bar. The param stays in the URL so the
+ * link remains shareable, and is applied once per agent id so a later manual agent
+ * change is not overridden when the configuration revalidates.
  */
 export function useAgentFromSearchParam(workspaceId: string) {
   const agent = useSearchParam("agent");
   const { setSelectedAgent } = useContext(InputBarContext);
+  const appliedAgentIdRef = useRef<string | null>(null);
 
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId,
@@ -20,21 +22,14 @@ export function useAgentFromSearchParam(workspaceId: string) {
   });
 
   useEffect(() => {
-    if (!agentConfiguration) {
+    if (
+      !agentConfiguration ||
+      appliedAgentIdRef.current === agentConfiguration.sId
+    ) {
       return;
     }
 
+    appliedAgentIdRef.current = agentConfiguration.sId;
     setSelectedAgent(toRichAgentMentionType(agentConfiguration));
-
-    const params = new URLSearchParams(window.location.search);
-    if (params.has("agent")) {
-      params.delete("agent");
-      const qs = params.toString();
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`
-      );
-    }
   }, [agentConfiguration, setSelectedAgent]);
 }
