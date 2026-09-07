@@ -226,6 +226,25 @@ makeScript(
       contextOrigin: creditContext.triggeringUserMessageOrigin,
       runUsages: usages,
     });
+    const runUsageAttemptRows: Array<Record<string, unknown>> = [];
+    for (const run of runs) {
+      const attempts = await run.listRunUsageAttempts(auth);
+      for (const attempt of attempts) {
+        runUsageAttemptRows.push({
+          dustRunId: run.dustRunId,
+          runModelId: run.id,
+          runCreatedAt: run.createdAt.toISOString(),
+          usageId: attempt.runUsageModelId,
+          state: attempt.usageState,
+          provider: attempt.providerId,
+          model: attempt.modelId,
+          promptTokens: attempt.promptTokens,
+          cachedTokens: attempt.cachedTokens,
+          completionTokens: attempt.completionTokens,
+          providerCostMicroUsd: attempt.costMicroUsd,
+        });
+      }
+    }
 
     const currentItems = items.filter(
       (item) =>
@@ -444,6 +463,8 @@ makeScript(
     );
     console.log("\nCanonical billing totals");
     console.table([billingPlan.totals]);
+    console.log("\nRun usage attempts");
+    console.table(runUsageAttemptRows);
     const coverageGaps = actionCoverage.filter(
       (coverage) => coverage.flags.length > 0
     );
