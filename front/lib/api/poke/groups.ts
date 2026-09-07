@@ -5,7 +5,7 @@ import type { GroupType } from "@app/types/groups";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 
 export type PokeListGroups = {
-  groups: GroupType[];
+  groups: (GroupType & { poolCapAwuCredits: number | null })[];
 };
 
 export type PokeGetGroupDetails = {

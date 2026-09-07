@@ -21,7 +21,10 @@ import groupDetail from "./[groupId]";
 import spendLimit from "./[groupId]/spend_limit";
 
 export type GetGroupsResponseBody = {
-  groups: (GroupType & { memberCount: number })[];
+  groups: (GroupType & {
+    memberCount: number;
+    poolCapAwuCredits: number | null;
+  })[];
 };
 
 const GetGroupsQuerySchema = z.object({
@@ -29,6 +32,12 @@ const GetGroupsQuerySchema = z.object({
   // When "true", each group also carries its member sIds (one extra batched
   // query) instead of just memberCount.
   withMembers: z.enum(["true", "false"]).optional(),
+  // When "true", each group also carries its pool cap (one extra batched
+  // query). Accepted but not yet honored: the cap is still returned
+  // unconditionally so front-end bundles that predate the flag keep working.
+  // A follow-up makes the cap conditional on this flag, once the bundles
+  // sending it are deployed everywhere.
+  withPoolCaps: z.enum(["true", "false"]).optional(),
 });
 
 // Mounted at /api/w/:wId/groups.
@@ -57,11 +66,21 @@ app.get(
       groupKinds,
     });
 
+    const groupsJSON =
+      withMembers === "true"
+        ? await GroupResource.fetchJSONWithMembers(auth, groups)
+        : await GroupResource.toJSONWithMemberCounts(auth, groups);
+
+    const poolCaps = await GroupResource.getPoolCapAwuCreditsForGroups(
+      auth,
+      groups
+    );
+
     return ctx.json({
-      groups:
-        withMembers === "true"
-          ? await GroupResource.fetchJSONWithMembers(auth, groups)
-          : await GroupResource.toJSONWithMemberCounts(auth, groups),
+      groups: groupsJSON.map((group) => ({
+        ...group,
+        poolCapAwuCredits: poolCaps.get(group.id) ?? null,
+      })),
     });
   }
 );

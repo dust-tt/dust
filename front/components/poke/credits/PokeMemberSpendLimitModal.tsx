@@ -25,7 +25,7 @@ interface PokeMemberSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   member: MemberUsageType | null;
-  groups: GroupType[];
+  groups: (GroupType & { poolCapAwuCredits: number | null })[];
 }
 
 type GroupRow = {
@@ -81,7 +81,7 @@ export function PokeMemberSpendLimitModal({
     ? String(extraAwuCredits)
     : "0";
 
-  const memberGroups: GroupType[] = removeNulls(
+  const memberGroups = removeNulls(
     (displayedMember?.groups ?? []).map((groupName) =>
       groups.find((g) => g.name === groupName)
     )

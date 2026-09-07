@@ -250,7 +250,7 @@ export function PoolUsagePage() {
     [isSeatBased]
   );
 
-  const { data: allGroups } = usePokeGroups({ owner });
+  const { data: allGroups } = usePokeGroups({ owner, withPoolCaps: true });
   const groups = useMemo(
     () => allGroups.filter((group) => isCapEligibleGroupKind(group.kind)),
     [allGroups]

@@ -103,9 +103,6 @@ export type GroupType = {
   kind: GroupKind;
   workspaceId: ModelId;
   memberCount: number;
-  // Per-group usage spend limit (excluding seat allowance), applied per member.
-  // null means the group carries no cap (falls back to the workspace default).
-  poolCapAwuCredits: number | null;
   // Member sIds, only populated when explicitly requested
   memberIds?: string[];
 };

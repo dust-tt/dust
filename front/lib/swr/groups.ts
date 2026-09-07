@@ -24,6 +24,7 @@ export function useGroups({
   owner,
   kinds,
   withMembers,
+  withPoolCaps,
   disabled,
 }: {
   owner: LightWorkspaceType;
@@ -31,6 +32,10 @@ export function useGroups({
   // Also resolves each group's member sIds (one extra batched query
   // server-side) instead of just its memberCount.
   withMembers?: boolean;
+  // Declares that this caller reads `poolCapAwuCredits`. The cap is still
+  // returned unconditionally, so callers that omit this keep working; a
+  // follow-up makes it conditional once every bundle sends the flag.
+  withPoolCaps?: boolean;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -42,9 +47,12 @@ export function useGroups({
     if (withMembers) {
       params.append("withMembers", "true");
     }
+    if (withPoolCaps) {
+      params.append("withPoolCaps", "true");
+    }
     const queryString = params.toString();
     return `/api/w/${owner.sId}/groups${queryString ? `?${queryString}` : ""}`;
-  }, [owner.sId, kinds, withMembers]);
+  }, [owner.sId, kinds, withMembers, withPoolCaps]);
 
   const groupsFetcher: Fetcher<GetGroupsResponseBody> = fetcher;
 
@@ -351,7 +359,13 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
         await mutateGroups(
           (previous) =>
             previous
-              ? { ...previous, groups: [body.group, ...previous.groups] }
+              ? {
+                  ...previous,
+                  groups: [
+                    { ...body.group, poolCapAwuCredits: null },
+                    ...previous.groups,
+                  ],
+                }
               : previous,
           { revalidate: false }
         );
@@ -428,7 +442,12 @@ export function useUpdateGroup({
               ? {
                   ...previous,
                   groups: previous.groups.map((g) =>
-                    g.sId === body.group.sId ? body.group : g
+                    g.sId === body.group.sId
+                      ? {
+                          ...body.group,
+                          poolCapAwuCredits: g.poolCapAwuCredits,
+                        }
+                      : g
                   ),
                 }
               : previous,

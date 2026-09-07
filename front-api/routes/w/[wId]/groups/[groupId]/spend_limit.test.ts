@@ -138,7 +138,7 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       if (reloaded.isErr()) {
         throw reloaded.error;
       }
-      expect(reloaded.value.poolCapAwuCredits).toBe(1500);
+      expect(await reloaded.value.getPoolCapAwuCredits()).toBe(1500);
     });
   });
 
@@ -238,7 +238,7 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       if (reloaded.isErr()) {
         throw reloaded.error;
       }
-      expect(reloaded.value.poolCapAwuCredits).toBe(25_000);
+      expect(await reloaded.value.getPoolCapAwuCredits()).toBe(25_000);
     });
 
     it("clears the cap and the alerts for unlimited", async () => {
@@ -268,7 +268,7 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       if (reloaded.isErr()) {
         throw reloaded.error;
       }
-      expect(reloaded.value.poolCapAwuCredits).toBeNull();
+      expect(await reloaded.value.getPoolCapAwuCredits()).toBeNull();
     });
   });
 });
