@@ -13,7 +13,10 @@ export function minuteBucket(date: Date): string {
   return date.toISOString().slice(0, 16).replace(/[-:T]/g, "");
 }
 
-/** The `WINDOW_MINUTES` buckets ending at (and including) `now`. */
+/**
+ * The `WINDOW_MINUTES` buckets ending at (and including) `now`. Minute buckets
+ * keep a write to one `HINCRBY`; the window is quantized, spanning 4 to 5 min.
+ */
 export function windowMinuteBuckets(now: Date): string[] {
   const buckets: string[] = [];
   for (let i = WINDOW_MINUTES - 1; i >= 0; i--) {
