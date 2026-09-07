@@ -817,24 +817,6 @@ export async function postUserMessage(
     context.email
   );
 
-  // Slack has no authenticated session — the sender is only ever identified
-  // by a best-effort match of their Slack email against workspace
-  // membership. Unlike other no-session origins (e.g. an open Pod's
-  // `doNotAssociateUser` carve-out above, which deliberately allows an
-  // unattributed message), a failed match here means the Slack caller isn't
-  // a Dust user in this workspace at all: bounce the message back instead of
-  // letting an unattributed sender drive the agent.
-  if (context.origin === "slack" && !doNotAssociateUser && !messageUser) {
-    return new Err({
-      status_code: 404,
-      api_error: {
-        type: "workspace_user_not_found",
-        message:
-          "This Slack user is not a member of this Dust workspace and cannot use agents here.",
-      },
-    });
-  }
-
   const resolvedUserMentions = await resolveUserMentions(auth, {
     mentions,
     conversation,

@@ -1249,14 +1249,6 @@ async function answerMessage(
     );
   };
 
-  // The sender's Slack email didn't match a Dust workspace member (see
-  // `postUserMessage` in front): this is a normal, actionable outcome for
-  // the Slack sender, not an unexpected failure, so it gets the same clear,
-  // non-alarming treatment as other `SlackExternalUserError`s instead of the
-  // generic "an error occurred, our team was notified" message.
-  const isUnattributedSlackUserError = (errRes: Err<Error | APIError>) =>
-    "type" in errRes.error && errRes.error.type === "workspace_user_not_found";
-
   const origin = slackBotId ? "slack_workflow" : "slack";
 
   // Mention-only messages (e.g. Zapier sending `<@bot> +AgentName`) end up empty after stripping
@@ -1322,9 +1314,6 @@ async function answerMessage(
         message: messageReqBody,
       });
       if (messageRes.isErr()) {
-        if (isUnattributedSlackUserError(messageRes)) {
-          return new Err(new SlackExternalUserError(messageRes.error.message));
-        }
         return buildSlackMessageError(messageRes, "postUserMessage");
       }
       userMessage = messageRes.value;
@@ -1348,9 +1337,6 @@ async function answerMessage(
       skipToolsValidation,
     });
     if (convRes.isErr()) {
-      if (isUnattributedSlackUserError(convRes)) {
-        return new Err(new SlackExternalUserError(convRes.error.message));
-      }
       return buildSlackMessageError(convRes, "createConversation");
     }
 
