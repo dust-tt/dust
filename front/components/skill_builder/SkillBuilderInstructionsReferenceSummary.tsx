@@ -244,7 +244,6 @@ export function SkillBuilderInstructionsReferenceSummary({
   // have min height to always keep space to show references so there is less content shift.
   return (
     <>
-      {referenceItems.length > 0 && (
         <div
           ref={containerRef}
           className={cn(!isExpand && "overflow-y-hidden max-h-14")}
@@ -255,7 +254,6 @@ export function SkillBuilderInstructionsReferenceSummary({
             )}
           </div>
         </div>
-      )}
       {isOverflow && (
         <div className="flex justify-end">
           <Button
