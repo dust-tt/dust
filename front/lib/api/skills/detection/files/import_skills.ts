@@ -12,6 +12,7 @@ import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instruc
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -202,6 +203,7 @@ export async function importSkillsFromFiles(
   const editorUsers = editorUsersResult.value;
 
   const user = auth.user();
+  const workspace = auth.getNonNullableWorkspace();
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
   const skipped: { name: string; message: string }[] = [];
@@ -261,11 +263,20 @@ export async function importSkillsFromFiles(
         sourceMetadata: { filePath: skill.skillMdPath },
       });
 
+      await launchSkillSearchIndexation({
+        workspaceId: workspace.sId,
+        skillId: existing.sId,
+      });
+
       await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
         skillId: existing.sId,
       });
 
       const editorsResult = await existing.upsertEditors(auth, editorUsers);
+      await launchSkillSearchIndexation({
+        workspaceId: workspace.sId,
+        skillId: existing.sId,
+      });
       if (editorsResult.isErr()) {
         return editorsResult;
       }
@@ -315,6 +326,11 @@ export async function importSkillsFromFiles(
         }
       );
 
+      await launchSkillSearchIndexation({
+        workspaceId: workspace.sId,
+        skillId: skillResource.sId,
+      });
+
       await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
         skillId: skillResource.sId,
       });
@@ -323,6 +339,10 @@ export async function importSkillsFromFiles(
         auth,
         editorUsers
       );
+      await launchSkillSearchIndexation({
+        workspaceId: workspace.sId,
+        skillId: skillResource.sId,
+      });
       if (editorsResult.isErr()) {
         return editorsResult;
       }
