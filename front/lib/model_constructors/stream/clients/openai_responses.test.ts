@@ -46,6 +46,12 @@ const standardOnlyEndpoints = openAIResponsesEndpoints.filter(
 );
 
 describe("OpenAIResponsesStream flex support declarations", () => {
+  it("disables SDK retries so the agent loop owns retry attempts", () => {
+    const endpoint = new flexEndpoint({ OPENAI_API_KEY: "test" });
+
+    expect(Reflect.get(endpoint, "client")).toMatchObject({ maxRetries: 0 });
+  });
+
   // An empty partition would make the `it.each` blocks below silently vacuous.
   it("partitions the endpoints on both sides of the flag", () => {
     expect(flexEndpoints.length).toBeGreaterThan(0);

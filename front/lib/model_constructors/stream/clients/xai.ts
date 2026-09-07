@@ -40,7 +40,12 @@ export abstract class XaiStream extends WithOpenAIResponsesInputConverter(
 
   constructor({ XAI_API_KEY }: Credentials) {
     super();
-    this.client = new OpenAI({ apiKey: XAI_API_KEY, baseURL: XAI_BASE_URL });
+    this.client = new OpenAI({
+      apiKey: XAI_API_KEY,
+      baseURL: XAI_BASE_URL,
+      // The agent loop owns retries so every attempt gets its own Dust trace.
+      maxRetries: 0,
+    });
   }
 
   buildRequestPayload(
