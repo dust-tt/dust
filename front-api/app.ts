@@ -70,15 +70,15 @@ apiApp.route("/templates", templatesApp);
 apiApp.route("/user", userApp);
 apiApp.route("/workos", workosApp);
 apiApp.route("/workspace-lookup", workspaceLookupApp);
-// join is mounted before the workspace app so it does not inherit workspaceAuth
-// (it is a public, unauthenticated endpoint).
-apiApp.route("/w/:wId/join", workspaceJoinApp);
+// Public / own-auth routes mounted BEFORE their authed parent (CODING_RULES
+// [API4]). They must precede the catch-all sibling — Hono scans in registration
+// order ([API1]). Posture locked by front-api/app.test.ts.
+apiApp.route("/w/:wId/join", workspaceJoinApp); // public — no workspaceAuth
 apiApp.route("/w/:wId", workspaceApp);
 apiApp.route("/v1", publicApp);
-// Viz endpoints authenticate via their own access token, not publicApiAuth.
+// Own viz access token, not publicApiAuth — see [API4].
 apiApp.route("/v1/viz", vizApp);
-// Triggers is mounted before the workspace app so it does not inherit
-// publicApiAuth (it uses its own URL secret-based authentication).
+// Own URL secret-based authentication, not publicApiAuth — see [API4].
 apiApp.route("/v1/w/:wId/triggers", publicWorkspaceTriggersApp);
 apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 // Pre-stop uses a dynamic first segment (the secret) — register last so its
