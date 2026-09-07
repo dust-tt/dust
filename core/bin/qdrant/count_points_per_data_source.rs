@@ -5,7 +5,7 @@ use csv::Writer;
 use dust::{
     data_sources::{
         data_source::{DataSource, DataSourceConfig},
-        qdrant::{QdrantClients, QdrantTenant, SHARD_KEY_COUNT},
+        qdrant::{QdrantClients, QdrantTenant},
     },
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
@@ -15,7 +15,7 @@ use std::env;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Shard key id to scan (0..SHARD_KEY_COUNT). If provided, only data sources that
+    /// Shard key id to scan (the numeric part of key_<n>). If provided, only data sources that
     /// map to this shard key will be counted. If omitted, all data sources are counted.
     #[arg(short, long)]
     shard_key_id: Option<u64>,
@@ -24,12 +24,6 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-
-    if let Some(shard_key_id) = args.shard_key_id {
-        if shard_key_id >= SHARD_KEY_COUNT {
-            return Err(anyhow!("shard_key_id must be in [0, {})", SHARD_KEY_COUNT));
-        }
-    }
 
     let store = PostgresStore::new(
         &env::var("CORE_DATABASE_URI").map_err(|_| anyhow!("CORE_DATABASE_URI is required"))?,

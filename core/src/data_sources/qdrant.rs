@@ -25,10 +25,10 @@ pub enum QdrantCluster {
 }
 
 // See: https://app.notion.com/p/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
-// Key count of the collections created before data sources stored their shard key. A data source
-// without a stored key still hashes into these. Newer collections declare their own count and the
-// data sources created against them carry their key in `QdrantDataSourceConfig::shard_keys`.
-pub const SHARD_KEY_COUNT: u64 = 24;
+// Key count of the collections created before data sources stored their shard key. Only for the
+// fallback route of data sources without a stored key: a collection declares its own key count and
+// new data sources carry their key in `QdrantDataSourceConfig::shard_keys`. Do not use elsewhere.
+pub const LEGACY_SHARD_KEY_COUNT: u64 = 24;
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[QdrantCluster::Cluster0];
 
@@ -199,7 +199,7 @@ impl DustQdrantClient {
         Ok(format!(
             "{}_{}",
             self.shard_key_prefix(),
-            Self::shard_key_id_from_internal_id(internal_id, SHARD_KEY_COUNT)?
+            Self::shard_key_id_from_internal_id(internal_id, LEGACY_SHARD_KEY_COUNT)?
         ))
     }
 
@@ -529,7 +529,7 @@ mod tests {
 
     #[test]
     fn test_balanced_shard_keys() {
-        for key_count in [SHARD_KEY_COUNT, 3, 1] {
+        for key_count in [LEGACY_SHARD_KEY_COUNT, 3, 1] {
             let keys = hashed_ids(key_count * 192)
                 .iter()
                 .map(|id| DustQdrantClient::shard_key_id_from_internal_id(id, key_count).unwrap())

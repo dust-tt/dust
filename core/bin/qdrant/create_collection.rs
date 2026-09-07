@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use dust::{
-    data_sources::qdrant::{QdrantClients, QdrantCluster, SHARD_KEY_COUNT},
+    data_sources::qdrant::{QdrantClients, QdrantCluster, LEGACY_SHARD_KEY_COUNT},
     providers::{
         embedder::{EmbedderProvidersModelMap, SupportedEmbedderModels},
         provider::{provider, ProviderID},
@@ -36,7 +36,7 @@ struct Args {
     cluster: QdrantCluster,
 
     /// Number of shard keys. Data sources hash into them, one key per data source.
-    #[arg(long, default_value_t = SHARD_KEY_COUNT)]
+    #[arg(long, default_value_t = LEGACY_SHARD_KEY_COUNT)]
     shard_key_count: u64,
 
     /// Number of shards behind each shard key, spread across the nodes.
