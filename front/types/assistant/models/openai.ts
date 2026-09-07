@@ -471,6 +471,9 @@ export const GPT_6_ASTRA_MODEL_CONFIG: ModelConfigurationType = {
     plansWithAdvancedModels: true,
     featureFlag: "claude_4_5_opus_feature",
   },
+  unavailableIfOneOf: {
+    featureFlag: "disable_gpt_6_astra",
+  },
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
