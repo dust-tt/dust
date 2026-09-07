@@ -279,11 +279,6 @@ interface CreditPoolCardsFromCycleDataProps {
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
 }
-
-// Turns a fetched current-cycle/cycle-history pair into the credit
-// consumption cards. Shared across every page that renders the pool cards
-// so the "showPoolCard vs. excess" derivation below can't drift between
-// them — only the SWR hooks feeding it differ per page.
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
   cardsStatus,
