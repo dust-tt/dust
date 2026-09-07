@@ -18,6 +18,11 @@ interface SeedSkillOptions {
   spaces?: SpaceResource[];
 }
 
+/**
+ * @cc [label:product] seed-skill-idempotency
+ * If an active skill with the same name exists in the workspace, return it without creating another,
+ * even when the context user cannot read its required spaces.
+ */
 export async function seedSkill(
   ctx: SeedContext,
   skillAsset: SkillAsset,
@@ -38,7 +43,7 @@ export async function seedSkill(
   });
   const [existingSkill] = existingSkillRow
     ? await SkillResource.fetchByModelIds(auth, [existingSkillRow.id], {
-        dangerouslySkipPermissionFiltering: true,
+        permissionFiltering: "dangerously_skip",
       })
     : [];
 
