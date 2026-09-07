@@ -1,4 +1,7 @@
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import {
+  getSupportedModelConfig,
+  getSupportedModelConfigs,
+} from "@app/lib/llms/model_configurations";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -24,6 +27,7 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
+import type { RegionType } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import capitalize from "lodash/capitalize";
 
@@ -42,6 +46,18 @@ const MODEL_TIER_LOCKED_TOOLTIP =
 
 export function getDegradedModelTooltip(displayName: string): string {
   return `${displayName} is unstable right now. You may want to select another model.`;
+}
+
+/**
+ * @cc [owner:Nils-Fedrigo,label:product] regional-flag-follows-availability
+ * The picker shows `region`'s hosting flag on a model if and only if that
+ * model's `regionalAvailability[region]` is `true`.
+ */
+export function isModelHostedInRegion(
+  model: ModelConfigurationType,
+  region: RegionType
+): boolean {
+  return model.regionalAvailability[region] === true;
 }
 
 // The three primary picks of the model picker. Each tier is backed by a
@@ -168,6 +184,27 @@ export function getTierResolvedModelLabel(
     resolution.displayName,
     resolution.reasoningEffort
   );
+}
+
+// `isModelHostedInRegion` for the concrete model a tier currently resolves to.
+// That resolution moves as models are added or degraded, so the flag speaks for
+// the resolution the row is displaying and nothing more.
+export function isTierResolvedModelHostedInRegion(
+  tier: ModelTierDefinition,
+  streams: ModelStreamResolutionsType | null,
+  region: RegionType
+): boolean {
+  const resolution = streams?.[tier.metaModelId];
+  if (!resolution) {
+    return false;
+  }
+  const model = getSupportedModelConfigs().find(
+    (config) =>
+      config.providerId === resolution.providerId &&
+      config.modelId === resolution.modelId
+  );
+
+  return model !== undefined && isModelHostedInRegion(model, region);
 }
 
 // What the picker is currently showing, decoupled from the payload we send:
