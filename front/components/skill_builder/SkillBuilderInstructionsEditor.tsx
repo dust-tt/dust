@@ -834,7 +834,6 @@ export function SkillBuilderInstructionsEditor({
       <SkillBuilderInstructionsReferenceSummary
         attachedKnowledge={attachedKnowledgeField.value}
         containerRef={instructionReferenceSummaryRef}
-        hasError={displayError}
         instructions={instructionsField.value ?? ""}
         onReferenceClick={handleReferenceClick}
         tools={tools}

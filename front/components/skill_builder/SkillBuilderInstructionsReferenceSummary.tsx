@@ -22,7 +22,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
   containerRef?: RefObject<HTMLDivElement>;
-  hasError: boolean;
   instructions: string;
   onReferenceClick: (target: ReferenceSummaryItem) => void;
   tools: BuilderAction[];
@@ -125,7 +124,6 @@ const DEFAULT_OVERFLOW_THRESHOLD_HEIGHT =
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
   containerRef,
-  hasError,
   instructions,
   onReferenceClick,
   tools,
@@ -247,12 +245,6 @@ export function SkillBuilderInstructionsReferenceSummary({
           ref={containerRef}
           className={cn(
             !isExpand && "overflow-y-hidden max-h-14",
-            hasError
-              ? [
-                  "border-border-warning/30 group-focus-within:border-border-warning",
-                  "",
-                ]
-              : ["border-border group-focus-within:border-highlight-300", ""]
           )}
         >
           <div ref={contentRef} className="flex flex-wrap gap-2">
