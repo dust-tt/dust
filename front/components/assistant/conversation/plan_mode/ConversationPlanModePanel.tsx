@@ -36,7 +36,7 @@ export function ConversationPlanModePanel({
     const confirmed = await confirm({
       title: "Archive this plan?",
       message:
-        "This plan will be moved to the conversation's archived files. You can still open it later, and the agent can create a new plan if needed.",
+        "The plan will no longer appear in the plan panel, but you can still open it from the conversation's Files panel. The agent can create a new plan.",
       validateLabel: "Archive plan",
       validateVariant: "primary",
     });
