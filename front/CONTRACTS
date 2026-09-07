@@ -1,8 +1,8 @@
-@cc [owner:spolu,label:backend] api-routes-use-resources
+@cc [label:backend] api-routes-use-resources
 API routes should not interact with Sequelize models directly. Use `lib/api/*` interfaces (creating
 them if missing). Direct Resource interactions are acceptable.
 
-@cc [owner:spolu,label:backend] business-interfaces-hide-models
+@cc [label:backend] business-interfaces-hide-models
 Interfaces in `lib/api/*` should not expose ModelId or Sequelize model objects.
 
 Example:
@@ -17,29 +17,29 @@ function doWorkspace({ id }: { id: ModelId }) { }
 function doWorkspace({ workspace }: { workspace: WorkspaceType }) { }
 ```
 
-@cc [owner:spolu,label:backend] models-behind-resources
+@cc [label:backend] models-behind-resources
 Any new model should be abstracted to the rest of the codebase through a pre-existing or new
 `Resource`.
 
-@cc [owner:spolu,label:backend] resource-interfaces-hide-models
+@cc [label:backend] resource-interfaces-hide-models
 Resource interfaces should take Resource or Types but not model objects.
 
-@cc [owner:spolu,label:backend] business-functions-use-resources
+@cc [label:backend] business-functions-use-resources
 Any newly introduced function in `lib/api/*` should rely on Resources and not models directly.
 
-@cc [owner:spolu,label:backend] use-concurrent-executor
+@cc [label:backend] use-concurrent-executor
 We are deprecating our use of `PQueue` in favor of `ConcurrentExecutor`. Use `ConcurrentExecutor`
 for all new code and migrate to it from `PQueue` when modifying existing code that involves
 `PQueue`.
 
-@cc [owner:spolu,label:backend] bounded-promise-all
+@cc [label:backend] bounded-promise-all
 Never use `Promise.all` on anything else than static arrays of promises with a known length (8 max).
 To parallelize asynchronous handling of dynamic arrays, use `ConcurrentExecutor`.
 
-@cc [owner:spolu,label:backend] prefer-type-guards
+@cc [label:backend] prefer-type-guards
 When checking types, use explicit typeguards over `typeof`, `instanceof`, etc.
 
-@cc [owner:spolu,label:backend] query-parameter-extraction
+@cc [label:backend] query-parameter-extraction
 Use `{ foo } = req.query` and then test with `isString` to extract query parameters in endpoints.
 
 Example:
@@ -65,7 +65,7 @@ if (isString(aId)) {
 const r = someFunction(aId);
 ```
 
-@cc [owner:spolu,label:backend] resource-identifier-naming
+@cc [label:backend] resource-identifier-naming
 The following naming convention applies:
 
 - For the string identifier of a resource (`sId` field): use `<resourceName>Id` (e.g., `agentId`,
@@ -94,7 +94,7 @@ const agentModelId = agent.id;       // Numeric ModelId
 
 This naming convention also implies that no variable should follow the naming `xxxSId` or `<resourceName>sId`.
 
-@cc [owner:spolu,label:backend] sequelize-model-suffix
+@cc [label:backend] sequelize-model-suffix
 When creating a new Resource that wraps a Sequelize model, the model should be renamed to include
 the "Model" suffix for clarity (e.g., `Conversation` becomes `ConversationModel`).
 This naming convention helps distinguish between the Resource interface and
@@ -110,7 +110,7 @@ class Conversation extends Model { }
 class ConversationModel extends Model { }
 ```
 
-@cc [owner:spolu,label:backend] api-backward-compatibility
+@cc [label:backend] api-backward-compatibility
 **Public API (`front-api/routes/v1/`):** Breaking changes are never allowed. External consumers
 depend on a stable contract. Schemas must be append-only: never remove fields. When adding a new
 field, it must be optional and accept `undefined` as a value even if the latest client code always
@@ -180,7 +180,7 @@ Follow these steps based on the type of change:
   - First: Update all client code to stop relying on the removed value
   - Stop returning the enum value from the backend only after a period of time
 
-@cc [owner:spolu,label:backend] index-foreign-keys
+@cc [label:backend] index-foreign-keys
 When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
 objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
 scans when deleting objects from table `A`.
@@ -203,7 +203,7 @@ AgentMessageModel.hasMany(AgentMCPActionModel, {
 }
 ```
 
-@cc [owner:spolu,label:backend] keep-swagger-in-sync
+@cc [label:backend] keep-swagger-in-sync
 Any change to the schema of a public or private API endpoint — including deeply nested objects in
 request or response bodies — must be reflected in the existing Swagger documentation. This applies
 to adding, removing, or modifying fields at any level of nesting.
@@ -232,7 +232,7 @@ export type UserTypeWithWorkspaces = UserType & {
 };
 ```
 
-@cc [owner:spolu,label:backend] resource-owned-serialization
+@cc [label:backend] resource-owned-serialization
 Some objects have both a back-end (Resource class) and a front-end representation (Type interface).
 The back-end representation is a Resource class that wraps a Sequelize model.
 The front-end representation is a Type interface that is the result of serializing the back-end Resource, extracting the
@@ -252,7 +252,7 @@ must not build a wire shape by reading a Resource's fields, and must not spread 
 fields to it. If a caller needs a shape that no existing method produces, add a new
 `to<Audience>JSON` on the Resource next to the others.
 
-@cc [owner:spolu,label:backend] thin-api-handlers
+@cc [label:backend] thin-api-handlers
 API handlers (under `front-api/routes/`) should be limited to:
 
 - Authentication and authorization checks
@@ -300,7 +300,7 @@ authorize → validate → call business function → respond. But if the extrac
 HTTP status codes or `APIErrorWithStatusCode` into the lib, push back and keep the logic in
 the handler instead.
 
-@cc [owner:spolu,label:backend] transport-independent-business-results
+@cc [label:backend] transport-independent-business-results
 Functions in `lib/api/*` (and other shared business-logic modules) must
 not return `APIErrorWithStatusCode` or anything else that bakes in an HTTP
 status code. HTTP is a transport concern of the handler layer.
@@ -374,7 +374,7 @@ Reviewer: If you see a `lib/api/*` function returning `APIErrorWithStatusCode`,
 require the author to either (a) introduce a domain error type, or (b) move
 the logic back into the handlers and accept the duplication.
 
-@cc [owner:spolu,label:audit-logging;security] audit-security-sensitive-mutations
+@cc [label:audit-logging;security] audit-security-sensitive-mutations
 Every state-changing operation on a security-sensitive resource must emit an audit log event.
 
 - Use `void emitAuditLogEvent({ auth, action, targets, context?, metadata? })` for user-initiated actions where an `Authenticator` is available
@@ -382,11 +382,11 @@ Every state-changing operation on a security-sensitive resource must emit an aud
 - Never `await` the emit call; always fire-and-forget with `void`
 - Audit log failures must never break the main operation (the emit functions handle this internally)
 
-@cc [owner:spolu,label:audit-logging;security] audit-human-actors
+@cc [label:audit-logging;security] audit-human-actors
 - If a human configured the automation (trigger, API key), use that human as the actor via `Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId)`
 - Only use `Authenticator.internalAdminForWorkspace(workspaceId)` or `emitAuditLogEventDirect` with a system actor for genuinely external events (SCIM sync, WorkOS webhooks, login failures without workspace context)
 
-@cc [owner:spolu,label:audit-logging;security] audit-action-artifacts
+@cc [label:audit-logging;security] audit-action-artifacts
 Every new audit action requires the following three artifacts:
 
 - A JSON schema file at `front/admin/audit_log_schemas/<action>.json`
@@ -394,37 +394,37 @@ Every new audit action requires the following three artifacts:
 - A `void emitAuditLogEvent(...)` or `void emitAuditLogEventDirect(...)` call at the mutation site
 - See the `dust-audit-log-event` skill for the step-by-step checklist
 
-@cc [owner:spolu,label:audit-logging;security] audit-after-successful-mutations
+@cc [label:audit-logging;security] audit-after-successful-mutations
 Place the emit call after the mutation succeeds, not before.
 
 - The audit log records what happened, not what was attempted
 - Exception: `user.login_failed` and similar failure events are emitted on the failure path
 
-@cc [owner:spolu,label:audit-logging;security] audit-string-metadata
+@cc [label:audit-logging;security] audit-string-metadata
 - WorkOS SDK expects all metadata values as strings. Convert numbers and booleans with `String(value)`
 - Schema files use `"string"` as the value type (e.g., `"role": "string"`)
 
-@cc [owner:spolu,label:audit-logging;security] audit-request-context
+@cc [label:audit-logging;security] audit-request-context
 Pass `getAuditLogContext(auth)` as the `context` parameter, except in non-HTTP contexts as
 described below.
 
 - The client IP comes from the `Authenticator`: the auth middlewares (`workspace_auth`, `public_api_auth`, `sandbox_auth`) resolve it from the Hono context via `auth.setClientIp(...)`, preferring forwarded headers over the socket address
 - In Temporal activities or non-HTTP contexts, omit `context` (defaults to `auth.clientIp() ?? "internal"`) or pass `{ location: "internal" }` for direct emit
 
-@cc [owner:spolu,label:audit-logging;security] audit-workspace-first-target
+@cc [label:audit-logging;security] audit-workspace-first-target
 Audit targets must include the workspace as the first target.
 
 - Use `buildWorkspaceTarget(auth.getNonNullableWorkspace())` or `buildWorkspaceTarget(workspace)`
 - Additional targets follow: `{ type: "user", id: user.sId, name: user.fullName() }`, `{ type: "api_key", id: key.sId }`, etc.
 
-@cc [owner:spolu,label:audit-logging;security] audit-action-naming
+@cc [label:audit-logging;security] audit-action-naming
 Audit action names must follow `<resource>.<verb>` dot notation.
 
 - Resource is singular, lowercase: `user`, `api_key`, `membership`, `scim`
 - Verb is past tense or descriptive: `created`, `revoked`, `role_updated`, `login_failed`
 - Consistency matters: check existing `AuditAction` values before inventing new names
 
-@cc [owner:spolu,label:audit-logging;security] audit-snake-case-metadata-keys
+@cc [label:audit-logging;security] audit-snake-case-metadata-keys
 - Keys in the `metadata` object of `front/admin/audit_log_schemas/<action>.json` must be
   snake_case (e.g. `agent_name`, not `agentName`)
 - The same applies to keys passed to the `metadata` field of `emitAuditLogEvent` /
@@ -432,14 +432,14 @@ Audit action names must follow `<resource>.<verb>` dot notation.
 - Enforced by `npm -w front run lint:audit-log-schemas` (runs in CI and as a lefthook
   pre-commit hook scoped to `front/admin/audit_log_schemas/**/*.json`)
 
-@cc [owner:spolu,label:audit-logging;security] audit-schema-registration-consistency
+@cc [label:audit-logging;security] audit-schema-registration-consistency
 When changing targets in an `emitAuditLogEvent` / `emitAuditLogEventDirect` call, update the
 corresponding schema at `front/admin/audit_log_schemas/<action>.json` to match. When changing a
 schema file, re-register with WorkOS after merge and before deploy:
 `npx tsx front/admin/register_audit_log_schemas.ts --execute --changed`. The CI test enforces
 that the `AuditAction` union and schema files stay consistent.
 
-@cc [owner:spolu,label:mcp] internal-mcp-server-structure
+@cc [label:mcp] internal-mcp-server-structure
 Internal MCP servers must live in `lib/api/actions/servers/<server_name>/` and separate metadata,
 tool implementation, and server wiring:
 
@@ -453,14 +453,14 @@ Keep server creation local to the provider instead of routing every server throu
 `createServer` helper. Additional files such as `client.ts` or `helpers.ts` can be added
 when the integration needs them.
 
-@cc [owner:spolu,label:mcp] typed-mcp-tool-outputs
+@cc [label:mcp] typed-mcp-tool-outputs
 If a tool in an internal MCP server outputs a custom resource, a `zod` schema that describes the
 output must be defined in `lib/actions/mcp_internal_actions/output_schemas.ts`. This way, when
 processing the tool output, a type guard that checks the output against the schema
 can be used to identify this output type. In the code of the internal server the type inferred
 from the `zod` schema should be used to type the tool output.
 
-@cc [owner:spolu,label:mcp] verb-first-mcp-tool-descriptions
+@cc [label:mcp] verb-first-mcp-tool-descriptions
 Internal MCP tool descriptions must start with a bare infinitive/base verb such as `List`, `Get`,
 `Search`, `Create`, `Update`, or `Retrieve`. Avoid noun phrases, articles, gerunds, and
 third-person verbs at the start of the description. Prefer verbs and wording that match how users
@@ -480,20 +480,20 @@ Retrieve a Zendesk ticket.
 Search Slack messages by keyword.
 ```
 
-@cc [owner:spolu,label:testing] functional-endpoint-tests
+@cc [label:testing] functional-endpoint-tests
 When introducing new endpoints or modifying existing endpoints, introduce functional tests. Our
 tests are functional and focus at the endpoint level for now. Unit tests are not required nor
 desired.
 
-@cc [owner:spolu,label:testing] test-setup-through-factories
+@cc [label:testing] test-setup-through-factories
 Test state setup should be done through factories. Factories should return Resources whenever
 possible.
 
-@cc [owner:spolu,label:testing] tests-use-resources
+@cc [label:testing] tests-use-resources
 Direct use of Sequelize models in tests should be avoided in favor of Resources. This includes test
 setup and assertions.
 
-@cc [owner:spolu,label:react] component-props-interfaces
+@cc [label:react] component-props-interfaces
 Components props should always be typed using an `interface`.
 
 Example:
@@ -512,7 +512,7 @@ interface MyComponentProps {
 export function Component({ name }: MyComponentProps) { }
 ```
 
-@cc [owner:spolu,label:react] network-operations-in-swr-hooks
+@cc [label:react] network-operations-in-swr-hooks
 Data fetching should rely on useSWR hooks and be abstracted in a `lib/swr/*` file.
 
 When using a disabled param and returning a loading flag, ensure `loading` is `false` if `disabled`
@@ -583,11 +583,11 @@ with a comment.
 In NextJS pages, getServerSideProps should not fetch data and return more than what's
 available in authenticator. Rather rely on API endpoint and SWR calls.
 
-@cc [owner:spolu,label:react] async-network-loading-state
+@cc [label:react] async-network-loading-state
 Any load/async has a visible visual state (spinner, busy state, disabled button, etc.), even if the
 load time is expected to be small.
 
-@cc [owner:spolu,label:react] stable-context-values
+@cc [label:react] stable-context-values
 Object or array literals passed as Context provider `value` create a new reference on every
 render, triggering re-renders of all consumers. Always memoize Context values.
 
@@ -606,7 +606,7 @@ is used as a hook dependency. Do not add `useMemo` preemptively.
 Reviewer: If you see an inline object or array literal passed directly as a Context provider
 value, require the author to memoize it.
 
-@cc [owner:spolu,label:react] client-exhaustiveness-tolerates-new-values
+@cc [label:react] client-exhaustiveness-tolerates-new-values
 Frontend components must use `assertNeverAndIgnore` instead of `assertNever` in exhaustive switch
 statements. The server may introduce new enum values (e.g., new action types, connector types,
 event types) before the client is redeployed. Using `assertNever` would throw at runtime and crash

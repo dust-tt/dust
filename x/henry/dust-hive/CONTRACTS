@@ -1,47 +1,47 @@
-@cc [owner:spolu,label:coding] hive-task-scope
+@cc [label:coding] hive-task-scope
 Make only the changes required for the task. Avoid opportunistic refactors.
 
-@cc [owner:spolu,label:coding] hive-simplicity
+@cc [label:coding] hive-simplicity
 Keep code simple and readable; prefer small, explicit functions over clever abstractions.
 
-@cc [owner:spolu,label:coding] hive-parameter-immutability
+@cc [label:coding] hive-parameter-immutability
 Do not mutate function parameters; return new values instead.
 
-@cc [owner:spolu,label:coding] hive-const
+@cc [label:coding] hive-const
 Use `const` by default; use `let` only when reassignment is required.
 
-@cc [owner:spolu,label:coding] hive-strict-types
+@cc [label:coding] hive-strict-types
 Strict mode is expected. Do not introduce `any`.
 
-@cc [owner:spolu,label:coding] hive-no-non-null-assertions
+@cc [label:coding] hive-no-non-null-assertions
 Avoid non-null assertions (`!`).
 
-@cc [owner:spolu,label:coding] hive-type-guards
+@cc [label:coding] hive-type-guards
 Avoid unsafe `as` casts. Prefer typeguards or validation helpers.
 
-@cc [owner:spolu,label:coding] hive-type-imports
+@cc [label:coding] hive-type-imports
 Use `import type` for type-only imports.
 
-@cc [owner:spolu,label:error-handling] hive-fail-fast
+@cc [label:error-handling] hive-fail-fast
 Do not hide or paper over errors with defaults. If a value is required, fail fast with a clear error.
 
-@cc [owner:spolu,label:error-handling] hive-no-swallowed-errors
+@cc [label:error-handling] hive-no-swallowed-errors
 Never swallow errors (empty `catch`, or log-and-continue) unless the caller explicitly accepts partial failure.
 
-@cc [owner:spolu,label:error-handling] hive-result
+@cc [label:error-handling] hive-result
 Use `Result<T, E>` when callers need to handle failures; otherwise let exceptions bubble.
 
-@cc [owner:spolu,label:error-handling] hive-catch-scope
+@cc [label:error-handling] hive-catch-scope
 Only wrap the minimal statement that can throw. Do not wrap whole functions in `try/catch`.
 
-@cc [owner:spolu,label:error-handling] hive-no-false-success
+@cc [label:error-handling] hive-no-false-success
 Do not convert failures into success (e.g., returning `Ok` after a failed step).
 
-@cc [owner:spolu,label:cli] hive-cli-boundary
+@cc [label:cli] hive-cli-boundary
 Keep CLI concerns (printing usage, exiting) in `src/index.ts`; library helpers should return data or `Result`.
 
-@cc [owner:spolu,label:architecture] hive-centralized-config
+@cc [label:architecture] hive-centralized-config
 Prefer centralized config/registry data over duplicating lists or constants in multiple files.
 
-@cc [owner:spolu,label:coding] hive-comments
+@cc [label:coding] hive-comments
 Add comments only when logic is non-obvious. Keep them short and focused.

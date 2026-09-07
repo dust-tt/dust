@@ -1,4 +1,4 @@
-@cc [owner:spolu,label:coding] reuse-existing-patterns
+@cc [label:coding] reuse-existing-patterns
 Favor re-using existing patterns (with broad refactors if necessary) over introducing new ones
 sporadically.
 
@@ -6,21 +6,21 @@ Reviewer: If you detect a pattern that is not consistent with an existing approa
 require the author to match the existing pattern (and possibly refactor everything in a subsequent
 PR).
 
-@cc [owner:spolu,label:coding] prefer-simple-solutions
+@cc [label:coding] prefer-simple-solutions
 Favor simple and easy to understand approaches vs. overly optimized but complex ones.
 
 Reviewer: If you detect an overly optimized or complex solution that can be simplified (at the cost
 of a bit of performance loss or extra code), ask the author to consider the simpler approach.
 
-@cc [owner:spolu,label:coding] prefer-types-over-typescript-enums
+@cc [label:coding] prefer-types-over-typescript-enums
 We do not use TypeScript enums, we use types instead, e.g.: `type Color = "red" | "blue";`.
 
-@cc [owner:spolu,label:coding] no-unsafe-type-assertions
+@cc [label:coding] no-unsafe-type-assertions
 The non-type-safe uses of `as` are prohibited in the codebase. Use type guards or other type-safe
 methods instead. There are few exceptions where `as` is type-safe to use (e.g., `as const`) and
 therefore acceptable.
 
-@cc [owner:spolu,label:coding] no-parameter-mutation
+@cc [label:coding] no-parameter-mutation
 Never mutate arrays or objects passed as parameters to functions. Create and return new instances
 instead. This includes avoiding methods like `splice` that mutate arrays in place.
 
@@ -42,7 +42,7 @@ function addItem(items: string[], newItem: string) {
 }
 ```
 
-@cc [owner:spolu,label:coding] exhaustive-union-branching
+@cc [label:coding] exhaustive-union-branching
 When branching on a discriminated union or string union, prefer an exhaustive `switch` with
 `assertNever` (from `@app/types/shared/utils/assert_never`) over chains of `if`/`else` or nested
 ternaries. This keeps the code readable and ensures TypeScript enforces exhaustiveness when cases
@@ -96,7 +96,7 @@ function handleStreamEvent(event: AgentMessageEvent): State {
 }
 ```
 
-@cc [owner:spolu,label:coding] avoid-quadratic-loops
+@cc [label:coding] avoid-quadratic-loops
 Loops with quadratic O(n²) or worse, cubic O(n³) complexity can severely hurt performance as data
 sizes grow. Common quadratic patterns include nested loops over related datasets, repeated searches
 within loops, and chained array operations that each iterate over the data.
@@ -164,7 +164,7 @@ When quadratic complexity cannot be avoided:
 - Consider moving to background processing for larger datasets
 - Implement proper async handling with progress indicators for long operations
 
-@cc [owner:spolu,label:coding] use-application-logger
+@cc [label:coding] use-application-logger
 Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console
 methods are prohibited in the codebase. Always use the application logger for all logging,
 debugging, and error reporting purposes. This ensures consistent log formatting, proper log
@@ -182,7 +182,7 @@ logger.info({ user }, "User created");
 logger.error({ err: error }, "Failed to fetch data");
 ```
 
-@cc [owner:spolu,label:coding] money-and-time-unit-suffixes
+@cc [label:coding] money-and-time-unit-suffixes
 Variables representing monetary amounts or time durations must include a unit suffix in their name.
 This prevents conversion errors (e.g., cents vs. dollars, milliseconds vs. seconds) such as the one
 that caused [this incident](https://dust4ai.slack.com/archives/C05B529FHV1/p1764835038528229).
@@ -212,7 +212,7 @@ const timeoutMs = 5000;
 const delaySeconds = 30;
 ```
 
-@cc [owner:spolu,label:coding] prefer-static-imports
+@cc [label:coding] prefer-static-imports
 In production TypeScript/TSX code, prefer static imports at the top of the file.
 
 Use dynamic `import()` only when strictly necessary (e.g., runtime gating between Node/Edge,
@@ -226,7 +226,7 @@ If a dynamic import is strictly necessary, it must:
 - Use a string literal module specifier (no computed paths).
 - Be accompanied by a short comment explaining why a static import is not acceptable.
 
-@cc [owner:spolu,label:coding] read-environment-through-config
+@cc [label:coding] read-environment-through-config
 Never access environment variables directly via `process.env`. Instead, use the `@app/lib/api/config`
 module which provides type-safe access to environment variables.
 
@@ -244,7 +244,7 @@ const apiUrl = config.getApiUrl();
 const isProduction = config.getNodeEnv() === "production";
 ```
 
-@cc [owner:spolu,label:coding] no-css-important
+@cc [label:coding] no-css-important
 Do not use `!important` in stylesheets, CSS modules, Tailwind `@apply` blocks, CSS-in-JS, or
 template literals that produce CSS. This also covers Tailwind's `!` important-prefix utilities
 (e.g. `focus:!ring-0`, `!mt-0`) — they compile to `!important` and have the same downsides.
@@ -293,7 +293,7 @@ Example:
 <div className="focus:ring-transparent mt-0" />
 ```
 
-@cc [owner:spolu,label:coding] use-zod-for-runtime-validation
+@cc [label:coding] use-zod-for-runtime-validation
 We are migrating off `io-ts` in favor of `zod`. All new schemas (request bodies, query
 parameters, form validation, runtime parsing of external data) must be written with `zod`. Do
 not introduce new `io-ts` codecs, and do not import `io-ts`, `io-ts-types`, `io-ts-reporters`,
@@ -351,7 +351,7 @@ const { name, count } = validation.data;
 Reviewer: If you see new `io-ts` imports or codecs introduced by a PR, require the author to
 rewrite them in `zod`.
 
-@cc [owner:spolu,label:coding] batch-database-queries
+@cc [label:coding] batch-database-queries
 Avoid database queries or database-only helpers inside loops, which would resolve in an unbounded
 number of SQL queries that will scale with the data (N+1 pattern).
 Also avoid them in `Promise.all` and `concurrentExecutor` if possible, they only make the queries
@@ -379,11 +379,11 @@ const users = await UserResource.fetchByModelIds(
 
 Reviewer: If you detect a DB-backed helper or query inside a loop, ask the author to batch it.
 
-@cc [owner:spolu,label:security] sensitive-data-in-bodies-or-headers
+@cc [label:security] sensitive-data-in-bodies-or-headers
 No sensitive data should be sent to our servers through URL or query string parameters. HTTP body or
 headers only are acceptable for sensitive data.
 
-@cc [owner:spolu,label:security] string-ids-in-api-interfaces
+@cc [label:security] string-ids-in-api-interfaces
 Never expose or accept ModelId in URLs, API endpoints or POST/PATCH payloads. Use string identifiers
 (sId) instead. This applies to all routes, including GET, POST, PATCH, and DELETE methods. ModelIds
 should be strictly internal and never exposed to the client.
@@ -398,7 +398,7 @@ Example:
 /api/w/[wId]/resource/[sId]
 ```
 
-@cc [owner:spolu,label:security] sandbox-root-command-safety
+@cc [label:security] sandbox-root-command-safety
 Any runtime command that runs in an already-built sandbox as `root` must invoke executables through
 absolute paths. This applies to `sandbox.execRoot(...)`, provider-level E2B command execution as
 root, wake/resume hooks, egress setup, log readers, and root-invoked helper scripts.
@@ -466,7 +466,7 @@ await sandbox.execRoot(auth, rootCommand.unsafeShell("dust-install-trust-bundle"
 await sandbox.execRoot(auth, rootCommand.exec("/opt/bin/dust-install-trust-bundle"));
 ```
 
-@cc [owner:spolu,label:security] sandbox-privileged-directory-ownership
+@cc [label:security] sandbox-privileged-directory-ownership
 Sandbox workloads must not be able to write to any directory that privileged sandbox services use
 for discovery or activation. This includes systemd unit directories, tmpfiles/profile directories,
 dynamic library lookup directories, plugin directories, and every parent directory that controls
@@ -480,13 +480,13 @@ Reviewer: If sandbox code adds or depends on a root-consumed lookup path, requir
 hardening that makes the path root-owned and not group/other writable, plus a regression test that
 attempts to write the attacker-controlled file as the workload user.
 
-@cc [owner:spolu,label:error-handling] no-catching-own-errors
+@cc [label:error-handling] no-catching-own-errors
 Never catch your own errors. `catch` is authorized around external libraries (whose error handling
 we don't control), but otherwise errors that may alter the execution upstream should be returned
 using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
 guaranteed to trigger an internal error (and return a 500).
 
-@cc [owner:spolu,label:error-handling] normalize-caught-errors
+@cc [label:error-handling] normalize-caught-errors
 Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
 random object, ...), so the cast may be invalid and hides errors from the logs. Use `normalizeError`
 instead, this function properly checks the content of the caught object and always returns a valid

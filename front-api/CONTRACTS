@@ -1,8 +1,8 @@
-@cc [owner:spolu,label:api] shared-typescript-contracts
+@cc [label:api] shared-typescript-contracts
 TypeScript rules in `front/CONTRACTS` also apply to `front-api`, since it shares the same
 TypeScript environment and reaches into `front` internals via the `@app/*` path map.
 
-@cc [owner:spolu,label:api] one-way-front-dependency
+@cc [label:api] one-way-front-dependency
 `front-api` is the Hono service that serves all HTTP traffic. `server.ts` boots `honoApp`
 from `app.ts` on `@hono/node-server`, and `routes/` holds every handler.
 
@@ -10,7 +10,7 @@ from `app.ts` on `@hono/node-server`, and `routes/` holds every handler.
 workers and the migrations. The dependency is one-way: `front-api` reaches into `front`
 via `@app/*`, never the reverse.
 
-@cc [owner:spolu,label:api] url-aligned-route-files
+@cc [label:api] url-aligned-route-files
 `front-api/routes/<path>.ts` maps 1:1 to the `/api/<path>` URL, including
 dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory names. The
 path mapping is deterministic.
@@ -55,7 +55,7 @@ app.post("/", withSpace({ requireCanReadOrAdministrate: true }), ...);
 export default app;
 ```
 
-@cc [owner:spolu,label:api] directory-route-mounts
+@cc [label:api] directory-route-mounts
 The directory tree is composed via per-directory `index.ts` files. Each
 `index.ts` does one or both of:
 
@@ -78,7 +78,7 @@ one is a literal while the other is a param — e.g. `/tables/search` must be
 mounted before `/tables/:tableId`, otherwise the param route swallows
 "search" as an id. Hono's router scans in registration order.
 
-@cc [owner:spolu,label:api] route-mounting-is-source-of-truth
+@cc [label:api] route-mounting-is-source-of-truth
 A route is reachable only because a parent mounted it, up to the top-level
 mounts in `front-api/app.ts`. There is no route manifest to keep in sync:
 adding a file and mounting it is the whole registration step.
@@ -89,7 +89,7 @@ mounted before `/w/:wId` so it does not inherit `workspaceAuth`, and the
 `/:preStopSecret` sub-app is mounted last so its dynamic first segment does
 not shadow the literal-prefixed routes above it.
 
-@cc [owner:spolu,label:api] auth-at-sub-app-boundaries
+@cc [label:api] auth-at-sub-app-boundaries
 `workspaceAuth` and `publicApiAuth` are applied once at the workspace
 sub-app level (the `[wId]/index.ts` mount file), not per-route:
 
@@ -110,7 +110,7 @@ The same pattern applies for any directory-scoped resource fetch — e.g.
 once and stashes it on `c` so every route below can read it from
 `c.get("skill")`.
 
-@cc [owner:spolu,label:api] resource-middleware-per-handler
+@cc [label:api] resource-middleware-per-handler
 Resource-loading middlewares like `withSpace` carry permission options
 (`requireCanRead`, `requireCanWrite`, etc.) that vary per endpoint. Apply
 them on the individual handler, not on the parent's `index.ts`:
@@ -129,7 +129,7 @@ Lift the middleware to the parent `index.ts` only when **every** route in the
 subtree uses the exact same options (e.g. `routes/w/[wId]/assistant/skills/[sId]/index.ts`,
 where the skill fetch and `canWrite` check are identical for all children).
 
-@cc [owner:spolu,label:api] validate-input-through-middleware
+@cc [label:api] validate-input-through-middleware
 Validate request input with `validate(target, schema)`.
 
 `front-api/middlewares/validator.ts` wraps `@hono/zod-validator` so failures
@@ -150,7 +150,7 @@ spacesApp.post(
 Do not call `c.req.json()` + `safeParse` manually in handlers — that's what
 the wrapper exists to eliminate.
 
-@cc [owner:spolu,label:api] errors-through-api-error
+@cc [label:api] errors-through-api-error
 All error responses must go through `apiError(c, err, error?)` from
 `@front-api/middlewares/utils`. It produces the standard
 `{ error: { type, message } }` body plus the logging, dd-trace span tags, and
@@ -189,7 +189,7 @@ its message and stack are captured in the log instead of the synthetic one.
 Reviewer: if you see `c.json({ error: ... }, status)` in a handler, require
 the author to switch to `apiError(c, ...)`.
 
-@cc [owner:spolu,label:api] workspace-import-aliases
+@cc [label:api] workspace-import-aliases
 The path tree is deeply nested, so relative imports across the tree get long
 fast. Use the `@front-api/*` alias for anything inside `front-api/` itself
 (middleware, app, helpers), and the existing `@app/*` alias for reaching
@@ -207,7 +207,7 @@ Relative imports (`./sibling`, `../parent`) are still fine for files
 adjacent in the tree, but anything reaching across more than one segment
 should use the alias.
 
-@cc [owner:spolu,label:api] requests-through-hono-context
+@cc [label:api] requests-through-hono-context
 Middleware and handlers read what they need from Hono's `Context` directly
 (`c.req.header(...)`, `c.req.param(...)`, `c.req.raw.headers`) — never
 through a framework-specific request/response pair.
