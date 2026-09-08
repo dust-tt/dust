@@ -59,6 +59,11 @@ function getTerminalLabel(status: LightAgentMessageType["status"]): string {
  *
  * Steps are accumulated by useAgentMessageStream — this component is a pure render.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] preserve-active-message-content
+ * Before completion, non-empty message content must remain visible outside the
+ * collapsible activity section, including while thinking or executing tools.
+ */
 export function InlineActivitySteps({
   agentMessage,
   lastAgentStateClassification,
@@ -159,6 +164,7 @@ export function InlineActivitySteps({
 
   const hasContent =
     completedSteps.length > 0 ||
+    !!agentMessage.content ||
     showActiveThinking ||
     showActiveWriting ||
     activeActions.length > 0 ||
@@ -203,12 +209,12 @@ export function InlineActivitySteps({
       : undefined;
 
   const extraBelowCollapse =
-    showActiveWriting && agentMessage.content ? (
+    !isDone && agentMessage.content ? (
       <div className="mt-3">
         <AgentMessageMarkdown
           content={agentMessage.content}
           owner={owner}
-          streamingState="streaming"
+          streamingState={isWriting ? "streaming" : "none"}
           isLastMessage={false}
         />
       </div>
