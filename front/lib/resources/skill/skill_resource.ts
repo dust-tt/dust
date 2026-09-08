@@ -66,6 +66,7 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { SkillSearchResult } from "@app/types/api/skills";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -4539,6 +4540,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ) {
       await this.update({ instructions, instructionsHtml }, transaction);
     }
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security] search-listing-redaction
+   * Search serialization exposes only listing metadata and the canonical canRead
+   * flag, never instructions, tools, file attachments, or editor grants.
+   */
+  toSearchJSON(auth: Authenticator, score: number): SkillSearchResult {
+    return {
+      editedBy: this.globalSId ? null : this.editedBy,
+      icon: this.icon ?? null,
+      name: this.name,
+      requestedSpaceIds: this.requestedSpaceIds.map((id) =>
+        SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
+      ),
+      sId: this.sId,
+      userFacingDescription: this.userFacingDescription ?? "",
+      canRead: this.canRead(auth),
+      score,
+    };
   }
 
   toJSON(auth: Authenticator): SkillType {

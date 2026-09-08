@@ -18,6 +18,7 @@ const SearchSkillsQuerySchema = z.object({
     .max(MAX_SKILL_SEARCH_RESULTS)
     .optional(),
   cursor: z.string().uuid().optional(),
+  permissionFiltering: z.enum(["strict", "redact_unreadable"]).optional(),
 });
 
 // Mounted at /api/w/:wId/skills/search.
@@ -29,17 +30,31 @@ const app = workspaceApp();
  * skills. The response adds nextCursor (null when exhausted) and per-hit score.
  * Cursors expire after five minutes; an invalid/expired cursor returns 400.
  * ACL filtering may produce a short or empty page with a continuation cursor.
+ * permissionFiltering defaults to strict. Admins may opt into redact_unreadable:
+ * retains listing metadata with canRead=false for unreadable skills; no private
+ * fields (instructions/tools/files) are returned. Non-admins receive 403.
  */
 app.get(
   "/",
   validate("query", SearchSkillsQuerySchema),
   async (ctx): HandlerResult<SearchSkillsResponseBody> => {
     const auth = ctx.get("auth");
-    const { query, limit, cursor } = ctx.req.valid("query");
+    const { query, limit, cursor, permissionFiltering } =
+      ctx.req.valid("query");
+    if (permissionFiltering === "redact_unreadable" && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can search unreadable skills.",
+        },
+      });
+    }
     const result = await searchSkillsForCommandMenu(auth, {
       searchTerm: query,
       limit,
       cursor,
+      permissionFiltering,
     });
 
     if (result.isErr()) {

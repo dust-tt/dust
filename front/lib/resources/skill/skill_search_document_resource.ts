@@ -7,6 +7,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { SkillSearchResult } from "@app/types/api/skills";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
@@ -29,6 +30,27 @@ interface ParsedSkillId {
  * Elasticsearch and workflow side effects deliberately live outside Resources.
  */
 export class SkillSearchDocumentResource {
+  /**
+   * @cc [owner:aubin-tchoi,label:security] authorized-search-document
+   * Callers must establish readability before serializing an indexed document;
+   * this metadata-only serializer does not authorize access itself.
+   */
+  static toSearchJSON(
+    document: SkillSearchDocument,
+    score: number
+  ): SkillSearchResult {
+    return {
+      editedBy: document.edited_by,
+      icon: document.icon,
+      name: document.name,
+      requestedSpaceIds: document.requested_space_ids,
+      sId: document.skill_id,
+      userFacingDescription: document.user_facing_description ?? "",
+      canRead: true,
+      score,
+    };
+  }
+
   private static modelIdToSId({
     id,
     workspaceId,

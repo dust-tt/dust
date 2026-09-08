@@ -32,6 +32,7 @@ import { searchSkillsForCommandMenu } from "@app/lib/api/skills/search";
 import { Authenticator } from "@app/lib/auth";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { SkillSearchCursorError } from "@app/lib/skill_search/cursor";
 import {
@@ -315,5 +316,180 @@ describe("searchSkillsForCommandMenu pagination", () => {
     expect(mockSearch.mock.calls[5][0].query.bool.filter).toContainEqual({
       term: { workspace_id: auth.getNonNullableWorkspace().sId },
     });
+  });
+
+  it("retains admin listing metadata with canonical redaction for spaces, pods, and editors-only skills", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const restrictedPod = await SpaceFactory.project(workspace);
+    const skills: SkillResource[] = [];
+    for (const spaceIds of [[], [restrictedSpace.id], [restrictedPod.id]]) {
+      for (const availability of ["workspace_users", "editors"] as const) {
+        const skill = await SkillFactory.create(auth, {
+          name: `000 redaction ${skills.length}`,
+          instructions: "Secret instructions must never appear in search",
+          userFacingDescription: "Listing description remains visible",
+          requestedSpaceIds: spaceIds,
+          availability,
+          addCurrentUserAsEditor: false,
+        });
+        skills.push(skill);
+      }
+    }
+    const skillIds = skills.map((skill) => skill.sId);
+    const documents = await SkillSearchDocumentResource.fetchSearchDocuments(
+      auth,
+      skillIds
+    );
+    serveDocuments(documents);
+    const result = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      limit: skills.length,
+      permissionFiltering: "redact_unreadable",
+    });
+    assert(result.isOk());
+    const canonical = await SkillResource.fetchByIds(auth, skillIds, {
+      permissionFiltering: "redact_unreadable",
+    });
+    const canonicalById = new Map(
+      canonical.map((skill) => [skill.sId, skill.toJSON(auth)])
+    );
+    expect(result.value.skills).toHaveLength(skills.length);
+    for (const hit of result.value.skills) {
+      const expected = canonicalById.get(hit.sId);
+      assert(expected);
+      expect(hit).toEqual({
+        sId: expected.sId,
+        name: expected.name,
+        userFacingDescription: expected.userFacingDescription,
+        icon: expected.icon,
+        editedBy: expected.editedBy,
+        requestedSpaceIds: expected.requestedSpaceIds,
+        canRead: expected.canRead,
+        score: 1,
+      });
+    }
+    expect(
+      result.value.skills.filter((skill) => skill.canRead === false)
+    ).toHaveLength(4);
+    expect(JSON.stringify(result.value)).not.toContain("Secret instructions");
+    expect(mockSearch.mock.calls[0][0].query.bool.must[0].bool.filter).toEqual([
+      { term: { workspace_id: workspace.sId } },
+      { term: { status: "active" } },
+    ]);
+  });
+
+  it.each([
+    "user",
+    "builder",
+    "manager",
+  ] as const)("refuses redaction to a %s before opening ES", async (role) => {
+    const { auth } = await createPrivateApiMockRequest({ role });
+    await expect(
+      searchSkillsForCommandMenu(auth, {
+        searchTerm: "",
+        permissionFiltering: "redact_unreadable",
+      })
+    ).rejects.toThrow("Only admins");
+    expect(mockOpenPit).not.toHaveBeenCalled();
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "strict",
+    "redact_unreadable",
+  ] as const)("does not reuse a %s cursor in the other permission mode", async (permissionFiltering) => {
+    const { auth } = await createPrivateApiMockRequest({ role: "admin" });
+    serveDocuments([]);
+    const first = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      limit: 1,
+      permissionFiltering,
+    });
+    assert(first.isOk() && first.value.nextCursor);
+    const second = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      cursor: first.value.nextCursor,
+      permissionFiltering:
+        permissionFiltering === "strict" ? "redact_unreadable" : "strict",
+    });
+    assert(second.isErr());
+    expect(second.error).toBeInstanceOf(SkillSearchCursorError);
+    expect(mockSearch).toHaveBeenCalledOnce();
+  });
+
+  it("redacts newly unreadable pods on the next page without dropping their metadata", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    await auth.refresh();
+    const firstDoc = await createDocument(auth, "000 first");
+    const podDoc = await createDocument(auth, "001 pod", pod.id);
+    serveDocuments([firstDoc, podDoc]);
+    const first = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      limit: 1,
+      permissionFiltering: "redact_unreadable",
+    });
+    assert(first.isOk() && first.value.nextCursor);
+    expect(first.value.skills[0]).toMatchObject({
+      sId: firstDoc.skill_id,
+      canRead: true,
+    });
+    await pod.writeGroupPermissions(auth, { members: [], editors: [] });
+    await auth.refresh();
+    const next = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      limit: 1,
+      cursor: first.value.nextCursor,
+      permissionFiltering: "redact_unreadable",
+    });
+    assert(next.isOk());
+    expect(next.value.skills).toHaveLength(1);
+    expect(next.value.skills[0]).toMatchObject({
+      sId: podDoc.skill_id,
+      canRead: false,
+    });
+  });
+
+  it("uses committed metadata and excludes archived and cross-workspace hits in redaction mode", async () => {
+    const { auth } = await createPrivateApiMockRequest({ role: "admin" });
+    const current = await createDocument(auth, "000 current");
+    const archivedSkill = await SkillFactory.create(auth, {
+      name: "001 archived",
+    });
+    const archived = await SkillSearchDocumentResource.fetchSearchDocument(
+      auth,
+      archivedSkill.sId
+    );
+    assert(archived);
+    await archivedSkill.archive(auth);
+    const other = await createPrivateApiMockRequest({ role: "admin" });
+    const foreign = await createDocument(other.auth, "002 foreign");
+    serveDocuments([
+      {
+        ...current,
+        user_facing_description: "Stale description",
+        instructions: "Never return this",
+      },
+      archived,
+      foreign,
+    ]);
+    const result = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      limit: 50,
+      permissionFiltering: "redact_unreadable",
+    });
+    assert(result.isOk());
+    const custom = result.value.skills.filter((skill) =>
+      skill.sId.startsWith("skl_")
+    );
+    expect(custom).toEqual([
+      SkillSearchDocumentResource.toSearchJSON(current, 1),
+    ]);
+    expect(JSON.stringify(result.value)).not.toContain("Never return this");
   });
 });
