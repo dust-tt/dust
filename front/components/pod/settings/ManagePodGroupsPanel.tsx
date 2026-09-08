@@ -1,6 +1,6 @@
 import type { GroupRowData } from "@app/components/groups/GroupSelectionTable";
 import { GroupSelectionTable } from "@app/components/groups/GroupSelectionTable";
-import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
+import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { GroupType } from "@app/types/groups";
@@ -130,13 +130,13 @@ export function ManagePodGroupsPanel({
   const handleSave = async () => {
     setIsSaving(true);
 
-    const dimensions = spaceMembershipDimensions(pod);
+    const properties = spaceMembershipProperties(pod);
     const updatedSpace = await doUpdateSpace(
       pod,
       {
         isRestricted: pod.isRestricted,
         name: pod.name,
-        ...dimensions,
+        ...properties,
         groupIds: Array.from(selectedGroupIds).filter(
           (id) => !editorGroupIds.has(id)
         ),

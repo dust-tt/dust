@@ -19,7 +19,7 @@ import {
 } from "@app/lib/api/projects/constants";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
+import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
@@ -382,7 +382,7 @@ export function PodSettingsTab({
       pod,
       {
         isRestricted,
-        ...spaceMembershipDimensions(pod),
+        ...spaceMembershipProperties(pod),
         name: newPodName,
       },
       {
@@ -474,7 +474,7 @@ export function PodSettingsTab({
       pod,
       {
         isRestricted: !newIsOpen,
-        ...spaceMembershipDimensions(pod),
+        ...spaceMembershipProperties(pod),
         name: pod.name,
       },
       {

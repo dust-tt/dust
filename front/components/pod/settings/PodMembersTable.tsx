@@ -1,6 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
+import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
@@ -84,7 +84,7 @@ export function PodMembersTable({
         pod,
         {
           isRestricted: pod.isRestricted,
-          ...spaceMembershipDimensions(pod),
+          ...spaceMembershipProperties(pod),
           memberIds: updatedMembers
             .filter((member) => !member.isEditor)
             .map((member) => member.sId),
@@ -136,7 +136,7 @@ export function PodMembersTable({
         pod,
         {
           isRestricted: pod.isRestricted,
-          ...spaceMembershipDimensions(pod),
+          ...spaceMembershipProperties(pod),
           memberIds: updatedMembers
             .filter((member) => !member.isEditor)
             .map((member) => member.sId),

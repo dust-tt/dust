@@ -4,7 +4,7 @@ import type {
 } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
+import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
@@ -118,7 +118,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         {
           isRestricted: props.space.isRestricted,
           // Only the individual members change here; the space's groups are passed through.
-          ...spaceMembershipDimensions(props.space),
+          ...spaceMembershipProperties(props.space),
           memberIds,
           editorIds,
           name: props.space.name,

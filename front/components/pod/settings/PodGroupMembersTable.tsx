@@ -1,6 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
-import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
+import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
   RichSpaceType,
@@ -43,17 +43,17 @@ export function PodGroupMembersTable({
 
   const removeGroup = useCallback(
     async (groupId: string) => {
-      const dimensions = spaceMembershipDimensions(pod);
+      const properties = spaceMembershipProperties(pod);
 
-      // Only the group dimensions change; the individual members are passed through.
+      // Only the group properties change; the individual members are passed through.
       const updated = await doUpdate(
         pod,
         {
           isRestricted: pod.isRestricted,
           name: pod.name,
-          ...dimensions,
-          groupIds: dimensions.groupIds.filter((sId) => sId !== groupId),
-          editorGroupIds: dimensions.editorGroupIds.filter(
+          ...properties,
+          groupIds: properties.groupIds.filter((sId) => sId !== groupId),
+          editorGroupIds: properties.editorGroupIds.filter(
             (sId) => sId !== groupId
           ),
         },

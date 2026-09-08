@@ -65,11 +65,11 @@ export const isPrivateSpacesLimitReached = (
     plan.limits.vaults.maxVaults;
 
 /**
- * @cc [owner:fabiencelier,label:product] membership-dimensions-mirror-space
- * Returns the space's four membership dimensions as the update endpoint takes them, so a caller
- * that spreads the result and overrides only the dimensions it edits leaves the others unchanged.
+ * @cc [owner:fabiencelier,label:product] membership-properties-mirror-space
+ * Returns the space's four membership properties as the update endpoint takes them, so a caller
+ * that spreads the result and overrides only the properties it edits leaves the others unchanged.
  */
-export const spaceMembershipDimensions = (space: RichSpaceType) => ({
+export const spaceMembershipProperties = (space: RichSpaceType) => ({
   memberIds: space.members.filter((m) => !m.isEditor).map((m) => m.sId),
   editorIds: space.members.filter((m) => m.isEditor).map((m) => m.sId),
   groupIds: space.groups.filter((g) => g.role === "member").map((g) => g.sId),
