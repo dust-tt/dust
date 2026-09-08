@@ -130,6 +130,21 @@ const app = workspaceApp();
  *                           type: array
  *                           items:
  *                             type: object
+ *                         groups:
+ *                           type: array
+ *                           description: The groups given access to the space, with the role their grant confers.
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               sId:
+ *                                 type: string
+ *                               name:
+ *                                 type: string
+ *                               kind:
+ *                                 type: string
+ *                               role:
+ *                                 type: string
+ *                                 enum: [member, editor]
  *                         description:
  *                           type: string
  *                           nullable: true
@@ -310,6 +325,10 @@ app.get(
       "sId"
     );
 
+    // The groups given access to the space, alongside its individual members: a space's members
+    // are the two put together.
+    const groups = await space.toGroupAccessesJSON(auth);
+
     const meta = space.isProject()
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
@@ -327,6 +346,7 @@ app.get(
         isMember: space.isMember(auth),
         isEditor: auth.can("admin", space),
         members: currentMembers,
+        groups,
         description: meta?.description ?? null,
         archivedAt: meta?.archivedAt?.getTime() ?? null,
         // Automated task generation removed; keep fields hardcoded for API compat.

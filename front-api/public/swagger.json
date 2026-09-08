@@ -9890,6 +9890,31 @@
                                 "type": "object"
                               }
                             },
+                            "groups": {
+                              "type": "array",
+                              "description": "The groups given access to the space, with the role their grant confers.",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "sId": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "type": "string",
+                                    "enum": [
+                                      "member",
+                                      "editor"
+                                    ]
+                                  }
+                                }
+                              }
+                            },
                             "description": {
                               "type": "string",
                               "nullable": true
