@@ -172,13 +172,7 @@ export type ModelConfigurationType = Omit<
     // If set, model is available if feature flag is enabled.
     featureFlag?: WhitelistableFeature;
   };
-  // Mirror image of `availableIfOneOf`: an opt-out that pulls a model back from
-  // a workspace without touching its availability conditions.
-  // If undefined or empty, no opt-out applies.
-  // If defined, model is unavailable as soon as it satisfies one of the
-  // conditions, whatever `availableIfOneOf` and the plan would grant.
   unavailableIfOneOf?: {
-    // If set, model is unavailable if feature flag is enabled.
     featureFlag?: WhitelistableFeature;
   };
   // Pre-requisite: must be available.
