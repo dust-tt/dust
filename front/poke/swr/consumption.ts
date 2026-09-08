@@ -11,6 +11,7 @@ import type {
   UseConsumptionTopParams,
 } from "@app/hooks/useConsumptionTop";
 import { toConsumptionTopRows } from "@app/hooks/useConsumptionTop";
+import type { ConsumptionGranularity } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
@@ -78,6 +79,7 @@ function toPokeConsumptionTopRows(
 
 type ConsumptionTimeseriesBody = ConsumptionBody & {
   mode: ConsumptionTimeseriesMode;
+  granularity?: ConsumptionGranularity;
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
 };
@@ -144,6 +146,7 @@ export function usePokeConsumptionFacets({
 export function usePokeConsumptionTimeseries({
   workspaceId,
   period,
+  granularity,
   mode,
   breakdownBy,
   breakdownCount,
@@ -157,6 +160,7 @@ export function usePokeConsumptionTimeseries({
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     filter: normalizedConsumptionFilter(filter),
     mode,
+    granularity,
     breakdownBy,
     breakdownCount,
   };
