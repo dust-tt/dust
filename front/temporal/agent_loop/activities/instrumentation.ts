@@ -12,7 +12,12 @@ export const METRICS = {
   STEP_COMPLETIONS: "agent_loop_step.completions",
   STEP_DURATION: "agent_loop_step.duration_ms",
   STEP_STARTS: "agent_loop_step.starts",
+  TIME_TO_ACTIONS_CREATED: "agent_loop_step.time_to_actions_created",
+  TIME_TO_CONVERSATION_RENDERED: "agent_loop_step.time_to_conversation_rendered",
+  TIME_TO_DATA_LOADED: "agent_loop_step.time_to_data_loaded",
   TIME_TO_PROVIDER_CALL: "agent_loop_step.time_to_provider_call",
+  TIME_TO_STREAM_DONE: "agent_loop_step.time_to_stream_done",
+  TIME_TO_TOOLS_RESOLVED: "agent_loop_step.time_to_tools_resolved",
 } as const;
 
 /**
