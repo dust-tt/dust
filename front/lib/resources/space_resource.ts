@@ -24,6 +24,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
+import type { SpaceGroupAccessType } from "@app/types/api/spaces";
 import type {
   GrantSpec,
   GrantType,
@@ -108,6 +109,12 @@ export class SpaceGroupReference {
     return this.grantType === "reader";
   }
 }
+
+// A group attached to a space, with the role its grant confers.
+export type SpaceGroupAccess = {
+  group: GroupResource;
+  role: "member" | "editor";
+};
 
 // Space membership resolved from the caller's governance grants (see `SpaceResource.isMember`). The
 // membership verb differs by space kind:
@@ -1094,11 +1101,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * whole desired state — a dimension it leaves out is emptied, not kept — so a client that only
    * knows about members clears the groups, and the other way around, which is what switching a
    * space from one to the other has always done.
-   *
-   * The two used to be exclusive, selected by `managementMode`: a space's members were either its
-   * manual list or the members of its groups. They are now merged, and a space's members are its
-   * manual list plus the members of every group attached to it. `managementMode` is still accepted
-   * (and ignored) so that clients sending it are not broken.
+   */
+  /**
+   * @cc [owner:fabiencelier,label:product] membership-update-is-whole-state
+   * `params` is the space's whole desired membership: `memberIds`, `editorIds`, `groupIds` and
+   * `editorGroupIds` are each overwritten, and a dimension `params` leaves out is emptied.
    */
   async updatePermissions(
     auth: Authenticator,
@@ -1926,6 +1933,53 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return { memberGroups, editorGroups };
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:backend] attached-manageable-groups-only
+   * Returns exactly one entry per `provisioned` or `regular_manual` group holding a grant on the
+   * space, and never one for the space's own `regular_auto` groups or the workspace global group.
+   */
+  async fetchAttachedGroupAccesses(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<SpaceGroupAccess[]> {
+    const references = await this.fetchGrantReferences(transaction);
+    const groups = await this.fetchGroupResources(auth, {
+      groupReferences: references,
+      transaction,
+    });
+
+    // `fetchGroupResources` preserves the order of the references it is given.
+    return removeNulls(
+      references.map((reference, index) => {
+        const group = groups[index];
+        if (!isManageableGroupKind(group.kind)) {
+          return null;
+        }
+        return {
+          group,
+          role:
+            reference.grantType === SPACE_EDITOR_GRANT_TYPE
+              ? ("editor" as const)
+              : ("member" as const),
+        };
+      })
+    );
+  }
+
+  // The space's attached groups as the API returns them.
+  async toGroupAccessesJSON(
+    auth: Authenticator
+  ): Promise<SpaceGroupAccessType[]> {
+    const accesses = await this.fetchAttachedGroupAccesses(auth);
+
+    return accesses.map(({ group, role }) => ({
+      sId: group.sId,
+      name: group.name,
+      kind: group.kind,
+      role,
+    }));
+  }
+
   // Whether any group is attached to this space, i.e. part of its access comes from a group's
   // membership rather than from the space's own member list.
   async hasAttachedGroups(auth: Authenticator): Promise<boolean> {
@@ -2236,15 +2290,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }));
   }
 
-  // Writes this space's `group_permissions` rows from the roles its groups confer (see
-  // `spaceGroupRoles`). The space mutation paths call this to keep the table in sync as the source of
-  // truth. Idempotent — it clears the space's instance grants then re-inserts the desired set in one
-  // transaction.
-  //
-  // The caller passes the space's groups split into `members` and `editors` (the workspace global
-  // group, attached to unrestricted spaces, goes in `members`) rather than this method loading them:
-  // callers mutate the group set in-transaction so a fetch would be stale anyway. `editors` only
-  // applies to projects.
+  /**
+   * Writes this space's `group_permissions` rows from the roles its groups confer (see
+   * `spaceGroupRoles`). The space mutation paths call this to keep the table in sync as the source
+   * of truth. Idempotent — it clears the space's instance grants then re-inserts the desired set
+   * in one transaction.
+   *
+   * The caller passes the space's groups split into `members` and `editors` (the workspace global
+   * group, attached to unrestricted spaces, goes in `members`) rather than this method loading
+   * them: callers mutate the group set in-transaction so a fetch would be stale anyway. `editors`
+   * only applies to projects.
+   */
+  /**
+   * @cc [owner:fabiencelier,label:backend] grants-rewritten-wholesale
+   * Replaces the space's instance grants with the ones `members` and `editors` confer: every grant
+   * row is deleted and re-inserted, so no grant row survives a call and `createdAt` is the time of
+   * the last call rather than when the group was first given access.
+   */
   async writeGroupPermissions(
     auth: Authenticator,
     {

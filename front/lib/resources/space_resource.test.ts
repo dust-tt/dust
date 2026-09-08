@@ -1772,6 +1772,86 @@ describe("SpaceResource", () => {
     });
   });
 
+  describe("fetchAttachedGroupAccesses", () => {
+    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+    let adminAuth: Authenticator;
+    let adminUser: UserResource;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      adminUser = await UserFactory.basic();
+      const { globalGroup, systemGroup } =
+        await GroupFactory.defaults(workspace);
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+        globalGroup,
+        systemGroup,
+      });
+      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+    });
+
+    it("returns the attached groups with the role their grant confers", async () => {
+      const pod = await SpaceFactory.project(workspace, adminUser.id);
+      const memberGroup = await GroupFactory.provisioned(workspace, "Dev team");
+      const editorGroup = await GroupFactory.regularManual(workspace, "Leads");
+
+      const res = await pod.updatePermissions(adminAuth, {
+        name: pod.name,
+        isRestricted: true,
+        editorIds: [adminUser.sId],
+        groupIds: [memberGroup.sId],
+        editorGroupIds: [editorGroup.sId],
+      });
+      expect(res.isOk()).toBe(true);
+
+      const accesses = await pod.fetchAttachedGroupAccesses(adminAuth);
+      expect(
+        accesses
+          .map(({ group, role }) => ({ sId: group.sId, role }))
+          .sort((a, b) => a.sId.localeCompare(b.sId))
+      ).toEqual(
+        [
+          { sId: memberGroup.sId, role: "member" },
+          { sId: editorGroup.sId, role: "editor" },
+        ].sort((a, b) => a.sId.localeCompare(b.sId))
+      );
+    });
+
+    it("excludes the space's own groups and the workspace global group", async () => {
+      // An open space attaches the global group as a viewer, and every space has its own
+      // regular_auto member group — neither is a group an admin picked.
+      const space = await SpaceFactory.regular(workspace);
+      const attachedGroup = await GroupFactory.provisioned(workspace, "Dev");
+
+      const res = await space.updatePermissions(adminAuth, {
+        name: space.name,
+        isRestricted: false,
+        memberIds: [adminUser.sId],
+        groupIds: [attachedGroup.sId],
+      });
+      expect(res.isOk()).toBe(true);
+
+      const accesses = await space.fetchAttachedGroupAccesses(adminAuth);
+      expect(accesses.map(({ group }) => group.sId)).toEqual([
+        attachedGroup.sId,
+      ]);
+    });
+
+    it("returns nothing for a space no group is attached to", async () => {
+      const space = await SpaceFactory.regular(workspace);
+
+      expect(await space.fetchAttachedGroupAccesses(adminAuth)).toEqual([]);
+    });
+  });
+
   describe("isRestricted", () => {
     let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
     let adminAuth: Authenticator;
