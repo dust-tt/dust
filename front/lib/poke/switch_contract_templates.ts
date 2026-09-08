@@ -58,6 +58,8 @@ export type SwitchContractTemplate = {
   netPaymentTermsDays?: number;
   defaultDiscountPercent?: number;
   usageCapCredits?: number;
+  // Default per-user workspace credit pool monthly limit (credits).
+  defaultPoolCapCredits?: number;
   paygEnabled?: boolean;
   autoSeatUpgradeEnabled?: boolean;
   topUpEnabled?: boolean;
@@ -114,6 +116,7 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     startMode: "select",
     duration: { value: 2, unit: "weeks" },
+    defaultPoolCapCredits: 10000,
     seats: {
       workspace_yearly: { selected: true, rate: 0 },
     },
@@ -132,6 +135,7 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     startMode: "select",
     duration: { value: 2, unit: "months" },
+    defaultPoolCapCredits: 10000,
     // No rate override: keep the package's standard workspace-seat rate.
     seats: {
       workspace_yearly: { selected: true },

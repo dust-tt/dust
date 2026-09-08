@@ -537,6 +537,9 @@ export default function SwitchContractDialog({
       if (template.usageCapCredits !== undefined) {
         form.setValue("usageCapCredits", template.usageCapCredits);
       }
+      if (template.defaultPoolCapCredits !== undefined) {
+        form.setValue("defaultPoolCapCredits", template.defaultPoolCapCredits);
+      }
       if (template.paygEnabled !== undefined) {
         form.setValue("paygEnabled", template.paygEnabled);
       }
