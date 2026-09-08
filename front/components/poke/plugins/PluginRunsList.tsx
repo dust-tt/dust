@@ -20,11 +20,6 @@ interface PluginRunItemProps {
   onClick: () => void;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] sidebar-run-history
- * Run metadata wraps and the details action stacks below it in containers narrower
- * than 32rem.
- */
 function PluginRunItem({ run, onClick }: PluginRunItemProps) {
   return (
     <div

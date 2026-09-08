@@ -30,8 +30,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
   Check,
   ChevronDown,
   Chip,
@@ -54,6 +52,10 @@ import {
   LangfuseLogo,
   LinkWrapper,
   Markdown,
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
   Spinner,
   TemporalLogo,
   useCopyToClipboard,
@@ -846,12 +848,6 @@ function getDatadogSandboxLogsUrl(conversationId: string): string {
   return `https://app.datadoghq.eu/logs?query=${encodeURIComponent(query)}&cols=service,@timestamp_utc&from_ts=${fromMs}&to_ts=${nowMs}&live=true`;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] conversation-layout
- * Messages grow to 64rem and center when both side rails fit. Plugins sit to the left
- * from 2xl and stack above below it; inspectors sit to the right from xl. Display
- * controls and the active-messages banner share the message column's width.
- */
 export function ConversationPage() {
   const owner = useWorkspace();
 
@@ -1323,116 +1319,117 @@ export function ConversationPage() {
                 />
               </div>
             </aside>
-            <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-separator pb-4">
-                <h4 className="text-base font-semibold">Messages</h4>
-                <ButtonsSwitchList
-                  value={useMarkdown ? "markdown" : "raw"}
-                  onValueChange={(value) =>
-                    setUseMarkdown(value === "markdown")
-                  }
-                  size="sm"
-                >
-                  <ButtonsSwitch
-                    value="raw"
-                    icon={Code02}
-                    label={useMarkdown ? undefined : "Raw text"}
-                    tooltip="Raw text"
-                  />
-                  <ButtonsSwitch
-                    value="markdown"
-                    icon={File02}
-                    label={useMarkdown ? "Markdown" : undefined}
-                    tooltip="Markdown"
-                  />
-                </ButtonsSwitchList>
-              </div>
-              {(pendingUserCount > 0 || createdAgentCount > 0) && (
-                <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
-                  <span className="text-sm font-medium text-foreground">
-                    Active messages
-                  </span>
-                  {pendingUserCount > 0 && (
-                    <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                      <span className="font-mono tabular-nums">
-                        {pendingUserCount}
-                      </span>
-                      user message
-                      {pendingUserCount > 1 ? "s" : ""} queued
-                    </span>
-                  )}
-                  {createdAgentCount > 0 && (
-                    <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                      <Spinner size="xs" />
-                      <span className="font-mono tabular-nums">
-                        {createdAgentCount}
-                      </span>
-                      agent message
-                      {createdAgentCount > 1 ? "s" : ""} generating
-                    </span>
-                  )}
-                </div>
-              )}
-              {conversation.content.map((messages, i) => {
-                return (
-                  <div key={`messages-${i}`} className="flex flex-col gap-4">
-                    {messages.map((m, j) => {
-                      switch (m.type) {
-                        case "agent_message": {
-                          return (
-                            <AgentMessageView
-                              key={`message-${i}-${j}`}
-                              conversationId={conversationId}
-                              isConsumptionOpen={activeMessageId === m.sId}
-                              message={m}
-                              onConsumptionOpenChange={(open) =>
-                                setMessageOpen(m.sId, open)
-                              }
-                              onConsumptionPanelExitComplete={() =>
-                                completeMessagePanelExit(m.sId)
-                              }
-                              onConsumptionPanelRefChange={(element) =>
-                                handleMessagePanelRefChange(m.sId, element)
-                              }
-                              useMarkdown={useMarkdown}
-                              owner={owner}
-                              langfuseUiBaseUrl={langfuseUiBaseUrl}
-                            />
-                          );
-                        }
-                        case "user_message": {
-                          return (
-                            <UserMessageView
-                              message={m}
-                              key={`message-${i}-${j}`}
-                              useMarkdown={useMarkdown}
-                            />
-                          );
-                        }
-                        case "content_fragment": {
-                          return (
-                            <ContentFragmentView
-                              message={m}
-                              key={`message-${i}-${j}`}
-                            />
-                          );
-                        }
-                        case "compaction_message": {
-                          return (
-                            <CompactionMessageView
-                              message={m}
-                              key={`message-${i}-${j}`}
-                            />
-                          );
-                        }
-                        default:
-                          assertNeverAndIgnore(m);
-                      }
-                    })}
+            <NavTabPill
+              value={useMarkdown ? "markdown" : "raw"}
+              onValueChange={(value) => setUseMarkdown(value === "markdown")}
+              asChild
+            >
+              <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-separator pb-4">
+                  <h4 className="text-base font-semibold">Messages</h4>
+                  <div className="rounded-2xl border border-border-dark bg-background p-1">
+                    <NavTabPillList>
+                      <NavTabPillTrigger value="raw" icon={Code02}>
+                        Raw text
+                      </NavTabPillTrigger>
+                      <NavTabPillTrigger value="markdown" icon={File02}>
+                        Markdown
+                      </NavTabPillTrigger>
+                    </NavTabPillList>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+                <NavTabPillContent value={useMarkdown ? "markdown" : "raw"}>
+                  {(pendingUserCount > 0 || createdAgentCount > 0) && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
+                      <span className="text-sm font-medium text-foreground">
+                        Active messages
+                      </span>
+                      {pendingUserCount > 0 && (
+                        <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                          <span className="font-mono tabular-nums">
+                            {pendingUserCount}
+                          </span>
+                          user message
+                          {pendingUserCount > 1 ? "s" : ""} queued
+                        </span>
+                      )}
+                      {createdAgentCount > 0 && (
+                        <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                          <Spinner size="xs" />
+                          <span className="font-mono tabular-nums">
+                            {createdAgentCount}
+                          </span>
+                          agent message
+                          {createdAgentCount > 1 ? "s" : ""} generating
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {conversation.content.map((messages, i) => {
+                    return (
+                      <div
+                        key={`messages-${i}`}
+                        className="flex flex-col gap-4"
+                      >
+                        {messages.map((m, j) => {
+                          switch (m.type) {
+                            case "agent_message": {
+                              return (
+                                <AgentMessageView
+                                  key={`message-${i}-${j}`}
+                                  conversationId={conversationId}
+                                  isConsumptionOpen={activeMessageId === m.sId}
+                                  message={m}
+                                  onConsumptionOpenChange={(open) =>
+                                    setMessageOpen(m.sId, open)
+                                  }
+                                  onConsumptionPanelExitComplete={() =>
+                                    completeMessagePanelExit(m.sId)
+                                  }
+                                  onConsumptionPanelRefChange={(element) =>
+                                    handleMessagePanelRefChange(m.sId, element)
+                                  }
+                                  useMarkdown={useMarkdown}
+                                  owner={owner}
+                                  langfuseUiBaseUrl={langfuseUiBaseUrl}
+                                />
+                              );
+                            }
+                            case "user_message": {
+                              return (
+                                <UserMessageView
+                                  message={m}
+                                  key={`message-${i}-${j}`}
+                                  useMarkdown={useMarkdown}
+                                />
+                              );
+                            }
+                            case "content_fragment": {
+                              return (
+                                <ContentFragmentView
+                                  message={m}
+                                  key={`message-${i}-${j}`}
+                                />
+                              );
+                            }
+                            case "compaction_message": {
+                              return (
+                                <CompactionMessageView
+                                  message={m}
+                                  key={`message-${i}-${j}`}
+                                />
+                              );
+                            }
+                            default:
+                              assertNeverAndIgnore(m);
+                          }
+                        })}
+                      </div>
+                    );
+                  })}
+                </NavTabPillContent>
+              </div>
+            </NavTabPill>
           </div>
         </div>
       </div>

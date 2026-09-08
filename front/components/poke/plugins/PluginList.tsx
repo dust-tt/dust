@@ -36,11 +36,6 @@ interface PluginListProps {
   pluginResourceTarget: PluginResourceTarget;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] plugin-panel-height
- * When plugins are available, the panel height follows its header and card rows
- * without reserving extra empty space below the cards.
- */
 export function PluginList({ pluginResourceTarget }: PluginListProps) {
   const { plugins } = usePokeListPluginForResourceType({
     pluginResourceTarget,
