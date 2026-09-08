@@ -1113,7 +1113,20 @@ export function UsagePage() {
             />
           ) : (
             <div className="flex items-center justify-between">
-              <Page.Header title="Usage" />
+              <Page.Header
+                title={
+                  <div className="flex w-full items-center gap-4">
+                    <Page.H variant="h3">Usage</Page.H>
+                    <Button
+                      label="Breakdown in analytics"
+                      iconRight={LinkExternal01}
+                      size="xs"
+                      variant="highlight-ghost"
+                      href={`/w/${owner.sId}/analytics/consumption`}
+                    />
+                  </div>
+                }
+              />
               {!isNewUsagePage &&
                 isCreditPriced &&
                 usageSettings.topUpEnabled &&
