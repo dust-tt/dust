@@ -378,8 +378,8 @@ export function CreateOrUpdateConnectionBigQueryModal({
                         <Tooltip
                           label={
                             <>
-                              This location contains {tables.length} tables that
-                              can be connected :{" "}
+                              This location contains connectable tables, for
+                              example:{" "}
                               <span className="text-xs text-muted-foreground">
                                 {tables.join(", ")}
                               </span>
