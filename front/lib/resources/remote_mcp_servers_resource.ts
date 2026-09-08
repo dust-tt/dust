@@ -647,11 +647,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     this.heavyAttributes = { ...this.heavyAttributes, lastError };
   }
 
-  /**
-   * @cc [owner:aubin-tchoi,label:error-handling] preserve-oauth-discovery-cause
-   * Failures caused by thrown discovery or registration errors retain the normalized
-   * exception as `cause` for server-side logging, separate from the client-facing message.
-   */
   static async discoverOAuthMetadata({
     serverUrl,
     provider,
