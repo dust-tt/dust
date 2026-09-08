@@ -25,6 +25,7 @@ import {
   useUpdatePodMetadata,
 } from "@app/lib/swr/pods";
 import { useSkills } from "@app/lib/swr/skill_configurations";
+import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
@@ -373,8 +374,7 @@ export function PodSettingsTab({
       pod,
       {
         isRestricted,
-        memberIds: podMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-        editorIds: podMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        ...spaceMembershipDimensions(pod),
         name: newPodName,
       },
       {
@@ -466,8 +466,7 @@ export function PodSettingsTab({
       pod,
       {
         isRestricted: !newIsOpen,
-        memberIds: podMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-        editorIds: podMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        ...spaceMembershipDimensions(pod),
         name: pod.name,
       },
       {
@@ -484,7 +483,6 @@ export function PodSettingsTab({
     doUpdate,
     isOpen,
     mutateRestrictionImpact,
-    podMembers,
     pod,
     mutatePodInfo,
     restrictionImpact,

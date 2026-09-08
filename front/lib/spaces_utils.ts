@@ -1,3 +1,4 @@
+import type { RichSpaceType } from "@app/types/api/spaces";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { PlanType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -62,3 +63,17 @@ export const isPrivateSpacesLimitReached = (
   plan.limits.vaults.maxVaults !== -1 &&
   spaces.filter((s) => s.kind === "regular").length >=
     plan.limits.vaults.maxVaults;
+
+/**
+ * @cc [owner:fabiencelier,label:product] membership-dimensions-mirror-space
+ * Returns the space's four membership dimensions as the update endpoint takes them, so a caller
+ * that spreads the result and overrides only the dimensions it edits leaves the others unchanged.
+ */
+export const spaceMembershipDimensions = (space: RichSpaceType) => ({
+  memberIds: space.members.filter((m) => !m.isEditor).map((m) => m.sId),
+  editorIds: space.members.filter((m) => m.isEditor).map((m) => m.sId),
+  groupIds: space.groups.filter((g) => g.role === "member").map((g) => g.sId),
+  editorGroupIds: space.groups
+    .filter((g) => g.role === "editor")
+    .map((g) => g.sId),
+});

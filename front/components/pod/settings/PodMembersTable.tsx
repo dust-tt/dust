@@ -1,5 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
@@ -63,6 +64,9 @@ export function PodMembersTable({
   const removeMember = useCallback(
     async (userId: string) => {
       const updatedMembers = selectedMembers.filter((m) => m.sId !== userId);
+      // The individual editor list must not be emptied, even when a group is attached to the Pod
+      // as an editor: a group's membership can drop to zero — in its IdP, for a provisioned one —
+      // leaving the Pod with nobody able to administrate it.
       if (
         !pod.isAdminControlled &&
         selectedMembers.some((m) => m.isEditor) &&
@@ -80,6 +84,7 @@ export function PodMembersTable({
         pod,
         {
           isRestricted: pod.isRestricted,
+          ...spaceMembershipDimensions(pod),
           memberIds: updatedMembers
             .filter((member) => !member.isEditor)
             .map((member) => member.sId),
@@ -131,6 +136,7 @@ export function PodMembersTable({
         pod,
         {
           isRestricted: pod.isRestricted,
+          ...spaceMembershipDimensions(pod),
           memberIds: updatedMembers
             .filter((member) => !member.isEditor)
             .map((member) => member.sId),
