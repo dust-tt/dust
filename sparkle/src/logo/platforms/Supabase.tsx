@@ -13,25 +13,25 @@ const SvgSupabase = (props: SVGProps<SVGSVGElement>) => (
     <g clipPath="url(#Supabase_svg__a)">
       <path
         fill="url(#Supabase_svg__b)"
-        d="M13.605 21.52c-.498.637-1.51.288-1.521-.526L11.908 9.09h7.883c1.427 0 2.224 1.674 1.336 2.81z"
+        d="M13.69 22.471c-.525.701-1.59.317-1.602-.578L11.903 8.8h8.298c1.502 0 2.34 1.842 1.406 3.09z"
       />
       <path
         fill="url(#Supabase_svg__c)"
         fillOpacity={0.2}
-        d="M13.605 21.52c-.498.637-1.51.288-1.521-.526L11.908 9.09h7.883c1.427 0 2.224 1.674 1.336 2.81z"
+        d="M13.69 22.471c-.525.701-1.59.317-1.602-.578L11.903 8.8h8.298c1.502 0 2.34 1.842 1.406 3.09z"
       />
       <path
         fill="#3ECF8E"
-        d="M10.4 2.367c.498-.638 1.508-.289 1.52.525l.077 11.903H4.214c-1.428 0-2.224-1.674-1.337-2.81z"
+        d="M10.315 1.403c.525-.7 1.589-.317 1.601.578l.081 13.094H3.804c-1.503 0-2.341-1.842-1.407-3.091z"
       />
     </g>
     <defs>
       <linearGradient
         id="Supabase_svg__b"
-        x1={11.908}
-        x2={18.945}
-        y1={11.73}
-        y2={14.637}
+        x1={11.903}
+        x2={19.403}
+        y1={11.703}
+        y2={14.667}
         gradientUnits="userSpaceOnUse"
       >
         <stop stopColor="#249361" />
@@ -39,17 +39,17 @@ const SvgSupabase = (props: SVGProps<SVGSVGElement>) => (
       </linearGradient>
       <linearGradient
         id="Supabase_svg__c"
-        x1={8.802}
-        x2={12.074}
-        y1={7.412}
-        y2={13.477}
+        x1={8.634}
+        x2={12.318}
+        y1={6.953}
+        y2={13.489}
         gradientUnits="userSpaceOnUse"
       >
         <stop />
         <stop offset={1} stopOpacity={0} />
       </linearGradient>
       <clipPath id="Supabase_svg__a">
-        <path fill="#fff" d="M2.5 2h19v20h-19z" />
+        <path fill="#fff" d="M2 1h20v22H2z" />
       </clipPath>
     </defs>
   </svg>

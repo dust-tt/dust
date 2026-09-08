@@ -10,7 +10,7 @@ const SvgImage = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <rect width={20} height={16} x={2} y={4} fill="#FFD046" rx={2} />
+    <rect width={20} height={16} x={2} y={4} fill="#FFD046" rx={3} />
     <circle cx={7} cy={9} r={2} fill="#fff" />
     <path fill="#fff" d="m11 10-6 8h15v-8l-2-2-4 5z" />
   </svg>

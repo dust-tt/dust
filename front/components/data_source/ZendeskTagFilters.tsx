@@ -1,4 +1,3 @@
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   Button,
   ContextItem,
@@ -8,7 +7,6 @@ import {
   TabsTrigger,
   XClose,
   ZendeskLogo,
-  ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -40,7 +38,6 @@ export function ZendeskTagFilters({
   loading,
   placeholder = "Enter tag name",
 }: ZendeskTagFiltersProps) {
-  const { isDark } = useTheme();
   const [inputValue, setInputValue] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<"include" | "exclude">("exclude");
@@ -111,9 +108,7 @@ export function ZendeskTagFilters({
   return (
     <ContextItem
       title={title}
-      visual={
-        <ContextItem.Visual visual={isDark ? ZendeskWhiteLogo : ZendeskLogo} />
-      }
+      visual={<ContextItem.Visual visual={ZendeskLogo} />}
       action={
         <div className="flex flex-col gap-2">
           {isEditing && (

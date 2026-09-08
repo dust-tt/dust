@@ -13,7 +13,7 @@ const SvgGoogleSpreadsheet = (props: SVGProps<SVGSVGElement>) => (
     <path fill="#E2F78C" d="m14 2 6 6h-6z" />
     <path
       fill="#6AA668"
-      d="M4 4a2 2 0 0 1 2-2h8v4a2 2 0 0 0 2 2h4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"
+      d="M4 5a3 3 0 0 1 3-3h7v3a3 3 0 0 0 3 3h3v11a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"
     />
     <path fill="#fff" d="M8 11h8v1H8z" />
     <path fill="#fff" d="M15 11h1v7h-1zM11.5 11h1v7h-1zM8 11h1v7H8z" />

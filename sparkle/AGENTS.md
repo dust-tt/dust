@@ -80,12 +80,77 @@ exception lives in `svgr-v2-stroke-icon-template.js`.
 
 ## Regenerating
 
-`./build_icons.sh` starts by deleting `src/icons/v2-stroke`, `src/logo/platforms` and
-`src/logo/dust`, then regenerates each from its SVG source directory and
-runs `biome check --write`. Any generated module without a matching SVG source is therefore
-destroyed by a build. Before running it, confirm every export in `src/icons/v2-stroke/index.ts` has
-a source file — several icons have historically been hand-written TSX with no SVG, and they must be
-exported from Figma first.
+`./build_icons.sh` deletes `src/icons/v2-stroke` and `src/logo/dust` outright, clears the
+generated files in `src/logo/platforms` individually so hand-authored `registry.ts` survives,
+then regenerates each from its SVG source directory and runs `biome check --write`. Any generated
+module without a matching SVG source is therefore destroyed by a build. Before running it, confirm
+every export in `src/icons/v2-stroke/index.ts` has a source file — several icons have historically
+been hand-written TSX with no SVG, and they must be exported from Figma first.
+
+# Platform logos
+
+The design source of truth is the Figma file
+[Sparkle Assets](https://www.figma.com/design/wh2qXEXuhncAbbhTAbrjDS/Sparkle-Assets), page
+`Platforms`, section `Used`. Unlike the icon file the relationship is exact in both directions:
+every export in `src/logo/platforms/index.ts` has a component in `Used` and every component in
+`Used` has an export, so an audit can compare the two sets directly. Scope any export, sync or
+audit tooling to that section — `Not Exported / Not used` on the same page is the holding area
+for retired art.
+
+Two components in `Used` are exceptions: `platforms/Logos/Alma` and `platforms/Logos/Anthropic`
+are wordmark lockups at arbitrary widths rather than 24×24 marks, and are not exported. Skip the
+`platforms/Logos/` prefix when auditing.
+
+## Naming
+
+Names are PascalCase in Figma and stay PascalCase the whole way through — the opposite of the
+kebab-case v2-stroke convention:
+
+```
+Figma component  platforms/Name
+SVG source       src/logo/src/platforms/Name.svg
+generated module src/logo/platforms/Name.tsx
+export           export { default as NameLogo } from "./Name"
+```
+
+The `Logo` suffix is appended by `svgr-platform-template.js`, not by SVGR. SVGR pascal-cases the
+source filename, so multi-word acronyms lose their casing on the way through: `GooglePDF.svg` can
+only ever produce `GooglePdfLogo`. Name the Figma component to produce the export you want rather
+than patching the output, and keep the Figma name, the SVG filename and the export stem identical
+— drift between the three is invisible at build time and expensive to audit later.
+
+## Colours
+
+Platform logos are brand marks: a fixed ink colour on a coloured or light chip. They must never
+resolve to `currentColor`. `svgr.config.js` rewrites black to `currentColor`, which is right for
+stroke icons and the two Dust mono logos but would leave these marks invisible against their own
+chip in dark mode, so the platforms line in `build_icons.sh` passes `--no-runtime-config` and
+repeats that config's other options explicitly. Do not drop the flag, and do not add a
+`replaceAttrValues` entry covering platforms.
+
+This is also why the `White` and `Mono` cuts of Github, Linear and Zendesk were retired: a
+chip-backed mark renders identically in both themes, so a per-theme variant has nothing to do.
+
+## registry.ts
+
+`src/logo/platforms/registry.ts` is hand-authored and no build touches it, but it sits inside the
+generated directory — which is why `build_icons.sh` clears that directory file-by-file instead of
+with `rm -rf`, and why `index.ts` re-exports it from the template rather than by hand.
+
+It holds `PLATFORM_LOGOS`, the only supported way to resolve a logo from a string
+(`getPlatformLogo`). `index.ts` is generated and picks up a new logo automatically;
+`PLATFORM_LOGOS` does not, so add the entry by hand or the logo stays invisible to every dynamic
+caller. `front`, `marketing` and `sdks` each ship an allowlist of these names
+(`resources_icon_names.ts`, `mcp_icon_types.ts`) whose values are persisted in Postgres and frozen
+into the public SDK enum — the same add-only rule as `ActionIcons.ts`.
+
+## Retiring a logo
+
+Every export is public API of a published package, so deleting the SVG source is not enough: the
+export vanishes on the next build and breaks consumers silently. Delete the source, then add a
+`@deprecated` alias in `registry.ts` pointing at the replacement plus a matching `PLATFORM_LOGOS`
+entry so stored payloads still resolve, and remove both on the following publish. `GithubMonoLogo`,
+`GithubWhiteLogo`, `LinearWhiteLogo`, `ZendeskWhiteLogo` and `OutlookLogo` are the live examples.
 
 # Storybook
 

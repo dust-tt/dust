@@ -10,14 +10,14 @@ const SvgMicrosoftExcel = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="#91C174" d="M4 4a2 2 0 0 1 2-2h6v5H4z" />
+    <path fill="#91C174" d="M4 5a3 3 0 0 1 3-3h5v5H4z" />
     <path fill="#418B5C" d="M4 12h8v5H4z" />
     <path fill="#6AA668" d="M4 7h8v5H4z" />
-    <path fill="#418B5C" d="M4 17h8v5H6a2 2 0 0 1-2-2z" />
-    <path fill="#BCDE81" d="M12 2h6a2 2 0 0 1 2 2v3h-8z" />
+    <path fill="#418B5C" d="M4 17h8v5H7a3 3 0 0 1-3-3z" />
+    <path fill="#BCDE81" d="M12 2h5a3 3 0 0 1 3 3v2h-8z" />
     <path fill="#6AA668" d="M12 12h8v5h-8z" />
     <path fill="#91C174" d="M12 7h8v5h-8z" />
-    <path fill="#418B5C" d="M12 17h8v3a2 2 0 0 1-2 2h-6z" />
+    <path fill="#418B5C" d="M12 17h8v2a3 3 0 0 1-3 3h-5z" />
     <path
       fill="#105B2B"
       d="M2.833 7h8.334c.46 0 .833.373.833.833v8.334c0 .46-.373.833-.833.833H2.833A.833.833 0 0 1 2 16.167V7.833c0-.46.373-.833.833-.833"

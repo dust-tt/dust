@@ -4,7 +4,7 @@ import { Icon } from "../index_with_tw_base";
 import { PLATFORM_LOGOS } from "../logo/platforms";
 
 export default {
-  title: "Assets/Platform Logos",
+  title: "Assets/Logo/Platform Logos",
   tags: ["!manifest"],
   parameters: {
     docs: {

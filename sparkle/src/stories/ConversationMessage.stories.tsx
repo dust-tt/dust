@@ -13,7 +13,7 @@ import {
   Clipboard,
   ConversationContainer,
   ConversationMessage,
-  GithubMonoLogo,
+  GithubLogo,
   ThumbsDown,
   ThumbsUp,
   Icon,
@@ -96,7 +96,7 @@ export const ConversationExample = () => {
               </Citation>,
               <Citation href="https://www.google.com">
                 <CitationIcons>
-                  <Icon visual={GithubMonoLogo} size="sm" />
+                  <Icon visual={GithubLogo} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Title</CitationTitle>
               </Citation>,
@@ -258,7 +258,7 @@ export const ConversationHandoffExample = () => {
               </Citation>,
               <Citation href="https://www.google.com">
                 <CitationIcons>
-                  <Icon visual={GithubMonoLogo} size="sm" />
+                  <Icon visual={GithubLogo} size="sm" />
                 </CitationIcons>
                 <CitationTitle>PR from @henry</CitationTitle>
               </Citation>,
