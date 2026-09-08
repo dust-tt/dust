@@ -152,11 +152,6 @@ async function shadowAgentPermissions(
  * For user and system-key callers, `canEdit` allows legacy authors/editors or user-less system-key
  * callers with agent write permission; workspace admin role alone does not grant it.
  */
-/**
- * @cc [owner:aubin-tchoi,label:api] api-key-agent-edit-permissions
- * For API keys, `canEdit` follows the PATCH role, scope, status, and requested-space gates;
- * user-authenticated callers retain their editor permissions.
- */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
   agentConfigurations: AgentConfigurationModel[],
