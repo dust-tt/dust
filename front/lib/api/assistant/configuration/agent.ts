@@ -1,6 +1,6 @@
 import {
-  shadowCanAdminAgent,
-  shadowEditableAgents,
+  canAdminAgent,
+  filterEditableAgents,
 } from "@app/lib/api/assistant/agent_permissions";
 import {
   enrichAgentConfigurations,
@@ -8,6 +8,7 @@ import {
   isSelfHostedImageWithValidContentType,
   redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
@@ -1650,10 +1651,11 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  const canAdministrate = await shadowCanAdminAgent(
+  const canAdministrate = await canAdminAgent(
     auth,
     agent,
-    auth.isAdmin() ||
+    async () =>
+      auth.isAdmin() ||
       (await editorGroupRes.value.isMember(auth.getNonNullableUser())),
     "updateAgentPermissions"
   );
@@ -1667,7 +1669,7 @@ export async function updateAgentPermissions(
       );
 
       if (usersToAdd.length > 0) {
-        // TODO(governance) serve the AgentResource permission after shadow verification.
+        // The rollout switch selects the permission source for both editor writes.
         if (!canAdministrate) {
           return new Err(
             new DustError(
@@ -1691,7 +1693,7 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        // TODO(governance) serve the AgentResource permission after shadow verification.
+        // The rollout switch selects the permission source for both editor writes.
         if (!canAdministrate) {
           return new Err(
             new DustError(
@@ -1846,7 +1848,7 @@ export async function updateAgentConfigurationsScope(
     );
   }
 
-  const editableAgents = await shadowEditableAgents(
+  const editableAgents = await filterEditableAgents(
     auth,
     agentConfigs,
     agentConfigs.filter((agent) => agent.canEdit || auth.isAdmin()),
@@ -1931,34 +1933,20 @@ async function disableTriggersForNonEditors(
     return;
   }
 
-  const editorGroupsRes = await GroupResource.findEditorGroupsForAgents(
-    auth,
-    agents
+  const editorsByAgentId = await getAgentsEditors(auth, agents);
+  // Fetch members once per agent, with a batched lookup shared by both permission sources.
+  const editorModelIdsByAgentId = new Map(
+    Object.entries(editorsByAgentId).map(([agentId, editors]) => [
+      agentId,
+      new Set(editors.map((editor) => editor.id)),
+    ])
   );
-  const editorGroupsByAgentId = editorGroupsRes.isOk()
-    ? editorGroupsRes.value
-    : {};
-
-  // Fetch members once per unique editor group.
-  const editorModelIdsByGroupModelId = new Map<ModelId, Set<ModelId>>();
-  for (const group of Object.values(editorGroupsByAgentId)) {
-    if (editorModelIdsByGroupModelId.has(group.id)) {
-      continue;
-    }
-    const members = await group.getActiveMembers(auth);
-    editorModelIdsByGroupModelId.set(
-      group.id,
-      new Set(members.map((m) => m.id))
-    );
-  }
-
-  const triggersToDisable = triggers.filter((trigger) => {
-    const group = editorGroupsByAgentId[trigger.agentConfigurationId];
-    const editorModelIds = group
-      ? editorModelIdsByGroupModelId.get(group.id)
-      : null;
-    return !editorModelIds || !editorModelIds.has(trigger.editor);
-  });
+  const triggersToDisable = triggers.filter(
+    (trigger) =>
+      !editorModelIdsByAgentId
+        .get(trigger.agentConfigurationId)
+        ?.has(trigger.editor)
+  );
 
   if (triggersToDisable.length === 0) {
     return;

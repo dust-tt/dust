@@ -8,6 +8,7 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -286,11 +287,17 @@ function get(workspace: { sId: string }, aId: string) {
 }
 
 describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the caller cannot read", () => {
-  it("redacts the private fields of an unpublished agent for a non-editor admin", async () => {
+  it.each([
+    false,
+    true,
+  ])("redacts hidden definitions for a non-editor admin (grants: %s)", async (grants) => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
       method: "GET",
     });
+    if (grants) {
+      await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+    }
     await SpaceFactory.defaults(auth);
 
     const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");

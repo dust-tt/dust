@@ -1,4 +1,5 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
@@ -141,6 +142,11 @@ async function shadowAgentPermissions(
 }
 
 /**
+ * @cc [owner:philipperolet,label:security] hidden-agent-content
+ * Admin access alone must not set `canRead` on hidden agent definitions; author or editor
+ * access is required, including while serving grant-backed permissions.
+ */
+/**
  * Enrich agent configurations with additional data (actions, tags, favorites).
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
@@ -158,9 +164,11 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const configurationSIds = agentConfigurations.map((a) => a.sId);
   const user = auth.user();
 
-  // Compute editor permissions if not provided
+  const useGrants = await areAgentGrantsEnabled(auth);
+
+  // Compute legacy editor permissions if not provided and grants are not serving reads.
   let editorIds = agentIdsForUserAsEditor;
-  if (!editorIds) {
+  if (!useGrants && !editorIds) {
     const agentIdsForGroups = user
       ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
       : [];
@@ -193,10 +201,16 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const isAuthor = agent.authorId === auth.user()?.id;
-    const isMember = editorIds.includes(agent.id);
-
-    const canRead = isAuthor || isMember || agent.scope === "visible";
-    const canEdit = isAuthor || isMember;
+    const isMember = editorIds?.includes(agent.id) ?? false;
+    const resource = AgentResource.fromAgentConfigurationModel(agent);
+    const canEdit = useGrants
+      ? auth.can("write", resource)
+      : isAuthor || isMember;
+    // Admin read access allows management; hidden definitions still require editor access.
+    const canRead = useGrants
+      ? auth.can("read", resource) &&
+        (!auth.isAdmin() || canEdit || agent.scope === "visible")
+      : isAuthor || isMember || agent.scope === "visible";
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -237,11 +251,13 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     agentConfigurationTypes.push(agentConfigurationType);
   }
 
-  await shadowAgentPermissions(
-    auth,
-    agentConfigurations,
-    agentConfigurationTypes
-  );
+  if (!useGrants) {
+    await shadowAgentPermissions(
+      auth,
+      agentConfigurations,
+      agentConfigurationTypes
+    );
+  }
 
   return agentConfigurationTypes;
 }

@@ -375,6 +375,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "Fraggle",
   },
+  agent_permission_grants: {
+    description:
+      "Admin Governance: serve agent editor lists, permissions, and filtered views from grants. The use_legacy_acls kill switch restores legacy reads.",
+    stage: "dust_only",
+    owner: "philipperolet",
+  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",

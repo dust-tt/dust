@@ -113,10 +113,18 @@ editor-list, permission, listing, backfill, and cache-related mismatches to reac
 
 ### PR 12: Flip all grant-backed reads
 
-Serve editor lists, permission decisions, and list/manage/archive filtering from grants at the same
-time, behind one operational switch with a single kill-switch fallback to legacy reads.
+Serve editor lists, permission decisions, and list/manage/archive filtering from grants together
+when `agent_permission_grants` is enabled for a workspace. The existing `use_legacy_acls` kill switch
+overrides this flag and restores legacy reads (within its 60-second refresh window).
 
-**Operational gate:** observe the complete read flip before removing the fallback.
+The switch also covers configuration context, tool/data-source/webhook usage filters, agent
+suggestions, and editor checks when disabling triggers after an agent becomes hidden. Legacy
+reads continue shadow comparisons when `group_permissions_shadow` is enabled. Grant read failures
+propagate; they do not silently fall back to legacy permissions. Dual writes remain active.
+
+**Operational gate:** after all PR11 comparisons and the backfill report zero mismatches, enable
+`agent_permission_grants` progressively and observe the complete read flip before removing the
+fallback. Roll back by enabling `use_legacy_acls` or disabling the workspace rollout flag.
 
 ### PR 13: Remove legacy reads and rollout infrastructure
 
