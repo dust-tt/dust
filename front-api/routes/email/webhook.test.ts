@@ -201,6 +201,26 @@ describe("POST /api/email/webhook", () => {
     }
   });
 
+  it("does not try another cell when receipt is uncertain", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("Response lost"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await postWebhook("unknown-sender@example.com", {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+
+      await vi.waitFor(() =>
+        expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+      );
+      expect(new Set(fetchMock.mock.calls.map(([url]) => url))).toEqual(
+        new Set(["http://other-region.test/api/email/webhook"])
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("ignores a relayed email with the same Message-ID", async () => {
     const messageId = `<${randomUUID()}@example.com>`;
 

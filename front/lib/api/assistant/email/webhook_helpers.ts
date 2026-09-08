@@ -218,6 +218,10 @@ export async function recordEmailRelay(
  * Each relay passes only the cells after its target as remaining destinations, and stops
  * after a successful HTTP handoff. The receiving cell owns further lookup and error replies.
  */
+/**
+ * @cc [owner:philipperolet,label:product] uncertain-relay-stops
+ * Exhausted transport retries must stop routing, since the target may already be processing.
+ */
 export async function relayEmailToOtherCells(
   email: InboundEmail,
   {
@@ -311,6 +315,9 @@ export async function relayEmailToOtherCells(
           },
           "[email] Failed to relay inbound email to cell"
         );
+        if (responseRes.isErr()) {
+          break;
+        }
         continue;
       }
 
