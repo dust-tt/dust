@@ -17,6 +17,7 @@ import type {
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
   SearchSkillsResponseBody,
+  SkillSearchPermissionFiltering,
 } from "@app/types/api/skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
 import type {
@@ -167,6 +168,7 @@ export function useSearchSkills({
   searchTerm,
   cursor,
   limit,
+  permissionFiltering,
   disabled,
   swrOptions,
 }: {
@@ -174,6 +176,7 @@ export function useSearchSkills({
   searchTerm: string;
   cursor?: string;
   limit?: number;
+  permissionFiltering?: SkillSearchPermissionFiltering;
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
 }) {
@@ -198,6 +201,9 @@ export function useSearchSkills({
   }
   if (limit !== undefined) {
     queryParams.set("limit", String(limit));
+  }
+  if (permissionFiltering) {
+    queryParams.set("permissionFiltering", permissionFiltering);
   }
   const skillsFetcher: Fetcher<SearchSkillsResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(

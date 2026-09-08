@@ -23,6 +23,7 @@ import {
 import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/skills/global_search_aliases";
 import type {
   SearchSkillsResponseBody,
+  SkillSearchPermissionFiltering,
   SkillSearchResult,
 } from "@app/types/api/skills";
 import type { Result } from "@app/types/shared/result";
@@ -37,10 +38,12 @@ export async function searchSkillsForCommandMenu(
     searchTerm,
     limit = MAX_SKILL_SEARCH_RESULTS,
     cursor,
+    permissionFiltering = "strict",
   }: {
     searchTerm: string;
     limit?: number;
     cursor?: string;
+    permissionFiltering?: SkillSearchPermissionFiltering;
   }
 ): Promise<
   Result<SearchSkillsResponseBody, ElasticsearchError | SkillSearchCursorError>
@@ -48,7 +51,11 @@ export async function searchSkillsForCommandMenu(
   assert(
     Number.isInteger(limit) && limit > 0 && limit <= MAX_SKILL_SEARCH_RESULTS
   );
-  const query = await prepareSkillSearchQuery(auth, searchTerm);
+  const query = await prepareSkillSearchQuery(
+    auth,
+    searchTerm,
+    permissionFiltering
+  );
   const globalSkills = await GlobalSkillsRegistry.findAll(auth);
   const systemSkills = await SystemSkillsRegistry.findAll(auth);
   const codeDefinedSkills = [...globalSkills, ...systemSkills]
@@ -65,6 +72,7 @@ export async function searchSkillsForCommandMenu(
         description: skill.userFacingDescription,
         aliases: GLOBAL_SKILL_SEARCH_ALIASES[skill.sId],
       }),
+      canRead: true,
     }))
     .filter((skill) => skill.score > 0)
     .sort(compareRankedSkills);
@@ -75,6 +83,7 @@ export async function searchSkillsForCommandMenu(
     userId: auth.user()?.sId,
     keyId: auth.key()?.id,
     query,
+    permissionFiltering,
     codeDefinedSkills,
   });
   let state: SkillSearchCursor;
@@ -118,6 +127,7 @@ export async function searchSkillsForCommandMenu(
       pitId: state.pitId,
       searchAfter: state.searchAfter,
       limit: candidateLimit,
+      permissionFiltering,
     });
     if (result.isErr()) {
       return result.error.statusCode === 404
@@ -130,7 +140,7 @@ export async function searchSkillsForCommandMenu(
       if (skills.length === limit) {
         break;
       }
-      if (candidate.document) {
+      if (candidate.skill) {
         const [score, name, sId] = candidate.sort;
         while (
           state.globalOffset < codeDefinedSkills.length &&
@@ -146,16 +156,7 @@ export async function searchSkillsForCommandMenu(
         if (skills.length === limit) {
           break;
         }
-        const document = candidate.document;
-        skills.push({
-          editedBy: document.edited_by,
-          icon: document.icon,
-          name: document.name,
-          requestedSpaceIds: document.requested_space_ids,
-          sId: document.skill_id,
-          userFacingDescription: document.user_facing_description ?? "",
-          score,
-        });
+        skills.push(candidate.skill);
       }
       // Advance ONLY past returned or denied hits. Fetched hits displaced by
       // globals are deliberately refetched on the next page.

@@ -42,6 +42,7 @@ describe("GET /api/w/:wId/skills/search", () => {
       searchTerm: "research",
       limit: undefined,
       cursor: undefined,
+      permissionFiltering: undefined,
     });
     expect(await response.json()).toEqual({
       nextCursor: null,
@@ -72,6 +73,7 @@ describe("GET /api/w/:wId/skills/search", () => {
       searchTerm: "research",
       limit: 10,
       cursor,
+      permissionFiltering: undefined,
     });
     const body = await response.json();
     expect(body).toEqual({ skills: [], nextCursor: cursor });
@@ -82,6 +84,7 @@ describe("GET /api/w/:wId/skills/search", () => {
     "limit=151",
     "limit=1.5",
     "cursor=invalid",
+    "permissionFiltering=dangerously_skip",
   ])("rejects invalid pagination: %s", async (query) => {
     const { workspace } = await createPrivateApiMockRequest();
     const response = await honoApp.request(
@@ -103,5 +106,35 @@ describe("GET /api/w/:wId/skills/search", () => {
     const body = await response.json();
     expect(body.error.type).toBe("invalid_request_error");
     expect(body.error.message).toContain("Restart the search");
+  });
+
+  it("allows admins to opt into redacted search", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    searchSkillsForCommandMenu.mockResolvedValue(
+      new Ok({ skills: [], nextCursor: null })
+    );
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/skills/search?permissionFiltering=redact_unreadable`
+    );
+    expect(response.status).toBe(200);
+    expect(searchSkillsForCommandMenu).toHaveBeenCalledWith(expect.anything(), {
+      searchTerm: "",
+      limit: undefined,
+      cursor: undefined,
+      permissionFiltering: "redact_unreadable",
+    });
+  });
+
+  it.each([
+    "user",
+    "builder",
+    "manager",
+  ] as const)("rejects redacted search for a %s before searching", async (role) => {
+    const { workspace } = await createPrivateApiMockRequest({ role });
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/skills/search?permissionFiltering=redact_unreadable`
+    );
+    expect(response.status).toBe(403);
+    expect(searchSkillsForCommandMenu).not.toHaveBeenCalled();
   });
 });

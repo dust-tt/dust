@@ -1,3 +1,4 @@
+import type { SkillPermissionFilteringMode } from "@app/lib/resources/skill/skill_resource";
 import type {
   SkillType,
   SkillWithoutInstructionsAndToolsType,
@@ -22,7 +23,14 @@ export type SkillSearchResult = Pick<
 > & {
   // Fixed relevance score shared with code-defined skills. Older clients may ignore it.
   score?: number;
+  // False for an unreadable result retained by admin-only redact_unreadable search.
+  canRead?: boolean;
 };
+
+export type SkillSearchPermissionFiltering = Exclude<
+  SkillPermissionFilteringMode,
+  "dangerously_skip"
+>;
 
 export type SearchSkillsResponseBody = {
   skills: SkillSearchResult[];

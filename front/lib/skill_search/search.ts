@@ -1,15 +1,21 @@
 import { ElasticsearchError, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { buildSkillMatchQuery } from "@app/lib/skill_search/ranking";
+import type {
+  SkillSearchPermissionFiltering,
+  SkillSearchResult,
+} from "@app/types/api/skills";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
+import assert from "assert";
 import { z } from "zod";
 
 export const MAX_SKILL_SEARCH_RESULTS = 150;
@@ -24,7 +30,7 @@ export type SkillSearchSort = z.infer<typeof SkillSearchSortSchema>;
 
 export interface SkillSearchCandidate {
   // Rejected hits retain their position so a page of denied hits can advance.
-  document: SkillSearchDocument | null;
+  skill: SkillSearchResult | null;
   sort: SkillSearchSort;
 }
 
@@ -158,8 +164,22 @@ function getSkillSearchHitSources(
 // Prepare once per API request, not once per candidate batch.
 export async function prepareSkillSearchQuery(
   auth: Authenticator,
-  searchTerm: string
+  searchTerm: string,
+  permissionFiltering: SkillSearchPermissionFiltering = "strict"
 ): Promise<estypes.QueryDslQueryContainer> {
+  if (permissionFiltering === "redact_unreadable") {
+    assert(auth.isAdmin(), "Only admins can search unreadable skills.");
+    // Admin listing metadata remains visible under the resource's redaction policy.
+    return {
+      bool: {
+        filter: [
+          { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+          { term: { status: "active" } },
+        ],
+        must: [buildSkillMatchQuery(searchTerm)],
+      },
+    };
+  }
   const workspaceSpaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeConversationsSpace: true,
   });
@@ -213,6 +233,11 @@ async function filterSkillSearchCandidates(
   return visibleCandidates;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:security] admin-redaction-authority
+ * redact_unreadable requires an admin and rehydrates candidates through the canonical
+ * resource redaction path; strict search continues to exclude inaccessible skills.
+ */
 export async function searchSkillDocumentCandidates(
   auth: Authenticator,
   {
@@ -220,11 +245,13 @@ export async function searchSkillDocumentCandidates(
     pitId,
     searchAfter,
     limit,
+    permissionFiltering = "strict",
   }: {
     query: estypes.QueryDslQueryContainer;
     pitId: string;
     searchAfter: SkillSearchSort | null;
     limit: number;
+    permissionFiltering?: SkillSearchPermissionFiltering;
   }
 ): Promise<
   Result<
@@ -236,6 +263,10 @@ export async function searchSkillDocumentCandidates(
     ElasticsearchError
   >
 > {
+  assert(
+    permissionFiltering !== "redact_unreadable" || auth.isAdmin(),
+    "Only admins can search unreadable skills."
+  );
   const result = await withEs((client) =>
     client.search<SkillSearchDocument>({
       pit: { id: pitId, keep_alive: `${SKILL_SEARCH_KEEP_ALIVE_SECONDS}s` },
@@ -264,9 +295,33 @@ export async function searchSkillDocumentCandidates(
     );
   }
   const hits = result.value.hits.hits;
-  const visible = await filterSkillSearchCandidates(
-    auth,
-    getSkillSearchHitSources(hits)
+  const sources = getSkillSearchHitSources(hits);
+  let redactedResources: SkillResource[] = [];
+  let visible: SkillSearchDocument[] = [];
+  if (permissionFiltering === "redact_unreadable") {
+    const workspace = auth.getNonNullableWorkspace();
+    const skillIds = sources
+      .filter((document) => {
+        const parsed = getResourceNameAndIdFromSId(document.skill_id);
+        return (
+          document.workspace_id === workspace.sId &&
+          parsed?.resourceName === "skill" &&
+          parsed.workspaceModelId === workspace.id
+        );
+      })
+      .map((document) => document.skill_id);
+    redactedResources = await SkillResource.fetchByIds(auth, skillIds, {
+      onlyActive: true,
+      permissionFiltering: "redact_unreadable",
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    });
+  } else {
+    visible = await filterSkillSearchCandidates(auth, sources);
+  }
+  const resourceById = new Map(
+    redactedResources.map((skill) => [skill.sId, skill])
   );
   const visibleById = new Map(
     visible.map((document) => [document.skill_id, document])
@@ -282,11 +337,19 @@ export async function searchSkillDocumentCandidates(
         )
       );
     }
+    const resource = hit._source
+      ? resourceById.get(hit._source.skill_id)
+      : undefined;
+    const document = hit._source
+      ? visibleById.get(hit._source.skill_id)
+      : undefined;
     candidates.push({
       sort: sort.data,
-      document: hit._source
-        ? (visibleById.get(hit._source.skill_id) ?? null)
-        : null,
+      skill: resource
+        ? resource.toSearchJSON(auth, sort.data[0])
+        : document
+          ? SkillSearchDocumentResource.toSearchJSON(document, sort.data[0])
+          : null,
     });
   }
   return new Ok({

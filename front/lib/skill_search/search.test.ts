@@ -85,7 +85,7 @@ async function searchSkillDocuments(
   }
   return new Ok(
     removeNulls(
-      result.value.candidates.map((candidate) => candidate.document)
+      result.value.candidates.map((candidate) => candidate.skill)
     ).slice(0, limit)
   );
 }
@@ -212,9 +212,7 @@ describe("skill_search/search", () => {
       limit: MAX_SKILL_SEARCH_RESULTS,
     });
     assert(result.isOk());
-    expect(result.value.map((document) => document.skill_id)).toEqual(
-      expectedSkillIds
-    );
+    expect(result.value.map((skill) => skill.sId)).toEqual(expectedSkillIds);
     expect(mockClientSearch).toHaveBeenCalledOnce();
     expect(mockClientSearch.mock.calls[0][0].query.bool.must[0]).toEqual({
       bool: {
@@ -328,9 +326,7 @@ describe("skill_search/search", () => {
       limit: 10,
     });
     assert(result.isOk());
-    expect(result.value.map((document) => document.skill_id)).toEqual(
-      expectedSkillIds
-    );
+    expect(result.value.map((skill) => skill.sId)).toEqual(expectedSkillIds);
   });
 
   it.each([
@@ -356,7 +352,9 @@ describe("skill_search/search", () => {
       limit: 10,
     });
     assert(before.isOk());
-    expect(before.value).toEqual([document]);
+    expect(before.value).toEqual([
+      SkillSearchDocumentResource.toSearchJSON(document, 1),
+    ]);
 
     if (access === "pod") {
       await pod.writeGroupPermissions(auth, { members: [], editors: [] });
@@ -579,7 +577,7 @@ describe("skill_search/search", () => {
     expect(
       SkillSearchDocumentResource.filterSearchDocumentsByCurrentState
     ).toHaveBeenCalledWith(auth, visibleDocuments);
-    expect(result.value.map((document) => document.skill_id)).toEqual([
+    expect(result.value.map((skill) => skill.sId)).toEqual([
       "no-pod",
       "readable-pod",
     ]);
@@ -691,7 +689,9 @@ describe("skill_search/search", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toEqual([document]);
+      expect(result.value).toEqual([
+        SkillSearchDocumentResource.toSearchJSON(document, 1),
+      ]);
     }
   });
 
@@ -733,9 +733,7 @@ describe("skill_search/search", () => {
     ).toHaveBeenCalledWith(auth, [editorsOnlySkill]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value.map((document) => document.skill_id)).toEqual([
-        "editors-only",
-      ]);
+      expect(result.value.map((skill) => skill.sId)).toEqual(["editors-only"]);
     }
   });
 });
