@@ -1,9 +1,13 @@
+import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
@@ -19,7 +23,7 @@ function sameModelIds(left: number[], right: number[]): boolean {
   );
 }
 
-export async function getAgentEditorsShadowed(
+async function shadowAgentEditors(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
   legacyEditors: UserResource[],
@@ -60,29 +64,57 @@ export const getAuthors = async (
   return authors.map((a) => a.toJSON());
 };
 
-export const getEditors = async (
+export async function getAgentEditors(
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType
-): Promise<UserType[]> => {
+  agentConfiguration: LightAgentConfigurationType,
+  callSite: string
+): Promise<
+  Result<
+    UserResource[],
+    DustError<
+      "group_not_found" | "internal_error" | "unauthorized" | "invalid_id"
+    >
+  >
+> {
+  if (
+    agentConfiguration.scope !== "global" &&
+    (await areAgentGrantsEnabled(auth))
+  ) {
+    const resource = await AgentResource.fetchByAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+    const editors = await resource.listEditors(auth);
+    assert(editors !== null);
+    return new Ok(editors);
+  }
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
     agentConfiguration
   );
   if (editorGroupRes.isErr()) {
-    // We could do better here but this is not a critical path.
-    await getAgentEditorsShadowed(auth, agentConfiguration, [], "getEditors");
-    return [];
+    await shadowAgentEditors(auth, agentConfiguration, [], callSite);
+    return editorGroupRes;
   }
-
-  const editorGroup = editorGroupRes.value;
-  const members = await getAgentEditorsShadowed(
+  const editors = await shadowAgentEditors(
     auth,
     agentConfiguration,
-    await editorGroup.getActiveMembers(auth),
-    "getEditors"
+    await editorGroupRes.value.getActiveMembers(auth),
+    callSite
   );
-  const memberUsers = members.map((m) => m.toJSON());
-  return memberUsers;
+  return new Ok(editors);
+}
+
+export const getEditors = async (
+  auth: Authenticator,
+  agentConfiguration: LightAgentConfigurationType
+): Promise<UserType[]> => {
+  const editors = await getAgentEditors(auth, agentConfiguration, "getEditors");
+  if (editors.isErr()) {
+    // We could do better here but this is not a critical path.
+    return [];
+  }
+  return editors.value.map((editor) => editor.toJSON());
 };
 
 async function shadowAgentEditorsBatch(
@@ -141,6 +173,22 @@ export const getAgentsEditors = async (
   auth: Authenticator,
   agentConfigurations: LightAgentConfigurationType[]
 ): Promise<Record<string, UserType[]>> => {
+  if (await areAgentGrantsEnabled(auth)) {
+    const resources = await AgentResource.fetchByAgentConfigurations(
+      auth,
+      agentConfigurations.filter((agent) => agent.scope !== "global")
+    );
+    const editorsByAgentId = await AgentResource.batchListEditors(
+      auth,
+      resources
+    );
+    return Object.fromEntries(
+      [...editorsByAgentId].map(([agentId, editors]) => {
+        assert(editors !== null);
+        return [agentId, editors.map((editor) => editor.toJSON())];
+      })
+    );
+  }
   const editorGroups = await GroupResource.findEditorGroupsForAgents(
     auth,
     agentConfigurations

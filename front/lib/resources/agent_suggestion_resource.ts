@@ -1,8 +1,10 @@
+import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -29,6 +31,10 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+type AgentAccess =
+  | { kind: "legacy"; groupId: ModelId }
+  | { kind: "grants"; resource: AgentResource };
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentSuggestionResource
   extends ReadonlyAttributesType<AgentSuggestionModel> {}
@@ -38,25 +44,25 @@ export interface AgentSuggestionResource
  *
  * IMPORTANT: Access to suggestions requires edit permissions on the associated agent.
  * Users can only create, read, update, or delete suggestions for agents they can edit
- * (i.e., they are the author, a member of the agent_editors group, or a workspace admin).
+ * (i.e., they have editor access through the selected permission source, or are a workspace admin).
  */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
-  readonly editorsGroupId: ModelId | null;
+  private readonly agentAccess: AgentAccess | null;
   readonly _agentConfigurationId: string;
   readonly _conversationId: string | null;
 
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
-    editorsGroupId: ModelId | null,
+    agentAccess: AgentAccess | null,
     agentConfigurationId: string,
     conversationId: string | null
   ) {
     super(AgentSuggestionModel, blob);
-    this.editorsGroupId = editorsGroupId;
+    this.agentAccess = agentAccess;
     this._agentConfigurationId = agentConfigurationId;
     this._conversationId = conversationId;
   }
@@ -65,23 +71,16 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
    * Check if the user has permission to write (edit/delete) this suggestion's agent.
    */
   canWrite(auth: Authenticator): boolean {
-    if (auth.isAdmin()) {
-      return true;
-    }
-    if (this.editorsGroupId === null) {
-      return false;
-    }
-    return auth.hasGroupByModelId(this.editorsGroupId);
+    return AgentSuggestionResource.canEditAgent(auth, this.agentAccess);
   }
 
   /**
-   * Fetches the editors group IDs for a list of agent configuration sIds.
-   * Returns a map from agent sId to group ID (or null if no group found).
+   * Fetches permissions for agent suggestions using the selected agent read source.
    */
-  private static async getEditorsGroupIdByAgentId(
+  private static async getAgentAccessById(
     auth: Authenticator,
     agentIds: string[]
-  ): Promise<Map<string, ModelId>> {
+  ): Promise<Map<string, AgentAccess>> {
     if (agentIds.length === 0) {
       return new Map();
     }
@@ -96,6 +95,19 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       return new Map();
     }
 
+    if (await areAgentGrantsEnabled(auth)) {
+      const resources = await AgentResource.fetchByAgentConfigurations(
+        auth,
+        agentConfigs
+      );
+      return new Map(
+        resources.map((resource) => [
+          resource.sId,
+          { kind: "grants", resource },
+        ])
+      );
+    }
+
     // Fetch editor groups for these agents.
     const groupsResult = await GroupResource.findEditorGroupsForAgents(
       auth,
@@ -103,12 +115,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     );
 
     // Build a map from agent sId to editors group ID.
-    const result = new Map<string, ModelId>();
+    const result = new Map<string, AgentAccess>();
     if (groupsResult.isOk()) {
       for (const sId of agentIds) {
         const group = groupsResult.value[sId];
         if (group !== undefined) {
-          result.set(sId, group.id);
+          result.set(sId, { kind: "legacy", groupId: group.id });
         }
       }
     }
@@ -126,16 +138,14 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   ): Promise<AgentSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Look up the agent's editors group.
-    const editorsGroupIdMap = await this.getEditorsGroupIdByAgentId(auth, [
+    // Look up the agent's editor permissions.
+    const agentAccessById = await this.getAgentAccessById(auth, [
       agentConfiguration.sId,
     ]);
-    const editorsGroupId = editorsGroupIdMap.get(agentConfiguration.sId);
+    const agentAccess = agentAccessById.get(agentConfiguration.sId) ?? null;
 
     // Check permission.
-    const canWrite =
-      auth.isAdmin() ||
-      (editorsGroupId !== undefined && auth.hasGroupByModelId(editorsGroupId));
+    const canWrite = this.canEditAgent(auth, agentAccess);
 
     if (!canWrite) {
       throw new Error("User does not have permission to edit this agent");
@@ -150,7 +160,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return new this(
       AgentSuggestionModel,
       suggestion.get(),
-      editorsGroupId ?? null,
+      agentAccess,
       agentConfiguration.sId,
       null
     );
@@ -193,25 +203,20 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       ...new Set(suggestions.map((s) => s.agentConfiguration?.sId ?? "")),
     ].filter((sId) => sId !== "");
 
-    const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentId(
-      auth,
-      agentIds
-    );
+    const agentAccessById = await this.getAgentAccessById(auth, agentIds);
 
     // Filter suggestions to only include those for agents the user can edit.
     return removeNulls(
       suggestions.map((suggestion) => {
-        if (!this.canWrite(auth, suggestion, editorsGroupIdBySId)) {
+        const agentConfig = suggestion.agentConfiguration;
+        const agentAccess = agentAccessById.get(agentConfig.sId) ?? null;
+        if (!this.canEditAgent(auth, agentAccess)) {
           return null;
         }
-        const agentConfig = suggestion.agentConfiguration;
-        const editorsGroupId = agentConfig
-          ? (editorsGroupIdBySId.get(agentConfig.sId) ?? null)
-          : null;
         return new this(
           AgentSuggestionModel,
           suggestion.get(),
-          editorsGroupId,
+          agentAccess,
           agentConfig.sId,
           suggestion.conversation?.sId ?? null
         );
@@ -219,20 +224,19 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     );
   }
 
-  static canWrite(
+  private static canEditAgent(
     auth: Authenticator,
-    suggestion: AgentSuggestionModel,
-    editorsGroupIdBySId: Map<string, ModelId>
+    access: AgentAccess | null
   ): boolean {
     if (auth.isAdmin()) {
       return true;
     }
-    const agentConfig = suggestion.agentConfiguration;
-    if (!agentConfig) {
+    if (!access) {
       return false;
     }
-    const groupId = editorsGroupIdBySId.get(agentConfig.sId);
-    return groupId !== undefined && auth.hasGroupByModelId(groupId);
+    return access.kind === "grants"
+      ? auth.can("write", access.resource)
+      : auth.hasGroupByModelId(access.groupId);
   }
 
   static async fetchByIds(

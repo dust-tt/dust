@@ -20,6 +20,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -29,6 +30,7 @@ import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -1022,7 +1024,10 @@ describe("updateAgentConfigurationsScope", () => {
     expect(row!.scope).toBe("hidden");
   });
 
-  it("disables triggers of non-editors when transitioning visible → hidden", async () => {
+  it.each([
+    false,
+    true,
+  ])("disables non-editor triggers when hiding an agent (grants: %s)", async (grants) => {
     const { authenticator, workspace, user } = await createResourceTest({
       plan: "creditPriced",
       role: "admin",
@@ -1076,6 +1081,29 @@ describe("updateAgentConfigurationsScope", () => {
     const nonEditorTrigger = nonEditorTriggerRes.isOk()
       ? nonEditorTriggerRes.value
       : null;
+
+    // A stale editor-group membership must not retain access after leaving the workspace.
+    const editorGroup = await GroupResource.findEditorGroupForAgent(
+      authenticator,
+      agent
+    );
+    if (editorGroup.isErr()) {
+      throw editorGroup.error;
+    }
+    await GroupFactory.withMembers(authenticator, editorGroup.value, [
+      nonEditor,
+    ]);
+    expect(
+      (
+        await MembershipResource.revokeMembership({
+          user: nonEditor,
+          workspace,
+        })
+      ).isOk()
+    ).toBe(true);
+    if (grants) {
+      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
+    }
 
     const result = await updateAgentConfigurationsScope(
       authenticator,

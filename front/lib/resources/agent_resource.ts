@@ -164,12 +164,27 @@ export class AgentResource implements WithAccessControl {
     return resources;
   }
 
-  async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
-    const editorsByAgentId = await AgentResource.batchListEditors(auth, [this]);
-    const editors = editorsByAgentId.get(this.sId);
-    assert(editors !== undefined);
-
-    return editors;
+  /**
+   * @cc [owner:philipperolet,label:backend] editor-read-transaction
+   * Editor reads supplied a transaction use it for every lookup.
+   */
+  async listEditors(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[] | null> {
+    if (this.id === null) {
+      return null;
+    }
+    const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
+      auth,
+      {
+        resourceType: "agent",
+        resourceId: this.id,
+        grantType: "editor",
+        transaction,
+      }
+    );
+    return group ? group.getActiveMembers(auth, { transaction }) : [];
   }
 
   /**

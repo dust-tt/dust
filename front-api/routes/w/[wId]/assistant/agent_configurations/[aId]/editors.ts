@@ -1,9 +1,9 @@
-import { shadowCanAdminAgent } from "@app/lib/api/assistant/agent_permissions";
+import { canAdminAgent } from "@app/lib/api/assistant/agent_permissions";
 import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentEditorsShadowed } from "@app/lib/api/assistant/editors";
+import { getAgentEditors } from "@app/lib/api/assistant/editors";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -74,13 +74,13 @@ app.get(
       });
     }
 
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    const editorsResult = await getAgentEditors(
       auth,
-      agent
+      agent,
+      "getAgentEditorsRoute"
     );
-    if (editorGroupRes.isErr()) {
-      await getAgentEditorsShadowed(auth, agent, [], "getAgentEditorsRoute");
-      switch (editorGroupRes.error.code) {
+    if (editorsResult.isErr()) {
+      switch (editorsResult.error.code) {
         case "unauthorized":
           return apiError(ctx, {
             status_code: 401,
@@ -110,23 +110,16 @@ app.get(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: editorGroupRes.error.message,
+              message: editorsResult.error.message,
             },
           });
         default:
-          assertNever(editorGroupRes.error.code);
+          assertNever(editorsResult.error.code);
       }
     }
 
-    const editorGroup = editorGroupRes.value;
     // Any workspace member can read the editors of an agent.
-    const members = await getAgentEditorsShadowed(
-      auth,
-      agent,
-      await editorGroup.getActiveMembers(auth),
-      "getAgentEditorsRoute"
-    );
-    const memberUsers = members.map((m) => m.toJSON());
+    const memberUsers = editorsResult.value.map((member) => member.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
@@ -173,7 +166,6 @@ app.patch(
       agent
     );
     if (editorGroupRes.isErr()) {
-      await getAgentEditorsShadowed(auth, agent, [], "patchAgentEditorsRoute");
       switch (editorGroupRes.error.code) {
         case "unauthorized":
           return apiError(ctx, {
@@ -213,11 +205,13 @@ app.patch(
     }
 
     const editorGroup = editorGroupRes.value;
-    // TODO(governance) serve the AgentResource permission after shadow verification.
-    const canAdministrate = await shadowCanAdminAgent(
+    // The rollout switch selects the permission source for both editor writes.
+    const canAdministrate = await canAdminAgent(
       auth,
       agent,
-      auth.isAdmin() || (await editorGroup.isMember(auth.getNonNullableUser())),
+      async () =>
+        auth.isAdmin() ||
+        (await editorGroup.isMember(auth.getNonNullableUser())),
       "patchAgentEditorsRoute"
     );
     if (!canAdministrate) {
@@ -358,13 +352,15 @@ app.patch(
       }
     }
 
-    const updatedMembers = await getAgentEditorsShadowed(
+    const updatedMembers = await getAgentEditors(
       auth,
       agent,
-      await editorGroup.getActiveMembers(auth),
       "patchAgentEditorsResponse"
     );
-    const updatedEditors = updatedMembers.map((m) => m.toJSON());
+    if (updatedMembers.isErr()) {
+      throw updatedMembers.error;
+    }
+    const updatedEditors = updatedMembers.value.map((m) => m.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
