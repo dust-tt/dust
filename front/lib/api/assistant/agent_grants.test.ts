@@ -7,6 +7,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
   getAgentConfigurationForDetails,
+  updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -217,4 +218,79 @@ it("keeps author access and admin redaction when grants are enabled", async () =
   expect(await canAdminAgent(adminAuth, agent, async () => true, "test")).toBe(
     true
   );
+});
+
+it("revokes grant-only editors when saving the complete editor set", async () => {
+  const { authenticator: auth, workspace } = await createResourceTest({
+    role: "user",
+  });
+  const agent = await AgentConfigurationFactory.createTestAgent(auth);
+  const editor = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, editor, { role: "user" });
+  const resource = await AgentResource.fetchByAgentConfiguration(auth, agent);
+  assert(resource.id !== null);
+  assert(
+    (
+      await GroupPermissionResource.grantToUser(auth, {
+        user: editor.toJSON(),
+        resourceType: "agent",
+        resourceId: resource.id,
+        grantType: "editor",
+      })
+    ).isOk()
+  );
+  await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+  await AgentConfigurationFactory.updateTestAgent(auth, agent.sId);
+  expect((await getEditors(auth, agent)).map((user) => user.id)).not.toContain(
+    editor.id
+  );
+  const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    editor.sId,
+    workspace.sId
+  );
+  expect(
+    (
+      await getAgentConfiguration(editorAuth, {
+        agentId: agent.sId,
+        variant: "light",
+      })
+    )?.canEdit
+  ).toBe(false);
+});
+
+it("loads legacy memberships when rollback starts during a view read", async () => {
+  const { authenticator: auth, workspace } = await createResourceTest({
+    role: "user",
+  });
+  const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+    scope: "hidden",
+  });
+  const editor = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, editor, { role: "user" });
+  assert(
+    (
+      await updateAgentPermissions(auth, {
+        agent,
+        usersToAdd: [editor.toJSON()],
+        usersToRemove: [],
+      })
+    ).isOk()
+  );
+  await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+  const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    editor.sId,
+    workspace.sId
+  );
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled")
+    .mockReturnValueOnce(false)
+    .mockReturnValue(true);
+  const agents = await getAgentConfigurationsForView({
+    auth: editorAuth,
+    agentsGetView: "list",
+    variant: "light",
+  });
+  expect(agents.find((entry) => entry.sId === agent.sId)).toMatchObject({
+    canRead: true,
+    canEdit: true,
+  });
 });

@@ -593,15 +593,12 @@ it("uses grants for editor responses and editor administration", async () => {
     expect.arrayContaining([expect.objectContaining({ sId: newEditor.sId })])
   );
 
-  assert(
-    (
-      await GroupPermissionResource.revokeFromUser(authorAuth, {
-        user: user.toJSON(),
-        resourceType: "agent",
-        resourceId: resource.id,
-        grantType: "editor",
-      })
-    ).isOk()
+  const removed = await patchEditors(workspace, agent.sId, {
+    removeEditorIds: [user.sId],
+  });
+  expect(removed.status).toBe(200);
+  expect((await removed.json()).editors).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ sId: user.sId })])
   );
   const denied = await patchEditors(workspace, agent.sId, {
     removeEditorIds: [newEditor.sId],

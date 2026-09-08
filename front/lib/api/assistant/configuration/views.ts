@@ -493,7 +493,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   return enrichAgentConfigurations(auth, allowedAgentModels, {
     variant,
-    agentIdsForUserAsEditor,
+    agentIdsForUserAsEditor: useGrants ? undefined : agentIdsForUserAsEditor,
   });
 }
 
