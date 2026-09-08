@@ -6,6 +6,23 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 const MCP_OAUTH_PROXY_ENABLED = true;
 
 /**
+ * @cc [owner:tdraier,label:security;mcp] cimd-client-id-matches-document
+ * `MCP_CLIENT_ID_METADATA_DOCUMENT_URL` must be byte-for-byte identical to the
+ * `client_id` field of the document served at
+ * `front/public/.well-known/oauth-client.json`, and that document must remain
+ * reachable at this exact URL. Authorization servers fetch the URL and reject a
+ * document whose `client_id` differs from the URL it was fetched from, so any
+ * divergence silently breaks every CIMD-based MCP connection.
+ *
+ * The value is a single global constant (not derived from per-region config)
+ * because CIMD requires one stable client identity across all regions and
+ * cells; the redirect URI a given region sends is validated against the
+ * document's `redirect_uris`, which lists every region's finalize callback.
+ */
+export const MCP_CLIENT_ID_METADATA_DOCUMENT_URL =
+  "https://app.dust.tt/.well-known/oauth-client.json";
+
+/**
  * Whether MCP OAuth metadata/token/registration should be proxied through the
  * Dust MCP host. Enabled in development only; never active in production.
  * Toggle via `MCP_OAUTH_PROXY_ENABLED` in this file.

@@ -1,0 +1,18 @@
+{
+  "client_id": "https://app.dust.tt/.well-known/oauth-client.json",
+  "client_name": "Dust",
+  "client_uri": "https://dust.tt",
+  "logo_uri": "https://dust.tt/static/AppIcon.png",
+  "tos_uri": "https://dust.tt/terms",
+  "policy_uri": "https://dust.tt/privacy",
+  "contacts": ["support@dust.com"],
+  "software_id": "dust",
+  "redirect_uris": [
+    "https://app.dust.tt/oauth/mcp/finalize",
+    "https://dust.tt/oauth/mcp/finalize",
+    "https://eu.dust.tt/oauth/mcp/finalize"
+  ],
+  "token_endpoint_auth_method": "none",
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"]
+}
