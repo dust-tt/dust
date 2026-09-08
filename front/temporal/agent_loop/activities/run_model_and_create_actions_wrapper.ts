@@ -10,7 +10,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import {
+  finalizeUnavailableAgentLoop,
+  updateResourceAndPublishEvent,
+} from "@app/temporal/agent_loop/activities/common";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
@@ -136,6 +139,7 @@ async function _runModelAndCreateActionsActivity({
   );
   if (contextProviderRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(contextProviderRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, runAgentArgs);
       logger.info(
         {
           conversationId: runAgentArgs.conversationId,

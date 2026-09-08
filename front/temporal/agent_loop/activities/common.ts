@@ -512,6 +512,22 @@ async function withContentView(
 const DEFAULT_WORKFLOW_ERROR_MESSAGE =
   "An unexpected error occurred while generating the agent response. Please try again.";
 
+/**
+ * @cc [owner:philipperolet,label:backend] finalize-unavailable-loop
+ * Call only after the loop's conversation or message becomes unavailable; cancel its unfinished
+ * message before exiting, without publishing terminal events or starting another run.
+ */
+export async function finalizeUnavailableAgentLoop(
+  authType: AuthenticatorType,
+  agentLoopArgs: Pick<
+    AgentLoopArgs,
+    "conversationId" | "agentMessageId" | "agentMessageVersion"
+  >
+): Promise<void> {
+  const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
+  await ConversationResource.cancelUnavailableAgentMessage(auth, agentLoopArgs);
+}
+
 function toUserFriendlyMessage(error: {
   message: string;
   name: string;
@@ -543,6 +559,11 @@ export async function notifyWorkflowError(
     conversationId
   );
   if (!conversation) {
+    await finalizeUnavailableAgentLoop(authType, {
+      conversationId,
+      agentMessageId,
+      agentMessageVersion,
+    });
     return null;
   }
 
@@ -643,6 +664,7 @@ export async function finalizeCancellation(
   );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
       logger.info(
         {
           conversationId: agentLoopArgs.conversationId,
@@ -721,6 +743,7 @@ export async function finalizeInterruption(
   );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
       logger.info(
         {
           conversationId: agentLoopArgs.conversationId,
@@ -808,6 +831,7 @@ export async function finalizeGracefulStop(
   );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
       logger.info(
         {
           conversationId: agentLoopArgs.conversationId,
@@ -872,6 +896,7 @@ export async function finalizeCreditStop(
   );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
       logger.info(
         {
           conversationId: agentLoopArgs.conversationId,
