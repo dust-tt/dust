@@ -17,6 +17,15 @@ import { fromError } from "zod-validation-error";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
+export function isGcsNotFoundError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return code === 404 || code === "404";
+}
+
 export function cleanUtf8Content(content: string): string {
   // Strip null bytes (invalid in PostgreSQL text columns and JSON strings per RFC4627)
   const withoutNullBytes = content.replace(/\0/g, "");
@@ -53,10 +62,31 @@ export async function upsertDocumentActivity(
   }
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
+  const logger = mainLogger.child({ upsertQueueId });
   // GCS bucket.file().download() returns a `DownloadResponse = [Buffer]` — it's defined as a tuple with exactly one element.
   // It's a quirk of the GCS SDK's callback-style API converted to a promise
   // There's never more than one Buffer => destructuring is fine
-  const [fileBuffer] = await bucket.file(`${upsertQueueId}.json`).download();
+  let fileBuffer: Buffer;
+  try {
+    [fileBuffer] = await bucket.file(`${upsertQueueId}.json`).download();
+  } catch (error) {
+    if (!isGcsNotFoundError(error)) {
+      throw error;
+    }
+
+    logger.error(
+      { error },
+      "[UpsertQueue] Payload missing from GCS, stopping retries"
+    );
+    statsDMetrics.increment("upsert_queue_payload_missing.count");
+
+    throw ApplicationFailure.create({
+      message: `Upsert queue payload ${upsertQueueId} is missing from GCS.`,
+      type: "upsert_queue_payload_missing",
+      nonRetryable: true,
+    });
+  }
+
   const upsertDocument = JSON.parse(cleanUtf8Content(decodeBuffer(fileBuffer)));
 
   const documentItemValidation =
@@ -70,7 +100,7 @@ export async function upsertDocumentActivity(
 
   const upsertQueueItem = documentItemValidation.data;
 
-  const logger = mainLogger.child({
+  const documentLogger = logger.child({
     upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,
     dataSourceId: upsertQueueItem.dataSourceId,
@@ -88,7 +118,7 @@ export async function upsertDocumentActivity(
   if (!dataSource) {
     // If the data source was not found, we simply give up and remove the item from the queue as it
     // means that the data source was deleted.
-    logger.info(
+    documentLogger.info(
       {
         delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
       },
@@ -104,7 +134,7 @@ export async function upsertDocumentActivity(
 
   const credentials = await getLlmCredentials(auth);
 
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), documentLogger);
 
   const upsertTimestamp = Date.now();
 
@@ -131,7 +161,7 @@ export async function upsertDocumentActivity(
   });
 
   if (upsertRes.isErr()) {
-    logger.error(
+    documentLogger.error(
       {
         error: upsertRes.error,
         latencyMs: Date.now() - upsertTimestamp,
@@ -155,7 +185,7 @@ export async function upsertDocumentActivity(
     throw error;
   }
 
-  logger.info(
+  documentLogger.info(
     {
       latencyMs: Date.now() - upsertTimestamp,
       delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
