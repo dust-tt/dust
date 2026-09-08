@@ -4,7 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
-import { fetchSkillUsageCounts } from "@app/lib/api/skills/usage";
+import { fetchSkillEnablementCounts } from "@app/lib/api/skills/usage";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -249,7 +249,7 @@ app.get(
           const usageMap = await SkillResource.batchFetchUsage(auth, skills);
           let usageCountMap: Map<string, number> | null = null;
           if (withMessageCount) {
-            const usageCountsResult = await fetchSkillUsageCounts(auth, {
+            const usageCountsResult = await fetchSkillEnablementCounts(auth, {
               skillIds: skills
                 .filter((skill) => !skill.isSystemSkill)
                 .map((skill) => skill.sId),
