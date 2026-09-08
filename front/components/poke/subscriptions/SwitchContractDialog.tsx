@@ -167,6 +167,7 @@ export default function SwitchContractDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [durationMode, setDurationMode] = useState(false);
   const [durationValue, setDurationValue] = useState(1);
   const [durationUnit, setDurationUnit] =
     useState<ContractDurationUnit>("years");
@@ -501,21 +502,21 @@ export default function SwitchContractDialog({
     };
   }, [commitmentStartDate, commitmentEndDate]);
 
-  // Compute `endingAt` from the contract start plus the chosen duration, so the
-  // operator can express the term as years/months/weeks instead of picking a
-  // date. Requires a resolved start.
-  const applyDuration = useCallback(() => {
-    if (!commitmentStartDate || !(durationValue > 0)) {
+  // While "Set duration" is on, the end date is derived from the (floored) start
+  // plus the chosen duration and kept in sync as the start, value, or unit
+  // change — the end-date field is read-only in this mode. Anchored to the
+  // floored start hour so the end lands on a whole hour.
+  useEffect(() => {
+    if (!durationMode || !commitmentStartDate || !(durationValue > 0)) {
       return;
     }
-    // Anchor to the floored start hour so the end lands on a whole hour.
     const end = addContractDuration(
       floorToHourUTC(commitmentStartDate),
       durationValue,
       durationUnit
     );
     form.setValue("endingAt", toDatetimeLocalUTC(end));
-  }, [commitmentStartDate, durationValue, durationUnit, form]);
+  }, [durationMode, commitmentStartDate, durationValue, durationUnit, form]);
 
   const startModeOptions = useMemo(
     () => [
@@ -1104,6 +1105,7 @@ export default function SwitchContractDialog({
                                 type="datetime-local"
                                 step={3600}
                                 placeholder="open-ended"
+                                disabled={durationMode}
                                 transformValue={snapDatetimeLocalToHour}
                               />
                               {endingAtLocalLabel && (
@@ -1113,58 +1115,61 @@ export default function SwitchContractDialog({
                               )}
                             </div>
                             <div className="mt-2 flex items-center gap-2">
-                              <input
-                                type="number"
-                                min={1}
-                                value={durationValue}
-                                onChange={(e) =>
-                                  setDurationValue(Number(e.target.value))
-                                }
-                                className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-xs"
+                              <SliderToggle
+                                selected={durationMode}
+                                onClick={() => setDurationMode((v) => !v)}
                               />
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="xs"
-                                    isSelect
-                                    label={
-                                      durationUnit === "years"
-                                        ? "Years"
-                                        : durationUnit === "months"
-                                          ? "Months"
-                                          : "Weeks"
+                              <span className="text-xs text-muted-foreground">
+                                Set duration
+                              </span>
+                              {durationMode && (
+                                <>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={durationValue}
+                                    onChange={(e) =>
+                                      setDurationValue(Number(e.target.value))
                                     }
+                                    className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-xs"
                                   />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  mountPortalContainer={portalContainer}
-                                >
-                                  <DropdownMenuItem
-                                    label="Years"
-                                    onClick={() => setDurationUnit("years")}
-                                  />
-                                  <DropdownMenuItem
-                                    label="Months"
-                                    onClick={() => setDurationUnit("months")}
-                                  />
-                                  <DropdownMenuItem
-                                    label="Weeks"
-                                    onClick={() => setDurationUnit("weeks")}
-                                  />
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="xs"
-                                label="Set duration"
-                                disabled={
-                                  !commitmentStartDate || !(durationValue > 0)
-                                }
-                                onClick={applyDuration}
-                              />
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="xs"
+                                        isSelect
+                                        label={
+                                          durationUnit === "years"
+                                            ? "Years"
+                                            : durationUnit === "months"
+                                              ? "Months"
+                                              : "Weeks"
+                                        }
+                                      />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                      mountPortalContainer={portalContainer}
+                                    >
+                                      <DropdownMenuItem
+                                        label="Years"
+                                        onClick={() => setDurationUnit("years")}
+                                      />
+                                      <DropdownMenuItem
+                                        label="Months"
+                                        onClick={() =>
+                                          setDurationUnit("months")
+                                        }
+                                      />
+                                      <DropdownMenuItem
+                                        label="Weeks"
+                                        onClick={() => setDurationUnit("weeks")}
+                                      />
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </>
+                              )}
                             </div>
                           </div>
                           {commitmentPeriodInfo && (
