@@ -1,5 +1,6 @@
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -106,6 +107,38 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     });
 
     expect(response.status).toBe(403);
+  });
+
+  it("refuses admin-controlled mode while a group is attached to the Pod", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "admin_controlled_pods");
+    await SpaceFactory.defaults(auth);
+    const project = await SpaceFactory.project(workspace, user.id);
+    const group = await GroupFactory.provisioned(workspace, "Pod Editors");
+
+    const attachRes = await project.updatePermissions(auth, {
+      name: project.name,
+      isRestricted: true,
+      editorIds: [user.sId],
+      editorGroupIds: [group.sId],
+    });
+    expect(attachRes.isOk()).toBe(true);
+
+    // A group attached as an editor would keep administrating a Pod that is supposed to be
+    // administrated by workspace admins only.
+    const response = await patchMetadata(workspace, project.sId, {
+      isAdminControlled: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Admin-controlled mode requires manual membership management.",
+      },
+    });
   });
 
   it("archives a project", async () => {

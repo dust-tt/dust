@@ -55,17 +55,6 @@ app.delete(
       });
     }
 
-    if (space.managementMode === "group") {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "space_not_found",
-          message:
-            "Space is managed by provisioned group access, members can't be edited by API.",
-        },
-      });
-    }
-
     const updateRes = await space.removeMembers(auth, {
       userIds: [userId],
     });

@@ -53,23 +53,17 @@ export type PatchPodMetadataBodyType = z.infer<
   typeof PatchPodMetadataBodySchema
 >;
 
-export const PostSpaceRequestBodySchema = z.intersection(
-  z.object({
-    isRestricted: z.boolean(),
-    name: z.string(),
-    spaceKind: z.enum(["regular", "project"]),
-  }),
-  z.discriminatedUnion("managementMode", [
-    z.object({
-      memberIds: z.array(z.string()),
-      managementMode: z.literal("manual"),
-    }),
-    z.object({
-      groupIds: z.array(z.string()),
-      managementMode: z.literal("group"),
-    }),
-  ])
-);
+// A new space's members: its manual member list, the groups given access to it, or both. A
+// dimension the request leaves out is simply not seeded, and `managementMode` is ignored (see
+// `PatchSpaceMembersRequestBodySchema` for the same shape on update).
+export const PostSpaceRequestBodySchema = z.object({
+  isRestricted: z.boolean(),
+  name: z.string(),
+  spaceKind: z.enum(["regular", "project"]),
+  memberIds: z.array(z.string()).optional(),
+  groupIds: z.array(z.string()).optional(),
+  managementMode: z.enum(["manual", "group"]).optional(),
+});
 
 export type PostSpaceRequestBodyType = z.infer<
   typeof PostSpaceRequestBodySchema

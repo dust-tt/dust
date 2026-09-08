@@ -643,7 +643,7 @@ async function autoCreateSpaceForProvisionedGroup(
     return;
   }
 
-  // Create restricted space with group-based management
+  // Create a restricted space whose access comes from the provisioned group.
   const spaceName = group.name;
 
   const spaceResult = await createSpaceAndGroup(
@@ -652,7 +652,6 @@ async function autoCreateSpaceForProvisionedGroup(
       name: spaceName,
       groupIds: [group.sId],
       isRestricted: true,
-      managementMode: "group",
       spaceKind: "regular",
     },
     { ignoreWorkspaceLimit: false }

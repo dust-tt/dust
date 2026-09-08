@@ -523,7 +523,8 @@ describe("createSpaceAndGroup", () => {
       if (result.isOk()) {
         const space = result.value;
         expect(space.name).toBe("Test Empty Group Space");
-        expect(space.managementMode).toBe("group");
+        // `managementMode` is derived from the groups actually attached.
+        expect(space.managementMode).toBe("manual");
       }
     });
   });

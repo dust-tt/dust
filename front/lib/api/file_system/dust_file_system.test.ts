@@ -929,7 +929,6 @@ describe("DustFileSystem.forAgentLoop", () => {
         name: `open pod ${Date.now()}`,
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
       assert(

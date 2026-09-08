@@ -72,17 +72,6 @@ const withEditableSpace = createMiddleware<
     });
   }
 
-  if (space.managementMode === "group") {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message:
-          "Space is managed by provisioned group access, members can't be edited by API.",
-      },
-    });
-  }
-
   ctx.set("space", space);
   await next();
 });
@@ -102,7 +91,9 @@ app.get(
   async (ctx): HandlerResult<GetSpaceMembersResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const groups = await space.fetchGroupResources(auth);
+    // The groups that make up the space's membership: an open space attaches the workspace global
+    // group as a reader, and its members are not members of the space.
+    const groups = await space.fetchMembershipGroups(auth);
 
     const currentMembers = uniqBy(
       (

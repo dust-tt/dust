@@ -224,7 +224,7 @@ app.patch(
 
     // Track current members before update to identify newly added ones.
     let currentMemberIds: Set<string> | undefined;
-    if (space.isProject() && body.managementMode === "manual") {
+    if (space.isProject() && body.memberIds) {
       const memberGroup = await space.fetchManualMemberGroup(auth);
       const currentMembers = await memberGroup.getActiveMembers(auth);
       currentMemberIds = new Set(currentMembers.map((m) => m.sId));
@@ -235,26 +235,19 @@ app.patch(
       return membersMutationError(ctx, updateRes.error.code);
     }
 
+    // Only the dimensions the request carried are reported: the others were left untouched.
     emitSpacePermissionsUpdatedAuditLogs(auth, space, {
-      management_mode: body.managementMode,
       is_restricted: String(body.isRestricted),
-      ...(body.managementMode === "manual"
-        ? {
-            member_ids: body.memberIds.join(","),
-            editor_ids: body.editorIds.join(","),
-          }
-        : {
-            group_ids: body.groupIds.join(","),
-            editor_group_ids: body.editorGroupIds.join(","),
-          }),
+      ...(body.memberIds ? { member_ids: body.memberIds.join(",") } : {}),
+      ...(body.editorIds ? { editor_ids: body.editorIds.join(",") } : {}),
+      ...(body.groupIds ? { group_ids: body.groupIds.join(",") } : {}),
+      ...(body.editorGroupIds
+        ? { editor_group_ids: body.editorGroupIds.join(",") }
+        : {}),
     });
 
     // Trigger notifications for newly added members (projects only).
-    if (
-      space.isProject() &&
-      body.managementMode === "manual" &&
-      currentMemberIds
-    ) {
+    if (space.isProject() && body.memberIds && currentMemberIds) {
       const newlyAddedUserIds = body.memberIds.filter(
         (id) => !currentMemberIds.has(id)
       );
@@ -286,17 +279,6 @@ app.post(
       return guardError;
     }
 
-    if (space.managementMode !== "manual") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "The members of this space are managed by groups. Add users to one of its groups instead.",
-        },
-      });
-    }
-
     const { memberIds } = ctx.req.valid("json");
 
     const addRes = await space.addMembers(auth, { userIds: memberIds });
@@ -305,7 +287,6 @@ app.post(
     }
 
     emitSpacePermissionsUpdatedAuditLogs(auth, space, {
-      management_mode: "manual",
       is_restricted: String(await space.isRestricted(auth)),
       member_ids: addRes.value.map((user) => user.sId).join(","),
     });

@@ -495,6 +495,152 @@ describe("SpaceResource", () => {
       });
     });
 
+    describe("merged membership", () => {
+      it("keeps both the manual members and the attached groups", async () => {
+        const provisionedGroup = await GroupResource.makeNew({
+          name: "Provisioned Group",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+        });
+
+        const result = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          memberIds: [user1.sId],
+          groupIds: [provisionedGroup.sId],
+        });
+        expect(result.isOk()).toBe(true);
+
+        // The manual member keeps their membership, and the group is granted alongside it.
+        const members = await regularGroup.getActiveMembers(adminAuth);
+        expect(members.map((m) => m.sId)).toEqual([user1.sId]);
+        expect(
+          await spaceGrantsForGroups([regularGroup, provisionedGroup])
+        ).toEqual(
+          [
+            { groupId: regularGroup.id, grantType: "member" },
+            { groupId: provisionedGroup.id, grantType: "member" },
+          ].sort((a, b) => a.groupId - b.groupId)
+        );
+      });
+
+      it("clears the groups when the update only carries members", async () => {
+        const provisionedGroup = await GroupResource.makeNew({
+          name: "Provisioned Group",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+        });
+
+        const withGroup = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          groupIds: [provisionedGroup.sId],
+        });
+        expect(withGroup.isOk()).toBe(true);
+
+        // The request carries the whole membership: a dimension it leaves out is emptied, which
+        // is what an old client switching the space to manual access means.
+        const space = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        const membersOnly = await space!.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          memberIds: [user1.sId],
+        });
+        expect(membersOnly.isOk()).toBe(true);
+
+        expect(
+          await spaceGrantsForGroups([regularGroup, provisionedGroup])
+        ).toEqual([{ groupId: regularGroup.id, grantType: "member" }]);
+      });
+
+      it("clears the members when the update only carries groups", async () => {
+        await regularGroup.dangerouslyAddMembers(adminAuth, {
+          users: [user1.toJSON()],
+        });
+
+        const provisionedGroup = await GroupResource.makeNew({
+          name: "Provisioned Group",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+        });
+
+        const result = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          groupIds: [provisionedGroup.sId],
+        });
+        expect(result.isOk()).toBe(true);
+
+        expect(await regularGroup.getActiveMembers(adminAuth)).toEqual([]);
+      });
+
+      it("ignores a legacy managementMode", async () => {
+        await regularGroup.dangerouslyAddMembers(adminAuth, {
+          users: [user1.toJSON()],
+        });
+
+        const provisionedGroup = await GroupResource.makeNew({
+          name: "Provisioned Group",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+        });
+
+        // An old client sends the mode alongside the one dimension it knows about. The mode is
+        // not read: emptying what the request omits gives it the behaviour it expects anyway.
+        const result = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          managementMode: "group",
+          groupIds: [provisionedGroup.sId],
+          editorGroupIds: [],
+        });
+        expect(result.isOk()).toBe(true);
+
+        expect(await regularGroup.getActiveMembers(adminAuth)).toEqual([]);
+        expect(
+          await spaceGrantsForGroups([regularGroup, provisionedGroup])
+        ).toEqual(
+          [
+            { groupId: regularGroup.id, grantType: "member" },
+            { groupId: provisionedGroup.id, grantType: "member" },
+          ].sort((a, b) => a.groupId - b.groupId)
+        );
+      });
+
+      it("adds a member one at a time even once a group is attached", async () => {
+        const provisionedGroup = await GroupResource.makeNew({
+          name: "Provisioned Group",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+        });
+
+        const withGroup = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          groupIds: [provisionedGroup.sId],
+        });
+        expect(withGroup.isOk()).toBe(true);
+
+        // A regular space's settings show its member list and its groups side by side, so adding
+        // one member is made with the whole picture in view.
+        const space = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        expect(await space!.canAddMember(adminAuth, user1.sId)).toBe(true);
+        const addRes = await space!.addMembers(adminAuth, {
+          userIds: [user1.sId],
+        });
+        expect(addRes.isOk()).toBe(true);
+
+        const members = await regularGroup.getActiveMembers(adminAuth);
+        expect(members.map((m) => m.sId)).toEqual([user1.sId]);
+      });
+    });
+
     describe("group management mode", () => {
       it("should successfully update space with group mode and set groups", async () => {
         const provisionedGroup1 = await GroupResource.makeNew({
@@ -955,13 +1101,19 @@ describe("SpaceResource", () => {
     });
 
     describe("management mode persistence", () => {
-      it("should persist managementMode when updating permissions", async () => {
+      // `managementMode` no longer drives anything; it is derived from whether the space has
+      // groups attached, for the clients that still read it.
+      it("should derive managementMode from the attached groups", async () => {
+        const provisionedGroup = await GroupResource.makeNew({
+          name: "Provisioned Group",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+        });
+
         const groupResult = await regularSpace.updatePermissions(adminAuth, {
           name: "Test Space",
           isRestricted: true,
-          managementMode: "group",
-          groupIds: [],
-          editorGroupIds: [],
+          groupIds: [provisionedGroup.sId],
         });
         expect(groupResult.isOk()).toBe(true);
 
@@ -974,9 +1126,8 @@ describe("SpaceResource", () => {
         const manualResult = await updatedSpace!.updatePermissions(adminAuth, {
           name: "Test Space",
           isRestricted: true,
-          managementMode: "manual",
           memberIds: [user1.sId],
-          editorIds: [],
+          groupIds: [],
         });
         expect(manualResult.isOk()).toBe(true);
 
@@ -2720,45 +2871,41 @@ describe("SpaceResource group_permissions enforcement", () => {
     expect(refreshedMemberAuth.can("write", withoutGroup!)).toBe(false);
   });
 
-  it("stops a group-mode group from granting once the space switches to manual", async () => {
+  it("stops an attached group granting once an update drops it", async () => {
     const manualGroup = await GroupFactory.regularManual(workspace, "Squad");
     await GroupFactory.withMembers(adminAuth, manualGroup, [memberUser]);
 
     const space = await SpaceFactory.regular(workspace);
-    const groupModeRes = await space.updatePermissions(adminAuth, {
+    const withGroupRes = await space.updatePermissions(adminAuth, {
       name: space.name,
       isRestricted: true,
-      managementMode: "group",
       groupIds: [manualGroup.sId],
-      editorGroupIds: [],
     });
-    expect(groupModeRes.isOk()).toBe(true);
+    expect(withGroupRes.isOk()).toBe(true);
 
-    const inGroupMode = await SpaceResource.fetchById(adminAuth, space.sId);
+    const withGroup = await SpaceResource.fetchById(adminAuth, space.sId);
     const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       memberUser.sId,
       workspace.sId
     );
-    expect(memberAuth.can("read", inGroupMode!)).toBe(true);
+    expect(memberAuth.can("read", withGroup!)).toBe(true);
 
-    // Switching back to manual leaves the group_vaults row in place, so only the kind filter in
-    // `spaceGroupRoles` stops it granting in a mode that never selected it.
-    const manualModeRes = await space.updatePermissions(adminAuth, {
+    // An update carries the space's whole membership, so one that lists no group drops this
+    // one's grant and the access it conferred.
+    const membersOnlyRes = await space.updatePermissions(adminAuth, {
       name: space.name,
       isRestricted: true,
-      managementMode: "manual",
       memberIds: [],
-      editorIds: [],
     });
-    expect(manualModeRes.isOk()).toBe(true);
+    expect(membersOnlyRes.isOk()).toBe(true);
 
     const refreshedMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       memberUser.sId,
       workspace.sId
     );
-    const inManualMode = await SpaceResource.fetchById(adminAuth, space.sId);
-    expect(refreshedMemberAuth.can("read", inManualMode!)).toBe(false);
-    expect(refreshedMemberAuth.can("write", inManualMode!)).toBe(false);
+    const withoutGroup = await SpaceResource.fetchById(adminAuth, space.sId);
+    expect(refreshedMemberAuth.can("read", withoutGroup!)).toBe(false);
+    expect(refreshedMemberAuth.can("write", withoutGroup!)).toBe(false);
   });
 
   it("rejects internal groups in group management mode", async () => {

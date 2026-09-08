@@ -45,7 +45,7 @@ import {
 } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SpaceMembershipUpdate } from "@app/types/space";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
@@ -606,10 +606,7 @@ export async function createSpaceAndGroup(
     name: string;
     isRestricted: boolean;
     spaceKind: "regular" | "project";
-  } & (
-    | { memberIds: string[]; managementMode: "manual" }
-    | { groupIds: string[]; managementMode: "group" }
-  ),
+  } & Pick<SpaceMembershipUpdate, "memberIds" | "groupIds" | "managementMode">,
   {
     ignoreWorkspaceLimit = false,
   }: {
@@ -640,8 +637,11 @@ export async function createSpaceAndGroup(
   }
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
-  const { name: rawName, isRestricted, spaceKind, managementMode } = params;
+  const { name: rawName, isRestricted, spaceKind } = params;
   const name = rawName.trim();
+  // A new space starts empty, so a client that still sends `managementMode` gets what it expects
+  // without the field being read: the dimension its mode does not cover is simply not seeded.
+  const { memberIds = [], groupIds = [] } = params;
 
   if (
     spaceKind === "project" &&
@@ -738,7 +738,9 @@ export async function createSpaceAndGroup(
       {
         name,
         kind: spaceKind,
-        managementMode,
+        // `managementMode` no longer drives anything: it is kept up to date only so that clients
+        // that still read it see something coherent, and goes away with the field.
+        managementMode: groupIds.length > 0 ? "group" : "manual",
         workspaceId: owner.id,
       },
       { members: [membersGroup], editors: editorGroups },
@@ -757,96 +759,74 @@ export async function createSpaceAndGroup(
       memberGroups.push(globalGroup);
     }
 
-    // Handle member-based space creation
-    switch (managementMode) {
-      case "manual":
-        if (spaceKind === "project") {
-          assert(
-            params.memberIds.length === 0,
-            "Cannot add members to Pods on creation."
-          );
-          break;
-        }
-
-        // Seeding a regular space's members requires administering it. The member
-        // group is a regular_auto group whose permissions are not checked directly,
-        // so gate on the space instead.
-        if (!auth.can("admin", space)) {
-          return new Err(
-            new DustError(
-              "unauthorized",
-              "Only admins can change group members"
-            )
-          );
-        }
-
-        // Add members to the member group in regular spaces
-        const users = (await UserResource.fetchByIds(params.memberIds)).map(
-          (user) => user.toJSON()
+    // Seed the space's manual members, and attach the selected groups. Both are optional and
+    // independent: a space can be created with a member list, with groups, or with both.
+    if (memberIds.length > 0 || groupIds.length > 0) {
+      // Seeding a space's members or attaching groups requires administering it. The member group
+      // is a regular_auto group whose permissions are not checked directly, so gate on the space.
+      if (!auth.can("admin", space)) {
+        return new Err(
+          new DustError("unauthorized", "Only admins can change group members")
         );
-        const groupsResult = await membersGroup.dangerouslyAddMembers(auth, {
-          users,
-          transaction: t,
-        });
-        if (groupsResult.isErr()) {
-          logger.error(
-            {
-              error: groupsResult.error,
-            },
-            "Failed to add members to the member group"
-          );
-          return new Err(
-            new DustError("internal_error", "The space cannot be created.")
-          );
-        }
-        break;
+      }
+    }
 
-      // Handle group-based space creation
-      case "group":
-        // For group-based spaces, we need to associate the selected groups with the space
-        if (params.groupIds.length > 0) {
-          // Associating groups requires administering the space.
-          if (!auth.can("admin", space)) {
-            return new Err(
-              new DustError(
-                "unauthorized",
-                "Only admins can change group members"
-              )
-            );
-          }
-          const selectedGroupsResult = await GroupResource.fetchByIds(
-            auth,
-            params.groupIds
-          );
-          if (selectedGroupsResult.isErr()) {
-            logger.error(
-              {
-                error: selectedGroupsResult.error,
-              },
-              "The space cannot be created - failed to fetch groups"
-            );
-            return new Err(
-              new DustError("internal_error", "The space cannot be created.")
-            );
-          }
+    if (memberIds.length > 0) {
+      assert(
+        spaceKind !== "project",
+        "Cannot add members to Pods on creation."
+      );
 
-          const selectedGroups = selectedGroupsResult.value;
-          // `fetchByIds` only checks that the caller can read the groups, not what they are. Keep
-          // internal groups (global, system, another space's regular_auto, agent/skill editors) out
-          // of a space's group-managed access.
-          if (selectedGroups.some((g) => !isManageableGroupKind(g.kind))) {
-            return new Err(
-              new DustError(
-                "invalid_request_error",
-                "Only provisioned and manual groups can be given access to a space."
-              )
-            );
-          }
-          memberGroups.push(...selectedGroups);
-        }
-        break;
-      default:
-        assertNever(managementMode);
+      const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
+        user.toJSON()
+      );
+      const groupsResult = await membersGroup.dangerouslyAddMembers(auth, {
+        users,
+        transaction: t,
+      });
+      if (groupsResult.isErr()) {
+        logger.error(
+          {
+            error: groupsResult.error,
+          },
+          "Failed to add members to the member group"
+        );
+        return new Err(
+          new DustError("internal_error", "The space cannot be created.")
+        );
+      }
+    }
+
+    if (groupIds.length > 0) {
+      const selectedGroupsResult = await GroupResource.fetchByIds(
+        auth,
+        groupIds
+      );
+      if (selectedGroupsResult.isErr()) {
+        logger.error(
+          {
+            error: selectedGroupsResult.error,
+          },
+          "The space cannot be created - failed to fetch groups"
+        );
+        return new Err(
+          new DustError("internal_error", "The space cannot be created.")
+        );
+      }
+
+      const selectedGroups = selectedGroupsResult.value;
+      // `fetchByIds` only checks that the caller can read the groups, not what they are. Keep
+      // internal groups (global, system, another space's regular_auto, agent/skill editors) out
+      // of a space's group-managed access.
+      if (selectedGroups.some((g) => !isManageableGroupKind(g.kind))) {
+        return new Err(
+          new DustError(
+            "invalid_request_error",
+            "Only provisioned and manual groups can be given access to a space."
+          )
+        );
+      }
+      memberGroups.push(...selectedGroups);
     }
 
     // Create empty project metadata for project spaces
