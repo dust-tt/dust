@@ -234,6 +234,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         workspaceId: workspace.id,
       },
       limit: options.limit,
+      offset: options.offset,
+      order: options.order,
     });
 
     return res.map((c) => new this(this.model, c.get()));
@@ -381,6 +383,41 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           ? { executionMode: { [Op.in]: executionModes } }
           : {}),
       },
+    });
+  }
+
+  /**
+   * @cc [owner:adrien,label:api;security] public-api-workspace-wide-unrestricted
+   * Returns triggers across every agent in the workspace, unfiltered by editor or
+   * agent-level read permissions. Callers must enforce their own access gate (e.g.
+   * `ensureIsAdmin()`) before calling this — the resource layer performs no
+   * authorization check beyond workspace scoping.
+   */
+  static async listByWorkspaceForPublicApi(
+    auth: Authenticator,
+    {
+      kind,
+      status,
+      agentConfigurationId,
+      limit,
+      offset,
+    }: {
+      kind?: TriggerKind;
+      status?: TriggerStatus;
+      agentConfigurationId?: string;
+      limit: number;
+      offset: number;
+    }
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        ...(kind ? { kind } : {}),
+        ...(status ? { status } : {}),
+        ...(agentConfigurationId ? { agentConfigurationId } : {}),
+      },
+      order: [["id", "ASC"]],
+      limit,
+      offset,
     });
   }
 
