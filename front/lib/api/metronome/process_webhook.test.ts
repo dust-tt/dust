@@ -750,6 +750,38 @@ describe("processMetronomeWebhook — workspace-level spend threshold", () => {
     expect(dispatchPaygCapReached).not.toHaveBeenCalled();
   });
 
+  it("ignores a stale per-API-key spend threshold reached alert (no PAYG dispatch)", async () => {
+    // Per-API-key cap enforcement moved to the Redis rate limiter; a stale
+    // alert scoped via an `api_key_name` group must not deplete the pool.
+    const workspace = await setupMetronomeWorkspaceResource();
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "api_key_name", value: "some-key" },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPaygCapReached).not.toHaveBeenCalled();
+  });
+
+  it("ignores a stale programmatic spend threshold reached alert (no PAYG dispatch)", async () => {
+    // Programmatic cap enforcement moved to the Redis rate limiter; a stale
+    // alert scoped via `usage_type=programmatic` must not deplete the pool.
+    const workspace = await setupMetronomeWorkspaceResource();
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "usage_type", value: "programmatic" },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPaygCapReached).not.toHaveBeenCalled();
+  });
+
   it("logs and no-ops on workspace-level resolved", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
 

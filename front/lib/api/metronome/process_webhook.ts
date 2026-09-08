@@ -48,7 +48,10 @@ import {
   PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
+import { API_KEY_NAME_GROUP_KEY } from "@app/lib/metronome/per_api_key_usage";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
@@ -573,17 +576,26 @@ export async function processMetronomeWebhook({
 }): Promise<Result<undefined, ProcessMetronomeWebhookError>> {
   switch (event.type) {
     case "alerts.spend_threshold_reached": {
-      // Only the workspace-level PAYG cap is acted on here. Per-user cap alerts
-      // are no longer used (per-user enforcement moved to the Redis rate
-      // limiter); a stale per-user alert is scoped via a `user_id` group and is
-      // ignored.
-      const isPerUser = event.properties.group_values?.some(
-        (g) => g.key === "user_id"
+      // Only the workspace-level PAYG cap is acted on here. The per-user,
+      // per-API-key, and programmatic cap alerts are no longer used (that
+      // enforcement moved to the Redis rate limiter) but stale ones may still
+      // exist in Metronome until the archive script runs. Each is scoped by a
+      // distinguishing group value — `user_id`, `api_key_name`, or
+      // `usage_type=programmatic` — so ignore any alert carrying one; only the
+      // unscoped workspace PAYG cap falls through to a dispatch. Treating "not
+      // per-user" as "is PAYG" would misroute those stale alerts into a
+      // workspace-wide pool depletion.
+      const isNonPaygScoped = event.properties.group_values?.some(
+        (g) =>
+          g.key === "user_id" ||
+          g.key === API_KEY_NAME_GROUP_KEY ||
+          (g.key === USAGE_TYPE_GROUP_KEY &&
+            g.value === USAGE_TYPE_PROGRAMMATIC)
       );
-      if (isPerUser) {
+      if (isNonPaygScoped) {
         logger.info(
           { eventId: event.id, workspaceId: workspace.sId },
-          "[Metronome Webhook] spend_threshold_reached: stale per-user alert, ignoring"
+          "[Metronome Webhook] spend_threshold_reached: stale non-PAYG cap alert, ignoring"
         );
         break;
       }

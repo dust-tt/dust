@@ -339,13 +339,23 @@ export async function isUserBlockedByMetronome(
     return "no_seat";
   }
 
-  const poolStatusRaw = await runOnRedis(
+  // Batch both flag reads on a single Redis round-trip; each value keeps its own
+  // DB read-through fallback below (credit state via `resolveUserCreditState`,
+  // pool status via `getWorkspaceCreditPoolStatus`).
+  const [userCreditStateRaw, poolStatusRaw] = await runOnRedis(
     { origin: REDIS_ORIGIN },
-    async (client) => client.get(buildWorkspaceCreditPoolStatusKey(workspaceId))
+    async (client) =>
+      Promise.all([
+        client.get(buildUserCreditStateKey(workspaceId, userId)),
+        client.get(buildWorkspaceCreditPoolStatusKey(workspaceId)),
+      ])
   );
 
-  // The credit-state getter has its own DB fallback and cache repopulation.
-  const userCreditState = await getUserCreditState(workspaceId, userId);
+  const userCreditState = await resolveUserCreditState(
+    workspaceId,
+    userId,
+    userCreditStateRaw
+  );
 
   const poolStatus =
     poolStatusRaw && isWorkspacePoolCreditState(poolStatusRaw)
@@ -387,14 +397,15 @@ export async function setUserCreditState(
   await setFlag(buildUserCreditStateKey(workspaceId, userId), state);
 }
 
-async function getUserCreditState(
+// Resolve the user credit state from an already-fetched cached value, falling
+// back to the DB (and repopulating the cache) on a miss or a legacy/invalid
+// value. Takes the cached value as an argument so the caller can batch the
+// Redis read with other keys on a single round-trip.
+async function resolveUserCreditState(
   workspaceId: string,
-  userId: string
+  userId: string,
+  cached: string | null
 ): Promise<UserCreditState> {
-  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildUserCreditStateKey(workspaceId, userId))
-  );
-
   if (cached && isUserCreditState(cached)) {
     return cached;
   }
