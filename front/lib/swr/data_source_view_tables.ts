@@ -92,11 +92,9 @@ export function useDataSourceViewTables({
   const tablesFetcher: Fetcher<
     ListTablesResponseBody | SearchTablesResponseBody
   > = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    isDisabled ? null : url,
-    tablesFetcher,
-    { disabled: isDisabled }
-  );
+  const { data, error, mutate } = useSWRWithDefaults(url, tablesFetcher, {
+    disabled: isDisabled,
+  });
 
   return {
     tables: data?.tables ?? emptyArray(),
