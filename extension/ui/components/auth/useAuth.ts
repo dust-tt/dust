@@ -1,11 +1,11 @@
 import { setDefaultInitResolver } from "@app/lib/api/config";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import { useRegionContext } from "@extension/shared/context/RegionContext";
 import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
@@ -26,9 +26,9 @@ export const useAuthHook = () => {
     string | undefined
   >();
   const [featureFlags, setFeatureFlags] = useState<WhitelistableFeature[]>([]);
-  const { setRegionInfo } = useRegionContext();
+  const { setCellInfo } = useCellContext();
 
-  // Set default fetch init for the extension (overrides RegionContext's credentials: "include").
+  // Set default fetch init for the extension (overrides CellContext's credentials: "include").
   // Must be declared before any fetch effects so it's active when they run.
   // The resolver calls getAccessToken() on every request so expired tokens are
   // transparently refreshed before each fetch / EventSource connection.
@@ -182,7 +182,7 @@ export const useAuthHook = () => {
   }, [isAuthenticated, tokens?.accessToken]);
 
   // Initialize from storage on mount.
-  // RegionContext already restores region info from localStorage, so we only
+  // CellContext already restores cell info from localStorage, so we only
   // need to restore tokens here.
   useEffect(() => {
     void (async () => {
@@ -258,10 +258,10 @@ export const useAuthHook = () => {
         return;
       }
 
-      const { tokens: newTokens, regionInfo: newRegionInfo } = response.value;
+      const { tokens: newTokens, cellInfo: newCellInfo } = response.value;
 
       setTokens(newTokens);
-      setRegionInfo(newRegionInfo, { keepInStorage: true });
+      setCellInfo(newCellInfo, { keepInStorage: true });
       setAuthError(null);
       scheduleRefresh(newTokens.expiresAt);
       // isLoading stays true — the user fetch effect will clear it.

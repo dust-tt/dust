@@ -108,15 +108,15 @@ const shouldDisableContextMenuForDomain = async (
   }
 
   const token = await platform.auth.getAccessToken();
-  const regionInfo = await platform.auth.getRegionInfoFromStorage();
+  const cellInfo = await platform.auth.getCellInfoFromStorage();
   const selectedWorkspace = await platform.auth.getSelectedWorkspace();
 
-  if (!token || !regionInfo || !selectedWorkspace) {
+  if (!token || !cellInfo || !selectedWorkspace) {
     return false;
   }
 
   try {
-    const storageKey = `${EXTENSION_CONFIG_CACHE_PREFIX}${regionInfo.url}:${selectedWorkspace}`;
+    const storageKey = `${EXTENSION_CONFIG_CACHE_PREFIX}${cellInfo.url}:${selectedWorkspace}`;
     let blacklistedDomains: string[];
 
     const cached = await platform.storage.get<ExtensionConfigCache>(storageKey);
@@ -128,7 +128,7 @@ const shouldDisableContextMenuForDomain = async (
       blacklistedDomains = cached.blacklistedDomains;
     } else {
       const res = await fetch(
-        `${regionInfo.url}/api/w/${selectedWorkspace}/extension/config`,
+        `${cellInfo.url}/api/w/${selectedWorkspace}/extension/config`,
         {
           headers: { Authorization: `Bearer ${token}` },
           credentials: "omit",
@@ -376,28 +376,25 @@ const refreshToken = async (
         refresh_token: refreshToken,
       };
 
-      const regionInfo = await platform.auth.getRegionInfoFromStorage();
-      if (!regionInfo) {
-        log("No region info found for token refresh.");
+      const cellInfo = await platform.auth.getCellInfoFromStorage();
+      if (!cellInfo) {
+        log("No cell info found for token refresh.");
         const handlers = authState.refreshRequests;
         authState.refreshRequests = [];
         handlers.forEach((sendResponse) => {
           sendResponse({
             success: false,
-            error: "No region info found for token refresh.",
+            error: "No cell info found for token refresh.",
           });
         });
         return;
       }
 
-      const response = await fetch(
-        `${regionInfo.url}/api/workos/authenticate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams(tokenParams),
-        }
-      );
+      const response = await fetch(`${cellInfo.url}/api/workos/authenticate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(tokenParams),
+      });
 
       if (!response.ok) {
         const data = await response.json();

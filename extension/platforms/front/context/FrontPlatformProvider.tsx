@@ -1,3 +1,4 @@
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { Spinner } from "@dust-tt/sparkle";
 import { useFrontContext } from "@extension/platforms/front/context/FrontProvider";
 import { FrontPlatformService } from "@extension/platforms/front/services/platform";
@@ -10,14 +11,15 @@ export const FrontPlatformProvider = ({
   children: React.ReactNode;
 }) => {
   const frontContext = useFrontContext();
+  const { cells } = useCellContext();
 
   const platformService = useMemo(() => {
     if (!frontContext) {
       return null;
     }
 
-    return new FrontPlatformService(frontContext);
-  }, [frontContext]);
+    return new FrontPlatformService(frontContext, cells);
+  }, [frontContext, cells]);
 
   if (!frontContext || !platformService) {
     return <Spinner />;

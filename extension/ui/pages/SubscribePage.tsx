@@ -1,4 +1,5 @@
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import {
   BarHeader,
   Button,
@@ -7,13 +8,12 @@ import {
   Page,
   Rocket02,
 } from "@dust-tt/sparkle";
-import { useRegionContext } from "@extension/shared/context/RegionContext";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { Link } from "react-router-dom";
 
 export const SubscribePage = () => {
   const { workspace } = useAuth();
-  const { regionInfo } = useRegionContext();
+  const { cellInfo } = useCellContext();
   return (
     <div>
       <BarHeader
@@ -44,16 +44,16 @@ export const SubscribePage = () => {
             Subscribe to start using Dust agent from anywhere in your browser.
           </div>
 
-          {regionInfo && (
+          {cellInfo && (
             <div className="m-1 flex text-center">
-              <Link to={`${regionInfo.url}/w/${workspace.sId}/subscribe`}>
+              <Link to={`${cellInfo.url}/w/${workspace.sId}/subscribe`}>
                 <Button
                   icon={Rocket02}
                   variant="primary"
                   label="Get started"
                   onClick={() => {
                     window.open(
-                      `${regionInfo.url}/w/${workspace.sId}/subscribe`,
+                      `${cellInfo.url}/w/${workspace.sId}/subscribe`,
                       "_blank"
                     );
                   }}
