@@ -513,6 +513,7 @@ export function isUserMessageContextValid(
     case "wakeup":
     case "onboarding_conversation":
     case "agent_sidekick":
+    case "analytics_panel":
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "reinforcement":

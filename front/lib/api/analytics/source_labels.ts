@@ -2,7 +2,7 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 export type AnalyticsVisibleOrigin = Exclude<
   UserMessageOrigin,
-  "reinforced_skill_notification" | "system_activation"
+  "analytics_panel" | "reinforced_skill_notification" | "system_activation"
 >;
 
 export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {

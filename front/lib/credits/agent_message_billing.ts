@@ -20,6 +20,13 @@ export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
 export const LEGACY_RUN_KEY = "__legacy__";
 
 // Platform-assistive messages are metered for observability but not billed.
+/**
+ * @cc [owner:achilleburah,label:security] free-client-origins-need-targeting-guards
+ * An origin in `CLIENT_MESSAGE_ORIGINS` must not be added to `FREE_ORIGINS` unless
+ * `checkMessagesLimit` also restricts which agents it may mention and caps it per actor, as it
+ * does for `agent_sidekick`. Clients choose their own origin on the internal message endpoints, so
+ * a free client-claimable origin otherwise lets any user run any agent for free.
+ */
 export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>([
     "agent_sidekick",

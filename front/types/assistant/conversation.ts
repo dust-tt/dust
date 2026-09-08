@@ -91,11 +91,19 @@ export type LightMessageType =
 // is the allow-list the internal message endpoints validate against (see
 // `types/api/assistant.ts`), so anything absent here cannot be claimed by a
 // client.
+/**
+ * @cc [owner:achilleburah,label:product] analytics-panel-origin-is-bootstrap-only
+ * The `analytics_panel` origin must only be carried by the rank-0 bootstrap message the Analytics
+ * conversation panel posts on open. Every later message in such a conversation must fall back to
+ * `web`, because `analytics_panel` is in `HIDDEN_MESSAGE_ORIGINS` and so hides any message
+ * carrying it from the conversation UI.
+ */
 export const CLIENT_MESSAGE_ORIGINS = [
   "web",
   "project_kickoff",
   "extension",
   "agent_sidekick",
+  "analytics_panel",
   "reinforced_skill_notification",
 ] as const;
 
@@ -124,9 +132,9 @@ export type UserMessageOrigin =
   | "wakeup"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation, agent_sidekick, and project_kickoff aren't message origins. They
-  // have been used as a hack but should be removed and most likely handled as message metadata
-  // (to be created).
+  // TODO onboarding_conversation, agent_sidekick, analytics_panel, and project_kickoff aren't
+  // message origins. They have been used as a hack but should be removed and most likely handled
+  // as message metadata (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
   | "reinforcement"
@@ -142,6 +150,7 @@ export type UserMessageOrigin =
 export const ACTIVATION_NUDGE_ORIGIN = "system_activation" as const;
 
 export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "analytics_panel",
   "onboarding_conversation",
   "project_kickoff",
   "reinforced_skill_notification",
@@ -530,6 +539,8 @@ export type ConversationMetadata = Record<string, unknown> & {
   useFileSystem?: boolean;
   /** Selects the database-backed filesystem for a fresh standalone conversation. */
   useDatabaseFileSystem?: boolean;
+  /** Distinguishes the Analytics panel's conversations from other `test`-visibility ones. */
+  analyticsPanel?: boolean;
 };
 
 function isConversationUrlAccessMode(

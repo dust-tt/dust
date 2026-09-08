@@ -7,28 +7,12 @@ import {
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
 import { useAnalyticsConversation } from "@app/hooks/useAnalyticsConversation";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import type { RichMention } from "@app/types/assistant/mentions";
-import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import {
-  Button,
-  ConversationMessageAvatar,
-  ConversationMessageContainer,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-  Icon,
-  Robot,
-  Spinner,
-  XClose,
-} from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { Button, Icon, Robot, Spinner, XClose } from "@dust-tt/sparkle";
+import { useCallback, useEffect, useMemo } from "react";
 
 interface AnalyticsConversationPanelHeaderProps {
   onClose: () => void;
@@ -54,69 +38,26 @@ function AnalyticsConversationPanelHeader({
   );
 }
 
-interface AnalyticsConversationGreetingProps {
-  agentConfiguration: LightAgentConfigurationType;
-}
-
-function AnalyticsConversationGreeting({
-  agentConfiguration,
-}: AnalyticsConversationGreetingProps) {
-  return (
-    <ConversationMessageContainer messageType="agent" type="agent">
-      <ConversationMessageAvatar
-        type="agent"
-        name={agentConfiguration.name}
-        avatarUrl={agentConfiguration.pictureUrl}
-      />
-      <div className="flex flex-col gap-2">
-        <ConversationMessageTitle
-          name={agentConfiguration.name}
-          renderName={(name) => name}
-        />
-        <ConversationMessageContent type="agent">
-          I can help you understand your workspace usage and costs across your
-          analytics data.
-        </ConversationMessageContent>
-      </div>
-    </ConversationMessageContainer>
-  );
-}
-
 interface AnalyticsConversationPanelBodyProps {
   owner: WorkspaceType;
   user: UserType;
   conversation: ConversationType | null;
-  createConversation: ReturnType<
-    typeof useAnalyticsConversation
-  >["createConversation"];
+  isCreatingConversation: boolean;
+  creationFailed: boolean;
+  onRetry: () => void;
   resetConversation: () => void;
-  disabled: boolean;
 }
 
 function AnalyticsConversationPanelBody({
   owner,
   user,
   conversation,
-  createConversation,
+  isCreatingConversation,
+  creationFailed,
+  onRetry,
   resetConversation,
-  disabled,
 }: AnalyticsConversationPanelBodyProps) {
-  const { agentConfiguration: analystAgentConfiguration } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: GLOBAL_AGENTS_SID.ANALYST,
-      disabled,
-    });
-
   const { currentPanel } = useConversationSidePanelContext();
-
-  const stickyMentions = useMemo<RichMention[]>(
-    () =>
-      analystAgentConfiguration
-        ? [toRichAgentMentionType(analystAgentConfiguration)]
-        : [],
-    [analystAgentConfiguration]
-  );
 
   // Stub reuse of ConversationViewer's agentBuilderContext slot, whose only
   // fields we need are disableAgentMentions/actionsToShow.
@@ -133,10 +74,31 @@ function AnalyticsConversationPanelBody({
     [resetConversation]
   );
 
-  if (!analystAgentConfiguration) {
+  if (creationFailed) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="md" />
+      <div className="flex h-full min-h-0 items-center justify-center">
+        <div className="flex flex-col items-center gap-3 px-4 text-center">
+          <div className="text-lg font-medium text-foreground">
+            Unable to start Analyst
+          </div>
+          <div className="max-w-sm text-muted-foreground">
+            The Analyst session could not be started.
+          </div>
+          <Button variant="outline" label="Try again" onClick={onRetry} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isCreatingConversation || !conversation) {
+    return (
+      <div className="flex h-full min-h-0 items-center justify-center">
+        <div className="flex items-center gap-3">
+          <Spinner size="md" />
+          <span className="text-muted-foreground">
+            Starting Analyst session...
+          </span>
+        </div>
       </div>
     );
   }
@@ -149,49 +111,21 @@ function AnalyticsConversationPanelBody({
         }
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {conversation ? (
-            <ConversationViewer
-              owner={owner}
-              user={user}
-              conversationId={conversation.sId}
-              agentBuilderContext={analystAgentContext}
-              key={conversation.sId}
-            />
-          ) : (
-            <div className="mx-auto w-full max-w-conversation px-5 pt-6 md:pt-10">
-              <AnalyticsConversationGreeting
-                agentConfiguration={analystAgentConfiguration}
-              />
-            </div>
-          )}
+          <ConversationViewer
+            owner={owner}
+            user={user}
+            conversationId={conversation.sId}
+            agentBuilderContext={analystAgentContext}
+            key={conversation.sId}
+          />
         </div>
-
-        {!conversation && (
-          <div className="relative z-20 mx-auto flex w-full flex-shrink-0 flex-col px-5 pt-4 pb-6 md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1">
-            <InputBar
-              owner={owner}
-              user={user}
-              onSubmit={createConversation}
-              stickyMentions={stickyMentions}
-              draftKey="analytics-conversation-panel"
-              placeholder="Ask about your workspace usage and costs"
-              actions={[]}
-              disableAgentMentions
-              disableUserMentions
-              disableAutoFocus
-              isFloating={false}
-            />
-          </div>
-        )}
       </div>
 
-      {conversation && (
-        <ConversationSidePanelContent
-          conversation={conversation}
-          owner={owner}
-          currentPanel={currentPanel}
-        />
-      )}
+      <ConversationSidePanelContent
+        conversation={conversation}
+        owner={owner}
+        currentPanel={currentPanel}
+      />
     </>
   );
 }
@@ -200,8 +134,7 @@ export interface AnalyticsConversationPanelProps {
   owner: WorkspaceType;
   user: UserType;
   onClose: () => void;
-  /** Skips fetching the agent configuration while the panel is closed. */
-  disabled?: boolean;
+  isOpen: boolean;
 }
 
 /**
@@ -212,10 +145,28 @@ export function AnalyticsConversationPanel({
   owner,
   user,
   onClose,
-  disabled = false,
+  isOpen,
 }: AnalyticsConversationPanelProps) {
-  const { conversation, createConversation, resetConversation } =
-    useAnalyticsConversation({ owner, user });
+  const {
+    conversation,
+    isCreatingConversation,
+    creationFailed,
+    startConversation,
+    resetConversation,
+  } = useAnalyticsConversation({ owner, user });
+
+  // `ResizableSidePanel` keeps this panel mounted while closed, so a mount effect would bootstrap
+  // a conversation on every Analytics page load.
+  useEffect(() => {
+    if (isOpen) {
+      void startConversation();
+    }
+  }, [isOpen, startConversation]);
+
+  const handleRetry = useCallback(() => {
+    resetConversation();
+    void startConversation();
+  }, [resetConversation, startConversation]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
@@ -234,9 +185,10 @@ export function AnalyticsConversationPanel({
                   owner={owner}
                   user={user}
                   conversation={conversation}
-                  createConversation={createConversation}
+                  isCreatingConversation={isCreatingConversation}
+                  creationFailed={creationFailed}
+                  onRetry={handleRetry}
                   resetConversation={resetConversation}
-                  disabled={disabled}
                 />
               </GenerationContextProvider>
             </BlockedActionsProvider>
