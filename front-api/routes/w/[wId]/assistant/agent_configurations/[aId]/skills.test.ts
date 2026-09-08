@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -15,6 +16,31 @@ function getSkills(workspace: { sId: string }, aId: string) {
 }
 
 describe("GET /api/w/:wId/assistant/agent_configurations/:aId/skills", () => {
+  it("lists the skills of an unpublished agent to an admin with the admin_can_see_private_entities flag", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+    const skill = await SkillFactory.create(agentOwnerAuth, {
+      name: "Owner's Skill",
+    });
+    await SkillFactory.linkToAgent(agentOwnerAuth, {
+      skillId: skill.id,
+      agentConfigurationId: agent.id,
+    });
+
+    const response = await getSkills(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skills.map((s: { sId: string }) => s.sId)).toEqual([skill.sId]);
+  });
+
   it("should return 404 for an unpublished agent the caller cannot read", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       role: "admin",

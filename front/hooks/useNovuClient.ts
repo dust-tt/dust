@@ -1,5 +1,6 @@
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { useUser } from "@app/lib/swr/user";
+import logger from "@app/logger/logger";
 import type { CellInfo } from "@app/types/cell";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Novu } from "@novu/js";
@@ -72,18 +73,16 @@ export const useNovuClient = () => {
 
   useEffect(() => {
     if (user?.subscriberHash && user?.sId) {
-      if (!novuConfig.applicationIdentifier) {
-        throw new Error(
-          "NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER for cell is not set"
-        );
-      }
-      if (!novuConfig.apiUrl) {
-        throw new Error("NEXT_PUBLIC_NOVU_API_URL for cell is not set");
-      }
-      if (!novuConfig.socketUrl) {
-        throw new Error(
-          "NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL for cell is not set"
-        );
+      if (
+        !novuConfig.applicationIdentifier ||
+        !novuConfig.apiUrl ||
+        !novuConfig.socketUrl
+      ) {
+        logger.error("Novu config is not set", {
+          cell: cellContext?.cellInfo,
+          novuConfig,
+        });
+        return;
       }
 
       const config = {
@@ -100,6 +99,8 @@ export const useNovuClient = () => {
     novuConfig.apiUrl,
     novuConfig.applicationIdentifier,
     novuConfig.socketUrl,
+    novuConfig,
+    cellContext?.cellInfo,
     user?.subscriberHash,
     user?.sId,
   ]);

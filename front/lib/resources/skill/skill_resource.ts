@@ -738,6 +738,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         if (!auth.isAdmin()) {
           throw new Error("Only admins can fetch the skills they cannot read.");
         }
+        // With the `admin_can_see_private_entities` feature flag, admins get the skills they
+        // cannot read in full instead of redacted.
+        if (await hasFeatureFlag(auth, "admin_can_see_private_entities")) {
+          allowedCustomSkills = customSkills;
+          break;
+        }
         const readableIds = new Set(
           (await this.filterReadable(auth, customSkills, { transaction })).map(
             (skill) => skill.id

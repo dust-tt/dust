@@ -2,14 +2,13 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { AVATAR_SIZES } from "@sparkle/components/Avatar";
-import { ActionBeerIcon } from "@sparkle/icons/actions";
-import { Star01 } from "@sparkle/icons/v2-stroke";
+import { Beer, Star01 } from "@sparkle/icons/v2-stroke";
 
 import { Avatar } from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
-  ActionBeerIcon: ActionBeerIcon,
+  Beer: Beer,
   Star01: Star01,
 } as const;
 
@@ -196,7 +195,7 @@ export const WithImage: Story = {
 export const WithIcon: Story = {
   args: {
     size: "md",
-    icon: ActionBeerIcon,
+    icon: Beer,
     backgroundColor: "bg-gray-700",
     iconColor: "text-gray-50",
   },

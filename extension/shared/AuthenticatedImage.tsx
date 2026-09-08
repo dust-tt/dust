@@ -7,7 +7,7 @@ import { forwardRef, type ImgHTMLAttributes, useEffect, useState } from "react";
 /**
  * Check whether a URL points to our own API and therefore needs an
  * Authorization header. Matches relative `/api/…` paths and absolute URLs
- * whose origin equals the configured base URL (region-aware).
+ * whose origin equals the configured base URL (cell-aware).
  */
 function isDustApiUrl(url: string): boolean {
   if (url.startsWith("/api/")) {

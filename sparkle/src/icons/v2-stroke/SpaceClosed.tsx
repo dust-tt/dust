@@ -10,7 +10,10 @@ const SvgSpaceClosed = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="2" />
+    <path
+      fill="currentColor"
+      d="M18 12a6 6 0 1 0-12 0 6 6 0 0 0 12 0m2 0a8 8 0 1 1-16 0 8 8 0 0 1 16 0"
+    />
   </svg>
 );
 export default SvgSpaceClosed;

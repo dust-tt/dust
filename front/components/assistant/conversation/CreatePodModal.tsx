@@ -94,7 +94,6 @@ export function CreatePodModal({
       {
         name: trimmedName,
         isRestricted: !isPodOpen,
-        managementMode: "manual",
         memberIds: [],
         spaceKind: "project",
       },

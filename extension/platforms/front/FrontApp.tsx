@@ -1,8 +1,9 @@
 import { RootLayout } from "@app/components/app/RootLayout";
+import { CellProvider } from "@app/lib/auth/CellContext";
 import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { FrontPlatformProvider } from "@extension/platforms/front/context/FrontPlatformProvider";
 import { FrontContextProvider } from "@extension/platforms/front/context/FrontProvider";
-import { RegionProvider } from "@extension/shared/context/RegionContext";
+
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
 import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
@@ -43,9 +44,9 @@ export const FrontApp = () => {
 
   return (
     <ClientTypeProvider value="extension">
-      <FrontContextProvider>
-        <FrontPlatformProvider>
-          <RegionProvider>
+      <CellProvider>
+        <FrontContextProvider>
+          <FrontPlatformProvider>
             <ExtensionAuthProvider>
               <ExtensionFetcherProvider>
                 <RootLayout>
@@ -53,9 +54,9 @@ export const FrontApp = () => {
                 </RootLayout>
               </ExtensionFetcherProvider>
             </ExtensionAuthProvider>
-          </RegionProvider>
-        </FrontPlatformProvider>
-      </FrontContextProvider>
+          </FrontPlatformProvider>
+        </FrontContextProvider>
+      </CellProvider>
     </ClientTypeProvider>
   );
 };

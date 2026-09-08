@@ -1,11 +1,11 @@
 import { RootLayout } from "@app/components/app/RootLayout";
+import { CellProvider, useCellContext } from "@app/lib/auth/CellContext";
 import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { SparkleContext } from "@dust-tt/sparkle";
 import { PortProvider } from "@extension/platforms/firefox/context/PortContext";
 import { FirefoxPlatformService } from "@extension/platforms/firefox/services/platform";
 import { AuthenticatedImage } from "@extension/shared/AuthenticatedImage";
 import { PlatformProvider } from "@extension/shared/context/PlatformContext";
-import { RegionProvider } from "@extension/shared/context/RegionContext";
 import { useCaptureActions } from "@extension/shared/hooks/useCaptureActions";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
 import { ReactRouterLinkWrapper } from "@extension/shared/ReactRouterLinkWrapper";
@@ -16,9 +16,23 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { FirefoxExtensionWrapper } from "./FirefoxExtensionWrapper";
 
 export const FirefoxApp = () => {
-  const platformService = new FirefoxPlatformService();
-  platformService.useCaptureActions = useCaptureActions;
-  const router = createBrowserRouter(routes);
+  return (
+    <ClientTypeProvider value="extension">
+      <CellProvider>
+        <FirefoxAppInner />
+      </CellProvider>
+    </ClientTypeProvider>
+  );
+};
+
+const FirefoxAppInner = () => {
+  const { cells } = useCellContext();
+  const platformService = useMemo(() => {
+    const service = new FirefoxPlatformService(cells);
+    service.useCaptureActions = useCaptureActions;
+    return service;
+  }, [cells]);
+  const router = useMemo(() => createBrowserRouter(routes), []);
 
   const sparkleContextValue = useMemo(
     () => ({
@@ -31,24 +45,20 @@ export const FirefoxApp = () => {
   );
 
   return (
-    <ClientTypeProvider value="extension">
-      <PlatformProvider platformService={platformService}>
-        <PortProvider>
-          <RegionProvider>
-            <ExtensionAuthProvider>
-              <ExtensionFetcherProvider>
-                <SparkleContext.Provider value={sparkleContextValue}>
-                  <RootLayout>
-                    <FirefoxExtensionWrapper>
-                      <RouterProvider router={router} />
-                    </FirefoxExtensionWrapper>
-                  </RootLayout>
-                </SparkleContext.Provider>
-              </ExtensionFetcherProvider>
-            </ExtensionAuthProvider>
-          </RegionProvider>
-        </PortProvider>
-      </PlatformProvider>
-    </ClientTypeProvider>
+    <PlatformProvider platformService={platformService}>
+      <PortProvider>
+        <ExtensionAuthProvider>
+          <ExtensionFetcherProvider>
+            <SparkleContext.Provider value={sparkleContextValue}>
+              <RootLayout>
+                <FirefoxExtensionWrapper>
+                  <RouterProvider router={router} />
+                </FirefoxExtensionWrapper>
+              </RootLayout>
+            </SparkleContext.Provider>
+          </ExtensionFetcherProvider>
+        </ExtensionAuthProvider>
+      </PortProvider>
+    </PlatformProvider>
   );
 };
