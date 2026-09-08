@@ -1783,6 +1783,13 @@ export async function resolveMatchingMemberUserIds({
  * orders (consumed credits from the analytics index, never from the Metronome per-user usage
  * cache), so the order shown always agrees with the values displayed.
  */
+/**
+ * @cc [owner:avervaet,label:product] seat-usage-order-excludes-non-seat-based
+ * When `orderColumn` is `"seatUsage"`, users on a seat type without a personal usage percentage
+ * (`workspace`/`workspace_yearly`/no seat) always sort after users on `free`/`pro`/`max`,
+ * regardless of `orderDirection`. Within each group, ordering follows seat usage percentage, then
+ * pool/overage consumption as a tiebreaker, both in `orderDirection`.
+ */
 async function resolveMembersUsagePageUsers({
   auth,
   workspace,
@@ -1837,6 +1844,14 @@ async function resolveMembersUsagePageUsers({
 
   const sortKeyByUserId = new Map<string, number | string>();
   const overageLimitByUserId = new Map<string, number>();
+  // Only populated for orderColumn "seatUsage": whether the seat has a
+  // personal usage percentage at all (free/pro/max with a resolved
+  // allowance) versus workspace/none seats, which spend straight from the
+  // pool and render "--" in that column.
+  const hasSeatUsagePercentByUserId = new Map<string, boolean>();
+  // Only populated for orderColumn "seatUsage": pool/overage consumption,
+  // used to break ties between seats at the same usage percentage.
+  const poolUsageTiebreakByUserId = new Map<string, number>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
@@ -2012,6 +2027,17 @@ async function resolveMembersUsagePageUsers({
               ? 100
               : 0
         );
+        // Mirrors the "--" condition in the seat-usage column: workspace/none
+        // seats have no personal allowance, so their percentage isn't
+        // comparable to free/pro/max seats and must never rank above them.
+        hasSeatUsagePercentByUserId.set(u.sId, effectiveAllocationAwu > 0);
+        poolUsageTiebreakByUserId.set(
+          u.sId,
+          Math.max(
+            0,
+            (consumedByUserId.get(u.sId) ?? 0) - effectiveAllocationAwu
+          )
+        );
       }
       break;
     }
@@ -2044,6 +2070,15 @@ async function resolveMembersUsagePageUsers({
 
   const directionFactor = orderDirection === "asc" ? 1 : -1;
   const sortedUsers = [...allUsers].sort((a, b) => {
+    // Seats with a personal usage percentage (free/pro/max) always rank
+    // above workspace/none seats, regardless of sort direction: the latter
+    // have no comparable percentage and render "--" in the column.
+    const hasPercentA = hasSeatUsagePercentByUserId.get(a.sId) ?? true;
+    const hasPercentB = hasSeatUsagePercentByUserId.get(b.sId) ?? true;
+    if (hasPercentA !== hasPercentB) {
+      return hasPercentA ? -1 : 1;
+    }
+
     const keyA = sortKeyByUserId.get(a.sId) ?? 0;
     const keyB = sortKeyByUserId.get(b.sId) ?? 0;
     const cmp =
@@ -2052,6 +2087,13 @@ async function resolveMembersUsagePageUsers({
         : String(keyA).localeCompare(String(keyB));
     if (cmp !== 0) {
       return cmp * directionFactor;
+    }
+    // Tiebreak on pool/overage usage, in the same direction as the primary
+    // sort (only populated for orderColumn "seatUsage").
+    const poolUsageA = poolUsageTiebreakByUserId.get(a.sId) ?? 0;
+    const poolUsageB = poolUsageTiebreakByUserId.get(b.sId) ?? 0;
+    if (poolUsageA !== poolUsageB) {
+      return (poolUsageA - poolUsageB) * directionFactor;
     }
     // Tiebreak on the highest overage limit, always descending
     const overageLimitA = overageLimitByUserId.get(a.sId) ?? 0;
