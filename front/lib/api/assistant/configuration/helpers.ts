@@ -183,27 +183,27 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     editorIds = agentIdsForGroups.map((g) => g.agentConfigurationId);
   }
 
-  const [
-    mcpServerActionsConfigurationsPerAgent,
-    favoriteStatePerAgent,
-    tagsPerAgent,
-    spacesForApiKey,
-  ] = await Promise.all([
-    fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
+  const mcpServerActionsConfigurationsPerAgent =
+    await fetchMCPServerActionConfigurations(auth, {
+      configurationIds,
+      variant,
+    });
+  const favoriteStatePerAgent =
     user && variant !== "extra_light"
-      ? getFavoriteStates(auth, { configurationIds: configurationSIds })
-      : Promise.resolve(new Map<string, boolean>()),
+      ? await getFavoriteStates(auth, { configurationIds: configurationSIds })
+      : new Map<string, boolean>();
+  const tagsPerAgent =
     variant !== "extra_light"
-      ? TagResource.listForAgents(auth, configurationIds)
-      : Promise.resolve([]),
+      ? await TagResource.listForAgents(auth, configurationIds)
+      : [];
+  const spacesForApiKey =
     isRegularApiKey && auth.isBuilder()
-      ? SpaceResource.fetchByModelIds(auth, [
+      ? await SpaceResource.fetchByModelIds(auth, [
           ...new Set(
             agentConfigurations.flatMap((agent) => agent.requestedSpaceIds)
           ),
         ])
-      : Promise.resolve([]),
-  ]);
+      : [];
   const spaceById = new Map(spacesForApiKey.map((space) => [space.id, space]));
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
