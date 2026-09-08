@@ -303,7 +303,7 @@ const usageColumn: ColumnDef<RowData, number | null> = {
         label={usageCount === null ? "-" : usageCount.toLocaleString()}
         tooltip={
           usageCount === null
-            ? "Usage data is unavailable for this skill."
+            ? "System skills are always active, so message usage does not apply"
             : undefined
         }
       />
