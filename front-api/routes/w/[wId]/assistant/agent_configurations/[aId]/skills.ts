@@ -1,4 +1,5 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
+import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { GetAgentSkillsResponseBody } from "@app/types/api/assistant/configuration/skills";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -22,10 +23,10 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "full",
-    });
+    // Skills carry their instructions: they are as private as the agent's own prompt. Admins get
+    // the agents they cannot read redacted (`canRead` false), or in full with the
+    // `admin_can_see_private_entities` feature flag; see `getAgentConfigurationForDetails`.
+    const agent = await getAgentConfigurationForDetails(auth, { agentId: aId });
     if (!agent || !agent.canRead) {
       return apiError(ctx, {
         status_code: 404,
@@ -36,7 +37,12 @@ app.get(
       });
     }
 
-    const skills = await SkillResource.listByAgentConfiguration(auth, agent);
+    // With the flag, the skills built on spaces the admin cannot read are listed too.
+    const skills = await SkillResource.listByAgentConfiguration(auth, agent, {
+      permissionFiltering: (await canAdminSeePrivateEntities(auth))
+        ? "dangerously_skip"
+        : "strict",
+    });
     return ctx.json({ skills: skills.map((s) => s.toJSON(auth)) });
   }
 );

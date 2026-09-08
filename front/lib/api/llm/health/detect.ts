@@ -2,11 +2,11 @@ import {
   ERROR_RATIO_THRESHOLD,
   MIN_ATTEMPTS_IN_WINDOW,
 } from "@app/lib/api/llm/health/config";
+import { healthLogger } from "@app/lib/api/llm/health/logger";
 import { logModelHealthTransition } from "@app/lib/api/llm/health/transitions";
 import type { ModelHealthWindowType } from "@app/lib/api/llm/health/types";
 import { readEndpointWindow } from "@app/lib/api/llm/health/window";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
-import logger from "@app/logger/logger";
 import { launchModelHealthRecovery } from "@app/temporal/model_health/client";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -44,7 +44,7 @@ export async function evaluateEndpoint(
 
   const launchRes = await launchModelHealthRecovery(endpoint);
   if (launchRes.isErr()) {
-    logger.error(
+    healthLogger.error(
       {
         err: normalizeError(launchRes.error),
         modelId: endpoint.modelId,

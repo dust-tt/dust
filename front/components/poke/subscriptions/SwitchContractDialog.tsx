@@ -5,6 +5,12 @@ import {
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
 import { amountCents } from "@app/lib/metronome/amounts";
+import {
+  commitmentAmount,
+  commitmentMonths,
+  commitmentPeriodEnd,
+  maxInvoicePeriods,
+} from "@app/lib/metronome/seat_commitment";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
@@ -36,6 +42,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Label,
   SliderToggle,
   Spinner,
@@ -85,6 +95,56 @@ function snapDatetimeLocalToHour(value: string): string {
   return value;
 }
 
+type ContractDurationUnit = "years" | "months" | "weeks";
+
+// Add a contract duration to a start moment (UTC), clamping month/year day
+// overflow to the last day of the target month (Jan 31 + 1 month → Feb 28/29).
+function addContractDuration(
+  start: Date,
+  value: number,
+  unit: ContractDurationUnit
+): Date {
+  if (unit === "weeks") {
+    return new Date(start.getTime() + value * 7 * 24 * 60 * 60 * 1000);
+  }
+  const monthsToAdd = unit === "years" ? value * 12 : value;
+  const targetMonthIndex = start.getUTCMonth() + monthsToAdd;
+  const targetYear = start.getUTCFullYear() + Math.floor(targetMonthIndex / 12);
+  const targetMonth = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDay = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0)
+  ).getUTCDate();
+  return new Date(
+    Date.UTC(
+      targetYear,
+      targetMonth,
+      Math.min(start.getUTCDate(), lastDay),
+      start.getUTCHours(),
+      start.getUTCMinutes(),
+      0,
+      0
+    )
+  );
+}
+
+// Floor a moment to the start of its UTC hour. Contracts always start and end
+// on whole hours, so the duration math anchors to the floored start hour.
+function floorToHourUTC(d: Date): Date {
+  const floored = new Date(d);
+  floored.setUTCMinutes(0, 0, 0);
+  return floored;
+}
+
+// Format a Date to the `YYYY-MM-DDTHH:mm` shape the datetime-local field uses,
+// interpreted in UTC.
+function toDatetimeLocalUTC(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
+    `T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+  );
+}
+
 const isLegacyPackageName = (name: string) => /\blegacy\b/i.test(name);
 
 const DEFAULT_PERIODS_FOR_FREQUENCY: Record<string, number | undefined> = {
@@ -107,6 +167,10 @@ export default function SwitchContractDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [durationMode, setDurationMode] = useState(false);
+  const [durationValue, setDurationValue] = useState(1);
+  const [durationUnit, setDurationUnit] =
+    useState<ContractDurationUnit>("years");
   const [portalContainer, setPortalContainer] = useState<
     HTMLElement | undefined
   >(undefined);
@@ -396,6 +460,64 @@ export default function SwitchContractDialog({
       };
     }, []);
 
+  // Resolve the contract start moment the same way `onSubmit` does, so the
+  // commitment-period info and the per-seat default commitment prices reflect
+  // what will actually be provisioned.
+  const commitmentStartDate = useMemo(() => {
+    if (startMode === "retroactive_first_of_month") {
+      return new Date(retroactiveFirstOfMonthISO);
+    }
+    if (startMode === "immediately") {
+      // "Immediately" swaps at a whole hour; floor now so the displayed period,
+      // prorated defaults, and computed end date all sit on hour boundaries.
+      return floorToHourUTC(new Date());
+    }
+    if (startMode === "select" && startingAt) {
+      const d = new Date(startingAt + ":00Z");
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  }, [startMode, startingAt, retroactiveFirstOfMonthISO]);
+
+  const commitmentEndDate = useMemo(() => {
+    if (!endingAt) {
+      return undefined;
+    }
+    const d = new Date(endingAt + ":00Z");
+    return isNaN(d.getTime()) ? undefined : d;
+  }, [endingAt]);
+
+  // The commitment period drives the default seat commitment prices: it runs
+  // from the contract start to its end date, or one year when open-ended.
+  const commitmentPeriodInfo = useMemo(() => {
+    if (!commitmentStartDate) {
+      return null;
+    }
+    const end = commitmentPeriodEnd(commitmentStartDate, commitmentEndDate);
+    return {
+      start: commitmentStartDate,
+      end,
+      months: commitmentMonths(commitmentStartDate, end),
+      openEnded: commitmentEndDate === undefined,
+    };
+  }, [commitmentStartDate, commitmentEndDate]);
+
+  // While "Set duration" is on, the end date is derived from the (floored) start
+  // plus the chosen duration and kept in sync as the start, value, or unit
+  // change — the end-date field is read-only in this mode. Anchored to the
+  // floored start hour so the end lands on a whole hour.
+  useEffect(() => {
+    if (!durationMode || !commitmentStartDate || !(durationValue > 0)) {
+      return;
+    }
+    const end = addContractDuration(
+      floorToHourUTC(commitmentStartDate),
+      durationValue,
+      durationUnit
+    );
+    form.setValue("endingAt", toDatetimeLocalUTC(end));
+  }, [durationMode, commitmentStartDate, durationValue, durationUnit, form]);
+
   const startModeOptions = useMemo(
     () => [
       { value: "immediately", display: "Start immediately" },
@@ -474,6 +596,45 @@ export default function SwitchContractDialog({
     }
   }, [promoteNoneSeatsTo, enterableSeatTypes, form]);
 
+  // Canonical default installment count for a payment frequency, capped so no
+  // installment lands at or past the commitment period end (a 3rd monthly
+  // invoice on a six-week contract would never be raised). Reads the start/end
+  // from the live form values so it tracks whatever the operator has entered.
+  const cappedDefaultPeriods = useCallback(
+    (
+      freq: "one_time" | "monthly" | "quarterly" | "semi_annually" | "annually",
+      values: {
+        startMode?: string;
+        startingAt?: string;
+        endingAt?: string;
+      }
+    ): number | undefined => {
+      const base = DEFAULT_PERIODS_FOR_FREQUENCY[freq];
+      if (base === undefined || freq === "one_time") {
+        return base;
+      }
+      const start =
+        values.startMode === "retroactive_first_of_month"
+          ? new Date(retroactiveFirstOfMonthISO)
+          : values.startMode === "immediately"
+            ? new Date()
+            : values.startMode === "select" && values.startingAt
+              ? new Date(values.startingAt + ":00Z")
+              : null;
+      if (!start || isNaN(start.getTime())) {
+        return base;
+      }
+      const end = values.endingAt
+        ? new Date(values.endingAt + ":00Z")
+        : undefined;
+      return Math.min(
+        base,
+        maxInvoicePeriods(start, commitmentPeriodEnd(start, end), freq)
+      );
+    },
+    [retroactiveFirstOfMonthISO]
+  );
+
   // When any payment frequency field changes, pre-fill its sibling periods
   // field with the canonical default. Uses form.watch(callback) — the only
   // reliable way to know exactly which field changed (via the `name` argument).
@@ -485,7 +646,7 @@ export default function SwitchContractDialog({
           : "one_time";
         form.setValue(
           "initialCredits.paymentSchedule.periods",
-          DEFAULT_PERIODS_FOR_FREQUENCY[freq]
+          cappedDefaultPeriods(freq, value)
         );
       }
       if (name === "scheduledCharge.paymentSchedule.frequency") {
@@ -494,7 +655,7 @@ export default function SwitchContractDialog({
           : "one_time";
         form.setValue(
           "scheduledCharge.paymentSchedule.periods",
-          DEFAULT_PERIODS_FOR_FREQUENCY[freq]
+          cappedDefaultPeriods(freq, value)
         );
       }
       if (
@@ -506,7 +667,7 @@ export default function SwitchContractDialog({
           value.seats?.[seatType]?.paymentSchedule?.frequency ?? "one_time";
         form.setValue(
           `seats.${seatType}.paymentSchedule.periods`,
-          DEFAULT_PERIODS_FOR_FREQUENCY[freq]
+          cappedDefaultPeriods(freq, value)
         );
       }
       // A commitment can't be invoiced at a $0 rate — clear a stale commitment
@@ -520,7 +681,7 @@ export default function SwitchContractDialog({
       }
     });
     return unsubscribe;
-  }, [form]);
+  }, [form, cappedDefaultPeriods]);
 
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
@@ -600,6 +761,18 @@ export default function SwitchContractDialog({
         // datetime-local has no timezone — append Z to interpret as UTC.
         cleaned.endingAt = new Date(values.endingAt + ":00Z").toISOString();
       }
+      // Resolve the commitment window (mirrors the display memos) so the default
+      // seat commitment price is prorated to the contract, not a fixed year.
+      const commitStart =
+        values.startMode === "retroactive_first_of_month"
+          ? new Date(retroactiveFirstOfMonthISO)
+          : values.startMode === "select" && values.startingAt
+            ? new Date(values.startingAt + ":00Z")
+            : floorToHourUTC(new Date());
+      const commitEnd = values.endingAt
+        ? new Date(values.endingAt + ":00Z")
+        : undefined;
+      const commitPeriodEnd = commitmentPeriodEnd(commitStart, commitEnd);
       // Seats: every seat the package knows about, each carrying its `selected`
       // state, so the server can entitle checked seats and disable unchecked
       // ones the package would otherwise sell. Entitled-by-default seats are
@@ -617,8 +790,8 @@ export default function SwitchContractDialog({
             ? entry.maxSeats
             : undefined;
         const rate = Number.isFinite(entry?.rate) ? (entry?.rate ?? 0) : 0;
-        // If the operator left commitment price blank, default to minSeats * rate
-        // (the list value of the committed seats).
+        // If the operator left commitment price blank, default to the
+        // commitment period prorated in months (see `commitmentInvoiceAmount`).
         const explicitPrice =
           typeof entry?.commitmentPrice === "number" &&
           Number.isFinite(entry.commitmentPrice) &&
@@ -627,7 +800,17 @@ export default function SwitchContractDialog({
             : null;
         const commitmentPrice =
           explicitPrice ??
-          (minSeats > 0 && rate > 0 ? minSeats * rate : undefined);
+          (minSeats > 0 && rate > 0
+            ? Math.round(
+                commitmentAmount({
+                  minSeats,
+                  ratePerPeriod: rate,
+                  isAnnual: seatType.endsWith("_yearly"),
+                  start: commitStart,
+                  end: commitPeriodEnd,
+                }) * 100
+              ) / 100
+            : undefined);
         // Periods-when-not-one-time is enforced by `paymentScheduleSchema`'s
         // own refine, so it's guaranteed present here whenever needed.
         const paymentSchedule = entry?.paymentSchedule ?? {
@@ -914,21 +1097,95 @@ export default function SwitchContractDialog({
                             </span>
                           </Label>
                           <div className="relative">
-                            <InputField
-                              control={form.control}
-                              name="endingAt"
-                              hideLabel
-                              type="datetime-local"
-                              step={3600}
-                              placeholder="open-ended"
-                              transformValue={snapDatetimeLocalToHour}
-                            />
-                            {endingAtLocalLabel && (
-                              <p className="mt-1 text-xs text-muted-foreground absolute top-2 right-2">
-                                Local: {endingAtLocalLabel}
-                              </p>
-                            )}
+                            <div className="relative">
+                              <InputField
+                                control={form.control}
+                                name="endingAt"
+                                hideLabel
+                                type="datetime-local"
+                                step={3600}
+                                placeholder="open-ended"
+                                disabled={durationMode}
+                                transformValue={snapDatetimeLocalToHour}
+                              />
+                              {endingAtLocalLabel && (
+                                <p className="mt-1 text-xs text-muted-foreground absolute top-2 right-2">
+                                  Local: {endingAtLocalLabel}
+                                </p>
+                              )}
+                            </div>
+                            <div className="mt-2 flex items-center gap-2">
+                              <SliderToggle
+                                selected={durationMode}
+                                onClick={() => setDurationMode((v) => !v)}
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                Set duration
+                              </span>
+                              {durationMode && (
+                                <>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={durationValue}
+                                    onChange={(e) =>
+                                      setDurationValue(Number(e.target.value))
+                                    }
+                                    className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-xs"
+                                  />
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="xs"
+                                        isSelect
+                                        label={
+                                          durationUnit === "years"
+                                            ? "Years"
+                                            : durationUnit === "months"
+                                              ? "Months"
+                                              : "Weeks"
+                                        }
+                                      />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                      mountPortalContainer={portalContainer}
+                                    >
+                                      <DropdownMenuItem
+                                        label="Years"
+                                        onClick={() => setDurationUnit("years")}
+                                      />
+                                      <DropdownMenuItem
+                                        label="Months"
+                                        onClick={() =>
+                                          setDurationUnit("months")
+                                        }
+                                      />
+                                      <DropdownMenuItem
+                                        label="Weeks"
+                                        onClick={() => setDurationUnit("weeks")}
+                                      />
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </>
+                              )}
+                            </div>
                           </div>
+                          {commitmentPeriodInfo && (
+                            <>
+                              <Label className="text-sm">
+                                Commitment period
+                              </Label>
+                              <div className="text-sm text-muted-foreground">
+                                {commitmentPeriodInfo.openEnded
+                                  ? "1 year (open-ended contract)"
+                                  : `${commitmentPeriodInfo.months.toFixed(1)} months (contract start → end)`}
+                                . Drives the default seat commitment prices
+                                below.
+                              </div>
+                            </>
+                          )}
                         </>
                       )}
                     </div>
@@ -1083,9 +1340,28 @@ export default function SwitchContractDialog({
                           const rate = watchedSeats?.[seatType]?.rate ?? 0;
                           const isAnnualSeat = seatType.endsWith("_yearly");
                           const defaultCommitment =
-                            minSeats > 0 && rate > 0 ? minSeats * rate : null;
+                            commitmentPeriodInfo && minSeats > 0 && rate > 0
+                              ? Math.round(
+                                  commitmentAmount({
+                                    minSeats,
+                                    ratePerPeriod: rate,
+                                    isAnnual: isAnnualSeat,
+                                    start: commitmentPeriodInfo.start,
+                                    end: commitmentPeriodInfo.end,
+                                  }) * 100
+                                ) / 100
+                              : null;
                           const monthlyRate =
                             isAnnualSeat && rate > 0 ? rate / 12 : null;
+                          const maxPeriods =
+                            commitmentPeriodInfo &&
+                            seatPaymentFrequency !== "one_time"
+                              ? maxInvoicePeriods(
+                                  commitmentPeriodInfo.start,
+                                  commitmentPeriodInfo.end,
+                                  seatPaymentFrequency
+                                )
+                              : undefined;
                           return (
                             <div
                               key={seatType}
@@ -1193,6 +1469,12 @@ export default function SwitchContractDialog({
                                     name={`seats.${seatType}.paymentSchedule.periods`}
                                     hideLabel
                                     type="number"
+                                    min="1"
+                                    max={
+                                      maxPeriods !== undefined
+                                        ? String(maxPeriods)
+                                        : undefined
+                                    }
                                     placeholder="e.g., 4"
                                   />
                                 )}

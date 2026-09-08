@@ -4,6 +4,7 @@ import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -359,6 +360,31 @@ describe("workspace_management tools", () => {
       expect(text).toContain("Restricted Space Agent");
       expect(text).toContain("private");
       expect(text).not.toContain("Test Instructions");
+    });
+
+    it("returns the instructions of an unpublished agent to an admin with the admin_can_see_private_entities flag", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      await FeatureFlagFactory.basic(
+        authenticator,
+        "admin_can_see_private_entities"
+      );
+      const agentOwnerAuth = await createOtherMemberAuth(workspace);
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        agentOwnerAuth,
+        { name: "Unpublished Agent", scope: "hidden" }
+      );
+
+      const text = await callTool(
+        "get_agent_details",
+        { agentId: agent.sId },
+        authenticator
+      );
+
+      expect(text).toContain("Unpublished Agent");
+      expect(text).toContain("Test Instructions");
+      expect(text).not.toContain("private");
     });
 
     it("does not reveal an unpublished agent to a non-editor member", async () => {

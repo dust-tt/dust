@@ -11,7 +11,11 @@ export const paymentScheduleSchema = z
     frequency: z
       .enum(["one_time", "monthly", "quarterly", "semi_annually", "annually"])
       .default("one_time"),
-    periods: z.number().int().min(2).max(60).optional(),
+    // Number of invoice installments. May be 1 (a single upfront invoice) when
+    // the commitment period is too short to fit more than one period of the
+    // chosen frequency — e.g. a quarterly schedule on a six-week contract. The
+    // server clamps larger values down to what fits (see `maxInvoicePeriods`).
+    periods: z.number().int().min(1).max(60).optional(),
   })
   .refine(
     (s) => s.frequency === "one_time" || s.periods !== undefined,
@@ -57,8 +61,10 @@ const recurringFreeCreditSchema = z
 // `workspace_seat_limits`. `rate` is the per-seat rate in the currency's MAJOR
 // units (dollars / euros); the server converts it to Metronome's fiat unit via
 // `metronomeAmount`. When `commitmentPrice` is set (also in major units), a
-// contract prepaid commit is created granting `minSeats * rate` of contract
-// credit, invoiced at `commitmentPrice`.
+// contract prepaid commit is created granting enough contract credit to cover
+// the seat subscription charges over the commitment period, matching Metronome's
+// per-hour proration (see `commitmentAmount`), and invoiced at `commitmentPrice`
+// — which the dialog defaults to that same prorated amount.
 const seatEntrySchema = z
   .object({
     // Whether the seat is entitled on the new contract. `true` (the default,

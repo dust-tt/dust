@@ -1,3 +1,4 @@
+import type { CellInfo } from "@app/types/cell";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { DUST_US_URL, FRONT_EXTENSION_URL } from "@extension/shared/lib/config";
@@ -6,7 +7,7 @@ import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
-  getRegionInfoFromClaims,
+  getCellInfoFromClaims,
 } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
@@ -63,8 +64,8 @@ const openAndWaitForPopup = async <T>(
 };
 
 export class FrontAuthService extends AuthService {
-  constructor(storage: StorageService) {
-    super(storage);
+  constructor(storage: StorageService, cells?: CellInfo[]) {
+    super(storage, cells);
   }
 
   private async openAuthPopup(
@@ -104,6 +105,10 @@ export class FrontAuthService extends AuthService {
     forcedConnection?: string;
     organizationId?: string;
   }) {
+    if (!this.cells) {
+      return new Err(new AuthError("not_authenticated", "No cells found."));
+    }
+
     const { codeVerifier, codeChallenge } = await generatePKCE();
 
     // Store code verifier for later use
@@ -167,11 +172,11 @@ export class FrontAuthService extends AuthService {
 
       const claims = jwtDecode<Record<string, string>>(data.accessToken);
 
-      const regionInfo = getRegionInfoFromClaims(claims);
+      const cellInfo = getCellInfoFromClaims(claims, this.cells);
 
-      await this.storage.set("regionInfo", regionInfo);
+      await this.storage.set("cellInfo", cellInfo);
 
-      return new Ok({ tokens, regionInfo });
+      return new Ok({ tokens, cellInfo });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
@@ -189,23 +194,20 @@ export class FrontAuthService extends AuthService {
       return true;
     }
 
-    const regionInfo = await this.getRegionInfoFromStorage();
-    if (!regionInfo) {
+    const cellInfo = await this.getCellInfoFromStorage();
+    if (!cellInfo) {
       return true;
     }
 
-    const response = await fetch(
-      `${regionInfo.url}/api/workos/revoke-session`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: "omit",
-        body: JSON.stringify({ session_id: sessionId }),
-      }
-    );
+    const response = await fetch(`${cellInfo.url}/api/workos/revoke-session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      credentials: "omit",
+      body: JSON.stringify({ session_id: sessionId }),
+    });
 
     if (!response.ok) {
       throw new Error(`Revoke session failed: ${response.status}`);
@@ -247,21 +249,18 @@ export class FrontAuthService extends AuthService {
         refresh_token: tokens.refreshToken ?? "",
       };
 
-      const regionInfo = await this.getRegionInfoFromStorage();
-      if (!regionInfo) {
+      const cellInfo = await this.getCellInfoFromStorage();
+      if (!cellInfo) {
         return new Err(
-          new AuthError("invalid_oauth_token_error", "No region info found")
+          new AuthError("invalid_oauth_token_error", "No cell info found")
         );
       }
 
-      const response = await fetch(
-        `${regionInfo.url}/api/workos/authenticate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams(tokenParams),
-        }
-      );
+      const response = await fetch(`${cellInfo.url}/api/workos/authenticate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(tokenParams),
+      });
 
       if (!response.ok) {
         const data = await response.json();

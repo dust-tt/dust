@@ -365,6 +365,40 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skills.filter((s) => s.canRead)).not.toHaveLength(0);
   });
 
+  it("lists skills built on spaces the admin cannot read in full with the admin_can_see_private_entities flag", async () => {
+    const { workspace, auth } = await setupTest("admin");
+    await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      availability: "workspace_users",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await getSkills(workspace, {
+      bypassEditorVisibility: "true",
+    });
+    expect(response.status).toBe(200);
+    const skills: SkillWithoutInstructionsAndToolsType[] = (
+      await response.json()
+    ).skills;
+    const restrictedSkill = skills.find(
+      (s) => s.name === "Restricted Space Skill"
+    );
+    expect(restrictedSkill).toBeDefined();
+    expect(restrictedSkill!.canRead).toBe(true);
+  });
+
   it("rejects bypassEditorVisibility for non-admins", async () => {
     const { workspace } = await setupTest("user");
 

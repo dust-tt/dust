@@ -323,6 +323,35 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     ).toEqual([skillOwner.sId]);
   });
 
+  it("returns a skill built on a space the admin cannot read in full with the admin_can_see_private_entities flag", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      instructions: "Secret guidelines",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await getSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.canRead).toBe(true);
+    expect(data.skill.instructions).toBe("Secret guidelines");
+  });
+
   it("returns 404 for a skill built on a space a non-admin cannot read", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       role: "builder",

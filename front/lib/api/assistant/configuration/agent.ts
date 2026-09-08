@@ -8,6 +8,7 @@ import {
   isSelfHostedImageWithValidContentType,
   redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
+import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
@@ -462,8 +463,20 @@ export async function getAgentConfigurationForDetails(
   }
 
   // Either not readable (unpublished, not an editor) or filtered out by a space the admin is not a
-  // member of: refetch without the space filtering to redact it. The light variant is enough, the
-  // full one only adds fields the redaction drops.
+  // member of. With the `admin_can_see_private_entities` feature flag the admin gets it in full;
+  // otherwise it is refetched without the space filtering to be redacted.
+  if (await canAdminSeePrivateEntities(auth)) {
+    const fullAgent =
+      agent ??
+      (await getAgentConfiguration(auth, {
+        agentId,
+        variant: "full",
+        dangerouslySkipPermissionFiltering: true,
+      }));
+    return fullAgent ? { ...fullAgent, canRead: true } : null;
+  }
+
+  // The light variant is enough, the full one only adds fields the redaction drops.
   const restrictedAgent =
     agent ??
     (await getAgentConfiguration(auth, {

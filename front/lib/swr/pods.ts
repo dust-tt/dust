@@ -87,19 +87,16 @@ export function usePodContextAttachments({
   const podContextFetcher: Fetcher<GetProjectContextResponseBody> = fetcher;
 
   const key = useMemo(() => {
-    if (disabled) {
-      return null;
-    }
     const params = new URLSearchParams();
     if (query && query.trim().length > 0) {
       params.set("query", query);
     }
     const qs = params.toString();
     return `/api/w/${owner.sId}/spaces/${podId}/project_context${qs ? `?${qs}` : ""}`;
-  }, [disabled, owner.sId, podId, query]);
+  }, [owner.sId, podId, query]);
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(key, podContextFetcher);
+    useSWRWithDefaults(key, podContextFetcher, { disabled });
 
   const refreshPodContextAttachments = useCallback(async () => {
     // Do not pass `undefined` as data — it clears the cache and causes UI flicker.
@@ -497,17 +494,13 @@ export function usePodTasks({
   const { fetcher } = useFetcher();
   const tasksFetcher: Fetcher<GetPodTasksResponseBody> = fetcher;
   const tasksUrl = useMemo(
-    () =>
-      disabled
-        ? null
-        : buildPodTasksListSwrKey(owner.sId, podId, taskOwnerFilter),
-    [disabled, owner.sId, podId, taskOwnerFilter]
+    () => buildPodTasksListSwrKey(owner.sId, podId, taskOwnerFilter),
+    [owner.sId, podId, taskOwnerFilter]
   );
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : tasksUrl,
-    tasksFetcher
-  );
+  const { data, error, mutate } = useSWRWithDefaults(tasksUrl, tasksFetcher, {
+    disabled,
+  });
 
   const stableTaskOrderByAssigneeKeyRef = useRef<Map<string, string[]>>(
     new Map()
@@ -855,21 +848,23 @@ export function useWorkspacePodTask({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const url =
-    !disabled && taskId
-      ? `/api/w/${workspaceId}/project_tasks/${encodeURIComponent(taskId)}`
-      : null;
+  const url = taskId
+    ? `/api/w/${workspaceId}/project_tasks/${encodeURIComponent(taskId)}`
+    : null;
   const podTaskFetcher: Fetcher<GetWorkspacePodTaskResponseBody> = fetcher;
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     url,
-    podTaskFetcher
+    podTaskFetcher,
+    {
+      disabled: disabled || !taskId,
+    }
   );
 
   return {
     task: data?.task ?? null,
     pod: data?.space ?? null,
-    isWorkspacePodTaskLoading: !error && isLoading && !!url,
+    isWorkspacePodTaskLoading: !disabled && !error && isLoading && !!taskId,
     isWorkspacePodTaskError: !!error,
     mutateWorkspacePodTask: mutate,
   };

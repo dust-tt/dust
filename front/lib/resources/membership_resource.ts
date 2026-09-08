@@ -144,7 +144,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   /**
    * @cc [owner:philipperolet,label:performance] empty-users-skip-membership-queries
-   * With a workspace, empty users return no memberships without querying. This does not 
+   * With a workspace, empty users return no memberships without querying. This does not
    * apply to undefined/null users.
    */
   static async getActiveMemberships({

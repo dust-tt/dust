@@ -375,7 +375,6 @@ export function PodSettingsTab({
         isRestricted,
         memberIds: podMembers.filter((m) => !m.isEditor).map((m) => m.sId),
         editorIds: podMembers.filter((m) => m.isEditor).map((m) => m.sId),
-        managementMode: "manual",
         name: newPodName,
       },
       {
@@ -469,7 +468,6 @@ export function PodSettingsTab({
         isRestricted: !newIsOpen,
         memberIds: podMembers.filter((m) => !m.isEditor).map((m) => m.sId),
         editorIds: podMembers.filter((m) => m.isEditor).map((m) => m.sId),
-        managementMode: "manual",
         name: pod.name,
       },
       {
