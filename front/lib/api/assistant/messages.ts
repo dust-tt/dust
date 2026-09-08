@@ -236,6 +236,7 @@ function renderUserMessage(
       clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
       lastTriggerRunAt:
         userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
+      excludedRetrievalTags: userMessage.userContextExcludedRetrievalTags,
     },
     agenticMessageData:
       userMessage.agenticMessageType && userMessage.agenticOriginMessageId
