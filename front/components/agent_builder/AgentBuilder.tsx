@@ -296,6 +296,7 @@ function AgentBuilderForm({
         autoRespondWithoutMention: channel.autoRespondWithoutMention,
         autoRespondWithoutMentionSkipThreadReplies:
           channel.autoRespondWithoutMentionSkipThreadReplies,
+        isPrivate: channel.isPrivate,
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
 

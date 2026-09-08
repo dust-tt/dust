@@ -547,6 +547,7 @@ export class ConnectorsAPI {
         agentConfigurationId: string;
         autoRespondWithoutMention: boolean;
         autoRespondWithoutMentionSkipThreadReplies: boolean;
+        isPrivate: boolean;
       }[];
     }>
   > {
