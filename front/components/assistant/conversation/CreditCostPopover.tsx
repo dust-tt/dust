@@ -44,20 +44,6 @@ interface CreditDetailRowProps {
   value: string;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] reveal-truncated-tool-label
- * When `expandLabelOnHover` is enabled, hovering a truncated label reveals its
- * full text in place of the description and value until the pointer leaves the row.
- * The label reveal and detail wipe start together and share their duration and easing.
- */
-/**
- * @cc [owner:aubin-tchoi,label:product] stationary-visible-label-prefix
- * Text visible before the ellipsis retains its position and opacity throughout the reveal.
- */
-/**
- * @cc [owner:aubin-tchoi,label:react] reduced-motion-label-reveal
- * The label reveal and detail wipe animations are disabled when the user prefers reduced motion.
- */
 function CreditDetailRow({
   description,
   expandLabelOnHover = false,
