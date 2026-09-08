@@ -783,11 +783,13 @@ async function stepContractEdits({
       // Optional promotional free period: reduce the seat's earliest bills by
       // the prorated value of the leading offered duration (never beyond the
       // contract end). The grant is left untouched — this is a pure discount.
+      // Use the seat's major-unit `rate` (not `rateNative`) so the reduction is
+      // in the same cents basis as `invoiceAmountCents` (commitmentPrice * 100).
       const offerReductionCents = body.offerFreePeriod
         ? Math.round(
             commitmentAmount({
               minSeats: seat.minSeats,
-              ratePerPeriod: rateNative,
+              ratePerPeriod: seat.rate,
               isAnnual: billingFrequency === "ANNUAL",
               start: alignedStart,
               end: new Date(
