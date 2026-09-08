@@ -878,16 +878,14 @@ export function UsagePage() {
     />
   ) : null;
 
-  const searchAndInviteRow = (
-    <div className="flex flex-row gap-2">
-      <SearchInput
-        placeholder="Search members"
-        value={searchTerm}
-        name="search"
-        onChange={handleSetSearchTerm}
-        className="w-full"
-      />
-    </div>
+  const searchRow = (
+    <SearchInput
+      placeholder="Search members"
+      value={searchTerm}
+      name="search"
+      onChange={handleSetSearchTerm}
+      className="w-full"
+    />
   );
 
   const seatFilterDropdown = (
@@ -1306,7 +1304,7 @@ export function UsagePage() {
 
             <TabsContent value="members">
               <Page.Vertical gap="sm" align="stretch">
-                {searchAndInviteRow}
+                {searchRow}
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-row items-center justify-between gap-2">
                     {isCreditPriced && (
