@@ -12,7 +12,6 @@ import {
 } from "@app/components/poke/shadcn/ui/command";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
-import { usePokeCells } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearchAllCells } from "@app/poke/swr/search";
 import type { CellInfo } from "@app/types/cell";
@@ -61,7 +60,8 @@ function getPokeItemChipColor(
   }
 }
 
-function PokeNavbar({ cells, showCellPicker = false }: PokeNavbarProps) {
+function PokeNavbar({ showCellPicker = false }: PokeNavbarProps) {
+  const { cells } = useCellContext();
   return (
     <nav
       className={classNames(
@@ -114,8 +114,7 @@ function PokeSearchCommand() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { cellInfo, setCellInfo } = useCellContext();
-  const { cells } = usePokeCells();
+  const { cells, cellInfo, setCellInfo } = useCellContext();
 
   const { isError, isLoading, results } = usePokeSearchAllCells({
     disabled: searchTerm.length < MIN_SEARCH_CHARACTERS,

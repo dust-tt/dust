@@ -8,7 +8,6 @@ import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourcePermissionsResponseBody } from "@app/types/api/data_sources/managed_permissions";
-import type { GetPokeCellsResponseType } from "@app/types/api/poke/cells";
 import type {
   GetPokeCouponRedemptionsResponseBody,
   GetPokeCouponsResponseBody,
@@ -25,20 +24,6 @@ import { useEffect } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 import { isCellRedirectError } from "./workspaces";
-
-export function usePokeCells() {
-  const { fetcher } = useFetcher();
-  const cellsFetcher: Fetcher<GetPokeCellsResponseType> = fetcher;
-
-  const { data, error } = useSWRWithDefaults("/api/poke/cells", cellsFetcher);
-
-  return {
-    currentCell: data?.currentCell ?? null,
-    cells: data?.cells ?? null,
-    isCellsLoading: !error && !data,
-    isCellsError: error,
-  };
-}
 
 export function usePokeConnectorPermissions({
   owner,
