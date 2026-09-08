@@ -412,12 +412,6 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
   const attachedNodesRef = useRef(attachedNodes);
   attachedNodesRef.current = attachedNodes;
-  const onNodeUnselectRef = useRef(onNodeUnselect);
-  onNodeUnselectRef.current = onNodeUnselect;
-  const onMCPServerViewDeselectRef = useRef(onMCPServerViewDeselect);
-  onMCPServerViewDeselectRef.current = onMCPServerViewDeselect;
-  const selectedMCPServerViewsRef = useRef(selectedMCPServerViews);
-  selectedMCPServerViewsRef.current = selectedMCPServerViews;
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
@@ -1135,59 +1129,62 @@ const InputBarContainer = ({
     );
   }, []);
 
-  const handleContentDeleted = useCallback((event: EditorEvents["delete"]) => {
-    if (event.type !== "node") {
-      return;
-    }
+  const handleContentDeleted = useCallback(
+    (event: EditorEvents["delete"]) => {
+      if (event.type !== "node") {
+        return;
+      }
 
-    const currentEditor = editorRef.current;
-    if (!currentEditor || currentEditor.isDestroyed) {
-      return;
-    }
+      const currentEditor = editorRef.current;
+      if (!currentEditor || currentEditor.isDestroyed) {
+        return;
+      }
 
-    const { node } = event;
+      const { node } = event;
 
-    if (node.type.name === "dataSourceLink") {
-      const nodeId = node.attrs.nodeId;
-      if (
-        typeof nodeId === "string" &&
-        !hasAnotherAttachedNode(
-          currentEditor,
-          "dataSourceLink",
-          "nodeId",
-          nodeId
-        )
-      ) {
-        const attachedNode = attachedNodesRef.current.find(
-          (n) => n.internalId === nodeId
-        );
-        if (attachedNode) {
-          onNodeUnselectRef.current(attachedNode);
+      if (node.type.name === "dataSourceLink") {
+        const nodeId = node.attrs.nodeId;
+        if (
+          typeof nodeId === "string" &&
+          !hasAnotherAttachedNode(
+            currentEditor,
+            "dataSourceLink",
+            "nodeId",
+            nodeId
+          )
+        ) {
+          const attachedNode = attachedNodesRef.current.find(
+            (n) => n.internalId === nodeId
+          );
+          if (attachedNode) {
+            onNodeUnselect(attachedNode);
+          }
+        }
+        return;
+      }
+
+      if (node.type.name === TOOL_NODE_TYPE) {
+        const mcpServerViewId = node.attrs.mcpServerViewId;
+        if (
+          typeof mcpServerViewId === "string" &&
+          !hasAnotherAttachedNode(
+            currentEditor,
+            TOOL_NODE_TYPE,
+            "mcpServerViewId",
+            mcpServerViewId
+          )
+        ) {
+          const view = selectedMCPServerViews.find(
+            (v) => v.sId === mcpServerViewId
+          );
+          if (view) {
+            onMCPServerViewDeselect(view);
+          }
         }
       }
-      return;
-    }
-
-    if (node.type.name === TOOL_NODE_TYPE) {
-      const mcpServerViewId = node.attrs.mcpServerViewId;
-      if (
-        typeof mcpServerViewId === "string" &&
-        !hasAnotherAttachedNode(
-          currentEditor,
-          TOOL_NODE_TYPE,
-          "mcpServerViewId",
-          mcpServerViewId
-        )
-      ) {
-        const view = selectedMCPServerViewsRef.current.find(
-          (v) => v.sId === mcpServerViewId
-        );
-        if (view) {
-          onMCPServerViewDeselectRef.current(view);
-        }
-      }
-    }
-  }, []);
+    },
+    [onNodeUnselect, onMCPServerViewDeselect, selectedMCPServerViews]
+  );
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
