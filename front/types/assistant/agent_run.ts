@@ -148,6 +148,10 @@ export type AgentLoopArgs = {
   // The step at which this agent loop execution started. Used to filter MCP actions
   // to only those from this execution (step >= startStep).
   startStep?: number;
+
+  runKey?: string;
+
+  rootAgentMessageId?: string;
 };
 
 export type AgentMessageRef = {

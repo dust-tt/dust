@@ -848,7 +848,6 @@ describe("destroyConversation", () => {
       directCreditAmountMicro: null,
       completedAt: null,
     });
-
     const result = await destroyConversation(auth, { conversation });
 
     expect(result.isOk()).toBe(true);
