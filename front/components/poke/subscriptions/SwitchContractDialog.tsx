@@ -593,6 +593,11 @@ export default function SwitchContractDialog({
         setDurationUnit(template.duration.unit);
         setDurationMode(true);
       }
+      // A promotional free leading period.
+      if (template.offerFreePeriod) {
+        setOfferValue(template.offerFreePeriod.value);
+        setOfferUnit(template.offerFreePeriod.unit);
+      }
     },
     [form]
   );
@@ -614,6 +619,8 @@ export default function SwitchContractDialog({
       setDurationMode(false);
       setDurationValue(1);
       setDurationUnit("years");
+      setOfferValue(0);
+      setOfferUnit("weeks");
       pendingTemplateRef.current = null;
 
       const packageId = resolveTemplatePackageId(template);

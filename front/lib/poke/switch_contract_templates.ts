@@ -77,6 +77,10 @@ export type SwitchContractTemplate = {
     paymentSchedule: TemplatePaymentSchedule;
   };
   recurringFreeCredit?: number;
+  // Promotional free leading period: reduces the seat commitment's earliest
+  // bill(s) by the prorated value of this duration, so the customer pays nothing
+  // for it (the granted seats are unchanged).
+  offerFreePeriod?: { value: number; unit: ContractDurationUnit };
 };
 
 export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
@@ -130,12 +134,14 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     id: "enterprise-pilot-2m",
     name: "Pilot — 2 months",
     description:
-      "Enterprise pooled, 2-month commitment, workspace seats at the standard rate, 10k initial credits.",
+      "Enterprise pooled, 2-month commitment, workspace seats at the standard rate, first 2 weeks free, 10k initial credits.",
     package: { tier: "enterprise", namePattern: "pooled" },
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     startMode: "select",
     duration: { value: 2, unit: "months" },
     defaultPoolCapCredits: 10000,
+    // First 2 weeks offered for free.
+    offerFreePeriod: { value: 2, unit: "weeks" },
     // No rate override: keep the package's standard workspace-seat rate.
     seats: {
       workspace_yearly: { selected: true },
