@@ -17,11 +17,11 @@ export const ALL_ROLES: PokeRole[] = PokeRoleSchema.options;
  * role to declare its groups instead of silently granting nothing.
  */
 const ACCESS_GROUPS_BY_ROLE: Record<PokeRole, readonly string[]> = {
-  admin: ["admin-mdm"],
-  billing: ["billing-mdm"],
-  engineering: ["engineering-mdm"],
-  support: ["support-mdm"],
-  talent: ["talent-mdm"],
+  admin: ["poke-admin"],
+  billing: ["poke-billing"],
+  engineering: ["poke-engineering"],
+  support: ["poke-support"],
+  talent: ["poke-talent"],
 };
 
 const ROLE_BY_ACCESS_GROUP = new Map<string, PokeRole>(
