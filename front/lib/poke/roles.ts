@@ -26,6 +26,49 @@ let cacheExpiresAtMs = 0;
 
 const ALL_ROLES: PokeRole[] = PokeRoleSchema.options;
 
+/**
+ * IdP group names that grant each poke role. Keying by `PokeRole` forces a new
+ * role to declare its groups instead of silently granting nothing.
+ */
+const ACCESS_GROUPS_BY_ROLE: Record<PokeRole, readonly string[]> = {
+  admin: ["admin-mdm"],
+  billing: ["billing-mdm"],
+  engineering: ["engineering-mdm"],
+  support: ["support-mdm"],
+  talent: ["talent-mdm"],
+};
+
+const ROLE_BY_ACCESS_GROUP = new Map<string, PokeRole>(
+  ALL_ROLES.flatMap((role) =>
+    ACCESS_GROUPS_BY_ROLE[role].map(
+      (group) => [group.toLowerCase(), role] as const
+    )
+  )
+);
+
+export function mapAccessGroupNamesToPokeRoles(
+  groupNames: readonly string[]
+): PokeRole[] {
+  const granted = new Set<PokeRole>();
+
+  for (const groupName of groupNames) {
+    const normalized = groupName.trim().toLowerCase();
+    const at = normalized.indexOf("@");
+    const localPart =
+      at === -1 ? normalized : normalized.slice(0, at).trimEnd();
+    if (at !== -1 && !/^[^@\s]+$/.test(normalized.slice(at + 1))) {
+      continue;
+    }
+
+    const role = ROLE_BY_ACCESS_GROUP.get(localPart);
+    if (role) {
+      granted.add(role);
+    }
+  }
+
+  return ALL_ROLES.filter((role) => granted.has(role));
+}
+
 async function loadRoles(): Promise<RolesConfig> {
   if (cachedRoles && Date.now() < cacheExpiresAtMs) {
     return cachedRoles;
