@@ -36,6 +36,11 @@ interface PluginListProps {
   pluginResourceTarget: PluginResourceTarget;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:react] plugin-panel-height
+ * When plugins are available, the panel height follows its header and card rows
+ * without reserving extra empty space below the cards.
+ */
 export function PluginList({ pluginResourceTarget }: PluginListProps) {
   const { plugins } = usePokeListPluginForResourceType({
     pluginResourceTarget,
@@ -69,7 +74,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   }, [plugins, searchQuery]);
 
   return (
-    <div className="flex min-h-48 flex-col rounded-lg border bg-background">
+    <div className="flex flex-col rounded-lg border bg-background">
       <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-separator bg-background p-4">
         <div className="flex items-center gap-3">
           <h2 className="text-md font-bold">Plugins</h2>
@@ -105,7 +110,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
               </div>
             ) : (
               <div
-                className="grid w-full gap-3 p-3"
+                className="grid w-full gap-3 p-4"
                 // 11rem is the minimum card width.
                 style={{
                   gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",

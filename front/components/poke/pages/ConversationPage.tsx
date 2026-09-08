@@ -845,7 +845,8 @@ function getDatadogSandboxLogsUrl(conversationId: string): string {
  * @cc [owner:aubin-tchoi,label:react] conversation-layout
  * Messages grow to 64rem and center in the viewport when both side gutters can fit the
  * inspector rail; below xl, inspectors stack above messages. The plugin list is capped
- * at the message column's maximum width.
+ * at the message column's maximum width. The active-messages banner shares the message
+ * column's width.
  */
 export function ConversationPage() {
   const owner = useWorkspace();
@@ -1037,7 +1038,7 @@ export function ConversationPage() {
     conversation && (
       <div
         className={cn(
-          "mx-auto w-full max-w-5xl xl:max-w-[123rem]",
+          "mx-auto flex w-full max-w-5xl flex-col gap-4 xl:max-w-[123rem]",
           // Reserve a matching left gutter as space permits: 64rem of messages,
           // a 28rem inspector rail, and a 1.5rem gap on either side.
           "xl:pl-[clamp(0rem,calc(100%_-_93.5rem),29.5rem)]"
@@ -1062,7 +1063,7 @@ export function ConversationPage() {
           )}
         </h3>
         <Page.Vertical align="stretch">
-          <div className="w-full max-w-5xl">
+          <div className="mb-1 w-full max-w-5xl">
             <PluginList
               pluginResourceTarget={{
                 resourceId: conversation.sId,
@@ -1071,7 +1072,7 @@ export function ConversationPage() {
               }}
             />
           </div>
-          <div className="flex flex-col items-start gap-2">
+          <div className="flex w-full max-w-5xl flex-col items-start gap-3">
             <div className="flex flex-wrap gap-2">
               {langfuseUiBaseUrl && (
                 <Button
@@ -1143,7 +1144,7 @@ export function ConversationPage() {
                 disabled={isTestCaseLoading}
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 label="Render Conversation"
                 variant="primary"
@@ -1304,32 +1305,6 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          {(pendingUserCount > 0 || createdAgentCount > 0) && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
-              <span className="text-sm font-medium text-foreground">
-                Active messages
-              </span>
-              {pendingUserCount > 0 && (
-                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                  <span className="font-mono tabular-nums">
-                    {pendingUserCount}
-                  </span>
-                  user message
-                  {pendingUserCount > 1 ? "s" : ""} queued
-                </span>
-              )}
-              {createdAgentCount > 0 && (
-                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                  <Spinner size="xs" />
-                  <span className="font-mono tabular-nums">
-                    {createdAgentCount}
-                  </span>
-                  agent message
-                  {createdAgentCount > 1 ? "s" : ""} generating
-                </span>
-              )}
-            </div>
-          )}
           <div
             className={cn(
               "grid w-full grid-cols-1 gap-6 py-4",
@@ -1366,6 +1341,32 @@ export function ConversationPage() {
               </div>
             </aside>
             <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
+              {(pendingUserCount > 0 || createdAgentCount > 0) && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
+                  <span className="text-sm font-medium text-foreground">
+                    Active messages
+                  </span>
+                  {pendingUserCount > 0 && (
+                    <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                      <span className="font-mono tabular-nums">
+                        {pendingUserCount}
+                      </span>
+                      user message
+                      {pendingUserCount > 1 ? "s" : ""} queued
+                    </span>
+                  )}
+                  {createdAgentCount > 0 && (
+                    <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                      <Spinner size="xs" />
+                      <span className="font-mono tabular-nums">
+                        {createdAgentCount}
+                      </span>
+                      agent message
+                      {createdAgentCount > 1 ? "s" : ""} generating
+                    </span>
+                  )}
+                </div>
+              )}
               {conversation.content.map((messages, i) => {
                 return (
                   <div key={`messages-${i}`} className="flex flex-col gap-4">
