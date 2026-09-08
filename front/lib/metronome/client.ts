@@ -2962,10 +2962,18 @@ export async function getCachedCustomerPerUserCreditBalances({
   contractCreditType: ContractCreditType;
 }): Promise<
   Result<
-    Map<
-      string,
-      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
-    >,
+    {
+      balances: Map<
+        string,
+        { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
+      >;
+      // true when another process holds the fetch lock (skipIfLocked): `balances`
+      // is empty because the read was *skipped*, not because the customer has no
+      // per-user credits. Callers that must distinguish "unknown right now" from
+      // "genuinely none" — e.g. fail-open spend enforcement, which should stay
+      // quiet on a transient lock but alert on a real gap — branch on this.
+      locked: boolean;
+    },
     Error
   >
 > {
@@ -2977,9 +2985,9 @@ export async function getCachedCustomerPerUserCreditBalances({
     // null: another process holds the fetch lock (skipIfLocked). Degrade rather
     // than piling a duplicate Metronome fan-out on top.
     if (record === null) {
-      return new Ok(new Map());
+      return new Ok({ balances: new Map(), locked: true });
     }
-    return new Ok(new Map(Object.entries(record)));
+    return new Ok({ balances: new Map(Object.entries(record)), locked: false });
   } catch (err) {
     return new Err(normalizeError(err));
   }
