@@ -331,29 +331,6 @@ function getCompactionParentConversation(
   return parentConversation;
 }
 
-export function getCompactionInProgressLabel(
-  message: CompactionMessageType,
-  conversation: CompactionConversationInput
-): string {
-  const parentConversation = getCompactionParentConversation(
-    message,
-    conversation
-  );
-
-  if (!parentConversation) {
-    return "Compacting context, this may take a moment…";
-  }
-
-  const parentConversationTitle =
-    getParentConversationTitleLabel(parentConversation);
-  const truncatedParentConversationTitle = truncate(
-    parentConversationTitle,
-    MAX_SOURCE_CONVERSATION_TITLE_LENGTH
-  );
-
-  return `Summarizing '${truncatedParentConversationTitle}', this may take a moment…`;
-}
-
 export function getCompactionSuccessLabel(
   message: CompactionMessageType,
   conversation: CompactionConversationInput

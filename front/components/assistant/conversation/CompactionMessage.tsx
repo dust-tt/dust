@@ -1,19 +1,11 @@
-import {
-  getCompactionInProgressLabel,
-  getCompactionSuccessLabel,
-} from "@app/components/assistant/conversation/utils";
+import { getCompactionSuccessLabel } from "@app/components/assistant/conversation/utils";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   CompactionMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import {
-  AlertCircle,
-  AnimatedText,
-  ContentMessage,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { AlertCircle, ContentMessage } from "@dust-tt/sparkle";
 
 interface CompactionMessageProps {
   message: CompactionMessageType;
@@ -47,18 +39,8 @@ export function CompactionMessage({
           </span>
         </div>
       );
-    case "created": {
-      const label = getCompactionInProgressLabel(message, conversation);
-
-      return (
-        <div className="flex items-center justify-center gap-1.5">
-          <Spinner size="xs" />
-          <AnimatedText variant="muted" className="text-sm">
-            {label}
-          </AnimatedText>
-        </div>
-      );
-    }
+    case "created":
+      return null;
     default:
       assertNeverAndIgnore(message.status);
       return null;

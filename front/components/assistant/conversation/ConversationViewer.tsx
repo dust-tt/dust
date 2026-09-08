@@ -71,6 +71,7 @@ import type {
   ConversationListItemType,
 } from "@app/types/assistant/conversation";
 import {
+  isCompactionMessageType,
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -558,6 +559,37 @@ export const ConversationViewer = ({
     const minRank = Math.min(...ranks);
 
     const messagesFromBackend = messages.flatMap((m) => m.messages);
+
+    const refreshedCompactionsById = new Map(
+      messagesFromBackend
+        .filter(isCompactionMessageType)
+        .map((message) => [message.sId, message])
+    );
+
+    if (
+      virtuosoMessageListRef.current.data.get().some((message) => {
+        if (!isCompactionMessage(message) || message.status !== "created") {
+          return false;
+        }
+
+        const refreshedMessage = refreshedCompactionsById.get(message.sId);
+        return (
+          refreshedMessage?.status !== undefined &&
+          refreshedMessage.status !== "created"
+        );
+      })
+    ) {
+      virtuosoMessageListRef.current.data.map((message) => {
+        if (!isCompactionMessage(message) || message.status !== "created") {
+          return message;
+        }
+
+        const refreshedMessage = refreshedCompactionsById.get(message.sId);
+        return refreshedMessage && refreshedMessage.status !== "created"
+          ? refreshedMessage
+          : message;
+      });
+    }
 
     const olderMessagesFromBackend = messagesFromBackend.filter(
       (m) => m.rank < minRank
@@ -1051,6 +1083,19 @@ export const ConversationViewer = ({
                   : m
               );
             }
+            void mutateMessages(
+              (pages) =>
+                pages?.map((page) => ({
+                  ...page,
+                  messages: page.messages.map((message) =>
+                    isCompactionMessageType(message) &&
+                    message.sId === event.messageId
+                      ? event.message
+                      : message
+                  ),
+                })),
+              { revalidate: false }
+            );
             void mutateContextUsage();
             window.dispatchEvent(new CompactionCompletedEvent());
             break;

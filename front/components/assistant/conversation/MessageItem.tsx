@@ -275,6 +275,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     }
 
     if (isCompactionMessage(data)) {
+      if (data.status === "created" || !nextData) {
+        return null;
+      }
+
       return (
         <div
           ref={ref}
