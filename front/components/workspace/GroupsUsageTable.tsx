@@ -78,7 +78,7 @@ export function GroupsUsageTable({
             {
               id: "cap",
               header: "Spend limit",
-              meta: { className: "w-64" },
+              meta: { className: "hidden @3xl:table-cell @3xl:w-64" },
               cell: (info: GroupInfo) => (
                 <GroupSpendLimitCell
                   group={info.row.original}
@@ -105,7 +105,7 @@ export function GroupsUsageTable({
                   <ModelTiersInfoButton />
                 </span>
               ),
-              meta: { className: "w-64" },
+              meta: { className: "hidden @2xl:table-cell @2xl:w-64" },
               cell: (info: GroupInfo) => (
                 <GroupModelTierPickerDropdown
                   owner={owner}
@@ -136,12 +136,7 @@ export function GroupsUsageTable({
           member belongs to several groups, the highest limit is used.
         </span>
       )}
-      <DataTable
-        filterColumn="name"
-        data={rows}
-        columns={columns}
-        columnsBreakpoints={{ name: "md" }}
-      />
+      <DataTable filterColumn="name" data={rows} columns={columns} />
     </div>
   );
 }
