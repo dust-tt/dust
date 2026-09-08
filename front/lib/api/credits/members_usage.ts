@@ -188,7 +188,7 @@ export type MemberUsageType = {
   // "capped" (counter ≥ cap), "near_limit" (≥ 80%), or "ok". The counter is the
   // lifetime one for free seats and the per-cycle one otherwise, compared to the
   // free-seat allowance / effective cycle cap. Null when no cap applies, or not
-  // requested (poke's `includeAlertLinks`) and the rate-cap flag is off.
+  // requested.
   rateLimiterState: RateLimiterState | null;
   // Flag-aware "blocked by the per-user spend cap" verdict — the signal the
   // Unblock action (poke and the customer usage page) keys off. With the
@@ -2176,15 +2176,6 @@ async function resolveMembersUsagePageUsers({
   });
 }
 
-/**
- * @cc [owner:avervaet,label:product] spend-cap-verdict-independent-of-alert-links
- * `isSpendCapped`, `rateLimiterState`, `seatUsageTarget`, and `overallUsageTarget` on each
- * returned member must be computed whenever `enforce_user_spend_limit_rate_cap` is enabled for
- * the workspace, regardless of `includeAlertLinks`. `MembersUsageTable`'s off-pace/Unblock
- * column is shared between poke (which passes `includeAlertLinks: true`) and the customer usage
- * page (which never does), so gating this verdict on `includeAlertLinks` alone silently breaks
- * it on the customer usage page.
- */
 export async function getMembersUsage({
   auth,
   paginationParams,
@@ -2193,11 +2184,6 @@ export async function getMembersUsage({
 }: {
   auth: Authenticator;
   paginationParams: MembersUsagePaginationInput;
-  // Metronome-backed alert links/near-limit/consumption figures used for poke
-  // debugging — extra Metronome calls, so it stays off on the customer usage
-  // page. Independent of the rate-limiter-backed `isSpendCapped`/off-pace
-  // verdict, which is also computed here whenever the rate-cap flag is on,
-  // regardless of this flag.
   includeAlertLinks?: boolean;
   // Live per-seat balance read (an extra Metronome call). Poke-only — the
   // customer usage page doesn't surface it, so it stays off there.
@@ -2385,13 +2371,11 @@ export async function getMembersUsage({
       )
     : new Map<string, boolean>();
 
-  // Bulk-fetch the Redis fixed-window spend-cap counter per user, to display
-  // beside the Elasticsearch-derived usage (poke) and to back the `isSpendCapped`
-  // / off-pace verdict consumed by both poke and the customer usage page's
-  // Unblock action. Free seats are enforced on a never-rolling *lifetime*
-  // counter (their lifetime credit allowance); everyone else on the
-  // per-contract-cycle counter. The cycle also backs the per-member seat-usage
-  // pace below, so resolve it regardless.
+  // Bulk-fetch the Redis fixed-window spend-cap counter per user (poke-only), to
+  // display beside the Elasticsearch-derived usage. Free seats are enforced on a
+  // never-rolling *lifetime* counter (their lifetime credit allowance); everyone
+  // else on the per-contract-cycle counter. The cycle also backs the per-member
+  // seat-usage pace below, so resolve it regardless.
   const rateLimiterSpendByUserId = new Map<string, number>();
   let billingCycle: BillingCycle | null = null;
   if (includeAlertLinks || spendCapEnabled) {
