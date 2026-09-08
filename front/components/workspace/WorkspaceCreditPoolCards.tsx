@@ -62,7 +62,6 @@ interface WorkspaceCreditUsageValueCardsProps {
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   programmaticConsumedCredits: number | null;
-  otherConsumedCredits: number | null;
   isLoading: boolean;
 }
 
@@ -73,7 +72,6 @@ export function WorkspaceCreditUsageValueCards({
   currentCycleStartMs,
   currentCycleEndMs,
   programmaticConsumedCredits,
-  otherConsumedCredits,
   isLoading,
 }: WorkspaceCreditUsageValueCardsProps) {
   const cycleDayLabel = formatCycleDayLabel(
@@ -107,11 +105,7 @@ export function WorkspaceCreditUsageValueCards({
             ? formatCredits(programmaticConsumedCredits)
             : "—"
         }
-        hint={`Other: ${
-          otherConsumedCredits !== null
-            ? formatCredits(otherConsumedCredits)
-            : "—"
-        }`}
+        hint={null}
       />
     </div>
   );
@@ -219,7 +213,6 @@ interface WorkspaceCreditPoolSectionProps {
   currentCycleEndMs: number | null;
   cycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
-  otherConsumedCredits: number | null;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -233,7 +226,6 @@ export function WorkspaceCreditPoolSection({
   currentCycleEndMs,
   cycleBreakdown,
   programmaticConsumedCredits,
-  otherConsumedCredits,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -264,7 +256,6 @@ export function WorkspaceCreditPoolSection({
             currentCycleStartMs={currentCycleStartMs}
             currentCycleEndMs={currentCycleEndMs}
             programmaticConsumedCredits={programmaticConsumedCredits}
-            otherConsumedCredits={otherConsumedCredits}
             isLoading={false}
           />
           <WorkspaceCreditPoolHistory
@@ -299,7 +290,6 @@ export function CreditPoolCardsFromCycleData({
     currentCycleEndMs,
     excessConsumedCredits,
     programmaticConsumedCredits,
-    otherConsumedCredits,
   } = awuPoolCurrentCycle ?? {
     totalRemainingCredits: 0,
     totalActiveCredits: 0,
@@ -308,7 +298,6 @@ export function CreditPoolCardsFromCycleData({
     currentCycleEndMs: null,
     excessConsumedCredits: null,
     programmaticConsumedCredits: null,
-    otherConsumedCredits: null,
   };
 
   const hasPool = totalActiveCredits > 0;
@@ -329,7 +318,6 @@ export function CreditPoolCardsFromCycleData({
       currentCycleEndMs={currentCycleEndMs}
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
-      otherConsumedCredits={otherConsumedCredits}
     />
   );
 }
