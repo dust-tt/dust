@@ -60,7 +60,7 @@ Frame's own runtime or directly from this conversation with the call tool descri
 Reach for a pod function instead of inline code or an ad hoc tool call when any of these apply:
 
 - A Frame needs a server-side capability it cannot run inside its own browser sandbox: calling
-  another tool through dsbx, using a workspace secret, or logic no client-side code should hold
+  another workspace tool, using a workspace secret, or logic no client-side code should hold
   (see "Calling other tools from a function" below).
 - Data needs to persist beyond one call: files on the Pod, or rows in a SQLite database, are
   there on the next call and visible to a Frame that always reflects the latest state (see
@@ -217,11 +217,22 @@ are available under the same substitution rules as the Computer.
 
 #### Calling other tools from a function
 
-\`dsbx\` is available inside a function's own process, the same way it is in the conversation's
-Computer: shell out to \`dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...\` and parse its
-stdout (\`{ content, isError }\`) for the result.
-Run \`dsbx tools --help\` from the Computer to explore available
-servers and tools before writing the function. A function that calls \`dsbx tools\` must be
+Prefer \`tools.call(server, tool, args)\` from \`@dust/pod\`. It sends \`args\` as one JSON
+object, without shell quoting, per-field temporary files, or scalar coercion. If you must shell out,
+use \`dsbx tools --json --args-json - [SERVER_NAME] [TOOL_NAME]\` and write the whole arguments
+object as JSON to stdin. Run \`dsbx tools --help\` from the Computer to explore available servers
+and tools before writing the function.
+
+The outer \`ToolCallResult\` is stable (\`content\`, \`isError\` and optional
+\`structuredContent\`), but the content blocks inside are tool-specific. Check \`isError\`, prefer
+\`structuredContent\` when present, and use \`result.json()\` only when the tool guarantees one JSON
+payload. For mixed prose and data, select the documented machine-readable block from
+\`result.content\`, then parse and validate the expected schema. Keep this normalization in one
+helper per integration.
+
+\`tools.call()\` and \`dsbx tools --json\` resolve offloaded blocks automatically. Never parse a
+human \`[Full content archived at ...]\` marker or manually read its path. A
+\`tool_output_unavailable\` error is retryable. Any function that calls a workspace tool must be
 published as \`durable\`, see below.
 
 #### Fast and durable functions
@@ -229,27 +240,27 @@ published as \`durable\`, see below.
 Every function is published in one of two execution modes, and which one it needs shapes how you
 split functions up.
 
-- \`fast\`: runs synchronously and returns several times quicker, but **cannot call Dust tools**:
-  \`dsbx tools\` is refused inside it. Everything else still works, including Pod state, local
-  binaries and outbound HTTP calls, but those count against the invocation's execution ceiling, so
-  a fast function that waits on a slow endpoint will fail rather than return late.
-- \`durable\`: required for any function that calls \`dsbx tools\`. A tool call can wait on the user
+- \`fast\`: runs synchronously and returns several times quicker, but **cannot call workspace
+  tools** through \`tools.call\` or \`dsbx tools\`. Everything else still works, including Pod state,
+  local binaries and outbound HTTP calls, but those count against the invocation's execution
+  ceiling, so a fast function that waits on a slow endpoint will fail rather than return late.
+- \`durable\`: required for any function that calls a workspace tool. A tool call can wait on the user
   for approval or authentication, for as long as they take, so the invocation runs in the
   background and its result reaches the caller when it is ready.
 
 So the shape of your functions is the real decision:
 
-- The mode follows one question: does the function call \`dsbx tools\`? If it does it is \`durable\`,
+- The mode follows one question: does the function call a workspace tool? If it does it is \`durable\`,
   if it does not it is \`fast\`. You do not get to choose that, but you do choose how to arrange
   functions, and the aim is that the paths a Frame polls land on the fast side.
 - When a path the Frame polls needs data from an external system, do not fetch it inline and make
-  the whole path \`durable\`. Split it: a \`durable\` function calls \`dsbx tools\` and writes what it
+  the whole path \`durable\`. Split it: a \`durable\` function calls the tool and writes what it
   gets into a database, and a \`fast\` function serves that database to the Frame. The Frame keeps
   polling at full speed and the data refreshes on its own schedule, or on an explicit user action.
 - Some paths are \`durable\` and that is correct: a read that must be live on every call, or an
   interaction that *is* a tool call, like sending a message to a teammate. Reach for the split
   above when the data can tolerate being a little stale, not when it cannot.
-- Publishing a function that calls \`dsbx tools\` as \`fast\` is a bug: its tool call is refused at
+- Publishing a function that calls a workspace tool as \`fast\` is a bug: its tool call is refused at
   run time and the invocation fails.
 
 The Frame API is identical for both, but a \`durable\` call takes visibly longer, so give it a
@@ -474,7 +485,7 @@ app-specific subset of users, keep that list in the database and check it agains
 \`currentUser().sId\` — the platform tells you the caller's standing (workspace member, Pod
 member, Pod editor), not what your app allows them to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 8,
+  version: 9,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
