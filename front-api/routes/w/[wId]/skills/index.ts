@@ -121,9 +121,10 @@ app.route("/similar", similar);
 
 /**
  * @ignoreswagger
- * With withRelations=true and withMessageCount=true, messageCount is the number of
- * skill_management.enable_skill calls attributed to the skill over the last 30 days. The legacy
- * field name is retained for compatibility. Null means usage is unavailable or a system skill.
+ * With withRelations=true and withUsage=true, usage is the number of skill_management.enable_skill
+ * calls attributed to the skill over the last 30 days. Null means usage is unavailable or the
+ * skill is a system skill. The legacy withMessageCount parameter is an alias for withUsage;
+ * messageCount is returned as null for old clients.
  */
 app.get(
   "/",
@@ -137,7 +138,10 @@ app.get(
     // @deprecated viewType query param is ignored — instructions and tools
     // are never returned from the list endpoint. Use GET /skills/:sId for full details.
     const withRelations = ctx.req.query("withRelations");
-    const withMessageCount = ctx.req.query("withMessageCount") === "true";
+    // Keep accepting the legacy query parameter while old clients are deployed.
+    const withUsage =
+      ctx.req.query("withUsage") === "true" ||
+      ctx.req.query("withMessageCount") === "true";
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
@@ -193,7 +197,7 @@ app.get(
     const traceTags = {
       "skills.status": skillStatus ?? "all",
       "skills.with_relations": withRelations === "true",
-      "skills.with_message_count": withMessageCount,
+      "skills.with_usage": withUsage,
       "skills.bypass_editor_visibility": bypassEditorVisibility,
     };
     const allSkills = await tracer.trace(
@@ -248,7 +252,7 @@ app.get(
         async () => {
           const usageMap = await SkillResource.batchFetchUsage(auth, skills);
           let usageCountMap: Map<string, number> | null = null;
-          if (withMessageCount) {
+          if (withUsage) {
             const usageCountsResult = await fetchSkillUsageCounts(auth, {
               skillIds: skills
                 .filter((skill) => !skill.isSystemSkill)
@@ -304,12 +308,13 @@ app.get(
 
             return {
               ...skillWithoutInstructionsAndTools,
-              ...(withMessageCount
+              ...(withUsage
                 ? {
-                    messageCount:
+                    usage:
                       sc.isSystemSkill || usageCountMap === null
                         ? null
                         : (usageCountMap.get(sc.sId) ?? 0),
+                    messageCount: null,
                   }
                 : {}),
               relations: {

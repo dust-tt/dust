@@ -526,7 +526,7 @@ export function SkillsTable({
         availability: skill.availability,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
-        usageCount: skill.messageCount === undefined ? 0 : skill.messageCount,
+        usageCount: skill.usage ?? null,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {

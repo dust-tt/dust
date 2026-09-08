@@ -11,11 +11,18 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility
+ * When usage is requested, each skill includes `usage` (null when unavailable) and
+ * `messageCount: null` for legacy clients.
+ */
 export type GetSkillsWithRelationsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsWithRelationsType & {
     isFavorite?: boolean;
-    // Legacy name: attributed skill_management.enable_skill calls over the last 30 days.
+    // Attributed skill_management.enable_skill calls over the last 30 days.
     // Null for system skills or when analytics is unavailable.
+    usage?: number | null;
+    /** @deprecated Use usage instead. Always null when returned. */
     messageCount?: number | null;
   })[];
 };

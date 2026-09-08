@@ -867,7 +867,10 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     ]);
   });
 
-  it("returns recent skill activation calls for custom and global skills", async () => {
+  it.each([
+    "withUsage",
+    "withMessageCount",
+  ])("returns recent skill activation calls with %s", async (usageParam) => {
     const { workspace, user } = await setupTest();
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -896,25 +899,26 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
 
     const response = await getSkills(workspace, {
       withRelations: "true",
-      withMessageCount: "true",
+      [usageParam]: "true",
     });
 
     expect(response.status).toBe(200);
     const responseBody: GetSkillsWithRelationsResponseBody =
       await response.json();
-    const counts = new Map(
-      responseBody.skills.map((s) => [s.sId, s.messageCount])
-    );
+    const counts = new Map(responseBody.skills.map((s) => [s.sId, s.usage]));
     expect(counts.get(skill.sId)).toBe(12);
     expect(counts.get("frames")).toBe(4);
     expect(counts.get(unusedSkill.sId)).toBe(0);
     expect(counts.get("discover_tools")).toBeNull();
+    for (const listedSkill of responseBody.skills) {
+      expect(listedSkill.messageCount).toBeNull();
+    }
 
     expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
     const [query, options] = vi.mocked(searchConsumptionAnalytics).mock
       .calls[0];
     const requestedSkillIds = responseBody.skills
-      .filter((s) => s.messageCount !== null)
+      .filter((s) => s.usage !== null)
       .map((s) => s.sId);
     expect(query).toEqual({
       bool: {
@@ -960,14 +964,14 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
 
     const response = await getSkills(workspace, {
       withRelations: "true",
-      withMessageCount: "true",
+      withUsage: "true",
     });
 
     expect(response.status).toBe(200);
     const responseBody: GetSkillsWithRelationsResponseBody =
       await response.json();
     expect(
-      responseBody.skills.find((s) => s.sId === skill.sId)?.messageCount
+      responseBody.skills.find((s) => s.sId === skill.sId)?.usage
     ).toBeNull();
   });
 
@@ -976,7 +980,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     const response = await getSkills(workspace, {
       onlyCustom: "true",
       withRelations: "true",
-      withMessageCount: "true",
+      withUsage: "true",
     });
 
     expect(response.status).toBe(200);
@@ -1094,6 +1098,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         usage: { count: 0, agents: [], skills: [] },
       },
     });
+    expect(skillResult).not.toHaveProperty("usage");
     expect(skillResult).not.toHaveProperty("messageCount");
     expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
   });
