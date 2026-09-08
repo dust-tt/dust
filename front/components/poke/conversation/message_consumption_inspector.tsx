@@ -442,7 +442,7 @@ export function PokeMessageConsumptionInspector({
             role="region"
             aria-labelledby={triggerId}
             className={cn(
-              "z-10 overflow-clip rounded-xl border border-border bg-background",
+              "z-10 flex max-h-[calc(100dvh-2rem)] flex-col overflow-clip rounded-xl border border-border bg-background",
               "will-change-transform",
               "xl:absolute xl:left-[calc(100%+1.5rem)] xl:top-0 xl:w-[var(--poke-inspector-width)]"
             )}
@@ -452,10 +452,13 @@ export function PokeMessageConsumptionInspector({
             animate="open"
             exit={shouldReduceMotion ? undefined : "closed"}
           >
-            <div ref={handlePanelContentRef} className="rounded-[inherit]">
+            <div
+              ref={handlePanelContentRef}
+              className="flex min-h-0 flex-col rounded-[inherit]"
+            >
               <div
                 className={cn(
-                  "sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3",
+                  "flex min-h-14 shrink-0 items-center justify-between gap-3",
                   "border-b border-border bg-background px-4 py-3"
                 )}
               >
@@ -485,7 +488,10 @@ export function PokeMessageConsumptionInspector({
                   <Icon visual={XClose} size="xs" />
                 </button>
               </div>
-              <div className="bg-muted-background">
+              <div
+                tabIndex={0}
+                className="min-h-0 overflow-y-auto overscroll-contain bg-muted-background"
+              >
                 {isConsumptionError ? (
                   <div className="flex flex-col gap-1 p-4">
                     <p
