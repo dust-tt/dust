@@ -386,10 +386,6 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 - Set `providerId` alongside `modelId` — the replacement often sits on a different provider.
   Reset `reasoningEffort` too if the target does not support the effort the agent was on.
 
-`makeScript` defaults `execute` to `false`, so running the script with no flag is the dry
-run — read the log, confirm the agent count and the from → to ids, then re-run with
-`--execute` (`-e`) to write.
-
 ## Model config properties (quick ref)
 
 | Property | Notes |
