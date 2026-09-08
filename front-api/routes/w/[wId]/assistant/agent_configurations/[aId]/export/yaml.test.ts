@@ -1,5 +1,6 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
@@ -29,6 +30,26 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/export/yaml", () =
     expect(response.status).toBe(404);
     const data = await response.json();
     expect(data.error.type).toBe("agent_configuration_not_found");
+  });
+
+  it("exports an unpublished agent to a non-editor admin with the admin_can_see_private_entities flag", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await SpaceFactory.defaults(auth);
+    await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await exportYaml(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.yamlContent).toContain(agent.instructions);
   });
 
   it("exports an agent to one of its editors", async () => {

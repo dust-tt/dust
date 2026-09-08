@@ -8,6 +8,7 @@ import {
   isSelfHostedImageWithValidContentType,
   redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
+import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
@@ -15,7 +16,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -464,7 +465,7 @@ export async function getAgentConfigurationForDetails(
   // Either not readable (unpublished, not an editor) or filtered out by a space the admin is not a
   // member of. With the `admin_can_see_private_entities` feature flag the admin gets it in full;
   // otherwise it is refetched without the space filtering to be redacted.
-  if (await hasFeatureFlag(auth, "admin_can_see_private_entities")) {
+  if (await canAdminSeePrivateEntities(auth)) {
     const fullAgent =
       agent ??
       (await getAgentConfiguration(auth, {
