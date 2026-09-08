@@ -349,9 +349,9 @@ export default function SwitchContractDialog({
   const creditConfigAppliedRef = useRef(false);
   useEffect(() => {
     if (!open) {
+      // Re-arm the one-shot prefill for the next open; the operator-facing
+      // resets happen in the dialog's onOpenChange handler.
       creditConfigAppliedRef.current = false;
-      pendingTemplateRef.current = null;
-      setAppliedTemplateName(null);
       return;
     }
     if (!existingCreditConfig || creditConfigAppliedRef.current) {
@@ -587,17 +587,6 @@ export default function SwitchContractDialog({
         }
         form.setValue("seats", next);
       }
-      // A duration sets the end date via the "Set duration" toggle.
-      if (template.duration) {
-        setDurationValue(template.duration.value);
-        setDurationUnit(template.duration.unit);
-        setDurationMode(true);
-      }
-      // A promotional free leading period.
-      if (template.offerFreePeriod) {
-        setOfferValue(template.offerFreePeriod.value);
-        setOfferUnit(template.offerFreePeriod.unit);
-      }
     },
     [form]
   );
@@ -616,11 +605,13 @@ export default function SwitchContractDialog({
         stripeCollectionMethod: current.stripeCollectionMethod,
         manualCurrency: current.manualCurrency,
       });
-      setDurationMode(false);
-      setDurationValue(1);
-      setDurationUnit("years");
-      setOfferValue(0);
-      setOfferUnit("weeks");
+      // Duration and offer are local UI state that don't depend on the package,
+      // so set them here in the handler (not from the deferred effect below).
+      setDurationMode(template.duration !== undefined);
+      setDurationValue(template.duration?.value ?? 1);
+      setDurationUnit(template.duration?.unit ?? "years");
+      setOfferValue(template.offerFreePeriod?.value ?? 0);
+      setOfferUnit(template.offerFreePeriod?.unit ?? "weeks");
       pendingTemplateRef.current = null;
 
       const packageId = resolveTemplatePackageId(template);
@@ -1120,10 +1111,12 @@ export default function SwitchContractDialog({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        // Reset the promotional offer when the dialog closes.
+        // Reset the transient selections when the dialog closes.
         if (!next) {
           setOfferValue(0);
           setOfferUnit("weeks");
+          setAppliedTemplateName(null);
+          pendingTemplateRef.current = null;
         }
       }}
     >
