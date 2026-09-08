@@ -48,6 +48,7 @@ interface CreditDetailRowProps {
  * @cc [owner:aubin-tchoi,label:product] reveal-truncated-tool-label
  * When `expandLabelOnHover` is enabled, hovering a truncated label reveals its
  * full text in place of the description and value until the pointer leaves the row.
+ * The description and value wipe away along the same edge that reveals the label.
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] stationary-visible-label-prefix
@@ -55,7 +56,7 @@ interface CreditDetailRowProps {
  */
 /**
  * @cc [owner:aubin-tchoi,label:react] reduced-motion-label-reveal
- * The label reveal animation is disabled when the user prefers reduced motion.
+ * The label reveal and detail wipe animations are disabled when the user prefers reduced motion.
  */
 function CreditDetailRow({
   description,
@@ -65,11 +66,13 @@ function CreditDetailRow({
   value,
 }: CreditDetailRowProps) {
   const labelRef = useRef<HTMLSpanElement>(null);
+  const descriptionRef = useRef<HTMLSpanElement>(null);
+  const valueRef = useRef<HTMLElement>(null);
   const [isLabelExpanded, setIsLabelExpanded] = useState(false);
 
   return (
     <div
-      className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 py-2 text-sm"
+      className="relative grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 py-2 text-sm"
       onPointerEnter={(event) => {
         const labelElement = labelRef.current;
         if (
@@ -78,10 +81,32 @@ function CreditDetailRow({
           labelElement &&
           labelElement.scrollWidth > labelElement.clientWidth
         ) {
+          const rowElement = event.currentTarget;
+          const rowBounds = rowElement.getBoundingClientRect();
+          const labelBounds = labelElement.getBoundingClientRect();
           labelElement.style.setProperty(
             "--credit-label-collapsed-width",
-            `${labelElement.clientWidth}px`
+            `${labelBounds.width}px`
           );
+          rowElement.style.setProperty(
+            "--credit-reveal-start",
+            `${labelBounds.right - rowBounds.left}px`
+          );
+          rowElement.style.setProperty(
+            "--credit-reveal-end",
+            `${rowBounds.width}px`
+          );
+          for (const detailElement of [
+            descriptionRef.current,
+            valueRef.current,
+          ]) {
+            if (detailElement) {
+              detailElement.style.setProperty(
+                "--credit-detail-left",
+                `${detailElement.getBoundingClientRect().left - rowBounds.left}px`
+              );
+            }
+          }
           setIsLabelExpanded(true);
         }
       }}
@@ -104,21 +129,39 @@ function CreditDetailRow({
           ref={labelRef}
           className={
             isLabelExpanded
-              ? "min-w-0 break-all animate-credit-label-reveal motion-reduce:animate-none"
+              ? "min-w-0 flex-1 break-all animate-credit-label-reveal motion-reduce:animate-none"
               : "truncate"
           }
         >
           {label}
         </span>
-        {description && !isLabelExpanded && (
-          <Chip
-            size="mini"
-            label={description}
-            className="shrink-0 font-normal"
-          />
+        {description && (
+          <span
+            ref={descriptionRef}
+            aria-hidden={isLabelExpanded}
+            className={classNames(
+              "flex shrink-0",
+              isLabelExpanded &&
+                "absolute top-2 left-(--credit-detail-left) animate-credit-details-hide motion-reduce:invisible motion-reduce:animate-none"
+            )}
+          >
+            <Chip
+              size="mini"
+              label={description}
+              className="shrink-0 font-normal"
+            />
+          </span>
         )}
       </dt>
-      <dd hidden={isLabelExpanded} className="shrink-0 text-muted-foreground">
+      <dd
+        ref={valueRef}
+        aria-hidden={isLabelExpanded}
+        className={classNames(
+          "shrink-0 text-muted-foreground",
+          isLabelExpanded &&
+            "absolute top-2 left-(--credit-detail-left) animate-credit-details-hide motion-reduce:invisible motion-reduce:animate-none"
+        )}
+      >
         {value}
       </dd>
     </div>
