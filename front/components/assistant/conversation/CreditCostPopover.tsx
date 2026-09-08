@@ -52,13 +52,11 @@ function CreditDetailRow({
   value,
 }: CreditDetailRowProps) {
   const labelRef = useRef<HTMLSpanElement>(null);
-  const descriptionRef = useRef<HTMLSpanElement>(null);
-  const valueRef = useRef<HTMLElement>(null);
   const [isLabelExpanded, setIsLabelExpanded] = useState(false);
 
   return (
     <div
-      className="relative grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 py-2 text-sm"
+      className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 py-2 text-sm"
       onPointerEnter={(event) => {
         const labelElement = labelRef.current;
         if (
@@ -67,32 +65,11 @@ function CreditDetailRow({
           labelElement &&
           labelElement.scrollWidth > labelElement.clientWidth
         ) {
-          const rowElement = event.currentTarget;
-          const rowBounds = rowElement.getBoundingClientRect();
           const labelBounds = labelElement.getBoundingClientRect();
           labelElement.style.setProperty(
             "--credit-label-collapsed-width",
             `${labelBounds.width}px`
           );
-          rowElement.style.setProperty(
-            "--credit-reveal-start",
-            `${labelBounds.right - rowBounds.left}px`
-          );
-          rowElement.style.setProperty(
-            "--credit-reveal-end",
-            `${rowBounds.width}px`
-          );
-          for (const detailElement of [
-            descriptionRef.current,
-            valueRef.current,
-          ]) {
-            if (detailElement) {
-              detailElement.style.setProperty(
-                "--credit-detail-left",
-                `${detailElement.getBoundingClientRect().left - rowBounds.left}px`
-              );
-            }
-          }
           setIsLabelExpanded(true);
         }
       }}
@@ -123,13 +100,8 @@ function CreditDetailRow({
         </span>
         {description && (
           <span
-            ref={descriptionRef}
             aria-hidden={isLabelExpanded}
-            className={classNames(
-              "flex shrink-0",
-              isLabelExpanded &&
-                "absolute top-2 left-(--credit-detail-left) animate-credit-details-hide motion-reduce:invisible motion-reduce:animate-none"
-            )}
+            className={isLabelExpanded ? "hidden" : "flex shrink-0"}
           >
             <Chip
               size="mini"
@@ -140,12 +112,10 @@ function CreditDetailRow({
         )}
       </dt>
       <dd
-        ref={valueRef}
         aria-hidden={isLabelExpanded}
         className={classNames(
           "shrink-0 text-muted-foreground",
-          isLabelExpanded &&
-            "absolute top-2 left-(--credit-detail-left) animate-credit-details-hide motion-reduce:invisible motion-reduce:animate-none"
+          isLabelExpanded && "hidden"
         )}
       >
         {value}
