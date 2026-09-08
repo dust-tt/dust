@@ -43,14 +43,17 @@ import {
   CollapsibleTrigger,
   ConversationMessage,
   cn,
+  DatadogLogo,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  LangfuseLogo,
   LinkWrapper,
   Markdown,
   Spinner,
+  TemporalLogo,
   useCopyToClipboard,
   XClose,
 } from "@dust-tt/sparkle";
@@ -1014,12 +1017,7 @@ export function ConversationPage() {
     );
   }
 
-  const {
-    conversationDataSourceId,
-    langfuseUiBaseUrl,
-    sandbox,
-    temporalWorkspace,
-  } = conversationConfig;
+  const { langfuseUiBaseUrl, sandbox, temporalWorkspace } = conversationConfig;
 
   const sandboxConnect = sandbox
     ? { command: makeSandboxConnectCommand(sandbox), status: sandbox.status }
@@ -1074,23 +1072,26 @@ export function ConversationPage() {
               {langfuseUiBaseUrl && (
                 <Button
                   href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BconversationId%3B%3D%3B${conversationId}`}
-                  label="Langfuse Traces"
-                  variant="primary"
+                  label="Langfuse"
+                  icon={LangfuseLogo}
+                  variant="outline"
                   size="xs"
                   target="_blank"
                 />
               )}
               <Button
                 href={`http://go/trace-conversation/${conversation.sId}`}
-                label="Trace Conversation"
-                variant="primary"
+                label="Datadog"
+                icon={DatadogLogo}
+                variant="outline"
                 size="xs"
                 target="_blank"
               />
               <Button
                 href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
-                label="Temporal Workflows"
-                variant="primary"
+                label="Temporal"
+                icon={TemporalLogo}
+                variant="outline"
                 size="xs"
                 target="_blank"
               />
@@ -1119,22 +1120,12 @@ export function ConversationPage() {
                 }}
               />
               <Button
-                href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}
-                label="Conversation DS"
-                variant="primary"
-                size="xs"
-                target="_blank"
-                disabled={!conversationDataSourceId}
-              />
-              <Button
-                label="Self-improving skills test"
+                label="Self-improving skills"
                 variant="primary"
                 size="xs"
                 onClick={() => void copyTestCase()}
                 disabled={isTestCaseLoading}
               />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
               <Button
                 label="Render Conversation"
                 variant="primary"
@@ -1148,52 +1139,52 @@ export function ConversationPage() {
                 }}
                 disabled={isRendering}
               />
-              {showRenderControls && (
-                <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        label={
-                          selectedAgentId
-                            ? `Agent: ${
-                                agents.find((a) => a.sId === selectedAgentId)
-                                  ?.name ?? selectedAgentId
-                              }`
-                            : "Select Agent"
-                        }
-                        variant="outline"
-                        size="xs"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {agents.map((a) => (
-                        <DropdownMenuItem
-                          key={a.sId}
-                          onClick={() =>
-                            setAgentSelection({
-                              agentId: a.sId,
-                              conversationId,
-                            })
-                          }
-                        >
-                          {a.name} ({a.sId})
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Input
-                    aria-label="Context size override"
-                    placeholder="Context size override"
-                    value={contextSizeOverride}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setContextSizeOverride(e.target.value)
-                    }
-                    className="h-7 w-44"
-                  />
-                </>
-              )}
-              {isRendering && <Spinner size="xs" />}
             </div>
+            {showRenderControls && (
+              <div className="flex flex-wrap items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      label={
+                        selectedAgentId
+                          ? `Agent: ${
+                              agents.find((a) => a.sId === selectedAgentId)
+                                ?.name ?? selectedAgentId
+                            }`
+                          : "Select Agent"
+                      }
+                      variant="outline"
+                      size="xs"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {agents.map((a) => (
+                      <DropdownMenuItem
+                        key={a.sId}
+                        onClick={() =>
+                          setAgentSelection({
+                            agentId: a.sId,
+                            conversationId,
+                          })
+                        }
+                      >
+                        {a.name} ({a.sId})
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Input
+                  aria-label="Context size override"
+                  placeholder="Context size override"
+                  value={contextSizeOverride}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setContextSizeOverride(e.target.value)
+                  }
+                  className="h-7 w-44"
+                />
+                {isRendering && <Spinner size="xs" />}
+              </div>
+            )}
           </div>
           {(renderError !== null || renderResult !== null) && (
             <div className="mt-2 rounded-md border p-2">
