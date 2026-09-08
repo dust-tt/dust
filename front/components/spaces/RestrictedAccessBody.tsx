@@ -78,7 +78,8 @@ export function RestrictedAccessBody({
         title: "Switch to groups",
         message:
           "This switches from manual member to group-based access. " +
-          "Your current member list will be saved but no longer active.",
+          "Your current member list will be removed; you'll need to re-add " +
+          "members to switch back.",
         validateLabel: "Confirm",
         validateVariant: "primary",
       });
