@@ -14,6 +14,7 @@ import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
 import {
@@ -282,7 +283,7 @@ describe("resolveStreamModel", () => {
 
     expect(resolved.fromPool).toBe(true);
     expect(resolved.model.modelId).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId
     );
     expect(resolved.reasoningEffort).toBe("medium");
   });
