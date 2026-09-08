@@ -844,7 +844,8 @@ function getDatadogSandboxLogsUrl(conversationId: string): string {
 /**
  * @cc [owner:aubin-tchoi,label:react] conversation-layout
  * Messages grow to 64rem and center in the viewport when both side gutters can fit the
- * inspector rail; below xl, inspectors stack above messages.
+ * inspector rail; below xl, inspectors stack above messages. The plugin list is capped
+ * at the message column's maximum width.
  */
 export function ConversationPage() {
   const owner = useWorkspace();
@@ -1061,13 +1062,15 @@ export function ConversationPage() {
           )}
         </h3>
         <Page.Vertical align="stretch">
-          <PluginList
-            pluginResourceTarget={{
-              resourceId: conversation.sId,
-              resourceType: "conversations",
-              workspace: owner,
-            }}
-          />
+          <div className="w-full max-w-5xl">
+            <PluginList
+              pluginResourceTarget={{
+                resourceId: conversation.sId,
+                resourceType: "conversations",
+                workspace: owner,
+              }}
+            />
+          </div>
           <div className="flex flex-col items-start gap-2">
             <div className="flex flex-wrap gap-2">
               {langfuseUiBaseUrl && (
