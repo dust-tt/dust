@@ -10,15 +10,15 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export function formatDatabasesList(databases: LiveDatabaseEntry[]): string {
   if (databases.length === 0) {
-    return "No live databases in this pod";
+    return "No project databases.";
   }
 
   const lines = databases.map((db) => `- ${db.name} (${db.sizeBytes} bytes)`);
   return [
-    "Pod databases:",
+    "Project databases:",
     ...lines,
     "",
-    "Use db_schema to inspect a database and db_query to run SQL against it.",
+    "Use db_schema to inspect one or db_query to run SQL.",
   ].join("\n");
 }
 
