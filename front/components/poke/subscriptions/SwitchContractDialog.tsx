@@ -155,6 +155,67 @@ const DEFAULT_PERIODS_FOR_FREQUENCY: Record<string, number | undefined> = {
   one_time: undefined,
 };
 
+// A small number input + unit dropdown (years / months / weeks), reused for the
+// contract duration and the promotional offer period.
+function PeriodField({
+  value,
+  unit,
+  onValueChange,
+  onUnitChange,
+  portalContainer,
+  min = 1,
+}: {
+  value: number;
+  unit: ContractDurationUnit;
+  onValueChange: (value: number) => void;
+  onUnitChange: (unit: ContractDurationUnit) => void;
+  portalContainer: HTMLElement | undefined;
+  min?: number;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="number"
+        min={min}
+        value={value}
+        onChange={(e) => onValueChange(Number(e.target.value))}
+        className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-xs"
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            isSelect
+            label={
+              unit === "years"
+                ? "Years"
+                : unit === "months"
+                  ? "Months"
+                  : "Weeks"
+            }
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent mountPortalContainer={portalContainer}>
+          <DropdownMenuItem
+            label="Years"
+            onClick={() => onUnitChange("years")}
+          />
+          <DropdownMenuItem
+            label="Months"
+            onClick={() => onUnitChange("months")}
+          />
+          <DropdownMenuItem
+            label="Weeks"
+            onClick={() => onUnitChange("weeks")}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 interface SwitchContractDialogProps {
   owner: WorkspaceType;
   stripeCustomerId: string | null;
@@ -1141,52 +1202,13 @@ export default function SwitchContractDialog({
                                 Set duration
                               </span>
                               {durationMode && (
-                                <>
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    value={durationValue}
-                                    onChange={(e) =>
-                                      setDurationValue(Number(e.target.value))
-                                    }
-                                    className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-xs"
-                                  />
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="xs"
-                                        isSelect
-                                        label={
-                                          durationUnit === "years"
-                                            ? "Years"
-                                            : durationUnit === "months"
-                                              ? "Months"
-                                              : "Weeks"
-                                        }
-                                      />
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent
-                                      mountPortalContainer={portalContainer}
-                                    >
-                                      <DropdownMenuItem
-                                        label="Years"
-                                        onClick={() => setDurationUnit("years")}
-                                      />
-                                      <DropdownMenuItem
-                                        label="Months"
-                                        onClick={() =>
-                                          setDurationUnit("months")
-                                        }
-                                      />
-                                      <DropdownMenuItem
-                                        label="Weeks"
-                                        onClick={() => setDurationUnit("weeks")}
-                                      />
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </>
+                                <PeriodField
+                                  value={durationValue}
+                                  unit={durationUnit}
+                                  onValueChange={setDurationValue}
+                                  onUnitChange={setDurationUnit}
+                                  portalContainer={portalContainer}
+                                />
                               )}
                             </div>
                           </div>
@@ -1748,50 +1770,14 @@ export default function SwitchContractDialog({
                         <Label className="text-sm font-medium">
                           Offer free period
                         </Label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min={0}
-                            value={offerValue}
-                            onChange={(e) =>
-                              setOfferValue(Math.max(0, Number(e.target.value)))
-                            }
-                            className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-xs"
-                          />
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="xs"
-                                isSelect
-                                label={
-                                  offerUnit === "years"
-                                    ? "Years"
-                                    : offerUnit === "months"
-                                      ? "Months"
-                                      : "Weeks"
-                                }
-                              />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              mountPortalContainer={portalContainer}
-                            >
-                              <DropdownMenuItem
-                                label="Years"
-                                onClick={() => setOfferUnit("years")}
-                              />
-                              <DropdownMenuItem
-                                label="Months"
-                                onClick={() => setOfferUnit("months")}
-                              />
-                              <DropdownMenuItem
-                                label="Weeks"
-                                onClick={() => setOfferUnit("weeks")}
-                              />
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                        <PeriodField
+                          value={offerValue}
+                          unit={offerUnit}
+                          onValueChange={(v) => setOfferValue(Math.max(0, v))}
+                          onUnitChange={setOfferUnit}
+                          portalContainer={portalContainer}
+                          min={0}
+                        />
                         <div className="col-span-2 text-xs text-muted-foreground">
                           Reduces every seat commitment's earliest bill(s) by
                           the prorated value of this leading period, so the
