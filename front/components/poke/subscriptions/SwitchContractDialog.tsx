@@ -1286,7 +1286,6 @@ export default function SwitchContractDialog({
                             <Button
                               type="button"
                               variant="outline"
-                              size="xs"
                               isSelect
                               disabled={isPackagesLoading}
                               label={
