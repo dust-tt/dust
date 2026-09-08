@@ -64,7 +64,7 @@ type RowData = {
   availability: SkillAvailability;
   editors: UserType[] | null;
   usage: AgentsAndSkillsUsageType;
-  messageCount: number | null;
+  usageCount: number | null;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
@@ -82,7 +82,7 @@ const SKILLS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
     availability: "editors",
     editors: [],
     usage: { count: 0, agents: [], skills: [] },
-    messageCount: null,
+    usageCount: null,
     updatedAt: null,
     createdAt: null,
     onClick: () => undefined,
@@ -148,7 +148,7 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
           />
         </div>
       );
-    case "messageCount":
+    case "usageCount":
       return (
         <DataTable.CellContent>
           <LoadingBlock
@@ -293,17 +293,17 @@ const usedByColumn = (
 
 const usageColumn: ColumnDef<RowData, number | null> = {
   header: "Usage",
-  accessorKey: "messageCount",
+  accessorKey: "usageCount",
   cell: (info: CellContext<RowData, number | null>) => {
-    const messageCount = info.getValue();
+    const usageCount = info.getValue();
 
     return (
       <DataTable.BasicCellContent
         className="font-mono"
-        label={messageCount === null ? "-" : messageCount.toLocaleString()}
+        label={usageCount === null ? "-" : usageCount.toLocaleString()}
         tooltip={
-          messageCount === null
-            ? "System skills are always active, so message usage does not apply."
+          usageCount === null
+            ? "System skills are always active, so message usage does not apply"
             : undefined
         }
       />
@@ -311,7 +311,7 @@ const usageColumn: ColumnDef<RowData, number | null> = {
   },
   meta: {
     className: "hidden @sm:w-20 @sm:table-cell",
-    tooltip: "All-time messages",
+    tooltip: "Number of times this skill was used in the last 30 days.",
   },
 };
 
@@ -525,7 +525,7 @@ export function SkillsTable({
         availability: skill.availability,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
-        messageCount: skill.messageCount === undefined ? 0 : skill.messageCount,
+        usageCount: skill.usage ?? null,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {

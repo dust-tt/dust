@@ -157,7 +157,7 @@ export function ManageSkillsPage() {
     owner,
     status: "active",
     bypassEditorVisibility: isBypassEditorVisibilityEnabled,
-    withMessageCount: true,
+    withUsage: true,
   });
 
   const {
@@ -168,7 +168,7 @@ export function ManageSkillsPage() {
     status: "archived",
     disabled: selectedTab !== "archived",
     bypassEditorVisibility: isBypassEditorVisibilityEnabled,
-    withMessageCount: true,
+    withUsage: true,
   });
 
   const {
