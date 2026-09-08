@@ -1122,11 +1122,7 @@ export function useUpdatePodMetadata({
             ? updates.archive
               ? "Pod archived"
               : "Pod unarchived"
-            : updates.isAdminControlled !== undefined
-              ? updates.isAdminControlled
-                ? "Pod is now admin-controlled"
-                : "Pod is now self-serve"
-              : "Pod updated";
+            : "Pod updated";
 
     sendNotification({
       type: "success",

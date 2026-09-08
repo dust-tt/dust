@@ -2,7 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
-import type { PodFileTab, PodNavVisibility } from "@app/types/pod_file_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
   DEFAULT_POD_FILE_TAB_ICON,
   MAX_POD_FILE_TAB_TITLE_LENGTH,
@@ -205,21 +205,12 @@ export function usePodFileTabs({
   );
 
   const moveFileTab = useCallback(
-    async (
-      path: string,
-      direction: "left" | "right",
-      visibility: PodNavVisibility
-    ) => {
+    async (path: string, direction: "left" | "right") => {
       if (!isEditor) {
         return false;
       }
 
-      const nextNavOrder = moveFileTabInTabsOrder(
-        navOrder,
-        path,
-        direction,
-        visibility
-      );
+      const nextNavOrder = moveFileTabInTabsOrder(navOrder, path, direction);
       if (!nextNavOrder) {
         return false;
       }

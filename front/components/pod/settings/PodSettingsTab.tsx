@@ -2,7 +2,6 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
-import { AdminControlledPodTile } from "@app/components/pod/settings/AdminControlledPodTile";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { ManagePodGroupsPanel } from "@app/components/pod/settings/ManagePodGroupsPanel";
 import { PodGroupMembersTable } from "@app/components/pod/settings/PodGroupMembersTable";
@@ -108,7 +107,6 @@ export function PodSettingsTab({
   const { hasFeature } = useFeatureFlags();
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
-  const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
   // The pod env vars section stays workspace-admin only (matching the API,
   // which keeps env-vars admin-only). Mirrors that gate — change both together.
   const isPodSandboxAdminEnabled = isAdmin && hasFeature("frames_v2");
@@ -778,12 +776,6 @@ export function PodSettingsTab({
                 )}
               </div>
             </div>
-
-            {hasAdminControlledPodsFeature && (
-              <div className="border-t border-border">
-                <AdminControlledPodTile owner={owner} pod={pod} />
-              </div>
-            )}
           </div>
         </div>
 

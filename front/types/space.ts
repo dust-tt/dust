@@ -72,7 +72,6 @@ export type PodType = EnrichedSpaceType & {
   pinnedFramePath?: string | null;
   frameTabs?: PodFileTab[];
   tabsOrder?: string[];
-  isAdminControlled?: boolean;
 };
 
 export type PodListItemType = PodType & {

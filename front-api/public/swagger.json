@@ -10109,10 +10109,6 @@
                               "items": {
                                 "type": "string"
                               }
-                            },
-                            "isAdminControlled": {
-                              "type": "boolean",
-                              "description": "Whether workspace admins control membership and connected data for this Pod."
                             }
                           }
                         }
@@ -12554,10 +12550,6 @@
                 "items": {
                   "type": "string"
                 }
-              },
-              "isAdminControlled": {
-                "type": "boolean",
-                "description": "Whether workspace admins control membership and connected data for this Pod."
               }
             }
           }

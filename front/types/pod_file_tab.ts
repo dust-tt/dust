@@ -10,9 +10,8 @@ export const DEFAULT_POD_FILE_TAB_ICON =
 /** System tabs that participate in ordering (Settings is always last and excluded). */
 export const POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS = [
   "conversations",
-  "tasks",
   "files",
-  "connected_data",
+  "tasks",
 ] as const;
 
 export type PodNavSystemTabBeforeSettings =
@@ -94,43 +93,15 @@ export function normalizeTabsOrder(
   return result;
 }
 
-/**
- * Which conditional system tabs this Pod currently shows. Connected Data depends on the Pod being
- * admin-controlled. This must be honoured everywhere tab order is computed, so neighbour-swapping
- * never moves a file tab past a tab the user cannot see.
- */
-export type PodNavVisibility = {
-  includeConnectedData: boolean;
-};
-
-/** Connected Data not shown — the safe default for callers that do not know yet. */
-export const DEFAULT_POD_NAV_VISIBILITY: PodNavVisibility = {
-  includeConnectedData: false,
-};
-
-export function visibleTabsOrder(
-  tabsOrder: string[],
-  { includeConnectedData }: PodNavVisibility
-): string[] {
-  return tabsOrder.filter((id) => {
-    if (id === "connected_data") {
-      return includeConnectedData;
-    }
-    return true;
-  });
-}
-
 export function buildPodNavItemsBeforeSettings(
   fileTabs: PodFileTab[],
-  tabsOrder: string[],
-  visibility: PodNavVisibility
+  tabsOrder: string[]
 ): PodNavItemBeforeSettings[] {
   const byPath = new Map(fileTabs.map((tab) => [tab.path, tab]));
-  const normalized = normalizeTabsOrder(
+  const visible = normalizeTabsOrder(
     tabsOrder,
     fileTabs.map((tab) => tab.path)
   );
-  const visible = visibleTabsOrder(normalized, visibility);
 
   const items: PodNavItemBeforeSettings[] = [];
   for (const entry of visible) {
@@ -150,22 +121,20 @@ export function buildPodNavItemsBeforeSettings(
 export function moveFileTabInTabsOrder(
   tabsOrder: string[],
   path: string,
-  direction: "left" | "right",
-  visibility: PodNavVisibility
+  direction: "left" | "right"
 ): string[] | null {
-  const visible = visibleTabsOrder(tabsOrder, visibility);
-  const index = visible.indexOf(path);
+  const index = tabsOrder.indexOf(path);
   if (index < 0) {
     return null;
   }
 
   const swapWith = direction === "left" ? index - 1 : index + 1;
-  if (swapWith < 0 || swapWith >= visible.length) {
+  if (swapWith < 0 || swapWith >= tabsOrder.length) {
     return null;
   }
 
-  const a = visible[index];
-  const b = visible[swapWith];
+  const a = tabsOrder[index];
+  const b = tabsOrder[swapWith];
   const next = [...tabsOrder];
   const ai = next.indexOf(a);
   const bi = next.indexOf(b);

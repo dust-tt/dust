@@ -1157,9 +1157,6 @@
  *               description: Interleaved system tab ids and frame paths before Settings.
  *               items:
  *                 type: string
- *             isAdminControlled:
- *               type: boolean
- *               description: Whether workspace admins control membership and connected data for this Pod.
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.

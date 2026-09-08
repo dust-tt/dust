@@ -25,6 +25,7 @@ const meta = {
 
 **Guidelines**
 - Pair each **NavTabPillTrigger** with a matching **NavTabPillContent** sharing the same \`value\`.
+- The trigger label expands on the active pill; inactive (collapsed) pills show the same label as a hover tooltip.
 - For standard underlined tabs within a content area, use **Tabs** instead.`,
       },
     },

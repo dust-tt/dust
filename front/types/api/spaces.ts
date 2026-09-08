@@ -47,7 +47,6 @@ export const PatchPodMetadataBodySchema = z.object({
   tabsOrder: PodTabsOrderSchema.optional(),
   defaultAgentId: z.string().nullable().optional(),
   defaultSkillIds: z.array(z.string()).optional(),
-  isAdminControlled: z.boolean().optional(),
 });
 
 export type PatchPodMetadataBodyType = z.infer<
@@ -111,8 +110,7 @@ export type RichSpaceType = EnrichedSpaceType & {
   pinnedFramePath: string | null;
   frameTabs: PodFileTab[];
   tabsOrder: string[];
-  /** Workspace admins control membership and connected data (project spaces only). */
-  isAdminControlled: boolean;
+  isAdminControlled: false;
 };
 
 export type GetSpaceResponseBody = {
