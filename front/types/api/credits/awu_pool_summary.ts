@@ -27,7 +27,6 @@ export type AwuPoolCurrentCycleResponseBody = {
   // PAYG credits
   excessConsumedCredits: number | null;
   programmaticConsumedCredits: number | null;
-  otherConsumedCredits: number | null;
 };
 
 export type AwuPoolCycleHistoryResponseBody = {

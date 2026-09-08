@@ -32,7 +32,6 @@ const EMPTY_CURRENT_CYCLE = {
   currentCycleConsumedCredits: null,
   excessConsumedCredits: null,
   programmaticConsumedCredits: null,
-  otherConsumedCredits: null,
 };
 
 beforeEach(() => {
