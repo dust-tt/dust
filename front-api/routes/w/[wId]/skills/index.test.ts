@@ -867,10 +867,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     ]);
   });
 
-  it.each([
-    "withUsage",
-    "withMessageCount",
-  ])("returns recent skill activation calls with %s", async (usageParam) => {
+  it("returns recent skill activation calls with withUsage", async () => {
     const { workspace, user } = await setupTest();
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -899,7 +896,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
 
     const response = await getSkills(workspace, {
       withRelations: "true",
-      [usageParam]: "true",
+      withUsage: "true",
     });
 
     expect(response.status).toBe(200);
@@ -945,6 +942,32 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         },
       },
     });
+  });
+
+  it("returns null message counts without fetching usage for legacy clients", async () => {
+    const { workspace, user } = await setupTest();
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(auth, {
+      name: "Skill Requested By Legacy Client",
+    });
+
+    const response = await getSkills(workspace, {
+      withRelations: "true",
+      withMessageCount: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    expect(responseBody.skills.some((s) => s.sId === skill.sId)).toBe(true);
+    for (const listedSkill of responseBody.skills) {
+      expect(listedSkill.messageCount).toBeNull();
+      expect(listedSkill).not.toHaveProperty("usage");
+    }
+    expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
   });
 
   it("keeps skills available when consumption analytics fails", async () => {
