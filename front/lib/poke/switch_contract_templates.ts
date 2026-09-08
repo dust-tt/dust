@@ -1,7 +1,4 @@
-import {
-  CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
-} from "@app/lib/plans/plan_codes";
+import { CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import type { MembershipSeatType } from "@app/types/memberships";
 
 // Hardcoded pre-fill templates for the Switch Contract poke dialog. Selecting a
@@ -84,33 +81,6 @@ export type SwitchContractTemplate = {
 };
 
 export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
-  {
-    id: "business-annual",
-    name: "Business — annual",
-    description: "Business plan, starts immediately, 1-year commitment.",
-    package: { tier: "business" },
-    planCode: CREDIT_PRICED_BUSINESS_PLAN_CODE,
-    startMode: "select",
-    duration: { value: 1, unit: "years" },
-    seats: {
-      pro_yearly: { selected: true, minSeats: 10 },
-    },
-  },
-  {
-    id: "enterprise-annual",
-    name: "Enterprise — annual",
-    description:
-      "Enterprise plan, starts immediately, 1-year commitment, prepaid credits.",
-    package: { tier: "enterprise" },
-    planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
-    startMode: "select",
-    duration: { value: 1, unit: "years" },
-    initialCredits: {
-      amountCredits: 100000,
-      invoiceAmount: 5000,
-      paymentSchedule: { frequency: "one_time" },
-    },
-  },
   {
     id: "enterprise-free-pilot-2w",
     name: "Free pilot — 2 weeks",
