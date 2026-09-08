@@ -1252,12 +1252,15 @@ export function UsagePage() {
           ) : null}
 
           {isNewUsagePage && isCreditPriced ? (
-            <div className="flex flex-col items-stretch gap-4">
-              <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
-              {usageSettings.topUpEnabled && (
-                <div className="flex justify-end">{topUpButton}</div>
-              )}
-            </div>
+            <CreditPoolCards
+              owner={owner}
+              disabled={!isCreditPriced}
+              topUpButton={
+                usageSettings.topUpEnabled ? (
+                  <div className="flex justify-end">{topUpButton}</div>
+                ) : null
+              }
+            />
           ) : null}
 
           {!isNewUsagePage &&

@@ -21,6 +21,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { ReactNode } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
@@ -149,13 +150,15 @@ export function WorkspaceCreditPoolCycleHistoryTable({
   if (cycleBreakdown.length === 0) {
     return null;
   }
-  const rows: CycleHistoryRowData[] = cycleBreakdown.map((cycle) => ({
-    cycle:
-      cycle.cycleStartMs && cycle.cycleEndMs
-        ? `${formatConsumptionDate(cycle.cycleStartMs)} – ${formatConsumptionDate(cycle.cycleEndMs)}`
-        : "Unknown cycle",
-    consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
-  }));
+  const rows: CycleHistoryRowData[] = cycleBreakdown
+    .slice(0, 3)
+    .map((cycle) => ({
+      cycle:
+        cycle.cycleStartMs && cycle.cycleEndMs
+          ? `${formatConsumptionDate(cycle.cycleStartMs)} – ${formatConsumptionDate(cycle.cycleEndMs)}`
+          : "Unknown cycle",
+      consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
+    }));
   return (
     <>
       <Page.H variant="h5">Previous cycles</Page.H>
@@ -213,6 +216,7 @@ interface WorkspaceCreditPoolSectionProps {
   currentCycleEndMs: number | null;
   cycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
+  topUpButton?: ReactNode;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -226,6 +230,7 @@ export function WorkspaceCreditPoolSection({
   currentCycleEndMs,
   cycleBreakdown,
   programmaticConsumedCredits,
+  topUpButton,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -258,6 +263,7 @@ export function WorkspaceCreditPoolSection({
             programmaticConsumedCredits={programmaticConsumedCredits}
             isLoading={false}
           />
+          {topUpButton}
           <WorkspaceCreditPoolHistory
             tableStatus={tableStatus}
             cycleBreakdown={cycleBreakdown}
@@ -274,6 +280,7 @@ interface CreditPoolCardsFromCycleDataProps {
   poolCycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
+  topUpButton?: ReactNode;
 }
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
@@ -281,6 +288,7 @@ export function CreditPoolCardsFromCycleData({
   poolCycleBreakdown,
   excessCycleBreakdown,
   tableStatus,
+  topUpButton,
 }: CreditPoolCardsFromCycleDataProps) {
   const {
     totalRemainingCredits,
@@ -318,6 +326,7 @@ export function CreditPoolCardsFromCycleData({
       currentCycleEndMs={currentCycleEndMs}
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
+      topUpButton={topUpButton}
     />
   );
 }
@@ -325,8 +334,13 @@ export function CreditPoolCardsFromCycleData({
 interface CreditPoolCardsProps {
   owner: LightWorkspaceType;
   disabled: boolean;
+  topUpButton?: ReactNode;
 }
-export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
+export function CreditPoolCards({
+  owner,
+  disabled,
+  topUpButton,
+}: CreditPoolCardsProps) {
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
@@ -348,6 +362,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
       )}
       poolCycleBreakdown={poolCycleBreakdown}
       excessCycleBreakdown={excessCycleBreakdown}
+      topUpButton={topUpButton}
       tableStatus={toCreditPoolFetchStatus(
         isAwuPoolCycleHistoryLoading,
         !!isAwuPoolCycleHistoryError
