@@ -159,7 +159,6 @@ export function InlineActivitySteps({
 
   const hasContent =
     completedSteps.length > 0 ||
-    !!agentMessage.content ||
     showActiveThinking ||
     showActiveWriting ||
     activeActions.length > 0 ||
@@ -209,7 +208,7 @@ export function InlineActivitySteps({
         <AgentMessageMarkdown
           content={agentMessage.content}
           owner={owner}
-          streamingState={isWriting ? "streaming" : "none"}
+          streamingState="streaming"
           isLastMessage={false}
         />
       </div>
