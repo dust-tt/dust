@@ -7,6 +7,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -148,8 +149,13 @@ async function shadowAgentPermissions(
  */
 /**
  * @cc [owner:philipperolet,label:security] agent-editability
- * `canEdit` allows legacy authors/editors or user-less system-key callers with agent write
- * permission; workspace admin role alone does not grant it.
+ * For user and system-key callers, `canEdit` allows legacy authors/editors or user-less system-key
+ * callers with agent write permission; workspace admin role alone does not grant it.
+ */
+/**
+ * @cc [owner:aubin-tchoi,label:api] api-key-agent-edit-permissions
+ * For API keys, `canEdit` follows the PATCH role, scope, status, and requested-space gates;
+ * user-authenticated callers retain their editor permissions.
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
@@ -165,6 +171,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const configurationIds = agentConfigurations.map((a) => a.id);
   const configurationSIds = agentConfigurations.map((a) => a.sId);
   const user = auth.user();
+  const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
 
   // Compute editor permissions if not provided
   let editorIds = agentIdsForUserAsEditor;
@@ -180,6 +187,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
+    spacesForApiKey,
   ] = await Promise.all([
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
@@ -188,7 +196,15 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     variant !== "extra_light"
       ? TagResource.listForAgents(auth, configurationIds)
       : Promise.resolve([]),
+    isRegularApiKey && auth.isBuilder()
+      ? SpaceResource.fetchByModelIds(auth, [
+          ...new Set(
+            agentConfigurations.flatMap((agent) => agent.requestedSpaceIds)
+          ),
+        ])
+      : Promise.resolve([]),
   ]);
+  const spaceById = new Map(spacesForApiKey.map((space) => [space.id, space]));
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
@@ -207,8 +223,14 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       auth.isSystemKey() &&
       auth.can("write", AgentResource.fromAgentConfigurationModel(agent));
 
-    const canEdit = isAuthor || isMember || canEditAsSystem;
-    const canRead = canEdit || agent.scope === "visible";
+    const canRead =
+      isAuthor || isMember || canEditAsSystem || agent.scope === "visible";
+    const canEdit = isRegularApiKey
+      ? auth.isBuilder() &&
+        agent.status === "active" &&
+        (canRead || auth.isAdmin()) &&
+        canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
+      : isAuthor || isMember || canEditAsSystem;
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
