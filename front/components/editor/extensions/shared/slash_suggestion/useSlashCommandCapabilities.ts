@@ -95,12 +95,8 @@ export function useInputBarSlashCommandCapabilities({
         query,
         skills,
         tools: serverViews,
-        toolFilter: (serverView) =>
-          !(selectedMCPServerViewIdsRef?.current ?? new Set()).has(
-            serverView.sId
-          ),
       }),
-    [excludeSkillId, query, selectedMCPServerViewIdsRef, serverViews, skills]
+    [excludeSkillId, query, serverViews, skills]
   );
 
   return {

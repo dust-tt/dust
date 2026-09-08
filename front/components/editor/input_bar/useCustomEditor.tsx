@@ -14,6 +14,7 @@ import { URLDetectionExtension } from "@app/components/editor/extensions/input_b
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
@@ -475,6 +476,9 @@ export const buildEditorExtensions = ({
     }),
     SkillNode.configure({
       onSkillDetails: slashSuggestion?.onSkillDetails,
+    }),
+    ToolNodeWithView.configure({
+      // onToolDetails
     }),
     VoicePartialNode,
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),

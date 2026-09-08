@@ -288,6 +288,23 @@ Quote text
       });
     });
 
+    it("renders inline tool tags as chips", () => {
+      const content =
+        'Please use <tool id="msvr_123" name="Web Search" icon="magnifying_glass" />';
+      const message = { ...mockMessage, content };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+
+      expect(container.textContent).toContain("Please use");
+      expect(container.textContent).toContain("Web Search");
+      expect(container.textContent).not.toContain("<tool");
+    });
+
     it("renders content node mentions", () => {
       const content = ":content_node_mention[Document]{nodeId=doc-123}";
       const message = { ...mockMessage, content };

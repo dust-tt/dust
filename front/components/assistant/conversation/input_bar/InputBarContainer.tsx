@@ -32,6 +32,7 @@ import {
   SELECT_TOOL_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor, {
   INPUT_BAR_DEFAULT_PLACEHOLDER,
@@ -39,7 +40,6 @@ import useCustomEditor, {
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
-import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   useCompactConversation,
@@ -103,9 +103,10 @@ import {
   TooltipTrigger,
   VoicePicker,
 } from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/react";
+import type { Editor, EditorEvents } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import React, {
+import type React from "react";
+import {
   useCallback,
   useContext,
   useEffect,
@@ -183,6 +184,25 @@ function readDefaultSkillEditorState(editor: Editor): {
     return true;
   });
   return { skillIds, hasUserContent };
+}
+
+function hasAnotherAttachedNode(
+  editor: Editor,
+  nodeType: string,
+  attrName: string,
+  value: string
+): boolean {
+  let found = false;
+  editor.state.doc.descendants((node) => {
+    if (found) {
+      return false;
+    }
+    if (node.type.name === nodeType && node.attrs[attrName] === value) {
+      found = true;
+    }
+    return true;
+  });
+  return found;
 }
 
 function sameSkillIds(a: string[], b: string[]): boolean {
@@ -394,9 +414,10 @@ const InputBarContainer = ({
   attachedNodesRef.current = attachedNodes;
   const onNodeUnselectRef = useRef(onNodeUnselect);
   onNodeUnselectRef.current = onNodeUnselect;
-  // Tracks internalIds of nodes that have a dataSourceLink chip in the editor,
-  // so we only sync removal for nodes that were created via URL paste.
-  const dataSourceLinkNodeIdsRef = useRef<Set<string>>(new Set());
+  const onMCPServerViewDeselectRef = useRef(onMCPServerViewDeselect);
+  onMCPServerViewDeselectRef.current = onMCPServerViewDeselect;
+  const selectedMCPServerViewsRef = useRef(selectedMCPServerViews);
+  selectedMCPServerViewsRef.current = selectedMCPServerViews;
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
@@ -682,6 +703,20 @@ const InputBarContainer = ({
       .run();
   };
 
+  const handleToolSelect = (view: MCPServerViewLightType) => {
+    onMCPServerViewSelect(view);
+
+    editorRef.current
+      ?.chain()
+      .focus()
+      .insertToolNode({
+        mcpServerViewId: view.sId,
+        toolName: getMcpServerViewDisplayName(view),
+        toolIcon: view.server.icon,
+      })
+      .run();
+  };
+
   const handleSlashCommandSelect = (command: InputBarSlashCommand) => {
     switch (command.id) {
       case "upload-file":
@@ -730,7 +765,7 @@ const InputBarContainer = ({
         handleSkillSelect(item.data.skill);
         break;
       case SELECT_TOOL_SLASH_COMMAND_ACTION:
-        onMCPServerViewSelect(item.data.tool.view);
+        handleToolSelect(item.data.tool.view);
         break;
       default:
         assertNeverAndIgnore(item);
@@ -1098,30 +1133,59 @@ const InputBarContainer = ({
       userMentioned,
       editorStartsWithUserMention
     );
+  }, []);
 
-    // Sync: when a dataSourceLink chip is deleted from the editor, remove
-    // the corresponding attached node so the attachment card disappears.
-    if (currentEditor && attachedNodesRef.current.length > 0) {
-      const chipNodeIds = new Set<string>();
-      currentEditor.state.doc.descendants((node) => {
-        if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
-          chipNodeIds.add(String(node.attrs.nodeId));
-        }
-      });
+  const handleContentDeleted = useCallback((event: EditorEvents["delete"]) => {
+    if (event.type !== "node") {
+      return;
+    }
 
-      // Update the tracked set and unselect nodes whose chip was removed.
-      const prevIds = dataSourceLinkNodeIdsRef.current;
-      for (const prevId of prevIds) {
-        if (!chipNodeIds.has(prevId)) {
-          const node = attachedNodesRef.current.find(
-            (n) => n.internalId === prevId
-          );
-          if (node) {
-            onNodeUnselectRef.current(node);
-          }
+    const currentEditor = editorRef.current;
+    if (!currentEditor || currentEditor.isDestroyed) {
+      return;
+    }
+
+    const { node } = event;
+
+    if (node.type.name === "dataSourceLink") {
+      const nodeId = node.attrs.nodeId;
+      if (
+        typeof nodeId === "string" &&
+        !hasAnotherAttachedNode(
+          currentEditor,
+          "dataSourceLink",
+          "nodeId",
+          nodeId
+        )
+      ) {
+        const attachedNode = attachedNodesRef.current.find(
+          (n) => n.internalId === nodeId
+        );
+        if (attachedNode) {
+          onNodeUnselectRef.current(attachedNode);
         }
       }
-      dataSourceLinkNodeIdsRef.current = chipNodeIds;
+      return;
+    }
+
+    if (node.type.name === TOOL_NODE_TYPE) {
+      const mcpServerViewId = node.attrs.mcpServerViewId;
+      if (
+        typeof mcpServerViewId === "string" &&
+        !hasAnotherAttachedNode(
+          currentEditor,
+          TOOL_NODE_TYPE,
+          "mcpServerViewId",
+          mcpServerViewId
+        )
+      ) {
+        const view = selectedMCPServerViewsRef.current.find(
+          (v) => v.sId === mcpServerViewId
+        );
+        if (view) {
+          onMCPServerViewDeselectRef.current(view);
+        }
+      }
     }
   }, []);
 
@@ -1129,19 +1193,22 @@ const InputBarContainer = ({
   useEffect(() => {
     if (editorRef.current) {
       editorRef.current.off("update", handleEditorUpdate);
+      editorRef.current.off("delete", handleContentDeleted);
     }
 
     if (editor) {
       editor.on("update", handleEditorUpdate);
+      editor.on("delete", handleContentDeleted);
     }
     editorRef.current = editor;
 
     return () => {
       if (editor) {
         editor.off("update", handleEditorUpdate);
+        editor.off("delete", handleContentDeleted);
       }
     };
-  }, [editor, handleEditorUpdate]);
+  }, [editor, handleEditorUpdate, handleContentDeleted]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -1711,30 +1778,6 @@ const InputBarContainer = ({
             }}
           >
             <div className="mb-1 flex flex-wrap items-center px-3">
-              {selectedMCPServerViews.map((msv) => (
-                <React.Fragment key={msv.sId}>
-                  {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
-                  <Chip
-                    size="xs"
-                    label={getMcpServerViewDisplayName(msv)}
-                    icon={getIcon(msv.server.icon)}
-                    className="m-0.5 hidden bg-background text-foreground xs:flex"
-                    onClick={() => setSelectedServerViewForDetails(msv)}
-                    onRemove={() => {
-                      onMCPServerViewDeselect(msv);
-                    }}
-                  />
-                  <Chip
-                    size="xs"
-                    icon={getIcon(msv.server.icon)}
-                    className="m-0.5 flex bg-background text-foreground xs:hidden"
-                    onClick={() => setSelectedServerViewForDetails(msv)}
-                    onRemove={() => {
-                      onMCPServerViewDeselect(msv);
-                    }}
-                  />
-                </React.Fragment>
-              ))}
               {selectedSpaces.map((selectedSpace) => (
                 <Chip
                   key={selectedSpace.sId}
@@ -1782,7 +1825,7 @@ const InputBarContainer = ({
                       isInputDisabled={disableInput}
                       lastRequestedModel={lastRequestedModel}
                       onAgentRemove={handleAgentRemove}
-                      onMCPServerViewSelect={onMCPServerViewSelect}
+                      onMCPServerViewSelect={handleToolSelect}
                       modelSelectionRef={modelSelectionRef}
                       modelSelectionCommitRef={modelSelectionCommitRef}
                       onNodeSelect={onNodeSelect}
