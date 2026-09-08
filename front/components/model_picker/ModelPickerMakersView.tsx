@@ -43,8 +43,6 @@ interface ModelPickerMakersViewProps {
   // credit-based plan).
   lockPremiumEfforts: boolean;
   degradedModelIds: ReadonlySet<string>;
-  // Region whose hosting flag is shown next to the models hosted there; `null`
-  // when the workspace has no hosting region to advertise.
   hostingRegion: RegionType | null;
   // Which maker is expanded inline. Only read on width-constrained clients,
   // where makers can't be submenus.

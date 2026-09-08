@@ -24,8 +24,6 @@ interface ModelPickerModelRowProps {
   isDefault: boolean;
   lockReason: ModelLockReason | null;
   isDegraded: boolean;
-  // The hosting flag shown next to the model name (e.g. 🇪🇺 for an EU-hosted
-  // model), or `null` when the model has no hosting region to advertise.
   regionalFlag: ReactNode | null;
   effort: ReasoningEffort | null;
   effortStops: EffortStop[];

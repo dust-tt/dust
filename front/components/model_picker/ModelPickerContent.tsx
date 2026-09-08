@@ -44,8 +44,6 @@ interface ModelPickerContentProps {
   ignoreTierRestrictions: boolean;
   tiers: ModelTierDefinition[];
   degradedModelIds: ReadonlySet<string>;
-  // Region whose hosting flag is shown next to the models hosted there; `null`
-  // when the workspace has no hosting region to advertise.
   hostingRegion: RegionType | null;
   makerGroups: MakerGroup[];
   streamModels: EnabledModelConfigurationType[];
@@ -123,8 +121,6 @@ export function ModelPickerContent({
             />
           );
         }
-        // A tier row names the model it currently resolves to, so it carries
-        // the same hosting flag as that model's own row would.
         const regionalFlag =
           hostingRegion !== null &&
           isTierResolvedModelHostedInRegion(tier, streams, hostingRegion) ? (
