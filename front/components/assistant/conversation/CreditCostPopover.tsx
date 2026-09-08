@@ -50,6 +50,10 @@ interface CreditDetailRowProps {
  * full text in place of the description and value until the pointer leaves the row.
  */
 /**
+ * @cc [owner:aubin-tchoi,label:product] stationary-visible-label-prefix
+ * Text visible before the ellipsis retains its position and opacity throughout the reveal.
+ */
+/**
  * @cc [owner:aubin-tchoi,label:react] reduced-motion-label-reveal
  * The label reveal animation is disabled when the user prefers reduced motion.
  */
@@ -65,17 +69,20 @@ function CreditDetailRow({
 
   return (
     <div
-      className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-sm"
+      className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 py-2 text-sm"
       onPointerEnter={(event) => {
         const labelElement = labelRef.current;
         if (
           expandLabelOnHover &&
           event.pointerType === "mouse" &&
-          labelElement
+          labelElement &&
+          labelElement.scrollWidth > labelElement.clientWidth
         ) {
-          setIsLabelExpanded(
-            labelElement.scrollWidth > labelElement.clientWidth
+          labelElement.style.setProperty(
+            "--credit-label-collapsed-width",
+            `${labelElement.clientWidth}px`
           );
+          setIsLabelExpanded(true);
         }
       }}
       onPointerLeave={() => setIsLabelExpanded(false)}
@@ -90,14 +97,14 @@ function CreditDetailRow({
           <Icon
             visual={icon}
             size="xs"
-            className="shrink-0 text-muted-foreground"
+            className="mt-0.5 shrink-0 self-start text-muted-foreground"
           />
         )}
         <span
           ref={labelRef}
           className={
             isLabelExpanded
-              ? "min-w-0 break-words animate-in fade-in slide-in-from-left-1 duration-150 ease-enter motion-reduce:animate-none"
+              ? "min-w-0 break-all animate-credit-label-reveal motion-reduce:animate-none"
               : "truncate"
           }
         >
