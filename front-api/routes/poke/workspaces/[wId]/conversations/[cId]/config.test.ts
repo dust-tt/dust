@@ -1,12 +1,12 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 async function setup() {
-  const { workspace, auth } = await createPrivateApiMockRequest({
+  const { workspace, auth } = await createPokeApiMockRequest({
     isSuperUser: true,
     role: "admin",
   });

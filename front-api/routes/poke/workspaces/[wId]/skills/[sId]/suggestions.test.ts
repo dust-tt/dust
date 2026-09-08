@@ -1,5 +1,5 @@
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { honoApp } from "@front-api/app";
@@ -27,7 +27,7 @@ function deleteSuggestion(
 
 describe("GET /api/poke/workspaces/:wId/skills/:sId/suggestions", () => {
   it("returns 401 for non super users", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       method: "GET",
       isSuperUser: false,
       role: "admin",
@@ -39,7 +39,7 @@ describe("GET /api/poke/workspaces/:wId/skills/:sId/suggestions", () => {
   });
 
   it("returns suggestions for a given skill", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace, auth } = await createPokeApiMockRequest({
       method: "GET",
       isSuperUser: true,
       role: "admin",
@@ -57,7 +57,7 @@ describe("GET /api/poke/workspaces/:wId/skills/:sId/suggestions", () => {
   });
 
   it("returns empty array when skill has no suggestions", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace, auth } = await createPokeApiMockRequest({
       method: "GET",
       isSuperUser: true,
       role: "admin",
@@ -75,7 +75,7 @@ describe("GET /api/poke/workspaces/:wId/skills/:sId/suggestions", () => {
 
 describe("DELETE /api/poke/workspaces/:wId/skills/:sId/suggestions", () => {
   it("returns 400 when suggestionSId query param is missing", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       method: "DELETE",
       isSuperUser: true,
       role: "admin",
@@ -89,7 +89,7 @@ describe("DELETE /api/poke/workspaces/:wId/skills/:sId/suggestions", () => {
   });
 
   it("returns 404 when suggestion does not exist", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       method: "DELETE",
       isSuperUser: true,
       role: "admin",
@@ -105,7 +105,7 @@ describe("DELETE /api/poke/workspaces/:wId/skills/:sId/suggestions", () => {
   });
 
   it("deletes the suggestion and returns 204", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace, auth } = await createPokeApiMockRequest({
       method: "DELETE",
       isSuperUser: true,
       role: "admin",

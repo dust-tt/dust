@@ -3,14 +3,14 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 const BILLED_CREDITS = 7;
 
 async function setupConversation() {
-  const { auth, user, workspace } = await createPrivateApiMockRequest({
+  const { auth, user, workspace } = await createPokeApiMockRequest({
     isSuperUser: true,
     role: "user",
   });

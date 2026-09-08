@@ -1,6 +1,6 @@
 import { listDegradableEndpoints } from "@app/lib/api/poke/degraded_models";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -51,7 +51,7 @@ async function getDegradedEndpoints() {
 
 describe("GET /api/poke/degraded_models", () => {
   it("returns the degradable catalog with nothing degraded", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await honoApp.request("/api/poke/degraded_models");
 
@@ -71,7 +71,7 @@ describe("GET /api/poke/degraded_models", () => {
   });
 
   it("returns 401 when the user is not a super user", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: false });
+    await createPokeApiMockRequest({ isSuperUser: false });
 
     const response = await honoApp.request("/api/poke/degraded_models");
 
@@ -81,7 +81,7 @@ describe("GET /api/poke/degraded_models", () => {
 
 describe("POST /api/poke/degraded_models", () => {
   it("degrades and restores only the endpoints it names", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     expect(
       (await postEndpoints([{ ...endpointAt(0), degraded: true }])).status
@@ -103,7 +103,7 @@ describe("POST /api/poke/degraded_models", () => {
   });
 
   it("is a no-op when an endpoint is already in the requested state", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     expect(
       (
@@ -125,7 +125,7 @@ describe("POST /api/poke/degraded_models", () => {
   });
 
   it("settles on the last requested state when an endpoint is named twice", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await postEndpoints([
       { ...endpointAt(0), degraded: true },
@@ -137,7 +137,7 @@ describe("POST /api/poke/degraded_models", () => {
   });
 
   it("returns 400 for an endpoint that is not in the catalog", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await postEndpoints([
       { ...endpointAt(0), host: "not-a-host", degraded: true },
@@ -150,7 +150,7 @@ describe("POST /api/poke/degraded_models", () => {
   });
 
   it("returns 401 when the user is not a super user", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: false });
+    await createPokeApiMockRequest({ isSuperUser: false });
 
     const response = await postEndpoints([
       { ...endpointAt(0), degraded: true },

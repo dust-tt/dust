@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
@@ -29,7 +29,7 @@ function listWorkspacesForFlag(flagName: string) {
 
 describe("GET /api/poke/feature-flags", () => {
   it("returns 401 when the user is not a super user", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: false });
+    await createPokeApiMockRequest({ isSuperUser: false });
 
     const response = await listFeatureFlags();
 
@@ -37,7 +37,7 @@ describe("GET /api/poke/feature-flags", () => {
   });
 
   it("counts the workspaces each flag is enabled on", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     const otherWorkspace = await WorkspaceFactory.basic();
@@ -67,7 +67,7 @@ describe("GET /api/poke/feature-flags", () => {
   });
 
   it("reports every configured flag, with its stage and description", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await listFeatureFlags();
 
@@ -84,7 +84,7 @@ describe("GET /api/poke/feature-flags", () => {
   });
 
   it("surfaces flag rows whose name is no longer configured", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await enableLegacyFlagOn(workspace);
@@ -108,7 +108,7 @@ describe("GET /api/poke/feature-flags", () => {
 
 describe("GET /api/poke/feature-flags/:flagName", () => {
   it("returns 401 when the user is not a super user", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: false });
+    await createPokeApiMockRequest({ isSuperUser: false });
 
     const response = await listWorkspacesForFlag(FLAG_A);
 
@@ -116,7 +116,7 @@ describe("GET /api/poke/feature-flags/:flagName", () => {
   });
 
   it("lists the workspaces the flag is enabled on", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     const otherWorkspace = await WorkspaceFactory.basic();
@@ -151,7 +151,7 @@ describe("GET /api/poke/feature-flags/:flagName", () => {
   });
 
   it("returns an empty list for a configured flag no workspace has", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await listWorkspacesForFlag(FLAG_A);
 
@@ -162,7 +162,7 @@ describe("GET /api/poke/feature-flags/:flagName", () => {
   });
 
   it("returns 404 for a name that is neither configured nor in the database", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await listWorkspacesForFlag("not_a_flag_at_all");
 
@@ -170,7 +170,7 @@ describe("GET /api/poke/feature-flags/:flagName", () => {
   });
 
   it("serves a legacy flag name that still has rows", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await enableLegacyFlagOn(workspace);

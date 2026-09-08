@@ -3,6 +3,7 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameV2ContentType } from "@app/types/files";
@@ -20,7 +21,12 @@ export async function makeTestFrameFunction({
   isSuperUser?: boolean;
   shareScope?: "emails_only" | "workspace_and_emails";
 } = {}) {
-  const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
+  // Poke frame routes authenticate via Cloudflare Access; non-poke callers keep
+  // the WorkOS private-api mock.
+  const createMockRequest = isSuperUser
+    ? createPokeApiMockRequest
+    : createPrivateApiMockRequest;
+  const { workspace, auth: adminAuth } = await createMockRequest({
     isSuperUser,
     role: "admin",
   });
@@ -75,10 +81,10 @@ export async function makeTestFrameFunction({
   if (!sandboxFunction) {
     throw new Error("Expected the Frame function to exist.");
   }
-  // Re-mocks the WorkOS session (the last `createPrivateApiMockRequest` call wins for request
-  // authentication), so `isSuperUser` must be threaded here too or a poke request made right
-  // after `makeTestFrameFunction` would authenticate as this non-super "user" auth instead.
-  const { auth } = await createPrivateApiMockRequest({
+  // Re-mocks request auth (the last mock-request call wins), so `isSuperUser`
+  // must be threaded here too or a poke request made right after
+  // `makeTestFrameFunction` would authenticate as this non-super "user" auth.
+  const { auth } = await createMockRequest({
     isSuperUser,
     role: "user",
     workspace,

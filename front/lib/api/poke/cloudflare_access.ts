@@ -45,6 +45,27 @@ export function getCloudflareAccessConfig(): CloudflareAccessConfig | null {
   return { teamDomain: normalizeTeamDomain(teamDomain), aud };
 }
 
+/**
+ * Prefer the `Cf-Access-Jwt-Assertion` header (what Cloudflare injects at the
+ * edge). Fall back to the `CF_Authorization` cookie for browser same-origin
+ * requests where the header may not be forwarded.
+ *
+ * Extracted so tests can mock token presence without attaching headers to every
+ * `honoApp.request` call (same idea as mocking WorkOS session resolution).
+ */
+export function resolveCloudflareAccessToken({
+  headerToken,
+  cookieToken,
+}: {
+  headerToken?: string;
+  cookieToken?: string;
+}): string | undefined {
+  if (headerToken) {
+    return headerToken;
+  }
+  return cookieToken;
+}
+
 function getJwks(issuer: string) {
   if (cachedJwks && cachedJwksIssuer === issuer) {
     return cachedJwks;

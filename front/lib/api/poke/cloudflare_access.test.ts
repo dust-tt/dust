@@ -29,6 +29,7 @@ vi.mock("@app/logger/logger", () => ({
 import {
   clearCloudflareAccessJwksCacheForTests,
   getCloudflareAccessConfig,
+  resolveCloudflareAccessToken,
   verifyCloudflareAccessJwt,
 } from "./cloudflare_access";
 
@@ -44,6 +45,29 @@ describe("cloudflare_access", () => {
         teamDomain: TEAM_DOMAIN,
         aud: AUD,
       });
+    });
+  });
+
+  describe("resolveCloudflareAccessToken", () => {
+    it("prefers the assertion header over the cookie", () => {
+      expect(
+        resolveCloudflareAccessToken({
+          headerToken: "header-token",
+          cookieToken: "cookie-token",
+        })
+      ).toBe("header-token");
+    });
+
+    it("falls back to the cookie when the header is absent", () => {
+      expect(
+        resolveCloudflareAccessToken({
+          cookieToken: "cookie-token",
+        })
+      ).toBe("cookie-token");
+    });
+
+    it("returns undefined when neither is present", () => {
+      expect(resolveCloudflareAccessToken({})).toBeUndefined();
     });
   });
 

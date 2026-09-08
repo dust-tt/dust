@@ -1,6 +1,6 @@
 import { getRedisCacheClient, runOnRedisCache } from "@app/lib/api/redis";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,7 +13,7 @@ const lookupUrl = `/api/poke/cache?resourceId=group_permissions_by_workspace&par
 
 describe("Poke cache: group permissions", () => {
   beforeEach(async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const redis = await getRedisCacheClient({
       origin: "group_permissions_cache",
@@ -74,7 +74,7 @@ describe("DELETE /api/poke/cache", () => {
   });
 
   it("deletes the new and previous keys", async () => {
-    await createPrivateApiMockRequest({
+    await createPokeApiMockRequest({
       method: "DELETE",
       isSuperUser: true,
     });

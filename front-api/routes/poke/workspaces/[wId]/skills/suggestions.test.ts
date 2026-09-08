@@ -2,13 +2,13 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { serializeToolTag } from "@app/lib/tools/format";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 describe("POST /api/poke/workspaces/:wId/skills/suggestions", () => {
   it("stores inline tool and skill references", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       method: "POST",
       isSuperUser: true,
       role: "admin",
