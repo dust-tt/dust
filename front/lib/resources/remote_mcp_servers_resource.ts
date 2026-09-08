@@ -713,8 +713,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       return new Err(
         new DustError(
           "internal_error",
-          `Failed to discover OAuth metadata for ${serverUrl}: ${error.message}`,
-          { cause: error }
+          `Failed to discover OAuth metadata for ${serverUrl}: ${error.message}`
         )
       );
     }
@@ -735,9 +734,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         "Failed to discover authorization server metadata"
       );
       return new Err(
-        new DustError("internal_error", "Failed to discover OAuth metadata", {
-          cause: normalizeError(e),
-        })
+        new DustError("internal_error", "Failed to discover OAuth metadata")
       );
     }
     //const parsedMetadata = await OAuthMetadataSchema.parseAsync(metadata);
@@ -785,10 +782,17 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         : "This server does not support automatic OAuth setup (no dynamic client registration " +
           "endpoint). Please use Static OAuth with the client ID/secret provided by the " +
           "server's OAuth application.";
-      logger.error({ error: e }, message);
-      return new Err(
-        new DustError("internal_error", message, { cause: normalizeError(e) })
+      logger.error(
+        {
+          error: normalizeError(e),
+          serverUrl,
+          authServerUrl: authServerUrl.toString(),
+          registrationEndpoint: metadata.registration_endpoint,
+          redirectUris: clientMetadata.redirect_uris,
+        },
+        message
       );
+      return new Err(new DustError("internal_error", message));
     }
   }
 

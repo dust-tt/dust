@@ -5,7 +5,6 @@ import { isInClusterMCPUrlAllowed } from "@app/lib/api/mcp/in_cluster";
 import { validateExternalUrl } from "@app/lib/api/url_safety";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -83,17 +82,13 @@ app.post(
       });
     }
 
-    return apiError(
-      ctx,
-      {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: discoveryRes.error.message,
-        },
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: discoveryRes.error.message,
       },
-      normalizeError(discoveryRes.error.cause ?? discoveryRes.error)
-    );
+    });
   }
 );
 
