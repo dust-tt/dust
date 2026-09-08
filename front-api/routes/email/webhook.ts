@@ -194,9 +194,15 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         email: email.sender.email,
       });
       if (userRes.isErr()) {
+        const error = resolveRelayedErrorReply({
+          headers,
+          localError: userRes.error,
+          senderEmail: email.sender.email,
+        });
         if (shouldRelayToOtherCells({ headers, error: userRes.error })) {
           const relayRes = await relayEmailToOtherCells(email, {
-            sourceError: userRes.error,
+            headers,
+            sourceError: error,
           });
           if (relayRes.isOk()) {
             return;
@@ -210,14 +216,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
             "[email] Failed to relay inbound email to other cells"
           );
         }
-        await replyToError(
-          email,
-          resolveRelayedErrorReply({
-            headers,
-            localError: userRes.error,
-            senderEmail: email.sender.email,
-          })
-        );
+        await replyToError(email, error);
         return;
       }
 

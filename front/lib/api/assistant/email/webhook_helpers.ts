@@ -24,6 +24,7 @@ import apiConfig from "@app/lib/api/config";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { CellInfo } from "@app/types/cell";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -45,6 +46,8 @@ const EMAIL_WEBHOOK_RELAY_SOURCE_CELL_HEADER =
   "x-dust-email-webhook-source-cell";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
   "x-dust-email-webhook-source-error";
+export const EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER =
+  "x-dust-email-webhook-remaining-cells";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
@@ -75,6 +78,25 @@ function isRelayEligibleError(error: EmailTriggerError): boolean {
   return isRelayEligibleErrorType(error.type);
 }
 
+/**
+ * @cc [owner:philipperolet,label:product] remaining-relay-cells
+ * Relayed requests may only visit configured cells listed in the remaining-cells header;
+ * legacy relays without that header must not relay again.
+ */
+function getEmailRelayCells(headers: EmailWebhookHeaders): CellInfo[] {
+  const cells = cellsConfig.getOtherCells();
+  if (!isRelayedWebhookRequest(headers)) {
+    return cells;
+  }
+
+  const remainingCells = headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER];
+  if (!isString(remainingCells)) {
+    return [];
+  }
+  const remaining = new Set(remainingCells.split(","));
+  return cells.filter((cell) => remaining.has(cell.name));
+}
+
 export function shouldRelayToOtherCells({
   headers,
   error,
@@ -82,7 +104,7 @@ export function shouldRelayToOtherCells({
   headers: EmailWebhookHeaders;
   error: EmailTriggerError;
 }): boolean {
-  return isRelayEligibleError(error) && !isRelayedWebhookRequest(headers);
+  return isRelayEligibleError(error) && getEmailRelayCells(headers).length > 0;
 }
 
 // Ordered from least to most informative: a user unknown in one cell may still
@@ -95,8 +117,8 @@ const RELAY_ERROR_INFORMATIVENESS: Record<RelayEligibleErrorType, number> = {
 };
 
 /**
- * On a relayed request, cells' lookups have failed and the relayed cell's
- * sends the error reply. The source cell's error type (forwarded via header) may
+ * Carry the most informative lookup error across relay hops, for the final cell's
+ * error reply. The source cell's error type (forwarded via header) may
  * be more informative than the local one — e.g. the sender has a real account with
  * Email Agents disabled in the source cell but no account locally; replying with
  * the local `user_not_found` ("please sign up") would be wrong.
@@ -191,12 +213,23 @@ export async function recordEmailRelay(
   return result === "OK";
 }
 
+/**
+ * @cc [owner:philipperolet,label:product] relay-handoff
+ * Each relay passes only the cells after its target as remaining destinations, and stops
+ * after a successful HTTP handoff. The receiving cell owns further lookup and error replies.
+ */
 export async function relayEmailToOtherCells(
   email: InboundEmail,
-  { sourceError }: { sourceError: EmailTriggerError }
+  {
+    sourceError,
+    headers: requestHeaders,
+  }: {
+    sourceError: EmailTriggerError;
+    headers: EmailWebhookHeaders;
+  }
 ): Promise<Result<void, Error>> {
   try {
-    const cells = cellsConfig.getOtherCells();
+    const cells = getEmailRelayCells(requestHeaders);
 
     const headers = {
       Authorization: `Bearer ${cellsConfig.getLookupApiSecret()}`,
@@ -227,12 +260,18 @@ export async function relayEmailToOtherCells(
       );
     }
 
-    for (const cell of cells) {
+    for (const [index, cell] of cells.entries()) {
       const responseRes = await withRetry(
         async () => {
           const response = await fetch(`${cell.url}/api/email/webhook`, {
             method: "POST",
-            headers,
+            headers: {
+              ...headers,
+              [EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]: cells
+                .slice(index + 1)
+                .map((remainingCell) => remainingCell.name)
+                .join(","),
+            },
             body,
           });
 
@@ -259,15 +298,20 @@ export async function relayEmailToOtherCells(
         }
       );
 
-      if (responseRes.isErr()) {
-        return responseRes;
-      }
-      if (!responseRes.value.ok) {
-        return new Err(
-          new Error(
-            `Relay to ${cell.name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
-          )
+      if (responseRes.isErr() || !responseRes.value.ok) {
+        logger.error(
+          {
+            error: responseRes.isErr()
+              ? responseRes.error
+              : new Error(
+                  `Relay to ${cell.name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
+                ),
+            sourceCell: cellsConfig.getCurrentCell().name,
+            targetCell: cell.name,
+          },
+          "[email] Failed to relay inbound email to cell"
         );
+        continue;
       }
 
       logger.info(

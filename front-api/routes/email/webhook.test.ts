@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   EMAIL_WEBHOOK_RELAY_HEADER,
   EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+  EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER,
   EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -22,6 +23,11 @@ vi.mock("@app/lib/api/cells/config", async (importOriginal) => {
           name: "cell-00001",
           region: "europe-west1",
           url: "http://other-region.test",
+        } satisfies CellInfo,
+        {
+          name: "cell-00002",
+          region: "europe-west1",
+          url: "http://last-cell.test",
         } satisfies CellInfo,
       ],
     },
@@ -135,7 +141,60 @@ describe("POST /api/email/webhook", () => {
       expect(relayInit.headers[EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]).toBe(
         "email_agents_disabled"
       );
+      expect(
+        relayInit.headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]
+      ).toBe("cell-00002");
       // No bounce from the source region once the relay succeeded.
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("forwards lookup misses without sending an error reply", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook("unknown-sender@example.com", {
+        ...RELAY_AUTH_HEADERS,
+        [EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]: "cell-00002",
+        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "email_agents_disabled",
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      const [relayUrl, relayInit] = fetchMock.mock.calls[0];
+      expect(relayUrl).toBe("http://last-cell.test/api/email/webhook");
+      expect(
+        relayInit.headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]
+      ).toBe("");
+      expect(relayInit.headers[EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]).toBe(
+        "email_agents_disabled"
+      );
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("tries the next cell after an HTTP error", async () => {
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await postWebhook(user.email, { Authorization: SENDGRID_AUTH_HEADER });
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      const [relayUrl, relayInit] = fetchMock.mock.calls[1];
+      expect(relayUrl).toBe("http://last-cell.test/api/email/webhook");
+      expect(
+        relayInit.headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]
+      ).toBe("");
       expect(sendEmailToRecipients).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllGlobals();
@@ -245,14 +304,22 @@ describe("POST /api/email/webhook", () => {
     expect(message.html).toContain("Email agents are disabled");
   });
 
-  it("does not relay again from a relayed request", async () => {
+  it.each([
+    undefined,
+    "",
+  ])("replies once after relay exhaustion (%s)", async (remainingCells) => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     try {
       const response = await postWebhook("unknown-sender@example.com", {
         ...RELAY_AUTH_HEADERS,
-        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "user_not_found",
+        ...(remainingCells === undefined
+          ? {}
+          : {
+              [EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]: remainingCells,
+            }),
+        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "email_agents_disabled",
       });
       expect(response.status).toBe(200);
 
@@ -260,6 +327,8 @@ describe("POST /api/email/webhook", () => {
         expect(sendEmailToRecipients).toHaveBeenCalledOnce()
       );
       expect(fetchMock).not.toHaveBeenCalled();
+      const [{ message }] = vi.mocked(sendEmailToRecipients).mock.calls[0];
+      expect(message.html).toContain("Email agents are disabled");
     } finally {
       vi.unstubAllGlobals();
     }
