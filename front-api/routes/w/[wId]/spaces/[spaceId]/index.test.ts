@@ -1,6 +1,7 @@
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -67,6 +68,47 @@ describe("GET /api/w/:wId/spaces/:spaceId", () => {
     expect(
       space.categories.actions.usage.agents.map((a: { sId: string }) => a.sId)
     ).toEqual([agent.sId]);
+  });
+
+  it("lists the groups given access to the space, with their role", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await SpaceFactory.defaults(auth);
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const memberGroup = await GroupFactory.provisioned(workspace, "Dev team");
+    const editorGroup = await GroupFactory.regularManual(workspace, "Leads");
+    await GroupFactory.withMembers(auth, editorGroup, [user]);
+
+    const updateRes = await pod.updatePermissions(auth, {
+      name: pod.name,
+      isRestricted: true,
+      editorIds: [user.sId],
+      groupIds: [memberGroup.sId],
+      editorGroupIds: [editorGroup.sId],
+    });
+    assert(updateRes.isOk(), "Failed to attach the groups to the Pod.");
+
+    const response = await getSpace(workspace, pod.sId);
+    expect(response.status).toBe(200);
+    const { space } = await response.json();
+
+    // A group brings members to the space, so its name, kind and role are all listed.
+    expect(
+      space.groups
+        .map(({ name, kind, role }: Record<string, unknown>) => ({
+          name,
+          kind,
+          role,
+        }))
+        .sort((a: { name: string }, b: { name: string }) =>
+          a.name.localeCompare(b.name)
+        )
+    ).toEqual([
+      { name: "Dev team", kind: "provisioned", role: "member" },
+      { name: "Leads", kind: "regular_manual", role: "editor" },
+    ]);
   });
 
   it("excludes auto-provisioned tools from the Tools usage row, even in the global space", async () => {

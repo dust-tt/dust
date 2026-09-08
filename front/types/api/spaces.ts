@@ -1,4 +1,5 @@
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
+import type { GroupKind } from "@app/types/groups";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import { PodFileTabsSchema, PodTabsOrderSchema } from "@app/types/pod_file_tab";
 import type { EnrichedSpaceType, PodType, SpaceType } from "@app/types/space";
@@ -82,12 +83,24 @@ export type SpaceCategoryInfo = {
   count: number;
 };
 
+/**
+ * A group given access to a space: who it is, what it confers, and since when. The space's members
+ * are its individual members plus the members of these groups.
+ */
+export type SpaceGroupAccessType = {
+  sId: string;
+  name: string;
+  kind: GroupKind;
+  role: "member" | "editor";
+};
+
 export type RichSpaceType = EnrichedSpaceType & {
   categories: { [key: string]: SpaceCategoryInfo };
   canWrite: boolean;
   canRead: boolean;
   isMember: boolean;
   members: SpaceUserType[];
+  groups: SpaceGroupAccessType[];
   isEditor: boolean;
   // Useful in case of projects
   description: string | null;

@@ -4,6 +4,7 @@ import type {
 } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
@@ -98,6 +99,9 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
       );
       const editorIds = Array.from(currentEditors);
 
+      // A Pod keeps at least one individual editor even when a group is attached to it as an
+      // editor: a group's membership can drop to zero — in its IdP, for a provisioned one —
+      // leaving the Pod with nobody able to administrate it.
       if (!isAdminControlled && editorIds.length === 0) {
         setIsOpen(false);
         sendNotification({
@@ -113,6 +117,8 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         props.space,
         {
           isRestricted: props.space.isRestricted,
+          // Only the individual members change here; the space's groups are passed through.
+          ...spaceMembershipProperties(props.space),
           memberIds,
           editorIds,
           name: props.space.name,

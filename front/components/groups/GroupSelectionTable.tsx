@@ -19,7 +19,7 @@ import type {
 } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-interface GroupRowData {
+export interface GroupRowData {
   sId: string;
   name: string;
   kind: GroupKind;
@@ -40,12 +40,16 @@ interface GroupSelectionTableProps {
   owner: LightWorkspaceType;
   selectedGroupIds: Set<string>;
   onSelectionChange: (ids: Set<string>, groups: GroupType[]) => void;
+  // Appended after the group columns, as `MemberSelectionTable` does — used to pick the role a
+  // selected group gets.
+  extraColumns?: ColumnDef<GroupRowData>[];
 }
 
 export function GroupSelectionTable({
   owner,
   selectedGroupIds,
   onSelectionChange,
+  extraColumns,
 }: GroupSelectionTableProps) {
   const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
@@ -146,8 +150,9 @@ export function GroupSelectionTable({
           );
         },
       },
+      ...(extraColumns ?? []),
     ],
-    []
+    [extraColumns]
   );
 
   return (
