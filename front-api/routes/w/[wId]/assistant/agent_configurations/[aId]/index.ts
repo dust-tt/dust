@@ -4,6 +4,7 @@ import {
   getAgentConfigurationForDetails,
 } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
+import { getAgentsCreators } from "@app/lib/api/assistant/configuration/creators";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
@@ -17,7 +18,6 @@ import {
   isArchivedAgent,
 } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
-
 import analytics from "./analytics";
 import editors from "./editors";
 import exportRoutes from "./export";
@@ -70,9 +70,12 @@ app.get(
       });
     }
 
+    const creatorIds = await getAgentsCreators(auth, [agent]);
+
     return ctx.json({
       agentConfiguration: {
         ...agent,
+        creatorId: creatorIds.get(agent.sId) ?? null,
         lastAuthors: await getAgentRecentAuthors({ agent, auth }),
       },
     });

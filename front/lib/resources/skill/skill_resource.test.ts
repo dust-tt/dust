@@ -205,6 +205,126 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("batchGetCreatorIds", () => {
+    it("returns the sId of the user who created the skill (version 1 editedBy)", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Creator",
+      });
+
+      // Trigger a version snapshot by updating the skill.
+      await skill.updateSkill(testContext.authenticator, {
+        name: skill.name,
+        agentFacingDescription: "Updated description",
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        icon: skill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
+        requestedSpaceIds: [],
+      });
+
+      const creatorIds = await SkillResource.batchGetCreatorIds(
+        testContext.authenticator,
+        [skill]
+      );
+
+      expect(creatorIds.get(skill.id)).toBe(testContext.user.sId);
+    });
+
+    it("falls back to current editedBy when the skill has never been updated (no version rows)", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Never Updated Skill",
+      });
+
+      // No updateSkill call — no version rows exist.
+      const creatorIds = await SkillResource.batchGetCreatorIds(
+        testContext.authenticator,
+        [skill]
+      );
+
+      expect(creatorIds.get(skill.id)).toBe(testContext.user.sId);
+    });
+
+    it("returns the original creator after the skill has been updated by another user", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Updated By Another",
+      });
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "admin",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
+
+      // First update creates version 1 with the original creator's editedBy.
+      await skill.updateSkill(testContext.authenticator, {
+        name: skill.name,
+        agentFacingDescription: "First update",
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        icon: skill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
+        requestedSpaceIds: [],
+      });
+
+      // Second update by another user creates version 2.
+      await skill.updateSkill(otherAuth, {
+        name: skill.name,
+        agentFacingDescription: "Second update by other",
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        icon: skill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
+        requestedSpaceIds: [],
+      });
+
+      const creatorIds = await SkillResource.batchGetCreatorIds(
+        testContext.authenticator,
+        [skill]
+      );
+
+      expect(creatorIds.get(skill.id)).toBe(testContext.user.sId);
+    });
+
+    it("returns null for global skills", async () => {
+      const customSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Custom Skill For Global Test",
+      });
+
+      // Simulate a global skill by fetching a known global one.
+      const globalSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        "frames"
+      );
+      assert(globalSkill, "Expected a global skill to exist");
+
+      const creatorIds = await SkillResource.batchGetCreatorIds(
+        testContext.authenticator,
+        [globalSkill, customSkill]
+      );
+
+      expect(creatorIds.get(globalSkill.id)).toBeNull();
+      expect(creatorIds.get(customSkill.id)).toBe(testContext.user.sId);
+    });
+
+    it("returns all nulls for an empty list", async () => {
+      const creatorIds = await SkillResource.batchGetCreatorIds(
+        testContext.authenticator,
+        []
+      );
+
+      expect(creatorIds.size).toBe(0);
+    });
+  });
+
   describe("favorites", () => {
     it("stores one row per user and updates custom skill favorite counts", async () => {
       const skillA = await SkillFactory.create(testContext.authenticator, {

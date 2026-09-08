@@ -68,6 +68,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   createdAt: z.number().nullable(),
   updatedAt: z.number().nullable(),
   editedBy: z.number().nullable(),
+  creatorId: z.string().nullable().optional(),
   status: z.enum(SKILL_STATUSES),
   name: z.string(),
   agentFacingDescription: z.string(),

@@ -1,3 +1,4 @@
+import { getAgentsCreators } from "@app/lib/api/assistant/configuration/creators";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
@@ -143,6 +144,12 @@ app.get(
       variant: "light",
       dangerouslySkipPermissionFiltering: isUnrestricted,
     });
+
+    const creatorIds = await getAgentsCreators(auth, agentConfigurations);
+    agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+      ...agentConfiguration,
+      creatorId: creatorIds.get(agentConfiguration.sId) ?? null,
+    }));
 
     if (withAuthors) {
       const recentAuthors = await getAgentsRecentAuthors({

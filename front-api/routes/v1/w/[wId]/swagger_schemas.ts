@@ -163,6 +163,11 @@
  *           nullable: true
  *           description: ID of the user who created this version
  *           example: "0ec9852c2f"
+ *         creatorId:
+ *           type: string
+ *           nullable: true
+ *           description: ID of the user who created this agent
+ *           example: "0ec9852c2f"
  *         name:
  *           type: string
  *           description: Name of the agent configuration
@@ -683,6 +688,10 @@
  *           type: integer
  *           nullable: true
  *           description: Numeric identifier of the last editor
+ *         creatorId:
+ *           type: string
+ *           nullable: true
+ *           description: User sId of the user who originally created this skill
  *         status:
  *           type: string
  *           enum: [active, archived, suggested]

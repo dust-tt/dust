@@ -3083,6 +3083,60 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return result;
   }
 
+  static async batchGetCreatorIds(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<number, string | null>> {
+    const customSkills = skills.filter((s) => s.globalSId === null);
+    const skillIds = customSkills.map((s) => s.id);
+
+    if (skillIds.length === 0) {
+      return new Map(skills.map((s) => [s.id, null]));
+    }
+
+    const where: WhereOptions<SkillVersionModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      skillConfigurationId: { [Op.in]: skillIds },
+      version: 1,
+    };
+    const rows = await SkillVersionModel.findAll({
+      attributes: ["skillConfigurationId", "editedBy"],
+      where,
+    });
+
+    const creatorModelIdBySkillId = new Map<ModelId, ModelId | null>(
+      rows.map((row) => [row.skillConfigurationId, row.editedBy])
+    );
+    // A skill that has never been updated has no skill_version entry,
+    // so the creator is the current editedBy of the skill itself.
+    for (const skill of customSkills) {
+      if (!creatorModelIdBySkillId.has(skill.id)) {
+        creatorModelIdBySkillId.set(skill.id, skill.editedBy);
+      }
+    }
+
+    const uniqueModelIds = [
+      ...new Set(removeNulls([...creatorModelIdBySkillId.values()])),
+    ];
+    const users = await UserResource.fetchByModelIds(uniqueModelIds);
+    const sIdByModelId = new Map(users.map((u) => [u.id, u.sId]));
+
+    const result = new Map<number, string | null>();
+    for (const skill of skills) {
+      if (skill.globalSId !== null) {
+        result.set(skill.id, null);
+        continue;
+      }
+      const modelId = creatorModelIdBySkillId.get(skill.id);
+      result.set(
+        skill.id,
+        modelId != null ? (sIdByModelId.get(modelId) ?? null) : null
+      );
+    }
+
+    return result;
+  }
+
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
     assert(
       this.canAdministrate(auth),

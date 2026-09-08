@@ -236,6 +236,8 @@ app.get(
               skill.canAdministrate(auth))
         );
 
+    const creatorIds = await SkillResource.batchGetCreatorIds(auth, skills);
+
     if (withRelations === "true") {
       return tracer.trace(
         "skills.list.with_relations",
@@ -300,6 +302,7 @@ app.get(
             return {
               ...skillWithoutInstructionsAndTools,
               messageCount: null,
+              creatorId: creatorIds.get(sc.id) ?? null,
               ...(withUsage
                 ? {
                     usage:
@@ -348,6 +351,7 @@ app.get(
 
         return {
           ...skillWithoutInstructionsAndTools,
+          creatorId: creatorIds.get(sc.id) ?? null,
           ...favoriteState,
         } satisfies GetSkillsResponseBody["skills"][number];
       }),

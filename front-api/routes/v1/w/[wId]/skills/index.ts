@@ -233,8 +233,13 @@ app.get(
       ? allSkills
       : allSkills.filter((skill) => skill.availability !== "editors");
 
+    const creatorIds = await SkillResource.batchGetCreatorIds(auth, skills);
+
     return ctx.json({
-      skills: skills.map((skill) => skill.toJSON(auth)),
+      skills: skills.map((skill) => ({
+        ...skill.toJSON(auth),
+        creatorId: creatorIds.get(skill.id) ?? null,
+      })),
     });
   }
 );
@@ -327,9 +332,24 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     });
   }
 
+  const allSkillsFromImport = [
+    ...result.value.imported,
+    ...result.value.updated,
+  ];
+  const importCreatorIds = await SkillResource.batchGetCreatorIds(
+    auth,
+    allSkillsFromImport
+  );
+
   return ctx.json({
-    imported: result.value.imported.map((skill) => skill.toJSON(auth)),
-    updated: result.value.updated.map((skill) => skill.toJSON(auth)),
+    imported: result.value.imported.map((skill) => ({
+      ...skill.toJSON(auth),
+      creatorId: importCreatorIds.get(skill.id) ?? null,
+    })),
+    updated: result.value.updated.map((skill) => ({
+      ...skill.toJSON(auth),
+      creatorId: importCreatorIds.get(skill.id) ?? null,
+    })),
     skipped: result.value.skipped,
   });
 });

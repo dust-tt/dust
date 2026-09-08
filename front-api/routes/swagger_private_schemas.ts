@@ -893,6 +893,9 @@
  *         versionAuthorId:
  *           type: integer
  *           nullable: true
+ *         creatorId:
+ *           type: string
+ *           nullable: true
  *         name:
  *           type: string
  *         description:

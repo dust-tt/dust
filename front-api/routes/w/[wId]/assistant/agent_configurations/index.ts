@@ -1,5 +1,6 @@
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
+import { getAgentsCreators } from "@app/lib/api/assistant/configuration/creators";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
@@ -20,7 +21,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
-
 import agent from "./[aId]";
 import archiveInactive from "./archive_inactive";
 import batchUpdateModel from "./batch_update_model";
@@ -296,6 +296,12 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
       },
     }));
   }
+
+  const creatorIds = await getAgentsCreators(auth, agentConfigurations);
+  agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+    ...agentConfiguration,
+    creatorId: creatorIds.get(agentConfiguration.sId) ?? null,
+  }));
 
   return ctx.json({ agentConfigurations });
 });

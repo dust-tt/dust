@@ -176,6 +176,7 @@ export const LightAgentConfigurationSchema = z.object({
   name: z.string(),
   description: z.string(),
   pictureUrl: z.string(),
+  creatorId: z.string().nullable().optional(),
   lastAuthors: z.array(z.string()).readonly().optional(),
   editors: z.array(UserSchema).optional(),
   usage: AgentUsageSchema.optional(),
