@@ -56,8 +56,8 @@ import type {
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { LightWorkspaceType } from "@app/types/user";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type UserSpendLimitErrorType =
   | "user_not_found"

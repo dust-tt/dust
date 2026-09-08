@@ -1,10 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-
 import { resolveFreeSeatAllowance } from "@app/lib/api/users/spend_limit";
-import logger from "@app/logger/logger";
 import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types/user";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const workspace = { sId: "ws_test" } as LightWorkspaceType;
 const user = { sId: "u_test" } as UserResource;
