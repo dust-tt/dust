@@ -65,10 +65,9 @@ function CreditDetailRow({
           labelElement &&
           labelElement.scrollWidth > labelElement.clientWidth
         ) {
-          const labelBounds = labelElement.getBoundingClientRect();
           labelElement.style.setProperty(
             "--credit-label-collapsed-width",
-            `${labelBounds.width}px`
+            `${labelElement.clientWidth}px`
           );
           setIsLabelExpanded(true);
         }
