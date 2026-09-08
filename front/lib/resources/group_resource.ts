@@ -1481,11 +1481,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     return counts;
   }
 
+  /**
+   * @cc [owner:philipperolet,label:performance] empty-groups-skip-membership-queries
+   * Empty groups return no memberships without querying; workspace auth is still required.
+   */
   static async getActiveMembershipsForGroups(
     auth: Authenticator,
     groups: GroupResource[]
   ): Promise<Record<ModelId, ModelId[]>> {
     const owner = auth.getNonNullableWorkspace();
+    if (groups.length === 0) {
+      return {};
+    }
+
     const res = await GroupMembershipModel.findAll({
       where: {
         workspaceId: owner.id,

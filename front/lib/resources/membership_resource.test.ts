@@ -99,6 +99,7 @@ vi.mock("@app/lib/utils/cache", () => ({
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -111,6 +112,57 @@ function getCacheKeyForWorkspace(workspaceId: string): string {
 }
 
 describe("MembershipResource", () => {
+  describe("getActiveMemberships", () => {
+    it("returns no memberships without querying for empty users, including pagination", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const onQuery = vi.fn();
+      frontSequelize.addHook("afterQuery", "empty-membership-users", onQuery);
+      try {
+        const expected = {
+          memberships: [],
+          total: 0,
+          nextPageParams: undefined,
+        };
+        expect(
+          await MembershipResource.getActiveMemberships({
+            workspace,
+            users: [],
+          })
+        ).toEqual(expected);
+        expect(
+          await MembershipResource.getActiveMemberships({
+            workspace,
+            users: [],
+            paginationParams: {
+              limit: 1,
+              orderColumn: "createdAt",
+              orderDirection: "asc",
+            },
+          })
+        ).toEqual(expected);
+        expect(onQuery).not.toHaveBeenCalled();
+      } finally {
+        frontSequelize.removeHook("afterQuery", "empty-membership-users");
+      }
+    });
+
+    it("returns workspace memberships when users are omitted", async () => {
+      const { workspace, user } = await createResourceTest({ role: "admin" });
+      const { memberships, total } =
+        await MembershipResource.getActiveMemberships({ workspace });
+      expect(memberships.map((m) => m.userId)).toEqual([user.id]);
+      expect(total).toBe(1);
+    });
+
+    it("still requires a workspace or non-empty users", async () => {
+      await expect(
+        MembershipResource.getActiveMemberships({ users: [] })
+      ).rejects.toThrow(
+        "At least one of workspace or userIds must be provided."
+      );
+    });
+  });
+
   describe("caching behavior", () => {
     let authenticator: Authenticator;
     let workspace: LightWorkspaceType;
