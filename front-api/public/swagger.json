@@ -6244,31 +6244,6 @@
           },
           {
             "in": "query",
-            "name": "status",
-            "required": false,
-            "description": "Filter by trigger status (defaults to `enabled` only)",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "enabled",
-                "disabled",
-                "disabled_by_manager",
-                "relocating",
-                "downgraded"
-              ]
-            }
-          },
-          {
-            "in": "query",
-            "name": "agentConfigurationId",
-            "required": false,
-            "description": "Filter to triggers configured on this agent",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
             "name": "limit",
             "required": false,
             "description": "Maximum number of triggers to return (default 50, max 100)",

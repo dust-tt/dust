@@ -374,15 +374,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     {
       kinds,
       executionModes,
-      statuses,
-      agentConfigurationId,
       limit,
       offset,
     }: {
       kinds?: TriggerKind[];
       executionModes?: TriggerExecutionMode[];
-      statuses?: TriggerStatus[];
-      agentConfigurationId?: string;
       limit?: number;
       offset?: number;
     }
@@ -393,8 +389,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         ...(executionModes?.length
           ? { executionMode: { [Op.in]: executionModes } }
           : {}),
-        ...(statuses?.length ? { status: { [Op.in]: statuses } } : {}),
-        ...(agentConfigurationId ? { agentConfigurationId } : {}),
       },
       order: [["id", "ASC"]],
       limit,

@@ -50,29 +50,23 @@ describe("GET /api/v1/w/:wId/triggers", () => {
     expect(response.status).toBe(403);
   });
 
-  it("only returns enabled triggers by default, across agents", async () => {
+  it("returns the workspace's triggers across agents", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
     const { auth } = await userAuthForWorkspace(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
-    const disabledTrigger = await TriggerFactory.schedule(auth, {
+    const trigger = await TriggerFactory.schedule(auth, {
       agentConfigurationId: agent.sId,
       configuration: { type: "cron", cron: "0 9 * * *", timezone: "UTC" },
     });
 
-    const defaultResponse = await listTriggers(workspace, key);
-    expect(defaultResponse.status).toBe(200);
-    expect((await defaultResponse.json()).triggers).toHaveLength(0);
-
-    const disabledResponse = await listTriggers(workspace, key, {
-      status: "disabled",
-    });
-    expect(disabledResponse.status).toBe(200);
-    const { triggers } = await disabledResponse.json();
+    const response = await listTriggers(workspace, key);
+    expect(response.status).toBe(200);
+    const { triggers } = await response.json();
     expect(triggers).toHaveLength(1);
-    expect(triggers[0].sId).toBe(disabledTrigger.sId);
+    expect(triggers[0].sId).toBe(trigger.sId);
     expect(triggers[0].kind).toBe("schedule");
   });
 
@@ -97,7 +91,6 @@ describe("GET /api/v1/w/:wId/triggers", () => {
 
     const response = await listTriggers(workspace, key, {
       kind: "webhook",
-      status: "disabled",
     });
     expect(response.status).toBe(200);
 

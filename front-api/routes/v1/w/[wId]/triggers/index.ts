@@ -1,5 +1,5 @@
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { TRIGGER_KINDS, TRIGGER_STATUSES } from "@app/types/assistant/triggers";
+import { TRIGGER_KINDS } from "@app/types/assistant/triggers";
 import type { GetTriggersResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -17,8 +17,6 @@ const MAX_LIMIT = 100;
 
 const GetTriggersQuerySchema = z.object({
   kind: z.enum(TRIGGER_KINDS).optional(),
-  status: z.enum(TRIGGER_STATUSES).optional(),
-  agentConfigurationId: z.string().optional(),
   limit: z.coerce.number().int().positive().max(MAX_LIMIT).optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 });
@@ -52,19 +50,6 @@ app.route("/hooks", hooks);
  *         schema:
  *           type: string
  *           enum: [schedule, webhook]
- *       - in: query
- *         name: status
- *         required: false
- *         description: Filter by trigger status (defaults to `enabled` only)
- *         schema:
- *           type: string
- *           enum: [enabled, disabled, disabled_by_manager, relocating, downgraded]
- *       - in: query
- *         name: agentConfigurationId
- *         required: false
- *         description: Filter to triggers configured on this agent
- *         schema:
- *           type: string
  *       - in: query
  *         name: limit
  *         required: false
@@ -107,14 +92,11 @@ app.get(
   validate("query", GetTriggersQuerySchema),
   async (ctx): HandlerResult<GetTriggersResponseType> => {
     const auth = ctx.get("auth");
-    const { kind, status, agentConfigurationId, limit, offset } =
-      ctx.req.valid("query");
+    const { kind, limit, offset } = ctx.req.valid("query");
 
     const triggers =
       await TriggerResource.listByWorkspaceAndKindsAndExecutionModes(auth, {
         kinds: kind ? [kind] : undefined,
-        statuses: [status ?? "enabled"],
-        agentConfigurationId,
         limit: limit ?? DEFAULT_LIMIT,
         offset: offset ?? 0,
       });
