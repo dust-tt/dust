@@ -2320,9 +2320,9 @@ async function reconcileSeatBasedSegment({
 export type SeatData = {
   awuAllocation: number;
   billingFrequency: BillingFrequency | null;
-  // ISO timestamp of the next credit reset. Null when no current billing period
-  // is available. Equals billing_periods.current.ending_before since credits
-  // are now anchored to the contract start date (same as the billing period).
+  // ISO timestamp of the next per-seat AWU credit renewal (recurs MONTHLY even
+  // on annually-billed seats — see `getNextSeatCreditRenewalDate`). Null when
+  // the seat carries no recurring credit or no recurrence anchor is available.
   nextCreditResetAt: string | null;
 };
 
@@ -2402,8 +2402,17 @@ export async function buildSeatDataByUserId({
       const assignedSeatIds = seatStateResult.value.assignedSeatIds;
 
       const freq = sub.subscription_rate.billing_frequency;
+      // Per-seat AWU credits recur MONTHLY even on annually-billed seats, so the
+      // reset date must follow the credit's recurrence grid — not the billing
+      // period's `ending_before`, which on an annual seat points up to a year
+      // out (see `getNextSeatCreditRenewalDate`).
       const nextCreditResetAt =
-        sub.billing_periods?.current?.ending_before ?? null;
+        getNextSeatCreditRenewalDate({
+          contract,
+          seatType,
+          productSeatTypes,
+          now: new Date(),
+        })?.toISOString() ?? null;
       return new Ok({
         seatIds: assignedSeatIds,
         awuAllocation,
