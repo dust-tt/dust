@@ -1,4 +1,3 @@
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
@@ -13,7 +12,6 @@ import {
   Input,
   Tooltip,
   ZendeskLogo,
-  ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
@@ -33,7 +31,6 @@ export function ZendeskCustomFieldFilters({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
-  const { isDark } = useTheme();
   const sendNotification = useSendNotification();
   const [inputValue, setInputValue] = useState("");
 
@@ -207,9 +204,7 @@ export function ZendeskCustomFieldFilters({
   return (
     <ContextItem
       title="Custom Field Tags"
-      visual={
-        <ContextItem.Visual visual={isDark ? ZendeskWhiteLogo : ZendeskLogo} />
-      }
+      visual={<ContextItem.Visual visual={ZendeskLogo} />}
     >
       <div className="space-y-4">
         <div className="text-muted-foreground">

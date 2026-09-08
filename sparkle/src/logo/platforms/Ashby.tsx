@@ -10,13 +10,20 @@ const SvgAshby = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <rect width={20} height={20} x={2} y={2} fill="#473BCE" rx={4} />
-    <path
-      fill="#fff"
-      fillRule="evenodd"
-      d="M8.885 18.47V19H4.5v-.53c1.136 0 1.59-.254 2-1.361L10.77 5h2.023l4.703 12.109c.454 1.13.682 1.36 1.659 1.36V19H12.26v-.53c1.636 0 1.774-.15 1.283-1.361l-1.25-3.322H8.499L7.386 17.04c-.325 1.1-.254 1.43 1.5 1.43m1.41-9.941-1.546 4.544h3.272z"
-      clipRule="evenodd"
-    />
+    <g clipPath="url(#Ashby_svg__a)">
+      <rect width={24} height={24} fill="#473BCE" rx={6} />
+      <path
+        fill="#fff"
+        fillRule="evenodd"
+        d="M8.393 19.553v.62h-5.12v-.62c1.326 0 1.857-.296 2.334-1.589l4.987-14.136h2.361l5.491 14.136c.53 1.32.796 1.589 1.937 1.589v.62h-8.05v-.62c1.91 0 2.071-.175 1.498-1.589l-1.46-3.877h-4.43l-1.3 3.796c-.379 1.285-.296 1.67 1.752 1.67m1.644-11.605-1.803 5.304h3.82z"
+        clipRule="evenodd"
+      />
+    </g>
+    <defs>
+      <clipPath id="Ashby_svg__a">
+        <path fill="#fff" d="M0 0h24v24H0z" />
+      </clipPath>
+    </defs>
   </svg>
 );
 export default SvgAshby;

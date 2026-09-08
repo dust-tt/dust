@@ -7,17 +7,16 @@ const SvgNetSuite = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox="0 0.2 150 150"
+    viewBox="0 0 24 24"
     {...props}
   >
-    <path d="M0 .2h150v150H0z" fill="none" />
     <path
-      d="M20.1 47.7h23.7V104h11.8v22H20.1zm109.7 51.8h-23.7V43.2H94.3v-22h35.5z"
-      fill="#baccdb"
+      fill="#BACCDB"
+      d="M3.948 7.967h3.476v8.257h1.73v3.227H3.949zm16.09 7.597H16.56V7.307h-1.73V4.08h5.206z"
     />
     <path
-      d="M14.6 15.8h74.9v64.3L60.7 43H14.6zm120.6 115.7H60.3V67.2l28.8 37.1h46.1"
       fill="#125580"
+      d="M3.141 3.288h10.986v9.43l-4.224-5.44H3.14zm17.688 16.97H9.844v-9.431l4.224 5.44h6.761"
     />
   </svg>
 );

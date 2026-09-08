@@ -23,7 +23,6 @@ import {
   DustLogoSquare,
   Folder,
   GithubLogo,
-  GithubWhiteLogo,
   Globe01,
   GongLogo,
   IntercomLogo,
@@ -33,7 +32,6 @@ import {
   SlackLogo,
   SnowflakeLogo,
   ZendeskLogo,
-  ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentType } from "react";
@@ -252,8 +250,8 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB, or individual files over 4MB. Please contact support@dust.tt if you need to sync larger repositories.",
     mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
     selectLabel: "Authorized content",
-    getLogoComponent: (isDark?: boolean) => {
-      return isDark ? GithubWhiteLogo : GithubLogo;
+    getLogoComponent: () => {
+      return GithubLogo;
     },
     optionsComponent: GithubCodeEnableView,
     isNested: true,
@@ -356,8 +354,8 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     limitations:
       "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
     mismatchError: `You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
-    getLogoComponent: (isDark?: boolean) => {
-      return isDark ? ZendeskWhiteLogo : ZendeskLogo;
+    getLogoComponent: () => {
+      return ZendeskLogo;
     },
     optionsComponent: ZendeskConfigView,
     oauthExtraConfigComponent: ZendeskOAuthExtraConfig,

@@ -4,26 +4,23 @@ import * as React from "react";
 const SvgDatabricks = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    xmlSpace="preserve"
     width="1em"
     height="1em"
-    viewBox="0 0 193 200"
-    style={{
-      fillRule: "evenodd",
-      clipRule: "evenodd",
-      strokeLinejoin: "round",
-      strokeMiterlimit: 2,
-    }}
+    fill="none"
+    viewBox="0 0 24 24"
     {...props}
   >
-    <path
-      d="m18.318 9.275-8.631 4.859L.445 8.942 0 9.182v3.77l9.687 5.431 8.63-4.84v1.995l-8.63 4.86-9.242-5.192-.445.24v.646l9.687 5.432 9.668-5.432v-3.769l-.445-.24-9.223 5.173-8.65-4.84V10.42l8.65 4.84 9.668-5.43V6.114l-.482-.277-9.186 5.155L1.482 6.41l8.205-4.6 6.741 3.787.593-.332v-.462L9.687.684 0 6.115v.592l9.687 5.432 8.63-4.86z"
-      style={{
-        fill: "#ee3d2c",
-        fillRule: "nonzero",
-      }}
-      transform="matrix(9.92432 0 0 9.59693 0 -6.564)"
-    />
+    <g clipPath="url(#Databricks_svg__a)">
+      <path
+        fill="#EE3D2C"
+        d="m20.53 10.245-8.566 4.663-9.172-4.983-.442.23v3.619l9.614 5.212 8.564-4.645v1.914l-8.564 4.664-9.172-4.982-.442.23v.62L11.964 22l9.594-5.213V13.17l-.441-.23-9.153 4.964-8.585-4.645v-1.915l8.585 4.645 9.594-5.212V7.211l-.478-.266-9.116 4.948L3.82 7.495l8.143-4.414 6.69 3.634.588-.319v-.443L11.964 2 2.35 7.212v.568l9.614 5.213 8.564-4.664z"
+      />
+    </g>
+    <defs>
+      <clipPath id="Databricks_svg__a">
+        <path fill="#fff" d="M2.35 2h19.3v20H2.35z" />
+      </clipPath>
+    </defs>
   </svg>
 );
 export default SvgDatabricks;

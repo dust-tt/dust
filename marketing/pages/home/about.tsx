@@ -15,7 +15,7 @@ import {
   ArrowRight,
   Button,
   Div3D,
-  GithubMonoLogo,
+  GithubLogo,
   Hover3D,
   Icon,
   LinkedinLogo,
@@ -61,7 +61,7 @@ const Person = ({ handle }: { handle: string }) => {
             <a href={person.github} target="_blank">
               <Icon
                 size="xs"
-                visual={GithubMonoLogo}
+                visual={GithubLogo}
                 className="text-muted-foreground hover:text-foreground"
               />
             </a>
