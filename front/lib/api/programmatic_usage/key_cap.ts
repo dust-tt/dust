@@ -1,4 +1,4 @@
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import type { UsageAggregations } from "@app/lib/api/programmatic_usage/common";
 import {
   getSecondsUntilMidnightUTC,
@@ -6,10 +6,10 @@ import {
 } from "@app/lib/api/programmatic_usage/common";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { USAGE_TYPE_PROGRAMMATIC } from "@app/lib/metronome/constants";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -61,7 +61,7 @@ export const invalidateKeyCapCache = invalidateCacheWithRedis(
  * Queries Elasticsearch for messages with this key's name.
  * Today's usage is tracked via Redis increments, so we only fetch 29 days.
  */
-async function getLast29DaysKeyUsageMicroUsd(
+export async function getLast29DaysKeyUsageMicroUsd(
   keyId: ModelId,
   workspace: LightWorkspaceType
 ): Promise<Result<number, Error>> {
@@ -78,18 +78,21 @@ async function getLast29DaysKeyUsageMicroUsd(
       filter: [
         { term: { api_key_name: key.name } },
         { term: { workspace_id: workspace.sId } },
-        { range: { timestamp: { gte: twentyNineDaysAgoMs } } },
-        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+        { range: { completed_at: { gte: twentyNineDaysAgoMs } } },
+        { term: { usage_type: USAGE_TYPE_PROGRAMMATIC } },
       ],
     },
   };
 
-  const result = await searchAnalytics<never, UsageAggregations>(query, {
-    aggregations: {
-      total_cost: { sum: { field: "tokens.cost_micro_usd" } },
-    },
-    size: 0,
-  });
+  const result = await searchConsumptionAnalytics<never, UsageAggregations>(
+    query,
+    {
+      aggregations: {
+        total_cost: { sum: { field: "micro_usd" } },
+      },
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return new Err(new Error(`ES query failed: ${result.error.message}`));
