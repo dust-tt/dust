@@ -1,5 +1,6 @@
 import {
   getCloudflareAccessConfig,
+  getPokeRolesForUserViaCloudflareAccess,
   verifyCloudflareAccessJwt,
 } from "@app/lib/api/poke/cloudflare_access";
 import { Authenticator, isDustInternalEmail } from "@app/lib/auth";
@@ -81,7 +82,7 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
       "[Poke Auth] User logged in Poke via Cloudflare Access token"
     );
 
-    const pokeRoles = await getPokeRolesForUser(identity.email);
+    const pokeRoles = await getPokeRolesForUserViaCloudflareAccess(accessToken);
     ctx.set("auth", auth);
     ctx.set("pokeRoles", pokeRoles);
     await next();

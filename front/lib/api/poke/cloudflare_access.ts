@@ -1,7 +1,11 @@
 import config from "@app/lib/api/config";
+import { trustedFetch } from "@app/lib/egress/server";
+import type { PokeRole } from "@app/lib/poke/roles";
+import { mapAccessGroupNamesToPokeRoles } from "@app/lib/poke/roles";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { z } from "zod";
 
 export type CloudflareAccessIdentity = {
   email: string;
@@ -9,6 +13,15 @@ export type CloudflareAccessIdentity = {
   sub: string;
 };
 
+const CloudFlareIdentityResponseSchema = z.object({
+  groups: z.array(
+    z.object({
+      id: z.string(),
+      email: z.string(),
+      name: z.string(),
+    })
+  ),
+});
 type CloudflareAccessConfig = {
   teamDomain: string;
   aud: string;
@@ -91,6 +104,38 @@ export async function verifyCloudflareAccessJwt(
       "[poke] Cloudflare Access JWT verification failed"
     );
     return null;
+  }
+}
+
+export async function getPokeRolesForUserViaCloudflareAccess(
+  accessToken: string
+): Promise<PokeRole[]> {
+  const accessConfig = getCloudflareAccessConfig();
+  if (!accessConfig) {
+    return [];
+  }
+  const response = await trustedFetch(
+    `${accessConfig.teamDomain}/cdn-cgi/access/get-identity`,
+    {
+      headers: {
+        cookie: `CF_Authorization=${accessToken}`,
+      },
+    }
+  );
+
+  if (response.ok) {
+    const data = await response.json();
+    const parsedData = CloudFlareIdentityResponseSchema.parse(data);
+
+    return mapAccessGroupNamesToPokeRoles(
+      parsedData.groups.map((group) => group.name)
+    );
+  } else {
+    logger.error("cloudflare access get-identity request failed", {
+      status: response.status,
+      statusText: response.statusText,
+    });
+    return [];
   }
 }
 
