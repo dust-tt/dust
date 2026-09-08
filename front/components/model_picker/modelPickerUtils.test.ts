@@ -3,11 +3,17 @@ import {
   getEffortStops,
   getEffortStopTooltip,
   getInitialEffort,
+  getModelTier,
   getTierLockReason,
+  isModelHostedInRegion,
   isPremiumModel,
+  isTierResolvedModelHostedInRegion,
   PREMIUM_MODEL_LOCKED_TOOLTIP,
 } from "@app/components/model_picker/modelPickerUtils";
-import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
+import type {
+  EnabledModelConfigurationType,
+  ModelStreamResolutionsType,
+} from "@app/types/api/assistant/models";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_MODEL_ID,
@@ -24,7 +30,10 @@ import {
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { O1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import type { ModelIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ModelIdType,
+} from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
 
 const GATED = { lockPremiumEfforts: true };
@@ -229,6 +238,65 @@ describe("modelPickerUtils premium gating", () => {
           getInitialEffort(GEMINI_2_5_PRO_MODEL_CONFIG, GATED)
         )
       ).not.toBe("premium");
+    });
+  });
+});
+
+describe("modelPickerUtils regional hosting flag", () => {
+  const streamResolutions = (
+    model: ModelConfigurationType
+  ): ModelStreamResolutionsType => {
+    const resolution = {
+      providerId: model.providerId,
+      modelId: model.modelId,
+      displayName: model.displayName,
+      reasoningEffort: model.defaultReasoningEffort,
+    };
+    return {
+      [AUTO_FAST_MODEL_ID]: resolution,
+      [AUTO_MODEL_ID]: resolution,
+      [AUTO_COMPLEX_MODEL_ID]: resolution,
+    };
+  };
+
+  describe("isModelHostedInRegion", () => {
+    it("follows the model's own regional availability", () => {
+      expect(
+        isModelHostedInRegion(
+          CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+          "europe-west1"
+        )
+      ).toBe(true);
+      expect(
+        isModelHostedInRegion(GEMINI_2_5_PRO_MODEL_CONFIG, "europe-west1")
+      ).toBe(false);
+    });
+  });
+
+  describe("isTierResolvedModelHostedInRegion", () => {
+    const standardTier = getModelTier("standard");
+
+    it("follows the availability of the model the tier resolves to", () => {
+      expect(
+        isTierResolvedModelHostedInRegion(
+          standardTier,
+          streamResolutions(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
+          "europe-west1"
+        )
+      ).toBe(true);
+      expect(
+        isTierResolvedModelHostedInRegion(
+          standardTier,
+          streamResolutions(GEMINI_2_5_PRO_MODEL_CONFIG),
+          "europe-west1"
+        )
+      ).toBe(false);
+    });
+
+    it("claims nothing while the resolutions are still in flight", () => {
+      expect(
+        isTierResolvedModelHostedInRegion(standardTier, null, "europe-west1")
+      ).toBe(false);
     });
   });
 });

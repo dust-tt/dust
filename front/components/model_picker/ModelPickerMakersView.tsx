@@ -10,9 +10,11 @@ import {
   getInitialEffort,
   getModelKey,
   getModelLockReason,
+  isModelHostedInRegion,
   isModelSelection,
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
+import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useCanHover, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
@@ -21,6 +23,7 @@ import type {
   ModelMakerIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { RegionType } from "@app/types/region";
 import {
   ChevronDown,
   ChevronRight,
@@ -40,6 +43,7 @@ interface ModelPickerMakersViewProps {
   // credit-based plan).
   lockPremiumEfforts: boolean;
   degradedModelIds: ReadonlySet<string>;
+  hostingRegion: RegionType | null;
   // Which maker is expanded inline. Only read on width-constrained clients,
   // where makers can't be submenus.
   expandedMakerId: ModelMakerIdType | null;
@@ -57,6 +61,7 @@ export function ModelPickerMakersView({
   ignoreTierRestrictions,
   lockPremiumEfforts,
   degradedModelIds,
+  hostingRegion,
   expandedMakerId,
   onToggleMaker,
   onSelectModel,
@@ -104,6 +109,12 @@ export function ModelPickerMakersView({
           isDefault={isDefault}
           lockReason={lockReason}
           isDegraded={degradedModelIds.has(model.modelId)}
+          regionalFlag={
+            hostingRegion !== null &&
+            isModelHostedInRegion(model, hostingRegion) ? (
+              <RegionalFlag region={hostingRegion} />
+            ) : null
+          }
           inset={useInlineMakers}
           effort={effort}
           effortStops={getEffortStops(model, { lockPremiumEfforts })}

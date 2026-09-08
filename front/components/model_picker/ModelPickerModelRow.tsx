@@ -15,7 +15,7 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useRef } from "react";
 
 interface ModelPickerModelRowProps {
@@ -24,6 +24,7 @@ interface ModelPickerModelRowProps {
   isDefault: boolean;
   lockReason: ModelLockReason | null;
   isDegraded: boolean;
+  regionalFlag: ReactNode | null;
   effort: ReasoningEffort | null;
   effortStops: EffortStop[];
   icon?: ComponentType;
@@ -41,6 +42,7 @@ export function ModelPickerModelRow({
   isDefault,
   lockReason,
   isDegraded,
+  regionalFlag,
   effort,
   effortStops,
   icon,
@@ -62,7 +64,10 @@ export function ModelPickerModelRow({
         disabled
         tooltip={getModelLockTooltip(lockReason)}
         endComponent={
-          <Icon visual={Lock01} size="sm" className="text-muted-foreground" />
+          <div className="flex items-center gap-2">
+            {regionalFlag}
+            <Icon visual={Lock01} size="sm" className="text-muted-foreground" />
+          </div>
         }
       />
     );
@@ -71,8 +76,9 @@ export function ModelPickerModelRow({
   // A degraded model stays pickable, so it takes the lock's slot with an info
   // icon rather than being disabled.
   const endComponent =
-    isSelected || isDegraded ? (
+    regionalFlag !== null || isSelected || isDegraded ? (
       <div className="flex items-center gap-2">
+        {regionalFlag}
         {isDegraded && <DegradedInfoIcon />}
         {isSelected && (
           <>

@@ -1,5 +1,6 @@
 import { ModelPickerModelRow } from "@app/components/model_picker/ModelPickerModelRow";
 import { getEffortStops } from "@app/components/model_picker/modelPickerUtils";
+import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@app/components/sparkle/ThemeContext"), () => ({
@@ -21,9 +23,14 @@ const MODEL: ModelConfigurationType = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG;
 interface TestMenuProps {
   onSelectModel: (model: ModelConfigurationType) => void;
   onOpenChange: (open: boolean) => void;
+  regionalFlag?: ReactNode;
 }
 
-function TestMenu({ onSelectModel, onOpenChange }: TestMenuProps) {
+function TestMenu({
+  onSelectModel,
+  onOpenChange,
+  regionalFlag = null,
+}: TestMenuProps) {
   return (
     <DropdownMenu defaultOpen onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
@@ -36,6 +43,7 @@ function TestMenu({ onSelectModel, onOpenChange }: TestMenuProps) {
           isDefault={false}
           lockReason={null}
           isDegraded={false}
+          regionalFlag={regionalFlag}
           effort={MODEL.defaultReasoningEffort}
           effortStops={getEffortStops(MODEL, { lockPremiumEfforts: false })}
           onSelectModel={onSelectModel}
@@ -72,5 +80,17 @@ describe("ModelPickerModelRow", () => {
 
     expect(onSelectModel).toHaveBeenCalledWith(MODEL);
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("shows the hosting flag it is given, so EU rows stay self-verifiable", async () => {
+    render(
+      <TestMenu
+        onSelectModel={vi.fn()}
+        onOpenChange={vi.fn()}
+        regionalFlag={<RegionalFlag region="europe-west1" />}
+      />
+    );
+
+    expect(await screen.findByAltText("EU")).toBeInTheDocument();
   });
 });

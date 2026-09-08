@@ -11,8 +11,10 @@ import {
   getModelLockTooltip,
   getTierLockReason,
   getTierResolvedModelLabel,
+  isTierResolvedModelHostedInRegion,
   isTierSelected,
 } from "@app/components/model_picker/modelPickerUtils";
+import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -22,6 +24,7 @@ import type {
   ModelMakerIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { RegionType } from "@app/types/region";
 import {
   Button,
   ChevronDown,
@@ -41,6 +44,7 @@ interface ModelPickerContentProps {
   ignoreTierRestrictions: boolean;
   tiers: ModelTierDefinition[];
   degradedModelIds: ReadonlySet<string>;
+  hostingRegion: RegionType | null;
   makerGroups: MakerGroup[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
@@ -70,6 +74,7 @@ export function ModelPickerContent({
   ignoreTierRestrictions,
   tiers,
   degradedModelIds,
+  hostingRegion,
   makerGroups,
   streamModels,
   streams,
@@ -116,6 +121,11 @@ export function ModelPickerContent({
             />
           );
         }
+        const regionalFlag =
+          hostingRegion !== null &&
+          isTierResolvedModelHostedInRegion(tier, streams, hostingRegion) ? (
+            <RegionalFlag region={hostingRegion} />
+          ) : null;
         return (
           <DropdownMenuItem
             key={tier.id}
@@ -124,8 +134,9 @@ export function ModelPickerContent({
             className="text-foreground"
             endComponent={
               <div className="flex items-center gap-3">
-                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
                   {getTierResolvedModelLabel(tier.id, streams)}
+                  {regionalFlag}
                 </span>
                 {isSelected && (
                   <ModelPickerSelectionIndicator
@@ -163,6 +174,7 @@ export function ModelPickerContent({
           ignoreTierRestrictions={ignoreTierRestrictions}
           lockPremiumEfforts={lockPremiumEfforts}
           degradedModelIds={degradedModelIds}
+          hostingRegion={hostingRegion}
           expandedMakerId={expandedMakerId}
           onToggleMaker={onToggleMaker}
           onSelectModel={onSelectModel}
