@@ -22,9 +22,9 @@ type SkillUsageAggregations = {
 
 /**
  * @cc [owner:aubin-tchoi,label:product] recent-skill-usage
- * Counts indexed `skill_management.enable_skill` calls attributed to each requested skill in the
- * authenticated workspace within [period.startDate, period.endDate); skills without calls are
- * absent from the map.
+ * Counts the number of times each requested skill has been enabled in the authenticated workspace
+ * within [period.startDate, period.endDate). Skills with no enablements in that period are absent
+ * from the map.
  */
 export async function fetchSkillUsageCounts(
   auth: Authenticator,
