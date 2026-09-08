@@ -1,4 +1,5 @@
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
   buildConsumptionScopeQuery,
   CONSUMPTION_DIMENSION_FIELDS,
@@ -22,11 +23,12 @@ type SkillUsageAggregations = {
 /**
  * @cc [owner:aubin-tchoi,label:product] recent-skill-usage
  * Counts indexed `skill_management.enable_skill` calls attributed to each requested skill in the
- * authenticated workspace over the last 30 days; skills without calls are absent from the map.
+ * authenticated workspace within [period.startDate, period.endDate); skills without calls are
+ * absent from the map.
  */
 export async function fetchSkillUsageCounts(
   auth: Authenticator,
-  skillIds: string[]
+  { skillIds, period }: { skillIds: string[]; period: ConsumptionPeriod }
 ): Promise<Result<Map<string, number>, ElasticsearchError>> {
   if (skillIds.length === 0) {
     return new Ok(new Map());
@@ -34,8 +36,8 @@ export async function fetchSkillUsageCounts(
 
   const query = buildConsumptionScopeQuery({
     auth,
-    startDate: "now-30d",
-    endDate: "now",
+    startDate: period.startDate,
+    endDate: period.endDate,
     filter: { skills: skillIds },
     extraFilters: [
       { term: { consumption_type: "tool" } },

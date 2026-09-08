@@ -249,12 +249,12 @@ app.get(
           const usageMap = await SkillResource.batchFetchUsage(auth, skills);
           let usageCountMap: Map<string, number> | null = null;
           if (withMessageCount) {
-            const usageCountsResult = await fetchSkillUsageCounts(
-              auth,
-              skills
+            const usageCountsResult = await fetchSkillUsageCounts(auth, {
+              skillIds: skills
                 .filter((skill) => !skill.isSystemSkill)
-                .map((skill) => skill.sId)
-            );
+                .map((skill) => skill.sId),
+              period: { startDate: "now-30d", endDate: "now" },
+            });
             if (usageCountsResult.isErr()) {
               logger.error(
                 {
