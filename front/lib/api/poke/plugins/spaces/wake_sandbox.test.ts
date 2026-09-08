@@ -32,6 +32,23 @@ describe("wakePodSandboxPlugin", () => {
     );
   });
 
+  it("is not applicable when the sleeping sandbox has a kill request", async () => {
+    const { auth, pod } = await setup();
+    await SandboxFactory.createForPod(auth, pod, {
+      status: "sleeping",
+      killRequestedAt: new Date(),
+    });
+
+    await expect(wakePodSandboxPlugin.isApplicableTo(auth, pod)).resolves.toBe(
+      false
+    );
+
+    const result = await wakePodSandboxPlugin.execute(auth, pod, {});
+
+    expect(result.isErr()).toBe(true);
+    expect(result.isErr() && result.error.message).toContain("kill request");
+  });
+
   it("is not applicable when the pod has no sandbox", async () => {
     const { auth, pod } = await setup();
 
