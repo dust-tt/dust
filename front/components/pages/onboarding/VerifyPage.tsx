@@ -15,12 +15,12 @@ import { useAppRouter } from "@app/lib/platform";
 import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ActionSparklesIcon,
   Button,
   DustLogoSquare,
   Icon,
   Page,
   Spinner,
+  Stars02,
 } from "@dust-tt/sparkle";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type React from "react";
@@ -701,11 +701,7 @@ function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
     <Page>
       <div className="flex h-full flex-col items-center justify-center">
         <div className="flex max-w-xl flex-col items-center gap-6 text-center">
-          <Icon
-            visual={ActionSparklesIcon}
-            size="lg"
-            className="text-highlight-500"
-          />
+          <Icon visual={Stars02} size="lg" className="text-highlight-500" />
           <h1 className="text-4xl font-bold text-foreground">
             You're in. Welcome to Dust.
           </h1>

@@ -11,7 +11,7 @@ import {
   DataTable,
   LoadingBlock,
   Spinner,
-  X,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -127,7 +127,7 @@ function buildActionsColumn({
           <Button
             size="sm"
             variant="warning-secondary"
-            icon={X}
+            icon={XClose}
             label="Deny"
             onClick={() => onDeny(request)}
           />
