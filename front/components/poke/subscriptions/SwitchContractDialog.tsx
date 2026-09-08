@@ -171,6 +171,10 @@ export default function SwitchContractDialog({
   const [durationValue, setDurationValue] = useState(1);
   const [durationUnit, setDurationUnit] =
     useState<ContractDurationUnit>("years");
+  // Promotional free period offered at the start of the contract (0 = none),
+  // applied globally to every seat commitment's earliest bills.
+  const [offerValue, setOfferValue] = useState(0);
+  const [offerUnit, setOfferUnit] = useState<ContractDurationUnit>("weeks");
   const [portalContainer, setPortalContainer] = useState<
     HTMLElement | undefined
   >(undefined);
@@ -272,6 +276,8 @@ export default function SwitchContractDialog({
   useEffect(() => {
     if (!open) {
       creditConfigAppliedRef.current = false;
+      setOfferValue(0);
+      setOfferUnit("weeks");
       return;
     }
     if (!existingCreditConfig || creditConfigAppliedRef.current) {
@@ -749,6 +755,10 @@ export default function SwitchContractDialog({
       if (values.recurringFreeCredit !== undefined) {
         cleaned.recurringFreeCredit = values.recurringFreeCredit;
       }
+      // Promotional free period: only sent when a positive duration is entered.
+      if (offerValue > 0) {
+        cleaned.offerFreePeriod = { value: offerValue, unit: offerUnit };
+      }
       // Resolve the start moment. "immediately" leaves `startingAt` unset so
       // the server swaps at the current hour.
       if (values.startMode === "retroactive_first_of_month") {
@@ -865,7 +875,15 @@ export default function SwitchContractDialog({
       };
       void submit();
     },
-    [form, owner.sId, router, selectedSeats, retroactiveFirstOfMonthISO]
+    [
+      form,
+      owner.sId,
+      router,
+      selectedSeats,
+      retroactiveFirstOfMonthISO,
+      offerValue,
+      offerUnit,
+    ]
   );
 
   return (
@@ -1723,6 +1741,63 @@ export default function SwitchContractDialog({
                             />
                           </>
                         )}
+                      </div>
+                    </div>
+                    <div className="border-t pt-4">
+                      <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
+                        <Label className="text-sm font-medium">
+                          Offer free period
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={offerValue}
+                            onChange={(e) =>
+                              setOfferValue(Math.max(0, Number(e.target.value)))
+                            }
+                            className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-xs"
+                          />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="xs"
+                                isSelect
+                                label={
+                                  offerUnit === "years"
+                                    ? "Years"
+                                    : offerUnit === "months"
+                                      ? "Months"
+                                      : "Weeks"
+                                }
+                              />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              mountPortalContainer={portalContainer}
+                            >
+                              <DropdownMenuItem
+                                label="Years"
+                                onClick={() => setOfferUnit("years")}
+                              />
+                              <DropdownMenuItem
+                                label="Months"
+                                onClick={() => setOfferUnit("months")}
+                              />
+                              <DropdownMenuItem
+                                label="Weeks"
+                                onClick={() => setOfferUnit("weeks")}
+                              />
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        <div className="col-span-2 text-xs text-muted-foreground">
+                          Reduces every seat commitment's earliest bill(s) by
+                          the prorated value of this leading period, so the
+                          customer pays nothing for it. Leave at 0 for no offer.
+                          The granted seats are unchanged.
+                        </div>
                       </div>
                     </div>
                   </>

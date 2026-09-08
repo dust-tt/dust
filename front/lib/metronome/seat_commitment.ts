@@ -58,6 +58,22 @@ export function commitmentPeriodEnd(
   return endingAt ?? oneYearAfter(start);
 }
 
+// Add a duration to a UTC moment: whole weeks are 7-day steps; months and years
+// are calendar steps with day-overflow clamped to the last day of the target
+// month (Jan 31 + 1 month → Feb 28/29). Seconds/millis are zeroed.
+export function addDuration(
+  start: Date,
+  value: number,
+  unit: "years" | "months" | "weeks"
+): Date {
+  if (unit === "weeks") {
+    return new Date(start.getTime() + value * 7 * 24 * 60 * 60 * 1000);
+  }
+  const withMonths = addMonthsUtc(start, unit === "years" ? value * 12 : value);
+  withMonths.setUTCSeconds(0, 0);
+  return withMonths;
+}
+
 // Fractional number of calendar months in [start, end) — the prorated invoice
 // basis. Whole-month and whole-year spans come out exact (a one-year contract is
 // exactly 12 months, not ~11.99), with any partial trailing month measured as a
