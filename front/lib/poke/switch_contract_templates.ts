@@ -123,4 +123,23 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
       paymentSchedule: { frequency: "one_time" },
     },
   },
+  {
+    id: "enterprise-pilot-2m",
+    name: "Pilot — 2 months",
+    description:
+      "Enterprise pooled, 2-month commitment, workspace seats at the standard rate, 10k initial credits.",
+    package: { tier: "enterprise", namePattern: "pooled" },
+    planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+    startMode: "select",
+    duration: { value: 2, unit: "months" },
+    // No rate override: keep the package's standard workspace-seat rate.
+    seats: {
+      workspace_yearly: { selected: true },
+    },
+    initialCredits: {
+      amountCredits: 10000,
+      invoiceAmount: 0,
+      paymentSchedule: { frequency: "one_time" },
+    },
+  },
 ];
