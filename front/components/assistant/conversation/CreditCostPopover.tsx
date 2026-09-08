@@ -49,6 +49,10 @@ interface CreditDetailRowProps {
  * When `expandLabelOnHover` is enabled, hovering a truncated label reveals its
  * full text in place of the description and value until the pointer leaves the row.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:react] reduced-motion-label-reveal
+ * The label reveal animation is disabled when the user prefers reduced motion.
+ */
 function CreditDetailRow({
   description,
   expandLabelOnHover = false,
@@ -91,7 +95,11 @@ function CreditDetailRow({
         )}
         <span
           ref={labelRef}
-          className={isLabelExpanded ? "min-w-0 break-words" : "truncate"}
+          className={
+            isLabelExpanded
+              ? "min-w-0 break-words animate-in fade-in slide-in-from-left-1 duration-150 ease-enter motion-reduce:animate-none"
+              : "truncate"
+          }
         >
           {label}
         </span>
