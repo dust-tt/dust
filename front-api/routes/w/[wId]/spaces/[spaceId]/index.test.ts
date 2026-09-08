@@ -17,6 +17,18 @@ function getSpace(workspace: { sId: string }, spaceId: string) {
   return honoApp.request(`/api/w/${workspace.sId}/spaces/${spaceId}`);
 }
 
+function patchSpace(
+  workspace: { sId: string },
+  spaceId: string,
+  body: unknown
+) {
+  return honoApp.request(`/api/w/${workspace.sId}/spaces/${spaceId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 describe("GET /api/w/:wId/spaces/:spaceId", () => {
   beforeAll(() => {
     process.env.FRONT_DATABASE_READ_REPLICA_URI =
@@ -82,7 +94,6 @@ describe("GET /api/w/:wId/spaces/:spaceId", () => {
     await GroupFactory.withMembers(auth, editorGroup, [user]);
 
     const updateRes = await pod.updatePermissions(auth, {
-      name: pod.name,
       isRestricted: true,
       editorIds: [user.sId],
       groupIds: [memberGroup.sId],
@@ -139,5 +150,26 @@ describe("GET /api/w/:wId/spaces/:spaceId", () => {
     expect(space.categories.actions.count).toBe(0);
     expect(space.categories.actions.usage.count).toBe(0);
     expect(space.categories.actions.usage.skills).toEqual([]);
+  });
+});
+
+describe("PATCH /api/w/:wId/spaces/:spaceId", () => {
+  it("renames a regular space but never the global one", async () => {
+    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    const regularResponse = await patchSpace(workspace, regularSpace.sId, {
+      name: "Renamed space",
+    });
+    expect(regularResponse.status).toBe(200);
+
+    // The global space is always displayed as "Company Data" and its member group is named after
+    // it, so it cannot be renamed.
+    const globalResponse = await patchSpace(workspace, globalSpace.sId, {
+      name: "Not Company Data",
+    });
+    expect(globalResponse.status).toBe(400);
   });
 });

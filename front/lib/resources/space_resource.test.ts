@@ -293,7 +293,6 @@ describe("SpaceResource", () => {
     describe("authorization checks", () => {
       it("should return unauthorized error when user cannot administrate the space", async () => {
         const result = await regularSpace.updatePermissions(userAuth, {
-          name: "Updated Name",
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
@@ -315,7 +314,6 @@ describe("SpaceResource", () => {
           await SpaceResource.fetchWorkspaceSystemSpace(adminAuth);
 
         const result = await systemSpace.updatePermissions(adminAuth, {
-          name: "Updated Name",
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
@@ -333,7 +331,6 @@ describe("SpaceResource", () => {
     describe("manual management mode", () => {
       it("should successfully update space with manual mode and set members", async () => {
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Updated Name",
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId, user2.sId],
@@ -363,7 +360,6 @@ describe("SpaceResource", () => {
         });
 
         const groupResult = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
@@ -380,7 +376,6 @@ describe("SpaceResource", () => {
 
         // Switch to manual mode
         const result = await spaceAfterGroup!.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
@@ -406,7 +401,6 @@ describe("SpaceResource", () => {
 
         // Group mode: the provisioned group is granted on the space.
         const groupResult = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
@@ -432,7 +426,6 @@ describe("SpaceResource", () => {
         const manualResult = await spaceAfterGroup!.updatePermissions(
           adminAuth,
           {
-            name: "Test Space",
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId],
@@ -460,7 +453,6 @@ describe("SpaceResource", () => {
         });
 
         const groupResult = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
@@ -481,7 +473,6 @@ describe("SpaceResource", () => {
         const manualResult = await spaceAfterGroup!.updatePermissions(
           adminAuth,
           {
-            name: "Test Space",
             isRestricted: true,
             managementMode: "manual",
             memberIds: [],
@@ -503,7 +494,6 @@ describe("SpaceResource", () => {
         });
 
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           memberIds: [user1.sId],
           groupIds: [provisionedGroup.sId],
@@ -531,7 +521,6 @@ describe("SpaceResource", () => {
         });
 
         const withGroup = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           groupIds: [provisionedGroup.sId],
         });
@@ -544,7 +533,6 @@ describe("SpaceResource", () => {
           regularSpace.sId
         );
         const membersOnly = await space!.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           memberIds: [user1.sId],
         });
@@ -567,7 +555,6 @@ describe("SpaceResource", () => {
         });
 
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           groupIds: [provisionedGroup.sId],
         });
@@ -590,7 +577,6 @@ describe("SpaceResource", () => {
         // An old client sends the mode alongside the one dimension it knows about. The mode is
         // not read: emptying what the request omits gives it the behaviour it expects anyway.
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
@@ -617,7 +603,6 @@ describe("SpaceResource", () => {
         });
 
         const withGroup = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           groupIds: [provisionedGroup.sId],
         });
@@ -655,7 +640,6 @@ describe("SpaceResource", () => {
         });
 
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Updated Name",
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup1.sId, provisionedGroup2.sId],
@@ -692,7 +676,6 @@ describe("SpaceResource", () => {
 
         // First set group1
         const firstResult = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup1.sId],
@@ -710,7 +693,6 @@ describe("SpaceResource", () => {
         const result = await spaceAfterFirstUpdate!.updatePermissions(
           adminAuth,
           {
-            name: "Test Space",
             isRestricted: true,
             managementMode: "group",
             groupIds: [provisionedGroup2.sId],
@@ -736,7 +718,6 @@ describe("SpaceResource", () => {
       it("should update managementMode to group when switching from manual mode", async () => {
         // First set to manual mode
         const manualResult = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
@@ -759,7 +740,6 @@ describe("SpaceResource", () => {
         });
 
         const result = await spaceAfterManual!.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
@@ -785,7 +765,6 @@ describe("SpaceResource", () => {
 
         // Manual mode: only the space's own member group is granted.
         const manualResult = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
@@ -805,7 +784,6 @@ describe("SpaceResource", () => {
         const groupResult = await spaceAfterManual!.updatePermissions(
           adminAuth,
           {
-            name: "Test Space",
             isRestricted: true,
             managementMode: "group",
             groupIds: [provisionedGroup.sId],
@@ -839,7 +817,6 @@ describe("SpaceResource", () => {
         }
 
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: [globalGroupRes.value.sId],
@@ -870,7 +847,6 @@ describe("SpaceResource", () => {
 
         // Set space to manual mode first
         await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId, user2.sId],
@@ -901,7 +877,6 @@ describe("SpaceResource", () => {
         });
 
         const result = await spaceInManualMode!.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
@@ -931,7 +906,6 @@ describe("SpaceResource", () => {
       let space = await SpaceFactory.regular(workspace);
 
       const toGroup = await space.updatePermissions(adminAuth, {
-        name: space.name,
         isRestricted: true,
         managementMode: "group",
         groupIds: [provisioned.sId],
@@ -941,7 +915,6 @@ describe("SpaceResource", () => {
 
       space = (await SpaceResource.fetchById(adminAuth, space.sId))!;
       const toManual = await space.updatePermissions(adminAuth, {
-        name: space.name,
         isRestricted: true,
         managementMode: "manual",
         memberIds: [],
@@ -951,7 +924,6 @@ describe("SpaceResource", () => {
 
       space = (await SpaceResource.fetchById(adminAuth, space.sId))!;
       const toGroupAgain = await space.updatePermissions(adminAuth, {
-        name: space.name,
         isRestricted: true,
         managementMode: "group",
         groupIds: [provisioned.sId],
@@ -964,7 +936,6 @@ describe("SpaceResource", () => {
       it("should add global group when changing from restricted to open", async () => {
         // Start with restricted space (no global group)
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
@@ -988,7 +959,6 @@ describe("SpaceResource", () => {
         // First make it open through updatePermissions so the global group's grant is written
         // (space.groups is sourced from group_permissions).
         const openResult = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
@@ -1006,7 +976,6 @@ describe("SpaceResource", () => {
         const result = await spaceWithGlobalGroup!.updatePermissions(
           adminAuth,
           {
-            name: "Test Space",
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId],
@@ -1030,7 +999,6 @@ describe("SpaceResource", () => {
       it("should not change global group when restricted state stays the same", async () => {
         // Start restricted
         await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
@@ -1047,7 +1015,6 @@ describe("SpaceResource", () => {
 
         // Update but keep restricted
         await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space Updated",
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user2.sId],
@@ -1069,7 +1036,6 @@ describe("SpaceResource", () => {
     describe("error handling", () => {
       it("should return error when group fetch fails in group mode", async () => {
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "group",
           groupIds: ["invalid-group-id"],
@@ -1086,7 +1052,6 @@ describe("SpaceResource", () => {
         // This test might need adjustment based on actual error conditions
         // For now, testing with invalid user IDs
         const result = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           managementMode: "manual",
           memberIds: ["invalid-user-id"],
@@ -1110,7 +1075,6 @@ describe("SpaceResource", () => {
         });
 
         const groupResult = await regularSpace.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           groupIds: [provisionedGroup.sId],
         });
@@ -1123,7 +1087,6 @@ describe("SpaceResource", () => {
         expect(updatedSpace?.managementMode).toBe("group");
 
         const manualResult = await updatedSpace!.updatePermissions(adminAuth, {
-          name: "Test Space",
           isRestricted: true,
           memberIds: [user1.sId],
           groupIds: [],
@@ -1210,7 +1173,6 @@ describe("SpaceResource", () => {
 
           // Member should NOT be able to update space permissions
           const result = await reloadedSpace!.updatePermissions(memberAuth, {
-            name: "Test Project Space",
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId],
@@ -1238,7 +1200,6 @@ describe("SpaceResource", () => {
 
           // Non-member should NOT be able to update space permissions
           const result = await reloadedSpace!.updatePermissions(nonMemberAuth, {
-            name: "Test Project Space",
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId],
@@ -1271,7 +1232,6 @@ describe("SpaceResource", () => {
 
           // Editor should be able to manage members through updatePermissions
           const result = await reloadedSpace!.updatePermissions(editorAuth, {
-            name: "Test Project Space",
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId, user2.sId],
@@ -1448,7 +1408,6 @@ describe("SpaceResource", () => {
 
           // Member should NOT be able to update space permissions
           const result = await reloadedSpace!.updatePermissions(memberAuth, {
-            name: "Test Project Space",
             isRestricted: true,
             managementMode: "group",
             groupIds: [provisionedMemberGroup.sId],
@@ -1477,7 +1436,6 @@ describe("SpaceResource", () => {
           // Non-member should NOT be able to update space permissions
           // Authorization check happens before group manipulation, so we get unauthorized
           const result = await reloadedSpace!.updatePermissions(nonMemberAuth, {
-            name: "Test Project Space",
             isRestricted: true,
             managementMode: "group",
             groupIds: [provisionedMemberGroup.sId],
@@ -1526,7 +1484,6 @@ describe("SpaceResource", () => {
 
           // Editor should be able to manage members through updatePermissions
           const result = await reloadedSpace!.updatePermissions(editorAuth, {
-            name: "Test Project Space",
             isRestricted: true,
             managementMode: "group",
             groupIds: [newProvisionedMemberGroup.sId],
@@ -1584,7 +1541,6 @@ describe("SpaceResource", () => {
       const editorGroup = await GroupFactory.regularManual(workspace, "Leads");
 
       const res = await pod.updatePermissions(adminAuth, {
-        name: pod.name,
         isRestricted: true,
         editorIds: [adminUser.sId],
         groupIds: [memberGroup.sId],
@@ -1612,7 +1568,6 @@ describe("SpaceResource", () => {
       const attachedGroup = await GroupFactory.provisioned(workspace, "Dev");
 
       const res = await space.updatePermissions(adminAuth, {
-        name: space.name,
         isRestricted: false,
         memberIds: [adminUser.sId],
         groupIds: [attachedGroup.sId],
@@ -1672,7 +1627,6 @@ describe("SpaceResource", () => {
       expect(await refetchIsRestricted(space)).toBe(true);
 
       const openResult = await space.updatePermissions(adminAuth, {
-        name: space.name,
         isRestricted: false,
         managementMode: "manual",
         memberIds: [],
@@ -1686,7 +1640,6 @@ describe("SpaceResource", () => {
     it("flips back to true when an open space is restricted again", async () => {
       const space = await SpaceFactory.regular(workspace);
       const openResult = await space.updatePermissions(adminAuth, {
-        name: space.name,
         isRestricted: false,
         managementMode: "manual",
         memberIds: [],
@@ -1697,7 +1650,6 @@ describe("SpaceResource", () => {
 
       const opened = await SpaceResource.fetchById(adminAuth, space.sId);
       const restrictResult = await opened!.updatePermissions(adminAuth, {
-        name: space.name,
         isRestricted: true,
         managementMode: "manual",
         memberIds: [],
@@ -2653,7 +2605,6 @@ describe("SpaceResource group_permissions enforcement", () => {
   it("enforces the table: manual member of an open space can write, non-member can only read", async () => {
     const space = await SpaceFactory.regular(workspace);
     const openRes = await space.updatePermissions(adminAuth, {
-      name: space.name,
       isRestricted: false,
       managementMode: "manual",
       memberIds: [memberUser.sId],
@@ -2696,7 +2647,6 @@ describe("SpaceResource group_permissions enforcement", () => {
 
     const space = await SpaceFactory.regular(workspace);
     const setRes = await space.updatePermissions(adminAuth, {
-      name: space.name,
       isRestricted: true,
       managementMode: "group",
       groupIds: [manualGroup.sId, provisionedGroup.sId],
@@ -2714,7 +2664,6 @@ describe("SpaceResource group_permissions enforcement", () => {
 
     // Deselecting the manual group must drop its association, not just the provisioned ones.
     const unsetRes = await space.updatePermissions(adminAuth, {
-      name: space.name,
       isRestricted: true,
       managementMode: "group",
       groupIds: [provisionedGroup.sId],
@@ -2737,7 +2686,6 @@ describe("SpaceResource group_permissions enforcement", () => {
 
     const space = await SpaceFactory.regular(workspace);
     const withGroupRes = await space.updatePermissions(adminAuth, {
-      name: space.name,
       isRestricted: true,
       groupIds: [manualGroup.sId],
     });
@@ -2753,7 +2701,6 @@ describe("SpaceResource group_permissions enforcement", () => {
     // An update carries the space's whole membership, so one that lists no group drops this
     // one's grant and the access it conferred.
     const membersOnlyRes = await space.updatePermissions(adminAuth, {
-      name: space.name,
       isRestricted: true,
       memberIds: [],
     });
@@ -2783,7 +2730,6 @@ describe("SpaceResource group_permissions enforcement", () => {
 
     for (const group of [globalGroupRes.value, autoGroup]) {
       const res = await space.updatePermissions(adminAuth, {
-        name: space.name,
         isRestricted: true,
         managementMode: "group",
         groupIds: [group.sId],
@@ -2805,7 +2751,6 @@ describe("SpaceResource group_permissions enforcement", () => {
 
     const space = await SpaceFactory.regular(workspace);
     const openRes = await space.updatePermissions(adminAuth, {
-      name: space.name,
       isRestricted: false,
       managementMode: "group",
       groupIds: [provisionedGroup.sId],
@@ -2865,7 +2810,6 @@ describe("SpaceResource group_permissions enforcement", () => {
     expect(adminAuth.getGrantedVerbs("space", space.id)).not.toContain("read");
 
     const res = await space.updatePermissions(adminAuth, {
-      name: space.name,
       isRestricted: false,
       managementMode: "manual",
       memberIds: [],
