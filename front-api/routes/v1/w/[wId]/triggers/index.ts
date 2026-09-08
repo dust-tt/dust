@@ -110,7 +110,7 @@ app.get(
     const { kind, status, agentConfigurationId, limit, offset } =
       ctx.req.valid("query");
 
-    const triggers = await TriggerResource.listByWorkspaceForPublicApi(auth, {
+    const triggers = await TriggerResource.listByWorkspaceAndFilters(auth, {
       kind,
       status: status ?? "enabled",
       agentConfigurationId,

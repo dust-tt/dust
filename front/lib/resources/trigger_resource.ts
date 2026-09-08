@@ -386,14 +386,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  /**
-   * @cc [owner:adrien,label:api;security] public-api-workspace-wide-unrestricted
-   * Returns triggers across every agent in the workspace, unfiltered by editor or
-   * agent-level read permissions. Callers must enforce their own access gate (e.g.
-   * `ensureIsAdmin()`) before calling this — the resource layer performs no
-   * authorization check beyond workspace scoping.
-   */
-  static async listByWorkspaceForPublicApi(
+  static async listByWorkspaceAndFilters(
     auth: Authenticator,
     {
       kind,
