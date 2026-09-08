@@ -308,12 +308,27 @@ describe("assertion verification", () => {
     });
   });
 
-  it("rejects a missing nbf claim", async () => {
+  it("accepts a JWT without an nbf claim", async () => {
     mocks.jwtVerify.mockResolvedValue(verifiedAssertion({ nbf: undefined }));
+    mocks.trustedFetch.mockResolvedValue(
+      identityResponse({
+        user_uuid: SUBJECT,
+        email: "operator@dust.tt",
+        groups: [{ name: "engineering-mdm" }],
+      })
+    );
 
     expect(await authenticateCloudflareAccess(headers())).toEqual({
-      kind: "rejected",
-      reasonCode: "missing_claims",
+      kind: "authenticated",
+      user: {
+        subject: SUBJECT,
+        email: "operator@dust.tt",
+        name: "Operator",
+        identity: {
+          kind: "cross_checked",
+          groupNames: ["engineering-mdm"],
+        },
+      },
     });
   });
 

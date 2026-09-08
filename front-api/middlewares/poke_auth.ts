@@ -1,6 +1,6 @@
 import { authenticateCloudflareAccess } from "@app/lib/api/poke/cloudflare_access";
 import { Authenticator, isDustInternalEmail } from "@app/lib/auth";
-import { getPokeRolesForUser } from "@app/lib/poke/roles";
+import { getPokeRolesForPrincipal } from "@app/lib/poke/roles";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { PokeCtx } from "@front-api/middlewares/ctx";
@@ -66,7 +66,14 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
       );
 
       ctx.set("auth", auth);
-      ctx.set("pokeRoles", await getPokeRolesForUser(user.email));
+      ctx.set("accessUser", user);
+      ctx.set(
+        "pokeRoles",
+        await getPokeRolesForPrincipal({
+          kind: "cloudflare_access",
+          user,
+        })
+      );
       await next();
       return;
     }
@@ -94,7 +101,10 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
   }
 
   const auth = await Authenticator.fromDustSuperUser({ user });
-  const pokeRoles = await getPokeRolesForUser(user.email);
+  const pokeRoles = await getPokeRolesForPrincipal({
+    kind: "email",
+    email: user.email,
+  });
 
   logger.info(
     {
@@ -105,6 +115,7 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
   );
 
   ctx.set("auth", auth);
+  ctx.set("accessUser", null);
   ctx.set("pokeRoles", pokeRoles);
   await next();
 });

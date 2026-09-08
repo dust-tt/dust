@@ -1,6 +1,24 @@
-import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/lib/api/poke/auth_context";
+import type {
+  GetPokeNoWorkspaceAuthContextResponseType,
+  PokeAccessUserView,
+} from "@app/lib/api/poke/auth_context";
+import type { AuthenticatedAccessUser } from "@app/lib/api/poke/cloudflare_access";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+
+function toAccessUserView(
+  user: AuthenticatedAccessUser | null
+): PokeAccessUserView | null {
+  if (!user) {
+    return null;
+  }
+  return {
+    subject: user.subject,
+    email: user.email,
+    name: user.name,
+    identity: user.identity,
+  };
+}
 
 // Mounted at /api/poke/auth-context. pokeAuth is applied by the parent poke
 // sub-app, so ctx.get("auth") is always available here and the user is a
@@ -17,6 +35,7 @@ app.get(
       user: auth.toPokeUserJSON(),
       isSuperUser: true,
       pokeRoles: ctx.get("pokeRoles"),
+      accessUser: toAccessUserView(ctx.get("accessUser")),
     });
   }
 );

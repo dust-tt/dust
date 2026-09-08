@@ -222,7 +222,8 @@ function parseVerifiedAssertion({
       sub: z.string().min(1),
       email: z.string().email(),
       exp: z.number(),
-      nbf: z.number(),
+      // jose already enforces nbf when present; keep it optional here.
+      nbf: z.number().optional(),
       name: z.string().nullish(),
     })
     .safeParse(payload);

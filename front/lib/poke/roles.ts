@@ -1,3 +1,4 @@
+import type { AuthenticatedAccessUser } from "@app/lib/api/poke/cloudflare_access";
 import { getPokeUserConfigBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
@@ -24,7 +25,38 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 let cachedRoles: RolesConfig | null = null;
 let cacheExpiresAtMs = 0;
 
+/** Test-only helper to clear the GCS roles cache between cases. */
+export function clearPokeRolesCacheForTests(): void {
+  cachedRoles = null;
+  cacheExpiresAtMs = 0;
+}
+
 const ALL_ROLES: PokeRole[] = PokeRoleSchema.options;
+
+/**
+ * IdP group names that grant each poke role. Keying by `PokeRole` forces a new
+ * role to declare its groups instead of silently granting nothing.
+ */
+const ACCESS_GROUPS_BY_ROLE: Record<PokeRole, readonly string[]> = {
+  admin: ["admin-mdm"],
+  billing: ["billing-mdm"],
+  engineering: ["engineering-mdm"],
+  support: ["support-mdm"],
+  talent: ["talent-mdm"],
+};
+
+const ROLE_BY_ACCESS_GROUP = new Map<string, PokeRole>(
+  ALL_ROLES.flatMap((role) =>
+    ACCESS_GROUPS_BY_ROLE[role].map(
+      (group) => [group.toLowerCase(), role] as const
+    )
+  )
+);
+
+/** A poke operator, discriminated by which role source applies to them. */
+export type PokeRolePrincipal =
+  | { kind: "cloudflare_access"; user: AuthenticatedAccessUser }
+  | { kind: "email"; email: string };
 
 async function loadRoles(): Promise<RolesConfig> {
   if (cachedRoles && Date.now() < cacheExpiresAtMs) {
@@ -54,10 +86,59 @@ async function loadRoles(): Promise<RolesConfig> {
   }
 }
 
-export async function getPokeRolesForUser(email: string): Promise<PokeRole[]> {
+/**
+ * @cc [label:product] mdm-group-mapping
+ * A group name grants a `PokeRole` only when it equals one of that role's entries in
+ * `ACCESS_GROUPS_BY_ROLE`, case-insensitively, either bare or as the local part of an
+ * `<group>@<domain>` address.
+ */
+function mapAccessGroupNamesToPokeRoles(
+  groupNames: readonly string[]
+): PokeRole[] {
+  const granted = new Set<PokeRole>();
+
+  for (const groupName of groupNames) {
+    const normalized = groupName.trim().toLowerCase();
+    const at = normalized.indexOf("@");
+    // Google groups surface either as a bare name or as a group address.
+    const localPart =
+      at === -1 ? normalized : normalized.slice(0, at).trimEnd();
+    if (at !== -1 && !/^[^@\s]+$/.test(normalized.slice(at + 1))) {
+      continue;
+    }
+
+    const role = ROLE_BY_ACCESS_GROUP.get(localPart);
+    if (role) {
+      granted.add(role);
+    }
+  }
+
+  return ALL_ROLES.filter((role) => granted.has(role));
+}
+
+/**
+ * @cc [label:product;security] role-source-selection
+ * A cross-checked Cloudflare Access principal's groups are the sole role source for
+ * that request, so an empty group list grants no roles; a `jwt_only` Access principal
+ * and an email principal resolve roles from the GCS config instead. The two sources
+ * are never combined.
+ */
+export async function getPokeRolesForPrincipal(
+  principal: PokeRolePrincipal
+): Promise<PokeRole[]> {
   if (isDevelopment()) {
     return ALL_ROLES;
   }
+
+  if (
+    principal.kind === "cloudflare_access" &&
+    principal.user.identity.kind === "cross_checked"
+  ) {
+    return mapAccessGroupNamesToPokeRoles(principal.user.identity.groupNames);
+  }
+
+  const email =
+    principal.kind === "email" ? principal.email : principal.user.email;
   const roles = await loadRoles();
   return roles[email] ?? [];
 }

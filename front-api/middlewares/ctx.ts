@@ -1,3 +1,4 @@
+import type { AuthenticatedAccessUser } from "@app/lib/api/poke/cloudflare_access";
 import type { SandboxTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -23,11 +24,12 @@ export type WorkspaceAwareCtx = SessionCtx & {
 };
 
 // Poke authenticates via Cloudflare Access JWT (preferred) or a WorkOS
-// super-user session fallback. Only the resulting Authenticator is exposed.
+// super-user session fallback. `accessUser` is set on the Access path only.
 export type PokeCtx = {
   Variables: {
     auth: Authenticator;
     pokeRoles: PokeRole[];
+    accessUser: AuthenticatedAccessUser | null;
   };
 };
 
