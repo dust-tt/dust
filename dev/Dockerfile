@@ -227,6 +227,23 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   && gke-gcloud-auth-plugin --version \
   && kubectl version --client
 
+# pg-schema-diff — migration SQL generator (no GitHub release binaries; build with a temp Go toolchain)
+ARG PG_SCHEMA_DIFF_VERSION=1.0.9
+ARG GO_VERSION=1.25.5
+RUN set -eu \
+  && case "${TARGETARCH}" in \
+       amd64) go_arch="amd64"; go_sha256="9e9b755d63b36acf30c12a9a3fc379243714c1c6d3dd72861da637f336ebb35b" ;; \
+       arm64) go_arch="arm64"; go_sha256="b00b694903d126c588c378e72d3545549935d3982635ba3f7a964c9fa23fe3b9" ;; \
+       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+     esac \
+  && curl -fsSLo /tmp/go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-${go_arch}.tar.gz" \
+  && echo "${go_sha256}  /tmp/go.tar.gz" | sha256sum -c - \
+  && tar -C /tmp -xzf /tmp/go.tar.gz \
+  && GOPATH=/tmp/gopath GOMODCACHE=/tmp/gomodcache GOBIN=/usr/local/bin \
+       /tmp/go/bin/go install "github.com/stripe/pg-schema-diff/cmd/pg-schema-diff@v${PG_SCHEMA_DIFF_VERSION}" \
+  && rm -rf /tmp/go /tmp/go.tar.gz /tmp/gopath /tmp/gomodcache \
+  && pg-schema-diff --help >/dev/null
+
 # Postgres dev user (databases are created at agent start by init-databases.sh)
 RUN service postgresql start \
   && (sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='dev'" | grep -q 1 \
