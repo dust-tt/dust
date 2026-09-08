@@ -94,6 +94,67 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
     expect(relationships[0].mcpServerViewId).toBe(mcpServerView.id);
   });
 
+  it("promotes a hidden Analytics-panel conversation to the user's history", async () => {
+    const { workspace, auth, user } = await setupTest("admin");
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+      visibility: "test",
+      metadata: { origin: "analytics_panel" },
+    });
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Which agents are used the most?",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+      },
+      skipToolsValidation: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    await vi.waitFor(async () => {
+      const promoted = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(promoted, "Conversation not found after posting");
+      expect(promoted.visibility).toBe("unlisted");
+    });
+  });
+
+  it("leaves a test conversation without the Analytics-panel marker hidden", async () => {
+    const { workspace, auth, user } = await setupTest("admin");
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+      visibility: "test",
+    });
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Hello",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+      },
+      skipToolsValidation: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const unchanged = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    assert(unchanged, "Conversation not found after posting");
+    expect(unchanged.visibility).toBe("test");
+  });
+
   it("returns 404 when conversation doesn't exist", async () => {
     const { workspace } = await setupTest("admin");
 

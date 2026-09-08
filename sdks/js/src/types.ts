@@ -495,6 +495,7 @@ const USER_MESSAGE_ORIGINS = [
   "zendesk",
   "onboarding_conversation",
   "agent_sidekick",
+  "analytics_panel",
   "project_kickoff",
   "reinforced_skill_notification",
   "reinforcement",

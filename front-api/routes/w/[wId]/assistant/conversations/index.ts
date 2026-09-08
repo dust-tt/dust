@@ -4,6 +4,10 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import {
+  ANALYTICS_PANEL_CONVERSATION_INIT,
+  postAnalyticsPanelBootstrapMessage,
+} from "@app/lib/api/assistant/conversation/analytics_panel";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   addSelectedConversationSpaces,
@@ -256,7 +260,12 @@ app.post(
       metadata,
       selectedSpaceIds,
       skipToolsValidation,
+      bootstrap,
     } = ctx.req.valid("json");
+
+    const conversationInit = bootstrap
+      ? ANALYTICS_PANEL_CONVERSATION_INIT
+      : { title, visibility, metadata };
 
     const allSelectedSpaceIds = uniq([
       ...(selectedSpaceIds ?? []),
@@ -332,17 +341,15 @@ app.post(
     }
 
     const newConversationResource = await createConversation(auth, {
-      title,
-      visibility,
+      ...conversationInit,
       spaceId: spaceModelId,
-      metadata,
     });
 
     let newConversation: ConversationType = {
       ...newConversationResource.toJSON(),
       content: [],
       owner: auth.getNonNullableWorkspace(),
-      visibility: visibility,
+      visibility: conversationInit.visibility,
     };
 
     if (allSelectedSpaceIds.length > 0) {
@@ -386,6 +393,18 @@ app.post(
 
     const newContentFragments: ContentFragmentType[] = [];
     let newMessage: UserMessageType | null = null;
+
+    if (bootstrap) {
+      const bootstrapRes = await postAnalyticsPanelBootstrapMessage(auth, {
+        conversation: newConversationResource,
+        user,
+      });
+      if (bootstrapRes.isErr()) {
+        return apiError(ctx, bootstrapRes.error);
+      }
+
+      newMessage = bootstrapRes.value;
+    }
 
     const baseContext = {
       username: user.username,

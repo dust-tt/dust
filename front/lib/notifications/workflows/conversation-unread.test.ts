@@ -79,6 +79,7 @@ describe("conversation-unread workflow business logic", () => {
     api: false,
     onboarding_conversation: false,
     agent_sidekick: false,
+    analytics_panel: false,
     project_kickoff: false,
     excel: false,
     gsheet: false,

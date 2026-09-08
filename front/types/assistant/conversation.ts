@@ -124,10 +124,14 @@ export type UserMessageOrigin =
   | "wakeup"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation, agent_sidekick, and project_kickoff aren't message origins. They
-  // have been used as a hack but should be removed and most likely handled as message metadata
-  // (to be created).
+  // TODO onboarding_conversation, agent_sidekick, analytics_panel, and project_kickoff aren't
+  // message origins. They have been used as a hack but should be removed and most likely handled
+  // as message metadata (to be created).
   | "onboarding_conversation"
+  // Bootstrap message the Analytics conversation panel opens on. Server-only: it is not in
+  // `CLIENT_MESSAGE_ORIGINS`, and since it is in `HIDDEN_MESSAGE_ORIGINS` a client able to claim
+  // it could hide arbitrary messages from a shared conversation while the agent still reads them.
+  | "analytics_panel"
   // for internal use, for reinforced agent batch LLM operations
   | "reinforcement"
   // Opening message of an Activation Pod nudge, authored by the system on the
@@ -142,6 +146,7 @@ export type UserMessageOrigin =
 export const ACTIVATION_NUDGE_ORIGIN = "system_activation" as const;
 
 export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "analytics_panel",
   "onboarding_conversation",
   "project_kickoff",
   "reinforced_skill_notification",
@@ -524,12 +529,18 @@ export type ConversationUrlAccessMode =
 
 const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 
+export const CONVERSATION_ORIGINS = ["analytics_panel"] as const;
+
+export type ConversationOrigin = (typeof CONVERSATION_ORIGINS)[number];
+
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
   projectTaskId?: string;
   useFileSystem?: boolean;
   /** Selects the database-backed filesystem for a fresh standalone conversation. */
   useDatabaseFileSystem?: boolean;
+  /** The surface that created the conversation, when it was not a plain user conversation. */
+  origin?: ConversationOrigin;
 };
 
 function isConversationUrlAccessMode(

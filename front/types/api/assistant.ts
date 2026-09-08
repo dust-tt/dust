@@ -184,16 +184,24 @@ export const InternalPostContentFragmentRequestBodySchema = z.intersection(
 
 const ConversationMetadataSchema = z.record(z.unknown());
 
-export const InternalPostConversationsRequestBodySchema = z.object({
-  title: z.string().nullable(),
-  visibility: z.enum(["unlisted", "deleted", "test"]),
-  spaceId: z.string().nullable(),
-  message: MessageBaseSchema.nullable(),
-  contentFragments: z.array(InternalPostContentFragmentRequestBodySchema),
-  metadata: ConversationMetadataSchema.optional(),
-  selectedSpaceIds: z.array(z.string()).optional(),
-  skipToolsValidation: z.boolean().optional(),
-});
+export const InternalPostConversationsRequestBodySchema = z
+  .object({
+    title: z.string().nullable(),
+    visibility: z.enum(["unlisted", "deleted", "test"]),
+    spaceId: z.string().nullable(),
+    message: MessageBaseSchema.nullable(),
+    contentFragments: z.array(InternalPostContentFragmentRequestBodySchema),
+    metadata: ConversationMetadataSchema.optional(),
+    selectedSpaceIds: z.array(z.string()).optional(),
+    skipToolsValidation: z.boolean().optional(),
+    // Asks the server to author the opening message itself, for surfaces whose conversation is
+    // not started by something the user typed. The server owns its content, mentions and origin.
+    bootstrap: z.literal("analytics_panel").optional(),
+  })
+  .refine((body) => !(body.bootstrap && body.message), {
+    message: "`bootstrap` cannot be combined with `message`.",
+    path: ["bootstrap"],
+  });
 
 /** Response shape for POST /api/w/[wId]/assistant/conversations (deferred or combined). */
 export const PostConversationsResponseBodySchema = z.object({
