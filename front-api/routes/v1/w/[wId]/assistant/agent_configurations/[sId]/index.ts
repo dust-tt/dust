@@ -12,7 +12,7 @@ import type {
 } from "@dust-tt/client";
 import { PatchAgentConfigurationRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import {
@@ -76,6 +76,8 @@ const VariantQuerySchema = z.object({
  *         description: Bad Request. Invalid or missing parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. Only admins can access unpublished agents.
  *       404:
  *         description: Agent configuration not found.
  *       500:
@@ -313,6 +315,16 @@ app.get(
       });
     }
 
+    if (!agentConfiguration.canRead && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only admins can access unpublished agents.",
+        },
+      });
+    }
+
     return ctx.json({
       agentConfiguration,
     });
@@ -321,7 +333,7 @@ app.get(
 
 app.patch(
   "/",
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("param", AgentConfigurationParamSchema),
   validate("json", PatchAgentConfigurationRequestSchema),
   async (ctx): HandlerResult<GetOrPatchAgentConfigurationResponseType> => {
@@ -393,7 +405,7 @@ app.patch(
 
 app.delete(
   "/",
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("param", AgentConfigurationParamSchema),
   async (ctx): HandlerResult<DeleteAgentConfigurationResponseType> => {
     const auth = ctx.get("auth");

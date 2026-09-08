@@ -22,9 +22,6 @@ export const ENSURE_IS_ADMIN_ERROR_MESSAGE =
 export const ENSURE_IS_MANAGER_ERROR_MESSAGE =
   "Only managers can perform this action.";
 
-export const ENSURE_IS_BUILDER_ERROR_MESSAGE =
-  "Only builder users can perform this action.";
-
 export const ensureIsAdmin = () =>
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
@@ -59,27 +56,10 @@ export const ensureIsManager = () =>
     await next();
   });
 
-export const ensureIsBuilder = () =>
-  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
-    const auth = ctx.get("auth");
-
-    if (!auth.isBuilder()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: ENSURE_IS_BUILDER_ERROR_MESSAGE,
-        },
-      });
-    }
-
-    await next();
-  });
-
 /**
  * Guards a route on a workspace-level governance capability (a type-wide grant),
  * e.g. `ensureHasWorkspacePermission("admin", "billing", "...")`. Prefer this over
- * the role middlewares (`ensureIsBuilder`, ...) for capability-based access.
+ * the role middlewares for capability-based access.
  *
  * `errorType` defaults to `workspace_auth_error`; pass `app_auth_error` for the
  * skills endpoints, which use that error type throughout.

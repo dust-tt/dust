@@ -2,7 +2,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { DeleteSkillResponseBody } from "@app/types/api/skills";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -61,7 +61,7 @@ const app = publicApiApp();
  */
 app.delete(
   "/",
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteSkillResponseBody> => {
     const auth = ctx.get("auth");
@@ -77,16 +77,6 @@ app.delete(
         api_error: {
           type: "skill_not_found",
           message: "The skill you requested was not found.",
-        },
-      });
-    }
-
-    if (!skill.canAdministrate(auth)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "Only admins and editors can archive this skill.",
         },
       });
     }

@@ -6,7 +6,7 @@ language js
 // handlers.
 //
 // Role checks in route handlers should use the ensureIsAdmin(),
-// ensureIsBuilder(), ensureIsUser(), or ensureIsDustSuperUser() middleware
+// ensureIsUser(), or ensureIsDustSuperUser() middleware
 // from @front-api/middlewares/ensure_role instead.
 //
 // NOT flagged (allowed patterns):
@@ -31,7 +31,7 @@ direct_role_check() as $match where {
     not $match <: within `$_ && $_`,
     register_diagnostic(
         span = $match,
-        message = "Direct auth role checks are not allowed in route handlers. Use ensureIsAdmin(), ensureIsBuilder(), ensureIsUser(), or ensureIsDustSuperUser() middleware from @front-api/middlewares/ensure_role instead.",
+        message = "Direct auth role checks are not allowed in route handlers. Use ensureIsAdmin(), ensureIsUser(), or ensureIsDustSuperUser() middleware from @front-api/middlewares/ensure_role instead.",
         severity = "error"
     )
 }
