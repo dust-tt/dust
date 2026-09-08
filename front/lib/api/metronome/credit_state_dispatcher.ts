@@ -1,6 +1,7 @@
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { fetchRemainingCapCreditsPercentageForUser } from "@app/lib/api/credits/members_usage";
 import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
@@ -30,6 +31,7 @@ import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effe
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { isSpendingFromPersonalSeat } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -98,6 +100,13 @@ async function fetchMaxGroupPoolCapForUser({
  * The state machine uses this limit to decide whether the user goes to
  * `on_pool` or `capped`.
  */
+/**
+ * @cc [owner:theogz,label:product] seat-exhausted-tracked-once
+ * A `seat_credits_exhausted` PostHog event is emitted exactly once per seat
+ * balance depletion: only when the membership was spending from its personal
+ * seat balance (`isSpendingFromPersonalSeat`) before the transition, so a
+ * repeated alert for an already-exhausted seat never re-emits.
+ */
 export async function dispatchSeatBalanceExhausted({
   workspace,
   userId,
@@ -160,6 +169,13 @@ export async function dispatchSeatBalanceExhausted({
       defaultPoolCapAwuCredits,
     });
 
+  // Read before the transition mutates the resource in place: it tells apart a
+  // seat that was actually being spent from (pro/max/free on `user_seat*`) from
+  // a redundant alert for a seat already exhausted.
+  const wasSpendingFromSeat = isSpendingFromPersonalSeat(
+    membership.creditState
+  );
+
   const result = await transitionUserCreditState(
     membership,
     { type: "seat_balance_exhausted" },
@@ -183,6 +199,22 @@ export async function dispatchSeatBalanceExhausted({
       "[CreditStateDispatcher] dispatchSeatBalanceExhausted: transition skipped"
     );
     return;
+  }
+
+  if (wasSpendingFromSeat) {
+    // The seat allowance the user pays for is spent. `credit_state` says what
+    // happens next: `on_pool` → they keep going on the workspace pool (the
+    // upsell moment for a higher tier), `capped` → they are blocked outright.
+    PostHogServerSideTracking.trackEvent({
+      distinctId: userId,
+      event: "seat_credits_exhausted",
+      workspaceId: workspace.sId,
+      extra: {
+        seat_type: membership.seatType,
+        credit_state: result.value,
+        pool_limit_credits: poolLimitAwuCredits,
+      },
+    });
   }
 
   // Free seats have no pool fallback, so an exhausted balance lands them in
