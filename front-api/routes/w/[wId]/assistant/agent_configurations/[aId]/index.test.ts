@@ -8,6 +8,7 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -394,6 +395,35 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(response.status).toBe(404);
     const data = await response.json();
     expect(data.error.type).toBe("agent_configuration_not_found");
+  });
+
+  it("returns the full agent to a non-editor admin with the admin_can_see_private_entities flag", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "GET",
+    });
+    await SpaceFactory.defaults(auth);
+    await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [agentOwner.sId] });
+    // Both restrictions at once: unpublished, and built on a space the admin cannot read.
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+    );
+
+    const response = await get(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.sId).toBe(agent.sId);
+    expect(data.agentConfiguration.canRead).toBe(true);
+    expect(data.agentConfiguration.instructions).toBe(agent.instructions);
   });
 
   it("returns not found to an admin for an agent that does not exist", async () => {

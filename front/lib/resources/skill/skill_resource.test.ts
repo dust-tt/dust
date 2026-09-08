@@ -20,6 +20,7 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -2244,6 +2245,27 @@ describe("SkillResource", () => {
         })
       ).rejects.toThrow("Only admins");
       expect(await SkillResource.fetchById(builderAuth, skill.sId)).toBeNull();
+    });
+
+    it("returns the full skill to an admin with the admin_can_see_private_entities flag", async () => {
+      // Enabled first: the workspace flags are cached once read.
+      await FeatureFlagFactory.basic(
+        testContext.authenticator,
+        "admin_can_see_private_entities"
+      );
+      const { skill } = await createRestrictedSkill();
+
+      const fetched = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { permissionFiltering: "redact_unreadable" }
+      );
+
+      expect(fetched).not.toBeNull();
+      expect(fetched!.canRead(testContext.authenticator)).toBe(true);
+      expect(fetched!.toJSON(testContext.authenticator).instructions).toBe(
+        "Secret guidelines"
+      );
     });
 
     it("returns null for an unknown skill", async () => {
