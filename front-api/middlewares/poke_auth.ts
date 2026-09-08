@@ -32,6 +32,24 @@ function notAuthenticated(ctx: Context) {
  * Super-user privilege is an Authenticator flag set only by poke factories
  * (`fromDustSuperUser` / `fromSuperUserSession`), not by the DB column alone.
  */
+/**
+ * @cc [owner:zmarouf,label:security;api] workos-only-when-access-disabled
+ * `pokeAuth` may resolve a WorkOS super-user session only when
+ * `authenticateCloudflareAccess` returns `disabled`. `rejected` and
+ * `authenticated` must never fall through to WorkOS.
+ */
+/**
+ * @cc [owner:zmarouf,label:security;logging] poke-auth-secret-free-observability
+ * `pokeAuth` must never log the Access assertion, the `CF_Authorization` cookie,
+ * raw JWT claims, or jose/get-identity error messages. Rejection logs may include
+ * only `CloudflareAccessDenialCode` (and non-secret identity fields such as email).
+ */
+/**
+ * @cc [owner:zmarouf,label:api;security] poke-auth-generic-client-errors
+ * Access authentication failures returned to the client must use a generic
+ * `not_authenticated` envelope via `apiError` and must never include
+ * `CloudflareAccessDenialCode` or token material in the response body.
+ */
 export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
   const access = await authenticateCloudflareAccess(ctx.req.raw.headers);
 

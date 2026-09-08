@@ -6,6 +6,12 @@ import type { AuthenticatedAccessUser } from "@app/lib/api/poke/cloudflare_acces
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
+/**
+ * @cc [owner:zmarouf,label:security;api] auth-context-access-user-sanitized
+ * `toAccessUserView` must return only `subject`, `email`, `name`, and
+ * `identity` from an authenticated Access user, and must never include the
+ * assertion, cookie, or raw get-identity payload.
+ */
 function toAccessUserView(
   user: AuthenticatedAccessUser | null
 ): PokeAccessUserView | null {

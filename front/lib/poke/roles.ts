@@ -2,6 +2,7 @@ import type { AuthenticatedAccessUser } from "@app/lib/api/poke/cloudflare_acces
 import { getPokeUserConfigBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
@@ -87,7 +88,7 @@ async function loadRoles(): Promise<RolesConfig> {
 }
 
 /**
- * @cc [label:product] mdm-group-mapping
+ * @cc [owner:zmarouf,label:product] mdm-group-mapping
  * A group name grants a `PokeRole` only when it equals one of that role's entries in
  * `ACCESS_GROUPS_BY_ROLE`, case-insensitively, either bare or as the local part of an
  * `<group>@<domain>` address.
@@ -100,7 +101,6 @@ function mapAccessGroupNamesToPokeRoles(
   for (const groupName of groupNames) {
     const normalized = groupName.trim().toLowerCase();
     const at = normalized.indexOf("@");
-    // Google groups surface either as a bare name or as a group address.
     const localPart =
       at === -1 ? normalized : normalized.slice(0, at).trimEnd();
     if (at !== -1 && !/^[^@\s]+$/.test(normalized.slice(at + 1))) {
@@ -117,11 +117,17 @@ function mapAccessGroupNamesToPokeRoles(
 }
 
 /**
- * @cc [label:product;security] role-source-selection
+ * @cc [owner:zmarouf,label:product;security] role-source-selection
  * A cross-checked Cloudflare Access principal's groups are the sole role source for
  * that request, so an empty group list grants no roles; a `jwt_only` Access principal
  * and an email principal resolve roles from the GCS config instead. The two sources
  * are never combined.
+ */
+/**
+ * @cc [owner:zmarouf,label:product] development-grants-all-roles
+ * When `isDevelopment()` is true, `getPokeRolesForPrincipal` returns every `PokeRole`
+ * after the caller has already authenticated, and does not consult Access groups or
+ * GCS.
  */
 export async function getPokeRolesForPrincipal(
   principal: PokeRolePrincipal
@@ -130,17 +136,19 @@ export async function getPokeRolesForPrincipal(
     return ALL_ROLES;
   }
 
-  if (
-    principal.kind === "cloudflare_access" &&
-    principal.user.identity.kind === "cross_checked"
-  ) {
-    return mapAccessGroupNamesToPokeRoles(principal.user.identity.groupNames);
+  switch (principal.kind) {
+    case "cloudflare_access":
+      if (principal.user.identity.kind === "cross_checked") {
+        return mapAccessGroupNamesToPokeRoles(
+          principal.user.identity.groupNames
+        );
+      }
+      return (await loadRoles())[principal.user.email] ?? [];
+    case "email":
+      return (await loadRoles())[principal.email] ?? [];
+    default:
+      return assertNever(principal);
   }
-
-  const email =
-    principal.kind === "email" ? principal.email : principal.user.email;
-  const roles = await loadRoles();
-  return roles[email] ?? [];
 }
 
 export function hasPokeRole(

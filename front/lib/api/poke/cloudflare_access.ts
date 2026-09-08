@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { trustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
 
@@ -374,49 +375,60 @@ function authenticated(
 }
 
 /**
- * @cc [label:security;api] assertion-header-only
+ * @cc [owner:zmarouf,label:security;api] assertion-header-only
  * When Cloudflare Access is configured, authentication must require a non-empty
  * `Cf-Access-Jwt-Assertion` header and must never accept `CF_Authorization` as a
  * substitute for it.
  */
 /**
- * @cc [label:security] identity-cookie-isolation
+ * @cc [owner:zmarouf,label:security] identity-cookie-isolation
  * The get-identity request must forward only the `CF_Authorization` cookie and must
  * never forward the assertion, the incoming `Cookie` header, or any other inbound
  * header.
  */
 /**
- * @cc [label:security] identity-cross-check
+ * @cc [owner:zmarouf,label:security] identity-cross-check
  * A parsed get-identity response must match the assertion's `sub` to `user_uuid`
  * exactly and its email case-insensitively; either mismatch rejects authentication
  * regardless of `CLOUDFLARE_ACCESS_IDENTITY_REQUIRED`.
  */
 /**
- * @cc [label:security] assertion-owns-principal
+ * @cc [owner:zmarouf,label:security] assertion-owns-principal
  * `subject`, `email` and `name` on the returned user must come from the verified
  * assertion; a get-identity response contributes group names only.
  */
 /**
- * @cc [label:security;logging] secret-free-result
+ * @cc [owner:zmarouf,label:security;logging] secret-free-result
  * The returned value must never carry the assertion, the authorization cookie, raw
  * JWT claims, a raw get-identity payload, or an underlying error; failures are
  * reported as a `CloudflareAccessDenialCode`.
  */
 /**
- * @cc [label:security] partial-configuration-fails-closed
+ * @cc [owner:zmarouf,label:security] partial-configuration-fails-closed
  * `disabled` must be returned only when no audience and no dependent
  * `CLOUDFLARE_ACCESS_*` setting is configured; any other configuration defect
  * rejects.
+ */
+/**
+ * @cc [owner:zmarouf,label:security] identity-required-default
+ * Identity enrichment is required unless `CLOUDFLARE_ACCESS_IDENTITY_REQUIRED` is
+ * exactly `"false"`. When required, a missing cookie or failed get-identity rejects;
+ * when not required, those cases authenticate as `jwt_only`. Identity mismatches
+ * always reject.
  */
 export async function authenticateCloudflareAccess(
   headers: Headers
 ): Promise<CloudflareAccessAuthentication> {
   const accessConfig = resolveCloudflareAccessConfig();
-  if (accessConfig.kind === "disabled") {
-    return { kind: "disabled" };
-  }
-  if (accessConfig.kind === "invalid") {
-    return { kind: "rejected", reasonCode: accessConfig.reasonCode };
+  switch (accessConfig.kind) {
+    case "disabled":
+      return { kind: "disabled" };
+    case "invalid":
+      return { kind: "rejected", reasonCode: accessConfig.reasonCode };
+    case "enabled":
+      break;
+    default:
+      assertNever(accessConfig);
   }
   const enabled = accessConfig.value;
 
