@@ -7,24 +7,18 @@
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "remoteUser": "root",
+  "forwardPorts": [
+    3000,
+    3010,
+    3011,
+    3001,
+    3007,
+    6333,
+    7233,
+    8233
+  ],
   "runArgs": [
     "--init",
-    "-p",
-    "3000:3000",
-    "-p",
-    "3010:3010",
-    "-p",
-    "3011:3011",
-    "-p",
-    "3001:3001",
-    "-p",
-    "3007:3007",
-    "-p",
-    "6333:6333",
-    "-p",
-    "7233:7233",
-    "-p",
-    "8233:8233"
   ],
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
