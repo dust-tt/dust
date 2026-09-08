@@ -192,13 +192,6 @@
  *           type: boolean
  *           description: Status of the user favorite for this configuration
  *           example: true
- *         canEdit:
- *           type: boolean
- *           description: >-
- *             Whether the caller has permission to edit the agent. For regular API keys, requires a
- *             builder or admin role, an active workspace agent, and access to every requested
- *             space. Unpublished agents additionally require an admin key. For user
- *             authentication, reflects the user's editor permissions.
  *         model:
  *           type: object
  *           properties:
