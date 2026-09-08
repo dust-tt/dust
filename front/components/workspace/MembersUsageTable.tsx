@@ -484,6 +484,10 @@ export function AwuUsageBar({
   );
 }
 
+// Name is intentionally the only column without a set width, so it absorbs
+// every bit of leftover space. Secondary columns hide (via the container
+// queries in their meta.className) before Name has to shrink, keeping long
+// names/emails readable.
 const nameColumn = buildMemberNameColumn<RowData>();
 
 const groupsColumn: ColumnDef<RowData, string> = {
@@ -502,7 +506,10 @@ const groupsColumn: ColumnDef<RowData, string> = {
     );
   },
   meta: {
-    className: "w-48",
+    // Least essential: only appears on very wide containers (e.g. the Poke
+    // pool-usage page), never crowding out Name on the sidebar-constrained
+    // customer admin page.
+    className: "hidden @6xl:table-cell @6xl:w-48",
   },
 };
 
@@ -547,7 +554,7 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
     );
   },
   meta: {
-    className: "w-32",
+    className: "hidden @3xl:table-cell @3xl:w-32",
   },
 };
 
@@ -598,7 +605,7 @@ const seatsIconColumn: ColumnDef<RowData, string> = {
     );
   },
   meta: {
-    className: "w-24",
+    className: "hidden @3xl:table-cell @3xl:w-24",
     headerAlign: "center",
   },
 };
@@ -692,7 +699,7 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
     );
   },
   meta: {
-    className: "w-24",
+    className: "hidden @4xl:table-cell @4xl:w-24",
     headerAlign: "center",
   },
 };
@@ -1032,7 +1039,7 @@ const offPaceColumn: ColumnDef<RowData, string> = {
     );
   },
   meta: {
-    className: "w-28",
+    className: "hidden @4xl:table-cell @4xl:w-28",
     headerAlign: "center",
   },
 };
@@ -1076,7 +1083,14 @@ function buildModelTiersColumn(
       );
     },
     meta: {
-      className: "w-48",
+      // On the compact (new usage / Poke) variant the extra seat + off-pace
+      // columns compete for width, so Models tier yields sooner to keep Name
+      // readable; the legacy admin page has fewer columns and can show it at
+      // the container width it caps out at.
+      className:
+        variant === "compact"
+          ? "hidden @6xl:table-cell @6xl:w-48"
+          : "hidden @5xl:table-cell @5xl:w-48",
     },
   };
 }
@@ -1189,16 +1203,6 @@ function buildColumns({
     ...(showSeatAndCredits || showModelTiersColumn ? [actionsColumn] : []),
   ];
 }
-
-// The table is fixed layout and Name is the only column without a set width,
-// so it absorbs every shrink. Drop the secondary columns first as the window
-// narrows, most dispensable at the widest breakpoint.
-const COLUMNS_BREAKPOINTS = {
-  groups: "2xl",
-  modelTiers: "xl",
-  seatType: "xl",
-  consumedFromPoolAwuCredits: "lg",
-} as const;
 
 // "compact" is the Poke Pool Usage page layout: no "Up to " prefix on the
 // Models tier summary, a "Models" header instead of "Models tier". "legacy"
@@ -1515,7 +1519,6 @@ export function MembersUsageTable({
         <DataTable
           data={rows}
           columns={columns}
-          columnsBreakpoints={COLUMNS_BREAKPOINTS}
           pagination={pagination}
           setPagination={setPagination}
           totalRowCount={totalRowCount}
