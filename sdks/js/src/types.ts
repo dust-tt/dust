@@ -746,6 +746,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_force_nudge"
   | "admin_controlled_pods"
   | "advanced_notion_management"
+  | "agent_permission_grants"
   | "analytics_conversation_panel"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"

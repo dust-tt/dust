@@ -38,6 +38,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -1934,6 +1935,17 @@ async function disableTriggersForNonEditors(
   }
 
   const editorsByAgentId = await getAgentsEditors(auth, agents);
+  // The legacy batch reader includes stale memberships of users who left the workspace.
+  const users = await UserResource.fetchByModelIds([
+    ...new Set(triggers.map((trigger) => trigger.editor)),
+  ]);
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace: auth.getNonNullableWorkspace(),
+  });
+  const activeMemberIds = new Set(
+    memberships.map((membership) => membership.userId)
+  );
   // Fetch members once per agent, with a batched lookup shared by both permission sources.
   const editorModelIdsByAgentId = new Map(
     Object.entries(editorsByAgentId).map(([agentId, editors]) => [
@@ -1943,6 +1955,7 @@ async function disableTriggersForNonEditors(
   );
   const triggersToDisable = triggers.filter(
     (trigger) =>
+      !activeMemberIds.has(trigger.editor) ||
       !editorModelIdsByAgentId
         .get(trigger.agentConfigurationId)
         ?.has(trigger.editor)
