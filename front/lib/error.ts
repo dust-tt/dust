@@ -75,8 +75,9 @@ export type DustErrorCode =
 export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(
     readonly code: T,
-    message: string
+    message: string,
+    options?: ErrorOptions
   ) {
-    super(message);
+    super(message, options);
   }
 }

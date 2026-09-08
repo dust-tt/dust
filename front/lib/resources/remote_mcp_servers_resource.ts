@@ -647,6 +647,11 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     this.heavyAttributes = { ...this.heavyAttributes, lastError };
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:error-handling] preserve-oauth-discovery-cause
+   * Failures caused by thrown discovery or registration errors retain the normalized
+   * exception as `cause` for server-side logging, separate from the client-facing message.
+   */
   static async discoverOAuthMetadata({
     serverUrl,
     provider,
@@ -713,7 +718,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       return new Err(
         new DustError(
           "internal_error",
-          `Failed to discover OAuth metadata for ${serverUrl}: ${error.message}`
+          `Failed to discover OAuth metadata for ${serverUrl}: ${error.message}`,
+          { cause: error }
         )
       );
     }
@@ -734,7 +740,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         "Failed to discover authorization server metadata"
       );
       return new Err(
-        new DustError("internal_error", "Failed to discover OAuth metadata")
+        new DustError("internal_error", "Failed to discover OAuth metadata", {
+          cause: normalizeError(e),
+        })
       );
     }
     //const parsedMetadata = await OAuthMetadataSchema.parseAsync(metadata);
@@ -783,7 +791,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
           "endpoint). Please use Static OAuth with the client ID/secret provided by the " +
           "server's OAuth application.";
       logger.error({ error: e }, message);
-      return new Err(new DustError("internal_error", message));
+      return new Err(
+        new DustError("internal_error", message, { cause: normalizeError(e) })
+      );
     }
   }
 
