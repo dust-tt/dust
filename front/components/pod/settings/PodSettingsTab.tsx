@@ -4,6 +4,8 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { AdminControlledPodTile } from "@app/components/pod/settings/AdminControlledPodTile";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
+import { ManagePodGroupsPanel } from "@app/components/pod/settings/ManagePodGroupsPanel";
+import { PodGroupMembersTable } from "@app/components/pod/settings/PodGroupMembersTable";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
@@ -17,6 +19,7 @@ import {
 } from "@app/lib/api/projects/constants";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
@@ -25,7 +28,6 @@ import {
   useUpdatePodMetadata,
 } from "@app/lib/swr/pods";
 import { useSkills } from "@app/lib/swr/skill_configurations";
-import { spaceMembershipDimensions } from "@app/lib/spaces_utils";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
@@ -87,7 +89,12 @@ export function PodSettingsTab({
   pod: pod,
   onOpenMembersPanel,
 }: PodSettingsTabProps) {
-  const { members: podMembers, isEditor: isPodEditor, isRestricted } = pod;
+  const {
+    members: podMembers,
+    groups: podGroups,
+    isEditor: isPodEditor,
+    isRestricted,
+  } = pod;
   const isOpen = !isRestricted;
   const areWorkspaceOpenPodsAllowed = areOpenPodsAllowed(owner);
   const isPrivatePodAndOpenPodsDisallowed =
@@ -95,6 +102,7 @@ export function PodSettingsTab({
   const isVisibilityToggleDisabled =
     !isPodEditor || isPrivatePodAndOpenPodsDisallowed;
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
+  const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
@@ -781,7 +789,7 @@ export function PodSettingsTab({
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <h3 className="heading-lg flex-1">Members</h3>
+            <h3 className="heading-lg flex-1">Individual members</h3>
             {isPodEditor && onOpenMembersPanel && (
               <Button
                 label="Manage"
@@ -812,6 +820,40 @@ export function PodSettingsTab({
             </>
           )}
         </div>
+
+        {/* The Pod's members are the individual list above plus the members of these groups. */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <h3 className="heading-lg flex-1">Group members</h3>
+            {isPodEditor && (
+              <Button
+                label="Manage"
+                variant="outline"
+                icon={Users01}
+                onClick={() => setIsGroupsPanelOpen(true)}
+              />
+            )}
+          </div>
+          {podGroups.length > 0 && (
+            <ScrollArea className="h-full" orientation="horizontal">
+              <PodGroupMembersTable
+                owner={owner}
+                pod={pod}
+                groups={podGroups}
+                isEditor={isPodEditor}
+                mutatePodInfo={() => mutatePodInfo()}
+              />
+            </ScrollArea>
+          )}
+        </div>
+
+        <ManagePodGroupsPanel
+          isOpen={isGroupsPanelOpen}
+          setIsOpen={setIsGroupsPanelOpen}
+          owner={owner}
+          pod={pod}
+          onSuccess={() => mutatePodInfo()}
+        />
 
         {canViewPodNetwork && (
           <PodNetworkSection
