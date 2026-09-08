@@ -47,7 +47,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ((node: DataSourceViewContentNode) => void) | undefined
     >;
     owner: LightWorkspaceType;
-    selectedMCPServerViewIdsRef: RefObject<Set<string>>;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
     spaceIdRef: RefObject<string | null | undefined>;
   }
@@ -68,7 +67,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       owner,
       query,
       range,
-      selectedMCPServerViewIdsRef,
       slashCommandsRef,
       spaceIdRef,
     },
@@ -138,7 +136,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
       owner,
       query,
-      selectedMCPServerViewIdsRef,
     });
 
     const sections = useMemo(

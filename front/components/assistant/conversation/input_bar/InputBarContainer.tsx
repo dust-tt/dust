@@ -412,11 +412,6 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
   const attachedNodesRef = useRef(attachedNodes);
   attachedNodesRef.current = attachedNodes;
-  const selectedMCPServerViewIds = useMemo(
-    () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
-    [selectedMCPServerViews]
-  );
-  const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
   const selectedSpaceIdsRef = useRef(selectedSpaceIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   // The slash suggestion extension captures its options at editor initialization, while the
@@ -463,7 +458,6 @@ const InputBarContainer = ({
   >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewLightType | null>(null);
-  selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   useEffect(() => {
@@ -816,7 +810,6 @@ const InputBarContainer = ({
       onSelectRef,
       onDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
-      selectedMCPServerViewIdsRef,
       slashCommandsRef,
       includeAttachKnowledgeRef,
       includePickModelRef,
