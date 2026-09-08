@@ -37,6 +37,7 @@ import {
   Chip,
   Clipboard,
   ClipboardCheck,
+  Code02,
   CodeBlock,
   Collapsible,
   CollapsibleContent,
@@ -48,6 +49,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  File02,
   Input,
   LangfuseLogo,
   LinkWrapper,
@@ -1331,8 +1333,18 @@ export function ConversationPage() {
                   }
                   size="sm"
                 >
-                  <ButtonsSwitch value="raw" label="Raw text" />
-                  <ButtonsSwitch value="markdown" label="Markdown" />
+                  <ButtonsSwitch
+                    value="raw"
+                    icon={Code02}
+                    label={useMarkdown ? undefined : "Raw text"}
+                    tooltip="Raw text"
+                  />
+                  <ButtonsSwitch
+                    value="markdown"
+                    icon={File02}
+                    label={useMarkdown ? "Markdown" : undefined}
+                    tooltip="Markdown"
+                  />
                 </ButtonsSwitchList>
               </div>
               {(pendingUserCount > 0 || createdAgentCount > 0) && (
