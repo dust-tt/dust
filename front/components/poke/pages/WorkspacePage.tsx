@@ -29,11 +29,11 @@ import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { WorkspaceAnalyticsButton } from "@app/components/poke/workspace/WorkspaceAnalyticsButton";
 import { WorkspacePoolUsageButton } from "@app/components/poke/workspace/WorkspacePoolUsageButton";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
-import { usePokeCells } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
@@ -56,7 +56,7 @@ import {
 export function WorkspacePage() {
   const owner = useWorkspace();
   usePokePageMetadata({ name: owner.name ?? "Workspace", sId: owner.sId });
-  const { currentCell } = usePokeCells();
+  const { cellInfo: currentCell } = useCellContext();
 
   const router = useAppRouter();
 
