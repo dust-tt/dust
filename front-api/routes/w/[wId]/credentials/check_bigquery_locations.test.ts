@@ -165,6 +165,26 @@ describe("POST /api/w/:wId/credentials/check_bigquery_locations", () => {
       "Failed to check BigQuery locations: BigQuery boom"
     );
   });
+
+  it("probes a bounded single page of tables per dataset", async () => {
+    const getTables = vi.fn().mockResolvedValue([[{ id: "table1" }]]);
+    mockDatasets([{ id: "dataset1", location: "US", getTables }]);
+
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const response = await postCheck(workspace.sId, {
+      credentials: MOCK_CREDENTIALS,
+    });
+
+    expect(response.status).toBe(200);
+    // Never paginate through every table: a single bounded page is enough to
+    // know the dataset is non-empty and to surface a sample (see #31964).
+    expect(getTables).toHaveBeenCalledTimes(1);
+    expect(getTables).toHaveBeenCalledWith({
+      maxResults: 50,
+      autoPaginate: false,
+    });
+  });
 });
 
 describe("Method support /api/w/:wId/credentials/check_bigquery_locations", () => {
