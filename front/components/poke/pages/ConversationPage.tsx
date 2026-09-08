@@ -30,6 +30,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Check,
   ChevronDown,
   Chip,
@@ -48,12 +50,10 @@ import {
   Input,
   LinkWrapper,
   Markdown,
-  Page,
   Spinner,
   useCopyToClipboard,
   XClose,
 } from "@dust-tt/sparkle";
-import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { ComponentProps, ReactNode } from "react";
 import { useRef, useState } from "react";
 
@@ -843,10 +843,9 @@ function getDatadogSandboxLogsUrl(conversationId: string): string {
 
 /**
  * @cc [owner:aubin-tchoi,label:react] conversation-layout
- * Messages grow to 64rem and center in the viewport when both side gutters can fit the
- * inspector rail; below xl, inspectors stack above messages. The plugin list is capped
- * at the message column's maximum width. The active-messages banner shares the message
- * column's width.
+ * Messages grow to 64rem and center when both side rails fit. Plugins sit to the left
+ * from 2xl and stack above below it; inspectors sit to the right from xl. Display
+ * controls and the active-messages banner share the message column's width.
  */
 export function ConversationPage() {
   const owner = useWorkspace();
@@ -1038,13 +1037,11 @@ export function ConversationPage() {
     conversation && (
       <div
         className={cn(
-          "mx-auto flex w-full max-w-5xl flex-col gap-4 xl:max-w-[123rem]",
-          // Reserve a matching left gutter as space permits: 64rem of messages,
-          // a 28rem inspector rail, and a 1.5rem gap on either side.
-          "xl:pl-[clamp(0rem,calc(100%_-_93.5rem),29.5rem)]"
+          "mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 xl:max-w-[123rem]",
+          "2xl:grid-cols-[minmax(16rem,1fr)_minmax(0,93.5rem)]"
         )}
       >
-        <h3 className="text-xl font-bold">
+        <h3 className="text-xl font-bold 2xl:col-start-2">
           Conversation in workspace{" "}
           <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight">
             {owner.name}
@@ -1062,16 +1059,16 @@ export function ConversationPage() {
             </>
           )}
         </h3>
-        <Page.Vertical align="stretch">
-          <div className="mb-1 w-full max-w-5xl">
-            <PluginList
-              pluginResourceTarget={{
-                resourceId: conversation.sId,
-                resourceType: "conversations",
-                workspace: owner,
-              }}
-            />
-          </div>
+        <aside className="w-full min-w-0 max-w-5xl 2xl:sticky 2xl:top-4 2xl:col-start-1 2xl:row-start-2 2xl:self-start">
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: conversation.sId,
+              resourceType: "conversations",
+              workspace: owner,
+            }}
+          />
+        </aside>
+        <div className="flex min-w-0 flex-col gap-3 2xl:col-start-2 2xl:row-start-2">
           <div className="flex w-full max-w-5xl flex-col items-start gap-3">
             <div className="flex flex-wrap gap-2">
               {langfuseUiBaseUrl && (
@@ -1128,13 +1125,6 @@ export function ConversationPage() {
                 size="xs"
                 target="_blank"
                 disabled={!conversationDataSourceId}
-              />
-              <Button
-                label={useMarkdown ? "Plain Text" : "Preview Markdown"}
-                variant="outline"
-                size="xs"
-                icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
-                onClick={() => setUseMarkdown(!useMarkdown)}
               />
               <Button
                 label="Self-improving skills test"
@@ -1341,6 +1331,19 @@ export function ConversationPage() {
               </div>
             </aside>
             <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-separator pb-4">
+                <h4 className="text-base font-semibold">Messages</h4>
+                <ButtonsSwitchList
+                  value={useMarkdown ? "markdown" : "raw"}
+                  onValueChange={(value) =>
+                    setUseMarkdown(value === "markdown")
+                  }
+                  size="sm"
+                >
+                  <ButtonsSwitch value="raw" label="Raw text" />
+                  <ButtonsSwitch value="markdown" label="Markdown" />
+                </ButtonsSwitchList>
+              </div>
               {(pendingUserCount > 0 || createdAgentCount > 0) && (
                 <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
                   <span className="text-sm font-medium text-foreground">
@@ -1428,7 +1431,7 @@ export function ConversationPage() {
               })}
             </div>
           </div>
-        </Page.Vertical>
+        </div>
       </div>
     )
   );
