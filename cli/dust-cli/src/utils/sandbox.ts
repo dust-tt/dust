@@ -69,10 +69,6 @@ export function configureSandbox({
   };
 }
 
-export function getSandboxConfig(): SandboxConfig {
-  return { ...config, allowedPaths: [...config.allowedPaths] };
-}
-
 export function describeSandbox(): string {
   if (!config.enabled) {
     return "Filesystem sandbox disabled - the agent can read and write anywhere.";

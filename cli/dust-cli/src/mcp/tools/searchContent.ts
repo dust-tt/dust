@@ -8,7 +8,9 @@ import type { McpTool } from "../types/tools.js";
 
 export class SearchContentTool implements McpTool {
   name = "search_content";
-  description = "Search for content within files";
+  description =
+    "Search for content within files. " +
+    "The search is scoped to the workspace the CLI was started in: a directory outside it is refused.";
 
   inputSchema = z.object({
     pattern: z.string().describe("The text to search for"),

@@ -29,7 +29,8 @@ export class EditFileTool implements McpTool {
     "ESSENTIAL for `old_string`: Must provide unique identification for the specific instance requiring modification. " +
     "Include minimum 3 lines of surrounding context BEFORE and AFTER the target content, preserving exact spacing and formatting. Multiple matches or inexact matches will cause failure." +
     "**Batch replacements:** Define `expected_replacements` with the number of instances to modify. The tool will modify ALL instances matching `old_string` precisely. " +
-    "Verify the replacement count aligns with your intentions.";
+    "Verify the replacement count aligns with your intentions.\n\n" +
+    "Edits are scoped to the workspace the CLI was started in: a path outside it is refused.";
 
   inputSchema = z.object({
     path: z

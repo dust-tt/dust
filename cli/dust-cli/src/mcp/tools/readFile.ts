@@ -8,7 +8,8 @@ import type { McpTool } from "../types/tools.js";
 export class ReadFileTool implements McpTool {
   name = "read_file";
   description =
-    "Reads a given file from the local filesystem and returns its contents. Supports PDF files, text, and picture files (PNG, JPG, GIF, WEBP, SVG, and BMP). It can read certain line ranges from text files.";
+    "Reads a given file from the local filesystem and returns its contents. Supports PDF files, text, and picture files (PNG, JPG, GIF, WEBP, SVG, and BMP). It can read certain line ranges from text files. " +
+    "Reads are scoped to the workspace the CLI was started in: a path outside it is refused.";
 
   inputSchema = z.object({
     path: z

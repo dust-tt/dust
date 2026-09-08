@@ -10,7 +10,9 @@ import type { McpTool } from "../types/tools.js";
 
 export class SearchFilesTool implements McpTool {
   name = "search_files";
-  description = "Search for files matching a pattern";
+  description =
+    "Search for files matching a pattern. " +
+    "The search is scoped to the workspace the CLI was started in: a directory outside it is refused.";
 
   inputSchema = z.object({
     pattern: z
