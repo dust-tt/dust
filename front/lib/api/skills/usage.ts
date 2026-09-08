@@ -1,5 +1,4 @@
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
-import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
   buildConsumptionScopeQuery,
@@ -22,22 +21,14 @@ type SkillUsageAggregations = {
 };
 
 /**
- * @cc [owner:aubin-tchoi,label:product] skill-consumption-counts
- * Counts matching indexed consumption documents attributed to each requested skill in the
- * authenticated workspace within [period.startDate, period.endDate); skills without matching
- * documents are absent from the map.
+ * @cc [owner:aubin-tchoi,label:product] recent-skill-usage
+ * Counts indexed `skill_management.enable_skill` calls attributed to each requested skill in the
+ * authenticated workspace within [period.startDate, period.endDate); skills without calls are
+ * absent from the map.
  */
-async function fetchSkillUsageCounts(
+export async function fetchSkillUsageCounts(
   auth: Authenticator,
-  {
-    skillIds,
-    period,
-    extraFilters,
-  }: {
-    skillIds: string[];
-    period: ConsumptionPeriod;
-    extraFilters: estypes.QueryDslQueryContainer[];
-  }
+  { skillIds, period }: { skillIds: string[]; period: ConsumptionPeriod }
 ): Promise<Result<Map<string, number>, ElasticsearchError>> {
   if (skillIds.length === 0) {
     return new Ok(new Map());
@@ -48,7 +39,11 @@ async function fetchSkillUsageCounts(
     startDate: period.startDate,
     endDate: period.endDate,
     filter: { skills: skillIds },
-    extraFilters,
+    extraFilters: [
+      { term: { consumption_type: "tool" } },
+      { term: { "tool.name": ENABLE_SKILL_TOOL_NAME } },
+      { term: { "tool.server_name": "skill_management" } },
+    ],
   });
   const result = await searchConsumptionAnalytics<
     never,
@@ -75,25 +70,4 @@ async function fetchSkillUsageCounts(
   return new Ok(
     new Map(buckets.map((bucket) => [bucket.key, bucket.doc_count]))
   );
-}
-
-/**
- * @cc [owner:aubin-tchoi,label:product] recent-skill-usage
- * Counts indexed `skill_management.enable_skill` calls attributed to each requested skill in the
- * authenticated workspace within [period.startDate, period.endDate); skills without calls are
- * absent from the map.
- */
-export function fetchSkillEnablementCounts(
-  auth: Authenticator,
-  { skillIds, period }: { skillIds: string[]; period: ConsumptionPeriod }
-): Promise<Result<Map<string, number>, ElasticsearchError>> {
-  return fetchSkillUsageCounts(auth, {
-    skillIds,
-    period,
-    extraFilters: [
-      { term: { consumption_type: "tool" } },
-      { term: { "tool.name": ENABLE_SKILL_TOOL_NAME } },
-      { term: { "tool.server_name": SKILL_MANAGEMENT_SERVER_NAME } },
-    ],
-  });
 }
