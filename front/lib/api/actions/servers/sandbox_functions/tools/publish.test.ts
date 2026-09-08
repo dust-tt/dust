@@ -237,6 +237,79 @@ describe("publishHandler", () => {
     );
   });
 
+  it("appends the fast tool-call warning without blocking the publish", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: 'const res = spawnSync("dsbx", ["tools", "call"]);',
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      })
+    );
+
+    const result = await publishHandler(
+      {
+        slug: "sync-data",
+        description: "Sync data.",
+        path: `pod-${projectId}/TaskList/functions/sync-data.ts`,
+        executionMode: "fast",
+        defaultStake: "low",
+      },
+      makeExtra(auth, conversation)
+    );
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const [block] = result.value;
+    if (block?.type !== "text") {
+      throw new Error("Expected a text block.");
+    }
+    // The publish still lands; the warning rides the result.
+    expect(block.text).toContain(
+      'Published pod function "tasklist__sync-data"'
+    );
+    expect(block.text).toContain("fast_function_called_tools");
+    expect(block.text).toContain("confirmFast");
+  });
+
+  it("silences the fast tool-call warning when confirmFast is passed", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: 'const res = spawnSync("dsbx", ["tools", "call"]);',
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      })
+    );
+
+    const result = await publishHandler(
+      {
+        slug: "sync-data",
+        description: "Sync data.",
+        path: `pod-${projectId}/TaskList/functions/sync-data.ts`,
+        executionMode: "fast",
+        defaultStake: "low",
+        confirmFast: true,
+      },
+      makeExtra(auth, conversation)
+    );
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const [block] = result.value;
+    if (block?.type !== "text") {
+      throw new Error("Expected a text block.");
+    }
+    expect(block.text).toContain(
+      'Published pod function "tasklist__sync-data"'
+    );
+    expect(block.text).not.toContain("fast_function_called_tools");
+  });
+
   it("accepts a bare function name but not one that already carries a prefix", () => {
     const metadata = SANDBOX_FUNCTIONS_TOOLS_METADATA.find(
       (tool) => tool.name === "publish"
