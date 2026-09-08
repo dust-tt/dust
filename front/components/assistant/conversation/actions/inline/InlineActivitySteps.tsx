@@ -221,6 +221,7 @@ export function InlineActivitySteps({
       activeCotContent={showActiveThinking ? chainOfThought : ""}
       isDone={isDone}
       headerLabel={headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
+      source="message"
       onActionClick={openBreakdownPanel}
       showTrailingSpinner={showTrailingSpinner}
       terminalRow={terminalRow}
