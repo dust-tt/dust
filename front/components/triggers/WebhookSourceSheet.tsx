@@ -178,7 +178,9 @@ function WebhookSourceSheetContent({
   const [remoteProviderData, setRemoteProviderData] =
     useState<RemoteProviderData | null>(null);
   const [connectionId, setConnectionId] = useState<string | null>(null);
-  const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(true);
+  const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(
+    mode.provider === null
+  );
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
