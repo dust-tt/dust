@@ -1325,9 +1325,33 @@ export function ConversationPage() {
               asChild
             >
               <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-separator pb-4">
+                <div className="flex flex-wrap items-center gap-3 border-b border-separator pb-4">
                   <h4 className="text-base font-semibold">Messages</h4>
-                  <div className="rounded-2xl border border-border-dark bg-background p-1">
+                  {(pendingUserCount > 0 || createdAgentCount > 0) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="sr-only">Active messages</span>
+                      {pendingUserCount > 0 && (
+                        <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                          <span className="font-mono tabular-nums">
+                            {pendingUserCount}
+                          </span>
+                          user message
+                          {pendingUserCount > 1 ? "s" : ""} queued
+                        </span>
+                      )}
+                      {createdAgentCount > 0 && (
+                        <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                          <Spinner size="xs" />
+                          <span className="font-mono tabular-nums">
+                            {createdAgentCount}
+                          </span>
+                          agent message
+                          {createdAgentCount > 1 ? "s" : ""} generating
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="ml-auto shrink-0 rounded-2xl border border-border-dark bg-background p-1">
                     <NavTabPillList>
                       <NavTabPillTrigger value="raw" icon={Code02}>
                         Raw text
@@ -1339,32 +1363,6 @@ export function ConversationPage() {
                   </div>
                 </div>
                 <NavTabPillContent value={useMarkdown ? "markdown" : "raw"}>
-                  {(pendingUserCount > 0 || createdAgentCount > 0) && (
-                    <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
-                      <span className="text-sm font-medium text-foreground">
-                        Active messages
-                      </span>
-                      {pendingUserCount > 0 && (
-                        <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                          <span className="font-mono tabular-nums">
-                            {pendingUserCount}
-                          </span>
-                          user message
-                          {pendingUserCount > 1 ? "s" : ""} queued
-                        </span>
-                      )}
-                      {createdAgentCount > 0 && (
-                        <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                          <Spinner size="xs" />
-                          <span className="font-mono tabular-nums">
-                            {createdAgentCount}
-                          </span>
-                          agent message
-                          {createdAgentCount > 1 ? "s" : ""} generating
-                        </span>
-                      )}
-                    </div>
-                  )}
                   {conversation.content.map((messages, i) => {
                     return (
                       <div
