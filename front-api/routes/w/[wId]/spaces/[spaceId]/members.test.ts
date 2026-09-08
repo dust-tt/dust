@@ -334,3 +334,131 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/members", () => {
     );
   });
 });
+
+// The global space (Company Data) is readable by the whole workspace; its member list is the set of
+// people who may modify its content, on top of admins and managers.
+describe("global space members", () => {
+  // Whether `userId` may write to `space`, resolved from a freshly built Authenticator so the
+  // grants the request wrote are visible.
+  async function canWrite(
+    workspace: { sId: string },
+    space: SpaceResource,
+    userId: string
+  ): Promise<boolean> {
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      userId,
+      workspace.sId
+    );
+    const refreshed = await SpaceResource.fetchById(auth, space.sId);
+    expect(refreshed).not.toBeNull();
+    return auth.can("write", refreshed!);
+  }
+
+  it("adds an individual member through PATCH and gives them write", async () => {
+    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const { agentOwner: member } = await setupAgentOwner(workspace, "user");
+
+    expect(await canWrite(workspace, globalSpace, member.sId)).toBe(false);
+
+    const response = await patchMembers(workspace, globalSpace.sId, {
+      isRestricted: false,
+      memberIds: [member.sId],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await canWrite(workspace, globalSpace, member.sId)).toBe(true);
+  });
+
+  it("adds members by group through PATCH and gives them write", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const { agentOwner: member } = await setupAgentOwner(workspace, "user");
+    const group = await GroupFactory.provisioned(workspace, "Data owners");
+    await GroupFactory.withMembers(auth, group, [member]);
+
+    const response = await patchMembers(workspace, globalSpace.sId, {
+      isRestricted: false,
+      groupIds: [group.sId],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await canWrite(workspace, globalSpace, member.sId)).toBe(true);
+  });
+
+  it("takes individual members and groups in the same PATCH", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const { agentOwner: member } = await setupAgentOwner(workspace, "user");
+    const { agentOwner: groupMember } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const group = await GroupFactory.provisioned(workspace, "Data owners");
+    await GroupFactory.withMembers(auth, group, [groupMember]);
+
+    const response = await patchMembers(workspace, globalSpace.sId, {
+      isRestricted: false,
+      memberIds: [member.sId],
+      groupIds: [group.sId],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await canWrite(workspace, globalSpace, member.sId)).toBe(true);
+    expect(await canWrite(workspace, globalSpace, groupMember.sId)).toBe(true);
+  });
+
+  it("adds an individual member through POST without replacing the list", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const { agentOwner: existingMember } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const { agentOwner: newMember } = await setupAgentOwner(workspace, "user");
+    await globalSpace.addMembers(auth, { userIds: [existingMember.sId] });
+
+    const response = await postMembers(workspace, globalSpace.sId, {
+      memberIds: [newMember.sId],
+    });
+
+    expect(response.status).toBe(200);
+
+    const members =
+      await globalSpace.fetchDistinctActiveManualGroupMembers(auth);
+    expect(new Set(members.map((m) => m.sId))).toEqual(
+      new Set([existingMember.sId, newMember.sId])
+    );
+    expect(await canWrite(workspace, globalSpace, newMember.sId)).toBe(true);
+  });
+
+  it("rejects restricting the global space", async () => {
+    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const response = await patchMembers(workspace, globalSpace.sId, {
+      isRestricted: true,
+      memberIds: [],
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects non-admins", async () => {
+    const { workspace, user, globalSpace } = await createPrivateApiMockRequest({
+      role: "builder",
+    });
+
+    const response = await patchMembers(workspace, globalSpace.sId, {
+      isRestricted: false,
+      memberIds: [user.sId],
+    });
+
+    expect(response.status).toBe(403);
+  });
+});

@@ -1112,6 +1112,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * `params` is the space's whole desired membership: `memberIds`, `editorIds`, `groupIds` and
    * `editorGroupIds` are each overwritten, and a dimension `params` leaves out is emptied.
    */
+  /**
+   * @cc [owner:fabiencelier,label:security] global-space-permissions-update
+   * On the global space, this must reject `isRestricted: true` with `invalid_request_error` and
+   * keep the workspace global group's `reader` grant: Company Data is always readable by the whole
+   * workspace, and only the selected members and groups gain `write`.
+   */
   async updatePermissions(
     auth: Authenticator,
     params: {
@@ -1130,6 +1136,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         | "invalid_group_kind"
         | "system_or_global_group"
         | "invalid_id"
+        | "invalid_request_error"
       >
     >
   > {
@@ -1142,17 +1149,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    if (!this.isRegular() && !this.isProject()) {
+    if (!this.isRegular() && !this.isProject() && !this.isGlobal()) {
       return new Err(
         new DustError(
           "unauthorized",
-          "Only projects and regular spaces can have members."
+          "Only projects, regular spaces and the global space can have members."
         )
       );
     }
 
     // The request is the space's whole desired membership: a dimension it leaves out is emptied.
     const { isRestricted, memberIds = [], editorIds = [] } = params;
+
+    // The global space is readable by the whole workspace by construction: its members are the
+    // people allowed to write to it, not the people allowed to see it.
+    if (this.isGlobal() && isRestricted) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "The global space cannot be restricted."
+        )
+      );
+    }
 
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
@@ -1178,8 +1196,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       const { memberGroups, editorGroups } = requestedGroupsRes.value;
 
       // The space is open (unrestricted) exactly when the workspace global group is one of its
-      // groups: it is simply included in `members` iff the space is (becoming) open.
-      const willBeOpen = !isRestricted;
+      // groups: it is simply included in `members` iff the space is (becoming) open. The global
+      // space is always open — that grant is what makes Company Data readable workspace-wide.
+      const willBeOpen = this.isGlobal() || !isRestricted;
 
       // The space's own groups always hold its manual members, alongside the attached groups.
       const memberGroup = await this.fetchManualMemberGroup(auth, t);
@@ -1325,8 +1344,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     assert(
-      this.isRegular() || this.isProject(),
-      "Only regular spaces and projects can have manual members."
+      this.isRegular() || this.isProject() || this.isGlobal(),
+      "Only regular spaces, projects and the global space can have manual members."
     );
 
     const users = await UserResource.fetchByIds(userIds);

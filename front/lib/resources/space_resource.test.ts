@@ -2824,6 +2824,155 @@ describe("SpaceResource group_permissions enforcement", () => {
     expect(adminAuth.getGrantedVerbs("space", space.id)).toContain("read");
   });
 
+  // The company space's member list is administrated like any other space's, except that it can
+  // never be restricted: everyone reads Company Data, and its members are the people allowed to
+  // modify it.
+  describe("global space administration", () => {
+    const fetchGlobalSpace = async (auth: Authenticator) =>
+      SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+    // Whether `user` may write to the global space, from a freshly built Authenticator so the
+    // grants the update wrote are visible.
+    const canWrite = async (user: UserResource) => {
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      return userAuth.can("write", await fetchGlobalSpace(adminAuth));
+    };
+
+    it("gives write to its members and read-only to everyone else", async () => {
+      const nonMemberUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, nonMemberUser, {
+        role: "user",
+      });
+
+      const globalSpace = await fetchGlobalSpace(adminAuth);
+      const res = await globalSpace.updatePermissions(adminAuth, {
+        isRestricted: false,
+        memberIds: [memberUser.sId],
+      });
+      expect(res.isOk()).toBe(true);
+
+      expect(await canWrite(memberUser)).toBe(true);
+      expect(await canWrite(nonMemberUser)).toBe(false);
+
+      const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        nonMemberUser.sId,
+        workspace.sId
+      );
+      const refreshed = await fetchGlobalSpace(adminAuth);
+      expect(nonMemberAuth.can("read", refreshed)).toBe(true);
+      expect(await refreshed.isRestricted(adminAuth)).toBe(false);
+    });
+
+    it("takes individual members and groups at once", async () => {
+      const groupUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, groupUser, { role: "user" });
+      const provisionedGroup = await GroupFactory.provisioned(
+        workspace,
+        "Company Data editors"
+      );
+      await GroupFactory.withMembers(adminAuth, provisionedGroup, [groupUser]);
+
+      const globalSpace = await fetchGlobalSpace(adminAuth);
+      const res = await globalSpace.updatePermissions(adminAuth, {
+        isRestricted: false,
+        memberIds: [memberUser.sId],
+        groupIds: [provisionedGroup.sId],
+      });
+      expect(res.isOk()).toBe(true);
+
+      expect(await canWrite(memberUser)).toBe(true);
+      expect(await canWrite(groupUser)).toBe(true);
+
+      // Both dimensions are cleared by an update that leaves them out; read survives.
+      const clearRes = await (
+        await fetchGlobalSpace(adminAuth)
+      ).updatePermissions(adminAuth, { isRestricted: false });
+      expect(clearRes.isOk()).toBe(true);
+
+      expect(await canWrite(memberUser)).toBe(false);
+      expect(await canWrite(groupUser)).toBe(false);
+
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        memberUser.sId,
+        workspace.sId
+      );
+      expect(memberAuth.can("read", await fetchGlobalSpace(adminAuth))).toBe(
+        true
+      );
+    });
+
+    it("adds and removes members without replacing the whole list", async () => {
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+      const globalSpace = await fetchGlobalSpace(adminAuth);
+      expect(
+        (
+          await globalSpace.addMembers(adminAuth, { userIds: [memberUser.sId] })
+        ).isOk()
+      ).toBe(true);
+      expect(
+        (
+          await globalSpace.addMembers(adminAuth, { userIds: [otherUser.sId] })
+        ).isOk()
+      ).toBe(true);
+
+      const members =
+        await globalSpace.fetchDistinctActiveManualGroupMembers(adminAuth);
+      expect(new Set(members.map((member) => member.sId))).toEqual(
+        new Set([memberUser.sId, otherUser.sId])
+      );
+      expect(await canWrite(otherUser)).toBe(true);
+
+      const removeRes = await globalSpace.removeMembers(adminAuth, {
+        userIds: [otherUser.sId],
+      });
+      expect(removeRes.isOk()).toBe(true);
+
+      const remaining =
+        await globalSpace.fetchDistinctActiveManualGroupMembers(adminAuth);
+      expect(remaining.map((member) => member.sId)).toEqual([memberUser.sId]);
+      expect(await canWrite(otherUser)).toBe(false);
+    });
+
+    it("cannot be restricted", async () => {
+      const globalSpace = await fetchGlobalSpace(adminAuth);
+      const res = await globalSpace.updatePermissions(adminAuth, {
+        isRestricted: true,
+        memberIds: [memberUser.sId],
+      });
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("invalid_request_error");
+      }
+
+      // Still readable workspace-wide: the global group kept its `reader` grant.
+      const refreshed = await fetchGlobalSpace(adminAuth);
+      expect(await refreshed.isRestricted(adminAuth)).toBe(false);
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        memberUser.sId,
+        workspace.sId
+      );
+      expect(memberAuth.can("read", refreshed)).toBe(true);
+    });
+
+    it("keeps write for admins whatever its member list holds", async () => {
+      const globalSpace = await fetchGlobalSpace(adminAuth);
+      const res = await globalSpace.updatePermissions(adminAuth, {
+        isRestricted: false,
+        memberIds: [],
+      });
+      expect(res.isOk()).toBe(true);
+
+      const refreshed = await fetchGlobalSpace(adminAuth);
+      expect(adminAuth.can("write", refreshed)).toBe(true);
+      expect(adminAuth.can("admin", refreshed)).toBe(true);
+    });
+  });
+
   // The global space (Company Data): everyone reads it, and write comes from the admin/manager
   // roles plus the members of its member group (see `spaceRoleGrants` / `spaceGroupRoles`).
   describe("global space member group", () => {
