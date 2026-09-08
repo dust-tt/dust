@@ -4,6 +4,11 @@ import {
   getActionStepIcon,
   getCollapseAnimationStyle,
 } from "@app/components/assistant/conversation/actions/inline/utils";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ChevronRight, cn, Icon } from "@dust-tt/sparkle";
@@ -21,6 +26,7 @@ interface ActivityTimelineProps {
   activeCotContent: string;
   isDone: boolean;
   headerLabel: React.ReactNode;
+  source: "message" | "run_agent_details";
   onActionClick?: (actionId: string | undefined) => void;
   showTrailingSpinner: boolean;
   terminalRow?: {
@@ -37,6 +43,7 @@ export function ActivityTimeline({
   activeCotContent,
   isDone,
   headerLabel,
+  source,
   onActionClick,
   showTrailingSpinner,
   terminalRow,
@@ -48,7 +55,18 @@ export function ActivityTimeline({
   const showActiveCoT = !isDone && activeCotContent.length > 0;
   const hasRunningRows = runningToolRows.length > 0;
 
-  const toggleCollapse = () => setIsCollapsed((c) => !c);
+  const toggleCollapse = () => {
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "activity_steps",
+      action: isCollapsed ? TRACKING_ACTIONS.OPEN : TRACKING_ACTIONS.CLOSE,
+      extra: {
+        source,
+        message_state: isDone ? "done" : "generating",
+      },
+    });
+    setIsCollapsed((c) => !c);
+  };
 
   return (
     <div className="flex flex-col text-sm">
