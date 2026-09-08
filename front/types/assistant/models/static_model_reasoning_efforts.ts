@@ -394,6 +394,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: false,
   },
+  "accounts/fireworks/models/deepseek-v4-pro-0813": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "accounts/fireworks/models/deepseek-v4-flash-0731": {
     none: true,
     light: true,
