@@ -203,7 +203,7 @@ export function InlineActivitySteps({
       : undefined;
 
   const extraBelowCollapse =
-    showActiveWriting && agentMessage.content ? (
+    !isDone && agentMessage.content ? (
       <div className="mt-3">
         <AgentMessageMarkdown
           content={agentMessage.content}
