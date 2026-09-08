@@ -1,4 +1,7 @@
-import { cleanUtf8Content } from "@app/temporal/upsert_queue/activities";
+import {
+  cleanUtf8Content,
+  isGcsNotFoundError,
+} from "@app/temporal/upsert_queue/activities";
 import { describe, expect, it } from "vitest";
 
 describe("cleanUtf8Content", () => {
@@ -57,5 +60,18 @@ describe("cleanUtf8Content", () => {
 
   it("strips null bytes before the surrogate path runs", () => {
     expect(cleanUtf8Content("\0\\uD800\0")).toBe("\\u003F");
+  });
+});
+
+describe("isGcsNotFoundError", () => {
+  it("recognizes numeric and string GCS 404 codes", () => {
+    expect(isGcsNotFoundError({ code: 404 })).toBe(true);
+    expect(isGcsNotFoundError({ code: "404" })).toBe(true);
+  });
+
+  it("does not classify other errors as missing payloads", () => {
+    expect(isGcsNotFoundError({ code: 500 })).toBe(false);
+    expect(isGcsNotFoundError(new Error("No such object"))).toBe(false);
+    expect(isGcsNotFoundError(null)).toBe(false);
   });
 });
