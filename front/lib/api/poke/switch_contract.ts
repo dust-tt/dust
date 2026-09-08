@@ -134,6 +134,36 @@ function validatePlanPackageCompat(
   return { ok: true };
 }
 
+// Timestamp of the i-th invoice installment: `i * monthsPerPeriod` months after
+// the contract start, on the start's day for the first installment and the 1st
+// of the month thereafter, keeping the start's time of day. Month overflow is
+// clamped to the last day of the target month.
+function installmentTimestamp(
+  alignedStart: Date,
+  i: number,
+  monthsPerPeriod: number
+): Date {
+  const totalMonths = alignedStart.getUTCMonth() + i * monthsPerPeriod;
+  const targetYear =
+    alignedStart.getUTCFullYear() + Math.floor(totalMonths / 12);
+  const targetMonth = ((totalMonths % 12) + 12) % 12;
+  const lastDayOfMonth = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0)
+  ).getUTCDate();
+  const day = i === 0 ? Math.min(alignedStart.getUTCDate(), lastDayOfMonth) : 1;
+  return new Date(
+    Date.UTC(
+      targetYear,
+      targetMonth,
+      day,
+      alignedStart.getUTCHours(),
+      alignedStart.getUTCMinutes(),
+      alignedStart.getUTCSeconds(),
+      alignedStart.getUTCMilliseconds()
+    )
+  );
+}
+
 function buildInvoiceScheduleItems({
   invoiceAmountCents,
   resolvedCurrency,
@@ -179,11 +209,12 @@ function buildInvoiceScheduleItems({
           maxInvoicePeriods(alignedStart, commitmentEnd, frequency)
         );
   // Per-installment amounts (cents) and their timestamps, before the reduction.
-  const amountsCents: number[] = [];
-  const timestamps: Date[] = [];
+  const installments: { amountCents: number; timestamp: Date }[] = [];
   if (frequency === "one_time" || !periods || periods <= 1) {
-    amountsCents.push(invoiceAmountCents);
-    timestamps.push(alignedStart);
+    installments.push({
+      amountCents: invoiceAmountCents,
+      timestamp: alignedStart,
+    });
   } else {
     const monthsPerPeriod = PAYMENT_FREQUENCY_MONTHS[frequency];
     // With a known per-period list amount, bill it in full each period (clamped
@@ -209,42 +240,26 @@ function buildInvoiceScheduleItems({
               )
             : Math.round(invoiceAmountCents * (weights[i] / weightSum));
       allocatedCents += amountCents;
-      amountsCents.push(amountCents);
-      const totalMonths = alignedStart.getUTCMonth() + i * monthsPerPeriod;
-      const targetYear =
-        alignedStart.getUTCFullYear() + Math.floor(totalMonths / 12);
-      const targetMonth = ((totalMonths % 12) + 12) % 12;
-      const lastDayOfMonth = new Date(
-        Date.UTC(targetYear, targetMonth + 1, 0)
-      ).getUTCDate();
-      const day =
-        i === 0 ? Math.min(alignedStart.getUTCDate(), lastDayOfMonth) : 1;
-      timestamps.push(
-        new Date(
-          Date.UTC(
-            targetYear,
-            targetMonth,
-            day,
-            alignedStart.getUTCHours(),
-            alignedStart.getUTCMinutes(),
-            alignedStart.getUTCSeconds(),
-            alignedStart.getUTCMilliseconds()
-          )
-        )
-      );
+      installments.push({
+        amountCents,
+        timestamp: installmentTimestamp(alignedStart, i, monthsPerPeriod),
+      });
     }
   }
   // Apply the promotional free-period reduction from the first bill onwards.
   let remainingReduction = reduceFrontCents ?? 0;
-  for (let i = 0; i < amountsCents.length && remainingReduction > 0; i++) {
-    const applied = Math.min(amountsCents[i], remainingReduction);
-    amountsCents[i] -= applied;
+  for (const installment of installments) {
+    if (remainingReduction <= 0) {
+      break;
+    }
+    const applied = Math.min(installment.amountCents, remainingReduction);
+    installment.amountCents -= applied;
     remainingReduction -= applied;
   }
-  return amountsCents.map((cents, i) => ({
-    unitPrice: metronomeAmount(cents, resolvedCurrency),
+  return installments.map((installment) => ({
+    unitPrice: metronomeAmount(installment.amountCents, resolvedCurrency),
     quantity: 1,
-    timestamp: timestamps[i],
+    timestamp: installment.timestamp,
   }));
 }
 

@@ -337,8 +337,6 @@ export default function SwitchContractDialog({
   useEffect(() => {
     if (!open) {
       creditConfigAppliedRef.current = false;
-      setOfferValue(0);
-      setOfferUnit("weeks");
       return;
     }
     if (!existingCreditConfig || creditConfigAppliedRef.current) {
@@ -948,7 +946,17 @@ export default function SwitchContractDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        // Reset the promotional offer when the dialog closes.
+        if (!next) {
+          setOfferValue(0);
+          setOfferUnit("weeks");
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline" label="🔁 Switch contract" />
       </DialogTrigger>
