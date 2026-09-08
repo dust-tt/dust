@@ -24,21 +24,123 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import logger from "@app/logger/logger";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
 describe("getAgentConfigurations", () => {
+  it("reports system-key edit access without a permission shadow mismatch", async () => {
+    const { authenticator, workspace, systemGroup } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        scope: "hidden",
+      }
+    );
+    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
+    const key = await KeyFactory.system(systemGroup);
+    const auth = await Authenticator.fromKey(key, workspace.sId);
+    const warn = vi.spyOn(logger, "warn");
+    try {
+      const configuration = await getAgentConfiguration(auth, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+
+      expect(configuration).toMatchObject({ canRead: true, canEdit: true });
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.objectContaining({ check: "agent_permissions" }),
+        "group_permissions_shadow_mismatch"
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("respects the agent grants of a scoped system key", async () => {
+    const { authenticator, workspace, systemGroup } = await createResourceTest({
+      role: "admin",
+    });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const otherAgent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Other agent",
+      }
+    );
+    const group = await GroupFactory.regularManual(workspace, "Agent editors");
+    const resource = await AgentResource.fetchByAgentConfiguration(
+      authenticator,
+      agent
+    );
+    assert(resource.id !== null);
+    await GroupPermissionResource.grant(authenticator, {
+      group,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: resource.id,
+    });
+    const key = await KeyFactory.system(systemGroup);
+    const auth = await Authenticator.fromKey(key, workspace.sId, [group.sId]);
+    const agents = await getAgentConfigurations(auth, {
+      agentIds: [agent.sId, otherAgent.sId],
+      variant: "light",
+    });
+
+    expect(
+      Object.fromEntries(agents.map((agent) => [agent.sId, agent.canEdit]))
+    ).toEqual({
+      [agent.sId]: true,
+      [otherAgent.sId]: false,
+    });
+  });
+
+  it("does not give human or impersonated admins implicit edit access", async () => {
+    const { authenticator, workspace, systemGroup } = await createResourceTest({
+      role: "admin",
+    });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    const key = await KeyFactory.system(systemGroup);
+    const systemAuth = await Authenticator.fromKey(key, workspace.sId);
+    const impersonatedAuth =
+      await systemAuth.exchangeSystemKeyForUserAuthByEmail(systemAuth, {
+        userEmail: admin.email,
+        requestedRole: "admin",
+      });
+    assert(impersonatedAuth);
+    for (const auth of [adminAuth, impersonatedAuth]) {
+      const configuration = await getAgentConfiguration(auth, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(configuration?.canEdit).toBe(false);
+    }
+  });
+
   it("returns only the latest version of each requested agent", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const firstAgent =

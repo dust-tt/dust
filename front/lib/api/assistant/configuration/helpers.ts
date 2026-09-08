@@ -123,6 +123,9 @@ async function shadowAgentPermissions(
     context: {
       check: "agent_permissions",
       workspaceId: auth.getNonNullableWorkspace().sId,
+      authMethod: auth.authMethod(),
+      hasUser: auth.user() !== null,
+      isSystemKey: auth.isSystemKey(),
     },
     equals: (legacy, candidate) =>
       legacy.length === candidate.length &&
@@ -142,6 +145,11 @@ async function shadowAgentPermissions(
 
 /**
  * Enrich agent configurations with additional data (actions, tags, favorites).
+ */
+/**
+ * @cc [owner:philipperolet,label:security] agent-editability
+ * `canEdit` allows legacy authors/editors or user-less system-key callers with agent write
+ * permission; workspace admin role alone does not grant it.
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
@@ -194,9 +202,13 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
 
     const isAuthor = agent.authorId === auth.user()?.id;
     const isMember = editorIds.includes(agent.id);
+    const canEditAsSystem =
+      !user &&
+      auth.isSystemKey() &&
+      auth.can("write", AgentResource.fromAgentConfigurationModel(agent));
 
-    const canRead = isAuthor || isMember || agent.scope === "visible";
-    const canEdit = isAuthor || isMember;
+    const canEdit = isAuthor || isMember || canEditAsSystem;
+    const canRead = canEdit || agent.scope === "visible";
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
