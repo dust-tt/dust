@@ -96,11 +96,38 @@ export async function getAgentIdFromName(
   return agent.sId;
 }
 
+/**
+ * @cc [owner:philipperolet,label:security] regular-key-agent-editability
+ * For regular keys on custom agents, editing requires builder access, active status, agent read
+ * access or workspace admin, and read access to every requested space.
+ */
+function canEditWithApiKey(
+  auth: Authenticator,
+  {
+    status,
+    canRead,
+    canReadSpaces,
+  }: {
+    status: AgentConfigurationType["status"];
+    canRead: boolean;
+    canReadSpaces: boolean;
+  }
+): boolean {
+  return (
+    auth.isBuilder() &&
+    status === "active" &&
+    (canRead || auth.isAdmin()) &&
+    canReadSpaces
+  );
+}
+
 async function shadowAgentPermissions(
   auth: Authenticator,
   agentModels: AgentConfigurationModel[],
-  legacyAgents: AgentConfigurationType[]
+  legacyAgents: AgentConfigurationType[],
+  spaceById: Map<ModelId, SpaceResource>
 ): Promise<void> {
+  const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
   await shadowCompare({
     auth,
     legacy: legacyAgents.map((agent) => ({
@@ -113,12 +140,26 @@ async function shadowAgentPermissions(
     candidate: async () =>
       agentModels.map((agent) => {
         const resource = AgentResource.fromAgentConfigurationModel(agent);
+        const read = auth.can("read", resource);
+        const write = isRegularApiKey
+          ? canEditWithApiKey(auth, {
+              status: agent.status,
+              canRead: read,
+              canReadSpaces: canReadRequestedSpaces(
+                auth,
+                spaceById,
+                agent.requestedSpaceIds
+              ),
+            })
+          : auth.can("write", resource);
         return {
           agentId: agent.sId,
           agentConfigurationModelId: agent.id,
-          read: auth.can("read", resource),
-          write: auth.can("write", resource),
-          admin: auth.can("admin", resource),
+          read,
+          write,
+          admin: isRegularApiKey
+            ? write || auth.isAdmin()
+            : auth.can("admin", resource),
         };
       }),
     context: {
@@ -221,10 +262,15 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const canRead =
       isAuthor || isMember || canEditAsSystem || agent.scope === "visible";
     const canEdit = isRegularApiKey
-      ? auth.isBuilder() &&
-        agent.status === "active" &&
-        (canRead || auth.isAdmin()) &&
-        canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
+      ? canEditWithApiKey(auth, {
+          status: agent.status,
+          canRead,
+          canReadSpaces: canReadRequestedSpaces(
+            auth,
+            spaceById,
+            agent.requestedSpaceIds
+          ),
+        })
       : isAuthor || isMember || canEditAsSystem;
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
@@ -269,7 +315,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   await shadowAgentPermissions(
     auth,
     agentConfigurations,
-    agentConfigurationTypes
+    agentConfigurationTypes,
+    spaceById
   );
 
   return agentConfigurationTypes;

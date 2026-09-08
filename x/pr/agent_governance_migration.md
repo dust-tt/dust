@@ -116,6 +116,10 @@ editor-list, permission, listing, backfill, and cache-related mismatches to reac
 Serve editor lists, permission decisions, and list/manage/archive filtering from grants at the same
 time, behind one operational switch with a single kill-switch fallback to legacy reads.
 
+Preserve regular API-key editability on top of grant-backed agent read access: builder role, active
+status, agent visibility or admin access, and access to every requested space. This shared policy
+must survive rollout cleanup; it is not an agent editor grant.
+
 **Operational gate:** observe the complete read flip before removing the fallback.
 
 ### PR 13: Remove legacy reads and rollout infrastructure
