@@ -110,13 +110,14 @@ app.get(
     const { kind, status, agentConfigurationId, limit, offset } =
       ctx.req.valid("query");
 
-    const triggers = await TriggerResource.listByWorkspaceAndFilters(auth, {
-      kind,
-      status: status ?? "enabled",
-      agentConfigurationId,
-      limit: limit ?? DEFAULT_LIMIT,
-      offset: offset ?? 0,
-    });
+    const triggers =
+      await TriggerResource.listByWorkspaceAndKindsAndExecutionModes(auth, {
+        kinds: kind ? [kind] : undefined,
+        statuses: [status ?? "enabled"],
+        agentConfigurationId,
+        limit: limit ?? DEFAULT_LIMIT,
+        offset: offset ?? 0,
+      });
 
     return ctx.json({
       triggers: await serializeTriggersForPublicApi(auth, triggers),

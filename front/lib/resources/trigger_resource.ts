@@ -374,7 +374,18 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     {
       kinds,
       executionModes,
-    }: { kinds?: TriggerKind[]; executionModes?: TriggerExecutionMode[] }
+      statuses,
+      agentConfigurationId,
+      limit,
+      offset,
+    }: {
+      kinds?: TriggerKind[];
+      executionModes?: TriggerExecutionMode[];
+      statuses?: TriggerStatus[];
+      agentConfigurationId?: string;
+      limit?: number;
+      offset?: number;
+    }
   ): Promise<TriggerResource[]> {
     return this.baseFetch(auth, {
       where: {
@@ -382,30 +393,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         ...(executionModes?.length
           ? { executionMode: { [Op.in]: executionModes } }
           : {}),
-      },
-    });
-  }
-
-  static async listByWorkspaceAndFilters(
-    auth: Authenticator,
-    {
-      kind,
-      status,
-      agentConfigurationId,
-      limit,
-      offset,
-    }: {
-      kind?: TriggerKind;
-      status?: TriggerStatus;
-      agentConfigurationId?: string;
-      limit: number;
-      offset: number;
-    }
-  ): Promise<TriggerResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        ...(kind ? { kind } : {}),
-        ...(status ? { status } : {}),
+        ...(statuses?.length ? { status: { [Op.in]: statuses } } : {}),
         ...(agentConfigurationId ? { agentConfigurationId } : {}),
       },
       order: [["id", "ASC"]],
