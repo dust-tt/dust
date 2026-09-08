@@ -2,10 +2,13 @@ import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { usePokeFeatureFlagUsage } from "@app/hooks/usePokeFeatureFlagUsage";
-import type { PokeFeatureFlagUsage } from "@app/lib/api/poke/feature_flags";
+import type { PokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
+import { usePokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
+import { useCellContext } from "@app/lib/auth/CellContext";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
+import type { CellType } from "@app/types/cell";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   FEATURE_FLAG_STAGE_LABELS,
@@ -13,7 +16,7 @@ import {
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
-import { Button, LinkWrapper, Pencil01, Trash01 } from "@dust-tt/sparkle";
+import { Button, Chip, LinkWrapper, Pencil01, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
@@ -29,18 +32,19 @@ const GLOBAL_PLUGIN_TARGET: PluginResourceTarget = { resourceType: "global" };
 interface PendingPluginAction {
   pluginId: string;
   flagName: string;
+  cell: CellType;
 }
 
 interface MakeColumnsParams {
   // Both are `null` when the current user cannot run the corresponding plugin.
-  onDeleteLegacyRows: ((flagName: string) => void) | null;
-  onEditGlobalRollout: ((flagName: string) => void) | null;
+  onDeleteLegacyRows: ((flagName: string, cell: CellType) => void) | null;
+  onEditGlobalRollout: ((flagName: string, cell: CellType) => void) | null;
 }
 
 function makeColumns({
   onDeleteLegacyRows,
   onEditGlobalRollout,
-}: MakeColumnsParams): ColumnDef<PokeFeatureFlagUsage>[] {
+}: MakeColumnsParams): ColumnDef<PokeFeatureFlagUsageAllCells>[] {
   return [
     {
       accessorKey: "name",
@@ -91,51 +95,101 @@ function makeColumns({
       },
     },
     {
-      accessorKey: "workspaceCount",
+      accessorKey: "totalWorkspaceCount",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Workspaces" />
       ),
       cell: ({ row }) => {
-        const { workspaceCount } = row.original;
+        const { byCell, totalWorkspaceCount } = row.original;
         return (
-          <span
-            className={
-              workspaceCount === 0
-                ? "text-muted-foreground"
-                : "font-medium text-foreground"
-            }
-          >
-            {workspaceCount}
-          </span>
+          <div className="flex flex-col gap-1">
+            <span
+              className={
+                totalWorkspaceCount === 0
+                  ? "text-muted-foreground"
+                  : "font-medium text-foreground"
+              }
+            >
+              {totalWorkspaceCount} total
+            </span>
+            <div className="flex flex-wrap items-center gap-1">
+              {byCell.map((stat) => (
+                <Chip
+                  key={stat.cell}
+                  size="mini"
+                  color={getCellChipColor(stat.region)}
+                  label={`${getCellDisplay({ name: stat.cell, region: stat.region })}: ${stat.workspaceCount}`}
+                />
+              ))}
+            </div>
+          </div>
         );
       },
     },
     {
-      accessorKey: "globalRolloutPercentage",
+      id: "globalRollout",
+      accessorFn: (flag) =>
+        flag.byCell.reduce(
+          (max, stat) => Math.max(max, stat.globalRolloutPercentage ?? -1),
+          -1
+        ),
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Global rollout" />
       ),
       cell: ({ row }) => {
-        const { globalRolloutPercentage, name, stage } = row.original;
-        const label =
-          globalRolloutPercentage === null
-            ? "—"
-            : `${globalRolloutPercentage}%`;
+        const { byCell, name, stage } = row.original;
 
         // Legacy flags are not in the plugin's list of features, so there is nothing to open.
         if (!onEditGlobalRollout || stage === null) {
-          return <span className="text-muted-foreground">{label}</span>;
+          return (
+            <div className="flex flex-wrap items-center gap-1">
+              {byCell.map((stat) => {
+                const label =
+                  stat.globalRolloutPercentage === null
+                    ? "—"
+                    : `${stat.globalRolloutPercentage}%`;
+                return (
+                  <Chip
+                    key={stat.cell}
+                    size="mini"
+                    color={getCellChipColor(stat.region)}
+                    label={`${getCellDisplay({ name: stat.cell, region: stat.region })}: ${label}`}
+                  />
+                );
+              })}
+            </div>
+          );
         }
 
         return (
-          <Button
-            variant="ghost"
-            size="xs"
-            icon={Pencil01}
-            label={label}
-            tooltip="Set the global rollout percentage"
-            onClick={() => onEditGlobalRollout(name)}
-          />
+          <div className="flex flex-col gap-1">
+            {byCell.map((stat) => {
+              const label =
+                stat.globalRolloutPercentage === null
+                  ? "—"
+                  : `${stat.globalRolloutPercentage}%`;
+              return (
+                <div key={stat.cell} className="flex items-center gap-1">
+                  <Chip
+                    size="mini"
+                    color={getCellChipColor(stat.region)}
+                    label={getCellDisplay({
+                      name: stat.cell,
+                      region: stat.region,
+                    })}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={Pencil01}
+                    label={label}
+                    tooltip="Set the global rollout percentage"
+                    onClick={() => onEditGlobalRollout(name, stat.cell)}
+                  />
+                </div>
+              );
+            })}
+          </div>
         );
       },
     },
@@ -155,7 +209,7 @@ function makeColumns({
       header: "",
       enableSorting: false,
       cell: ({ row }) => {
-        const { name, stage } = row.original;
+        const { name, stage, byCell } = row.original;
 
         // Only leftover rows are deleted wholesale; a flag that still exists is turned off per
         // workspace, or globally, through the toggle plugins.
@@ -163,15 +217,34 @@ function makeColumns({
           return null;
         }
 
+        const deletable = byCell.filter((stat) => stat.workspaceCount > 0);
+        if (deletable.length === 0) {
+          return null;
+        }
+
         return (
-          <Button
-            variant="warning"
-            size="xs"
-            icon={Trash01}
-            label="Delete rows"
-            tooltip="Delete every row for this retired flag"
-            onClick={() => onDeleteLegacyRows(name)}
-          />
+          <div className="flex flex-col gap-1">
+            {deletable.map((stat) => (
+              <div key={stat.cell} className="flex items-center gap-1">
+                <Chip
+                  size="mini"
+                  color={getCellChipColor(stat.region)}
+                  label={getCellDisplay({
+                    name: stat.cell,
+                    region: stat.region,
+                  })}
+                />
+                <Button
+                  variant="warning"
+                  size="xs"
+                  icon={Trash01}
+                  label="Delete rows"
+                  tooltip="Delete every row for this retired flag"
+                  onClick={() => onDeleteLegacyRows(name, stat.cell)}
+                />
+              </div>
+            ))}
+          </div>
         );
       },
     },
@@ -181,7 +254,8 @@ function makeColumns({
 export function FeatureFlagsPage() {
   usePokePageMetadata({ name: "Feature Flags" });
 
-  const { featureFlags, isLoading, mutate } = usePokeFeatureFlagUsage();
+  const { cells, cellInfo, setCellInfo } = useCellContext();
+  const { featureFlags, isLoading, mutate } = usePokeFeatureFlagUsageAllCells();
 
   const { plugins } = usePokeListPluginForResourceType({
     pluginResourceTarget: GLOBAL_PLUGIN_TARGET,
@@ -196,19 +270,38 @@ export function FeatureFlagsPage() {
   const [pendingAction, setPendingAction] =
     useState<PendingPluginAction | null>(null);
 
+  const switchToCell = useCallback(
+    (cell: CellType) => {
+      const targetCell = cells.find((c) => c.name === cell);
+      if (targetCell && targetCell.name !== cellInfo.name) {
+        setCellInfo(targetCell);
+      }
+    },
+    [cells, cellInfo, setCellInfo]
+  );
+
   const onEditGlobalRollout = useCallback(
-    (flagName: string) =>
+    (flagName: string, cell: CellType) => {
+      switchToCell(cell);
       setPendingAction({
         pluginId: TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID,
         flagName,
-      }),
-    []
+        cell,
+      });
+    },
+    [switchToCell]
   );
 
   const onDeleteLegacyRows = useCallback(
-    (flagName: string) =>
-      setPendingAction({ pluginId: DELETE_LEGACY_FLAG_PLUGIN_ID, flagName }),
-    []
+    (flagName: string, cell: CellType) => {
+      switchToCell(cell);
+      setPendingAction({
+        pluginId: DELETE_LEGACY_FLAG_PLUGIN_ID,
+        flagName,
+        cell,
+      });
+    },
+    [switchToCell]
   );
 
   const handlePluginDialogClose = useCallback(() => {
@@ -229,9 +322,12 @@ export function FeatureFlagsPage() {
     ? plugins.find((plugin) => plugin.id === pendingAction.pluginId)
     : undefined;
 
-  // The table starts unsorted, so the most-used flags come first by default.
+  // Most-used flags across all cells come first by default.
   const sortedFeatureFlags = useMemo(
-    () => [...featureFlags].sort((a, b) => b.workspaceCount - a.workspaceCount),
+    () =>
+      [...featureFlags].sort(
+        (a, b) => b.totalWorkspaceCount - a.totalWorkspaceCount
+      ),
     [featureFlags]
   );
 
@@ -240,8 +336,8 @@ export function FeatureFlagsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Feature Flags</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Every feature flag in this region, with the number of workspaces it is
-          enabled on. Click a flag to see those workspaces.
+          Every feature flag across all cells, with the number of workspaces it
+          is enabled on. Click a flag to see those workspaces.
         </p>
       </div>
 
