@@ -14,8 +14,7 @@ export function SpacePage() {
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const owner = useWorkspace();
-  const { subscription, isAdmin } = useAuth();
-  const plan = subscription.plan;
+  const { isAdmin } = useAuth();
 
   const {
     spaceInfo: space,
@@ -83,7 +82,6 @@ export function SpacePage() {
           onClose={() => setShowSpaceEditionModal(false)}
           space={space}
           isAdmin={isAdmin}
-          plan={plan}
         />
       </Page.Vertical>
     </SpaceSearchInput>

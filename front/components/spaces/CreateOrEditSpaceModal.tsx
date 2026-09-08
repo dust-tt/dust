@@ -3,7 +3,6 @@ import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSp
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
 import {
@@ -15,10 +14,10 @@ import {
 import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import type { GroupType } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
-import type { PlanType } from "@app/types/plan";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  ContentMessage,
   Input,
   Page,
   Separator,
@@ -33,8 +32,6 @@ import {
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type MembersManagementType = "manual" | "group";
-
 interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
   isAdmin: boolean;
@@ -43,7 +40,6 @@ interface CreateOrEditSpaceModalProps {
   onCreated?: (space: SpaceType) => void;
   owner: LightWorkspaceType;
   space?: SpaceType;
-  plan: PlanType;
 }
 
 export function CreateOrEditSpaceModal({
@@ -54,7 +50,6 @@ export function CreateOrEditSpaceModal({
   onCreated,
   owner,
   space,
-  plan,
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
@@ -68,18 +63,9 @@ export function CreateOrEditSpaceModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
-  const [managementType, setManagementType] =
-    useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
 
-  const scimEnabled = isSCIMEnabled(plan);
   const { user } = useAuth();
-
-  useEffect(() => {
-    if (!scimEnabled) {
-      setManagementType("manual");
-    }
-  }, [scimEnabled]);
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
@@ -87,37 +73,35 @@ export function CreateOrEditSpaceModal({
 
   const router = useAppRouter();
 
-  const { spaceInfo, mutateSpaceInfo, isSpaceInfoLoading } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: space?.sId ?? null,
-    includeAllMembers: true, // Include members whose membership is not active yet.
-  });
+  const { spaceInfo, mutateSpaceInfo, isSpaceInfoLoading, isSpaceInfoError } =
+    useSpaceInfo({
+      workspaceId: owner.sId,
+      spaceId: space?.sId ?? null,
+      includeAllMembers: true, // Include members whose membership is not active yet.
+    });
 
-  const { groups } = useGroups({
+  const { groups, isGroupsLoading, isGroupsError } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
-    disabled: !scimEnabled,
   });
+
+  // A save carries the space's whole membership, both lists at once, so the sheet must not open
+  // on half of it: `useSpaceInfo` seeds the selected members and groups, and `useGroups` names the
+  // groups that can be picked. Either one still loading and a save would write an empty list.
+  const isAccessLoading = (!!space && isSpaceInfoLoading) || isGroupsLoading;
+
+  // Either one failing blocks the save outright, for the same reason: the sheet cannot send a
+  // membership it does not know.
+  const isAccessUnavailable = (!!space && !!isSpaceInfoError) || isGroupsError;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       const spaceMembers = spaceInfo?.members ?? null;
 
-      // Initialize management type from space data (if editing) or default to manual for new spaces
-      if (spaceInfo?.managementMode !== undefined) {
-        setManagementType(spaceInfo.managementMode);
-      } else {
-        setManagementType("manual");
-      }
-
-      // Initialize selected groups based on space's groupIds (only if workos feature is enabled)
-      if (
-        scimEnabled &&
-        spaceInfo?.groupIds &&
-        spaceInfo.groupIds.length > 0 &&
-        groups
-      ) {
+      // Initialize the selected groups from the space's grants, once the workspace's groups have
+      // loaded (`groups` also holds what a group is called, and which of them are selectable).
+      if (!isAccessLoading && spaceInfo?.groupIds?.length) {
         const spaceGroups = groups.filter((group) =>
           spaceInfo.groupIds.includes(group.sId)
         );
@@ -147,9 +131,9 @@ export function CreateOrEditSpaceModal({
     }
   }, [
     defaultRestricted,
+    isAccessLoading,
     groups,
     isOpen,
-    scimEnabled,
     setSpaceName,
     spaceInfo,
     user,
@@ -166,7 +150,6 @@ export function CreateOrEditSpaceModal({
       setIsRestricted(false);
       setSelectedMemberIds(new Set());
       setSelectedGroups([]);
-      setManagementType("manual");
       setIsDeleting(false);
       setIsSaving(false);
       setIsDirty(false);
@@ -197,47 +180,28 @@ export function CreateOrEditSpaceModal({
 
     setIsSaving(true);
 
+    // Both lists are always sent: a space's members are the manual list plus the members of the
+    // groups given access to it, and the request describes the whole membership.
+    const groupIds = selectedGroups.map((group) => group.sId);
+
     if (space) {
-      if (scimEnabled && managementType === "group") {
-        await doUpdate(space, {
-          isRestricted,
-          groupIds: selectedGroups.map((group) => group.sId),
-          editorGroupIds: [],
-          managementMode: "group",
-          name: trimmedName,
-        });
-      } else {
-        await doUpdate(space, {
-          isRestricted,
-          memberIds: Array.from(selectedMemberIds),
-          editorIds: [],
-          managementMode: "manual",
-          name: trimmedName,
-        });
-      }
+      await doUpdate(space, {
+        isRestricted,
+        memberIds: Array.from(selectedMemberIds),
+        groupIds,
+        name: trimmedName,
+      });
 
       // FIXME: we should update the page space's name as well.
       await mutateSpaceInfo();
     } else if (!space) {
-      let createdSpace;
-
-      if (scimEnabled && managementType === "group") {
-        createdSpace = await doCreate({
-          name: trimmedName,
-          isRestricted,
-          groupIds: selectedGroups.map((group) => group.sId),
-          managementMode: "group",
-          spaceKind: "regular",
-        });
-      } else {
-        createdSpace = await doCreate({
-          name: trimmedName,
-          isRestricted,
-          memberIds: Array.from(selectedMemberIds),
-          managementMode: "manual",
-          spaceKind: "regular",
-        });
-      }
+      const createdSpace = await doCreate({
+        name: trimmedName,
+        isRestricted,
+        memberIds: Array.from(selectedMemberIds),
+        groupIds,
+        spaceKind: "regular",
+      });
 
       setIsSaving(false);
       if (createdSpace && onCreated) {
@@ -258,9 +222,7 @@ export function CreateOrEditSpaceModal({
     spaceInfo,
     selectedMemberIds,
     spaceName,
-    managementType,
     selectedGroups,
-    scimEnabled,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -279,21 +241,16 @@ export function CreateOrEditSpaceModal({
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
 
-  const handleManagementTypeChange = useCallback(
-    (managementType: MembersManagementType) => {
-      setManagementType(managementType);
-      setIsDirty(true);
-    },
-    []
-  );
-
   const disabled = useMemo(() => {
     const hasName = spaceName.trim().length > 0;
 
+    // A restricted space needs someone in it: a member, or a group that has members.
     const canSave =
-      !isRestricted ||
-      (managementType === "manual" && selectedMemberIds.size > 0) ||
-      (managementType === "group" && selectedGroups.length > 0);
+      !isRestricted || selectedMemberIds.size > 0 || selectedGroups.length > 0;
+
+    if (isAccessLoading || isAccessUnavailable) {
+      return true;
+    }
 
     if (!spaceInfo) {
       return !canSave || !hasName;
@@ -302,21 +259,14 @@ export function CreateOrEditSpaceModal({
     return !isDirty || !canSave || !hasName;
   }, [
     isRestricted,
-    managementType,
     selectedMemberIds.size,
     selectedGroups.length,
     spaceInfo,
     isDirty,
     spaceName,
+    isAccessLoading,
+    isAccessUnavailable,
   ]);
-  const isManual = !scimEnabled || managementType === "manual";
-
-  // When editing an existing space, hold the access section back until its members have loaded: the
-  // toggle's state and the member table's contents both come from `spaceInfo`, and the table seeds
-  // its display cache once, at mount. Rendering it early shows an empty member list.
-  // `isSpaceInfoLoading` stays true when there is no space (the hook is disabled), hence the guard.
-  const isLoadingSpaceInfo = !!space && isSpaceInfoLoading;
-
   const handleNameChange = useCallback((value: string) => {
     setSpaceName(value);
     setIsDirty(true);
@@ -344,10 +294,17 @@ export function CreateOrEditSpaceModal({
               isDeleting={isDeleting}
             />
 
-            {isLoadingSpaceInfo ? (
+            {isAccessLoading ? (
               <div className="flex justify-center p-8">
                 <Spinner />
               </div>
+            ) : isAccessUnavailable ? (
+              <ContentMessage
+                variant="warning"
+                title="Access settings unavailable"
+              >
+                Failed to load group members, please reload the page.
+              </ContentMessage>
             ) : (
               <>
                 <RestrictedAccessHeader
@@ -394,13 +351,9 @@ export function CreateOrEditSpaceModal({
                 {/* Shown in both states: an open space still has members, and they are the ones
                     who can write to it. The toggle only controls who can read. */}
                 <RestrictedAccessBody
-                  isManual={isManual}
-                  scimEnabled={scimEnabled}
-                  managementType={managementType}
                   owner={owner}
                   selectedMemberIds={selectedMemberIds}
                   selectedGroups={selectedGroups}
-                  onManagementTypeChange={handleManagementTypeChange}
                   onMemberIdsUpdated={(memberIds) => {
                     setSelectedMemberIds(memberIds);
                     setIsDirty(true);

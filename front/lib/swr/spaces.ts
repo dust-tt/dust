@@ -556,70 +556,31 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     params: PostSpaceRequestBodyType,
     notification?: { title: string; description: string }
   ) => {
-    const { name, managementMode, isRestricted, spaceKind } = params;
+    const { name, memberIds, groupIds, isRestricted, spaceKind } = params;
 
     if (!name) {
       return null;
     }
 
-    const url = `/api/w/${owner.sId}/spaces`;
-    let res;
-    let body: PostSpaceRequestBodyType;
-
-    if (managementMode === "manual") {
-      const { memberIds } = params;
-
-      // Must have memberIds for manual management mode, except for projects
-      // where the backend handles adding the creator to the editor group
-      if (
-        spaceKind !== "project" &&
-        isRestricted &&
-        (!memberIds || memberIds.length < 1)
-      ) {
-        return null;
-      }
-
-      body = {
-        name,
-        memberIds,
-        managementMode,
-        isRestricted,
-        spaceKind,
-      };
-
-      res = await clientFetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-    } else if (managementMode === "group") {
-      const { groupIds } = params;
-
-      // Must have groupIds for group management mode
-      if (isRestricted && (!groupIds || groupIds.length < 1)) {
-        return null;
-      }
-
-      body = {
-        name,
-        groupIds,
-        managementMode,
-        isRestricted,
-        spaceKind,
-      };
-
-      res = await clientFetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-    } else {
+    // A restricted space needs someone in it — a member or a group. Projects are the exception:
+    // the backend adds the creator to the editor group.
+    if (
+      spaceKind !== "project" &&
+      isRestricted &&
+      !memberIds?.length &&
+      !groupIds?.length
+    ) {
       return null;
     }
+
+    const url = `/api/w/${owner.sId}/spaces`;
+    const res = await clientFetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params satisfies PostSpaceRequestBodyType),
+    });
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
@@ -666,7 +627,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     params: PatchSpaceMembersRequestBodyType,
     notification?: { title: string; description: string }
   ) => {
-    const { name: newName, managementMode, isRestricted } = params;
+    const { name: newName, isRestricted } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -688,43 +649,22 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
 
-    if (managementMode === "manual") {
-      updatePromises.push(
-        clientFetch(spaceMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: newName,
-            isRestricted,
-            managementMode,
-            memberIds: params.memberIds,
-            editorIds: params.editorIds,
-          } satisfies PatchSpaceMembersRequestBodyType),
-        })
-      );
-    } else if (managementMode === "group") {
-      updatePromises.push(
-        clientFetch(spaceMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: newName,
-            isRestricted,
-            managementMode,
-            groupIds: params.groupIds,
-            editorGroupIds: params.editorGroupIds,
-          } satisfies PatchSpaceMembersRequestBodyType),
-        })
-      );
-    }
-
-    if (updatePromises.length === 0) {
-      return null;
-    }
+    // The request describes the space's whole membership: a dimension the caller leaves out is
+    // emptied server-side, not kept. The Pod tabs carry members and editors only, which says a
+    // Pod has no groups — true while Pods are managed manually.
+    updatePromises.push(
+      clientFetch(spaceMembersUrl, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...params,
+          name: newName,
+          isRestricted,
+        } satisfies PatchSpaceMembersRequestBodyType),
+      })
+    );
 
     const results = await Promise.all(updatePromises);
 

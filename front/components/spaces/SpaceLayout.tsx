@@ -123,7 +123,6 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
             void router.push(`/w/${owner.sId}/spaces/${space.sId}`);
           }}
           defaultRestricted={spaceCreationModalState.defaultRestricted}
-          plan={plan}
         />
       )}
       {isAdmin && isLimitReached && (
