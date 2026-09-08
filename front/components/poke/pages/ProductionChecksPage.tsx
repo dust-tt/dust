@@ -1,11 +1,14 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { ProductionChecksForCell } from "@app/hooks/usePokeProductionChecks";
 import {
-  usePokeCheckHistory,
-  usePokeProductionChecks,
-  useRunProductionCheck,
+  usePokeCheckHistoryForCell,
+  usePokeProductionChecksAllCells,
+  useRunProductionCheckForCell,
 } from "@app/hooks/usePokeProductionChecks";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import type { CellType } from "@app/types/cell";
 import type {
   ActionLink,
   CheckFailurePayload,
@@ -25,6 +28,10 @@ import {
   LinkWrapper,
   Play,
   Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -334,10 +341,15 @@ function HistoryRunRow({ run, checkName }: HistoryRunRowProps) {
 
 interface PastRunsSectionProps {
   checkName: string;
+  cellUrl: string;
 }
 
-function PastRunsSection({ checkName }: PastRunsSectionProps) {
-  const { runs, isCheckHistoryLoading } = usePokeCheckHistory(checkName, true);
+function PastRunsSection({ checkName, cellUrl }: PastRunsSectionProps) {
+  const { runs, isCheckHistoryLoading } = usePokeCheckHistoryForCell(
+    cellUrl,
+    checkName,
+    true
+  );
 
   if (isCheckHistoryLoading) {
     return (
@@ -366,12 +378,14 @@ function PastRunsSection({ checkName }: PastRunsSectionProps) {
 
 interface ProductionCheckCardProps {
   check: CheckSummary;
+  cellUrl: string;
   onRun: () => void;
   isRunning: boolean;
 }
 
 function ProductionCheckCard({
   check,
+  cellUrl,
   onRun,
   isRunning,
 }: ProductionCheckCardProps) {
@@ -450,7 +464,7 @@ function ProductionCheckCard({
       <div>
         <h4 className="mb-2 text-sm font-medium text-primary-700">Past Runs</h4>
         <div className="rounded-md bg-background p-3">
-          <PastRunsSection checkName={check.name} />
+          <PastRunsSection checkName={check.name} cellUrl={cellUrl} />
         </div>
       </div>
     </div>
@@ -473,14 +487,67 @@ function ProductionCheckCard({
   );
 }
 
+function CellChecksGrid({
+  cellEntry,
+  runCheck,
+  isCheckRunning,
+}: {
+  cellEntry: ProductionChecksForCell;
+  runCheck: (
+    cellUrl: string,
+    cell: CellType,
+    checkName: string
+  ) => Promise<void>;
+  isCheckRunning: (cell: CellType, checkName: string) => boolean;
+}) {
+  if (cellEntry.isError) {
+    return (
+      <p className="text-sm text-warning-600">
+        Could not load production checks for{" "}
+        {getCellDisplay({ name: cellEntry.cell, region: cellEntry.region })}.
+      </p>
+    );
+  }
+
+  if (cellEntry.checks.length === 0) {
+    return (
+      <p className="text-sm text-primary-500">No production checks found.</p>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      {cellEntry.checks.map((check) => (
+        <ProductionCheckCard
+          key={check.name}
+          check={check}
+          cellUrl={cellEntry.url}
+          onRun={() => void runCheck(cellEntry.url, cellEntry.cell, check.name)}
+          isRunning={isCheckRunning(cellEntry.cell, check.name)}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function ProductionChecksPage() {
   usePokePageMetadata({ name: "Production Checks" });
 
-  const { checks, isProductionChecksLoading, mutateProductionChecks } =
-    usePokeProductionChecks();
-  const { runCheck, isCheckRunning } = useRunProductionCheck();
+  const { checksByCell, isProductionChecksLoading, mutateProductionChecks } =
+    usePokeProductionChecksAllCells();
+  const { runCheck, isCheckRunning } = useRunProductionCheckForCell(
+    mutateProductionChecks
+  );
 
-  const alertCount = checks.filter((c) => c.status === "alert").length;
+  const totalAlertCount = useMemo(
+    () => checksByCell.reduce((sum, entry) => sum + entry.alertCount, 0),
+    [checksByCell]
+  );
+
+  const defaultTab = useMemo(() => {
+    const withAlerts = checksByCell.find((entry) => entry.alertCount > 0);
+    return withAlerts?.cell ?? checksByCell[0]?.cell ?? "";
+  }, [checksByCell]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -492,10 +559,34 @@ export function ProductionChecksPage() {
             </h1>
             {!isProductionChecksLoading && (
               <p className="mt-1 text-sm text-primary-600">
-                {alertCount > 0
-                  ? `${alertCount} check${pluralize(alertCount)} need${conjugate(alertCount)} attention`
-                  : "All checks passing"}
+                {totalAlertCount > 0
+                  ? `${totalAlertCount} check${pluralize(totalAlertCount)} need${conjugate(totalAlertCount)} attention across all cells`
+                  : "All checks passing across all cells"}
               </p>
+            )}
+            {!isProductionChecksLoading && checksByCell.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {checksByCell.map((entry) => (
+                  <Chip
+                    key={entry.cell}
+                    size="xs"
+                    color={
+                      entry.isError
+                        ? "warning"
+                        : entry.alertCount > 0
+                          ? "warning"
+                          : getCellChipColor(entry.region)
+                    }
+                    label={`${getCellDisplay({ name: entry.cell, region: entry.region })}: ${
+                      entry.isError
+                        ? "error"
+                        : entry.alertCount > 0
+                          ? `${entry.alertCount} alert${pluralize(entry.alertCount)}`
+                          : "ok"
+                    }`}
+                  />
+                ))}
+              </div>
             )}
           </div>
           <Button
@@ -510,17 +601,31 @@ export function ProductionChecksPage() {
           <div className="flex justify-center py-12">
             <Spinner />
           </div>
+        ) : checksByCell.length === 0 ? (
+          <p className="text-sm text-primary-500">No cells available.</p>
         ) : (
-          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-            {checks.map((check) => (
-              <ProductionCheckCard
-                key={check.name}
-                check={check}
-                onRun={() => runCheck(check.name)}
-                isRunning={isCheckRunning(check.name)}
-              />
+          <Tabs defaultValue={defaultTab} key={defaultTab}>
+            <TabsList className="mb-4">
+              {checksByCell.map((entry) => (
+                <TabsTrigger
+                  key={entry.cell}
+                  value={entry.cell}
+                  label={`${getCellDisplay({ name: entry.cell, region: entry.region })}${
+                    entry.alertCount > 0 ? ` (${entry.alertCount})` : ""
+                  }`}
+                />
+              ))}
+            </TabsList>
+            {checksByCell.map((entry) => (
+              <TabsContent key={entry.cell} value={entry.cell}>
+                <CellChecksGrid
+                  cellEntry={entry}
+                  runCheck={runCheck}
+                  isCheckRunning={isCheckRunning}
+                />
+              </TabsContent>
             ))}
-          </div>
+          </Tabs>
         )}
       </div>
     </main>

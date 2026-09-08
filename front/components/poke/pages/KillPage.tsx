@@ -1,16 +1,19 @@
 import { DegradedModelsDialog } from "@app/components/poke/DegradedModelsDialog";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { isLegacyKillSwitchType, KILL_SWITCH_TYPES } from "@app/lib/poke/types";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDegradedModels } from "@app/poke/swr/degraded_models";
-import { usePokeKillSwitches } from "@app/poke/swr/kill";
+import { usePokeKillSwitchesAllCells } from "@app/poke/swr/kill";
 import {
   usePokeSandboxKillImages,
   useRequestSandboxKill,
 } from "@app/poke/swr/sandbox_kill";
+import type { CellType } from "@app/types/cell";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   AlertCircle,
@@ -109,6 +112,11 @@ const PANEL_SECTION_CLASSES = cn(
 
 type SandboxKillRequestKey = string;
 
+interface UpdatingKillSwitch {
+  type: KillSwitchType;
+  cell: CellType;
+}
+
 function sandboxKillKey(
   baseImage: string,
   version?: string
@@ -119,12 +127,12 @@ function sandboxKillKey(
 export function KillPage() {
   usePokePageMetadata({ name: "Kill Switches" });
 
-  const { killSwitches, isKillSwitchesLoading, mutateKillSwitches } =
-    usePokeKillSwitches();
+  const { cellInfo } = useCellContext();
+  const { killSwitchesByCell, isKillSwitchesLoading, mutateKillSwitches } =
+    usePokeKillSwitchesAllCells();
   const [updatingKillSwitch, setUpdatingKillSwitch] =
-    useState<KillSwitchType | null>(null);
+    useState<UpdatingKillSwitch | null>(null);
   const sendNotification = useSendNotification();
-  const enabledKillSwitches = new Set(killSwitches);
   const { endpoints, mutateDegradedModels } = usePokeDegradedModels();
   const degradedEndpoints = endpoints.filter((endpoint) => endpoint.degraded);
 
@@ -135,6 +143,8 @@ export function KillPage() {
 
   async function updateKillSwitch(
     killSwitch: KillSwitchType,
+    cell: CellType,
+    cellUrl: string,
     enabled: boolean
   ): Promise<void> {
     if (updatingKillSwitch) {
@@ -144,16 +154,16 @@ export function KillPage() {
     if (
       enabled &&
       !window.confirm(
-        `Enable "${KILL_SWITCH_DEFINITIONS[killSwitch].title}" kill switch?`
+        `Enable "${KILL_SWITCH_DEFINITIONS[killSwitch].title}" kill switch on ${cell}?`
       )
     ) {
       return;
     }
 
-    setUpdatingKillSwitch(killSwitch);
+    setUpdatingKillSwitch({ type: killSwitch, cell });
 
     try {
-      const res = await clientFetch("/api/poke/kill", {
+      const res = await clientFetch(`${cellUrl}/api/poke/kill`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -179,7 +189,7 @@ export function KillPage() {
         title: "Kill switch updated",
         description: `${KILL_SWITCH_DEFINITIONS[killSwitch].title} ${
           enabled ? "enabled" : "disabled"
-        }.`,
+        } on ${cell}.`,
         type: "success",
       });
     } catch (error) {
@@ -222,7 +232,7 @@ export function KillPage() {
           <span>Kill switches</span>
         </h2>
         <p className={PANEL_DESCRIPTION_CLASSES}>
-          Control critical system functionality.
+          Control critical system functionality across all cells.
         </p>
 
         {isKillSwitchesLoading ? (
@@ -239,8 +249,6 @@ export function KillPage() {
                 icon: Icon,
               } = KILL_SWITCH_DEFINITIONS[type];
 
-              const isEnabled = enabledKillSwitches.has(type);
-              const isUpdating = updatingKillSwitch === type;
               const isLegacy = isLegacyKillSwitchType(type);
 
               return (
@@ -277,16 +285,50 @@ export function KillPage() {
                     )}
                   </div>
 
-                  <div className="flex h-7 w-10 items-center justify-center">
-                    {isUpdating ? (
-                      <Spinner size="xs" />
-                    ) : (
-                      <SliderToggle
-                        disabled={updatingKillSwitch !== null}
-                        onClick={() => void updateKillSwitch(type, !isEnabled)}
-                        selected={isEnabled}
-                      />
-                    )}
+                  <div className="flex flex-col items-end gap-2">
+                    {killSwitchesByCell.map((cellEntry) => {
+                      const enabledKillSwitches = new Set(
+                        cellEntry.killSwitches
+                      );
+                      const isEnabled = enabledKillSwitches.has(type);
+                      const isUpdating =
+                        updatingKillSwitch?.type === type &&
+                        updatingKillSwitch.cell === cellEntry.cell;
+
+                      return (
+                        <div
+                          key={cellEntry.cell}
+                          className="flex items-center gap-2"
+                        >
+                          <Chip
+                            size="mini"
+                            color={getCellChipColor(cellEntry.region)}
+                            label={getCellDisplay({
+                              name: cellEntry.cell,
+                              region: cellEntry.region,
+                            })}
+                          />
+                          <div className="flex h-7 w-10 items-center justify-center">
+                            {isUpdating ? (
+                              <Spinner size="xs" />
+                            ) : (
+                              <SliderToggle
+                                disabled={updatingKillSwitch !== null}
+                                onClick={() =>
+                                  void updateKillSwitch(
+                                    type,
+                                    cellEntry.cell,
+                                    cellEntry.url,
+                                    !isEnabled
+                                  )
+                                }
+                                selected={isEnabled}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -299,14 +341,20 @@ export function KillPage() {
               )}
             >
               <div className="space-y-1">
-                <h3 className="flex items-center gap-3 text-sm font-medium text-foreground">
+                <h3 className="flex flex-wrap items-center gap-3 text-sm font-medium text-foreground">
                   <Cube01 className="h-4 w-4 text-foreground" />
                   <span>Degraded Models</span>
+                  <Chip
+                    size="mini"
+                    color={getCellChipColor(cellInfo.region)}
+                    label={getCellDisplay(cellInfo)}
+                  />
                 </h3>
 
                 <p className="text-sm leading-6 text-muted-foreground">
                   Flag the model endpoints hit by a provider incident, one
-                  switch per model and host.
+                  switch per model and host. Scoped to the currently selected
+                  cell.
                   {degradedEndpoints.length > 0 &&
                     ` Currently degraded: ${degradedEndpoints
                       .map(
@@ -339,11 +387,16 @@ export function KillPage() {
         <h2 className={PANEL_HEADING_CLASSES}>
           <Trash01 className={PANEL_ICON_CLASSES} />
           <span>Sandbox Kill Requester</span>
+          <Chip
+            size="xs"
+            color={getCellChipColor(cellInfo.region)}
+            label={getCellDisplay(cellInfo)}
+          />
         </h2>
         <p className={PANEL_DESCRIPTION_CLASSES}>
-          Mark running sandboxes for immediate reaping. The reaper or the next
-          bash invocation will destroy them and recreate fresh ones from the
-          current image.
+          Mark running sandboxes for immediate reaping on the currently selected
+          cell. The reaper or the next bash invocation will destroy them and
+          recreate fresh ones from the current image.
         </p>
 
         {isImagesLoading ? (

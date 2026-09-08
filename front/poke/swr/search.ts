@@ -1,6 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { PokePlanTypeFilter } from "@app/lib/plans/plan_codes";
 import { emptyArray } from "@app/lib/swr/swr";
+import { getUniqueCells } from "@app/poke/swr/cells";
 import type { GetPokeSearchItemsResponseBody } from "@app/types/api/poke/search";
 import type {
   GetPokeWorkspacesResponseBody,
@@ -9,21 +10,6 @@ import type {
 import type { CellInfo, CellType } from "@app/types/cell";
 import type { PokeItemBase } from "@app/types/poke";
 import { useEffect, useState } from "react";
-
-// Deduplicate cells by URL. In dev, all cells can point to the same localhost
-// server, so without this we would fire one identical request per cell and
-// list every workspace once per cell.
-function getUniqueCells(cells: CellInfo[]): CellInfo[] {
-  const seen = new Set<string>();
-  return cells.filter((cell) => {
-    const url = cell.url;
-    if (seen.has(url)) {
-      return false;
-    }
-    seen.add(url);
-    return true;
-  });
-}
 
 /**
  * Search across all cells in parallel.
