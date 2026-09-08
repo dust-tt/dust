@@ -841,6 +841,11 @@ function getDatadogSandboxLogsUrl(conversationId: string): string {
   return `https://app.datadoghq.eu/logs?query=${encodeURIComponent(query)}&cols=service,@timestamp_utc&from_ts=${fromMs}&to_ts=${nowMs}&live=true`;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:react] conversation-layout
+ * Messages grow to 64rem and center in the viewport when both side gutters can fit the
+ * inspector rail; below xl, inspectors stack above messages.
+ */
 export function ConversationPage() {
   const owner = useWorkspace();
 
@@ -1029,7 +1034,14 @@ export function ConversationPage() {
 
   return (
     conversation && (
-      <div className="max-w-6xl">
+      <div
+        className={cn(
+          "mx-auto w-full max-w-5xl xl:max-w-[123rem]",
+          // Reserve a matching left gutter as space permits: 64rem of messages,
+          // a 28rem inspector rail, and a 1.5rem gap on either side.
+          "xl:pl-[clamp(0rem,calc(100%_-_93.5rem),29.5rem)]"
+        )}
+      >
         <h3 className="text-xl font-bold">
           Conversation in workspace{" "}
           <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight">
