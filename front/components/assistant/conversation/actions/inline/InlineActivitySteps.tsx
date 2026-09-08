@@ -59,11 +59,6 @@ function getTerminalLabel(status: LightAgentMessageType["status"]): string {
  *
  * Steps are accumulated by useAgentMessageStream — this component is a pure render.
  */
-/**
- * @cc [owner:aubin-tchoi,label:product] preserve-active-message-content
- * Before completion, non-empty message content must remain visible outside the
- * collapsible activity section, including while thinking or executing tools.
- */
 export function InlineActivitySteps({
   agentMessage,
   lastAgentStateClassification,
