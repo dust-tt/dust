@@ -57,8 +57,14 @@ export function SelectField<T extends FieldValues>({
       name={name}
       render={({ field }) => {
         const selectedOption = flatOptions.find((o) => o.value === field.value);
+        // Fall back to the title or a neutral placeholder — never the raw field
+        // `name` (a dotted path like `seats.free.paymentSchedule.frequency`),
+        // which leaks when the current value matches no option.
         const displayLabel =
-          selectedOption?.display ?? selectedOption?.value ?? title ?? name;
+          selectedOption?.display ??
+          selectedOption?.value ??
+          title ??
+          "Select…";
 
         return (
           <PokeFormItem>
