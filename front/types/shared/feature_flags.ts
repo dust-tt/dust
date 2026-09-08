@@ -66,6 +66,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
+  disable_gpt_6_astra: {
+    description:
+      "Remove access to the GPT 6 Astra model: it is hidden from the model picker and rejected at message time, whatever the workspace plan and other flags",
+    stage: "self_serve",
+    owner: "Nils-Fedrigo",
+  },
   dust_agent_sonnet_5_default: {
     description: "Use Claude Sonnet 5 as the default model for the @dust agent",
     stage: "dust_only",

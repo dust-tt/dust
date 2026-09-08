@@ -79,6 +79,10 @@ const AvailabilityConditionSchema = z.object({
   featureFlag: WhitelistableFeatureSchema.optional(),
 });
 
+const UnavailabilityConditionSchema = z.object({
+  featureFlag: WhitelistableFeatureSchema.optional(),
+});
+
 const CustomAvailabilityConditionSchema = z.object({
   featureFlag: WhitelistableFeatureSchema.optional(),
 });
@@ -136,6 +140,7 @@ export const ModelConfigurationSchema = z.object({
   // Specify if the model is available in specific regions.
   regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),
   availableIfOneOf: AvailabilityConditionSchema.optional(),
+  unavailableIfOneOf: UnavailabilityConditionSchema.optional(),
   customAvailableIf: CustomAvailabilityConditionSchema.optional(),
 });
 
@@ -165,6 +170,9 @@ export type ModelConfigurationType = Omit<
     // If set to true, model is available for plans with advanced models access.
     plansWithAdvancedModels?: boolean;
     // If set, model is available if feature flag is enabled.
+    featureFlag?: WhitelistableFeature;
+  };
+  unavailableIfOneOf?: {
     featureFlag?: WhitelistableFeature;
   };
   // Pre-requisite: must be available.
