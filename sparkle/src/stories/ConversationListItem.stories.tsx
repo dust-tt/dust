@@ -5,6 +5,7 @@ import { fn } from "storybook/test";
 import {
   ConversationListItem,
   ListGroup,
+  Lock01,
   ReplySection,
 } from "../index_with_tw_base";
 
@@ -22,6 +23,7 @@ const meta = {
 
 **Guidelines**
 - Pass either **avatar** for direct conversations or **creator** for group conversations, not both.
+- Use **titleIcon** when the rows are labelled by a category rather than a unique subject, so the title reads as icon plus category.
 - Use the **ReplySection** component for the **replySection** slot to display reply / unread / mention counts consistently.
 - Group rows inside **ListGroup** so dividers and spacing stay consistent across the list.`,
       },
@@ -143,6 +145,34 @@ export const WithMentions: Story = {
         lastMessageBy="Alice"
       />
     ),
+    onClick: fn(),
+  },
+  render: renderInListGroup,
+};
+
+/**
+ * `titleIcon` prefixes the title with an icon, for lists whose rows are
+ * labelled by a category — here the row's kind, with the person who raised it
+ * carried by `creator` and the specifics in the description.
+ *
+ * @summary Row titled by category rather than subject.
+ */
+export const WithTitleIcon: Story = {
+  args: {
+    unread: true,
+    conversation: {
+      id: "conv-2",
+      title: "Pod access",
+      description:
+        "Access to the Security & Compliance Pod — I'm taking over the SOC 2 evidence collection from Marco.",
+      updatedAt: new Date(),
+    },
+    creator: {
+      fullName: "Marco Ferrari",
+      portrait: "https://i.pravatar.cc/150?img=5",
+    },
+    titleIcon: Lock01,
+    time: "5h",
     onClick: fn(),
   },
   render: renderInListGroup,

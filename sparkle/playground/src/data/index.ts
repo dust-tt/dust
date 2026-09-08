@@ -6,6 +6,7 @@ export * from "./agentBuilder";
 export * from "./agents";
 export * from "./conversations";
 export * from "./myPod";
+export * from "./requests";
 export * from "./spaces";
 export * from "./spaceMembers";
 export * from "./users";

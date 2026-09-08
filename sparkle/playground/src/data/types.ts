@@ -180,3 +180,60 @@ export interface DataSource {
   updatedAt: Date;
   icon?: React.ComponentType<{ className?: string }>; // Icon component
 }
+
+export type RequestType =
+  | "spendLimitUpgrade"
+  | "seatUpgrade"
+  | "dataSourceAdd"
+  | "toolAdd"
+  | "connectorAdd"
+  | "userInvitation"
+  | "spaceAccess"
+  | "roleChange"
+  | "agentPublication"
+  | "skillPublication"
+  | "conversationAccess";
+
+export type RequestStatus = "pending" | "done";
+
+export type RequestOutcome = "approved" | "denied";
+
+export type RequestTargetKind =
+  | "workspace"
+  | "space"
+  | "user"
+  | "agent"
+  | "skill"
+  | "tool"
+  | "connector"
+  | "conversation";
+
+export interface RequestTarget {
+  kind: RequestTargetKind;
+  label: string;
+  /** Id of the referenced mock entity, when the target maps to one. */
+  id?: string;
+}
+
+/** A single labelled line of the type-specific payload, rendered in the detail panel. */
+export interface RequestDetail {
+  label: string;
+  value: string;
+}
+
+export interface AdminRequest {
+  id: string;
+  type: RequestType;
+  title: string;
+  requesterId: string; // user ID
+  createdAt: Date;
+  target: RequestTarget;
+  details: RequestDetail[];
+  /** A note the requester wrote. Most requests come without one. */
+  message?: string;
+  status: RequestStatus;
+  // Set once the request has been handled.
+  outcome?: RequestOutcome;
+  resolvedByUserId?: string;
+  resolvedAt?: Date;
+}

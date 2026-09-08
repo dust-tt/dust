@@ -1,5 +1,6 @@
 import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Avatar } from "@sparkle/components/Avatar";
+import { Icon } from "@sparkle/components/Icon";
 import { ListItem } from "@sparkle/components/ListItem";
 import { cn } from "@sparkle/lib/utils";
 import React, { type ReactNode } from "react";
@@ -111,6 +112,8 @@ export interface ConversationListItemProps {
     fullName: string;
     portrait?: string;
   };
+  /** Icon shown before the title, for lists whose rows are labelled by a category. */
+  titleIcon?: React.ComponentType<{ className?: string }>;
   /** Formatted timestamp displayed on the right of the title. */
   time: string;
   /** Slot for reply/unread/mention counts — use the ReplySection component. */
@@ -127,6 +130,7 @@ export interface ConversationListItemProps {
 /**
  * A list row summarising a conversation: title and description, a timestamp,
  * and a leading avatar (direct) or creator portrait (group), with an optional
+ * titleIcon before the title and an optional
  * replySection for reply/unread/mention counts. Use it to render an inbox or
  * activity feed of conversations, grouping rows inside ListGroup so dividers
  * and spacing stay consistent.
@@ -137,6 +141,7 @@ export function ConversationListItem({
   unread,
   avatar,
   creator,
+  titleIcon,
   time,
   replySection,
   onClick,
@@ -199,7 +204,10 @@ export function ConversationListItem({
       ) : null}
       <div className="mb-0.5 flex min-w-0 grow flex-col gap-1">
         <div className="heading-sm flex w-full items-center justify-between gap-2 text-foreground">
-          <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+            {titleIcon && (
+              <Icon visual={titleIcon} size="xs" className="shrink-0" />
+            )}
             <span className="min-w-0 truncate">
               {textAnimation === "streaming" ? (
                 <AnimatedText variant="muted">

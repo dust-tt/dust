@@ -8,6 +8,7 @@ import {
   CheckCircle,
   CheckDone01,
   ChevronDown,
+  ClipboardCheck,
   Cube01,
   CubeOutline,
   Dialog,
@@ -107,10 +108,15 @@ import {
   type PanelSizingType,
 } from "../components/PanelLayout";
 import { ProfilePanel } from "../components/Profile";
+import { RequestDetailView } from "../components/RequestDetailView";
+import type { RequestsTab } from "../components/RequestsView";
+import { RequestsView } from "../components/RequestsView";
 import {
+  type AdminRequest,
   type Agent,
   type Conversation,
   createConversationsWithMessages,
+  createMockRequests,
   createSpace,
   type DataSource,
   type DataSourceFileType,
@@ -233,6 +239,7 @@ function Inbox() {
   type P2View =
     | { kind: "welcome" }
     | { kind: "inbox" }
+    | { kind: "requests" }
     | { kind: "conversations" }
     | { kind: "automations" }
     | { kind: "conversation"; conversationId: string }
@@ -246,6 +253,7 @@ function Inbox() {
   // files screen, or a side panel opened from the level-1 conversation.
   type P3View =
     | { kind: "conversation"; conversationId: string }
+    | { kind: "request"; requestId: string }
     | SidePanelView;
 
   const [p3View, setP3View] = useState<P3View | null>(null);
@@ -258,6 +266,14 @@ function Inbox() {
   const [inboxActiveTab, setInboxActiveTab] = useState<
     "conversations" | "tasks"
   >("conversations");
+  const [requestsActiveTab, setRequestsActiveTab] =
+    useState<RequestsTab>("pending");
+  const [requests, setRequests] = useState<AdminRequest[]>(createMockRequests);
+  // Requests handled since the list was last refreshed. They stay in Pending,
+  // showing their outcome, instead of vanishing under the cursor.
+  const [stickyRequestIds, setStickyRequestIds] = useState<Set<string>>(
+    new Set()
+  );
   const [podTabsBySpaceId, setPodTabsBySpaceId] = useState<
     Map<string, PodTabsState>
   >(new Map());
@@ -423,6 +439,50 @@ function Inbox() {
         : null,
     [p3View, allConversations]
   );
+
+  const p3Request = useMemo(
+    () =>
+      p3View?.kind === "request"
+        ? (requests.find((r) => r.id === p3View.requestId) ?? null)
+        : null,
+    [p3View, requests]
+  );
+
+  const pendingRequestCount = requests.filter(
+    (r) => r.status === "pending"
+  ).length;
+
+  // Handling a request records the decision and the decision maker. The row is
+  // now Done, but it is pinned to Pending until the list is refreshed.
+  const handleResolveRequest = useCallback(
+    (requestId: string, outcome: "approved" | "denied") => {
+      setRequests((prev) =>
+        prev.map((request) =>
+          request.id === requestId
+            ? {
+                ...request,
+                status: "done" as const,
+                outcome,
+                resolvedByUserId: user?.id,
+                resolvedAt: new Date(),
+              }
+            : request
+        )
+      );
+      setStickyRequestIds((prev) => new Set(prev).add(requestId));
+    },
+    [user?.id]
+  );
+
+  // Switching tabs is a refresh: handled rows drop out of Pending.
+  const handleRequestsTabChange = useCallback((tab: RequestsTab) => {
+    setRequestsActiveTab(tab);
+    setStickyRequestIds(new Set());
+  }, []);
+
+  const handleClearHandledRequests = useCallback(() => {
+    setStickyRequestIds(new Set());
+  }, []);
 
   // ── Pod context & tab state ───────────────────────────────────────────────
   const podContext = useMemo(
@@ -1017,6 +1077,7 @@ function Inbox() {
   // ── P2 content ────────────────────────────────────────────────────────────
   const p2Label = (() => {
     if (p2View.kind === "inbox") return "Inbox";
+    if (p2View.kind === "requests") return "Requests";
     if (p2View.kind === "conversations") return "Conversations";
     if (p2View.kind === "automations") return "Automations";
     if (podContext) return podContext.space.name;
@@ -1062,6 +1123,24 @@ function Inbox() {
           onAutomationsClick={() => {
             setP2View({ kind: "automations" });
             setP3View(null);
+            setP4View(null);
+          }}
+        />
+      );
+    if (p2View.kind === "requests")
+      return (
+        <RequestsView
+          requests={requests}
+          activeTab={requestsActiveTab}
+          onTabChange={handleRequestsTabChange}
+          stickyRequestIds={stickyRequestIds}
+          onClearHandled={handleClearHandledRequests}
+          currentUserId={user?.id}
+          selectedRequestId={
+            p3View?.kind === "request" ? p3View.requestId : null
+          }
+          onRequestClick={(request) => {
+            setP3View({ kind: "request", requestId: request.id });
             setP4View(null);
           }}
         />
@@ -1228,17 +1307,30 @@ function Inbox() {
       ? "Panel 3"
       : p3View.kind === "conversation"
         ? (p3Conversation?.title ?? "Conversation")
-        : sidePanelLabel(p3View);
+        : p3View.kind === "request"
+          ? (p3Request?.title ?? "Request")
+          : sidePanelLabel(p3View);
 
   const p3SizingType: PanelSizingType =
     p3View === null
       ? "secondary"
-      : p3View.kind === "conversation"
+      : p3View.kind === "conversation" || p3View.kind === "request"
         ? "default"
         : sidePanelSizing(p3View);
 
   const p3Content = (() => {
     if (!p3View) return null;
+    if (p3View.kind === "request") {
+      if (!p3Request) return null;
+      return (
+        <RequestDetailView
+          request={p3Request}
+          currentUserId={user?.id}
+          onApprove={(requestId) => handleResolveRequest(requestId, "approved")}
+          onDeny={(requestId) => handleResolveRequest(requestId, "denied")}
+        />
+      );
+    }
     if (p3View.kind === "conversation") {
       if (!p3Conversation) return null;
       return (
@@ -1471,6 +1563,14 @@ function Inbox() {
           </NavTabPillList>
         </NavTabPill>
       );
+    if (p2View.kind === "requests")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Requests", icon: ClipboardCheck }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
     if (p2View.kind === "conversations")
       return (
         <Breadcrumbs
@@ -1697,6 +1797,20 @@ function Inbox() {
                 count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
                   setP2View({ kind: "inbox" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Requests"
+                icon={ClipboardCheck}
+                selected={p2View.kind === "requests"}
+                count={
+                  pendingRequestCount > 0 ? pendingRequestCount : undefined
+                }
+                onClick={() => {
+                  setP2View({ kind: "requests" });
+                  setStickyRequestIds(new Set());
                   setP3View(null);
                   setP4View(null);
                 }}
