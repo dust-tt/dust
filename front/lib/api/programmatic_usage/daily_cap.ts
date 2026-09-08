@@ -1,13 +1,13 @@
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import type { UsageAggregations } from "@app/lib/api/programmatic_usage/common";
 import {
   getSecondsUntilMidnightUTC,
-  getShouldTrackTokenUsageCostsESFilter,
   MARKUP_MULTIPLIER,
 } from "@app/lib/api/programmatic_usage/common";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
+import { USAGE_TYPE_PROGRAMMATIC } from "@app/lib/metronome/constants";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -73,9 +73,10 @@ async function getEffectiveDailyCapMicroUsd(
  * Today is defined as UTC day.
  * Returns cost WITH markup applied to match Redis increments.
  */
-async function getTodayUsageFromESMicroUsd(
+export async function getTodayUsageFromESMicroUsd(
   auth: Authenticator
 ): Promise<Result<number, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
   const now = new Date();
   const todayStartMs = Date.UTC(
     now.getUTCFullYear(),
@@ -86,20 +87,25 @@ async function getTodayUsageFromESMicroUsd(
     0
   );
 
-  const baseFilter = getShouldTrackTokenUsageCostsESFilter(auth);
-
   const query: estypes.QueryDslQueryContainer = {
     bool: {
-      filter: [baseFilter, { range: { timestamp: { gte: todayStartMs } } }],
+      filter: [
+        { term: { workspace_id: workspace.sId } },
+        { term: { usage_type: USAGE_TYPE_PROGRAMMATIC } },
+        { range: { completed_at: { gte: todayStartMs } } },
+      ],
     },
   };
 
-  const result = await searchAnalytics<never, UsageAggregations>(query, {
-    aggregations: {
-      total_cost: { sum: { field: "tokens.cost_micro_usd" } },
-    },
-    size: 0,
-  });
+  const result = await searchConsumptionAnalytics<never, UsageAggregations>(
+    query,
+    {
+      aggregations: {
+        total_cost: { sum: { field: "micro_usd" } },
+      },
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return new Err(new Error(`ES query failed: ${result.error.message}`));
