@@ -96,15 +96,12 @@ describe("planFolderArchive", () => {
         {
           archivePath: "reports/q1/summary.txt",
           canonicalPath: "conversation-c1/reports/q1/summary.txt",
-          sizeBytes: 12,
         },
         {
           archivePath: "reports/readme.md",
           canonicalPath: "conversation-c1/reports/readme.md",
-          sizeBytes: 5,
         },
       ],
-      totalSizeBytes: 17,
     });
   });
 
@@ -214,15 +211,12 @@ describe("streamFolderArchive", () => {
           {
             archivePath: "reports/a.txt",
             canonicalPath: `${folderPath}/a.txt`,
-            sizeBytes: 5,
           },
           {
             archivePath: "reports/nested/b.txt",
             canonicalPath: `${folderPath}/nested/b.txt`,
-            sizeBytes: 5,
           },
         ],
-        totalSizeBytes: 10,
       })
     );
 

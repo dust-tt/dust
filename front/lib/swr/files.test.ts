@@ -3,8 +3,6 @@ import {
   fetchFileIdFromPath,
   fetchFileMetadataFromPath,
   getFilePathContentApiPath,
-  getFolderArchiveDownloadUrl,
-  prepareFolderArchiveDownload,
 } from "@app/lib/swr/files";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import {
@@ -32,34 +30,6 @@ describe("file path API", () => {
     expect(getFilePathContentApiPath(owner, canonicalPath)).toBe(
       "/api/w/w_test_ws/files/path/conversation-c1/reports/frame%20draft%402.tsx"
     );
-  });
-
-  it("preflights an encoded folder archive URL with HEAD", async () => {
-    mockClientFetch.mockResolvedValue(new Response(null, { status: 200 }));
-
-    const url = await prepareFolderArchiveDownload({
-      owner,
-      canonicalPath: "conversation-c1/reports/Q1 draft",
-    });
-
-    expect(url).toBe(
-      getFolderArchiveDownloadUrl(owner, "conversation-c1/reports/Q1 draft")
-    );
-    expect(url).toContain(
-      "/files/path/conversation-c1/reports/Q1%20draft?archive=zip"
-    );
-    expect(mockClientFetch).toHaveBeenCalledWith(url, { method: "HEAD" });
-  });
-
-  it("surfaces the archive preflight API error", async () => {
-    mockClientFetch.mockResolvedValue(new Response(null, { status: 413 }));
-
-    await expect(
-      prepareFolderArchiveDownload({
-        owner,
-        canonicalPath: "conversation-c1/reports",
-      })
-    ).rejects.toThrow("Failed to prepare folder archive (HTTP 413).");
   });
 });
 

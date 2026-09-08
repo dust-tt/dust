@@ -257,15 +257,14 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   const archive = ctx.req.query("archive");
 
   // Hono dispatches HEAD requests through the matching GET route.
-  if (ctx.req.method === "HEAD") {
-    if (archive === "zip") {
-      return handleFolderArchiveRequest(ctx, canonicalPath, { headOnly: true });
-    }
-    return handleHeadRequest(ctx, canonicalPath);
+  if (archive === "zip") {
+    return handleFolderArchiveRequest(ctx, canonicalPath, {
+      headOnly: ctx.req.method === "HEAD",
+    });
   }
 
-  if (archive === "zip") {
-    return handleFolderArchiveRequest(ctx, canonicalPath, { headOnly: false });
+  if (ctx.req.method === "HEAD") {
+    return handleHeadRequest(ctx, canonicalPath);
   }
 
   const auth = ctx.get("auth");

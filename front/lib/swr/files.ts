@@ -406,31 +406,6 @@ export const getFilePathDownloadUrl = (
   return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1`;
 };
 
-export const getFolderArchiveDownloadUrl = (
-  owner: LightWorkspaceType,
-  canonicalPath: string
-) => {
-  const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
-  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?archive=zip`;
-};
-
-export async function prepareFolderArchiveDownload({
-  owner,
-  canonicalPath,
-}: {
-  owner: LightWorkspaceType;
-  canonicalPath: string;
-}): Promise<string> {
-  const url = getFolderArchiveDownloadUrl(owner, canonicalPath);
-  const response = await clientFetch(url, { method: "HEAD" });
-  if (!response.ok) {
-    throw new Error(
-      `Failed to prepare folder archive (HTTP ${response.status}).`
-    );
-  }
-  return url;
-}
-
 export async function downloadFile(
   owner: LightWorkspaceType,
   canonicalPath: string

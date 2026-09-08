@@ -3,7 +3,6 @@ import type { Readable } from "node:stream";
 import { PassThrough } from "node:stream";
 import { finished } from "node:stream/promises";
 import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import type { DustFileSystemError } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -25,14 +24,12 @@ export type FolderArchiveLimits = {
 export type FolderArchiveFile = {
   archivePath: string;
   canonicalPath: string;
-  sizeBytes: number;
 };
 
 export type FolderArchivePlan = {
   archiveFileName: string;
   directories: string[];
   files: FolderArchiveFile[];
-  totalSizeBytes: number;
 };
 
 export type FolderArchiveErrorCode =
@@ -64,32 +61,6 @@ export type FolderArchiveFileSystem = Pick<
 >;
 
 export type FolderArchivePlanError = DustFileSystemError | FolderArchiveError;
-
-function archivePathForEntry({
-  canonicalFolderPath,
-  entry,
-  rootName,
-}: {
-  canonicalFolderPath: string;
-  entry: FileSystemEntry;
-  rootName: string;
-}): Result<string | null, FolderArchiveError> {
-  if (entry.path === canonicalFolderPath) {
-    return new Ok(null);
-  }
-
-  const prefix = `${canonicalFolderPath}/`;
-  if (!entry.path.startsWith(prefix)) {
-    return new Err(
-      new FolderArchiveError(
-        "internal",
-        `Listed path is outside the archived folder: ${entry.path}`
-      )
-    );
-  }
-
-  return new Ok(path.posix.join(rootName, entry.path.slice(prefix.length)));
-}
 
 export async function planFolderArchive(
   fileSystem: FolderArchiveFileSystem,
@@ -147,20 +118,21 @@ export async function planFolderArchive(
   const directories = new Set<string>([`${rootName}/`]);
   const files: FolderArchiveFile[] = [];
   let totalSizeBytes = 0;
+  const entryPathPrefix = `${normalizedFolderPath}/`;
 
   for (const entry of entries) {
-    const archivePathResult = archivePathForEntry({
-      canonicalFolderPath: normalizedFolderPath,
-      entry,
+    if (!entry.path.startsWith(entryPathPrefix)) {
+      return new Err(
+        new FolderArchiveError(
+          "internal",
+          `Listed path is outside the archived folder: ${entry.path}`
+        )
+      );
+    }
+    const archivePath = path.posix.join(
       rootName,
-    });
-    if (archivePathResult.isErr()) {
-      return archivePathResult;
-    }
-    const archivePath = archivePathResult.value;
-    if (!archivePath) {
-      continue;
-    }
+      entry.path.slice(entryPathPrefix.length)
+    );
 
     if (entry.isDirectory) {
       directories.add(`${archivePath.replace(/\/+$/, "")}/`);
@@ -189,7 +161,6 @@ export async function planFolderArchive(
     files.push({
       archivePath,
       canonicalPath: entry.path,
-      sizeBytes: entry.sizeBytes,
     });
   }
 
@@ -197,7 +168,6 @@ export async function planFolderArchive(
     archiveFileName: `${rootName}.zip`,
     directories: [...directories].sort(),
     files: files.sort((a, b) => a.archivePath.localeCompare(b.archivePath)),
-    totalSizeBytes,
   });
 }
 
