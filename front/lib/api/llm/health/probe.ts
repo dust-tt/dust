@@ -2,13 +2,13 @@ import {
   PROBE_TIMEOUT_MS,
   PROBES_PER_RECOVERY,
 } from "@app/lib/api/llm/health/config";
+import { healthLogger } from "@app/lib/api/llm/health/logger";
 import { dangerouslyGetDustManagedLlmCredentials } from "@app/lib/api/provider_credentials";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
-import logger from "@app/logger/logger";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -132,7 +132,7 @@ async function runSingleProbe(
     return raced;
   }
 
-  logger.info(
+  healthLogger.info(
     {
       modelId: endpoint.modelConfig.modelId,
       providerId: endpoint.modelConfig.providerId,
@@ -160,7 +160,7 @@ export async function probeEndpoint(
 ): Promise<boolean> {
   const constructor = findStreamEndpoint(endpoint);
   if (!constructor) {
-    logger.error(
+    healthLogger.error(
       {
         modelId: endpoint.modelId,
         providerId: endpoint.providerId,
@@ -177,7 +177,7 @@ export async function probeEndpoint(
       healthy = await runSingleProbe(constructor);
     } catch (err) {
       // Provider SDKs are external: a throw is a failed probe, not a bug.
-      logger.info(
+      healthLogger.info(
         {
           err: normalizeError(err),
           modelId: endpoint.modelId,
