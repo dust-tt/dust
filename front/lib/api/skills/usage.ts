@@ -1,4 +1,5 @@
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
   buildConsumptionScopeQuery,
@@ -21,6 +22,18 @@ type SkillUsageAggregations = {
 };
 
 /**
+ * @cc [owner:aubin-tchoi,label:product] skill-enablement-filters
+ * Selects skill enablement events. Query scoping and aggregation are the caller's responsibility.
+ */
+export function buildSkillEnablementFilters(): estypes.QueryDslQueryContainer[] {
+  return [
+    { term: { consumption_type: "tool" } },
+    { term: { "tool.name": ENABLE_SKILL_TOOL_NAME } },
+    { term: { "tool.server_name": SKILL_MANAGEMENT_SERVER_NAME } },
+  ];
+}
+
+/**
  * @cc [owner:aubin-tchoi,label:product] recent-skill-usage
  * Counts the number of times each requested skill has been enabled in the authenticated workspace
  * within [period.startDate, period.endDate). Skills with no enablements in that period are absent
@@ -39,11 +52,7 @@ export async function fetchSkillUsageCounts(
     startDate: period.startDate,
     endDate: period.endDate,
     filter: { skills: skillIds },
-    extraFilters: [
-      { term: { consumption_type: "tool" } },
-      { term: { "tool.name": ENABLE_SKILL_TOOL_NAME } },
-      { term: { "tool.server_name": "skill_management" } },
-    ],
+    extraFilters: buildSkillEnablementFilters(),
   });
   const result = await searchConsumptionAnalytics<
     never,
