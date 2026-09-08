@@ -867,7 +867,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     ]);
   });
 
-  it("returns recent tool usage for custom and global skills", async () => {
+  it("returns recent skill activation calls for custom and global skills", async () => {
     const { workspace, user } = await setupTest();
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -923,6 +923,8 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
           { range: { completed_at: { gte: "now-30d", lt: "now" } } },
           { terms: { "tool.attributed_skill_ids": requestedSkillIds } },
           { term: { consumption_type: "tool" } },
+          { term: { "tool.name": "enable_skill" } },
+          { term: { "tool.server_name": "skill_management" } },
         ],
       },
     });

@@ -121,9 +121,9 @@ app.route("/similar", similar);
 
 /**
  * @ignoreswagger
- * With withRelations=true and withMessageCount=true, messageCount is the number of tool calls
- * attributed to the skill over the last 30 days, including activations. The legacy field name is
- * retained for compatibility. Null means usage is unavailable or the skill is a system skill.
+ * With withRelations=true and withMessageCount=true, messageCount is the number of
+ * skill_management.enable_skill calls attributed to the skill over the last 30 days. The legacy
+ * field name is retained for compatibility. Null means usage is unavailable or a system skill.
  */
 app.get(
   "/",

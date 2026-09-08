@@ -1,3 +1,4 @@
+import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import {
   buildConsumptionScopeQuery,
   CONSUMPTION_DIMENSION_FIELDS,
@@ -20,8 +21,8 @@ type SkillUsageAggregations = {
 
 /**
  * @cc [owner:aubin-tchoi,label:product] recent-skill-usage
- * Counts indexed tool calls attributed to each requested skill in the authenticated workspace
- * over the last 30 days, including skill activations; skills without calls are absent from the map.
+ * Counts indexed `skill_management.enable_skill` calls attributed to each requested skill in the
+ * authenticated workspace over the last 30 days; skills without calls are absent from the map.
  */
 export async function fetchSkillUsageCounts(
   auth: Authenticator,
@@ -36,7 +37,11 @@ export async function fetchSkillUsageCounts(
     startDate: "now-30d",
     endDate: "now",
     filter: { skills: skillIds },
-    extraFilters: [{ term: { consumption_type: "tool" } }],
+    extraFilters: [
+      { term: { consumption_type: "tool" } },
+      { term: { "tool.name": ENABLE_SKILL_TOOL_NAME } },
+      { term: { "tool.server_name": "skill_management" } },
+    ],
   });
   const result = await searchConsumptionAnalytics<
     never,

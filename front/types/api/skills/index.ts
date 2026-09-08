@@ -14,7 +14,7 @@ export type GetSkillsResponseBody = {
 export type GetSkillsWithRelationsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsWithRelationsType & {
     isFavorite?: boolean;
-    // Legacy name: attributed tool calls over the last 30 days, including skill activations.
+    // Legacy name: attributed skill_management.enable_skill calls over the last 30 days.
     // Null for system skills or when analytics is unavailable.
     messageCount?: number | null;
   })[];
