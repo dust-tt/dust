@@ -154,7 +154,16 @@ type SeatFormValue = {
   minSeats: number;
   maxSeats?: number;
   rate: number;
-  paymentSchedule: { frequency: "one_time" };
+  commitmentPrice?: number;
+  paymentSchedule: {
+    frequency:
+      | "one_time"
+      | "monthly"
+      | "quarterly"
+      | "semi_annually"
+      | "annually";
+    periods?: number;
+  };
 };
 
 // Default seat settings for a package: entitled seats pre-selected, the rest
@@ -178,6 +187,25 @@ function buildDefaultSeats(
       rate,
       paymentSchedule: { frequency: "one_time" },
     };
+  }
+  return next;
+}
+
+// Merge a template's per-seat overrides onto a package's default seats. Seat
+// types the package does not sell have no entry to merge onto and are skipped.
+function mergeTemplateSeats(
+  base: Record<string, SeatFormValue>,
+  templateSeats: SwitchContractTemplate["seats"]
+): Record<string, SeatFormValue> {
+  if (!templateSeats) {
+    return base;
+  }
+  const next = { ...base };
+  for (const [seatType, override] of Object.entries(templateSeats)) {
+    if (!override || !next[seatType]) {
+      continue;
+    }
+    next[seatType] = { ...next[seatType], ...override };
   }
   return next;
 }
@@ -585,18 +613,12 @@ export default function SwitchContractDialog({
       if (template.recurringFreeCredit !== undefined) {
         form.setValue("recurringFreeCredit", template.recurringFreeCredit);
       }
-      // Merge seat overrides onto the current package's seats; a seat type the
-      // package does not sell has no entry to merge onto and is skipped.
+      // Merge seat overrides onto the current package's seats.
       if (template.seats) {
-        const current = form.getValues("seats") ?? {};
-        const next = { ...current };
-        for (const [seatType, override] of Object.entries(template.seats)) {
-          if (!override || !next[seatType]) {
-            continue;
-          }
-          next[seatType] = { ...next[seatType], ...override };
-        }
-        form.setValue("seats", next);
+        form.setValue(
+          "seats",
+          mergeTemplateSeats(form.getValues("seats") ?? {}, template.seats)
+        );
       }
     },
     [form]
@@ -606,23 +628,6 @@ export default function SwitchContractDialog({
     (template: SwitchContractTemplate) => {
       setError(null);
       setAppliedTemplateName(template.name);
-      // Start from a blank form so no field from a previously applied template
-      // lingers. The billing identity (Stripe customer + currency) is preserved
-      // since it identifies the customer, not the contract shape.
-      const current = form.getValues();
-      form.reset({
-        ...formDefaults,
-        stripeCustomerId: current.stripeCustomerId,
-        stripeCollectionMethod: current.stripeCollectionMethod,
-        manualCurrency: current.manualCurrency,
-      });
-      // Duration and offer are local UI state that don't depend on the package,
-      // so set them here in the handler (not from the deferred effect below).
-      setDurationMode(template.duration !== undefined);
-      setDurationValue(template.duration?.value ?? 1);
-      setDurationUnit(template.duration?.unit ?? "years");
-      setOfferValue(template.offerFreePeriod?.value ?? 0);
-      setOfferUnit(template.offerFreePeriod?.unit ?? "weeks");
       pendingTemplateRef.current = null;
 
       const packageId = resolveTemplatePackageId(template);
@@ -638,24 +643,49 @@ export default function SwitchContractDialog({
             "Pick a package manually."
         );
       }
-      if (packageId && packageId !== selectedPackageId) {
+      const isSamePackage =
+        Boolean(packageId) && packageId === selectedPackageId;
+
+      // Start from a blank form so no field from a previously applied template
+      // lingers. The billing identity (Stripe customer + currency) is preserved
+      // since it identifies the customer, not the contract shape. When the
+      // package is unchanged the seat-reset effect won't fire, so seed the
+      // package's default seats (with the template's overrides) into this single
+      // reset — a reset() followed by a setValue() on the nested `seats` object
+      // races and leaves the seat fields blank.
+      const current = form.getValues();
+      form.reset({
+        ...formDefaults,
+        stripeCustomerId: current.stripeCustomerId,
+        stripeCollectionMethod: current.stripeCollectionMethod,
+        manualCurrency: current.manualCurrency,
+        ...(isSamePackage
+          ? {
+              metronomePackageId: packageId,
+              startingAt: defaultStartingAtUTC,
+              seats: mergeTemplateSeats(
+                buildDefaultSeats(selectedSeats, resolvedCurrency),
+                template.seats
+              ),
+            }
+          : {}),
+      });
+      // Duration and offer are local UI state that don't depend on the package,
+      // so set them here in the handler (not from the deferred effect below).
+      setDurationMode(template.duration !== undefined);
+      setDurationValue(template.duration?.value ?? 1);
+      setDurationUnit(template.duration?.unit ?? "years");
+      setOfferValue(template.offerFreePeriod?.value ?? 0);
+      setOfferUnit(template.offerFreePeriod?.unit ?? "weeks");
+
+      if (packageId && !isSamePackage) {
         // The package changes: selecting it repopulates the seats and resets the
         // tier defaults, so defer the rest of the template until that settles.
         pendingTemplateRef.current = template;
         form.setValue("metronomePackageId", packageId);
       } else {
-        // The package is unchanged (or the template names none), so neither the
-        // seat-reset nor the tier-default effect will fire — restore the package,
-        // rebuild its default seats and start (form.reset cleared them), and
-        // apply the template synchronously.
-        if (packageId) {
-          form.setValue("metronomePackageId", packageId);
-          form.setValue(
-            "seats",
-            buildDefaultSeats(selectedSeats, resolvedCurrency)
-          );
-          form.setValue("startingAt", defaultStartingAtUTC);
-        }
+        // Same package (seats already seeded above) or no package: apply the
+        // remaining scalar fields now.
         applyTemplateFields(template);
       }
     },
