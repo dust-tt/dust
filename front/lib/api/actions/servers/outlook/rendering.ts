@@ -74,6 +74,82 @@ function enrichEventWithDayOfWeek(
   };
 }
 
+// Graph fills the whole pattern object whatever the pattern type is, defaulting
+// the fields the type does not use — a weekly pattern still carries
+// `index: "first"` and `dayOfMonth: 0`. So only read the fields the type gives
+// meaning to: rendering `index` unconditionally turns "every monday" into
+// "the first monday", and dropping it turns "the second thursday of every third
+// month" into "every thursday".
+// https://learn.microsoft.com/en-us/graph/api/resources/recurrencepattern
+function renderRecurrencePattern(
+  recurrence: OutlookEvent["recurrence"]
+): string | null {
+  const pattern = recurrence?.pattern;
+  if (!pattern?.type) {
+    return null;
+  }
+
+  const parts = [pattern.type];
+  if (pattern.interval && pattern.interval > 1) {
+    parts.push(`(every ${pattern.interval})`);
+  }
+
+  const days = pattern.daysOfWeek?.length
+    ? pattern.daysOfWeek.join(", ")
+    : null;
+
+  switch (pattern.type) {
+    case "relativeMonthly":
+    case "relativeYearly":
+      if (days) {
+        parts.push(`on the ${pattern.index ?? "first"} ${days}`);
+      }
+      break;
+    case "absoluteMonthly":
+    case "absoluteYearly":
+      if (pattern.dayOfMonth) {
+        parts.push(`on day ${pattern.dayOfMonth}`);
+      }
+      break;
+    // `daily` has no day qualifier, `weekly` lists its days plainly.
+    default:
+      if (days) {
+        parts.push(`on ${days}`);
+      }
+  }
+
+  if (
+    pattern.month &&
+    (pattern.type === "absoluteYearly" || pattern.type === "relativeYearly")
+  ) {
+    parts.push(`of month ${pattern.month}`);
+  }
+
+  return parts.join(" ");
+}
+
+// `recurrence` is only populated on the series master: occurrences returned by
+// /calendarView carry `type` but a null recurrence, hence the two signals.
+function renderRecurrence(
+  event: Pick<OutlookEvent, "type" | "recurrence">
+): string | null {
+  const pattern = renderRecurrencePattern(event.recurrence);
+  const suffix = pattern ? ` - ${pattern}` : "";
+
+  switch (event.type) {
+    case "seriesMaster":
+      return `Recurring: yes, series master${suffix}`;
+    case "occurrence":
+      return `Recurring: yes, occurrence of a series${suffix}`;
+    case "exception":
+      return `Recurring: yes, modified occurrence of a series${suffix}`;
+    case "singleInstance":
+      return "Recurring: no";
+    default:
+      return pattern ? `Recurring: yes${suffix}` : null;
+  }
+}
+
 export function renderOutlookEvent(
   event: OutlookEvent,
   userTimezone?: string
@@ -176,12 +252,25 @@ export function renderOutlookEvent(
     lines.push(`Show as: ${enrichedEvent.showAs}`);
   }
 
+  if (enrichedEvent.categories && enrichedEvent.categories.length > 0) {
+    lines.push(`Categories: ${enrichedEvent.categories.join(", ")}`);
+  }
+
+  const recurrence = renderRecurrence(enrichedEvent);
+  if (recurrence) {
+    lines.push(recurrence);
+  }
+
   if (enrichedEvent.isCancelled) {
     lines.push("Status: Cancelled");
   }
 
   if (enrichedEvent.id) {
     lines.push(`Event ID: ${enrichedEvent.id}`);
+  }
+
+  if (enrichedEvent.seriesMasterId) {
+    lines.push(`Series Master Event ID: ${enrichedEvent.seriesMasterId}`);
   }
 
   return lines.join("\n");
