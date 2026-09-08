@@ -297,6 +297,89 @@ export type PostWebhookTriggerResponseType = z.infer<
   typeof PostWebhookTriggerResponseSchema
 >;
 
+export const TriggerKindSchema = z.enum(["schedule", "webhook"]);
+export type TriggerKindType = z.infer<typeof TriggerKindSchema>;
+
+export const TriggerStatusSchema = z.enum([
+  "enabled",
+  "disabled",
+  "disabled_by_manager",
+  "relocating",
+  "downgraded",
+]);
+export type TriggerStatusType = z.infer<typeof TriggerStatusSchema>;
+
+export const TriggerExecutionModeSchema = z.enum([
+  "user_pool",
+  "workspace_pool",
+]);
+export type TriggerExecutionModeType = z.infer<
+  typeof TriggerExecutionModeSchema
+>;
+
+export const CronScheduleConfigSchema = z.object({
+  type: z.literal("cron").optional(),
+  cron: z.string(),
+  timezone: z.string(),
+});
+
+export const IntervalScheduleConfigSchema = z.object({
+  type: z.literal("interval"),
+  intervalDays: z.number(),
+  dayOfWeek: z.number().nullable(),
+  hour: z.number(),
+  minute: z.number(),
+  timezone: z.string(),
+});
+
+export const ScheduleConfigSchema = z.union([
+  CronScheduleConfigSchema,
+  IntervalScheduleConfigSchema,
+]);
+
+export const WebhookConfigSchema = z.object({
+  includePayload: z.boolean(),
+  event: z.string().optional(),
+  filter: z.string().optional(),
+});
+
+const TriggerBaseSchema = z.object({
+  id: z.number(),
+  sId: z.string(),
+  name: z.string(),
+  agentConfigurationId: z.string(),
+  customPrompt: z.string().nullable(),
+  status: TriggerStatusSchema,
+  createdAt: z.number(),
+  naturalLanguageDescription: z.string().nullable(),
+  executionMode: TriggerExecutionModeSchema,
+});
+
+export const TriggerSchema = z.discriminatedUnion("kind", [
+  TriggerBaseSchema.extend({
+    kind: z.literal("schedule"),
+    configuration: ScheduleConfigSchema,
+  }),
+  TriggerBaseSchema.extend({
+    kind: z.literal("webhook"),
+    configuration: WebhookConfigSchema,
+    webhookSource: z
+      .object({ name: z.string(), provider: z.string() })
+      .nullable(),
+  }),
+]);
+export type TriggerType = z.infer<typeof TriggerSchema>;
+
+export const GetTriggersResponseSchema = z.object({
+  triggers: z.array(TriggerSchema),
+});
+export type GetTriggersResponseType = z.infer<typeof GetTriggersResponseSchema>;
+
+export const GetTriggerResponseSchema = z.object({
+  trigger: TriggerSchema,
+});
+export type GetTriggerResponseType = z.infer<typeof GetTriggerResponseSchema>;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 type AudioContentType = keyof typeof supportedAudioFileFormats;

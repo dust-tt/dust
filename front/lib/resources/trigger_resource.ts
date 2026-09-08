@@ -234,6 +234,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         workspaceId: workspace.id,
       },
       limit: options.limit,
+      offset: options.offset,
+      order: options.order,
     });
 
     return res.map((c) => new this(this.model, c.get()));
@@ -372,7 +374,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     {
       kinds,
       executionModes,
-    }: { kinds?: TriggerKind[]; executionModes?: TriggerExecutionMode[] }
+      limit,
+      offset,
+    }: {
+      kinds?: TriggerKind[];
+      executionModes?: TriggerExecutionMode[];
+      limit?: number;
+      offset?: number;
+    }
   ): Promise<TriggerResource[]> {
     return this.baseFetch(auth, {
       where: {
@@ -381,6 +390,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           ? { executionMode: { [Op.in]: executionModes } }
           : {}),
       },
+      order: [["id", "ASC"]],
+      limit,
+      offset,
     });
   }
 
