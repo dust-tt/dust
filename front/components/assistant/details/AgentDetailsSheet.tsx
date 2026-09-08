@@ -14,9 +14,11 @@ import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
+import { areEmailAgentsAllowed } from "@app/lib/workspace_policies";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { TriggerType } from "@app/types/assistant/triggers";
@@ -33,8 +35,11 @@ import {
   Button,
   Chip,
   ContentMessage,
+  ContentMessageInline,
   InfoCircle,
   Lock01,
+  Mail01,
+  Markdown,
   RefreshCw02,
   Sheet,
   SheetContainer,
@@ -125,6 +130,9 @@ type AgentDetailsSheetProps = {
   user: UserType;
 };
 
+/** @cc [owner:philipperolet,label:product] email-agent-footer
+ * The email footer requires an active, readable agent and workspace email agents to be enabled.
+ */
 export function AgentDetailsSheet({
   agentId,
   onClose,
@@ -436,6 +444,18 @@ export function AgentDetailsSheet({
                 </ContentMessage>
               )}
             </SheetContainer>
+            {areEmailAgentsAllowed(owner) &&
+              agentConfiguration?.status === "active" &&
+              agentConfiguration.canRead && (
+                <div className="px-5 pb-4">
+                  <ContentMessageInline variant="primary" icon={Mail01}>
+                    <Markdown
+                      content={`Email this agent at **${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}**. [Learn more](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents)`}
+                      forcedTextSize="text-xs"
+                    />
+                  </ContentMessageInline>
+                </div>
+              )}
           </>
         )}
       </SheetContent>
