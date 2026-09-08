@@ -57,9 +57,7 @@
 
 @keyframes credit-label-reveal {
   from {
-    clip-path: inset(
-      0 calc(100% - var(--credit-label-collapsed-width)) calc(100% - 1lh) 0
-    );
+    clip-path: inset(0 calc(100% - var(--credit-label-collapsed-width)) 0 0);
   }
   to {
     clip-path: inset(0);
