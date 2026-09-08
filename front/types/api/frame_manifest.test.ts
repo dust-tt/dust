@@ -11,6 +11,7 @@ import {
   DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
   DEFAULT_SANDBOX_FUNCTION_STAKE,
 } from "@app/types/api/sandbox_functions";
+import { SANDBOX_POLICY_MAX_REQUESTED_DOMAINS } from "@app/types/sandbox/egress_policy";
 import { describe, expect, it } from "vitest";
 
 const MANIFEST = {
@@ -199,5 +200,48 @@ describe("isSafeFrameRelativePath", () => {
     ["src\\index.tsx", false],
   ])("validates %s", (relativePath, expected) => {
     expect(isSafeFrameRelativePath(relativePath)).toBe(expected);
+  });
+});
+
+describe("FrameManifestSchema domains", () => {
+  it("defaults to no domains", () => {
+    const parsed = FrameManifestSchema.safeParse(MANIFEST);
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.domains).toEqual([]);
+    }
+  });
+
+  it("normalizes and deduplicates declared domains", () => {
+    const parsed = FrameManifestSchema.safeParse({
+      ...MANIFEST,
+      domains: ["API.Stripe.COM", "api.stripe.com", "*.stripe.com"],
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.domains).toEqual(["api.stripe.com", "*.stripe.com"]);
+    }
+  });
+
+  it("rejects malformed domains", () => {
+    expect(
+      FrameManifestSchema.safeParse({ ...MANIFEST, domains: ["api.*.com"] })
+        .success
+    ).toBe(false);
+    expect(
+      FrameManifestSchema.safeParse({ ...MANIFEST, domains: [""] }).success
+    ).toBe(false);
+  });
+
+  it("bounds the number of declared domains", () => {
+    const domains = Array.from(
+      { length: SANDBOX_POLICY_MAX_REQUESTED_DOMAINS + 1 },
+      (_, index) => `host-${index}.example.com`
+    );
+    expect(
+      FrameManifestSchema.safeParse({ ...MANIFEST, domains }).success
+    ).toBe(false);
   });
 });

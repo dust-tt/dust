@@ -23,6 +23,7 @@ const publication = {
       },
     ],
     databases: [{ name: "tasks", schema: "databases/tasks.db.ts" }],
+    domains: ["api.example.com"],
   },
   publishedAt: "2026-08-28T12:00:00.000Z",
   publisherId: "usr_publisher",

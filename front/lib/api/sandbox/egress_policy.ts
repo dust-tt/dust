@@ -9,11 +9,14 @@ import {
   EMPTY_EGRESS_POLICY,
   normalizeEgressPolicy,
   normalizeEgressPolicyDomain,
+  normalizeEgressPolicyDomains,
   parseEgressPolicy,
+  SANDBOX_POLICY_MAX_REQUESTED_DOMAINS,
 } from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import assert from "assert";
 
 const INVALIDATION_TIMEOUT_MS = 5_000;
 const SANDBOX_POLICY_MAX_DOMAINS = 100;
@@ -401,26 +404,126 @@ export async function removeWorkspacePolicyDomain(
   return new Ok({ policy: written.value, removedDomain: domain });
 }
 
-// Caps the pending-request section: the proxy re-reads this file on every
-// cache miss, so an agent must not be able to grow it unboundedly.
-const SANDBOX_POLICY_MAX_REQUESTED_DOMAINS = 50;
-
 export type RequestOwnerPolicyDomainOutcome =
   | "requested"
   | "already_allowed"
   | "already_requested";
 
-// Records an agent's pod-scoped domain request in the policy file's
-// requestedDomains section for admin review — never grants anything. Exact
-// domains only (same rule as tool approvals: no agent-supplied wildcards).
+export type PolicyDomainRequestOutcome = {
+  domain: string;
+  outcome: RequestOwnerPolicyDomainOutcome;
+};
+
 // The read/write pair a scope's request/dismiss helpers operate on, plus a
 // label for the cap error. Pod requests use the owner file, workspace
 // requests the workspace file — the logic is otherwise identical.
 type PolicyDomainScope = {
   read: () => Promise<Result<EgressPolicy, Error>>;
+  // A layer the sandbox also honors (the workspace file, for a Pod). Read
+  // only to skip redundant requests; requests always land on this scope.
+  readInherited: (() => Promise<Result<EgressPolicy, Error>>) | null;
   write: (policy: EgressPolicy) => Promise<Result<EgressPolicy, Error>>;
   label: string;
 };
+
+// Exact-string membership on the normalized pattern: a domain covered by an
+// existing wildcard still records a request and surfaces to the admin, who
+// resolves it by approving (redundant entry) or dismissing. `allowed` spans
+// this scope and any inherited layer, so a Pod request for a domain the
+// workspace already allows reports already_allowed instead of duplicating it.
+function classifyDomainRequest(
+  domain: string,
+  { allowed, pending }: { allowed: Set<string>; pending: Set<string> }
+): RequestOwnerPolicyDomainOutcome {
+  if (allowed.has(domain)) {
+    return "already_allowed";
+  }
+  if (pending.has(domain)) {
+    return "already_requested";
+  }
+  return "requested";
+}
+
+// Records domain requests in the scope's requestedDomains section for admin
+// review — never grants anything. One read and at most one write for the
+// whole batch. Wildcards are accepted (unlike the conversation add): every
+// request is reviewed by an admin before it grants, the same trust boundary
+// as the admin settings PUT, which also allows them. The batch is rejected
+// whole when it would push the pending section past the cap.
+async function requestPolicyDomains(
+  scope: PolicyDomainScope,
+  { domains }: { domains: string[] }
+): Promise<
+  Result<
+    { policy: EgressPolicy; outcomes: PolicyDomainRequestOutcome[] },
+    Error
+  >
+> {
+  const parsedDomains = normalizeEgressPolicyDomains(domains);
+  if (parsedDomains.isErr()) {
+    return new Err(parsedDomains.error);
+  }
+
+  // Two reads at most: this scope's file and its inherited layer.
+  const [currentPolicy, inheritedPolicy] = await Promise.all([
+    scope.read(),
+    scope.readInherited ? scope.readInherited() : Promise.resolve(null),
+  ]);
+  if (currentPolicy.isErr()) {
+    return new Err(currentPolicy.error);
+  }
+  let inheritedAllowedDomains: string[] = [];
+  if (inheritedPolicy) {
+    if (inheritedPolicy.isErr()) {
+      return new Err(inheritedPolicy.error);
+    }
+    inheritedAllowedDomains = inheritedPolicy.value.allowedDomains;
+  }
+
+  const pending = currentPolicy.value.requestedDomains ?? [];
+  const membership = {
+    allowed: new Set([
+      ...currentPolicy.value.allowedDomains,
+      ...inheritedAllowedDomains,
+    ]),
+    pending: new Set(pending.map((request) => request.domain)),
+  };
+  const outcomes = parsedDomains.value.map((domain) => ({
+    domain,
+    outcome: classifyDomainRequest(domain, membership),
+  }));
+
+  const newDomains = outcomes
+    .filter(({ outcome }) => outcome === "requested")
+    .map(({ domain }) => domain);
+  if (newDomains.length === 0) {
+    return new Ok({ policy: currentPolicy.value, outcomes });
+  }
+  if (
+    pending.length + newDomains.length >
+    SANDBOX_POLICY_MAX_REQUESTED_DOMAINS
+  ) {
+    return new Err(
+      new Error(
+        `This ${scope.label} has ${pending.length} pending domain requests and can hold at most ${SANDBOX_POLICY_MAX_REQUESTED_DOMAINS}. Ask an admin to review them before requesting more.`
+      )
+    );
+  }
+
+  const requestedAtMs = Date.now();
+  const written = await scope.write({
+    allowedDomains: currentPolicy.value.allowedDomains,
+    requestedDomains: [
+      ...pending,
+      ...newDomains.map((domain) => ({ domain, requestedAtMs })),
+    ],
+  });
+  if (written.isErr()) {
+    return written;
+  }
+
+  return new Ok({ policy: written.value, outcomes });
+}
 
 async function requestPolicyDomain(
   scope: PolicyDomainScope,
@@ -431,55 +534,13 @@ async function requestPolicyDomain(
     Error
   >
 > {
-  // Wildcards are accepted (unlike the conversation add): every request is
-  // reviewed by an admin before it grants, the same trust boundary as the
-  // admin settings PUT, which also allows them.
-  const parsedDomain = normalizeEgressPolicyDomain(domain);
-  if (parsedDomain.isErr()) {
-    return new Err(parsedDomain.error);
+  const result = await requestPolicyDomains(scope, { domains: [domain] });
+  if (result.isErr()) {
+    return result;
   }
-
-  const currentPolicy = await scope.read();
-  if (currentPolicy.isErr()) {
-    return new Err(currentPolicy.error);
-  }
-
-  // Exact-string membership on the normalized pattern: a domain covered by
-  // an existing wildcard still records a request and surfaces to the admin,
-  // who resolves it by approving (redundant entry) or dismissing.
-  if (currentPolicy.value.allowedDomains.includes(parsedDomain.value)) {
-    return new Ok({ policy: currentPolicy.value, outcome: "already_allowed" });
-  }
-  const pending = currentPolicy.value.requestedDomains ?? [];
-  if (pending.some((request) => request.domain === parsedDomain.value)) {
-    return new Ok({
-      policy: currentPolicy.value,
-      outcome: "already_requested",
-    });
-  }
-  if (pending.length >= SANDBOX_POLICY_MAX_REQUESTED_DOMAINS) {
-    return new Err(
-      new Error(
-        `This ${scope.label} already has ${SANDBOX_POLICY_MAX_REQUESTED_DOMAINS} pending domain requests. Ask an admin to review them before requesting more.`
-      )
-    );
-  }
-
-  const written = await scope.write({
-    allowedDomains: currentPolicy.value.allowedDomains,
-    requestedDomains: [
-      ...pending,
-      {
-        domain: parsedDomain.value,
-        requestedAtMs: Date.now(),
-      },
-    ],
-  });
-  if (written.isErr()) {
-    return written;
-  }
-
-  return new Ok({ policy: written.value, outcome: "requested" });
+  const [first] = result.value.outcomes;
+  assert(first, "One domain in, one outcome out.");
+  return new Ok({ policy: result.value.policy, outcome: first.outcome });
 }
 
 async function dismissRequestedPolicyDomain(
@@ -513,6 +574,7 @@ async function dismissRequestedPolicyDomain(
 function ownerScope(auth: Authenticator, ownerId: string): PolicyDomainScope {
   return {
     read: () => readOwnerPolicy(auth, ownerId),
+    readInherited: () => readWorkspacePolicy(auth),
     write: (policy) => writeOwnerPolicy(auth, { ownerId, policy }),
     label: "Pod",
   };
@@ -521,6 +583,7 @@ function ownerScope(auth: Authenticator, ownerId: string): PolicyDomainScope {
 function workspaceScope(auth: Authenticator): PolicyDomainScope {
   return {
     read: () => readWorkspacePolicy(auth),
+    readInherited: null,
     write: (policy) => writeWorkspacePolicy(auth, { policy }),
     label: "workspace",
   };
@@ -552,6 +615,33 @@ export async function requestWorkspacePolicyDomain(
   >
 > {
   return requestPolicyDomain(workspaceScope(auth), { domain });
+}
+
+// Batch form of requestOwnerPolicyDomain: one read and at most one write for
+// every domain a publish declares.
+export async function requestOwnerPolicyDomains(
+  auth: Authenticator,
+  { ownerId, domains }: { ownerId: string; domains: string[] }
+): Promise<
+  Result<
+    { policy: EgressPolicy; outcomes: PolicyDomainRequestOutcome[] },
+    Error
+  >
+> {
+  return requestPolicyDomains(ownerScope(auth, ownerId), { domains });
+}
+
+// Batch form of requestWorkspacePolicyDomain.
+export async function requestWorkspacePolicyDomains(
+  auth: Authenticator,
+  { domains }: { domains: string[] }
+): Promise<
+  Result<
+    { policy: EgressPolicy; outcomes: PolicyDomainRequestOutcome[] },
+    Error
+  >
+> {
+  return requestPolicyDomains(workspaceScope(auth), { domains });
 }
 
 // Removes a pending request without granting it. Approval needs no

@@ -9,6 +9,8 @@ import {
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
+import type { EgressDomainRequestsSummary } from "@app/lib/api/sandbox/egress_domain_requests";
+import { requestEgressDomainsForScope } from "@app/lib/api/sandbox/egress_domain_requests";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import {
@@ -20,6 +22,7 @@ import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import {
@@ -71,6 +74,8 @@ export type PublishFrameFromSourceResult =
       frameId: string;
       sourcePath: string;
       publicationId: string;
+      // Null when the manifest declares no domains.
+      egressDomains: EgressDomainRequestsSummary | null;
     };
 
 export type ValidateFrameFromSourceResult = {
@@ -162,11 +167,20 @@ export async function publishFrameFromSource(
       return new Err(publication.error);
     }
 
+    // Never fails the publish: the publication is already active, and failed
+    // domains can be retried with request_egress_domain.
+    const { domains } = publication.value.manifest;
+    const egressDomains =
+      domains.length > 0
+        ? await requestFrameEgressDomains(auth, { frame, domains })
+        : null;
+
     return new Ok({
       kind: "v2",
       frameId: frame.sId,
       sourcePath: normalizedPath,
       publicationId: publication.value.publicationId,
+      egressDomains,
     });
   }
 
@@ -192,6 +206,24 @@ export async function publishFrameFromSource(
     frameId: frame.sId,
     sourcePath: normalizedPath,
     warnings: publication.value.warnings,
+  });
+}
+
+// Requests land where the Frame's functions run: the Pod whose policy the Frame
+// sandbox inherits, else the workspace. Never the Frame's own owner file, which
+// no admin surface lists.
+async function requestFrameEgressDomains(
+  auth: Authenticator,
+  { frame, domains }: { frame: FileResource; domains: string[] }
+): Promise<EgressDomainRequestsSummary> {
+  const scope = await FrameSandboxAdapter.resolveScope(auth, frame);
+  if (scope.isErr()) {
+    return { kind: "failed", domains, message: scope.error.message };
+  }
+  const { spaceId } = scope.value;
+  return requestEgressDomainsForScope(auth, {
+    scope: spaceId ? { kind: "pod", podId: spaceId } : { kind: "workspace" },
+    domains,
   });
 }
 
@@ -438,7 +470,7 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; manifest: FrameManifest },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -450,10 +482,18 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     return source;
   }
 
-  return buildAndPublishFramePublication(auth, {
+  const publication = await buildAndPublishFramePublication(auth, {
     conversation,
     frame,
     ...source.value,
+  });
+  if (publication.isErr()) {
+    return publication;
+  }
+
+  return new Ok({
+    publicationId: publication.value.publicationId,
+    manifest: source.value.manifest,
   });
 }
 
@@ -470,7 +510,7 @@ export async function publishFrameV2FromSource(
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; manifest: FrameManifest },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -601,6 +641,8 @@ export async function editFrameV2TextAtSource(
       dustFs.write(sourcePath, originalSource, contentType);
 
     try {
+      // A text edit republishes the same manifest: its domains were requested
+      // on the first publish, so none are filed here.
       const publishResult = await publishFrameV2FromSourceWithSourceLockHeld(
         auth,
         {

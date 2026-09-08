@@ -91,6 +91,7 @@ The manifest declares the UI entry point, every server function, and every datab
   "name": "Comments",
   "description": "Read and add comments.",
   "uiEntryPoint": "index.tsx",
+  "domains": ["api.example.com"],
   "databases": [
     {
       "name": "comments",
@@ -127,6 +128,12 @@ The manifest declares the UI entry point, every server function, and every datab
   use \`durable\` when it calls \`dsbx tools\`.
 - \`defaultStake\` defaults to \`low\`. \`never_ask\` runs unattended, \`low\` asks once and can be
   always approved, and \`high\` asks on every call when the function is exposed as a tool.
+- \`domains\` lists every exact domain or \`*.example.com\` wildcard the functions make outbound
+  HTTPS requests to. Publishing files each one as an egress request that a workspace admin reviews
+  (for the Pod when the Frame lives in a Pod, otherwise for the workspace); it never grants access
+  on its own, and a domain already allowed for that scope (or the workspace) is skipped. For a
+  domain discovered after publishing, use \`request_egress_domain\` instead of republishing, and
+  add it to \`domains\` so the next publish stays accurate.
 - Input, output, and caller-identity schemas belong in the function's TypeScript \`schema\` export,
   not in \`manifest.json\`. The build extracts them from source.
 
@@ -262,8 +269,9 @@ dsbx tools --json <server-name> <tool-name> <arguments...>
 
 Parse the JSON stdout envelope, including \`content\` and \`isError\`. Publishing a function that
 calls \`dsbx tools\` as \`fast\` is a bug: the runtime refuses the tool call. Function \`fetch()\`
-requests use the same workspace egress allowlist and \`DST_*\` / \`DSEC_*\` configuration rules as
-the Computer.
+requests only reach domains on the egress allowlist (workspace, plus the Pod's when the Frame lives
+in a Pod), so declare them in the manifest's \`domains\`; \`DST_*\` / \`DSEC_*\` configuration
+follows the same rules as the Computer.
 
 ### Knowing who called a function
 
@@ -350,6 +358,11 @@ stored, and activated atomically:
 \`\`\`bash
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
+
+The publish output includes \`egressDomains\` when the manifest declares domains: which were
+requested (pending admin approval) and which were already allowed, or why filing them failed.
+Tell the user about pending requests; the functions cannot reach those domains until an admin
+approves them.
 
 After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
 set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds

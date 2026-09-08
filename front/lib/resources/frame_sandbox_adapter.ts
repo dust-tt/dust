@@ -103,7 +103,10 @@ export class FrameSandboxAdapter {
     });
   }
 
-  private static async resolveScope(
+  // The Pod whose config and egress policy a Frame's sandbox inherits, or
+  // null outside a Pod. Publishing routes the manifest's egress domain
+  // requests with the same rule.
+  static async resolveScope(
     auth: Authenticator,
     frame: FrameSandboxScopeOwner
   ): Promise<Result<FrameSandboxScope, Error>> {
