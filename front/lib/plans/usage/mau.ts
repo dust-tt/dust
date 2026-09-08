@@ -66,7 +66,7 @@ async function countActiveUsersForPeriodInWorkspace({
           },
         },
       ],
-      // Mirrors agenticMessageType IS NULL: this field stores agenticOriginMessageId.
+      // Exclude subagent responses so they don't inflate the user's message count.
       must_not: [{ exists: { field: "parent_message_id" } }],
     },
   };
