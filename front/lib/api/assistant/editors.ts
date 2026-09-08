@@ -2,6 +2,7 @@ import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -137,6 +138,10 @@ async function shadowAgentEditorsBatch(
   });
 }
 
+/**
+ * @cc [owner:philipperolet,label:product] active-agent-editors
+ * Returned editors must have active membership in the workspace and their agent's editor group.
+ */
 export const getAgentsEditors = async (
   auth: Authenticator,
   agentConfigurations: LightAgentConfigurationType[]
@@ -154,8 +159,20 @@ export const getAgentsEditors = async (
     const users = await UserResource.fetchByModelIds([
       ...new Set(Object.values(activeMemberships).flat()),
     ]);
+    // Batch lookup uses the memberships (workspaceId, userId, startAt, endAt) index.
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users,
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    const activeUserModelIds = new Set(
+      memberships.map((membership) => membership.userId)
+    );
     // Create a map from userId to UserType for quick lookup
-    const userMap = new Map(users.map((user) => [user.id, user.toJSON()]));
+    const userMap = new Map(
+      users
+        .filter((user) => activeUserModelIds.has(user.id))
+        .map((user) => [user.id, user.toJSON()])
+    );
 
     // Build the result map: { agentId: [editors] }
     for (const [agentId, group] of Object.entries(editorGroups.value)) {
