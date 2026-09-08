@@ -3019,4 +3019,121 @@ describe("SpaceResource group_permissions enforcement", () => {
     // read on a space the caller just opened, in the same request.
     expect(adminAuth.getGrantedVerbs("space", space.id)).toContain("read");
   });
+
+  // The global space (Company Data): everyone reads it, and write comes from the admin/manager
+  // roles plus the members of its member group (see `spaceRoleGrants` / `spaceGroupRoles`).
+  describe("global space member group", () => {
+    it("is created with exactly one member group holding a `member` grant", async () => {
+      const globalSpace =
+        await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+
+      const autoGroups = await globalSpace.fetchRegularAutoGroups(adminAuth);
+      expect(autoGroups).toHaveLength(1);
+
+      const memberGroup = await globalSpace.fetchManualMemberGroup(adminAuth);
+      expect(memberGroup.sId).toBe(autoGroups[0].sId);
+
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+      expect(globalGroupRes.isOk()).toBe(true);
+      if (globalGroupRes.isErr()) {
+        return;
+      }
+
+      // The workspace global group reads (everyone can see Company Data); the member group reads
+      // and writes.
+      const grants = await globalSpace.fetchGrantReferences();
+      expect(
+        grants
+          .map((grant) => ({
+            groupId: grant.groupId,
+            grantType: grant.grantType,
+          }))
+          .sort((a, b) => a.groupId - b.groupId)
+      ).toEqual(
+        [
+          { groupId: globalGroupRes.value.id, grantType: "reader" },
+          { groupId: memberGroup.id, grantType: "member" },
+        ].sort((a, b) => a.groupId - b.groupId)
+      );
+    });
+
+    it("gives write to the users in its member group, and read-only to everyone else", async () => {
+      const globalSpace =
+        await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+      const memberGroup = await globalSpace.fetchManualMemberGroup(adminAuth);
+      await memberGroup.dangerouslyAddMember(adminAuth, {
+        user: memberUser.toJSON(),
+      });
+
+      const nonMemberUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, nonMemberUser, {
+        role: "user",
+      });
+
+      // Built after the membership exists so their snapshots include its grants.
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        memberUser.sId,
+        workspace.sId
+      );
+      const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        nonMemberUser.sId,
+        workspace.sId
+      );
+
+      expect(memberAuth.can("read", globalSpace)).toBe(true);
+      expect(memberAuth.can("write", globalSpace)).toBe(true);
+
+      expect(nonMemberAuth.can("read", globalSpace)).toBe(true);
+      expect(nonMemberAuth.can("write", globalSpace)).toBe(false);
+    });
+
+    it("creates the member group on a workspace that predates it, keeping workspace-wide read", async () => {
+      const globalSpace =
+        await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+      expect(globalGroupRes.isOk()).toBe(true);
+      if (globalGroupRes.isErr()) {
+        return;
+      }
+
+      // Back to the pre-feature shape: only the workspace global group is attached.
+      const memberGroup = await globalSpace.fetchManualMemberGroup(adminAuth);
+      await globalSpace.writeGroupPermissions(adminAuth, {
+        members: [globalGroupRes.value],
+        editors: [],
+      });
+      const deleteRes = await memberGroup.delete(adminAuth);
+      expect(deleteRes.isOk()).toBe(true);
+      expect(await globalSpace.fetchRegularAutoGroups(adminAuth)).toEqual([]);
+
+      // What the backfill runs, twice: the second call is a no-op.
+      await globalSpace.ensureGlobalSpaceMemberGroup(adminAuth);
+      await globalSpace.ensureGlobalSpaceMemberGroup(adminAuth);
+
+      const repairedGroups =
+        await globalSpace.fetchRegularAutoGroups(adminAuth);
+      expect(repairedGroups).toHaveLength(1);
+
+      await repairedGroups[0].dangerouslyAddMember(adminAuth, {
+        user: memberUser.toJSON(),
+      });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        memberUser.sId,
+        workspace.sId
+      );
+      expect(memberAuth.can("write", globalSpace)).toBe(true);
+
+      // The workspace global group kept its `reader` grant through the rewrite.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+      expect(otherAuth.can("read", globalSpace)).toBe(true);
+      expect(otherAuth.can("write", globalSpace)).toBe(false);
+    });
+  });
 });
