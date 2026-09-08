@@ -1648,6 +1648,15 @@ export class Authenticator {
   }
 
   /**
+   * @cc [owner:aubin-tchoi,label:security;performance] readable-spaces-from-permissions
+   * Returns the readable space model IDs from the current permission snapshot without fetching;
+   * a type-wide read grant returns `{ kind: "all" }` because it contains no enumerable ID list.
+   */
+  getReadableSpaceModelIds(): ResourcesWithVerb {
+    return this.getResourceIdsWithVerb("space", "read");
+  }
+
+  /**
    * Whether the caller holds `verb` on `target` — i.e. on EVERY access-control list the target
    * declares (a resource may declare multiple ACLs that must all hold). `verb` is a grant verb
    * (instance verbs like read/write/admin, or type-level capabilities like "create").
