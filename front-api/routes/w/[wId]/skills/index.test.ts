@@ -944,7 +944,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     });
   });
 
-  it("returns null message counts without fetching usage for legacy clients", async () => {
+  it("ignores the legacy withMessageCount parameter", async () => {
     const { workspace, user } = await setupTest();
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -964,7 +964,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
       await response.json();
     expect(responseBody.skills.some((s) => s.sId === skill.sId)).toBe(true);
     for (const listedSkill of responseBody.skills) {
-      expect(listedSkill.messageCount).toBeNull();
+      expect(listedSkill).not.toHaveProperty("messageCount");
       expect(listedSkill).not.toHaveProperty("usage");
     }
     expect(searchConsumptionAnalytics).not.toHaveBeenCalled();

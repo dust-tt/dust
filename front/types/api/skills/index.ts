@@ -14,7 +14,7 @@ export type GetSkillsResponseBody = {
 /**
  * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility
  * `usage` is included only for `withUsage=true` and is null when unavailable.
- * Either `withUsage=true` or `withMessageCount=true` includes `messageCount: null`.
+ * `withUsage=true` also includes `messageCount: null`.
  */
 export type GetSkillsWithRelationsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsWithRelationsType & {

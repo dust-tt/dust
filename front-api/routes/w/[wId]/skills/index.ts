@@ -133,7 +133,6 @@ app.get(
     // are never returned from the list endpoint. Use GET /skills/:sId for full details.
     const withRelations = ctx.req.query("withRelations");
     const withUsage = ctx.req.query("withUsage") === "true";
-    const withMessageCount = ctx.req.query("withMessageCount") === "true";
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
@@ -306,9 +305,9 @@ app.get(
                       sc.isSystemSkill || usageCountMap === null
                         ? null
                         : (usageCountMap.get(sc.sId) ?? 0),
+                    messageCount: null,
                   }
                 : {}),
-              ...(withUsage || withMessageCount ? { messageCount: null } : {}),
               relations: {
                 usage: usageWithSkills,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
