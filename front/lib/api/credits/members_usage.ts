@@ -187,21 +187,23 @@ export type MemberUsageType = {
   // The rate-limiter's view of the user's spend cap (independent of the flag):
   // "capped" (counter ≥ cap), "near_limit" (≥ 80%), or "ok". The counter is the
   // lifetime one for free seats and the per-cycle one otherwise, compared to the
-  // free-seat allowance / effective cycle cap. Null when no cap applies or not
-  // requested. Poke-only.
+  // free-seat allowance / effective cycle cap. Null when no cap applies, or not
+  // requested.
   rateLimiterState: RateLimiterState | null;
-  // Flag-aware "blocked by the per-user spend cap" verdict — the signal the poke
-  // Unblock action keys off. With the rate-cap flag on, from the rate-limiter
-  // counter (`rateLimiterState`); with it off, from the persisted Metronome
-  // credit state. Mirrors the enforcement switch in
-  // lib/api/credits/access_control.ts, so it never disagrees with what actually
-  // blocks. The single-member / synthetic construction paths (which don't read
-  // the rate-limiter) fall back to the persisted credit state.
+  // Flag-aware "blocked by the per-user spend cap" verdict — the signal the
+  // Unblock action (poke and the customer usage page) keys off. With the
+  // rate-cap flag on, from the rate-limiter counter (`rateLimiterState`); with
+  // it off, from the persisted Metronome credit state. Mirrors the enforcement
+  // switch in lib/api/credits/access_control.ts, so it never disagrees with
+  // what actually blocks. The single-member / synthetic construction paths
+  // (which don't read the rate-limiter) fall back to the persisted credit
+  // state.
   isSpendCapped: boolean;
   // Classifies seat-allowance consumption against how far the billing cycle
   // has elapsed: "elevated"/"critical" mean the member is burning through
-  // their seat allowance faster than a linear pace would predict. Poke-only
-  // (null otherwise, or when the billing cycle can't be resolved).
+  // their seat allowance faster than a linear pace would predict. Null when
+  // not requested (poke's `includeAlertLinks`) and the rate-cap flag is off,
+  // or when the billing cycle can't be resolved.
   seatUsageTarget: CreditUsageTarget | null;
   // Same pace classification as `seatUsageTarget`, but against the member's
   // total effective spend limit (seat allowance + pool/overage).
@@ -2376,7 +2378,7 @@ export async function getMembersUsage({
   // seat-usage pace below, so resolve it regardless.
   const rateLimiterSpendByUserId = new Map<string, number>();
   let billingCycle: BillingCycle | null = null;
-  if (includeAlertLinks) {
+  if (includeAlertLinks || spendCapEnabled) {
     const periodResult = await getCachedMetronomeCurrentBillingPeriod(
       workspace.sId
     );
@@ -2617,26 +2619,29 @@ export async function getMembersUsage({
         ? (freeCreditAlertIds?.get(metronomeUserId) ?? null)
         : null;
 
-    const rateLimiterSpendAwuCredits = includeAlertLinks
-      ? (rateLimiterSpendByUserId.get(userId) ?? 0)
-      : null;
+    const rateLimiterSpendAwuCredits =
+      includeAlertLinks || spendCapEnabled
+        ? (rateLimiterSpendByUserId.get(userId) ?? 0)
+        : null;
     // Poke-only near-limit for the Metronome "Credit state" column, from the
     // Metronome near-limit flag.
     const nearLimit =
       includeAlertLinks && (nearLimitByUserId.get(userId) ?? false);
 
-    // Poke-only rate-limiter verdict (independent of the flag): the counter vs
-    // the threshold the seat is capped against — the free-seat lifetime
-    // allowance for free seats, the effective per-cycle cap otherwise.
+    // Rate-limiter verdict (independent of the flag): the counter vs the
+    // threshold the seat is capped against — the free-seat lifetime allowance
+    // for free seats, the effective per-cycle cap otherwise.
     // `rateLimiterSpendAwuCredits` already holds the matching counter (lifetime
-    // for free seats, per-cycle otherwise). Null when no cap applies.
+    // for free seats, per-cycle otherwise). Null when no cap applies. Backs
+    // `isSpendCapped` for both poke and the customer usage page's Unblock
+    // action.
     const rateCapThresholdAwuCredits =
       membership.seatType === "free"
         ? freeStartingBalanceAwu
         : effectiveSpendLimitAwuCredits;
     let rateLimiterState: RateLimiterState | null = null;
     if (
-      includeAlertLinks &&
+      (includeAlertLinks || spendCapEnabled) &&
       rateCapThresholdAwuCredits !== null &&
       rateCapThresholdAwuCredits > 0
     ) {
