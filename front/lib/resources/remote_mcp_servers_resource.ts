@@ -815,7 +815,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         : "This server does not support automatic OAuth setup (no dynamic client registration " +
           "endpoint). Please use Static OAuth with the client ID/secret provided by the " +
           "server's OAuth application.";
-      logger.error({ error: e }, message);
+      logger.error(
+        {
+          error: normalizeError(e),
+          serverUrl,
+          authServerUrl: authServerUrl.toString(),
+          registrationEndpoint: metadata.registration_endpoint,
+          redirectUris: clientMetadata.redirect_uris,
+        },
+        message
+      );
       return new Err(new DustError("internal_error", message));
     }
   }
