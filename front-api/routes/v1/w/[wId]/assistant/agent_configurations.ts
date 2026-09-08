@@ -1,3 +1,4 @@
+import { serializeAgentConfigurationsForPublicApi } from "@app/lib/api/assistant/configuration/public_api";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
@@ -159,8 +160,11 @@ app.get(
       );
     }
 
+    const serializedAgentConfigurations =
+      await serializeAgentConfigurationsForPublicApi(auth, agentConfigurations);
+
     return ctx.json({
-      agentConfigurations,
+      agentConfigurations: serializedAgentConfigurations,
     });
   }
 );

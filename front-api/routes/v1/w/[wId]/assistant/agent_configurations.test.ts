@@ -63,6 +63,31 @@ async function setupTestAgents(workspace: WorkspaceType) {
 }
 
 describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
+  it.each([
+    "admin",
+    "builder",
+    "user",
+  ] as const)("reports edit permissions for a %s key", async (role) => {
+    const { workspace, key } = await createPublicApiMockRequest({ role });
+    await setupTestAgents(workspace);
+
+    const response = await listAgents(workspace, key, { view: "all" });
+    const {
+      agentConfigurations,
+    }: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+
+    expect(response.status).toBe(200);
+    expect(
+      agentConfigurations.find((a) => a.name === "Published Agent")?.canEdit
+    ).toBe(role !== "user");
+    expect(
+      agentConfigurations
+        .filter((a) => a.scope === "global")
+        .every((a) => !a.canEdit)
+    ).toBe(true);
+  });
+
   it("returns unpublished and restricted space agents with the all_unrestricted view", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
@@ -74,10 +99,20 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     });
 
     expect(response.status).toBe(200);
-    const names = await agentNames(response);
-    expect(names).toContain("Published Agent");
-    expect(names).toContain("Unpublished Agent");
-    expect(names).toContain("Restricted Space Agent");
+    const {
+      agentConfigurations,
+    }: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    expect(agentConfigurations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Published Agent", canEdit: true }),
+        expect.objectContaining({ name: "Unpublished Agent", canEdit: true }),
+        expect.objectContaining({
+          name: "Restricted Space Agent",
+          canEdit: false,
+        }),
+      ])
+    );
   });
 
   it("hides unpublished and restricted space agents with the all view", async () => {

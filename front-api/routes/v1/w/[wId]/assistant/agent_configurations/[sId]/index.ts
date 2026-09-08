@@ -2,6 +2,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
+import { serializeAgentConfigurationsForPublicApi } from "@app/lib/api/assistant/configuration/public_api";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
@@ -313,8 +314,13 @@ app.get(
       });
     }
 
+    const [serializedAgentConfiguration] =
+      await serializeAgentConfigurationsForPublicApi(auth, [
+        agentConfiguration,
+      ]);
+
     return ctx.json({
-      agentConfiguration,
+      agentConfiguration: serializedAgentConfiguration,
     });
   }
 );
@@ -385,8 +391,13 @@ app.patch(
       });
     }
 
+    const [serializedAgentConfiguration] =
+      await serializeAgentConfigurationsForPublicApi(auth, [
+        agentConfiguration,
+      ]);
+
     return ctx.json({
-      agentConfiguration,
+      agentConfiguration: serializedAgentConfiguration,
     });
   }
 );
