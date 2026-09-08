@@ -31,17 +31,6 @@ type ActiveUsersAggregations = {
   };
 };
 
-/**
- * @cc [owner:aubin-tchoi,label:product] consumption-based-mau
- * Counts users with at least `messagesPerMonthForMau` distinct, non-agentic agent
- * responses in the workspace's consumption index during `[since, to)`. Free usage
- * is absent from this index; multiple consumption units count as one response.
- */
-/**
- * @cc [owner:aubin-tchoi,label:error-handling] incomplete-mau-search-fails
- * Throws on failed, timed-out, or incomplete searches so Stripe is never updated
- * with a partial count.
- */
 async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,
   since,
