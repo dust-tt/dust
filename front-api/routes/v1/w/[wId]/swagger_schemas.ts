@@ -691,7 +691,7 @@
  *         creatorId:
  *           type: string
  *           nullable: true
- *           description: User sId of the user who originally created this skill
+ *           description: ID of the user who created this skill
  *         status:
  *           type: string
  *           enum: [active, archived, suggested]
