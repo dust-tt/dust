@@ -102,7 +102,9 @@ and tool/data-source/webhook usage filters. Stack on PR 11a to reuse its batch r
 #### PR 11c: Shadow agent views
 
 Compare list/manage/archive results using stable agent identities, preserving archived-editor
-filtering and covering it with regression tests. Base this PR independently on `main`.
+filtering and covering it with regression tests. Run these comparisons in the background without
+awaiting them; diagnostics are best-effort and can be lost on shutdown. Base this PR independently on
+`main`.
 
 **Operational gate:** after all three parts merge, enable shadowing progressively and wait for
 editor-list, permission, listing, backfill, and cache-related mismatches to reach zero before PR 12.

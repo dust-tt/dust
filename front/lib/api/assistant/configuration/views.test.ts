@@ -262,12 +262,14 @@ describe("getAgentConfigurationsForView, grant shadow", () => {
     });
 
     expect(agents.map((listedAgent) => listedAgent.sId)).toContain(agent.sId);
-    expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        check: "agent_view",
-        view: "archived",
-      }),
-      "group_permissions_shadow_mismatch"
-    );
+    await vi.waitFor(() => {
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          check: "agent_view",
+          view: "archived",
+        }),
+        "group_permissions_shadow_mismatch"
+      );
+    });
   });
 });

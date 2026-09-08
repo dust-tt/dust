@@ -13,6 +13,7 @@ import {
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -22,6 +23,7 @@ import type {
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { Op, Sequelize } from "sequelize";
 
@@ -383,6 +385,10 @@ async function shadowCompareAgentView({
   });
 }
 
+/**
+ * @cc [owner:philipperolet,label:performance;error-handling] view-shadow-is-best-effort
+ * View shadow comparisons are not awaited; their failures are logged without rejecting legacy reads.
+ */
 async function fetchWorkspaceAgentConfigurationsForView(
   auth: Authenticator,
   owner: WorkspaceType,
@@ -452,7 +458,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     agentsGetView === "manage" ||
     agentsGetView === "archived"
   ) {
-    await shadowCompareAgentView({
+    void shadowCompareAgentView({
       auth,
       owner,
       view: agentsGetView,
@@ -462,6 +468,16 @@ async function fetchWorkspaceAgentConfigurationsForView(
       limit,
       sort,
       omitHeavyAttributes,
+    }).catch((err) => {
+      logger.error(
+        {
+          err: normalizeError(err),
+          check: "agent_view",
+          view: agentsGetView,
+          workspaceId: owner.sId,
+        },
+        "group_permissions_shadow_candidate_error"
+      );
     });
   }
 
