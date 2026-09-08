@@ -36,6 +36,12 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
+/**
+ * @cc [owner:tdraier,label:product] excluded-retrieval-tags-honored
+ * Retrieval honors the originating run's declared scope: exclusions carried on
+ * `userMessage.context.excludedRetrievalTags` are always applied to the effective filter. A run
+ * must never surface documents it asked to exclude.
+ */
 export async function searchFunction(
   auth: Authenticator,
   {
@@ -67,6 +73,14 @@ export async function searchFunction(
   )
     ? toolContext.runContext.stepContext
     : { retrievalTopK: AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K, citationsOffset: 0 };
+
+  // Tags the originating run asked us to keep out of retrieval (e.g. the Slack bot excludes the
+  // very thread that triggered the run so it does not self-match on the question text). Applied
+  // to every data source: these tags only exist on documents that carry them, so excluding them
+  // elsewhere is a no-op.
+  const excludedRetrievalTags = isAgentLoopRunContext(toolContext?.runContext)
+    ? (toolContext.runContext.userMessage.context.excludedRetrievalTags ?? [])
+    : [];
 
   // Get the core search args for each data source, fail if any of them are invalid.
   const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
@@ -118,6 +132,7 @@ export async function searchFunction(
       const finalTagsNot = [
         ...(args.filter.tags?.not ?? []),
         ...(tagsNot ?? []),
+        ...excludedRetrievalTags,
       ];
 
       return {
