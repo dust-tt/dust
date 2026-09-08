@@ -75,12 +75,13 @@ export class GoogleDriveCastKnownErrorsInterceptor
         throw new ExternalOAuthTokenError(err);
       }
 
-      // Google returns 403 (not 429) for user rate-limit/quota exhaustion, e.g. "User
-      // rate limit exceeded.". Map it to a retryable rate_limit_error like the 429 case.
+      // Google usually returns 403 (not 429) for user rate-limit/quota exhaustion, e.g.
+      // "User rate limit exceeded.". Map it to a retryable rate_limit_error like the 429
+      // case. The helper also matches genuine 429s, so use the real status in the message.
       if (isGoogleDriveRateLimitError(err)) {
         throw new ProviderWorkflowError(
           "google_drive",
-          "403: Rate Limit Error",
+          `${err.response?.status}: Rate Limit Error`,
           "rate_limit_error",
           err
         );

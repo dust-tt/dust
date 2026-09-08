@@ -418,7 +418,9 @@ const GOOGLE_DRIVE_RATE_LIMIT_REASONS = new Set([
   "quotaExceeded",
 ]);
 
-export function isGoogleDriveRateLimitError(error: unknown): boolean {
+export function isGoogleDriveRateLimitError(
+  error: unknown
+): error is GaxiosError {
   if (!(error instanceof GaxiosError)) {
     return false;
   }
