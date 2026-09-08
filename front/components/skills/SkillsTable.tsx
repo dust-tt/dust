@@ -311,8 +311,7 @@ const usageColumn: ColumnDef<RowData, number | null> = {
   },
   meta: {
     className: "hidden @sm:w-20 @sm:table-cell",
-    tooltip:
-      "Skill activation calls attributed to this skill in the last 30 days.",
+    tooltip: "Number of times this skill was used in the last 30 days.",
   },
 };
 
