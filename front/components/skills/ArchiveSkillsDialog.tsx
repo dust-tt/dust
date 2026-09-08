@@ -60,9 +60,10 @@ export function ArchiveSkillsDialog({
               {totalUsage > 0 && (
                 <>
                   <span className="font-bold">
-                    {isSingleSkill ? "This skill has" : "These skills have"}{" "}
-                    {totalUsage} activation call
-                    {pluralize(totalUsage)} in the last 30 days.
+                    {isSingleSkill ? "This skill has" : "These skills have"}
+                    {" been used "}
+                    {totalUsage} time
+                    {pluralize(totalUsage)}.
                   </span>{" "}
                 </>
               )}
