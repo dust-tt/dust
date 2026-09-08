@@ -889,7 +889,7 @@ async function fetchFreeSeatCreditsForMembersTable({
     for (const [
       userId,
       { balanceAwu, startingBalanceAwu },
-    ] of perUserCreditBalances.value) {
+    ] of perUserCreditBalances.value.balances) {
       freeBalanceByUserId.set(userId, balanceAwu);
       freeStartingByUserId.set(userId, startingBalanceAwu);
     }
@@ -1656,7 +1656,7 @@ export async function getMemberUsage({
       contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
     });
     if (balances.isOk()) {
-      const entry = balances.value.get(userId);
+      const entry = balances.value.balances.get(userId);
       if (entry) {
         freeSeatBalanceAwu = entry.balanceAwu;
         freeSeatAllowanceAwu = entry.startingBalanceAwu;

@@ -28,7 +28,10 @@ import {
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { getCachedCustomerPerUserCreditBalances } from "@app/lib/metronome/client";
-import { CONTRACT_CREDIT_TYPE_FREE_SEAT } from "@app/lib/metronome/constants";
+import {
+  CONTRACT_CREDIT_TYPE_FREE_SEAT,
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+} from "@app/lib/metronome/constants";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -54,6 +57,7 @@ import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type UserSpendLimitErrorType =
   | "user_not_found"
@@ -707,24 +711,44 @@ export async function isUserSpendLimitRateWarningReached(
 }
 
 /**
- * Resolves a free seat's lifetime credit allowance (AWU credits) from the
- * cached Metronome per-user free-seat credit — the admin-editable, per-user,
+ * Outcome of resolving a free seat's lifetime credit allowance. The variants are
+ * distinguished so the caller can fail open in every case but log at the right
+ * level — a transient lock skip must not look like a genuine failure, and a
+ * missing grant must not look like a read error. See `resolveFreeSeatAllowance`.
+ */
+export type FreeSeatAllowanceResolution =
+  | { kind: "resolved"; allowanceAwu: number }
+  // Workspace isn't Metronome-billed: free-seat lifetime caps don't apply.
+  | { kind: "no-metronome" }
+  // Another process holds the per-user credit fetch lock (skipIfLocked): the
+  // allowance is momentarily *unknown*, not absent. Self-heals once the cache
+  // warms — expected en masse right after a FF flip.
+  | { kind: "locked" }
+  // Balances resolved but this free seat has no positive grant yet (grant not
+  // provisioned, or a misconfigured 0 grant). Enforced at the default free-seat
+  // lifetime allowance rather than failing open — see `resolveFreeSeatAllowance`.
+  | { kind: "no-grant" }
+  // Genuine read failure against the cached per-user credit balances.
+  | { kind: "read-error"; error: Error };
+
+/**
+ * Resolves a free seat's lifetime credit allowance (AWU credits) from the cached
+ * Metronome per-user free-seat credit — the admin-editable, per-user,
  * contract-surviving grant (`startingBalanceAwu`). This is the enforced
  * threshold for the free-seat lifetime counter.
  *
- * Returns `null` when the workspace isn't Metronome-billed, the cached read
- * fails, or the user has no positive free-seat grant (e.g. "none" seats, or a
- * misconfigured 0 grant). For an actual free seat the grant should always
- * resolve; a `null` there is a transient read failure and callers fail open (no
- * Metronome fallback under the flag).
+ * Never throws; returns a discriminated {@link FreeSeatAllowanceResolution} so
+ * callers fail open uniformly (no Metronome fallback under the flag) while
+ * telling apart a transient lock skip, a not-yet-provisioned grant, and a real
+ * read error.
  */
 async function getFreeSeatLifetimeAllowanceAwuCredits(
   auth: Authenticator,
   { user }: { user: UserResource }
-): Promise<number | null> {
+): Promise<FreeSeatAllowanceResolution> {
   const { metronomeCustomerId } = auth.getNonNullableWorkspace();
   if (!metronomeCustomerId) {
-    return null;
+    return { kind: "no-metronome" };
   }
 
   const balances = await getCachedCustomerPerUserCreditBalances({
@@ -732,11 +756,79 @@ async function getFreeSeatLifetimeAllowanceAwuCredits(
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (balances.isErr()) {
-    return null;
+    return { kind: "read-error", error: balances.error };
+  }
+  if (balances.value.locked) {
+    return { kind: "locked" };
   }
 
-  const allowance = balances.value.get(user.sId)?.startingBalanceAwu ?? 0;
-  return allowance > 0 ? allowance : null;
+  const allowance =
+    balances.value.balances.get(user.sId)?.startingBalanceAwu ?? 0;
+  return allowance > 0
+    ? { kind: "resolved", allowanceAwu: allowance }
+    : { kind: "no-grant" };
+}
+
+/**
+ * Resolves the free-seat allowance to a numeric threshold, or `null` when the
+ * caller must fail open. Centralizes the logging so the two lifetime checks
+ * (cap, warning) level each case identically:
+ *   - `no-grant`: `warn`, and enforces the default `FREE_SEAT_LIFETIME_AWU_CREDITS`
+ *     allowance instead of failing open. A free seat's grant may not be
+ *     provisioned yet (webhook/backfill lag); enforcing the default keeps such
+ *     seats capped — matching what the members-usage display already shows — so
+ *     a not-yet-granted seat can't spend unbounded. The `warn` tracks the lag.
+ *   - `locked`: `debug`, fail open — the grant is momentarily *unknown* (could be
+ *     an admin-raised amount above the default), so we don't guess; transient and
+ *     self-healing, must stay out of the fail-open error signal during a rollout.
+ *   - `read-error`: `error`, fail open — a real read failure; the one to alert on
+ *     (we can't tell the true grant, so we don't over-enforce the default).
+ *   - `no-metronome`: silent, fail open — free-seat caps simply don't apply.
+ */
+export function resolveFreeSeatAllowance(
+  resolution: FreeSeatAllowanceResolution,
+  {
+    workspace,
+    user,
+    signal,
+  }: {
+    workspace: LightWorkspaceType;
+    user: UserResource;
+    signal: "cap" | "warning";
+  }
+): number | null {
+  switch (resolution.kind) {
+    case "resolved":
+      return resolution.allowanceAwu;
+    case "no-metronome":
+      return null;
+    case "locked":
+      logger.debug(
+        { workspaceId: workspace.sId, userId: user.sId, signal },
+        "[FreeSeatLifetime] allowance read skipped (fetch lock held); failing open"
+      );
+      return null;
+    case "no-grant":
+      logger.warn(
+        { workspaceId: workspace.sId, userId: user.sId, signal },
+        "[FreeSeatLifetime] no free-seat credit grant resolved; " +
+          "enforcing default lifetime allowance"
+      );
+      return FREE_SEAT_LIFETIME_AWU_CREDITS;
+    case "read-error":
+      logger.error(
+        {
+          error: resolution.error,
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          signal,
+        },
+        "[FreeSeatLifetime] failed to read free-seat allowance; failing open"
+      );
+      return null;
+    default:
+      assertNever(resolution);
+  }
 }
 
 /**
@@ -753,14 +845,11 @@ export async function isFreeSeatLifetimeCapReached(
   { user }: { user: UserResource }
 ): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
-  const allowance = await getFreeSeatLifetimeAllowanceAwuCredits(auth, {
-    user,
-  });
+  const allowance = resolveFreeSeatAllowance(
+    await getFreeSeatLifetimeAllowanceAwuCredits(auth, { user }),
+    { workspace, user, signal: "cap" }
+  );
   if (allowance === null) {
-    logger.error(
-      { workspaceId: workspace.sId, userId: user.sId },
-      "[FreeSeatLifetime] cap: no free-seat allowance resolved; failing open"
-    );
     return false;
   }
 
@@ -787,14 +876,11 @@ export async function isFreeSeatLifetimeWarningReached(
   { user }: { user: UserResource }
 ): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
-  const allowance = await getFreeSeatLifetimeAllowanceAwuCredits(auth, {
-    user,
-  });
+  const allowance = resolveFreeSeatAllowance(
+    await getFreeSeatLifetimeAllowanceAwuCredits(auth, { user }),
+    { workspace, user, signal: "warning" }
+  );
   if (allowance === null) {
-    logger.error(
-      { workspaceId: workspace.sId, userId: user.sId },
-      "[FreeSeatLifetime] warning: no free-seat allowance resolved; failing open"
-    );
     return false;
   }
 
