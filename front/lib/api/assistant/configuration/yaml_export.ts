@@ -72,8 +72,11 @@ export async function getAgentConfigurationAsYAMLConfig(
   const editors: UserType[] = editorUsers.map((m) => m.toJSON());
 
   let slackProvider: "slack" | "slack_bot" | null = null;
-  let slackChannels: { slackChannelId: string; slackChannelName: string }[] =
-    [];
+  let slackChannels: {
+    slackChannelId: string;
+    slackChannelName: string;
+    isPrivate: boolean;
+  }[] = [];
 
   const [slackDs] = await DataSourceResource.listByConnectorProvider(
     auth,
@@ -115,6 +118,7 @@ export async function getAgentConfigurationAsYAMLConfig(
         .map((ch) => ({
           slackChannelId: ch.slackChannelId,
           slackChannelName: ch.slackChannelName,
+          isPrivate: ch.isPrivate,
         }));
     }
   }
