@@ -30,6 +30,7 @@ import {
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
 import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
+import type { SupportedCurrency } from "@app/types/currency";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import { BILLABLE_SEAT_TYPES } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -146,6 +147,67 @@ function toDatetimeLocalUTC(d: Date): string {
     `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
     `T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
   );
+}
+
+type SeatFormValue = {
+  selected: boolean;
+  minSeats: number;
+  maxSeats?: number;
+  rate: number;
+  commitmentPrice?: number;
+  paymentSchedule: {
+    frequency:
+      | "one_time"
+      | "monthly"
+      | "quarterly"
+      | "semi_annually"
+      | "annually";
+    periods?: number;
+  };
+};
+
+// Default seat settings for a package: entitled seats pre-selected, the rest
+// unchecked for the operator to opt into; minSeats 0 and the rate converted from
+// Metronome's fiat unit to the dialog's major units. Shared by the seat-reset
+// effect and template application so they can't drift.
+function buildDefaultSeats(
+  seats: { seatType: string; defaultRate: number | null; entitled: boolean }[],
+  resolvedCurrency: SupportedCurrency | null | undefined
+): Record<string, SeatFormValue> {
+  const next: Record<string, SeatFormValue> = {};
+  for (const seat of seats) {
+    const rate =
+      seat.defaultRate != null && resolvedCurrency
+        ? amountCents(seat.defaultRate, resolvedCurrency) / 100
+        : (seat.defaultRate ?? 0);
+    next[seat.seatType] = {
+      selected: seat.entitled,
+      minSeats: 0,
+      maxSeats: undefined,
+      rate,
+      paymentSchedule: { frequency: "one_time" },
+    };
+  }
+  return next;
+}
+
+// Merge a template's per-seat overrides onto a package's default seats. Seat
+// types the package does not sell have no entry to merge onto and are skipped.
+function mergeTemplateSeats(
+  base: Record<string, SeatFormValue>,
+  templateSeats: SwitchContractTemplate["seats"]
+): Record<string, SeatFormValue> {
+  if (!templateSeats) {
+    return base;
+  }
+  const next = { ...base };
+  for (const [seatType, override] of Object.entries(templateSeats)) {
+    if (!override || !next[seatType]) {
+      continue;
+    }
+    next[seatType] = { ...next[seatType], ...override };
+  }
+  return next;
 }
 
 const isLegacyPackageName = (name: string) => /\blegacy\b/i.test(name);
@@ -433,30 +495,7 @@ export default function SwitchContractDialog({
   // (dollars/euros), so convert for display. Avoids stale values leaking across
   // package selections.
   useEffect(() => {
-    const next: Record<
-      string,
-      {
-        selected: boolean;
-        minSeats: number;
-        maxSeats?: number;
-        rate: number;
-        paymentSchedule: { frequency: "one_time" };
-      }
-    > = {};
-    for (const seat of selectedSeats) {
-      const rate =
-        seat.defaultRate != null && resolvedCurrency
-          ? amountCents(seat.defaultRate, resolvedCurrency) / 100
-          : (seat.defaultRate ?? 0);
-      next[seat.seatType] = {
-        selected: seat.entitled,
-        minSeats: 0,
-        maxSeats: undefined,
-        rate,
-        paymentSchedule: { frequency: "one_time" },
-      };
-    }
-    form.setValue("seats", next);
+    form.setValue("seats", buildDefaultSeats(selectedSeats, resolvedCurrency));
   }, [selectedSeats, form, resolvedCurrency]);
 
   // Clear a stale package selection when the resolved currency changes so a
@@ -574,18 +613,12 @@ export default function SwitchContractDialog({
       if (template.recurringFreeCredit !== undefined) {
         form.setValue("recurringFreeCredit", template.recurringFreeCredit);
       }
-      // Merge seat overrides onto the current package's seats; a seat type the
-      // package does not sell has no entry to merge onto and is skipped.
+      // Merge seat overrides onto the current package's seats.
       if (template.seats) {
-        const current = form.getValues("seats") ?? {};
-        const next = { ...current };
-        for (const [seatType, override] of Object.entries(template.seats)) {
-          if (!override || !next[seatType]) {
-            continue;
-          }
-          next[seatType] = { ...next[seatType], ...override };
-        }
-        form.setValue("seats", next);
+        form.setValue(
+          "seats",
+          mergeTemplateSeats(form.getValues("seats") ?? {}, template.seats)
+        );
       }
     },
     [form]
@@ -595,15 +628,47 @@ export default function SwitchContractDialog({
     (template: SwitchContractTemplate) => {
       setError(null);
       setAppliedTemplateName(template.name);
+      pendingTemplateRef.current = null;
+
+      const packageId = resolveTemplatePackageId(template);
+      // Surface a resolution miss instead of silently applying no package (and
+      // therefore no seats): the package name/currency may not match this env.
+      if (template.package && !packageId) {
+        setError(
+          `Template "${template.name}": no ${template.package.tier} package` +
+            (template.package.namePattern
+              ? ` matching "${template.package.namePattern}"`
+              : "") +
+            ` found for ${resolvedCurrency?.toUpperCase() ?? "the selected currency"}. ` +
+            "Pick a package manually."
+        );
+      }
+      const isSamePackage =
+        Boolean(packageId) && packageId === selectedPackageId;
+
       // Start from a blank form so no field from a previously applied template
       // lingers. The billing identity (Stripe customer + currency) is preserved
-      // since it identifies the customer, not the contract shape.
+      // since it identifies the customer, not the contract shape. When the
+      // package is unchanged the seat-reset effect won't fire, so seed the
+      // package's default seats (with the template's overrides) into this single
+      // reset — a reset() followed by a setValue() on the nested `seats` object
+      // races and leaves the seat fields blank.
       const current = form.getValues();
       form.reset({
         ...formDefaults,
         stripeCustomerId: current.stripeCustomerId,
         stripeCollectionMethod: current.stripeCollectionMethod,
         manualCurrency: current.manualCurrency,
+        ...(isSamePackage
+          ? {
+              metronomePackageId: packageId,
+              startingAt: defaultStartingAtUTC,
+              seats: mergeTemplateSeats(
+                buildDefaultSeats(selectedSeats, resolvedCurrency),
+                template.seats
+              ),
+            }
+          : {}),
       });
       // Duration and offer are local UI state that don't depend on the package,
       // so set them here in the handler (not from the deferred effect below).
@@ -612,19 +677,28 @@ export default function SwitchContractDialog({
       setDurationUnit(template.duration?.unit ?? "years");
       setOfferValue(template.offerFreePeriod?.value ?? 0);
       setOfferUnit(template.offerFreePeriod?.unit ?? "weeks");
-      pendingTemplateRef.current = null;
 
-      const packageId = resolveTemplatePackageId(template);
-      if (packageId) {
-        // Selecting the package repopulates seats and resets tier defaults;
-        // defer the rest of the template until that settles.
+      if (packageId && !isSamePackage) {
+        // The package changes: selecting it repopulates the seats and resets the
+        // tier defaults, so defer the rest of the template until that settles.
         pendingTemplateRef.current = template;
         form.setValue("metronomePackageId", packageId);
       } else {
+        // Same package (seats already seeded above) or no package: apply the
+        // remaining scalar fields now.
         applyTemplateFields(template);
       }
     },
-    [resolveTemplatePackageId, form, formDefaults, applyTemplateFields]
+    [
+      resolveTemplatePackageId,
+      selectedPackageId,
+      selectedSeats,
+      resolvedCurrency,
+      defaultStartingAtUTC,
+      form,
+      formDefaults,
+      applyTemplateFields,
+    ]
   );
 
   // Second phase of applying a template: once selecting its package has
@@ -1212,7 +1286,6 @@ export default function SwitchContractDialog({
                             <Button
                               type="button"
                               variant="outline"
-                              size="xs"
                               isSelect
                               disabled={isPackagesLoading}
                               label={
