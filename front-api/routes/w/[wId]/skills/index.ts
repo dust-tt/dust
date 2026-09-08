@@ -119,13 +119,7 @@ app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
 app.route("/similar", similar);
 
-/**
- * @ignoreswagger
- * With withRelations=true and withUsage=true, usage is the number of skill_management.enable_skill
- * calls attributed to the skill over the last 30 days. Null means usage is unavailable or the
- * skill is a system skill. The legacy withMessageCount parameter is an alias for withUsage;
- * messageCount is returned as null for old clients.
- */
+/** @ignoreswagger */
 app.get(
   "/",
   async (
