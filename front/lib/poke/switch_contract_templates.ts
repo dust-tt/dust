@@ -84,7 +84,7 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     description: "Business plan, starts immediately, 1-year commitment.",
     package: { tier: "business" },
     planCode: CREDIT_PRICED_BUSINESS_PLAN_CODE,
-    startMode: "immediately",
+    startMode: "select",
     duration: { value: 1, unit: "years" },
     seats: {
       pro_yearly: { selected: true, minSeats: 10 },
@@ -97,11 +97,29 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
       "Enterprise plan, starts immediately, 1-year commitment, prepaid credits.",
     package: { tier: "enterprise" },
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
-    startMode: "immediately",
+    startMode: "select",
     duration: { value: 1, unit: "years" },
     initialCredits: {
       amountCredits: 100000,
       invoiceAmount: 5000,
+      paymentSchedule: { frequency: "one_time" },
+    },
+  },
+  {
+    id: "enterprise-free-pilot-2w",
+    name: "Free pilot — 2 weeks",
+    description:
+      "Enterprise pooled, 2-week commitment, free workspace seats, 10k free credits.",
+    package: { tier: "enterprise", namePattern: "pooled" },
+    planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+    startMode: "select",
+    duration: { value: 2, unit: "weeks" },
+    seats: {
+      workspace_yearly: { selected: true, rate: 0 },
+    },
+    initialCredits: {
+      amountCredits: 10000,
+      invoiceAmount: 0,
       paymentSchedule: { frequency: "one_time" },
     },
   },
