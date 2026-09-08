@@ -119,6 +119,8 @@ interface InputFieldProps<T extends FieldValues> {
   placeholder?: string;
   /** Native `min` attribute, useful for `number` and `datetime-local`. */
   min?: string;
+  /** Native `max` attribute, useful for `number` and `datetime-local`. */
+  max?: string;
   /** Native `step` attribute, useful for `number` and `datetime-local`. */
   step?: number | string;
   readOnly?: boolean;
@@ -135,6 +137,7 @@ export function InputField<T extends FieldValues>({
   type,
   placeholder,
   min,
+  max,
   step,
   readOnly,
   disabled,
@@ -156,6 +159,7 @@ export function InputField<T extends FieldValues>({
               placeholder={placeholder ?? name}
               type={type}
               min={min}
+              max={max}
               step={step}
               {...field}
               value={field.value ?? ""}
