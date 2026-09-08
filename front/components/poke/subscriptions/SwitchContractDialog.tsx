@@ -283,9 +283,8 @@ export default function SwitchContractDialog({
   // The credit-priced usage cap lives on `credit_usage_configuration.usageCapCredits`
   // and is managed via the "Manage Credit Usage Configuration" plugin — operators
   // enter the desired cap (in AWU credits) fresh when switching contracts.
-  const form = useForm<SwitchContractFormValues>({
-    resolver: zodResolver(SwitchContractFormSchema),
-    defaultValues: {
+  const formDefaults: SwitchContractFormValues = useMemo(
+    () => ({
       metronomePackageId: "",
       planCode: "",
       hubspotDealId: "",
@@ -311,7 +310,12 @@ export default function SwitchContractDialog({
       scheduledCharge: undefined,
       recurringFreeCredit: undefined,
       seats: {},
-    },
+    }),
+    [stripeCustomerId]
+  );
+  const form = useForm<SwitchContractFormValues>({
+    resolver: zodResolver(SwitchContractFormSchema),
+    defaultValues: formDefaults,
   });
 
   const watchedStripeCustomerId = form.watch("stripeCustomerId");
@@ -597,17 +601,32 @@ export default function SwitchContractDialog({
     (template: SwitchContractTemplate) => {
       setError(null);
       setAppliedTemplateName(template.name);
+      // Start from a blank form so no field from a previously applied template
+      // lingers. The billing identity (Stripe customer + currency) is preserved
+      // since it identifies the customer, not the contract shape.
+      const current = form.getValues();
+      form.reset({
+        ...formDefaults,
+        stripeCustomerId: current.stripeCustomerId,
+        stripeCollectionMethod: current.stripeCollectionMethod,
+        manualCurrency: current.manualCurrency,
+      });
+      setDurationMode(false);
+      setDurationValue(1);
+      setDurationUnit("years");
+      pendingTemplateRef.current = null;
+
       const packageId = resolveTemplatePackageId(template);
-      if (packageId && packageId !== selectedPackageId) {
-        // Changing the package repopulates seats and resets tier defaults; defer
-        // the rest of the template until that settles.
+      if (packageId) {
+        // Selecting the package repopulates seats and resets tier defaults;
+        // defer the rest of the template until that settles.
         pendingTemplateRef.current = template;
         form.setValue("metronomePackageId", packageId);
       } else {
         applyTemplateFields(template);
       }
     },
-    [resolveTemplatePackageId, selectedPackageId, form, applyTemplateFields]
+    [resolveTemplatePackageId, form, formDefaults, applyTemplateFields]
   );
 
   // Second phase of applying a template: once selecting its package has
