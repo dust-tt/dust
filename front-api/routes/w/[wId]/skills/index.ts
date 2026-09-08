@@ -4,6 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
+import { fetchSkillUsageCounts } from "@app/lib/api/skills/usage";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -118,7 +119,12 @@ app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
 app.route("/similar", similar);
 
-/** @ignoreswagger */
+/**
+ * @ignoreswagger
+ * With withRelations=true and withMessageCount=true, messageCount is the number of tool calls
+ * attributed to the skill over the last 30 days, including activations. The legacy field name is
+ * retained for compatibility. Null means usage is unavailable or the skill is a system skill.
+ */
 app.get(
   "/",
   async (
@@ -241,12 +247,25 @@ app.get(
         { tags: { ...traceTags, "skills.count": skills.length } },
         async () => {
           const usageMap = await SkillResource.batchFetchUsage(auth, skills);
-          let messageCountMap: Map<string, number> | null = null;
+          let usageCountMap: Map<string, number> | null = null;
           if (withMessageCount) {
-            messageCountMap = await SkillResource.batchFetchMessageCounts(
+            const usageCountsResult = await fetchSkillUsageCounts(
               auth,
-              skills.filter((skill) => !skill.isSystemSkill)
+              skills
+                .filter((skill) => !skill.isSystemSkill)
+                .map((skill) => skill.sId)
             );
+            if (usageCountsResult.isErr()) {
+              logger.error(
+                {
+                  err: usageCountsResult.error,
+                  workspaceId: auth.getNonNullableWorkspace().sId,
+                },
+                "Failed to fetch skill usage counts"
+              );
+            } else {
+              usageCountMap = usageCountsResult.value;
+            }
           }
           const editorsMap = await SkillResource.batchListEditors(auth, skills);
           const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
@@ -285,11 +304,12 @@ app.get(
 
             return {
               ...skillWithoutInstructionsAndTools,
-              ...(messageCountMap
+              ...(withMessageCount
                 ? {
-                    messageCount: sc.isSystemSkill
-                      ? null
-                      : (messageCountMap.get(sc.sId) ?? 0),
+                    messageCount:
+                      sc.isSystemSkill || usageCountMap === null
+                        ? null
+                        : (usageCountMap.get(sc.sId) ?? 0),
                   }
                 : {}),
               relations: {
