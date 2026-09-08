@@ -8,6 +8,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
+import { classNames } from "@app/lib/utils";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import {
   Button,
@@ -37,20 +38,50 @@ function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
 
 interface CreditDetailRowProps {
   description?: string;
+  expandLabelOnHover?: boolean;
   icon?: ComponentType<{ className?: string }>;
   label: string;
   value: string;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] reveal-truncated-tool-label
+ * When `expandLabelOnHover` is enabled, hovering a truncated label reveals its
+ * full text in place of the description and value until the pointer leaves the row.
+ */
 function CreditDetailRow({
   description,
+  expandLabelOnHover = false,
   icon,
   label,
   value,
 }: CreditDetailRowProps) {
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [isLabelExpanded, setIsLabelExpanded] = useState(false);
+
   return (
-    <div className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-sm">
-      <dt className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+    <div
+      className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-sm"
+      onPointerEnter={(event) => {
+        const labelElement = labelRef.current;
+        if (
+          expandLabelOnHover &&
+          event.pointerType === "mouse" &&
+          labelElement
+        ) {
+          setIsLabelExpanded(
+            labelElement.scrollWidth > labelElement.clientWidth
+          );
+        }
+      }}
+      onPointerLeave={() => setIsLabelExpanded(false)}
+    >
+      <dt
+        className={classNames(
+          "flex min-w-0 items-center gap-2 font-medium text-foreground",
+          isLabelExpanded && "col-span-2"
+        )}
+      >
         {icon && (
           <Icon
             visual={icon}
@@ -58,8 +89,13 @@ function CreditDetailRow({
             className="shrink-0 text-muted-foreground"
           />
         )}
-        <span className="truncate">{label}</span>
-        {description && (
+        <span
+          ref={labelRef}
+          className={isLabelExpanded ? "min-w-0 break-words" : "truncate"}
+        >
+          {label}
+        </span>
+        {description && !isLabelExpanded && (
           <Chip
             size="mini"
             label={description}
@@ -67,7 +103,9 @@ function CreditDetailRow({
           />
         )}
       </dt>
-      <dd className="shrink-0 text-muted-foreground">{value}</dd>
+      <dd hidden={isLabelExpanded} className="shrink-0 text-muted-foreground">
+        {value}
+      </dd>
     </div>
   );
 }
@@ -210,6 +248,7 @@ export function CreditCostPopover({
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
                   label={tool.label}
                   description={toolDescription(tool)}
+                  expandLabelOnHover
                   value={formatCreditValue(tool.attributedCredits)}
                   icon={getActionStepIcon(tool)}
                 />
