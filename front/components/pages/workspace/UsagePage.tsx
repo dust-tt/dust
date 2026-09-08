@@ -1,8 +1,5 @@
-import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
-import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
-import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
@@ -52,7 +49,6 @@ import {
   isCreditPricedFreePlan,
   isEnterprisePlanPrefix,
   isFreePlan,
-  isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
 import {
@@ -82,10 +78,6 @@ import {
   useUpgradeRequests,
 } from "@app/lib/swr/upgrade_requests";
 import { useUsageSettings } from "@app/lib/swr/usage_settings";
-import {
-  usePerSeatPricing,
-  useWorkspaceSeatAvailability,
-} from "@app/lib/swr/workspaces";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
@@ -465,8 +457,6 @@ export function UsagePage() {
     [confirm, doResolveUpgradeRequest, setRequestResolving]
   );
 
-  const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
-    useState<WorkspaceLimit | null>(null);
   // Auto-open the "change my seat" modal when arriving from a blocked-state
   useEffect(() => {
     if (isCreditPriced && openChangeMySeatParam !== null && myUsage !== null) {
@@ -797,17 +787,7 @@ export function UsagePage() {
     ]
   );
 
-  const { hasAvailableSeats } = useWorkspaceSeatAvailability({
-    workspaceId: owner.sId,
-    disabled: !isCreditPriced,
-  });
-
   const { seatPlans, isSeatPlanLoading, isSeatPlanError } = useSeatPlan({
-    workspaceId: owner.sId,
-    disabled: !isCreditPriced,
-  });
-
-  const { perSeatPricing } = usePerSeatPricing({
     workspaceId: owner.sId,
     disabled: !isCreditPriced,
   });
@@ -847,25 +827,6 @@ export function UsagePage() {
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
-
-  const isManualInvitationsEnabled =
-    owner.metadata?.disableManualInvitations !== true;
-
-  const onInviteClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      if (!isUpgraded(plan)) {
-        setInviteBlockedPopupReason("cant_invite_free_plan");
-        event.preventDefault();
-      } else if (subscription.paymentFailingSince) {
-        setInviteBlockedPopupReason("cant_invite_payment_failure");
-        event.preventDefault();
-      } else if (!hasAvailableSeats) {
-        setInviteBlockedPopupReason("cant_invite_no_seats_available");
-        event.preventDefault();
-      }
-    },
-    [plan, subscription.paymentFailingSince, hasAvailableSeats]
-  );
 
   const poolConsumedCredits = Math.max(
     0,
@@ -917,26 +878,14 @@ export function UsagePage() {
     />
   ) : null;
 
-  const searchAndInviteRow = (
-    <div className="flex flex-row gap-2">
-      <SearchInput
-        placeholder="Search members"
-        value={searchTerm}
-        name="search"
-        onChange={handleSetSearchTerm}
-        className="w-full"
-      />
-      {isManualInvitationsEnabled && (
-        <InviteEmailButtonWithModal
-          owner={owner}
-          prefillText=""
-          perSeatPricing={perSeatPricing}
-          onInviteClick={onInviteClick}
-          disabled={!isCreditPriced}
-          isFreePlan={isFreePlanWorkspace}
-        />
-      )}
-    </div>
+  const searchRow = (
+    <SearchInput
+      placeholder="Search members"
+      value={searchTerm}
+      name="search"
+      onChange={handleSetSearchTerm}
+      className="w-full"
+    />
   );
 
   const seatFilterDropdown = (
@@ -1355,7 +1304,7 @@ export function UsagePage() {
 
             <TabsContent value="members">
               <Page.Vertical gap="sm" align="stretch">
-                {searchAndInviteRow}
+                {searchRow}
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-row items-center justify-between gap-2">
                     {isCreditPriced && (
@@ -1453,17 +1402,6 @@ export function UsagePage() {
             )}
           </Tabs>
         </div>
-
-        {inviteBlockedPopupReason && (
-          <ReachedLimitPopup
-            isAdmin={isAdmin(owner)}
-            isOpened={!!inviteBlockedPopupReason}
-            onClose={() => setInviteBlockedPopupReason(null)}
-            subscription={subscription}
-            owner={owner}
-            code={inviteBlockedPopupReason}
-          />
-        )}
 
         <ChangeSeatModal
           isOpen={changeSeatMember !== null}
