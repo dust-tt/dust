@@ -5,14 +5,22 @@ import { Button, ProgressBar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+// The estimate reaches 85% at the typical 90-second duration and 97% at the
+// rare 270-second duration. It approaches 99%. Only completion reaches 100%.
 const TYPICAL_SECONDS = 90;
 const RARE_SECONDS = 270;
-const SLOW_THRESHOLD_SECONDS = 150;
 const AT_TYPICAL_PERCENT = 85;
 const AT_RARE_PERCENT = 97;
 const CEILING_PERCENT = 99;
+
+// Start the long-run reassurance after 150 seconds.
+const SLOW_THRESHOLD_SECONDS = 150;
+
+// Update once per second so the displayed whole percentage stays current.
 const UPDATE_INTERVAL_MS = 1000;
 
+// Solve the curve's power and time scale from the two anchors above. The curve
+// uses u = (elapsed / scale)^power and fill = ceiling * u / (1 + u).
 const TYPICAL_RATIO =
   AT_TYPICAL_PERCENT / (CEILING_PERCENT - AT_TYPICAL_PERCENT);
 const RARE_RATIO = AT_RARE_PERCENT / (CEILING_PERCENT - AT_RARE_PERCENT);
@@ -30,9 +38,9 @@ export type CompactionProgressTier =
 
 const STAGE_BY_TIER = {
   normal: "Writing the summary",
-  "past-typical": "This conversation is longer than most. Still compacting.",
-  slow: "Still running, just slower than usual. Your messages are safe.",
-  tail: "This is taking unusually long. We'll keep going, and your conversation stays intact either way.",
+  "past-typical": "The conversation is longer than most. Still compacting.",
+  slow: "Compaction is taking longer than usual. Your messages are safe.",
+  tail: "Compaction is taking much longer than usual. The conversation stays intact even if compaction fails.",
 } satisfies Record<CompactionProgressTier, string>;
 
 export function getCompactionFill(elapsedSeconds: number): number {
@@ -125,9 +133,7 @@ function CompactionProgressCard({
   return (
     <section className="mb-2 rounded-2xl border border-border bg-background px-4 py-3 md:px-5 md:py-4">
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h2 className="text-base font-semibold text-foreground">
-          Compacting this conversation
-        </h2>
+        <h2 className="text-base font-semibold text-foreground">Compacting</h2>
         {displayPercentage !== undefined && (
           <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
             {displayPercentage}%
@@ -185,7 +191,7 @@ export function CompactionProgress({
           fillPercentage={fillPercentage}
           displayPercentage={displayPercentage}
           stage={STAGE_BY_TIER[tier]}
-          footer={isSlow ? "This keeps running if you leave." : undefined}
+          footer={isSlow ? "Compaction continues if you leave." : undefined}
           tone={isSlow ? "warning" : "default"}
         />
       );
@@ -194,7 +200,7 @@ export function CompactionProgress({
         <CompactionProgressCard
           fillPercentage={100}
           displayPercentage={100}
-          stage="This conversation is compacted. You can keep going."
+          stage="The conversation is compacted. You can keep going."
           tone="success"
         />
       );
@@ -202,7 +208,7 @@ export function CompactionProgress({
       return (
         <CompactionProgressCard
           fillPercentage={fillPercentage}
-          stage="Compaction didn't finish. Your conversation is unchanged."
+          stage="Compaction didn't finish. The conversation is unchanged."
           stageAction={
             <Button
               label="Try again"

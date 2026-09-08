@@ -47,7 +47,7 @@ describe("CompactionProgress", () => {
       "100"
     );
     expect(
-      screen.getByText("This conversation is compacted. You can keep going.")
+      screen.getByText("The conversation is compacted. You can keep going.")
     ).toBeDefined();
   });
 });
