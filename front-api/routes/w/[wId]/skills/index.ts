@@ -299,13 +299,13 @@ app.get(
 
             return {
               ...skillWithoutInstructionsAndTools,
+              messageCount: null,
               ...(withUsage
                 ? {
                     usage:
                       sc.isSystemSkill || usageCountMap === null
                         ? null
                         : (usageCountMap.get(sc.sId) ?? 0),
-                    messageCount: null,
                   }
                 : {}),
               relations: {

@@ -964,7 +964,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
       await response.json();
     expect(responseBody.skills.some((s) => s.sId === skill.sId)).toBe(true);
     for (const listedSkill of responseBody.skills) {
-      expect(listedSkill).not.toHaveProperty("messageCount");
+      expect(listedSkill.messageCount).toBeNull();
       expect(listedSkill).not.toHaveProperty("usage");
     }
     expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
@@ -1122,7 +1122,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
       },
     });
     expect(skillResult).not.toHaveProperty("usage");
-    expect(skillResult).not.toHaveProperty("messageCount");
+    expect(skillResult.messageCount).toBeNull();
     expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
   });
 
