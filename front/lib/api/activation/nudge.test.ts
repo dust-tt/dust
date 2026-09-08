@@ -16,7 +16,6 @@ import {
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
 } from "@app/temporal/activation_scheduler/config";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -217,18 +216,10 @@ describe("isEligibleForNudge", () => {
     const { authenticator, user, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    await FeatureFlagFactory.basic(
-      authenticator,
-      "enforce_user_spend_limit_rate_cap"
-    );
-    const authWithFlag = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      authenticator.getNonNullableWorkspace().sId
-    );
-    const activationPod = await createActivationPod(authWithFlag, globalSpace);
+    const activationPod = await createActivationPod(authenticator, globalSpace);
 
     expect(
-      await isEligibleForNudge(authWithFlag, {
+      await isEligibleForNudge(authenticator, {
         pod: globalSpace,
         activationPod,
         user,
