@@ -337,11 +337,6 @@ interface PokeMessageConsumptionInspectorProps {
   workspaceId: string;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] bounded-message-consumption-panel
- * The panel height must stay below the viewport height, with a scrollable breakdown
- * and an always-visible header and close button.
- */
 export function PokeMessageConsumptionInspector({
   billedCredits,
   conversationId,
