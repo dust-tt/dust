@@ -131,7 +131,7 @@ type AgentDetailsSheetProps = {
 };
 
 /** @cc [owner:philipperolet,label:product] email-agent-footer
- * The email footer requires an active, readable agent and workspace email agents to be enabled.
+ * The email footer requires an active, readable agent allowed by the workspace email settings.
  */
 export function AgentDetailsSheet({
   agentId,
@@ -446,12 +446,19 @@ export function AgentDetailsSheet({
             </SheetContainer>
             {areEmailAgentsAllowed(owner) &&
               agentConfiguration?.status === "active" &&
-              agentConfiguration.canRead && (
+              agentConfiguration.canRead &&
+              !(
+                Array.isArray(owner.metadata?.emailBlacklistedAgentIds) &&
+                owner.metadata.emailBlacklistedAgentIds.includes(
+                  agentConfiguration.sId
+                )
+              ) && (
                 <div className="px-5 pb-4">
                   <ContentMessageInline variant="primary" icon={Mail01}>
                     <Markdown
                       content={`Email this agent at **${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}**. [Learn more](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents)`}
                       forcedTextSize="text-xs"
+                      optimizeForStreaming={false}
                     />
                   </ContentMessageInline>
                 </div>
