@@ -319,7 +319,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
   }
 }
 
-type ShadowAgentViewArgs = {
+type ShadowCompareAgentViewArgs = {
   auth: Authenticator;
   owner: WorkspaceType;
   view: "list" | "manage" | "archived";
@@ -331,7 +331,7 @@ type ShadowAgentViewArgs = {
   omitHeavyAttributes?: boolean;
 };
 
-async function shadowAgentView({
+async function shadowCompareAgentView({
   auth,
   owner,
   view,
@@ -341,7 +341,7 @@ async function shadowAgentView({
   limit,
   sort,
   omitHeavyAttributes,
-}: ShadowAgentViewArgs): Promise<void> {
+}: ShadowCompareAgentViewArgs): Promise<void> {
   const stableAgentModelIds = (models: AgentConfigurationModel[]) =>
     [...new Set(models.map((model) => model.agentId))].sort((a, b) => a - b);
 
@@ -452,7 +452,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     agentsGetView === "manage" ||
     agentsGetView === "archived"
   ) {
-    await shadowAgentView({
+    await shadowCompareAgentView({
       auth,
       owner,
       view: agentsGetView,
