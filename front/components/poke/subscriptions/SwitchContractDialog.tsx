@@ -30,6 +30,7 @@ import {
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
 import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
+import type { SupportedCurrency } from "@app/types/currency";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import { BILLABLE_SEAT_TYPES } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -146,6 +147,39 @@ function toDatetimeLocalUTC(d: Date): string {
     `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
     `T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
   );
+}
+
+type SeatFormValue = {
+  selected: boolean;
+  minSeats: number;
+  maxSeats?: number;
+  rate: number;
+  paymentSchedule: { frequency: "one_time" };
+};
+
+// Default seat settings for a package: entitled seats pre-selected, the rest
+// unchecked for the operator to opt into; minSeats 0 and the rate converted from
+// Metronome's fiat unit to the dialog's major units. Shared by the seat-reset
+// effect and template application so they can't drift.
+function buildDefaultSeats(
+  seats: { seatType: string; defaultRate: number | null; entitled: boolean }[],
+  resolvedCurrency: SupportedCurrency | null | undefined
+): Record<string, SeatFormValue> {
+  const next: Record<string, SeatFormValue> = {};
+  for (const seat of seats) {
+    const rate =
+      seat.defaultRate != null && resolvedCurrency
+        ? amountCents(seat.defaultRate, resolvedCurrency) / 100
+        : (seat.defaultRate ?? 0);
+    next[seat.seatType] = {
+      selected: seat.entitled,
+      minSeats: 0,
+      maxSeats: undefined,
+      rate,
+      paymentSchedule: { frequency: "one_time" },
+    };
+  }
+  return next;
 }
 
 const isLegacyPackageName = (name: string) => /\blegacy\b/i.test(name);
@@ -433,30 +467,7 @@ export default function SwitchContractDialog({
   // (dollars/euros), so convert for display. Avoids stale values leaking across
   // package selections.
   useEffect(() => {
-    const next: Record<
-      string,
-      {
-        selected: boolean;
-        minSeats: number;
-        maxSeats?: number;
-        rate: number;
-        paymentSchedule: { frequency: "one_time" };
-      }
-    > = {};
-    for (const seat of selectedSeats) {
-      const rate =
-        seat.defaultRate != null && resolvedCurrency
-          ? amountCents(seat.defaultRate, resolvedCurrency) / 100
-          : (seat.defaultRate ?? 0);
-      next[seat.seatType] = {
-        selected: seat.entitled,
-        minSeats: 0,
-        maxSeats: undefined,
-        rate,
-        paymentSchedule: { frequency: "one_time" },
-      };
-    }
-    form.setValue("seats", next);
+    form.setValue("seats", buildDefaultSeats(selectedSeats, resolvedCurrency));
   }, [selectedSeats, form, resolvedCurrency]);
 
   // Clear a stale package selection when the resolved currency changes so a
@@ -615,16 +626,49 @@ export default function SwitchContractDialog({
       pendingTemplateRef.current = null;
 
       const packageId = resolveTemplatePackageId(template);
-      if (packageId) {
-        // Selecting the package repopulates seats and resets tier defaults;
-        // defer the rest of the template until that settles.
+      // Surface a resolution miss instead of silently applying no package (and
+      // therefore no seats): the package name/currency may not match this env.
+      if (template.package && !packageId) {
+        setError(
+          `Template "${template.name}": no ${template.package.tier} package` +
+            (template.package.namePattern
+              ? ` matching "${template.package.namePattern}"`
+              : "") +
+            ` found for ${resolvedCurrency?.toUpperCase() ?? "the selected currency"}. ` +
+            "Pick a package manually."
+        );
+      }
+      if (packageId && packageId !== selectedPackageId) {
+        // The package changes: selecting it repopulates the seats and resets the
+        // tier defaults, so defer the rest of the template until that settles.
         pendingTemplateRef.current = template;
         form.setValue("metronomePackageId", packageId);
       } else {
+        // The package is unchanged (or the template names none), so neither the
+        // seat-reset nor the tier-default effect will fire — restore the package,
+        // rebuild its default seats and start (form.reset cleared them), and
+        // apply the template synchronously.
+        if (packageId) {
+          form.setValue("metronomePackageId", packageId);
+          form.setValue(
+            "seats",
+            buildDefaultSeats(selectedSeats, resolvedCurrency)
+          );
+          form.setValue("startingAt", defaultStartingAtUTC);
+        }
         applyTemplateFields(template);
       }
     },
-    [resolveTemplatePackageId, form, formDefaults, applyTemplateFields]
+    [
+      resolveTemplatePackageId,
+      selectedPackageId,
+      selectedSeats,
+      resolvedCurrency,
+      defaultStartingAtUTC,
+      form,
+      formDefaults,
+      applyTemplateFields,
+    ]
   );
 
   // Second phase of applying a template: once selecting its package has
