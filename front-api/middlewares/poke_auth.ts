@@ -1,27 +1,18 @@
 import {
   getCloudflareAccessConfig,
   getPokeRolesForUserViaCloudflareAccess,
+  resolveCloudflareAccessToken,
   verifyCloudflareAccessJwt,
 } from "@app/lib/api/poke/cloudflare_access";
 import { Authenticator, isDustInternalEmail } from "@app/lib/auth";
-import { getPokeRolesForUser } from "@app/lib/poke/roles";
+import { ALL_ROLES } from "@app/lib/poke/roles";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import type { PokeCtx } from "@front-api/middlewares/ctx";
 import { resolveSession } from "@front-api/middlewares/session_resolution";
 import { apiError } from "@front-api/middlewares/utils";
-import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
-
-function getCloudflareAccessToken(ctx: Context): string | undefined {
-  // Cloudflare recommends validating the assertion header over the cookie.
-  const headerToken = ctx.req.header("cf-access-jwt-assertion");
-  if (headerToken) {
-    return headerToken;
-  }
-  return getCookie(ctx, "CF_Authorization");
-}
 
 /**
  * Authenticates a Poke (super-user) request and stashes an unscoped
@@ -30,7 +21,8 @@ function getCloudflareAccessToken(ctx: Context): string | undefined {
  *
  * Prefers a validated Cloudflare Access JWT (`Cf-Access-Jwt-Assertion` /
  * `CF_Authorization`) so poke operators do not need a provisioned Dust user
- * with `isDustSuperUser` on every deployment. Falls back to the WorkOS
+ * with `isDustSuperUser` on every deployment. Outside development, a missing
+ * Access token is rejected. In development only, falls back to the WorkOS
  * super-user session path when no Access token is present.
  *
  * Super-user privilege is an Authenticator flag set only by poke factories
@@ -38,7 +30,10 @@ function getCloudflareAccessToken(ctx: Context): string | undefined {
  */
 export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
   const accessConfig = getCloudflareAccessConfig();
-  const accessToken = getCloudflareAccessToken(ctx);
+  const accessToken = resolveCloudflareAccessToken({
+    headerToken: ctx.req.header("cf-access-jwt-assertion"),
+    cookieToken: getCookie(ctx, "CF_Authorization"),
+  });
 
   if (accessConfig && accessToken) {
     const identity = await verifyCloudflareAccessJwt(accessToken);
@@ -87,49 +82,52 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
     ctx.set("pokeRoles", pokeRoles);
     await next();
     return;
+  } else if (accessConfig && !accessToken) {
+    if (!isDevelopment()) {
+      logger.warn(
+        "[Poke Auth] Request missing Cloudflare Access token; rejececting request"
+      );
+    } else {
+      logger.info(
+        "[Poke Auth] Request missing Cloudflare Access token in development; falling back to WorkOS super-user session"
+      );
+
+      const sessionResult = await resolveSession(ctx);
+      if (sessionResult instanceof Response) {
+        return sessionResult;
+      }
+
+      const user = await Authenticator.userFromSession(sessionResult);
+      // WorkOS fallback still requires a provisioned Dust user
+      if (user) {
+        const auth = await Authenticator.fromDustSuperUser({ user });
+        logger.info(
+          {
+            userId: user.sId,
+            email: user.email,
+          },
+          "[Poke Auth] User logged in Poke via WorkOS in development."
+        );
+
+        ctx.set("auth", auth);
+        ctx.set("pokeRoles", ALL_ROLES);
+        await next();
+        return;
+      } else {
+        logger.warn(
+          "[Poke Auth] WorkOS fallback user not found; rejecting request"
+        );
+      }
+    }
   }
 
-  if (accessConfig && !accessToken && !isDevelopment()) {
-    logger.warn(
-      "[Poke Auth] Request missing Cloudflare Access token; falling back to WorkOS super-user session"
-    );
-  }
-
-  const sessionResult = await resolveSession(ctx);
-  if (sessionResult instanceof Response) {
-    return sessionResult;
-  }
-
-  const user = await Authenticator.userFromSession(sessionResult);
-  // WorkOS fallback still requires a provisioned Dust user with the DB flag.
-  if (!user || !user.isDustSuperUser || !isDustInternalEmail(user.email)) {
-    logger.warn(
-      { userId: user?.sId, email: user?.email },
-      "[Poke Auth] WorkOS fallback user is not a Dust internal email"
-    );
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: "not_authenticated",
-        message: "The user does not have permission",
-      },
-    });
-  }
-
-  const auth = await Authenticator.fromDustSuperUser({ user });
-  const pokeRoles = await getPokeRolesForUser(user.email);
-
-  logger.info(
-    {
-      userId: user.sId,
-      email: user.email,
+  return apiError(ctx, {
+    status_code: 401,
+    api_error: {
+      type: "not_authenticated",
+      message: "The user does not have permission",
     },
-    "[Poke Auth] User logged in Poke via WorkOS fallback"
-  );
-
-  ctx.set("auth", auth);
-  ctx.set("pokeRoles", pokeRoles);
-  await next();
+  });
 });
 
 /**

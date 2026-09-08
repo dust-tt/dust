@@ -1,6 +1,6 @@
 import { listDatabasesOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -16,7 +16,7 @@ vi.mock(import("@app/lib/api/sandbox_functions/dsbx_db"), async (orig) => {
 });
 
 async function setup() {
-  const { workspace } = await createPrivateApiMockRequest({
+  const { workspace } = await createPokeApiMockRequest({
     isSuperUser: true,
     role: "admin",
   });

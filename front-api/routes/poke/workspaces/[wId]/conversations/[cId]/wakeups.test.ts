@@ -1,14 +1,14 @@
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function setup() {
-  const { workspace, auth } = await createPrivateApiMockRequest({
+  const { workspace, auth } = await createPokeApiMockRequest({
     isSuperUser: true,
     role: "admin",
   });

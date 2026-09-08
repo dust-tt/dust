@@ -160,7 +160,7 @@ describe("GET /api/poke/workspaces/:wId/frames", () => {
   });
 
   it("does not leak frames from another workspace", async () => {
-    // Order matters: each makeTestFrameFunction call re-mocks the WorkOS session, so the target
+    // Order matters: each makeTestFrameFunction call re-mocks poke CF Access, so the target
     // workspace must be created last for the request to authenticate as its own super user.
     await makeTestFrameFunction({ isSuperUser: true });
     const { workspace, frame } = await makeTestFrameFunction({

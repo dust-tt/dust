@@ -1,4 +1,4 @@
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
@@ -10,7 +10,7 @@ function detailsUrl(workspaceId: string, spaceId: string) {
 
 describe("GET /api/poke/workspaces/:wId/spaces/:spaceId/details", () => {
   it("returns the sandbox provider id and status when the pod owns one", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace, auth } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -29,7 +29,7 @@ describe("GET /api/poke/workspaces/:wId/spaces/:spaceId/details", () => {
   });
 
   it("returns a null sandbox when the pod owns none", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -44,7 +44,7 @@ describe("GET /api/poke/workspaces/:wId/spaces/:spaceId/details", () => {
   });
 
   it("returns a null sandbox for a regular space", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });

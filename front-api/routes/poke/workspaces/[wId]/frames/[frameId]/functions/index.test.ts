@@ -1,6 +1,6 @@
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { makeTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { frameV2ContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -53,7 +53,7 @@ describe("GET /api/poke/workspaces/:wId/frames/:frameId/functions", () => {
 
   it("404s for a Frame in another workspace", async () => {
     const { frame } = await makeTestFrameFunction({ isSuperUser: true });
-    const { workspace: otherWorkspace } = await createPrivateApiMockRequest({
+    const { workspace: otherWorkspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });

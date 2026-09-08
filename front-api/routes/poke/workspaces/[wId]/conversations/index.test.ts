@@ -1,6 +1,6 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -16,7 +16,7 @@ function sIds(conversations: { sId: string }[]): string[] {
 
 describe("GET /api/poke/workspaces/:wId/conversations", () => {
   it("pages the agent conversations by offset, newest first", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -72,7 +72,7 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
   });
 
   it("returns an empty page past the end", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -93,7 +93,7 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
   });
 
   it("orders the agent conversations by the requested column", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -133,7 +133,7 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
   });
 
   it("rejects an unknown order column", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -148,7 +148,7 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
   });
 
   it("restricts the agent conversations to the created-at window", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -199,7 +199,7 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
   });
 
   it("pages within the created-at window", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -239,7 +239,7 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
   });
 
   it("rejects a malformed date bound", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -254,7 +254,7 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
   });
 
   it("defaults the paging and ordering when none is provided", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -276,7 +276,7 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
   });
 
   it("rejects a request with no agent, trigger or reinforced skill", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });

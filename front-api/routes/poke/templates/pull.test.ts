@@ -1,5 +1,5 @@
 import { config } from "@app/lib/api/regions/config";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -57,7 +57,7 @@ describe("POST /api/poke/templates/pull", { sequential: true }, () => {
   });
 
   it("returns 401 when the user is not a super user", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: false });
+    await createPokeApiMockRequest({ isSuperUser: false });
 
     const response = await pullTemplates();
 
@@ -72,7 +72,7 @@ describe("POST /api/poke/templates/pull", { sequential: true }, () => {
 
   it("returns 400 when called with the sync disabled", async () => {
     vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(false);
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await pullTemplates();
 
@@ -96,7 +96,7 @@ describe("POST /api/poke/templates/pull", { sequential: true }, () => {
       });
     });
 
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await pullTemplates();
 
@@ -149,7 +149,7 @@ describe("POST /api/poke/templates/pull", { sequential: true }, () => {
         });
       });
 
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await pullTemplates();
 
@@ -200,7 +200,7 @@ describe("POST /api/poke/templates/pull", { sequential: true }, () => {
         });
       });
 
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await pullTemplates();
 
