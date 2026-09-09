@@ -46,6 +46,8 @@ export type ProgressBarProps = Omit<
      * Name what is progressing (e.g. "Upload progress").
      */
     label?: string;
+    /** Class names applied to every fill before each value's className. */
+    fillClassName?: string;
   } & (
     | { percentage: number; values?: never }
     | {
@@ -72,6 +74,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
       radius = "full",
       variant = "default",
       className,
+      fillClassName,
       ...props
     },
     ref
@@ -118,6 +121,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
               key={index}
               className={cn(
                 progressBarFillVariants({ radius, variant }),
+                fillClassName,
                 segment.className
               )}
               style={

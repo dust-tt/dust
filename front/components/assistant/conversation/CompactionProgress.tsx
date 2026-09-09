@@ -51,10 +51,13 @@ export function getCompactionFill(elapsedSeconds: number): number {
   return (CEILING_PERCENT * curvePosition) / (1 + curvePosition);
 }
 
-export function getCompactionProgressTier(
-  elapsedSeconds: number,
-  slowThresholdSeconds = SLOW_THRESHOLD_SECONDS
-): CompactionProgressTier {
+export function getCompactionProgressTier({
+  elapsedSeconds,
+  slowThresholdSeconds = SLOW_THRESHOLD_SECONDS,
+}: {
+  elapsedSeconds: number;
+  slowThresholdSeconds?: number;
+}): CompactionProgressTier {
   if (elapsedSeconds < TYPICAL_SECONDS) {
     return "normal";
   }
@@ -103,10 +106,16 @@ interface CompactionProgressProps {
 
 type CompactionProgressTone = "default" | "success" | "warning";
 
-const PROGRESS_CLASSES = {
-  default: "bg-muted-background [&>div]:bg-foreground",
-  success: "bg-success-100 [&>div]:bg-success-700",
-  warning: "bg-warning-100 [&>div]:bg-warning-700",
+const PROGRESS_TRACK_CLASSES = {
+  default: "bg-muted-background",
+  success: "bg-success-100",
+  warning: "bg-warning-100",
+} satisfies Record<CompactionProgressTone, string>;
+
+const PROGRESS_FILL_CLASSES = {
+  default: "bg-foreground",
+  success: "bg-success-700",
+  warning: "bg-warning-700",
 } satisfies Record<CompactionProgressTone, string>;
 
 const STAGE_CLASSES = {
@@ -131,8 +140,8 @@ function CompactionProgressCard({
   tone: CompactionProgressTone;
 }) {
   return (
-    <section className="mb-2 rounded-2xl border border-border bg-background px-4 py-3 md:px-5 md:py-4">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
+    <section className="mb-2 flex flex-col gap-2 rounded-2xl border border-border bg-background p-4">
+      <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-base font-semibold text-foreground">Compacting</h2>
         {displayPercentage !== undefined && (
           <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
@@ -143,14 +152,15 @@ function CompactionProgressCard({
       <ProgressBar
         label="Conversation compaction progress"
         percentage={fillPercentage}
-        className={classNames(
-          "h-1 w-full [&>div]:transition-[width] [&>div]:duration-1000 [&>div]:ease-linear motion-reduce:[&>div]:transition-none",
-          PROGRESS_CLASSES[tone]
+        className={classNames("h-1 w-full", PROGRESS_TRACK_CLASSES[tone])}
+        fillClassName={classNames(
+          "transition-[width] duration-1000 ease-linear motion-reduce:transition-none",
+          PROGRESS_FILL_CLASSES[tone]
         )}
       />
       <div
         className={classNames(
-          "mt-2 flex items-start gap-2 text-sm",
+          "flex items-start gap-2 text-sm",
           STAGE_CLASSES[tone]
         )}
         aria-live="polite"
@@ -163,9 +173,7 @@ function CompactionProgressCard({
         {stageAction}
       </div>
       {footer && (
-        <p className="mt-2 text-right text-xs text-muted-foreground">
-          {footer}
-        </p>
+        <p className="text-right text-xs text-muted-foreground">{footer}</p>
       )}
     </section>
   );
@@ -181,7 +189,7 @@ export function CompactionProgress({
   const elapsedSeconds = useElapsedSeconds(message.created, isRunning);
   const fillPercentage = getCompactionFill(elapsedSeconds);
   const displayPercentage = Math.floor(fillPercentage);
-  const tier = getCompactionProgressTier(elapsedSeconds);
+  const tier = getCompactionProgressTier({ elapsedSeconds });
   const isSlow = tier === "slow" || tier === "tail";
 
   switch (message.status) {
@@ -214,7 +222,7 @@ export function CompactionProgress({
               label="Try again"
               variant="ghost"
               size="xs"
-              className="-mr-2 shrink-0"
+              className="shrink-0"
               disabled={!canRetry || isRetrying}
               isLoading={isRetrying}
               onClick={onRetry}

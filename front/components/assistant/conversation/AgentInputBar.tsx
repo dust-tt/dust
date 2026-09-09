@@ -171,10 +171,15 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     .filter(isCompactionMessage)
     .findLast((message) => message.status === "created");
   const lastMessage = allMessages.at(-1);
-  const latestCompactionMessage =
-    lastMessage && isCompactionMessage(lastMessage) ? lastMessage : undefined;
+  // Keep the terminal state docked until the next message moves it into the transcript.
+  const latestTerminalCompactionMessage =
+    lastMessage &&
+    isCompactionMessage(lastMessage) &&
+    lastMessage.status !== "created"
+      ? lastMessage
+      : undefined;
   const dockedCompactionMessage =
-    activeCompactionMessage ?? latestCompactionMessage;
+    activeCompactionMessage ?? latestTerminalCompactionMessage;
   const isCompactionInProgress = activeCompactionMessage !== undefined;
   const { compact: retryCompaction, isCompacting: isRetryingCompaction } =
     useCompactConversation({

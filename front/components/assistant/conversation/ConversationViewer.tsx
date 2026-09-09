@@ -396,6 +396,11 @@ export const ConversationViewer = ({
     options: { disabled: true },
   });
 
+  const notifyCompactionCompleted = useCallback(() => {
+    void mutateContextUsage();
+    window.dispatchEvent(new CompactionCompletedEvent());
+  }, [mutateContextUsage]);
+
   const submitMessage = useSubmitMessage({
     owner,
     user,
@@ -566,6 +571,7 @@ export const ConversationViewer = ({
         .map((message) => [message.sId, message])
     );
 
+    // The refresh has already updated SWR. Reconcile Virtuoso and notify local listeners.
     if (
       virtuosoMessageListRef.current.data.get().some((message) => {
         if (!isCompactionMessage(message) || message.status !== "created") {
@@ -589,6 +595,7 @@ export const ConversationViewer = ({
           ? refreshedMessage
           : message;
       });
+      notifyCompactionCompleted();
     }
 
     const olderMessagesFromBackend = messagesFromBackend.filter(
@@ -624,7 +631,11 @@ export const ConversationViewer = ({
         )
       );
     }
-  }, [conversation?.forkingData?.forkedChildren, messages]);
+  }, [
+    conversation?.forkingData?.forkedChildren,
+    messages,
+    notifyCompactionCompleted,
+  ]);
 
   useEffect(() => {
     if (
@@ -1096,8 +1107,7 @@ export const ConversationViewer = ({
                 })),
               { revalidate: false }
             );
-            void mutateContextUsage();
-            window.dispatchEvent(new CompactionCompletedEvent());
+            notifyCompactionCompleted();
             break;
           case "plan_updated": {
             // The acting client already updates via the per-message plan tool action; this handles
@@ -1156,6 +1166,7 @@ export const ConversationViewer = ({
       mutateConversations,
       mutateMessages,
       mutateWakeUps,
+      notifyCompactionCompleted,
       owner.sId,
       user.sId,
     ]

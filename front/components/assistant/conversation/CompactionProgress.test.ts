@@ -22,12 +22,16 @@ describe("getCompactionFill", () => {
 
 describe("getCompactionProgressTier", () => {
   it("changes tiers at the expected durations", () => {
-    expect(getCompactionProgressTier(89)).toBe("normal");
-    expect(getCompactionProgressTier(90)).toBe("past-typical");
-    expect(getCompactionProgressTier(149)).toBe("past-typical");
-    expect(getCompactionProgressTier(150)).toBe("slow");
-    expect(getCompactionProgressTier(269)).toBe("slow");
-    expect(getCompactionProgressTier(270)).toBe("tail");
+    expect(getCompactionProgressTier({ elapsedSeconds: 89 })).toBe("normal");
+    expect(getCompactionProgressTier({ elapsedSeconds: 90 })).toBe(
+      "past-typical"
+    );
+    expect(getCompactionProgressTier({ elapsedSeconds: 149 })).toBe(
+      "past-typical"
+    );
+    expect(getCompactionProgressTier({ elapsedSeconds: 150 })).toBe("slow");
+    expect(getCompactionProgressTier({ elapsedSeconds: 269 })).toBe("slow");
+    expect(getCompactionProgressTier({ elapsedSeconds: 270 })).toBe("tail");
   });
 });
 
@@ -43,9 +47,12 @@ describe("CompactionProgress", () => {
     );
 
     expect(screen.getByText("100%")).toBeDefined();
-    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
-      "100"
-    );
+    const progressBar = screen.getByRole("progressbar");
+    expect(progressBar.getAttribute("aria-valuenow")).toBe("100");
+    expect(progressBar.classList.contains("bg-success-100")).toBe(true);
+    expect(
+      progressBar.firstElementChild?.classList.contains("bg-success-700")
+    ).toBe(true);
     expect(
       screen.getByText("The conversation is compacted. You can keep going.")
     ).toBeDefined();
