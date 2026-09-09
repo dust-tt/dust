@@ -76,7 +76,7 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/client";
-import { Client } from "@microsoft/microsoft-graph-client";
+import { Client, GraphError } from "@microsoft/microsoft-graph-client";
 import type { Site } from "@microsoft/microsoft-graph-types";
 import { decodeJwt } from "jose";
 
@@ -480,7 +480,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
       return new Ok(nodesWithPermissions);
     } catch (e) {
-      if (e instanceof ExternalOAuthTokenError) {
+      if (
+        e instanceof ExternalOAuthTokenError ||
+        (e instanceof GraphError &&
+          e.statusCode === 401 &&
+          e.code === "accessDenied")
+      ) {
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
