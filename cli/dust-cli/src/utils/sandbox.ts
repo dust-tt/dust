@@ -78,10 +78,7 @@ export function describeSandbox(): string {
     .map((p) => p.replace(os.homedir(), "~"))
     .join(", ");
 
-  return (
-    `Filesystem access limited to ${scope}. ` +
-    "run_command only checks its arguments against this boundary, it does not confine the process it spawns."
-  );
+  return `Filesystem access limited to ${scope} (run_command: args-only check)`;
 }
 
 /**
