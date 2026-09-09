@@ -4,6 +4,7 @@ import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMark
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
+import { getAgentMessageHeaderTimestampMs } from "@app/components/assistant/conversation/agentMessageTiming";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
@@ -1075,9 +1076,23 @@ export function AgentMessage({
     ]
   );
 
-  const timestamp = parentAgent
-    ? undefined
-    : formatTimestring(agentMessage.completedTs ?? agentMessage.created);
+  const timestampMs = getAgentMessageHeaderTimestampMs({
+    created: agentMessage.created,
+    completedTs: agentMessage.completedTs,
+    messageId: agentMessage.sId,
+    parentAgentVisible: !!parentAgent,
+    hasHandedOver: isAgentMessageHandingOver,
+    messages: methods.data
+      .get()
+      .filter(isAgentMessageWithStreaming)
+      .map((m) => ({
+        sId: m.sId,
+        parentAgentMessageId: m.parentAgentMessageId,
+        completedTs: m.completedTs,
+      })),
+  });
+  const timestamp =
+    timestampMs !== undefined ? formatTimestring(timestampMs) : undefined;
 
   const messageContent = (
     <ConversationMessageContent

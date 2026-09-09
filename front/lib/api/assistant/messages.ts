@@ -1,3 +1,5 @@
+import { AGENT_DELEGATION_SERVER_NAME } from "@app/lib/api/actions/servers/agent_delegation/metadata";
+import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
@@ -56,6 +58,22 @@ import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+function isNestedAgentAction(
+  action: Pick<AgentMCPActionWithOutputType, "internalMCPServerName">
+): boolean {
+  return (
+    action.internalMCPServerName === RUN_AGENT_SERVER_NAME ||
+    action.internalMCPServerName === AGENT_DELEGATION_SERVER_NAME
+  );
+}
+
+/**
+ * @cc [owner:frankaloia,label:product] nested-agent-time-counts
+ * The returned duration MUST include time spent in nested agent actions
+ * (`run_agent`, `agent_delegation`). Those actions often pause or resume across
+ * the 10-minute tool activity timeout, so `executionDurationMs` only covers the
+ * last attempt and MUST NOT be used to classify the rest as wait.
+ */
 export function getCompletionDuration(
   created: number,
   completedTs: number | null,
@@ -70,9 +88,13 @@ export function getCompletionDuration(
   // Where executionStart = updatedAt - executionDurationMs
   //
   // Message timeline: [created] ---blank---[action 1] --- blank --- [action 2] --- blank --- [completedTs]
+  //
+  // Nested agent actions are excluded: their pause/resume gaps are child-agent
+  // work, not queue or approval wait.
 
   const waitRanges: Array<{ start: number; end: number }> = actions
     .filter((a) => a.executionDurationMs !== null)
+    .filter((a) => !isNestedAgentAction(a))
     .map((a) => ({
       start: a.createdAt,
       end: a.updatedAt - a.executionDurationMs!,
