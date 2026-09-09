@@ -79,7 +79,7 @@ documents.
 ## Secrets
 
 - **Runtime / host-injected:** `OP_SERVICE_ACCOUNT_TOKEN`, `DEV_WORKOS_*` (already in process env; not re-exported).
-- **1Password Environment:** materialized once to `/tmp/dust-op-environment.env` (rewritten to zsh-safe `export` lines so JSON secrets like `GCP_SERVICE_ACCOUNT` can be sourced), loaded via `BASH_ENV=/tmp/dust-shell-env.sh` for non-interactive bash (infra/mprocs) and via `/root/.zshrc` / `dev/zshrc` for interactive terminals. `GCP_SERVICE_ACCOUNT` is also written to `SERVICE_ACCOUNT` (`/tmp/dust-dev-sa.json`).
+- **1Password Environment:** materialized once to `/tmp/dust-op-environment.env`, loaded via `BASH_ENV=/tmp/dust-shell-env.sh` for non-interactive bash (infra/mprocs) and via `/root/.zshrc` / `dev/zshrc` for interactive terminals. Store `GCP_SERVICE_ACCOUNT_B64` as base64-encoded JSON; on materialize it is decoded to `SERVICE_ACCOUNT` (`/tmp/dust-dev-sa.json`).
 - **Local overrides:** `dev/scripts/env.sh` → `apply_local_overrides` forces in-container DB/API URLs after OP load.
 
 ## Infra models
