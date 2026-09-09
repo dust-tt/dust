@@ -142,16 +142,19 @@ describe("emitConversationAccessedEvent", () => {
 
   it("skips participant queries and emit when audit logs are disabled", async () => {
     const { auth, conversation } = await setup({ auditLogs: false });
-    const listSpy = vi.spyOn(ConversationResource, "listParticipantDetails");
+    const firstSpy = vi.spyOn(
+      ConversationResource,
+      "fetchFirstParticipantUserId"
+    );
     const fetchSpy = vi.spyOn(UserResource, "fetchByModelIds");
 
     await emitConversationAccessedEvent(auth, conversation);
 
-    expect(listSpy).not.toHaveBeenCalled();
+    expect(firstSpy).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
 
-    listSpy.mockRestore();
+    firstSpy.mockRestore();
     fetchSpy.mockRestore();
   });
 });
