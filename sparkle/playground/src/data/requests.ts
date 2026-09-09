@@ -6,13 +6,17 @@ import {
   DriveLogo,
   Eye,
   GithubLogo,
+  HubspotLogo,
+  JiraLogo,
   Lock01,
   NotionLogo,
+  SalesforceLogo,
   ShapesPlus,
   ShieldTick,
   SlackLogo,
   SyncCloud02,
   UsersPlus,
+  ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -20,6 +24,7 @@ import type {
   AdminRequest,
   RequestDocument,
   RequestOutcome,
+  RequestRole,
   RequestType,
   RequestVariant,
   SeatType,
@@ -36,7 +41,7 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   creditManagement: "Credit management",
   knowledgeManagement: "Knowledge management",
   toolAddition: "Tool addition",
-  userInvitation: "User invitation",
+  memberInvitation: "Member invitation",
   access: "Access request",
   roleChange: "Role change",
   publication: "Publication",
@@ -49,7 +54,7 @@ const REQUEST_TYPE_ICONS: Record<
   creditManagement: CoinsStacked01,
   knowledgeManagement: BookOpen01,
   toolAddition: ShapesPlus,
-  userInvitation: UsersPlus,
+  memberInvitation: UsersPlus,
   access: Lock01,
   roleChange: ShieldTick,
   publication: Eye,
@@ -97,21 +102,50 @@ export const SEAT_TYPE_LABELS: Record<SeatType, string> = {
   platform: "Platform",
 };
 
+export const SEAT_CHIP_COLORS: Record<
+  SeatType,
+  "primary" | "highlight" | "success" | "warning"
+> = {
+  free: "primary",
+  pro: "highlight",
+  platform: "success",
+  max: "warning",
+};
+
 /** Seats an admin can move a member up to, in the product's order. */
 export const SEAT_UPGRADE_TARGET: Partial<Record<SeatType, SeatType>> = {
   free: "pro",
   pro: "max",
 };
 
-const PROVIDER_LOGOS: Record<
-  NonNullable<RequestDocument["provider"]>,
-  ComponentType<{ className?: string }>
+export const ROLE_LABELS: Record<RequestRole, string> = {
+  admin: "Admin",
+  manager: "Manager",
+  member: "Member",
+};
+
+/** The colors the members table gives each role. */
+export const ROLE_CHIP_COLORS: Record<
+  RequestRole,
+  "warning" | "highlight" | "success"
 > = {
+  admin: "warning",
+  manager: "highlight",
+  member: "success",
+};
+
+// Connectors and tools are named after the platform they talk to, so one map
+// covers both, plus the source a document comes from.
+const PLATFORM_LOGOS: Record<string, ComponentType<{ className?: string }>> = {
   slack: SlackLogo,
   notion: NotionLogo,
   drive: DriveLogo,
   confluence: ConfluenceLogo,
   github: GithubLogo,
+  jira: JiraLogo,
+  salesforce: SalesforceLogo,
+  zendesk: ZendeskLogo,
+  hubspot: HubspotLogo,
 };
 
 const PROVIDER_LABELS: Record<
@@ -125,10 +159,17 @@ const PROVIDER_LABELS: Record<
   github: "GitHub",
 };
 
+/** Matches a connector or tool name to its platform logo. */
+export function getPlatformLogo(
+  name: string
+): ComponentType<{ className?: string }> | undefined {
+  return PLATFORM_LOGOS[name.toLowerCase()];
+}
+
 export function getProviderLogo(
   provider: RequestDocument["provider"]
 ): ComponentType<{ className?: string }> | undefined {
-  return provider ? PROVIDER_LOGOS[provider] : undefined;
+  return provider ? PLATFORM_LOGOS[provider] : undefined;
 }
 
 export function getProviderLabel(
@@ -213,11 +254,6 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "6",
       createdAt: hoursAgo(5),
       target: { kind: "pod", label: "Security & Compliance", id: "space-14" },
-      details: [
-        { label: "Pod", value: "Security & Compliance (restricted)" },
-        { label: "Requested role", value: "Member" },
-        { label: "Current access", value: "None" },
-      ],
       message: "I'm taking over the SOC 2 evidence collection from Marco.",
       status: "pending",
     },
@@ -229,11 +265,7 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "2",
       createdAt: hoursAgo(7),
       target: { kind: "tool", label: "Jira" },
-      details: [
-        { label: "Tool", value: "Jira (remote MCP server)" },
-        { label: "Server", value: "https://mcp.atlassian.com/jira" },
-        { label: "Stake", value: "Read-only (low)" },
-      ],
+      destination: { kind: "pod", label: "Engineering", id: "space-2" },
       status: "pending",
     },
     {
@@ -244,11 +276,8 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "5",
       createdAt: hoursAgo(9),
       target: { kind: "connector", label: "Notion" },
-      details: [
-        { label: "Connector", value: "Notion" },
-        { label: "Selection", value: "Product wiki (14 pages)" },
-        { label: "Destination", value: "Product (Pod)" },
-      ],
+      message:
+        "The Product wiki is where the roadmap lives. We need it in Dust before Thursday's sync.",
       status: "pending",
     },
     {
@@ -259,11 +288,7 @@ export function createMockRequests(): AdminRequest[] {
       beneficiaryId: "9",
       createdAt: hoursAgo(20),
       target: { kind: "user", label: "Elena García", id: "9" },
-      details: [
-        { label: "Member", value: "Elena García" },
-        { label: "Current role", value: "Member" },
-        { label: "Requested role", value: "Manager" },
-      ],
+      roles: { current: "member", requested: "manager" },
       message:
         "She's handling most of the Pod setup for Sales already and keeps having to ask us.",
       status: "pending",
@@ -281,28 +306,18 @@ export function createMockRequests(): AdminRequest[] {
         label: "Legal & Compliance",
         id: "company-space-5",
       },
-      details: [
-        { label: "Space", value: "Legal & Compliance (restricted)" },
-        { label: "Requested access", value: "Read" },
-        { label: "Current access", value: "None" },
-      ],
       status: "pending",
     },
     {
       id: "request-8",
-      type: "userInvitation",
-      title: "Invite two contractors to the workspace",
+      type: "memberInvitation",
+      title: "Invite a new member",
       requesterId: "7",
       createdAt: daysAgo(1),
       target: { kind: "workspace", label: "ACME" },
-      details: [
-        {
-          label: "Invitees",
-          value: "n.okafor@contractor.io, r.silva@contractor.io",
-        },
-        { label: "Role", value: "Member" },
-        { label: "Seats left", value: "3 of 50" },
-      ],
+      details: [{ label: "Email", value: "n.okafor@contractor.io" }],
+      roles: { requested: "member" },
+      message: "Contractor on the onboarding redesign, starts Monday.",
       status: "pending",
     },
     {
@@ -313,10 +328,7 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "4",
       createdAt: daysAgo(2),
       target: { kind: "agent", label: "RiskAnalyzer", id: "agent-6" },
-      details: [
-        { label: "Agent", value: "RiskAnalyzer" },
-        { label: "Requested visibility", value: "Whole workspace" },
-      ],
+      details: [{ label: "Requested visibility", value: "Whole workspace" }],
       status: "pending",
     },
     {
@@ -327,11 +339,11 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "8",
       createdAt: daysAgo(2),
       target: { kind: "tool", label: "Salesforce" },
-      details: [
-        { label: "Tool", value: "Salesforce (remote MCP server)" },
-        { label: "Space", value: "Sales Library" },
-        { label: "Stake", value: "Read and write (high)" },
-      ],
+      destination: {
+        kind: "space",
+        label: "Sales Library",
+        id: "company-space-3",
+      },
       status: "pending",
     },
     {
@@ -342,10 +354,7 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "7",
       createdAt: daysAgo(3),
       target: { kind: "skill", label: "Meeting Recap" },
-      details: [
-        { label: "Skill", value: "Meeting Recap" },
-        { label: "Requested visibility", value: "Whole workspace" },
-      ],
+      details: [{ label: "Requested visibility", value: "Whole workspace" }],
       status: "pending",
     },
     {
@@ -356,7 +365,8 @@ export function createMockRequests(): AdminRequest[] {
       beneficiaryId: "10",
       createdAt: daysAgo(4),
       target: { kind: "user", label: "Carlos Rodríguez", id: "10" },
-      credit: { usedPercent: 92, seatType: "free", limit: 500 },
+      // Already on the top seat, so a new limit is the only lever left.
+      credit: { usedPercent: 92, seatType: "max", limit: 4000 },
       message: "He runs the weekly pipeline review for the whole team.",
       status: "pending",
     },
@@ -384,11 +394,8 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "9",
       createdAt: daysAgo(2),
       target: { kind: "connector", label: "Slack" },
-      details: [
-        { label: "Connector", value: "Slack" },
-        { label: "Selection", value: "#support-escalations, #support-eu" },
-        { label: "Destination", value: "Customer Support (Space)" },
-      ],
+      message:
+        "Escalations are all in Slack today. Support agents can't answer without them.",
       status: "done",
       outcome: "approved",
       resolvedByUserId: "1",
@@ -402,11 +409,6 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "10",
       createdAt: daysAgo(3),
       target: { kind: "pod", label: "Series C", id: "space-5" },
-      details: [
-        { label: "Pod", value: "Series C (restricted)" },
-        { label: "Requested role", value: "Member" },
-        { label: "Current access", value: "None" },
-      ],
       message: "Working on the data room checklist.",
       status: "done",
       outcome: "denied",
@@ -423,11 +425,11 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "5",
       createdAt: daysAgo(4),
       target: { kind: "tool", label: "Zendesk" },
-      details: [
-        { label: "Tool", value: "Zendesk (remote MCP server)" },
-        { label: "Space", value: "Customer Support" },
-        { label: "Stake", value: "Read-only (low)" },
-      ],
+      destination: {
+        kind: "space",
+        label: "Customer Support",
+        id: "company-space-4",
+      },
       status: "done",
       outcome: "approved",
       resolvedByUserId: "1",
@@ -435,16 +437,13 @@ export function createMockRequests(): AdminRequest[] {
     },
     {
       id: "request-17",
-      type: "userInvitation",
-      title: "Invite the new design hire",
+      type: "memberInvitation",
+      title: "Invite a new member",
       requesterId: "3",
       createdAt: daysAgo(5),
       target: { kind: "workspace", label: "ACME" },
-      details: [
-        { label: "Invitees", value: "j.laurent@acme.com" },
-        { label: "Role", value: "Member" },
-        { label: "Seats left", value: "5 of 50" },
-      ],
+      details: [{ label: "Email", value: "j.laurent@acme.com" }],
+      roles: { requested: "member" },
       status: "done",
       outcome: "approved",
       resolvedByUserId: "2",
@@ -458,11 +457,7 @@ export function createMockRequests(): AdminRequest[] {
       beneficiaryId: "8",
       createdAt: daysAgo(6),
       target: { kind: "user", label: "Pierre Martin", id: "8" },
-      details: [
-        { label: "Member", value: "Pierre Martin" },
-        { label: "Current role", value: "Member" },
-        { label: "Requested role", value: "Admin" },
-      ],
+      roles: { current: "member", requested: "admin" },
       status: "done",
       outcome: "denied",
       resolvedByUserId: "1",
@@ -499,11 +494,6 @@ export function createMockRequests(): AdminRequest[] {
         label: "Engineering Docs",
         id: "company-space-2",
       },
-      details: [
-        { label: "Space", value: "Engineering Docs" },
-        { label: "Requested access", value: "Read" },
-        { label: "Current access", value: "None" },
-      ],
       status: "done",
       outcome: "approved",
       resolvedByUserId: "1",
@@ -517,10 +507,7 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "4",
       createdAt: daysAgo(14),
       target: { kind: "agent", label: "RunbookMaster", id: "agent-8" },
-      details: [
-        { label: "Agent", value: "RunbookMaster" },
-        { label: "Requested visibility", value: "Engineering" },
-      ],
+      details: [{ label: "Requested visibility", value: "Engineering" }],
       status: "done",
       outcome: "approved",
       resolvedByUserId: "2",

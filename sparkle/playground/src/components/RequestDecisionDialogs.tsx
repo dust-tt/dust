@@ -10,7 +10,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { formatCredits } from "./RequestPayload";
+import type { RequestDocument } from "../data/types";
+import { DocumentList, formatCredits } from "./RequestPayload";
 
 /** Every decision goes through a dialog, so nothing is applied on a stray click. */
 
@@ -100,6 +101,76 @@ export function DeclineDialog({
               onConfirm(message.trim() || undefined);
               setMessage("");
             },
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Partial approval: the admin keeps the documents they want and leaves the
+ * rest out. Only worth offering when there is more than one to sort through.
+ */
+export function SelectDocumentsDialog({
+  isOpen,
+  documents,
+  onClose,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  documents: RequestDocument[];
+  onClose: () => void;
+  onConfirm: (selected: RequestDocument[]) => void;
+}) {
+  const allNames = documents.map((document) => document.name);
+  const [selectedNames, setSelectedNames] = useState<string[]>(allNames);
+
+  const toggle = (name: string) =>
+    setSelectedNames((names) =>
+      names.includes(name)
+        ? names.filter((selected) => selected !== name)
+        : [...names, name]
+    );
+
+  const handleClose = () => {
+    setSelectedNames(allNames);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Approve a selection</DialogTitle>
+        </DialogHeader>
+        <DialogContainer className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Only the documents you keep checked are added. The rest are left
+            out.
+          </p>
+          <DocumentList
+            documents={documents}
+            selectedNames={selectedNames}
+            onToggle={toggle}
+          />
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleClose,
+          }}
+          rightButtonProps={{
+            label: "Approve selection",
+            variant: "highlight",
+            disabled: selectedNames.length === 0,
+            onClick: () =>
+              onConfirm(
+                documents.filter((document) =>
+                  selectedNames.includes(document.name)
+                )
+              ),
           }}
         />
       </DialogContent>

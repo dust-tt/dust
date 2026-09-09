@@ -3,17 +3,23 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  CheckDouble,
   ClipboardCheck,
   ConversationListItem,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FilterLines,
   ListGroup,
   ListItemSection,
-  SearchInput,
+  XClose,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -34,6 +40,7 @@ import {
 } from "../data/requests";
 import type { AdminRequest, RequestType } from "../data/types";
 import { getUserById } from "../data/users";
+import { AvatarCounter } from "./AvatarCounter";
 import { EmptyState } from "./EmptyState";
 
 /** A request is "done"; the tab that lists the done ones is History. */
@@ -63,7 +70,14 @@ const DATE_BUCKET_ORDER: DateBucketKey[] = [
   "Last Month",
 ];
 
-const ANY = "all";
+/**
+ * Only one thing is filtered at a time, so the queue holds a single selection
+ * rather than a filter per category.
+ */
+type ActiveFilter =
+  | { kind: "type"; value: RequestType }
+  | { kind: "member"; value: string }
+  | null;
 
 function formatCompactAge(date: Date): string {
   const minutes = Math.round((Date.now() - date.getTime()) / (60 * 1000));
@@ -155,24 +169,18 @@ export function RequestsView({
   selectedRequestId = null,
   onRequestClick,
 }: RequestsViewProps) {
-  const [searchText, setSearchText] = useState("");
-  const [typeFilter, setTypeFilter] = useState<RequestType | typeof ANY>(ANY);
-  const [requesterFilter, setRequesterFilter] = useState<string>(ANY);
-  const [resolverFilter, setResolverFilter] = useState<string>(ANY);
+  const [filter, setFilter] = useState<ActiveFilter>(null);
 
   const isHistory = activeTab === "history";
 
   // A tab switch is also the refresh that flushes the sticky rows, so start it
-  // from a clean slate rather than carrying the other tab's filters over.
+  // from a clean slate rather than carrying the other tab's filter over.
   // Reset during render, not in an effect, so the incoming tab never paints a
   // frame filtered by the outgoing tab's selection.
   const [filtersTab, setFiltersTab] = useState<RequestsTab>(activeTab);
   if (filtersTab !== activeTab) {
     setFiltersTab(activeTab);
-    setSearchText("");
-    setTypeFilter(ANY);
-    setRequesterFilter(ANY);
-    setResolverFilter(ANY);
+    setFilter(null);
   }
 
   const tabRequests = useMemo(
@@ -197,59 +205,38 @@ export function RequestsView({
     );
   }, [tabRequests]);
 
-  const requesterOptions = useMemo(
-    () => collectUsers(tabRequests.map((request) => request.requesterId)),
-    [tabRequests]
-  );
-
-  const resolverOptions = useMemo(
-    () => collectUsers(tabRequests.map((request) => request.resolvedByUserId)),
+  // A member is anyone who took part in a request: they asked for it, or they
+  // decided it.
+  const memberOptions = useMemo(
+    () =>
+      collectUsers(
+        tabRequests.flatMap((request) => [
+          request.requesterId,
+          request.resolvedByUserId,
+        ])
+      ),
     [tabRequests]
   );
 
   const filteredRequests = useMemo(() => {
-    const trimmed = searchText.trim().toLowerCase();
-
     const matching = tabRequests.filter((request) => {
-      if (typeFilter !== ANY && request.type !== typeFilter) {
-        return false;
-      }
-      if (requesterFilter !== ANY && request.requesterId !== requesterFilter) {
-        return false;
-      }
-      if (
-        resolverFilter !== ANY &&
-        request.resolvedByUserId !== resolverFilter
-      ) {
-        return false;
-      }
-      if (!trimmed) {
+      if (!filter) {
         return true;
       }
-      const requester = getUserById(request.requesterId);
-      const haystack = [
-        request.title,
-        request.target.label,
-        REQUEST_TYPE_LABELS[request.type],
-        requester?.fullName ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(trimmed);
+      if (filter.kind === "type") {
+        return request.type === filter.value;
+      }
+      return (
+        request.requesterId === filter.value ||
+        request.resolvedByUserId === filter.value
+      );
     });
 
     return [...matching].sort(
       (a, b) =>
         getRowDate(b, isHistory).getTime() - getRowDate(a, isHistory).getTime()
     );
-  }, [
-    tabRequests,
-    searchText,
-    typeFilter,
-    requesterFilter,
-    resolverFilter,
-    isHistory,
-  ]);
+  }, [tabRequests, filter, isHistory]);
 
   const bucketedRequests = useMemo(() => {
     const buckets = new Map<DateBucketKey, AdminRequest[]>();
@@ -283,7 +270,18 @@ export function RequestsView({
               }
             : undefined
         }
-        titleIcon={getRequestIcon(request)}
+        leadingVisual={
+          requester ? (
+            <AvatarCounter
+              size="sm"
+              isRounded
+              name={requester.fullName}
+              visual={requester.portrait}
+              badgeIcon={getRequestIcon(request)}
+              badgeLabel={REQUEST_TYPE_LABELS[request.type]}
+            />
+          ) : undefined
+        }
         unread={isPending}
         time={isHistory ? formatShortDate(date) : formatCompactAge(date)}
         className={cn(
@@ -304,94 +302,50 @@ export function RequestsView({
   };
 
   const renderToolbar = () => (
-    <div className="flex w-full flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <ButtonsSwitchList
-          value={activeTab}
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <ButtonsSwitchList
+        value={activeTab}
+        size="sm"
+        onValueChange={(value) => {
+          if (value === "pending" || value === "history") {
+            onTabChange?.(value);
+          }
+        }}
+      >
+        <ButtonsSwitch
+          value="pending"
+          label="Pending"
+          tooltip="Requests waiting for a decision."
+        />
+        <ButtonsSwitch
+          value="history"
+          label="History"
+          tooltip="Requests that have been handled."
+        />
+      </ButtonsSwitchList>
+
+      <RequestFilterMenu
+        filter={filter}
+        typeOptions={typeOptions.map((type) => ({
+          value: type,
+          label: REQUEST_TYPE_LABELS[type],
+          icon: getRequestTypeIcon(type),
+        }))}
+        memberOptions={memberOptions}
+        onFilterChange={setFilter}
+      />
+
+      {!isHistory && handledRowCount > 0 && (
+        <Button
           size="sm"
-          onValueChange={(value) => {
-            if (value === "pending" || value === "history") {
-              onTabChange?.(value);
-            }
-          }}
-        >
-          <ButtonsSwitch
-            value="pending"
-            label="Pending"
-            tooltip="Requests waiting for a decision."
-          />
-          <ButtonsSwitch
-            value="history"
-            label="History"
-            tooltip="Requests that have been handled."
-          />
-        </ButtonsSwitchList>
-
-        <FilterDropdown
-          prefix="Type"
-          anyLabel="All"
-          value={typeFilter}
-          selectedLabel={
-            typeFilter === ANY ? undefined : REQUEST_TYPE_LABELS[typeFilter]
-          }
-          onValueChange={(value) =>
-            setTypeFilter(value === ANY ? ANY : (value as RequestType))
-          }
-          options={typeOptions.map((type) => ({
-            value: type,
-            label: REQUEST_TYPE_LABELS[type],
-            icon: getRequestTypeIcon(type),
-          }))}
+          variant="outline"
+          icon={CheckDouble}
+          label="Clear handled"
+          tooltip="Remove the requests you just handled from Pending."
+          className="ml-auto"
+          onClick={onClearHandled}
         />
-
-        {!isHistory && handledRowCount > 0 && (
-          <Button
-            size="sm"
-            variant="ghost"
-            label="Clear handled"
-            tooltip="Remove the requests you just handled from Pending."
-            onClick={onClearHandled}
-          />
-        )}
-
-        {isHistory && (
-          <>
-            <FilterDropdown
-              prefix="Requested by"
-              anyLabel="Anyone"
-              value={requesterFilter}
-              selectedLabel={
-                requesterFilter === ANY
-                  ? undefined
-                  : getUserById(requesterFilter)?.fullName
-              }
-              onValueChange={setRequesterFilter}
-              options={requesterOptions}
-            />
-            <FilterDropdown
-              prefix="Handled by"
-              anyLabel="Anyone"
-              value={resolverFilter}
-              selectedLabel={
-                resolverFilter === ANY
-                  ? undefined
-                  : getUserById(resolverFilter)?.fullName
-              }
-              onValueChange={setResolverFilter}
-              options={resolverOptions}
-            />
-          </>
-        )}
-      </div>
-
-      <div className="min-w-[16rem] flex-1">
-        <SearchInput
-          name="requests-search"
-          value={searchText}
-          onChange={setSearchText}
-          placeholder="Search requests..."
-        />
-      </div>
+      )}
     </div>
   );
 
@@ -462,45 +416,138 @@ interface FilterOption {
   icon?: ComponentType<{ className?: string }> | ReactNode;
 }
 
-function FilterDropdown({
-  prefix,
-  anyLabel,
-  value,
-  selectedLabel,
-  options,
-  onValueChange,
+/**
+ * One filter at a time, picked from one menu: a category to drill into, or a
+ * search that reaches across every category at once.
+ */
+function RequestFilterMenu({
+  filter,
+  typeOptions,
+  memberOptions,
+  onFilterChange,
 }: {
-  prefix: string;
-  /** Label of the catch-all option, e.g. "All" or "Anyone". */
-  anyLabel: string;
-  value: string;
-  selectedLabel?: string;
-  options: FilterOption[];
-  onValueChange: (value: string) => void;
+  filter: ActiveFilter;
+  typeOptions: FilterOption[];
+  memberOptions: FilterOption[];
+  onFilterChange: (filter: ActiveFilter) => void;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const query = search.trim().toLowerCase();
+  const matches = (options: FilterOption[]) =>
+    options.filter((option) => option.label.toLowerCase().includes(query));
+  const matchingTypes = query ? matches(typeOptions) : [];
+  const matchingMembers = query ? matches(memberOptions) : [];
+
+  const activeLabel = filter
+    ? (filter.kind === "type" ? typeOptions : memberOptions).find(
+        (option) => option.value === filter.value
+      )?.label
+    : undefined;
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setSearch("");
+    }
+  };
+
+  const select = (next: ActiveFilter) => {
+    onFilterChange(next);
+    handleOpenChange(false);
+  };
+
+  const renderOptions = (kind: "type" | "member", options: FilterOption[]) =>
+    options.map((option) => (
+      <DropdownMenuItem
+        key={`${kind}-${option.value}`}
+        label={option.label}
+        icon={option.icon}
+        onClick={() =>
+          select(
+            kind === "type"
+              ? { kind, value: option.value as RequestType }
+              : { kind, value: option.value }
+          )
+        }
+      />
+    ));
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           size="sm"
           variant="outline"
-          label={`${prefix}: ${selectedLabel ?? anyLabel}`}
+          icon={FilterLines}
+          label={activeLabel ?? "Filter"}
           isSelect
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuLabel label={prefix} />
-        <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
-          <DropdownMenuRadioItem value={ANY} label={anyLabel} />
-          {options.map((option) => (
-            <DropdownMenuRadioItem
-              key={option.value}
-              value={option.value}
-              label={option.label}
-              icon={option.icon}
+      <DropdownMenuContent
+        align="start"
+        // The menu is as tall as what it holds, up to a cap the search scrolls
+        // within, rather than the fixed height a header otherwise imposes.
+        className="h-auto max-h-96 w-auto min-w-[240px] max-w-[320px] xs:h-auto"
+        dropdownHeaders={
+          <>
+            {filter && (
+              <>
+                <DropdownMenuItem
+                  icon={XClose}
+                  label="Clear filtering"
+                  onClick={() => select(null)}
+                />
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuSearchbar
+              autoFocus
+              name="request-filter-search"
+              placeholder="Filter by type or member"
+              value={search}
+              onChange={setSearch}
             />
-          ))}
-        </DropdownMenuRadioGroup>
+          </>
+        }
+      >
+        {query ? (
+          <>
+            {matchingTypes.length > 0 && (
+              <>
+                <DropdownMenuLabel label="Type" />
+                {renderOptions("type", matchingTypes)}
+              </>
+            )}
+            {matchingMembers.length > 0 && (
+              <>
+                <DropdownMenuLabel label="Member" />
+                {renderOptions("member", matchingMembers)}
+              </>
+            )}
+            {matchingTypes.length === 0 && matchingMembers.length === 0 && (
+              <div className="flex h-16 items-center justify-center px-3 text-sm text-muted-foreground">
+                No match
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Type" />
+              <DropdownMenuSubContent>
+                {renderOptions("type", typeOptions)}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Member" />
+              <DropdownMenuSubContent>
+                {renderOptions("member", memberOptions)}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

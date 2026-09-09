@@ -1,116 +1,236 @@
 import {
+  Avatar,
+  Checkbox,
   Chip,
   Cube01,
   CubeOutline,
   Icon,
-  Lock01,
-  Planet,
   ProgressBar,
+  PuzzlePiece01,
+  ShapesPlus,
+  SpaceClosed,
 } from "@dust-tt/sparkle";
-import type { ComponentType, ReactNode } from "react";
+import { cn } from "@sparkle/lib/utils";
+import type { ReactNode } from "react";
 
+import { getAgentById } from "../data/agents";
 import { getIconForFileType } from "../data/dataSources";
 import {
+  getPlatformLogo,
   getProviderLabel,
   getProviderLogo,
+  ROLE_CHIP_COLORS,
+  ROLE_LABELS,
+  SEAT_CHIP_COLORS,
   SEAT_TYPE_LABELS,
 } from "../data/requests";
 import type {
   AdminRequest,
   RequestCredit,
   RequestDocument,
+  RequestRole,
   RequestTarget,
+  User,
 } from "../data/types";
+import { getUserById } from "../data/users";
 
 /** Credits are shown in full, the way the product prints them. */
 export function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US");
 }
 
-function getTargetIcon(
-  target: RequestTarget
-): ComponentType<{ className?: string }> | undefined {
-  switch (target.kind) {
-    case "pod":
-      return target.label.toLowerCase().includes("restricted")
-        ? CubeOutline
-        : Cube01;
-    case "space":
-      return Lock01;
-    case "workspace":
-      return Planet;
-    default:
-      return undefined;
+/** The member a request acts on: its user target, or whoever it is for. */
+function getMember(request: AdminRequest): User | undefined {
+  if (request.target.kind === "user" && request.target.id) {
+    return getUserById(request.target.id);
   }
+  return getUserById(request.beneficiaryId ?? request.requesterId);
 }
 
+/**
+ * A labelled line. It holds a 24px floor so rows keep an even rhythm whether
+ * their value is bare text, a chip, or an avatar.
+ */
 function PayloadRow({
   label,
   children,
+  /** Top-align the label when the value runs taller than a line. */
+  alignTop = false,
 }: {
   label: string;
   children: ReactNode;
+  alignTop?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-      <dt className="w-40 shrink-0 text-sm text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 flex-1 text-sm text-foreground">{children}</dd>
+    <div
+      className={cn(
+        "flex min-h-6 flex-wrap gap-x-3 gap-y-0.5",
+        alignTop ? "items-start" : "items-center"
+      )}
+    >
+      <dt className="w-40 shrink-0 py-0.5 text-sm text-muted-foreground">
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          "flex min-h-6 min-w-0 flex-1 text-sm text-foreground",
+          alignTop ? "flex-col items-stretch" : "items-center"
+        )}
+      >
+        {children}
+      </dd>
     </div>
   );
 }
 
-/** Where the request lands: a Pod or a company Space, with its own icon. */
-function DestinationRow({ target }: { target: RequestTarget }) {
-  const icon = getTargetIcon(target);
-  const kindLabel = target.kind === "space" ? "Space" : "Pod";
-
+/**
+ * Entities are named the way they are everywhere else: their mark, then their
+ * name. Avatars sit at `xxs` and icons at `sm`, the two sizes that render at
+ * the same 20px, so a member lines up with a Pod.
+ */
+function EntityValue({ mark, name }: { mark: ReactNode; name: string }) {
   return (
-    <PayloadRow label="Destination">
-      <span className="flex items-center gap-1.5">
-        {icon && <Icon visual={icon} size="xs" />}
-        {target.label}
-        <span className="text-muted-foreground">({kindLabel})</span>
-      </span>
-    </PayloadRow>
+    <span className="flex min-w-0 items-center gap-2">
+      {mark}
+      <span className="min-w-0 truncate">{name}</span>
+    </span>
+  );
+}
+
+function MemberValue({ user }: { user: User }) {
+  return (
+    <EntityValue
+      mark={
+        <Avatar
+          size="xxs"
+          name={user.fullName}
+          visual={user.portrait}
+          isRounded
+        />
+      }
+      name={user.fullName}
+    />
   );
 }
 
 /**
- * Where the requester stands on credits. At 100% they are blocked, which is
- * what "Over quota" says — the same wording the product uses to flag a capped
- * member.
+ * A Pod or a company Space, each with its own mark. Restricted Pods wear the
+ * outlined cube; open ones are never the subject of an access request, which is
+ * why that path passes `isRestricted`.
+ */
+function PlaceValue({
+  target,
+  isRestricted = target.label.toLowerCase().includes("restricted"),
+}: {
+  target: RequestTarget;
+  isRestricted?: boolean;
+}) {
+  const icon =
+    target.kind === "space" ? SpaceClosed : isRestricted ? CubeOutline : Cube01;
+
+  return (
+    <EntityValue mark={<Icon visual={icon} size="sm" />} name={target.label} />
+  );
+}
+
+function ToolValue({ label }: { label: string }) {
+  return (
+    <EntityValue
+      mark={<Avatar size="xxs" icon={getPlatformLogo(label) ?? ShapesPlus} />}
+      name={label}
+    />
+  );
+}
+
+/** Connections wear their bare platform logo, no avatar around it. */
+function ConnectorValue({ label }: { label: string }) {
+  const logo = getPlatformLogo(label);
+  return (
+    <EntityValue
+      mark={logo ? <Icon visual={logo} size="sm" /> : null}
+      name={label}
+    />
+  );
+}
+
+function AgentValue({ target }: { target: RequestTarget }) {
+  const agent = target.id ? getAgentById(target.id) : undefined;
+
+  return (
+    <EntityValue
+      mark={
+        <Avatar
+          size="xxs"
+          name={target.label}
+          emoji={agent?.emoji}
+          backgroundColor={agent?.backgroundColor}
+        />
+      }
+      name={target.label}
+    />
+  );
+}
+
+/** Roles keep the colors they wear in the members table. */
+function RoleValue({ role }: { role: RequestRole }) {
+  return (
+    <Chip size="xs" color={ROLE_CHIP_COLORS[role]} label={ROLE_LABELS[role]} />
+  );
+}
+
+function SkillValue({ label }: { label: string }) {
+  return (
+    <EntityValue
+      mark={
+        <Avatar
+          size="xxs"
+          icon={PuzzlePiece01}
+          backgroundColor="bg-highlight-50"
+          iconColor="text-highlight-700"
+        />
+      }
+      name={label}
+    />
+  );
+}
+
+/**
+ * Where the requester stands on credits. Short of the cap that is a share of a
+ * quota, so it reads as a bar; at the cap there is nothing left to measure, so
+ * it reads as the single fact that matters.
  */
 function CreditRows({ credit }: { credit: RequestCredit }) {
   const isOverQuota = credit.usedPercent >= 100;
-  const used = Math.min(credit.usedPercent, 100);
 
   return (
     <>
       <PayloadRow label="Quota status">
-        <div className="flex flex-col gap-1.5 pt-1">
-          <ProgressBar
-            label="Credit usage"
-            className="h-2 w-full max-w-xs"
-            radius="xs"
-            values={[
-              {
-                value: used,
-                className: isOverQuota ? "bg-warning-500" : "bg-highlight-500",
-              },
-              { value: 100 - used, className: "bg-muted-background" },
-            ]}
-          />
-          <span
-            className={
-              isOverQuota ? "heading-sm text-warning-700" : "text-foreground"
-            }
-          >
-            {isOverQuota ? "Over quota" : `${credit.usedPercent}% used`}
-          </span>
-        </div>
+        {isOverQuota ? (
+          <Chip size="xs" color="warning" label="Over quota" />
+        ) : (
+          <div className="flex items-center gap-3 py-1">
+            <span>{credit.usedPercent}%</span>
+            <ProgressBar
+              label="Credit usage"
+              className="h-2 w-40"
+              radius="xs"
+              values={[
+                { value: credit.usedPercent, className: "bg-highlight-500" },
+                {
+                  value: 100 - credit.usedPercent,
+                  className: "bg-muted-background",
+                },
+              ]}
+            />
+          </div>
+        )}
       </PayloadRow>
       <PayloadRow label="Current seat">
-        <Chip size="xs" label={SEAT_TYPE_LABELS[credit.seatType]} />
+        <Chip
+          size="xs"
+          color={SEAT_CHIP_COLORS[credit.seatType]}
+          label={SEAT_TYPE_LABELS[credit.seatType]}
+        />
       </PayloadRow>
       <PayloadRow label="Current limit">
         {formatCredits(credit.limit)} credits/month
@@ -119,63 +239,151 @@ function CreditRows({ credit }: { credit: RequestCredit }) {
   );
 }
 
-/** Documents listed the way Pod files are: type icon, name, then its source. */
-function DocumentList({ documents }: { documents: RequestDocument[] }) {
+/**
+ * Documents listed the way Pod files are: type icon, name, then its source.
+ * Pass `onToggle` to make the same list pickable, so approving a selection
+ * shows the documents exactly as the request does.
+ */
+export function DocumentList({
+  documents,
+  selectedNames,
+  onToggle,
+}: {
+  documents: RequestDocument[];
+  selectedNames?: string[];
+  onToggle?: (name: string) => void;
+}) {
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="heading-sm text-foreground">Documents</h3>
-      <div className="flex flex-col rounded-2xl border border-border">
-        {documents.map((document) => {
-          const providerLogo = getProviderLogo(document.provider);
-          const providerLabel = getProviderLabel(document.provider);
+    <div className="flex flex-col">
+      {documents.map((document) => {
+        const providerLogo = getProviderLogo(document.provider);
+        const providerLabel = getProviderLabel(document.provider);
 
-          return (
-            <div
-              key={document.name}
-              className="flex items-center gap-2 border-border border-b px-3 py-2 last:border-b-0"
-            >
-              <Icon visual={getIconForFileType(document.fileType)} size="sm" />
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                {document.name}
+        const content = (
+          <>
+            {onToggle && (
+              <Checkbox
+                checked={selectedNames?.includes(document.name) ?? false}
+                onCheckedChange={() => onToggle(document.name)}
+              />
+            )}
+            <Icon visual={getIconForFileType(document.fileType)} size="sm" />
+            <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+              {document.name}
+            </span>
+            {providerLogo && (
+              <span className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+                <Icon visual={providerLogo} size="xs" />
+                {providerLabel}
               </span>
-              {providerLogo && (
-                <span className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-                  <Icon visual={providerLogo} size="xs" />
-                  {providerLabel}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            )}
+          </>
+        );
+
+        const className =
+          "flex items-center gap-2 border-border border-b py-2 last:border-b-0";
+
+        return onToggle ? (
+          <label
+            key={document.name}
+            className={cn(className, "cursor-pointer")}
+          >
+            {content}
+          </label>
+        ) : (
+          <div key={document.name} className={className}>
+            {content}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 /**
- * What is being asked for. Types that carry their own shape — credits, or a
- * batch of documents — render it here; the rest fall back to their labelled
- * `details` lines.
+ * What is being asked for. Each type names the entities it acts on — a member,
+ * a Pod, a tool, an agent — and leaves the rest to its `details` lines.
  */
 export function RequestPayload({ request }: { request: AdminRequest }) {
-  const hasDestination =
-    request.type === "knowledgeManagement" && request.variant === "dataSource";
+  const { type, variant, target, destination, roles } = request;
+  const member = getMember(request);
 
   return (
     <div className="flex flex-col gap-3">
       <h2 className="heading-sm text-foreground">Request</h2>
       <dl className="flex flex-col gap-2">
         {request.credit && <CreditRows credit={request.credit} />}
-        {hasDestination && <DestinationRow target={request.target} />}
+
+        {(type === "access" || type === "roleChange") && member && (
+          <PayloadRow label="Member">
+            <MemberValue user={member} />
+          </PayloadRow>
+        )}
+
+        {type === "access" && (
+          <PayloadRow label="Access to">
+            <PlaceValue target={target} isRestricted />
+          </PayloadRow>
+        )}
+
+        {type === "knowledgeManagement" && variant === "connector" && (
+          <PayloadRow label="Connection">
+            <ConnectorValue label={target.label} />
+          </PayloadRow>
+        )}
+
+        {type === "knowledgeManagement" && variant === "dataSource" && (
+          <PayloadRow label="Destination">
+            <PlaceValue target={target} />
+          </PayloadRow>
+        )}
+
+        {type === "toolAddition" && (
+          <PayloadRow label="Tool">
+            <ToolValue label={target.label} />
+          </PayloadRow>
+        )}
+
+        {type === "publication" && (
+          <PayloadRow label={variant === "skill" ? "Skill" : "Agent"}>
+            {variant === "skill" ? (
+              <SkillValue label={target.label} />
+            ) : (
+              <AgentValue target={target} />
+            )}
+          </PayloadRow>
+        )}
+
+        {destination && (
+          <PayloadRow label="Destination">
+            <PlaceValue target={destination} />
+          </PayloadRow>
+        )}
+
         {request.details?.map((detail) => (
           <PayloadRow key={detail.label} label={detail.label}>
             {detail.value}
           </PayloadRow>
         ))}
+
+        {roles?.current && (
+          <PayloadRow label="Current role">
+            <RoleValue role={roles.current} />
+          </PayloadRow>
+        )}
+
+        {roles && (
+          <PayloadRow label={roles.current ? "Requested role" : "Role"}>
+            <RoleValue role={roles.requested} />
+          </PayloadRow>
+        )}
+
+        {request.documents && request.documents.length > 0 && (
+          <PayloadRow label="Documents" alignTop>
+            <DocumentList documents={request.documents} />
+          </PayloadRow>
+        )}
       </dl>
-      {request.documents && request.documents.length > 0 && (
-        <DocumentList documents={request.documents} />
-      )}
     </div>
   );
 }

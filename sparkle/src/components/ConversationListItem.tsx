@@ -112,6 +112,11 @@ export interface ConversationListItemProps {
     fullName: string;
     portrait?: string;
   };
+  /**
+   * Leading visual rendered instead of the avatar, for an avatar that carries a
+   * badge or an overlay. Pass `creator` alongside it to keep the name by the title.
+   */
+  leadingVisual?: ReactNode;
   /** Icon shown before the title, for lists whose rows are labelled by a category. */
   titleIcon?: React.ComponentType<{ className?: string }>;
   /** Formatted timestamp displayed on the right of the title. */
@@ -129,8 +134,8 @@ export interface ConversationListItemProps {
 
 /**
  * A list row summarising a conversation: title and description, a timestamp,
- * and a leading avatar (direct) or creator portrait (group), with an optional
- * titleIcon before the title and an optional
+ * and a leading avatar (direct) or creator portrait (group), replaceable by a
+ * leadingVisual, with an optional titleIcon before the title and an optional
  * replySection for reply/unread/mention counts. Use it to render an inbox or
  * activity feed of conversations, grouping rows inside ListGroup so dividers
  * and spacing stay consistent.
@@ -141,6 +146,7 @@ export function ConversationListItem({
   unread,
   avatar,
   creator,
+  leadingVisual,
   titleIcon,
   time,
   replySection,
@@ -185,7 +191,9 @@ export function ConversationListItem({
         className
       )}
     >
-      {creator ? (
+      {leadingVisual ? (
+        leadingVisual
+      ) : creator ? (
         <Avatar
           name={creator.fullName}
           visual={creator.portrait}

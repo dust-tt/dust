@@ -16,6 +16,7 @@ import { getUserById } from "../data/users";
 import {
   ApproveDialog,
   DeclineDialog,
+  SelectDocumentsDialog,
   SetLimitDialog,
   UpdateSeatDialog,
 } from "./RequestDecisionDialogs";
@@ -35,7 +36,7 @@ interface RequestDetailViewProps {
   ) => void;
 }
 
-type OpenDialog = "approve" | "decline" | "limit" | "seat" | null;
+type OpenDialog = "approve" | "decline" | "limit" | "seat" | "documents" | null;
 
 function formatFullDate(date: Date): string {
   return date.toLocaleString("en-US", {
@@ -71,6 +72,11 @@ export function RequestDetailView({
   const member = beneficiary ?? requester;
   const credit = request.credit;
   const nextSeat = credit ? SEAT_UPGRADE_TARGET[credit.seatType] : undefined;
+
+  // With a single document there is nothing to sort through, so approving the
+  // request and approving the selection are the same act.
+  const documents = request.documents ?? [];
+  const canSelectDocuments = documents.length > 1;
 
   const closeDialog = () => setOpenDialog(null);
 
@@ -159,11 +165,20 @@ export function RequestDetailView({
                   />
                 </>
               ) : (
-                <Button
-                  variant="highlight"
-                  label="Approve"
-                  onClick={() => setOpenDialog("approve")}
-                />
+                <>
+                  <Button
+                    variant="highlight"
+                    label={canSelectDocuments ? "Approve all" : "Approve"}
+                    onClick={() => setOpenDialog("approve")}
+                  />
+                  {canSelectDocuments && (
+                    <Button
+                      variant="outline"
+                      label="Approve selection"
+                      onClick={() => setOpenDialog("documents")}
+                    />
+                  )}
+                </>
               )}
               <Button
                 variant="outline"
@@ -224,6 +239,21 @@ export function RequestDetailView({
         onClose={closeDialog}
         onConfirm={(message) => resolve("denied", message)}
       />
+      {canSelectDocuments && (
+        <SelectDocumentsDialog
+          isOpen={openDialog === "documents"}
+          documents={documents}
+          onClose={closeDialog}
+          onConfirm={(selected) =>
+            resolve(
+              "approved",
+              selected.length === documents.length
+                ? `Approved all ${documents.length} documents`
+                : `Approved ${selected.length} of ${documents.length} documents`
+            )
+          }
+        />
+      )}
       {credit && member && (
         <>
           <SetLimitDialog

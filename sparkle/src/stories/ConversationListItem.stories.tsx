@@ -3,6 +3,7 @@ import React from "react";
 import { fn } from "storybook/test";
 
 import {
+  Avatar,
   ConversationListItem,
   ListGroup,
   Lock01,
@@ -24,6 +25,7 @@ const meta = {
 **Guidelines**
 - Pass either **avatar** for direct conversations or **creator** for group conversations, not both.
 - Use **titleIcon** when the rows are labelled by a category rather than a unique subject, so the title reads as icon plus category.
+- Use **leadingVisual** when the avatar itself has to carry the category, as an avatar with a badge; keep **creator** alongside it so the name still sits by the title.
 - Use the **ReplySection** component for the **replySection** slot to display reply / unread / mention counts consistently.
 - Group rows inside **ListGroup** so dividers and spacing stay consistent across the list.`,
       },
@@ -172,6 +174,46 @@ export const WithTitleIcon: Story = {
       portrait: "https://i.pravatar.cc/150?img=5",
     },
     titleIcon: Lock01,
+    time: "5h",
+    onClick: fn(),
+  },
+  render: renderInListGroup,
+};
+
+/**
+ * `leadingVisual` replaces the avatar with any node, here a portrait badged with
+ * the row's category, so the icon travels with the person instead of prefixing
+ * the title. `creator` still supplies the name next to the title.
+ *
+ * @summary Row led by a badged avatar.
+ */
+export const WithLeadingVisual: Story = {
+  args: {
+    unread: true,
+    conversation: {
+      id: "conv-3",
+      title: "Pod access",
+      description:
+        "Access to the Security & Compliance Pod — I'm taking over the SOC 2 evidence collection from Marco.",
+      updatedAt: new Date(),
+    },
+    creator: {
+      fullName: "Marco Ferrari",
+      portrait: "https://i.pravatar.cc/150?img=5",
+    },
+    leadingVisual: (
+      <div className="relative inline-flex overflow-visible">
+        <Avatar
+          name="Marco Ferrari"
+          visual="https://i.pravatar.cc/150?img=5"
+          size="sm"
+          isRounded
+        />
+        <span className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-background px-0.5 text-foreground shadow-sm ring-1 ring-border">
+          <Lock01 className="h-3 w-3" />
+        </span>
+      </div>
+    ),
     time: "5h",
     onClick: fn(),
   },

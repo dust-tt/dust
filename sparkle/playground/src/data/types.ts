@@ -186,11 +186,14 @@ export interface DataSource {
  * decision share a type — a spend limit and a seat are both credit management,
  * so the admin gets one row and picks how to react.
  */
+/** Workspace roles, named the way the product surfaces them to end users. */
+export type RequestRole = "admin" | "manager" | "member";
+
 export type RequestType =
   | "creditManagement"
   | "knowledgeManagement"
   | "toolAddition"
-  | "userInvitation"
+  | "memberInvitation"
   | "access"
   | "roleChange"
   | "publication";
@@ -265,14 +268,25 @@ export interface AdminRequest {
   /** Set when the request is made for someone else. */
   beneficiaryId?: string; // user ID
   createdAt: Date;
+  /** What the request is about: a tool, an agent, a Pod, a member. */
   target: RequestTarget;
+  /** Where the target lands, when that is a different place than the target. */
+  destination?: RequestTarget;
+  /**
+   * The role being asked for. An invitation only carries the requested one,
+   * since the invitee holds no role yet.
+   */
+  roles?: { current?: RequestRole; requested: RequestRole };
   /** Labelled payload lines. Types with a bespoke payload leave it out. */
   details?: RequestDetail[];
   /** Credit management only: the requester's quota, seat and limit. */
   credit?: RequestCredit;
   /** Knowledge management only: the documents the request brings in. */
   documents?: RequestDocument[];
-  /** A note the requester wrote. Most requests come without one. */
+  /**
+   * A note the requester wrote. Most requests come without one; a connection
+   * request always carries one, since it is all the admin has to judge it on.
+   */
   message?: string;
   status: RequestStatus;
   // Set once the request has been handled.
