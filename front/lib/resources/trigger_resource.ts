@@ -909,6 +909,40 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     );
   }
 
+  /**
+   * @cc [owner:aloia,label:product] archive-disables-pod-triggers
+   * Archiving a Pod disables enabled triggers that target it. Triggers stay
+   * attached to the Pod (not detached to personal conversations) and are not
+   * re-enabled on unarchive. Already-disabled or system-status triggers are
+   * left unchanged.
+   */
+  static async disableAllForSpace(
+    auth: Authenticator,
+    spaceModelId: ModelId
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listBySpace(auth, spaceModelId);
+    const enabled = triggers.filter((trigger) => trigger.status === "enabled");
+    if (enabled.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const result = await this.disableMany(auth, enabled, "disabled");
+    if (result.isErr()) {
+      return result;
+    }
+
+    void emitBulkTriggerAuditLogEvents(auth, enabled, (trigger) => ({
+      action: "trigger.disabled",
+      metadata: {
+        trigger_type: trigger.kind,
+        agent_id: trigger.agentConfigurationId,
+        status: "disabled",
+      },
+    }));
+
+    return new Ok(undefined);
+  }
+
   static async disableAllForWorkspace(
     auth: Authenticator,
     targetStatus: Exclude<TriggerStatus, "enabled">
