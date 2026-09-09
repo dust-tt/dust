@@ -32,6 +32,5 @@ export type KeyType = {
   role: RoleType;
   monthlyCapMicroUsd: number | null;
   monthlyCapAwuCredits: number | null;
-  creditState: ApiKeyCreditState;
   isSpendCapped: boolean;
 };
