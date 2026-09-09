@@ -486,13 +486,11 @@ attempts to write the attacker-controlled file as the workload user.
 Repository functions MUST return failures that callers are expected to handle as `Err<E>` values in
 `Result<T, E>`, rather than throw them.
 
-External-service adapters whose local contract requires throwing recognized provider failures are
-exempt: they MAY throw documented errors, and callers MAY catch them using runtime type guards.
-`catch` is also permitted around external-library calls whose exceptions we do not control.
-
 Applicable local contracts MAY define explicit exceptions to this rule, limited to the boundaries
-and failure cases they specify. Outside these exceptions, errors thrown by repository code MUST
-propagate to the runtime's error handler.
+and failure cases they specify; callers MAY catch those documented failures using runtime type
+guards. `catch` is also permitted around external-library calls whose exceptions we do not control.
+Outside these exceptions, errors thrown by repository code MUST propagate to the runtime's error
+handler.
 
 @cc [owner:spolu,label:error-handling] normalize-caught-errors
 Caught values MUST NOT be treated as `Error` or an error subtype through a type assertion. When an
