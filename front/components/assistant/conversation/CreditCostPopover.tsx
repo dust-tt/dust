@@ -62,14 +62,10 @@ function CreditDetailRow({
       return;
     }
 
-    const observer = new ResizeObserver(() => {
-      rowElement.style.setProperty(
-        "--credit-label-collapsed-width",
-        `${labelElement.clientWidth}px`
-      );
-    });
-    observer.observe(labelElement);
-    return () => observer.disconnect();
+    rowElement.style.setProperty(
+      "--credit-label-collapsed-width",
+      `${labelElement.clientWidth}px`
+    );
   }, [expandLabelOnHover]);
 
   return (

@@ -2,7 +2,7 @@ import { CreditCostPopover } from "@app/components/assistant/conversation/Credit
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockOpenPanel,
@@ -115,21 +115,10 @@ const defaultProps: ComponentProps<typeof CreditCostPopover> = {
 
 describe("CreditCostPopover", () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        observe() {}
-        disconnect() {}
-      }
-    );
     mockOpenPanel.mockReset();
     mockSidePanelContext.currentPanel = undefined;
     mockTrackEvent.mockReset();
     mockUseAgentMessageConsumption.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it("shows the tool breakdown and opens credit usage", () => {
