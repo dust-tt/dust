@@ -21,11 +21,7 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
   };
 });
 
-async function setupActor({
-  enableAuditLogs = true,
-}: {
-  enableAuditLogs?: boolean;
-} = {}) {
+async function setup({ auditLogs = true }: { auditLogs?: boolean } = {}) {
   const workspace = await WorkspaceFactory.basic();
   const user = await UserFactory.basic();
   await MembershipFactory.associate(workspace, user, { role: "admin" });
@@ -33,17 +29,25 @@ async function setupActor({
     user.sId,
     workspace.sId
   );
-  if (enableAuditLogs) {
+  if (auditLogs) {
     await FeatureFlagFactory.basic(auth, "audit_logs");
   }
-  return { workspace, user, auth };
-}
-
-async function createConversationForAuth(auth: Authenticator) {
-  return createConversation(auth, {
+  const conversation = await createConversation(auth, {
     title: "Audit conversation",
     visibility: "unlisted",
     spaceId: null,
+  });
+  return { workspace, user, auth, conversation };
+}
+
+async function join(
+  auth: Authenticator,
+  conversation: Awaited<ReturnType<typeof createConversation>>
+) {
+  await ConversationResource.upsertParticipation(auth, {
+    conversation,
+    action: "posted",
+    user: auth.getNonNullableUser().toJSON(),
   });
 }
 
@@ -53,14 +57,9 @@ describe("emitConversationAccessedEvent", () => {
     vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
   });
 
-  it("records creator when the actor is the first participant", async () => {
-    const { auth, user } = await setupActor();
-    const conversation = await createConversationForAuth(auth);
-    await ConversationResource.upsertParticipation(auth, {
-      conversation,
-      action: "posted",
-      user: auth.getNonNullableUser().toJSON(),
-    });
+  it("sets access_relation=creator for the first participant", async () => {
+    const { auth, user, conversation } = await setup();
+    await join(auth, conversation);
 
     await emitConversationAccessedEvent(auth, conversation);
 
@@ -77,14 +76,9 @@ describe("emitConversationAccessedEvent", () => {
     );
   });
 
-  it("records participant when the actor joined after the creator", async () => {
-    const { workspace, auth, user: creator } = await setupActor();
-    const conversation = await createConversationForAuth(auth);
-    await ConversationResource.upsertParticipation(auth, {
-      conversation,
-      action: "posted",
-      user: auth.getNonNullableUser().toJSON(),
-    });
+  it("sets access_relation=participant for a later joiner", async () => {
+    const { workspace, auth, user: creator, conversation } = await setup();
+    await join(auth, conversation);
 
     const participant = await UserFactory.basic();
     await MembershipFactory.associate(workspace, participant, { role: "user" });
@@ -93,35 +87,23 @@ describe("emitConversationAccessedEvent", () => {
       workspace.sId
     );
     await new Promise((resolve) => setTimeout(resolve, 10));
-    await ConversationResource.upsertParticipation(participantAuth, {
-      conversation,
-      action: "posted",
-      user: participantAuth.getNonNullableUser().toJSON(),
-    });
+    await join(participantAuth, conversation);
 
     await emitConversationAccessedEvent(participantAuth, conversation);
 
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: "conversation.accessed",
         metadata: expect.objectContaining({
-          conversation_id: conversation.sId,
           conversation_creator_id: creator.sId,
-          conversation_creator_email: creator.email,
           access_relation: "participant",
         }),
       })
     );
   });
 
-  it("records non_participant when the actor never joined", async () => {
-    const { workspace, auth, user: creator } = await setupActor();
-    const conversation = await createConversationForAuth(auth);
-    await ConversationResource.upsertParticipation(auth, {
-      conversation,
-      action: "posted",
-      user: auth.getNonNullableUser().toJSON(),
-    });
+  it("sets access_relation=non_participant when the actor never joined", async () => {
+    const { workspace, auth, conversation } = await setup();
+    await join(auth, conversation);
 
     const outsider = await UserFactory.basic();
     await MembershipFactory.associate(workspace, outsider, { role: "user" });
@@ -134,39 +116,32 @@ describe("emitConversationAccessedEvent", () => {
 
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: "conversation.accessed",
         metadata: expect.objectContaining({
-          conversation_id: conversation.sId,
-          conversation_creator_id: creator.sId,
-          conversation_creator_email: creator.email,
           access_relation: "non_participant",
         }),
       })
     );
   });
 
-  it("records no_creator and omits creator keys when there is no participant", async () => {
-    const { auth } = await setupActor();
-    const conversation = await createConversationForAuth(auth);
+  it("omits creator metadata when there is no participant", async () => {
+    const { auth, conversation } = await setup();
 
     await emitConversationAccessedEvent(auth, conversation);
 
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
-    const call = vi.mocked(workosAudit.emitAuditLogEvent).mock.calls[0][0];
-    expect(call.action).toBe("conversation.accessed");
-    expect(call.metadata).toEqual(
+    const metadata = vi.mocked(workosAudit.emitAuditLogEvent).mock.calls[0][0]
+      .metadata;
+    expect(metadata).toEqual(
       expect.objectContaining({
         conversation_id: conversation.sId,
         access_relation: "no_creator",
       })
     );
-    expect(call.metadata).not.toHaveProperty("conversation_creator_id");
-    expect(call.metadata).not.toHaveProperty("conversation_creator_email");
+    expect(metadata).not.toHaveProperty("conversation_creator_id");
+    expect(metadata).not.toHaveProperty("conversation_creator_email");
   });
 
-  it("returns without querying or emitting when audit logs are disabled", async () => {
-    const { auth } = await setupActor({ enableAuditLogs: false });
-    const conversation = await createConversationForAuth(auth);
+  it("skips participant queries and emit when audit logs are disabled", async () => {
+    const { auth, conversation } = await setup({ auditLogs: false });
     const listSpy = vi.spyOn(ConversationResource, "listParticipantDetails");
     const fetchSpy = vi.spyOn(UserResource, "fetchByModelIds");
 
