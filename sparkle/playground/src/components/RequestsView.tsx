@@ -5,7 +5,6 @@ import {
   ButtonsSwitchList,
   CheckDouble,
   ClipboardCheck,
-  ConversationListItem,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -30,18 +29,11 @@ import {
   useState,
 } from "react";
 
-import {
-  getBeneficiary,
-  getRequestIcon,
-  getRequestTypeIcon,
-  getResolverLabel,
-  REQUEST_OUTCOME_LABELS,
-  REQUEST_TYPE_LABELS,
-} from "../data/requests";
+import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
 import type { AdminRequest, RequestType } from "../data/types";
 import { getUserById } from "../data/users";
-import { AvatarCounter } from "./AvatarCounter";
 import { EmptyState } from "./EmptyState";
+import { getRowDate, RequestListItem } from "./RequestListItem";
 
 /** A request is "done"; the tab that lists the done ones is History. */
 export type RequestsTab = "pending" | "history";
@@ -79,22 +71,6 @@ type ActiveFilter =
   | { kind: "member"; value: string }
   | null;
 
-function formatCompactAge(date: Date): string {
-  const minutes = Math.round((Date.now() - date.getTime()) / (60 * 1000));
-  if (minutes < 60) {
-    return `${Math.max(1, minutes)}m`;
-  }
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h`;
-  }
-  return `${Math.round(hours / 24)}d`;
-}
-
-function formatShortDate(date: Date): string {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 // Same buckets as the pod conversation list.
 function getDateBucket(date: Date): DateBucketKey {
   const now = new Date();
@@ -116,42 +92,6 @@ function getDateBucket(date: Date): DateBucketKey {
     return "Last Week";
   }
   return "Last Month";
-}
-
-/**
- * Pending is ordered by when a request was asked, History by when it was
- * decided. Using it for the row's timestamp, its bucket and the sort keeps a
- * request that is handled in place from jumping to another day.
- */
-function getRowDate(request: AdminRequest, isHistory: boolean): Date {
-  return isHistory
-    ? (request.resolvedAt ?? request.createdAt)
-    : request.createdAt;
-}
-
-/** "Pierre Martin on behalf of Elena García" when someone asks for another. */
-function getRequesterLine(request: AdminRequest): string | undefined {
-  const requester = getUserById(request.requesterId);
-  if (!requester) {
-    return undefined;
-  }
-  const beneficiary = getBeneficiary(request);
-  return beneficiary
-    ? `${requester.fullName} on behalf of ${beneficiary.fullName}`
-    : requester.fullName;
-}
-
-// The title line carries the request type and the people involved, so the
-// description says what is being asked for — not why. The target is dropped
-// when it would only repeat itself: a person is already named in the title
-// line, as requester or as beneficiary, and most titles name their own target.
-function getRequestDescription(request: AdminRequest): string {
-  const { kind, label } = request.target;
-  const isRedundant =
-    kind === "user" ||
-    request.title.toLowerCase().includes(label.toLowerCase());
-
-  return isRedundant ? request.title : `${request.title} — ${label}`;
 }
 
 /**
@@ -247,59 +187,16 @@ export function RequestsView({
     return buckets;
   }, [filteredRequests, isHistory]);
 
-  const renderRequestItem = (request: AdminRequest) => {
-    const requester = getUserById(request.requesterId);
-    const isPending = request.status === "pending";
-    const isSelected = selectedRequestId === request.id;
-    const date = getRowDate(request, isHistory);
-
-    return (
-      <ConversationListItem
-        key={request.id}
-        conversation={{
-          id: request.id,
-          title: REQUEST_TYPE_LABELS[request.type],
-          description: getRequestDescription(request),
-          updatedAt: date,
-        }}
-        creator={
-          requester
-            ? {
-                fullName: getRequesterLine(request) ?? requester.fullName,
-                portrait: requester.portrait,
-              }
-            : undefined
-        }
-        leadingVisual={
-          requester ? (
-            <AvatarCounter
-              size="sm"
-              isRounded
-              name={requester.fullName}
-              visual={requester.portrait}
-              badgeIcon={getRequestIcon(request)}
-              badgeLabel={REQUEST_TYPE_LABELS[request.type]}
-            />
-          ) : undefined
-        }
-        unread={isPending}
-        time={isHistory ? formatShortDate(date) : formatCompactAge(date)}
-        className={cn(
-          "px-3 rounded-2xl border-transparent!",
-          isSelected && "bg-highlight-50"
-        )}
-        replySection={
-          isPending ? undefined : (
-            <ResolutionSection
-              request={request}
-              currentUserId={currentUserId}
-            />
-          )
-        }
-        onClick={() => onRequestClick?.(request)}
-      />
-    );
-  };
+  const renderRequestItem = (request: AdminRequest) => (
+    <RequestListItem
+      key={request.id}
+      request={request}
+      isHistory={isHistory}
+      isSelected={selectedRequestId === request.id}
+      currentUserId={currentUserId}
+      onClick={() => onRequestClick?.(request)}
+    />
+  );
 
   const renderToolbar = () => (
     <div className="flex w-full flex-wrap items-center gap-2">
@@ -582,51 +479,4 @@ function collectUsers(ids: (string | undefined)[]): FilterOption[] {
   }
 
   return options.sort((a, b) => a.label.localeCompare(b.label));
-}
-
-/** Who decided and how, in the shape of the pod ReplySection. */
-function ResolutionSection({
-  request,
-  currentUserId,
-}: {
-  request: AdminRequest;
-  currentUserId?: string;
-}) {
-  const resolver = request.resolvedByUserId
-    ? getUserById(request.resolvedByUserId)
-    : undefined;
-
-  if (!resolver || !request.outcome) {
-    return null;
-  }
-
-  const resolverLabel = getResolverLabel(request, currentUserId);
-
-  return (
-    <div className="flex items-center gap-2 pt-2">
-      <Avatar
-        name={resolver.fullName}
-        visual={resolver.portrait}
-        size="xs"
-        isRounded
-      />
-      <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-        <span
-          className={cn(
-            "heading-xs",
-            request.outcome === "approved"
-              ? "text-emerald-700 dark:text-emerald-300"
-              : "text-warning-700"
-          )}
-        >
-          {REQUEST_OUTCOME_LABELS[request.outcome]}
-        </span>{" "}
-        by <span className="heading-xs">{resolverLabel}</span>
-        {/* What the admin did, for the types they act on rather than wave through. */}
-        {request.outcome === "approved" && request.resolutionMessage
-          ? ` — ${request.resolutionMessage}`
-          : ""}
-      </div>
-    </div>
-  );
 }

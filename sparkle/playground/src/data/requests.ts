@@ -328,7 +328,6 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "4",
       createdAt: daysAgo(2),
       target: { kind: "agent", label: "RiskAnalyzer", id: "agent-6" },
-      details: [{ label: "Requested visibility", value: "Whole workspace" }],
       status: "pending",
     },
     {
@@ -354,7 +353,6 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "7",
       createdAt: daysAgo(3),
       target: { kind: "skill", label: "Meeting Recap" },
-      details: [{ label: "Requested visibility", value: "Whole workspace" }],
       status: "pending",
     },
     {
@@ -507,7 +505,7 @@ export function createMockRequests(): AdminRequest[] {
       requesterId: "4",
       createdAt: daysAgo(14),
       target: { kind: "agent", label: "RunbookMaster", id: "agent-8" },
-      details: [{ label: "Requested visibility", value: "Engineering" }],
+      destination: { kind: "pod", label: "Engineering", id: "space-2" },
       status: "done",
       outcome: "approved",
       resolvedByUserId: "2",

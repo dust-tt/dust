@@ -1,9 +1,12 @@
 import {
+  ArrowRight,
   Avatar,
   Checkbox,
   Chip,
   Cube01,
   CubeOutline,
+  Eye,
+  EyeOff,
   Icon,
   ProgressBar,
   PuzzlePiece01,
@@ -88,11 +91,21 @@ function PayloadRow({
  * name. Avatars sit at `xxs` and icons at `sm`, the two sizes that render at
  * the same 20px, so a member lines up with a Pod.
  */
-function EntityValue({ mark, name }: { mark: ReactNode; name: string }) {
+function EntityValue({
+  mark,
+  name,
+  /** Trails the name, for entities that have to say what they are. */
+  suffix,
+}: {
+  mark: ReactNode;
+  name: string;
+  suffix?: ReactNode;
+}) {
   return (
     <span className="flex min-w-0 items-center gap-2">
       {mark}
       <span className="min-w-0 truncate">{name}</span>
+      {suffix}
     </span>
   );
 }
@@ -121,15 +134,28 @@ function MemberValue({ user }: { user: User }) {
 function PlaceValue({
   target,
   isRestricted = target.label.toLowerCase().includes("restricted"),
+  /** Names the kind after the place, when which one it is carries weight. */
+  showKind = false,
 }: {
   target: RequestTarget;
   isRestricted?: boolean;
+  showKind?: boolean;
 }) {
   const icon =
     target.kind === "space" ? SpaceClosed : isRestricted ? CubeOutline : Cube01;
 
   return (
-    <EntityValue mark={<Icon visual={icon} size="sm" />} name={target.label} />
+    <EntityValue
+      mark={<Icon visual={icon} size="sm" />}
+      name={target.label}
+      suffix={
+        showKind ? (
+          <span className="shrink-0 text-muted-foreground">
+            {target.kind === "space" ? "Space" : "Pod"}
+          </span>
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -175,6 +201,21 @@ function AgentValue({ target }: { target: RequestTarget }) {
 function RoleValue({ role }: { role: RequestRole }) {
   return (
     <Chip size="xs" color={ROLE_CHIP_COLORS[role]} label={ROLE_LABELS[role]} />
+  );
+}
+
+/**
+ * A state the request would move something out of, and the one it would move
+ * it into. The arrow carries the change, so both sides only have to name a
+ * state.
+ */
+function ChangeValue({ from, to }: { from: ReactNode; to: ReactNode }) {
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      {from}
+      <Icon visual={ArrowRight} size="xs" className="text-muted-foreground" />
+      {to}
+    </span>
   );
 }
 
@@ -322,7 +363,7 @@ export function RequestPayload({ request }: { request: AdminRequest }) {
 
         {type === "access" && (
           <PayloadRow label="Access to">
-            <PlaceValue target={target} isRestricted />
+            <PlaceValue target={target} isRestricted showKind />
           </PayloadRow>
         )}
 
@@ -366,17 +407,37 @@ export function RequestPayload({ request }: { request: AdminRequest }) {
           </PayloadRow>
         ))}
 
-        {roles?.current && (
-          <PayloadRow label="Current role">
-            <RoleValue role={roles.current} />
+        {type === "publication" && (
+          <PayloadRow label="Change">
+            <ChangeValue
+              from={
+                <Chip
+                  size="xs"
+                  color="primary"
+                  icon={EyeOff}
+                  label="Unpublished"
+                />
+              }
+              to={
+                <Chip size="xs" color="success" icon={Eye} label="Published" />
+              }
+            />
           </PayloadRow>
         )}
 
-        {roles && (
-          <PayloadRow label={roles.current ? "Requested role" : "Role"}>
-            <RoleValue role={roles.requested} />
-          </PayloadRow>
-        )}
+        {roles &&
+          (roles.current ? (
+            <PayloadRow label="Change">
+              <ChangeValue
+                from={<RoleValue role={roles.current} />}
+                to={<RoleValue role={roles.requested} />}
+              />
+            </PayloadRow>
+          ) : (
+            <PayloadRow label="Role">
+              <RoleValue role={roles.requested} />
+            </PayloadRow>
+          ))}
 
         {request.documents && request.documents.length > 0 && (
           <PayloadRow label="Documents" alignTop>

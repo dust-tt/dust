@@ -32,7 +32,7 @@ import {
   FolderOpen,
   Heart,
   Icon,
-  Mail01,
+  Inbox01,
   IntersectDust,
   Lightbulb04,
   Link01,
@@ -1099,17 +1099,31 @@ function Inbox() {
           conversations={allConversations}
           users={mockUsers}
           agents={mockAgents}
+          requests={requests}
           currentUserId={user.id}
           activeTab={inboxActiveTab}
           personalSectionLabel="Conversations"
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
+          selectedRequestId={
+            p3View?.kind === "request" ? p3View.requestId : null
+          }
           onConversationClick={(conversation) => {
             setP3View({
               kind: "conversation",
               conversationId: conversation.id,
             });
+            setP4View(null);
+          }}
+          onRequestClick={(request) => {
+            setP3View({ kind: "request", requestId: request.id });
+            setP4View(null);
+          }}
+          onRequestsClick={() => {
+            setP2View({ kind: "requests" });
+            setStickyRequestIds(new Set());
+            setP3View(null);
             setP4View(null);
           }}
           onSpaceClick={(space) => {
@@ -1793,7 +1807,7 @@ function Inbox() {
               />
               <NavigationListItem
                 label="Inbox"
-                icon={Mail01}
+                icon={Inbox01}
                 selected={p2View.kind === "inbox"}
                 count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
@@ -1839,7 +1853,7 @@ function Inbox() {
             </NavigationList>
 
             {starredSpaces.length > 0 && (
-              <NavigationList className="mx-sidebar-side-spacing">
+              <NavigationList className="mx-sidebar-side-spacing mt-2">
                 <NavigationListCollapsibleSection
                   label="Starred"
                   type="collapse"
@@ -1851,7 +1865,7 @@ function Inbox() {
               </NavigationList>
             )}
 
-            <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
+            <NavigationList className="mx-sidebar-side-spacing mt-2 flex-shrink-0">
               <NavigationListCollapsibleSection
                 label="Pods"
                 type="collapse"
@@ -1952,7 +1966,7 @@ function Inbox() {
               </NavigationListCollapsibleSection>
             </NavigationList>
 
-            <NavigationList className="mx-sidebar-side-spacing">
+            <NavigationList className="mx-sidebar-side-spacing mt-2">
               {(recentConversations.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
                   label="Recent"

@@ -2,13 +2,14 @@ import {
   Avatar,
   Button,
   Check,
+  ClipboardCheck,
   Collapsible,
   CollapsibleContent,
   ConversationListItem,
   Cube01,
   CubeOutline,
   Icon,
-  Mail01,
+  Inbox01,
   ListGroup,
   MessageChatSquare,
   ReplySection,
@@ -23,9 +24,16 @@ import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { getAgentById } from "../data/agents";
 import { getRandomInboxGreetingForName } from "../data/greetings";
 import { isTriggeredConversation } from "../data/myPod";
-import type { Agent, Conversation, Space, User } from "../data/types";
+import type {
+  AdminRequest,
+  Agent,
+  Conversation,
+  Space,
+  User,
+} from "../data/types";
 import { getUserById } from "../data/users";
 import { EmptyState } from "./EmptyState";
+import { RequestListItem } from "./RequestListItem";
 import { TaskItem } from "./TaskItem";
 
 type InboxTab = "conversations" | "tasks";
@@ -49,13 +57,19 @@ interface InboxViewProps {
   conversations: Conversation[];
   users: User[];
   agents: Agent[];
+  /** The requests queue; only the pending ones surface here. */
+  requests?: AdminRequest[];
   activeTab?: InboxTab;
   selectedConversationId?: string | null;
+  selectedRequestId?: string | null;
   currentUserId?: string;
   onConversationClick?: (conversation: Conversation) => void;
+  onRequestClick?: (request: AdminRequest) => void;
   onMyPodClick?: () => void;
   onAutomationsClick?: () => void;
   onSpaceClick?: (space: Space) => void;
+  /** Opens the full requests queue from the section header. */
+  onRequestsClick?: () => void;
   personalSectionLabel?: string;
 }
 
@@ -262,13 +276,17 @@ export function InboxView({
   conversations,
   users,
   agents,
+  requests,
   activeTab = "conversations",
   selectedConversationId = null,
+  selectedRequestId = null,
   currentUserId,
   onConversationClick,
+  onRequestClick,
   onMyPodClick,
   onAutomationsClick,
   onSpaceClick,
+  onRequestsClick,
   personalSectionLabel = "My Pod",
 }: InboxViewProps) {
   const currentUserFirstName = currentUserId
@@ -466,10 +484,21 @@ export function InboxView({
     agents,
   ]);
 
+  // A request leaves the Inbox the moment it is handled: nothing pins it here
+  // the way the requests queue pins the rows you just decided.
+  const pendingRequests = useMemo(
+    () =>
+      [...(requests ?? [])]
+        .filter((request) => request.status === "pending")
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    [requests]
+  );
+
   const hasConversationContent =
     myConversations.length > 0 ||
     automationConversations.length > 0 ||
-    spacesWithUnread.length > 0;
+    spacesWithUnread.length > 0 ||
+    pendingRequests.length > 0;
 
   const baseInboxTaskGroups = useMemo(() => {
     const groups: Array<{
@@ -536,6 +565,10 @@ export function InboxView({
   const allConversationSectionsCollapsed = useMemo(() => {
     if (!hasConversationContent) return true;
 
+    // Requests are out of reach of "Mark as read", so they keep the Inbox from
+    // ever reading as empty.
+    if (pendingRequests.length > 0) return false;
+
     const myConversationsCollapsed =
       myConversations.length === 0 || collapsedSections.has("my-conversations");
 
@@ -555,6 +588,7 @@ export function InboxView({
     collapsedSections,
     hasConversationContent,
     myConversations.length,
+    pendingRequests.length,
     spacesWithUnread,
   ]);
 
@@ -668,32 +702,41 @@ export function InboxView({
     />
   );
 
-  const renderInboxSectionHeader = (
-    label: string,
-    onHeaderClick: (() => void) | undefined,
-    onAction: () => void,
-    actionLabel: string,
-    icon?: ComponentType<{ className?: string }>
-  ) => (
+  const renderInboxSectionHeader = ({
+    label,
+    icon,
+    onHeaderClick,
+    action,
+  }: {
+    label: string;
+    icon?: ComponentType<{ className?: string }>;
+    onHeaderClick?: () => void;
+    /** Sections nothing can mark as read — requests — leave this out. */
+    action?: { label: string; onAction: () => void };
+  }) => (
     <div
-      className="mt-2 flex cursor-pointer items-center justify-between rounded-2xl bg-muted-background p-1.5 pl-3.5 heading-sm"
+      // The 44px floor is the height the action button gives a header, held
+      // here so the sections without one stand just as tall.
+      className="mt-2 flex min-h-11 cursor-pointer items-center justify-between rounded-2xl bg-muted-background p-1.5 pl-3.5 heading-sm"
       onClick={onHeaderClick}
     >
       <span className="flex min-w-0 items-center gap-1.5">
         {icon ? <Icon visual={icon} size="sm" /> : null}
         {label}
       </span>
-      <Button
-        label={actionLabel}
-        icon={Check}
-        size="sm"
-        variant="ghost-secondary"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onAction();
-        }}
-      />
+      {action && (
+        <Button
+          label={action.label}
+          icon={Check}
+          size="sm"
+          variant="ghost-secondary"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            action.onAction();
+          }}
+        />
+      )}
     </div>
   );
 
@@ -734,7 +777,7 @@ export function InboxView({
   };
 
   const renderEmptyState = (title: string, description: React.ReactNode) => (
-    <EmptyState icon={Mail01} title={title} description={description} />
+    <EmptyState icon={Inbox01} title={title} description={description} />
   );
 
   const renderConversationsTab = () => {
@@ -790,13 +833,15 @@ export function InboxView({
             >
               <CollapsibleContent>
                 <div className="flex flex-col gap-1">
-                  {renderInboxSectionHeader(
-                    personalSectionLabel,
-                    onMyPodClick,
-                    () => toggleSectionCollapse("my-conversations"),
-                    "Mark as read",
-                    MessageChatSquare
-                  )}
+                  {renderInboxSectionHeader({
+                    label: personalSectionLabel,
+                    icon: MessageChatSquare,
+                    onHeaderClick: onMyPodClick,
+                    action: {
+                      label: "Mark as read",
+                      onAction: () => toggleSectionCollapse("my-conversations"),
+                    },
+                  })}
                   <ListGroup className="border-transparent! gap-0.5">
                     {myConversations.map(renderInboxConversationItem)}
                   </ListGroup>
@@ -825,13 +870,15 @@ export function InboxView({
             >
               <CollapsibleContent>
                 <div className="flex flex-col gap-1">
-                  {renderInboxSectionHeader(
-                    "Automations",
-                    onAutomationsClick,
-                    () => toggleSectionCollapse("automations"),
-                    "Mark as read",
-                    Zap
-                  )}
+                  {renderInboxSectionHeader({
+                    label: "Automations",
+                    icon: Zap,
+                    onHeaderClick: onAutomationsClick,
+                    action: {
+                      label: "Mark as read",
+                      onAction: () => toggleSectionCollapse("automations"),
+                    },
+                  })}
                   <ListGroup className="border-transparent! gap-0.5">
                     {automationConversations.map(renderInboxConversationItem)}
                   </ListGroup>
@@ -862,13 +909,15 @@ export function InboxView({
               >
                 <CollapsibleContent>
                   <div className="flex flex-col gap-1">
-                    {renderInboxSectionHeader(
-                      space.name,
-                      () => onSpaceClick?.(space),
-                      () => toggleSectionCollapse(space.id),
-                      "Mark as read",
-                      getInboxPodSectionIcon(space)
-                    )}
+                    {renderInboxSectionHeader({
+                      label: space.name,
+                      icon: getInboxPodSectionIcon(space),
+                      onHeaderClick: () => onSpaceClick?.(space),
+                      action: {
+                        label: "Mark as read",
+                        onAction: () => toggleSectionCollapse(space.id),
+                      },
+                    })}
                     <ListGroup className="border-transparent! gap-0.5">
                       {spaceConversations.map(renderInboxConversationItem)}
                     </ListGroup>
@@ -877,6 +926,26 @@ export function InboxView({
               </Collapsible>
             );
           })}
+          {pendingRequests.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {renderInboxSectionHeader({
+                label: "Requests",
+                icon: ClipboardCheck,
+                onHeaderClick: onRequestsClick,
+              })}
+              <ListGroup className="border-transparent! gap-0.5">
+                {pendingRequests.map((request) => (
+                  <RequestListItem
+                    key={request.id}
+                    request={request}
+                    isSelected={selectedRequestId === request.id}
+                    currentUserId={currentUserId}
+                    onClick={() => onRequestClick?.(request)}
+                  />
+                ))}
+              </ListGroup>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -939,12 +1008,14 @@ export function InboxView({
           >
             <CollapsibleContent>
               <div className="flex flex-col gap-1">
-                {renderInboxSectionHeader(
-                  group.label,
-                  group.onHeaderClick,
-                  () => toggleTaskSectionCollapse(group.key),
-                  "Mark as done"
-                )}
+                {renderInboxSectionHeader({
+                  label: group.label,
+                  onHeaderClick: group.onHeaderClick,
+                  action: {
+                    label: "Mark as done",
+                    onAction: () => toggleTaskSectionCollapse(group.key),
+                  },
+                })}
 
                 <ListGroup className="border-transparent! gap-0.5">
                   <div className="flex flex-col gap-2 px-3 py-1">
