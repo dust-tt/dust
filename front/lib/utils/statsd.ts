@@ -3,10 +3,13 @@ import { StatsD } from "hot-shots";
 
 let statsDClient: StatsD | undefined = undefined;
 
-function getStatsDClient(): StatsD {
+export function getStatsDClient(): StatsD {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!statsDClient) {
     statsDClient = new StatsD({
+      globalTags: process.env.DD_ENTITY_ID
+        ? { "dd.internal.entity_id": process.env.DD_ENTITY_ID }
+        : {},
       // Without an errorHandler, hot-shots emits "error" on its dgram socket with no listener
       // attached, which crashes the process on the rare send failure. Metrics are best-effort,
       // so log and move on.
