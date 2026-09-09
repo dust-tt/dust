@@ -65,7 +65,7 @@ function CreditDetailRow({
           labelElement &&
           labelElement.scrollWidth > labelElement.clientWidth
         ) {
-          labelElement.style.setProperty(
+          event.currentTarget.style.setProperty(
             "--credit-label-collapsed-width",
             `${labelElement.clientWidth}px`
           );
@@ -74,12 +74,7 @@ function CreditDetailRow({
       }}
       onPointerLeave={() => setIsLabelExpanded(false)}
     >
-      <dt
-        className={classNames(
-          "flex min-w-0 items-center gap-2 font-medium text-foreground",
-          isLabelExpanded && "col-span-2"
-        )}
-      >
+      <dt className="col-start-1 row-start-1 flex min-w-0 items-center gap-2 font-medium text-foreground">
         {icon && (
           <Icon
             visual={icon}
@@ -89,18 +84,21 @@ function CreditDetailRow({
         )}
         <span
           ref={labelRef}
-          className={
-            isLabelExpanded
-              ? "min-w-0 break-all animate-credit-label-reveal motion-reduce:animate-none"
-              : "truncate"
-          }
+          className={classNames(
+            "truncate",
+            isLabelExpanded && "relative z-10 bg-overlay-background shadow-none"
+          )}
+          style={{ textOverflow: isLabelExpanded ? "clip" : undefined }}
         >
           {label}
         </span>
         {description && (
           <span
             aria-hidden={isLabelExpanded}
-            className={isLabelExpanded ? "hidden" : "flex shrink-0"}
+            className={classNames(
+              "flex shrink-0",
+              isLabelExpanded && "invisible"
+            )}
           >
             <Chip
               size="mini"
@@ -110,11 +108,22 @@ function CreditDetailRow({
           </span>
         )}
       </dt>
+      {isLabelExpanded && (
+        <dt
+          aria-hidden
+          className={classNames(
+            "pointer-events-none col-span-2 col-start-1 row-start-1 min-w-0 justify-self-start break-all font-medium text-foreground animate-credit-label-reveal select-none motion-reduce:animate-none",
+            icon ? "ml-6" : ""
+          )}
+        >
+          {label}
+        </dt>
+      )}
       <dd
         aria-hidden={isLabelExpanded}
         className={classNames(
-          "shrink-0 text-muted-foreground",
-          isLabelExpanded && "hidden"
+          "col-start-2 row-start-1 shrink-0 text-muted-foreground",
+          isLabelExpanded && "invisible"
         )}
       >
         {value}
