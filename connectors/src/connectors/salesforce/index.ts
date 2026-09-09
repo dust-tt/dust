@@ -223,12 +223,6 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   /**
    * Salesforce only exposes one flat level of folders: one per synced query, managed by Dust.
    */
-  /**
-   * @cc [owner:smb2268,label:error-handling] oauth-error-as-result
-   * When credential retrieval throws `ExternalOAuthTokenError`, this method MUST return
-   * `Err(ConnectorManagerError("EXTERNAL_OAUTH_TOKEN_ERROR"))` instead of propagating the exception.
-   * Any other thrown error MUST be rethrown unchanged.
-   */
   async retrievePermissions(): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
@@ -249,6 +243,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
     if (getConnectorAndCredentialsRes.isErr()) {
