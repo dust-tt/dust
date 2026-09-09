@@ -89,7 +89,7 @@ function CreditDetailRow({
       }}
       onPointerLeave={() => setIsLabelExpanded(false)}
     >
-      {/* Two spans keep the prefix fixed while the full name reveals underneath. */}
+      {/* Two spans keep the prefix fixed, then put the full name on top for selection. */}
       <dt
         className={cn(
           "col-span-2 col-start-1 row-start-1",
@@ -105,7 +105,9 @@ function CreditDetailRow({
             ref={labelRef}
             className={cn(
               "overflow-hidden whitespace-nowrap",
-              isLabelExpanded ? "z-10 bg-overlay-background" : "text-ellipsis"
+              isLabelExpanded
+                ? "pointer-events-none z-10 bg-overlay-background select-none"
+                : "text-ellipsis"
             )}
           >
             {label}
@@ -125,8 +127,8 @@ function CreditDetailRow({
           <span
             aria-hidden
             className={cn(
-              "col-span-2 col-start-1 row-start-1 justify-self-start",
-              "pointer-events-none break-all select-none",
+              "col-span-2 col-start-1 row-start-1 z-20",
+              "break-all bg-overlay-background select-text",
               "animate-credit-label-reveal motion-reduce:animate-none",
               icon && "ml-6"
             )}
