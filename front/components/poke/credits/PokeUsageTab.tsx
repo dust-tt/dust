@@ -30,6 +30,7 @@ import {
   ContentMessage,
   ProgressBar,
   Spinner,
+  ValueCard,
 } from "@dust-tt/sparkle";
 
 interface PokeUsageTabProps {
@@ -267,6 +268,34 @@ function PokeDefaultAlertsCard({ defaultAlerts }: PokeDefaultAlertsCardProps) {
   );
 }
 
+interface PokeLegacyPerMemberCapCardProps {
+  capAwuCredits: number | null;
+}
+
+// Non-credit-priced (legacy) workspaces have no Metronome credit-state machine,
+// but can still enforce a single workspace-wide per-member credit cap via the
+// "Set Per-Member Credit Limit (Legacy Plans)" poke plugin. Enforcement runs off
+// a UTC-calendar-month Redis rate-limiter counter (see
+// `isNonCreditPricedUserSpendLimitReached`); this card surfaces the configured
+// cap so it isn't invisible in poke.
+function PokeLegacyPerMemberCapCard({
+  capAwuCredits,
+}: PokeLegacyPerMemberCapCardProps) {
+  return (
+    <ValueCard
+      title="Per-member credit limit (legacy)"
+      subtitle="Enforced per member, per calendar month"
+      content={
+        <span className="heading-lg text-foreground">
+          {capAwuCredits !== null
+            ? `${formatCredits(capAwuCredits)} credits`
+            : "No limit set"}
+        </span>
+      }
+    />
+  );
+}
+
 interface PokeCreditPoolCardProps {
   owner: WorkspaceType;
 }
@@ -351,13 +380,24 @@ export function PokeUsageTab({
     // Non-credit-based workspaces (no Metronome contract) have no credit
     // diagnostics, but fair-use AWU limits still apply to them (free/trial), so
     // the members table — which surfaces per-user fair-use usage — is shown
-    // alongside the activity chart.
+    // alongside the activity chart. Legacy plans may also enforce a
+    // workspace-wide per-member credit cap (`defaultPoolCapAwuCredits`), so its
+    // configured value and the per-member rate-limiter state are surfaced too.
+    const legacyPerMemberCapAwuCredits =
+      creditUsageConfig?.defaultPoolCapAwuCredits &&
+      creditUsageConfig.defaultPoolCapAwuCredits > 0
+        ? creditUsageConfig.defaultPoolCapAwuCredits
+        : null;
     return (
       <div className="flex flex-col gap-4">
         <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
+        <PokeLegacyPerMemberCapCard
+          capAwuCredits={legacyPerMemberCapAwuCredits}
+        />
         <PokeMembersUsageTable
           owner={owner}
           isCreditBased={hasMetronomeBillingUsage}
+          showUserCap={legacyPerMemberCapAwuCredits !== null}
         />
       </div>
     );
