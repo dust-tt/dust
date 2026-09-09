@@ -31,6 +31,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 interface EditMemberSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // Called only once a change has actually been persisted, distinct from
+  // `onClose` which also fires on cancel or a read-only dismiss.
+  onSaved?: () => void;
   member: MemberUsageType | null;
   owner: LightWorkspaceType;
   groups: GroupType[];
@@ -43,6 +46,7 @@ interface MemberSpendLimitFormProps {
   groups: GroupType[];
   readOnly: boolean;
   onClose: () => void;
+  onSaved?: () => void;
 }
 
 function MemberSpendLimitForm({
@@ -51,6 +55,7 @@ function MemberSpendLimitForm({
   groups,
   readOnly,
   onClose,
+  onSaved,
 }: MemberSpendLimitFormProps) {
   const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
     workspaceId: owner.sId,
@@ -171,6 +176,7 @@ function MemberSpendLimitForm({
         concurrency: 8,
       });
       if (results.every((result) => result !== null)) {
+        onSaved?.();
         onClose();
       }
     } finally {
@@ -249,6 +255,7 @@ function MemberSpendLimitForm({
 export function EditMemberSpendLimitModal({
   isOpen,
   onClose,
+  onSaved,
   member,
   owner,
   groups,
@@ -279,6 +286,7 @@ export function EditMemberSpendLimitModal({
           groups={groups}
           readOnly={readOnly}
           onClose={onClose}
+          onSaved={onSaved}
         />
       </DialogContent>
     </Dialog>
