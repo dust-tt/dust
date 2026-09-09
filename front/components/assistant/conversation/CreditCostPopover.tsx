@@ -8,11 +8,11 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import { classNames } from "@app/lib/utils";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import {
   Button,
   Chip,
+  cn,
   Icon,
   LoadingBlock,
   Plus,
@@ -74,18 +74,23 @@ function CreditDetailRow({
       }}
       onPointerLeave={() => setIsLabelExpanded(false)}
     >
-      {/* Span both columns without pushing the credit count onto another row. */}
-      <dt className="col-span-2 col-start-1 row-start-1 grid grid-cols-subgrid items-start font-medium text-foreground">
+      {/* Two spans keep the prefix fixed while the full name reveals underneath. */}
+      <dt
+        className={cn(
+          "col-span-2 col-start-1 row-start-1",
+          "grid grid-cols-subgrid items-start",
+          "font-medium text-foreground"
+        )}
+      >
         <span className="col-start-1 row-start-1 flex items-center gap-2">
           {icon && (
             <Icon visual={icon} size="xs" className="text-muted-foreground" />
           )}
           <span
             ref={labelRef}
-            className={classNames(
-              "truncate",
-              // Keep the visible prefix above the animated copy throughout the reveal.
-              isLabelExpanded && "z-10 text-clip bg-overlay-background"
+            className={cn(
+              "overflow-hidden whitespace-nowrap",
+              isLabelExpanded ? "z-10 bg-overlay-background" : "text-ellipsis"
             )}
           >
             {label}
@@ -94,7 +99,7 @@ function CreditDetailRow({
             <Chip
               size="mini"
               label={description}
-              className={classNames(
+              className={cn(
                 "shrink-0 font-normal",
                 isLabelExpanded && "invisible"
               )}
@@ -104,10 +109,11 @@ function CreditDetailRow({
         {isLabelExpanded && (
           <span
             aria-hidden
-            className={classNames(
-              // Overlay the original label and extend across the hidden credit column.
-              "pointer-events-none col-span-2 col-start-1 row-start-1 justify-self-start break-all animate-credit-label-reveal select-none motion-reduce:animate-none",
-              icon ? "ml-6" : ""
+            className={cn(
+              "col-span-2 col-start-1 row-start-1 justify-self-start",
+              "pointer-events-none break-all select-none",
+              "animate-credit-label-reveal motion-reduce:animate-none",
+              icon && "ml-6"
             )}
           >
             {label}
@@ -115,7 +121,7 @@ function CreditDetailRow({
         )}
       </dt>
       <dd
-        className={classNames(
+        className={cn(
           "col-start-2 row-start-1 text-muted-foreground",
           isLabelExpanded && "invisible"
         )}
