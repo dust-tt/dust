@@ -19,7 +19,6 @@ import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   usePokeAwuPoolCurrentCycle,
   usePokeAwuPoolCycleHistory,
-  usePokeDefaultUserSpendLimit,
   usePokeMembersUsage,
   usePokeSeatPlan,
 } from "@app/poke/swr/credits";
@@ -130,13 +129,6 @@ export function PoolUsagePage() {
     useState<MemberUsageType | null>(null);
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
-  const {
-    defaultUserSpendLimit: pokeDefaultUserSpendLimit,
-    isDefaultUserSpendLimitLoading: isPokeDefaultUserSpendLimitLoading,
-  } = usePokeDefaultUserSpendLimit({
-    owner,
-    disabled: !spendLimitRecapMember,
-  });
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -172,6 +164,15 @@ export function PoolUsagePage() {
 
   const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
   const activeSubscription = workspaceInfo?.activeSubscription;
+  // Same availability rule as the workspace read endpoint: the default pool
+  // limit only exists for Metronome-only billed workspaces. The value itself
+  // is already part of workspace-info, so no dedicated fetch is needed.
+  const isMetronomeOnlyBilled =
+    !!activeSubscription?.metronomeContractId &&
+    !activeSubscription.stripeSubscriptionId;
+  const defaultUserSpendLimitAwuCredits = isMetronomeOnlyBilled
+    ? (workspaceInfo?.creditUsageConfig?.defaultPoolCapAwuCredits ?? 0)
+    : undefined;
   const hasMetronomeContract =
     !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
   const isLegacyPremiumMessagePlan =
@@ -461,8 +462,8 @@ export function PoolUsagePage() {
         owner={owner}
         groups={groups}
         readOnly
-        defaultUserSpendLimitAwuCredits={pokeDefaultUserSpendLimit?.awuCredits}
-        isDefaultUserSpendLimitLoading={isPokeDefaultUserSpendLimitLoading}
+        defaultUserSpendLimitAwuCredits={defaultUserSpendLimitAwuCredits}
+        isDefaultUserSpendLimitLoading={!workspaceInfo}
         onClose={() => setSpendLimitRecapMember(null)}
       />
     </main>
