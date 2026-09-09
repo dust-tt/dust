@@ -494,7 +494,7 @@ When introducing new endpoints or modifying existing endpoints, introduce functi
 tests are functional and focus at the endpoint level for now. Unit tests are not required nor
 desired.
 
-@cc [owner:flvndvd,label:testing] test-setup-through-factories
+@cc [owner:Fraggle,label:testing] test-setup-through-factories
 Test state setup should be done through factories. Factories should return Resources whenever
 possible.
 
