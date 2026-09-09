@@ -897,7 +897,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "pricing_groups"
   | "workspace_analytics"
-  | "xai_feature"
   | "conversations_slack_notifications"
   | "collapsible_messages"
   | "consumption_export_api"
