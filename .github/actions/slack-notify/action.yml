@@ -96,12 +96,7 @@ runs:
         token: ${{ inputs.slack_token }}
         payload: |
           channel: ${{ inputs.channel }}
-          text: |
-            ${{ inputs.is_revert == 'true' && '⏮️' || '🚀' }} ${{ inputs.is_revert == 'true' && 'Starting revert of' || 'Starting deployment of' }} ${{ inputs.component }} `${{ inputs.image_tag }}`
-            • Cells: `${{ inputs.region }}`
-            • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
-            • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
-            • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
+          text: "${{ inputs.is_revert == 'true' && '⏮️ revert' || '🚀' }} `${{ inputs.component }}` <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|`${{ inputs.image_tag }}`> → ${{ inputs.region }} · ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }} · <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|workflow>"
 
     - name: Format and Build Payload
       if: inputs.step == 'build_success'
@@ -109,8 +104,12 @@ runs:
       shell: bash
       run: |
         # 1. Build Header Section
-        HEADER_TEXT="🔨 Build completed for ${{ inputs.region }}"
-        DETAILS_TEXT="• Image: \`${{ inputs.image_tag }}\`"
+        # Region builds (marketing) say where, cell deploys build once.
+        case "${{ inputs.region }}" in
+          cell-*|all) HEADER_TEXT="🔨 \`${{ inputs.image_tag }}\` built" ;;
+          *) HEADER_TEXT="🔨 \`${{ inputs.image_tag }}\` built for ${{ inputs.region }}" ;;
+        esac
+        DETAILS_TEXT=""
 
         if [ -n "${{ inputs.current_version }}" ]; then
           DETAILS_TEXT="${DETAILS_TEXT}
