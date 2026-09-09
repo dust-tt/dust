@@ -20,7 +20,7 @@ export type AnalyticsExportParams = {
   fileName?: string;
   rowCount?: number;
   period?: { start: string; end: string };
-  query?: Record<string, string | number | boolean>;
+  query?: Record<string, string | number | boolean | undefined>;
 };
 
 /**
@@ -52,9 +52,16 @@ export async function emitAnalyticsExportedEvent(
     metadata.period_end = params.period.end;
   }
   if (params.query) {
-    metadata.export_query = Object.entries(params.query)
+    const exportQuery = Object.entries(params.query)
+      .filter(
+        (entry): entry is [string, string | number | boolean] =>
+          entry[1] !== undefined
+      )
       .map(([key, value]) => `${key}=${value}`)
       .join("&");
+    if (exportQuery) {
+      metadata.export_query = exportQuery;
+    }
   }
 
   return emitAuditLogEvent({
