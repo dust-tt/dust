@@ -108,7 +108,8 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
   // Phase 1: Initialize PostHog. This captures events for all visitors,
   // including anonymous ad traffic. Visitors who have not accepted cookies get
-  // sessionStorage persistence, which is cleared when the tab closes.
+  // cookieless localStorage persistence, which is shared across same-origin
+  // tabs so opening a link in a new tab keeps the same session.
   useEffect(() => {
     if (
       !POSTHOG_KEY ||
@@ -123,14 +124,16 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     const anonymousId = getOrCreateAnonymousId();
 
-    // PostHog keeps the session id ($sesid) in this store, so "memory" meant a
-    // new session_id on every page load and ~one pageview per session. Pick the
-    // store up front rather than starting in memory and upgrading in Phase 2:
-    // the Phase 2 switch clears the store it moves off, so a store we never
-    // read back at init would reset the session on the next load anyway.
+    // PostHog keeps the session id ($sesid) in this store. "memory" meant a new
+    // session_id on every page load (~one pageview per session). "sessionStorage"
+    // fixed that within a tab, but it is per-tab, so opening any link in a new
+    // tab (including cmd+click) still started a fresh session. "localStorage" is
+    // shared across same-origin tabs, so the session survives new tabs while
+    // staying cookieless (session recording stays off until consent, Phase 2)
+    // and a smaller footprint than the persistent _dust_aid cookie already set.
     const persistence = hasAcceptedCookies
       ? "localStorage+cookie"
-      : "sessionStorage";
+      : "localStorage";
 
     posthog.init(POSTHOG_KEY, {
       // /subtle1 is rewritten to PostHog by marketing's own next.config.js.
@@ -141,7 +144,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       persistence,
       // Pre-consent, use the persistent _dust_aid cookie as distinct_id so
       // anonymous events share an identity across page loads and across
-      // dust.tt / app.dust.tt (sessionStorage is per-origin). Post-consent we
+      // dust.tt / app.dust.tt (client-side storage is per-origin). Post-consent we
       // must not bootstrap: posthog-js applies bootstrap.distinctID
       // unconditionally at init, which would clobber an identified user's sId
       // back to the anonymous id on every load. PostHog's own cross-subdomain
