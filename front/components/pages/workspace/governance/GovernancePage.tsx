@@ -2,6 +2,7 @@ import { GovernancePageLayout } from "@app/components/pages/workspace/governance
 import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
+import { RoleProvisioningSection } from "@app/components/pages/workspace/governance/RoleProvisioningSection";
 import { SkillDiscoverabilityWarning } from "@app/components/pages/workspace/governance/SkillDiscoverabilityWarning";
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
@@ -254,6 +255,7 @@ export const GovernancePage = () => {
 
         {isAdmin && (
           <>
+            <RoleProvisioningSection owner={owner} groups={groups} />
             <GovernanceSettingSection label="Pods" icon={Cube01}>
               <OpenPodPolicy owner={owner} />
               <PodKnowledgePolicy owner={owner} />

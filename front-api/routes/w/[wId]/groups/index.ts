@@ -18,6 +18,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import groupDetail from "./[groupId]";
+import grantedRole from "./[groupId]/granted_role";
 import spendLimit from "./[groupId]/spend_limit";
 
 export type GetGroupsResponseBody = {
@@ -128,6 +129,7 @@ app.post(
 );
 
 app.route("/:groupId/spend_limit", spendLimit);
+app.route("/:groupId/granted_role", grantedRole);
 app.route("/:groupId", groupDetail);
 
 export default app;

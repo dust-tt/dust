@@ -2,13 +2,17 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { ProvisionedGroupDialog } from "@app/components/groups/ProvisionedGroupDialog";
+import {
+  displayRoleCapitalized,
+  ROLES_DATA,
+} from "@app/components/members/Roles";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import type { GroupKind } from "@app/types/groups";
+import type { GroupGrantableRole, GroupKind } from "@app/types/groups";
 import {
   isRegularManualGroupKind,
   MANAGEABLE_GROUP_KINDS,
@@ -42,6 +46,7 @@ type GroupRowData = {
   name: string;
   memberCount: number;
   kind: GroupKind;
+  grantedRole: GroupGrantableRole | null;
   onClick?: () => void;
   onDelete?: () => void;
 };
@@ -71,12 +76,22 @@ const columns: ColumnDef<GroupRowData>[] = [
   {
     id: "kind",
     header: "",
-    meta: { className: "w-[160px]" },
+    meta: { className: "w-[240px]" },
     cell: ({ row }) => {
-      const { label, color } = getGroupKindChip(row.original.kind);
+      const { kind, grantedRole } = row.original;
+      const { label, color } = getGroupKindChip(kind);
       return (
         <DataTable.CellContent>
-          <Chip size="xs" color={color} label={label} />
+          <div className="flex flex-row items-center gap-1">
+            <Chip size="xs" color={color} label={label} />
+            {grantedRole && (
+              <Chip
+                size="xs"
+                color={ROLES_DATA[grantedRole].color}
+                label={displayRoleCapitalized(grantedRole)}
+              />
+            )}
+          </div>
         </DataTable.CellContent>
       );
     },
@@ -176,6 +191,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
         name: group.name,
         memberCount: group.memberCount,
         kind: group.kind,
+        grantedRole: group.grantedRole,
         onClick: isManual
           ? () => {
               setEditedGroupId(group.sId);

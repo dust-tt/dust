@@ -1,6 +1,6 @@
 import {
   getRoleDescription,
-  ROLE_PROVISIONING_GROUPS_LABEL,
+  ROLE_PROVISIONING_MESSAGE,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { MemberGroupsSection } from "@app/components/workspace/MemberGroupsSection";
@@ -44,7 +44,7 @@ function getMemberRoleMessage({
   role: ActiveRoleType;
 }): string {
   if (hasActiveRoleProvisioningGroups) {
-    return `The roles are managed by your identity provider through group provisioning (${ROLE_PROVISIONING_GROUPS_LABEL}). Role changes must be made in your identity provider.`;
+    return ROLE_PROVISIONING_MESSAGE;
   }
 
   return `The role defines the rights of a member of the workspace. ${getRoleDescription(
@@ -76,10 +76,7 @@ export function ChangeMemberModal({
   });
 
   const hasActiveRoleProvisioningGroups = () => {
-    return (
-      roleProvisioningStatus.hasAdminGroup ||
-      roleProvisioningStatus.hasManagerGroup
-    );
+    return roleProvisioningStatus.grantedRoles.length > 0;
   };
 
   const roleMessage =

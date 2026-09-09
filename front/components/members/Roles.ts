@@ -68,5 +68,7 @@ export function getRoleDescription(role: ActiveRoleType): string {
   return ROLE_DESCRIPTIONS[role];
 }
 
-export const ROLE_PROVISIONING_GROUPS_LABEL =
-  "dust-admins and dust-managers groups";
+// Message shown when a workspace has groups mapped to roles, so member roles
+// are (partly) driven by group membership and can't be edited by hand.
+export const ROLE_PROVISIONING_MESSAGE =
+  "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership.";

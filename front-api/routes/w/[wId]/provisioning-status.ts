@@ -1,9 +1,6 @@
 import type { GetProvisioningStatusResponseBody } from "@app/lib/api/workspace";
-import {
-  ADMIN_GROUP_NAME,
-  GroupResource,
-  MANAGER_GROUP_NAME,
-} from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -14,13 +11,13 @@ const app = workspaceApp();
 app.get("/", async (ctx): HandlerResult<GetProvisioningStatusResponseBody> => {
   const auth = ctx.get("auth");
 
-  const groups =
-    await GroupResource.listRoleProvisioningGroupsForWorkspace(auth);
+  const groups = await GroupResource.listRoleGrantingGroupsForWorkspace(auth);
 
-  return ctx.json({
-    hasAdminGroup: groups.some((g) => g.name === ADMIN_GROUP_NAME),
-    hasManagerGroup: groups.some((g) => g.name === MANAGER_GROUP_NAME),
-  });
+  const grantedRoles = [
+    ...new Set(removeNulls(groups.map((g) => g.grantedRole))),
+  ];
+
+  return ctx.json({ grantedRoles });
 });
 
 export default app;

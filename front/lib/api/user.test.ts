@@ -1,16 +1,8 @@
-import {
-  determineUserRoleFromGroups,
-  getUserForWorkspace,
-} from "@app/lib/api/user";
+import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
-import {
-  ADMIN_GROUP_NAME,
-  MANAGER_GROUP_NAME,
-} from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -301,58 +293,5 @@ describe("getUserForWorkspace", () => {
 
     const result = await getUserForWorkspace(auth, { userId: user1.sId });
     expect(result?.sId).toBe(user1.sId);
-  });
-});
-
-describe("determineUserRoleFromGroups", () => {
-  let workspace: WorkspaceType;
-  let user: UserResource;
-  let adminAuthenticator: Authenticator;
-
-  beforeEach(async () => {
-    workspace = await WorkspaceFactory.basic();
-    await GroupFactory.defaults(workspace);
-    user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    adminAuthenticator = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-  });
-
-  async function addUserToRoleGroup(name: string) {
-    const group = await GroupFactory.provisioned(workspace, name);
-    await GroupFactory.withMembers(adminAuthenticator, group, [user]);
-    return group;
-  }
-
-  it("returns 'user' when the user is in no role-granting group", async () => {
-    const role = await determineUserRoleFromGroups(adminAuthenticator, user);
-
-    expect(role).toBe("user");
-  });
-
-  it("returns 'admin' when the user is in the dust-admins group", async () => {
-    await addUserToRoleGroup(ADMIN_GROUP_NAME);
-
-    const role = await determineUserRoleFromGroups(adminAuthenticator, user);
-
-    expect(role).toBe("admin");
-  });
-
-  it("grants 'manager' from the dust-managers group", async () => {
-    await addUserToRoleGroup(MANAGER_GROUP_NAME);
-
-    const role = await determineUserRoleFromGroups(adminAuthenticator, user);
-
-    expect(role).toBe("manager");
-  });
-
-  it("prioritizes 'admin' over 'manager'", async () => {
-    await addUserToRoleGroup(ADMIN_GROUP_NAME);
-    await addUserToRoleGroup(MANAGER_GROUP_NAME);
-
-    const role = await determineUserRoleFromGroups(adminAuthenticator, user);
-
-    expect(role).toBe("admin");
   });
 });

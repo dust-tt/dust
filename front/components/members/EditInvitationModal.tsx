@@ -1,7 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   getRoleDescription,
-  ROLE_PROVISIONING_GROUPS_LABEL,
+  ROLE_PROVISIONING_MESSAGE,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -32,7 +32,7 @@ function getInvitationRoleMessage({
   role: ActiveRoleType;
 }): string {
   if (isRoleManagedByProvisioning) {
-    return `This invitation's role is managed by your identity provider through group provisioning (${ROLE_PROVISIONING_GROUPS_LABEL}). Role changes must be made in your identity provider.`;
+    return ROLE_PROVISIONING_MESSAGE;
   }
 
   return `The role defines the rights of a member for the workspace. ${getRoleDescription(
@@ -65,10 +65,10 @@ export function EditInvitationModal({
     workspaceId: owner.sId,
   });
 
-  // Check if this invitation's role would be managed by provisioning groups
+  // Check if this invitation's role would be managed by a role-granting group.
   const isRoleManagedByProvisioning =
-    (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
-    (roleProvisioningStatus.hasManagerGroup && selectedRole === "manager");
+    selectedRole !== undefined &&
+    roleProvisioningStatus.grantedRoles.some((r) => r === selectedRole);
 
   const roleMessage = invitation
     ? getInvitationRoleMessage({

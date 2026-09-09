@@ -242,8 +242,7 @@ export function useProvisioningStatus({
   const roleProvisioningStatus = useMemo(() => {
     if (!data) {
       return {
-        hasAdminGroup: false,
-        hasManagerGroup: false,
+        grantedRoles: [],
       };
     }
     return data;

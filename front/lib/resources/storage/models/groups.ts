@@ -1,7 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { GroupKind } from "@app/types/groups";
+import type { GroupGrantableRole, GroupKind } from "@app/types/groups";
 import { isGlobalGroupKind, isSystemGroupKind } from "@app/types/groups";
 import type { CreationOptional, Transaction } from "sequelize";
 
@@ -18,6 +18,10 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   declare poolCapAwuCredits: CreationOptional<number | null>;
+
+  // Workspace role granted to this group's active members ("admin" or
+  // "manager"), or null when the group grants no role.
+  declare grantedRole: CreationOptional<GroupGrantableRole | null>;
 }
 
 GroupModel.init(
@@ -46,6 +50,10 @@ GroupModel.init(
     },
     poolCapAwuCredits: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    grantedRole: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },

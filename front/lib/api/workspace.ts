@@ -23,7 +23,10 @@ import type { EmailProviderType } from "@app/lib/utils/email_provider_detection"
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
-import type { UserVisibleGroupKind } from "@app/types/groups";
+import type {
+  GroupGrantableRole,
+  UserVisibleGroupKind,
+} from "@app/types/groups";
 import type {
   MembershipOriginType,
   MembershipRoleType,
@@ -814,8 +817,11 @@ export type GetWorkspaceVerifiedDomainsResponseBody = {
 };
 
 export type GetProvisioningStatusResponseBody = {
-  hasAdminGroup: boolean;
-  hasManagerGroup: boolean;
+  // Distinct workspace roles granted by at least one group in the workspace
+  // (a subset of ["admin", "manager"]). When non-empty, member roles are
+  // (partly) managed through group membership and manual role editing is
+  // restricted.
+  grantedRoles: GroupGrantableRole[];
 };
 
 export type GetWelcomeResponseBody = {
