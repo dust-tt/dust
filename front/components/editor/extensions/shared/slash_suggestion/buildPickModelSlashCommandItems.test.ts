@@ -111,7 +111,7 @@ describe("buildPickModelSlashCommandItems", () => {
     ]);
   });
 
-  it("matches every query word as a prefix of a label or provider word", () => {
+  it("matches every query word as a prefix of a label word", () => {
     const models = [
       asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
       asSelectable(GPT_4_1_MODEL_CONFIG),
@@ -128,11 +128,14 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(labelsFor("cl h")).toEqual([
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
     ]);
-    expect(labelsFor("anthr m")).toEqual([
+    // A word starting nothing falls back to a loose subsequence of the label.
+    expect(labelsFor("laude")).toEqual([
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
     ]);
-    // Mid-word substrings do not match.
-    expect(labelsFor("laude")).toEqual([]);
+    // Provider names are never searched.
+    expect(labelsFor("anthropic")).toEqual([]);
   });
 
   it("matches each query word against a distinct row word", () => {
@@ -153,6 +156,19 @@ describe("buildPickModelSlashCommandItems", () => {
       `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Light`,
     ]);
     expect(labelsFor("haiku haiku")).toEqual([]);
+  });
+
+  it("does not match a provider through its prefix", () => {
+    // "op" must not list every OpenAI row.
+    expect(
+      buildPickModelSlashCommandItems({
+        getModelIcon: () => Icon,
+        lockPremiumEfforts: false,
+        models: [asSelectable(GPT_4_1_MODEL_CONFIG)],
+        query: "op",
+        streams: null,
+      })
+    ).toEqual([]);
   });
 
   it("matches tier rows on their name only", () => {

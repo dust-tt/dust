@@ -1,6 +1,6 @@
 import type { SelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import { SELECT_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
-import { matchesSearchWords } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
+import { filterBySearchWords } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import {
@@ -46,13 +46,6 @@ export function getSelectableEffortsForSlashMenu(
   }
 
   return ["none"];
-}
-
-// Tier rows match on their name only.
-function getSearchableText(item: SelectModelSlashCommand): string {
-  return item.data.selection.display.kind === "tier"
-    ? item.label
-    : `${item.label} ${item.description ?? ""}`;
 }
 
 /**
@@ -119,9 +112,9 @@ function buildTierSlashCommandItems({
 }
 
 /**
- * @cc [owner:PopDaph,label:product] query-filters-rows-by-word-prefix
- * An item is kept only if `query` matches (`matchesSearchWords`) its label, extended with its
- * provider description for model rows; tier rows never match on their description.
+ * @cc [owner:PopDaph,label:product] query-filters-rows-by-label
+ * Rows are filtered with `filterBySearchWords` on their label only; descriptions (provider,
+ * resolved tier model) are never searched.
  */
 export function buildPickModelSlashCommandItems({
   getModelIcon,
@@ -173,7 +166,5 @@ export function buildPickModelSlashCommandItems({
     }
   }
 
-  return items.filter((item) =>
-    matchesSearchWords(getSearchableText(item), query)
-  );
+  return filterBySearchWords(items, query, (item) => item.label);
 }
