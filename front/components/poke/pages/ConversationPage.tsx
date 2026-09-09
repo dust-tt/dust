@@ -881,7 +881,7 @@ export function ConversationPage() {
   const pod =
     spaceDetails?.space.kind === "project" ? spaceDetails.space : null;
 
-  const [useMarkdown, setUseMarkdown] = useState(false);
+  const [useMarkdown, setUseMarkdown] = useState(true);
   const { data: agents } = usePokeAgentConfigurations({
     owner,
     agentsGetView: "admin_internal",
