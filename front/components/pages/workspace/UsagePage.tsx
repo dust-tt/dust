@@ -830,6 +830,9 @@ export function UsagePage() {
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
+  const seatsHaveBuiltInAllowance = Object.values(seatPlans).some(
+    (info) => (info?.awuCredits ?? 0) > 0
+  );
 
   const poolConsumedCredits = Math.max(
     0,
@@ -1388,6 +1391,7 @@ export function UsagePage() {
                     <UsageSettingsCard
                       workspaceId={owner.sId}
                       hasPool={hasPool}
+                      seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
                     />
                   )}
                   <ModelTiersSettingsCard owner={owner} />
@@ -1446,6 +1450,7 @@ export function UsagePage() {
           isOpen={isBulkSpendLimitOpen}
           onClose={() => setIsBulkSpendLimitOpen(false)}
           memberCount={selection.selectedCount}
+          seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
           onValidate={handleBulkSpendLimitValidate}
         />
         <BulkChangeSeatModal
